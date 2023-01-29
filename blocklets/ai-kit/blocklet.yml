@@ -50,6 +50,22 @@ environments:
     required: true
     default: https://beta.abtnetwork.io/api/
     secure: false
+  - name: OPENAI_API_KEY
+    description: Your OpenAI apiKey.
+    required: false
+    default: ''
+    secure: true
+    shared: false
 capabilities: {}
 screenshots: []
 components: []
+navigation:
+  - id: playground
+    title: Playground
+    icon: carbon:run
+    link: /playground
+    section:
+      - sessionManager
+    role:
+      - admin
+      - owner

@@ -1,8 +1,9 @@
-import middleware from '@blocklet/sdk/lib/middlewares';
 import { Router } from 'express';
+
+import ai from './ai';
 
 const router = Router();
 
-router.use('/user', middleware.user(), (req, res) => res.json(req.user || {}));
+router.use('/ai', ai);
 
 export default router;

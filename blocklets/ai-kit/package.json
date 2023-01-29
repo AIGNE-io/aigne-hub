@@ -30,7 +30,15 @@
   "dependencies": {
     "@arcblock/did-auth": "^1.18.14",
     "@arcblock/did-auth-storage-nedb": "^1.7.1",
+    "@arcblock/did-connect": "^2.4.65",
+    "@arcblock/ux": "^2.4.65",
     "@blocklet/sdk": "^1.8.34",
+    "@blocklet/ui-react": "^2.4.65",
+    "@emotion/css": "^11.10.5",
+    "@emotion/react": "^11.10.5",
+    "@emotion/styled": "^11.10.5",
+    "@mui/icons-material": "^5.11.0",
+    "@mui/material": "^5.11.6",
     "@ocap/client": "^1.18.14",
     "@ocap/mcrypto": "^1.18.14",
     "@ocap/wallet": "^1.18.14",
@@ -42,6 +50,7 @@
     "express": "^4.18.2",
     "express-async-errors": "^3.1.1",
     "express-history-api-fallback": "^2.2.1",
+    "openai": "^3.1.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.4.3"

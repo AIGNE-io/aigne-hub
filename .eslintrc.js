@@ -9,4 +9,15 @@ module.exports = {
   globals: {
     logger: true,
   },
+  rules: {
+    '@typescript-eslint/no-use-before-define': 'off',
+    '@typescript-eslint/no-shadow': 'off',
+    '@typescript-eslint/indent': 'off',
+    'no-return-assign': 'off',
+    'no-nested-ternary': 'off',
+    'react/require-default-props': 'off',
+    'react-hooks/exhaustive-deps': 'warn',
+    'react/no-array-index-key': 'warn',
+    'jsx-a11y/no-noninteractive-element-interactions': 'off',
+  },
 };
