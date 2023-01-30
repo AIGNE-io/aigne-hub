@@ -26,7 +26,7 @@ router.post('/completions', async (req, res) => {
       model: 'text-davinci-003',
       prompt,
       temperature: 0.3,
-      max_tokens: 4095,
+      max_tokens: 2048,
       top_p: 1.0,
       frequency_penalty: 0.0,
       presence_penalty: 0.0,
