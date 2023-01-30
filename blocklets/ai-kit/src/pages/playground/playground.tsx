@@ -24,9 +24,9 @@ export default function Playground() {
       <Box flexGrow={1} m={2}>
         <Box maxWidth={800} mx="auto" overflow="auto">
           {conversations.map((item) => (
-            <Box key={item.id}>
+            <Box key={item.id} id={`conversation-${item.id}`}>
               <Box my={1}>{item.prompt}</Box>
-              <Box my={1}>
+              <Box my={1} id={`response-${item.id}`}>
                 {item.response ? (
                   <Box whiteSpace="pre-wrap">{item.response?.choices.at(0)?.text}</Box>
                 ) : item.error ? (
@@ -50,6 +50,9 @@ export default function Playground() {
               onSubmit={async (prompt) => {
                 const id = nextId();
                 setConversations((v) => v.concat({ id, prompt }));
+                setTimeout(() => {
+                  document.getElementById(`conversation-${id}`)?.scrollIntoView({ behavior: 'smooth' });
+                });
                 try {
                   const response = await ai({ prompt });
                   setConversations((v) =>
@@ -71,6 +74,10 @@ export default function Playground() {
                   );
 
                   throw error;
+                } finally {
+                  setTimeout(() => {
+                    document.getElementById(`response-${id}`)?.scrollIntoView({ behavior: 'smooth' });
+                  });
                 }
               }}
             />
