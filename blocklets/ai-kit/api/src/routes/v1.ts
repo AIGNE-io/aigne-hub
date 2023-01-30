@@ -1,7 +1,9 @@
-import { Router } from 'express';
+import { middlewares } from '@blocklet/sdk';
+import { Request, Response, Router } from 'express';
 import { Configuration, OpenAIApi } from 'openai';
 
 import env from '../libs/env';
+import { ensureAdmin } from '../libs/security';
 
 const router = Router();
 
@@ -10,7 +12,7 @@ router.get('/status', async (_, res) => {
   res.json({ enabled: !!openaiApiKey });
 });
 
-router.post('/completions', async (req, res) => {
+async function completions(req: Request<{}, {}, { prompt: string }>, res: Response) {
   const { prompt } = req.body;
 
   const { openaiApiKey } = env;
@@ -35,6 +37,10 @@ router.post('/completions', async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
-});
+}
+
+router.post('/completions', ensureAdmin, completions);
+
+router.post('/sdk/completions', middlewares.component.verifySig, completions);
 
 export default router;
