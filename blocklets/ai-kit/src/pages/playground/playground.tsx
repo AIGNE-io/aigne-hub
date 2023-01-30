@@ -17,37 +17,35 @@ export default function Playground() {
 
   return (
     <>
-      <Header maxWidth={null} />
+      <Box sx={{ position: 'sticky', top: 0 }}>
+        <Header maxWidth={null} />
+      </Box>
 
-      <Box flexGrow={1} sx={{ display: 'flex', flexDirection: 'column', mx: 2 }}>
-        <Box
-          sx={{
-            flex: 1,
-            maxWidth: 800,
-            width: '100%',
-            margin: 'auto',
-            display: 'flex',
-            flexDirection: 'column',
-          }}>
-          <Box flex={1} overflow="auto">
-            {conversations.map((item) => (
-              <Box key={item.id}>
-                <Box my={1}>{item.prompt}</Box>
-                <Box my={1}>
-                  {item.response ? (
-                    <Box whiteSpace="pre-wrap">{item.response?.choices.at(0)?.text}</Box>
-                  ) : item.error ? (
-                    <Alert color="error" icon={<Error />}>
-                      {item.error.message}
-                    </Alert>
-                  ) : (
-                    <CircularProgress size={20} />
-                  )}
-                </Box>
+      <Box flexGrow={1} m={2}>
+        <Box maxWidth={800} mx="auto" overflow="auto">
+          {conversations.map((item) => (
+            <Box key={item.id}>
+              <Box my={1}>{item.prompt}</Box>
+              <Box my={1}>
+                {item.response ? (
+                  <Box whiteSpace="pre-wrap">{item.response?.choices.at(0)?.text}</Box>
+                ) : item.error ? (
+                  <Alert color="error" icon={<Error />}>
+                    {item.error.message}
+                  </Alert>
+                ) : (
+                  <CircularProgress size={20} />
+                )}
               </Box>
-            ))}
-          </Box>
-          <Box my={2}>
+            </Box>
+          ))}
+        </Box>
+      </Box>
+
+      <Box sx={{ position: 'sticky', bottom: 0 }}>
+        <Box height={16} sx={{ pointerEvents: 'none', background: 'linear-gradient(transparent, white)' }} />
+        <Box mx={2} pb={2} sx={{ bgcolor: 'background.paper' }}>
+          <Box maxWidth={800} mx="auto">
             <Prompt
               onSubmit={async (prompt) => {
                 const id = nextId();
@@ -78,9 +76,11 @@ export default function Playground() {
             />
           </Box>
         </Box>
-      </Box>
 
-      <Footer />
+        <Box sx={{ bgcolor: 'background.paper' }}>
+          <Footer />
+        </Box>
+      </Box>
     </>
   );
 }
