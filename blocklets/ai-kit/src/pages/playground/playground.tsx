@@ -3,6 +3,7 @@ import Header from '@blocklet/ui-react/lib/Header';
 import styled from '@emotion/styled';
 import { Error, Send } from '@mui/icons-material';
 import { Alert, Avatar, Box, BoxProps, CircularProgress, IconButton, Input, InputAdornment } from '@mui/material';
+import { AxiosError } from 'axios';
 import produce from 'immer';
 import { nanoid } from 'nanoid';
 import { ReactNode, useState } from 'react';
@@ -35,7 +36,7 @@ export default function Playground() {
                   <Box whiteSpace="pre-wrap">{item.response?.choices.at(0)?.text}</Box>
                 ) : item.error ? (
                   <Alert color="error" icon={<Error />}>
-                    {item.error.message}
+                    {(item.error as AxiosError<{ message: string }>).response?.data?.message || item.error.message}
                   </Alert>
                 ) : (
                   <CircularProgress size={16} />

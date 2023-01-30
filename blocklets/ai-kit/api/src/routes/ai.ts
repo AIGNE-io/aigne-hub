@@ -21,16 +21,20 @@ router.post('/', async (req, res) => {
 
   const openai = new OpenAIApi(new Configuration({ apiKey: openaiApiKey }));
 
-  const r = await openai.createCompletion({
-    model: 'text-davinci-003',
-    prompt,
-    temperature: 0.3,
-    max_tokens: 100,
-    top_p: 1.0,
-    frequency_penalty: 0.0,
-    presence_penalty: 0.0,
-  });
-  res.json(r.data);
+  try {
+    const r = await openai.createCompletion({
+      model: 'text-davinci-003',
+      prompt,
+      temperature: 0.3,
+      max_tokens: 4095,
+      top_p: 1.0,
+      frequency_penalty: 0.0,
+      presence_penalty: 0.0,
+    });
+    res.json(r.data);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 });
 
 export default router;
