@@ -16,6 +16,7 @@
     "build": "yarn workspaces run clean && yarn workspaces run build",
     "clean": "yarn workspaces run clean",
     "prepare": "husky install",
+    "bump-version": "yarn workspace ai-kit bump-version",
     "update:deps": "lerna exec --no-bail -- \"ncu -u -f /arcblock\\|ocap\\|abtnode\\|ux\\|did-comment\\|blocklet/\""
   },
   "lint-staged": {
