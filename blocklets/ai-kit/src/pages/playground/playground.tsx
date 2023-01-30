@@ -1,10 +1,11 @@
 import Footer from '@blocklet/ui-react/lib/Footer';
 import Header from '@blocklet/ui-react/lib/Header';
+import styled from '@emotion/styled';
 import { Error, Send } from '@mui/icons-material';
-import { Alert, Box, CircularProgress, IconButton, Input, InputAdornment } from '@mui/material';
+import { Alert, Avatar, Box, BoxProps, CircularProgress, IconButton, Input, InputAdornment } from '@mui/material';
 import produce from 'immer';
 import { nanoid } from 'nanoid';
-import { useState } from 'react';
+import { ReactNode, useState } from 'react';
 
 import { AIResponse, ai } from '../../libs/ai';
 
@@ -17,7 +18,7 @@ export default function Playground() {
 
   return (
     <>
-      <Box sx={{ position: 'sticky', top: 0 }}>
+      <Box sx={{ position: 'sticky', zIndex: 100, top: 0 }}>
         <Header maxWidth={null} />
       </Box>
 
@@ -25,8 +26,11 @@ export default function Playground() {
         <Box maxWidth={800} mx="auto" overflow="auto">
           {conversations.map((item) => (
             <Box key={item.id} id={`conversation-${item.id}`}>
-              <Box my={1}>{item.prompt}</Box>
-              <Box my={1} id={`response-${item.id}`}>
+              <ConversationItem avatar={<Avatar sx={{ bgcolor: 'secondary.main' }} />}>{item.prompt}</ConversationItem>
+              <ConversationItem
+                my={1}
+                id={`response-${item.id}`}
+                avatar={<Avatar sx={{ bgcolor: 'primary.main' }}>AI</Avatar>}>
                 {item.response ? (
                   <Box whiteSpace="pre-wrap">{item.response?.choices.at(0)?.text}</Box>
                 ) : item.error ? (
@@ -34,9 +38,9 @@ export default function Playground() {
                     {item.error.message}
                   </Alert>
                 ) : (
-                  <CircularProgress size={20} />
+                  <CircularProgress size={16} />
                 )}
-              </Box>
+              </ConversationItem>
             </Box>
           ))}
         </Box>
@@ -59,7 +63,10 @@ export default function Playground() {
                     produce(v, (draft) => {
                       const item = draft.find((i) => i.id === id);
                       if (item) {
-                        item.response = response;
+                        item.response = {
+                          ...response,
+                          choices: response.choices.map((i) => ({ ...i, text: i.text.trim() })),
+                        };
                       }
                     })
                   );
@@ -91,6 +98,24 @@ export default function Playground() {
     </>
   );
 }
+
+function ConversationItem({ children, avatar, ...props }: { children: ReactNode; avatar: ReactNode } & BoxProps) {
+  return (
+    <Box {...props} display="flex">
+      <AvatarWrapper mr={1}>{avatar}</AvatarWrapper>
+      <Box minHeight={30} display="flex" alignItems="center" flex={1} overflow="hidden">
+        {children}
+      </Box>
+    </Box>
+  );
+}
+
+const AvatarWrapper = styled(Box)`
+  > .MuiAvatar-root {
+    width: 30px;
+    height: 30px;
+  }
+`;
 
 function Prompt({ onSubmit }: { onSubmit: (prompt: string) => any }) {
   const [prompt, setPrompt] = useState('');
