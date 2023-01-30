@@ -1,3 +1,10 @@
+## 0.0.4 (2023-1-30)
+
+- fix: add welcome prompt
+- fix: align text and avatar
+- feat: support stream response
+- feat: add `/api/sdk/completions` api for component call
+
 ## 0.0.3 (2023-1-30)
 
 - fix: update api path to `/v1/completions`
