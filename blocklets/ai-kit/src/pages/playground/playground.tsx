@@ -93,16 +93,18 @@ function Prompt({ onSubmit }: { onSubmit: (prompt: string) => any }) {
   };
 
   return (
-    <Box sx={{ boxShadow: 2, margin: 'auto', px: 1, borderRadius: 1 }}>
+    <Box
+      component="form"
+      sx={{ boxShadow: 2, margin: 'auto', px: 1, borderRadius: 1 }}
+      onSubmit={(e) => e.preventDefault()}>
       <Input
         fullWidth
         disableUnderline
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}
-        onKeyDown={(e) => e.key === 'Enter' && submit()}
         endAdornment={
           <InputAdornment position="end">
-            <IconButton onClick={submit} size="small">
+            <IconButton onClick={submit} size="small" type="submit">
               <Send fontSize="small" />
             </IconButton>
           </InputAdornment>
