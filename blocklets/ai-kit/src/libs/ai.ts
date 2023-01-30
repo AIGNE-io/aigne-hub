@@ -17,6 +17,15 @@ export interface AIResponse {
   };
 }
 
-export async function completions({ prompt }: { prompt: string }): Promise<AIResponse> {
-  return axios.post('/api/v1/completions', { prompt }).then((res) => res.data);
+export async function completions(options: { prompt: string; stream: true }): Promise<ReadableStream>;
+export async function completions(options: { prompt: string; stream?: boolean }): Promise<AIResponse>;
+export async function completions(options: { prompt: string; stream?: boolean }): Promise<AIResponse | ReadableStream> {
+  if (options.stream) {
+    return fetch(axios.getUri({ url: '/api/v1/completions' }), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(options),
+    }).then((res) => res.body!);
+  }
+  return axios.post('/api/v1/completions', options).then((res) => res.data);
 }
