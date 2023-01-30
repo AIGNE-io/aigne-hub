@@ -3,16 +3,16 @@ import Header from '@blocklet/ui-react/lib/Header';
 import { Error, Send } from '@mui/icons-material';
 import { Alert, Box, CircularProgress, IconButton, Input, InputAdornment } from '@mui/material';
 import produce from 'immer';
+import { nanoid } from 'nanoid';
 import { useState } from 'react';
 
 import { AIResponse, ai } from '../../libs/ai';
 
-let currentId = 0;
-const nextId = () => ++currentId;
+const nextId = () => nanoid(16);
 
 export default function Playground() {
   const [conversations, setConversations] = useState<
-    { id: number; prompt: string; response?: AIResponse; error?: Error }[]
+    { id: string; prompt: string; response?: AIResponse; error?: Error }[]
   >([]);
 
   return (
