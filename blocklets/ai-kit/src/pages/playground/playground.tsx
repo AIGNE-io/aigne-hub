@@ -15,7 +15,7 @@ const nextId = () => nanoid(16);
 export default function Playground() {
   const [conversations, setConversations] = useState<
     { id: string; prompt: string; response?: string; error?: Error }[]
-  >([]);
+  >(() => [{ id: nextId(), prompt: 'Hi!', response: 'Hi, I am AI Kit from ArcBlock!' }]);
 
   return (
     <>
