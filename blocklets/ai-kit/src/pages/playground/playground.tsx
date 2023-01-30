@@ -113,7 +113,7 @@ function ConversationItem({ children, avatar, ...props }: { children: ReactNode;
   return (
     <Box {...props} display="flex">
       <AvatarWrapper mr={1}>{avatar}</AvatarWrapper>
-      <Box minHeight={30} display="flex" alignItems="center" flex={1} overflow="hidden">
+      <Box flex={1} overflow="hidden" sx={{ pt: '3px', wordBreak: 'break-word' }}>
         {children}
       </Box>
     </Box>
