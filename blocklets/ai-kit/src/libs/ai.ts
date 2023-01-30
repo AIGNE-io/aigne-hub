@@ -1,7 +1,7 @@
 import axios from './api';
 
 export async function getAIStatus(): Promise<{ enabled: boolean }> {
-  return axios.get('/api/ai/status').then((res) => res.data);
+  return axios.get('/api/v1/status').then((res) => res.data);
 }
 
 export interface AIResponse {
@@ -17,6 +17,6 @@ export interface AIResponse {
   };
 }
 
-export async function ai({ prompt }: { prompt: string }): Promise<AIResponse> {
-  return axios.post('/api/ai', { prompt }).then((res) => res.data);
+export async function completions({ prompt }: { prompt: string }): Promise<AIResponse> {
+  return axios.post('/api/v1/completions', { prompt }).then((res) => res.data);
 }

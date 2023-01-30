@@ -1,9 +1,9 @@
 import { Router } from 'express';
 
-import ai from './ai';
+import v1 from './v1';
 
 const router = Router();
 
-router.use('/ai', ai);
+router.use('/v1', v1);
 
 export default router;

@@ -10,7 +10,7 @@ router.get('/status', async (_, res) => {
   res.json({ enabled: !!openaiApiKey });
 });
 
-router.post('/', async (req, res) => {
+router.post('/completions', async (req, res) => {
   const { prompt } = req.body;
 
   const { openaiApiKey } = env;

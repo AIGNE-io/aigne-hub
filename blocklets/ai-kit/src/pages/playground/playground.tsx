@@ -8,7 +8,7 @@ import produce from 'immer';
 import { nanoid } from 'nanoid';
 import { ReactNode, useState } from 'react';
 
-import { AIResponse, ai } from '../../libs/ai';
+import { AIResponse, completions } from '../../libs/ai';
 
 const nextId = () => nanoid(16);
 
@@ -59,7 +59,7 @@ export default function Playground() {
                   document.getElementById(`conversation-${id}`)?.scrollIntoView({ behavior: 'smooth' });
                 });
                 try {
-                  const response = await ai({ prompt });
+                  const response = await completions({ prompt });
                   setConversations((v) =>
                     produce(v, (draft) => {
                       const item = draft.find((i) => i.id === id);
