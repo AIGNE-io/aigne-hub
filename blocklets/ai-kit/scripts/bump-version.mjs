@@ -8,7 +8,7 @@ import { $, chalk, fs } from 'zx';
 execSync('bumpp --no-tag --no-commit --no-push package.json', { stdio: 'inherit' });
 
 const { version } = await fs.readJSON('package.json');
-await fs.writeFileSync('version', version);
+fs.writeFileSync('../../version', version);
 
 console.log(chalk.greenBright(`[info]: start to modify blocklet version to ${version}`));
 await $`blocklet version ${version}`;
