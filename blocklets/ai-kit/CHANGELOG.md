@@ -1,3 +1,7 @@
+## 0.0.5 (2023-1-31)
+
+- fix: new logo
+
 ## 0.0.4 (2023-1-30)
 
 - fix: add welcome prompt
