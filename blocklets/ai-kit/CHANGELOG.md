@@ -1,3 +1,7 @@
+## 0.0.6 (2023-1-31)
+
+- fix: public completions api
+
 ## 0.0.5 (2023-1-31)
 
 - fix: new logo
