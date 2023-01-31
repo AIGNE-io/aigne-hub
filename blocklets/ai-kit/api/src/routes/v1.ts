@@ -4,7 +4,6 @@ import { Request, Response, Router } from 'express';
 import { Configuration, OpenAIApi } from 'openai';
 
 import env from '../libs/env';
-import { ensureAdmin } from '../libs/security';
 
 const router = Router();
 
@@ -77,7 +76,7 @@ async function completions(req: Request<{}, {}, { prompt: string; stream: boolea
   }
 }
 
-router.post('/completions', ensureAdmin, completions);
+router.post('/completions', completions);
 
 router.post('/sdk/completions', middlewares.component.verifySig, completions);
 
