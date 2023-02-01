@@ -1,3 +1,9 @@
+## 0.0.9 (2023-2-2)
+
+- fix: add home page
+- chore: update deps
+- fix: wrap playground in dashboard
+
 ## 0.0.8 (2023-2-2)
 
 - fix: update blocklet's description
