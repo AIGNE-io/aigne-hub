@@ -46,7 +46,8 @@ function AppRoutes({ basename }: { basename: string }) {
     createRoutesFromElements(
       <Route>
         <Route path="playground">
-          <Route index element={isAdmin ? <PlaygroundLazy /> : <Navigate to="/" />} />
+          {isAdmin && <Route index element={<PlaygroundLazy />} />}
+          <Route path="*" element={<Navigate to="/" />} />
         </Route>
         <Route
           path="*"

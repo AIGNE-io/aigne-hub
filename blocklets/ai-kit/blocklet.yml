@@ -70,6 +70,7 @@ navigation:
     link: /playground
     section:
       - sessionManager
+      - dashboard
     role:
       - admin
       - owner
