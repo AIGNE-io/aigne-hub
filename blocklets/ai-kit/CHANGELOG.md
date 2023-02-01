@@ -1,3 +1,8 @@
+## 0.0.8 (2023-2-2)
+
+- fix: update blocklet's description
+- fix: enlarge logo and favicon
+
 ## 0.0.7 (2023-1-31)
 
 - Revert "fix: public completions api (#8)"
