@@ -1,6 +1,13 @@
-declare var blocklet: { prefix: string } | undefined;
-
-declare module '*.svg';
+declare var blocklet:
+  | {
+      prefix: string;
+      appId: string;
+      appName: string;
+      appLogo: string;
+      appDescription: string;
+      version: string;
+    }
+  | undefined;
 
 declare module '@arcblock/ux/*';
 declare module '@arcblock/did-connect/*';
