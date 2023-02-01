@@ -1,3 +1,3 @@
 # AI Kit
 
-A blocklet for OpenAI
+Bring AI to blocklet.
