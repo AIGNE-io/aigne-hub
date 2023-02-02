@@ -146,7 +146,7 @@ function ConversationItem({
   onCancel,
   ...props
 }: { children: ReactNode; showCursor?: boolean; avatar: ReactNode; onCancel?: () => void } & BoxProps) {
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<'copied' | boolean>(false);
 
   return (
     <ItemRoot {...props} display="flex">
@@ -165,19 +165,15 @@ function ConversationItem({
               </Tooltip>
             )}
 
-            <Tooltip
-              title="Copied!"
-              placement="top"
-              open={copied}
-              disableFocusListener
-              disableHoverListener
-              disableTouchListener>
+            <Tooltip title={copied === 'copied' ? 'Copied!' : 'Copy'} placement="top" open={Boolean(copied)}>
               <Button
                 size="small"
                 className={cx('copy', copied && 'active')}
+                onMouseEnter={() => setCopied(true)}
+                onMouseLeave={() => setCopied(false)}
                 onClick={() => {
                   navigator.clipboard.writeText(children);
-                  setCopied(true);
+                  setCopied('copied');
                   setTimeout(() => setCopied(false), 1500);
                 }}>
                 <CopyAll fontSize="small" />
