@@ -26,7 +26,7 @@ const nextId = () => nanoid(16);
 
 export default function Playground() {
   const [conversations, setConversations] = useState<
-    { id: string; prompt: string; response?: string; error?: Error }[]
+    { id: string; prompt: string; response?: string; writing?: boolean; error?: Error }[]
   >(() => [{ id: nextId(), prompt: 'Hi!', response: 'Hi, I am AI Kit from ArcBlock!' }]);
 
   return (
@@ -43,6 +43,7 @@ export default function Playground() {
               <ConversationItem
                 my={1}
                 id={`response-${item.id}`}
+                showCursor={!!item.response && item.writing}
                 avatar={<Avatar sx={{ bgcolor: 'primary.main' }}>AI</Avatar>}>
                 {item.error ? (
                   <Alert color="error" icon={<Error />}>
@@ -77,12 +78,9 @@ export default function Playground() {
 
                   const reader = response.getReader();
                   const decoder = new TextDecoder();
-                  let done = false;
 
-                  while (!done) {
-                    // eslint-disable-next-line no-await-in-loop
-                    const { value, done: doneReading } = await reader.read();
-                    done = doneReading;
+                  for (;;) {
+                    const { value, done } = await reader.read();
                     const chunkValue = decoder.decode(value);
                     setConversations((v) =>
                       produce(v, (draft) => {
@@ -90,9 +88,13 @@ export default function Playground() {
                         if (item) {
                           item.response ??= '';
                           item.response += chunkValue;
+                          item.writing = !done;
                         }
                       })
                     );
+                    if (done) {
+                      break;
+                    }
                   }
                 } catch (error) {
                   setConversations((v) =>
@@ -123,14 +125,19 @@ export default function Playground() {
   );
 }
 
-function ConversationItem({ children, avatar, ...props }: { children: ReactNode; avatar: ReactNode } & BoxProps) {
+function ConversationItem({
+  children,
+  showCursor,
+  avatar,
+  ...props
+}: { children: ReactNode; showCursor?: boolean; avatar: ReactNode } & BoxProps) {
   const [copied, setCopied] = useState(false);
 
   return (
     <ItemRoot {...props} display="flex">
       <AvatarWrapper mr={1}>{avatar}</AvatarWrapper>
 
-      <Box className="message">
+      <Box className={cx('message', showCursor && 'cursor')}>
         {children}
 
         {typeof children === 'string' && (
@@ -167,6 +174,29 @@ const ItemRoot = styled(Box)`
     padding: 3px 8px;
     border-radius: 4px;
     position: relative;
+
+    &.cursor {
+      &:after {
+        content: '';
+        display: inline-block;
+        vertical-align: middle;
+        height: 1em;
+        margin-top: -0.15em;
+        margin-left: 0.15em;
+        border-right: 0.15em solid orange;
+        animation: blink-caret 0.75s step-end infinite;
+
+        @keyframes blink-caret {
+          from,
+          to {
+            border-color: transparent;
+          }
+          50% {
+            border-color: orange;
+          }
+        }
+      }
+    }
 
     > .copy {
       position: absolute;

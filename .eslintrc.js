@@ -15,6 +15,7 @@ module.exports = {
     '@typescript-eslint/indent': 'off',
     'no-return-assign': 'off',
     'no-nested-ternary': 'off',
+    'no-await-in-loop': 'warn',
     'react/require-default-props': 'off',
     'react-hooks/exhaustive-deps': 'warn',
     'react/no-array-index-key': 'warn',
