@@ -1,8 +1,20 @@
 import Footer from '@blocklet/ui-react/lib/Footer';
 import Header from '@blocklet/ui-react/lib/Header';
+import { cx } from '@emotion/css';
 import styled from '@emotion/styled';
-import { Error, Send } from '@mui/icons-material';
-import { Alert, Avatar, Box, BoxProps, CircularProgress, IconButton, Input, InputAdornment } from '@mui/material';
+import { CopyAll, Error, Send } from '@mui/icons-material';
+import {
+  Alert,
+  Avatar,
+  Box,
+  BoxProps,
+  Button,
+  CircularProgress,
+  IconButton,
+  Input,
+  InputAdornment,
+  Tooltip,
+} from '@mui/material';
 import { AxiosError } from 'axios';
 import produce from 'immer';
 import { nanoid } from 'nanoid';
@@ -37,9 +49,11 @@ export default function Playground() {
                     {(item.error as AxiosError<{ message: string }>).response?.data?.message || item.error.message}
                   </Alert>
                 ) : item.response ? (
-                  <Box whiteSpace="pre-wrap">{item.response}</Box>
+                  item.response
                 ) : (
-                  <CircularProgress size={16} />
+                  <Box minHeight={24} display="flex" alignItems="center">
+                    <CircularProgress size={16} />
+                  </Box>
                 )}
               </ConversationItem>
             </Box>
@@ -110,15 +124,77 @@ export default function Playground() {
 }
 
 function ConversationItem({ children, avatar, ...props }: { children: ReactNode; avatar: ReactNode } & BoxProps) {
+  const [copied, setCopied] = useState(false);
+
   return (
-    <Box {...props} display="flex">
+    <ItemRoot {...props} display="flex">
       <AvatarWrapper mr={1}>{avatar}</AvatarWrapper>
-      <Box flex={1} overflow="hidden" sx={{ pt: '3px', wordBreak: 'break-word' }}>
+
+      <Box className="message">
         {children}
+
+        {typeof children === 'string' && (
+          <Tooltip
+            title="Copied!"
+            placement="top"
+            open={copied}
+            disableFocusListener
+            disableHoverListener
+            disableTouchListener>
+            <Button
+              size="small"
+              className={cx('copy', copied && 'active')}
+              onClick={() => {
+                navigator.clipboard.writeText(children);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 1500);
+              }}>
+              <CopyAll fontSize="small" />
+            </Button>
+          </Tooltip>
+        )}
       </Box>
-    </Box>
+    </ItemRoot>
   );
 }
+
+const ItemRoot = styled(Box)`
+  > .message {
+    flex: 1;
+    overflow: hidden;
+    word-break: break-word;
+    white-space: pre-wrap;
+    padding: 3px 8px;
+    border-radius: 4px;
+    position: relative;
+
+    > .copy {
+      position: absolute;
+      right: 4px;
+      top: 4px;
+      min-width: 0;
+      padding: 0;
+      height: 24px;
+      width: 22px;
+      color: #999;
+      display: none;
+
+      &.active {
+        display: inline-flex;
+      }
+    }
+  }
+
+  &:hover {
+    > .message {
+      background-color: rgba(0, 0, 0, 0.05);
+
+      > .copy {
+        display: inline-flex;
+      }
+    }
+  }
+`;
 
 const AvatarWrapper = styled(Box)`
   > .MuiAvatar-root {
