@@ -14,7 +14,7 @@ repository:
   type: git
   url: git+https://github.com/blocklet/ai-kit.git
 specVersion: 1.2.7
-version: 0.0.8
+version: 0.0.9
 logo: logo.png
 files:
   - dist
@@ -70,6 +70,7 @@ navigation:
     link: /playground
     section:
       - sessionManager
+      - dashboard
     role:
       - admin
       - owner

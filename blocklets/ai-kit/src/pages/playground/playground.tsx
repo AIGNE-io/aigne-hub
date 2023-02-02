@@ -1,5 +1,4 @@
-import Footer from '@blocklet/ui-react/lib/Footer';
-import Header from '@blocklet/ui-react/lib/Header';
+import Dashboard from '@blocklet/ui-react/lib/Dashboard';
 import { cx } from '@emotion/css';
 import styled from '@emotion/styled';
 import { Cancel, CopyAll, Error, Send } from '@mui/icons-material';
@@ -34,12 +33,14 @@ export default function Playground() {
   const scroll = useRef<AutoScrollToBottomRef>(null);
 
   return (
-    <>
-      <Box sx={{ position: 'sticky', zIndex: 100, top: 0 }}>
-        <Header maxWidth={null} />
-      </Box>
-
-      <Box flexGrow={1} m={2}>
+    <Root
+      footerProps={{
+        style: {
+          marginTop: 0,
+          padding: 0,
+        },
+      }}>
+      <Box flexGrow={1} my={2}>
         <Box maxWidth={800} mx="auto" overflow="auto">
           {conversations.map((item) => (
             <Box key={item.id} id={`conversation-${item.id}`}>
@@ -82,7 +83,7 @@ export default function Playground() {
 
       <Box sx={{ position: 'sticky', bottom: 0 }}>
         <Box height={16} sx={{ pointerEvents: 'none', background: 'linear-gradient(transparent, white)' }} />
-        <Box mx={2} pb={2} sx={{ bgcolor: 'background.paper' }}>
+        <Box pb={2} sx={{ bgcolor: 'background.paper' }}>
           <Box maxWidth={800} mx="auto">
             <Prompt
               onSubmit={async (prompt) => {
@@ -133,12 +134,8 @@ export default function Playground() {
             />
           </Box>
         </Box>
-
-        <Box sx={{ bgcolor: 'background.paper' }}>
-          <Footer />
-        </Box>
       </Box>
-    </>
+    </Root>
   );
 }
 
@@ -173,6 +170,13 @@ const AutoScrollToBottom = forwardRef<AutoScrollToBottomRef>((_, ref) => {
 
   return <div ref={element} />;
 });
+
+const Root = styled(Dashboard)`
+  > .dashboard-body > .dashboard-main > .dashboard-content {
+    display: flex;
+    flex-direction: column;
+  }
+`;
 
 function ConversationItem({
   children,

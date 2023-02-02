@@ -9,6 +9,7 @@ import { Navigate, Route, RouterProvider, createBrowserRouter, createRoutesFromE
 
 import Loading from './components/loading';
 import { SessionProvider, useIsRole } from './contexts/session';
+import { HomeLazy } from './pages/home';
 import { PlaygroundLazy } from './pages/playground';
 
 export default function App() {
@@ -45,8 +46,10 @@ function AppRoutes({ basename }: { basename: string }) {
   const router = createBrowserRouter(
     createRoutesFromElements(
       <Route>
+        <Route index element={<HomeLazy />} />
         <Route path="playground">
-          <Route index element={isAdmin ? <PlaygroundLazy /> : <Navigate to="/" />} />
+          {isAdmin && <Route index element={<PlaygroundLazy />} />}
+          <Route path="*" element={<Navigate to="/" />} />
         </Route>
         <Route
           path="*"
