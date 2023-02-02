@@ -1,3 +1,11 @@
+## 0.0.10 (2023-2-2)
+
+- fix: auto scroll to bottom
+- fix: support stop ai typing
+- fix: show a blink caret when AI is typing
+- fix: support copy message
+- fix: support api timeout
+
 ## 0.0.9 (2023-2-2)
 
 - fix: add home page
