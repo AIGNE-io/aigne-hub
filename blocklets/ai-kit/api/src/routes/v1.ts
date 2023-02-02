@@ -8,10 +8,14 @@ import { ensureAdmin } from '../libs/security';
 
 const router = Router();
 
-router.get('/status', async (_, res) => {
+async function status(_: Request<{}, {}, { prompt: string; stream: boolean | null }>, res: Response) {
   const { openaiApiKey } = env;
-  res.json({ enabled: !!openaiApiKey });
-});
+  res.json({ available: !!openaiApiKey });
+}
+
+router.get('/status', ensureAdmin, status);
+
+router.get('/sdk/status', middlewares.component.verifySig, status);
 
 async function completions(req: Request<{}, {}, { prompt: string; stream: boolean | null }>, res: Response) {
   const { prompt, stream } = req.body;
