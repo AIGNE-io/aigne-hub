@@ -1,3 +1,7 @@
+## 0.0.12 (2023-2-2)
+
+- fix: add `/api/sdk/status` api for component.call
+
 ## 0.0.11 (2023-2-2)
 
 - fix: remove useless env `CHAIN_HOST`
