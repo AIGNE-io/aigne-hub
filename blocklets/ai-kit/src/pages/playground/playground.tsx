@@ -2,7 +2,7 @@ import Footer from '@blocklet/ui-react/lib/Footer';
 import Header from '@blocklet/ui-react/lib/Header';
 import { cx } from '@emotion/css';
 import styled from '@emotion/styled';
-import { CopyAll, Error, Send } from '@mui/icons-material';
+import { Cancel, CopyAll, Error, Send } from '@mui/icons-material';
 import {
   Alert,
   Avatar,
@@ -44,7 +44,19 @@ export default function Playground() {
                 my={1}
                 id={`response-${item.id}`}
                 showCursor={!!item.response && item.writing}
-                avatar={<Avatar sx={{ bgcolor: 'primary.main' }}>AI</Avatar>}>
+                avatar={<Avatar sx={{ bgcolor: 'primary.main' }}>AI</Avatar>}
+                onCancel={
+                  item.writing
+                    ? () => {
+                        setConversations((v) =>
+                          produce(v, (draft) => {
+                            const i = draft.find((i) => i.id === item.id);
+                            if (i) i.writing = false;
+                          })
+                        );
+                      }
+                    : undefined
+                }>
                 {item.error ? (
                   <Alert color="error" icon={<Error />}>
                     {(item.error as AxiosError<{ message: string }>).response?.data?.message || item.error.message}
@@ -85,11 +97,13 @@ export default function Playground() {
                     setConversations((v) =>
                       produce(v, (draft) => {
                         const item = draft.find((i) => i.id === id);
-                        if (item) {
-                          item.response ??= '';
-                          item.response += chunkValue;
-                          item.writing = !done;
+                        if (!item || item.writing === false) {
+                          return;
                         }
+
+                        item.response ??= '';
+                        item.response += chunkValue;
+                        item.writing = !done;
                       })
                     );
                     if (done) {
@@ -129,8 +143,9 @@ function ConversationItem({
   children,
   showCursor,
   avatar,
+  onCancel,
   ...props
-}: { children: ReactNode; showCursor?: boolean; avatar: ReactNode } & BoxProps) {
+}: { children: ReactNode; showCursor?: boolean; avatar: ReactNode; onCancel?: () => void } & BoxProps) {
   const [copied, setCopied] = useState(false);
 
   return (
@@ -141,24 +156,34 @@ function ConversationItem({
         {children}
 
         {typeof children === 'string' && (
-          <Tooltip
-            title="Copied!"
-            placement="top"
-            open={copied}
-            disableFocusListener
-            disableHoverListener
-            disableTouchListener>
-            <Button
-              size="small"
-              className={cx('copy', copied && 'active')}
-              onClick={() => {
-                navigator.clipboard.writeText(children);
-                setCopied(true);
-                setTimeout(() => setCopied(false), 1500);
-              }}>
-              <CopyAll fontSize="small" />
-            </Button>
-          </Tooltip>
+          <Box className="actions">
+            {onCancel && (
+              <Tooltip title="Stop" placement="top">
+                <Button size="small" onClick={onCancel}>
+                  <Cancel fontSize="small" />
+                </Button>
+              </Tooltip>
+            )}
+
+            <Tooltip
+              title="Copied!"
+              placement="top"
+              open={copied}
+              disableFocusListener
+              disableHoverListener
+              disableTouchListener>
+              <Button
+                size="small"
+                className={cx('copy', copied && 'active')}
+                onClick={() => {
+                  navigator.clipboard.writeText(children);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 1500);
+                }}>
+                <CopyAll fontSize="small" />
+              </Button>
+            </Tooltip>
+          </Box>
         )}
       </Box>
     </ItemRoot>
@@ -198,19 +223,24 @@ const ItemRoot = styled(Box)`
       }
     }
 
-    > .copy {
+    > .actions {
       position: absolute;
-      right: 4px;
-      top: 4px;
-      min-width: 0;
-      padding: 0;
-      height: 24px;
-      width: 22px;
-      color: #999;
+      right: 2px;
+      top: 2px;
+      background-color: rgba(0, 0, 0, 0.4);
+      border-radius: 4px;
       display: none;
 
       &.active {
-        display: inline-flex;
+        display: flex;
+      }
+
+      button {
+        min-width: 0;
+        padding: 0;
+        height: 24px;
+        width: 22px;
+        color: white;
       }
     }
   }
@@ -219,8 +249,8 @@ const ItemRoot = styled(Box)`
     > .message {
       background-color: rgba(0, 0, 0, 0.05);
 
-      > .copy {
-        display: inline-flex;
+      > .actions {
+        display: flex;
       }
     }
   }
