@@ -1,3 +1,7 @@
+## 0.0.11 (2023-2-2)
+
+- fix: remove useless env `CHAIN_HOST`
+
 ## 0.0.10 (2023-2-2)
 
 - fix: auto scroll to bottom
