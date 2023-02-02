@@ -45,12 +45,6 @@ scripts:
   preStart: node api/hooks/pre-start.js
   dev: npm run start
 environments:
-  - name: CHAIN_HOST
-    description: What's endpoint of the chain?
-    required: true
-    default: https://beta.abtnetwork.io/api/
-    secure: false
-    shared: true
   - name: OPENAI_API_KEY
     description: Your OpenAI apiKey.
     required: false
