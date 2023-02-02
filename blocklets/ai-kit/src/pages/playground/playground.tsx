@@ -18,16 +18,20 @@ import {
 import { AxiosError } from 'axios';
 import produce from 'immer';
 import { nanoid } from 'nanoid';
-import { ReactNode, useState } from 'react';
+import { ReactNode, forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 
 import { completions } from '../../libs/ai';
 
 const nextId = () => nanoid(16);
 
+const STICKY_SCROLL_BOTTOM_GAP = 10;
+
 export default function Playground() {
   const [conversations, setConversations] = useState<
     { id: string; prompt: string; response?: string; writing?: boolean; error?: Error }[]
   >(() => [{ id: nextId(), prompt: 'Hi!', response: 'Hi, I am AI Kit from ArcBlock!' }]);
+
+  const scroll = useRef<AutoScrollToBottomRef>(null);
 
   return (
     <>
@@ -71,6 +75,8 @@ export default function Playground() {
               </ConversationItem>
             </Box>
           ))}
+
+          <AutoScrollToBottom ref={scroll} />
         </Box>
       </Box>
 
@@ -82,9 +88,7 @@ export default function Playground() {
               onSubmit={async (prompt) => {
                 const id = nextId();
                 setConversations((v) => v.concat({ id, prompt }));
-                setTimeout(() => {
-                  document.getElementById(`conversation-${id}`)?.scrollIntoView({ behavior: 'smooth' });
-                });
+                scroll.current?.scrollToBottom({ force: true });
                 try {
                   const response = await completions({ prompt, stream: true });
 
@@ -106,6 +110,9 @@ export default function Playground() {
                         item.writing = !done;
                       })
                     );
+
+                    scroll.current?.scrollToBottom();
+
                     if (done) {
                       break;
                     }
@@ -121,10 +128,6 @@ export default function Playground() {
                   );
 
                   throw error;
-                } finally {
-                  setTimeout(() => {
-                    document.getElementById(`response-${id}`)?.scrollIntoView({ behavior: 'smooth' });
-                  });
                 }
               }}
             />
@@ -138,6 +141,38 @@ export default function Playground() {
     </>
   );
 }
+
+interface AutoScrollToBottomRef {
+  scrollToBottom: (options?: { force?: boolean }) => void;
+}
+
+const AutoScrollToBottom = forwardRef<AutoScrollToBottomRef>((_, ref) => {
+  const element = useRef<HTMLDivElement>(null);
+  const enableAutoScrollBottom = useRef(true);
+
+  useEffect(() => {
+    const listener = () => {
+      const e = document.scrollingElement;
+      if (e) {
+        enableAutoScrollBottom.current = e.clientHeight + e.scrollTop >= e.scrollHeight - STICKY_SCROLL_BOTTOM_GAP;
+      }
+    };
+    window.addEventListener('scroll', listener);
+    return () => window.removeEventListener('scroll', listener);
+  }, []);
+
+  const scrollToBottom = useCallback(({ force }: { force?: boolean } = {}) => {
+    if (force || enableAutoScrollBottom.current) {
+      setTimeout(() => {
+        element.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+    }
+  }, []);
+
+  useImperativeHandle(ref, () => ({ scrollToBottom }), [scrollToBottom]);
+
+  return <div ref={element} />;
+});
 
 function ConversationItem({
   children,
