@@ -1,0 +1,42 @@
+name: upload-to-production-store
+
+on:
+  push:
+    branches:
+      - release
+
+jobs:
+  Deploy:
+    runs-on: ubuntu-latest
+
+    if: "! contains(toJSON(github.event.commits.*.message), '[skip ci]')"
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+        with:
+          ref: release
+
+      - name: Set yarn cache
+        uses: c-hive/gha-yarn-cache@v2
+
+      - name: Install dependencies
+        run: yarn
+
+      - name: Prepare @blocklet/cli deps
+        run: yarn global add @blocklet/cli@beta
+        shell: bash
+
+      - name: Upload to production store
+        uses: blocklet/action-workflow@v1
+        with:
+          skip-deps: true
+          skip-release: true
+          skip-upload: false
+          skip-deploy: true
+          working-directory: blocklets/ai-kit
+          bundle-command: yarn bundle
+          store-endpoint: ${{ secrets.STORE_ENDPOINT_PROD }}
+          store-access-token: ${{ secrets.STORE_ACCESS_TOKEN_PROD }}
+          slack-webhook: ${{ secrets.SLACK_WEBHOOK }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
