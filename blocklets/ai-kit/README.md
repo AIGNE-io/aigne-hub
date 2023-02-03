@@ -1,153 +1,69 @@
-# Getting Started with Create Blocklet
+# AI Kit
 
-This project was bootstrapped with [Create Blocklet](https://github.com/blocklet/create-blocklet).
+AI Kit is a blocklet that brings AI capabilities to other blocklets. With AI Kit, developers can easily incorporate AI into their projects and create powerful applications.
 
-This blocklet is a dapp project, which means this is a full-stack application. It's contained both `server` and `client` code.
+## Features
 
-## File Structure
+- Easy to use interface for integrating AI into applications
+- Supports popular AI providers such as OpenAI
 
-- public/ - static files
-  - favicon.ico - favicon
-  - favicon.svg - favicon
-  - index.html - main html file, template for react
-- screenshots/ - Screenshots
-- api/ - Api side code
-  - hooks/ - blocklet lifecycle hooks
-  - libs/ - Api side libraries
-  - middlewares/ - Api side middlewares
-  - routes/ - Api side routes
-  - index.js - Api side entry point
-- src/ - Client side code (A standard react app structure)
-- .env - Environment variables
-- .env.local - Local environment variables
-- .eslintrc.js - ESLint configuration
-- .gitignore - Git ignore file
-- .prettierrc - Prettier configuration
-- blocklet.md - Blocklet README
-- blocklet.yml - Blocklet configuration
-- LICENSE - License file
-- logo.png - Blocklet logo file
-- Makefile - Makefile
-- package.json - Npm package file
-- README.md - A guide for this blocklet
-- version - Version file
+## Install and Run
 
-## Development
+- Click the Launch button
+- You need to purchase a Blocklet Server first (if you don't already have one)
+- Follow the installation wizard to install blocklet on your Blocklet Server
+- Start the installed blocklet in the Blocklet Server console
+- Set `OPENAI_API_KEY` in **Blocklets -> AI Kit -> Components -> AI Kit -> Settings -> Environment** and restart blocklet
+  ![setting-api-key](docs/setting-api-key.jpg)
+- Access the public address of the blocklet, you can open playground from admin account menus
+  ![playground](docs/playground.jpg)
 
-1. Make sure you have [@blocklet/cli](https://www.npmjs.com/package/@blocklet/cli) installed
+## Integrate into your blocklet
 
-   Blocklet needs blocklet server as a dependency. So you need to install it first.  
-   `npm install -g @blocklet/cli`  
-   See details in [https://docs.arcblock.io/abtnode/en/introduction/abtnode-setup#use-the-binary-distribution](https://docs.arcblock.io/abtnode/en/introduction/abtnode-setup#use-the-binary-distribution)
+- Add AI Kit as a component into your blocklet
+- Set `OPENAI_API_KEY` in `AI Kit` component settings and restart your blocklet
+- Call AI Kit's api
 
-2. Init blocklet server & start blocklet server
+## AI Kit api references
 
-   Before starting an blocklet server, you need to init blocklet server.  
-   `blocklet server init --mode=debug`  
-   `blocklet server start`  
-   See details in [https://docs.arcblock.io/abtnode/en/introduction/abtnode-setup#configure-abt-node](https://docs.arcblock.io/abtnode/en/introduction/abtnode-setup#configure-abt-node)
+### status
 
-3. Go to the project directory `cd [name]`
-4. Install dependencies: `npm install` or `yarn`
-5. Start development server: `blocklet dev`
+Get AI Kit status, it would return `available: true` if it is available.
 
-## Bundle
+```ts
+const res = await Component.call({
+  name: 'ai-kit',
+  path: '/api/v1/sdk/status',
+  data: {}
+})
 
-After developing a blocklet, you may need to bundle it. Use `npm run bundle` command.
+res // { available: boolean }
+```
 
-## Deploy
+### completions
 
-- If you want to deploy this blocklet to local blocklet server, you can use `blocklet deploy .blocklet/bundle` command(Make sure the blocklet is bundled before deployment).
-  > Or you can simply use `npm run deploy` command.
-- If you want to deploy this blocklet to remote blocklet server, you can use the command below.
+Autocomplete given text by AI.
 
-  ```shell
-  blocklet deploy .blocklet/bundle --endpoint {your blocklet server url} --access-key {blocklet server access key} --access-secret {blocklet server access secret}
-  ```
+```ts
+const res = await Component.call({
+  name: 'ai-kit',
+  path: '/api/v1/sdk/completions',
+  data: {
+	prompt: 'Say hi'
+  }
+})
 
-  > Make sure the blocklet is bundled before deployment.
+res // { choices: { text: string }[] }
+```
 
-## Upload to blocklet store
+## How to get api key of OpenAI
 
-- If you want to upload the blocklet to any store for other users to download and use, you can following the following instructions.
+1. Create an OpenAI Account at <https://openai.com/api>
 
-  Bump version at first.
+2. Request an API Key
 
-  ```shell
-  npm run bump-version
-  ```
+   Once you have logged in to your OpenAI account, you will need to request an API key. To do this, click on the “My Account” tab at the top of the page. On the “My Account” page, you will see a link to “Request an API Key”. Click this link and you will be taken to a page where you can request an API key.
 
-  Then config blocklet store url.
-  You can use those store url in below.
+## Support
 
-  1. [https://store.blocklet.dev/](https://store.blocklet.dev/)
-  2. [https://dev.store.blocklet.dev/](https://dev.store.blocklet.dev/)
-  3. A blocklet store started by yourself.
-     > Make sure you have installed a `blocklet store` on your own blocklet server. Check it on here: [https://store.blocklet.dev/blocklet/z8ia29UsENBg6tLZUKi2HABj38Cw1LmHZocbQ](https://store.blocklet.dev/blocklet/z8ia29UsENBg6tLZUKi2HABj38Cw1LmHZocbQ)
-
-  ```shell
-  blocklet config set store {store url}
-  ```
-
-  Get a `accessToken` by using this command.
-
-  > Why we need a `accessToken`?  
-  > A `accessToken` is genrate by blocklet store, which help us upload our blocklet to any store.
-
-  Set `accessToken` to blocklet config
-
-  ```shell
-  blocklet config set accessToken {accessToken}
-  ```
-
-  Upload a new version to a store.
-
-  > Make sure the blocklet is bundled before upload.
-
-  ```shell
-  blocklet upload
-  ```
-
-  Or you can simply use `npm run upload` command.
-
-- You also can upload a new version to a store by Github CI.  
-  Bump version at first.
-
-  ```shell
-  npm run bump-version
-  ```
-
-  Push your code to Github main/master branch, or make a pull request to the main/master branch.  
-  The CI workflow will automatically upload a new version to a store.
-
-## Q & A
-
-1. Q: How to change a blocklet's name?
-
-   A: Change the `name` field in the `package.json` file, change the `name` field in the `blocklet.yml` file.
-
-   You can also change the `title` field and `description` field in the `blocklet.yml` file.
-
-   Run `blocklet meta` command, you will get a `did` config, copy the `did` value.
-
-   Replace this command `"bundle:client": "PUBLIC_URL='/.blocklet/proxy/{did}' npm run build",` in `package.json`
-
-   Replace `did` field in the `blocklet.yml`
-
-2. Q: How to change a blocklet's logo?
-
-   Change the `logo.png` file root folder.
-
-   Or you can change the `logo` field in the `blocklet.yml` file.
-
-   > Make sure you have added the logo path to the `blocklet.yml` file `files` field.
-
-## Learn More
-
-- Full specification of `blocklet.yml`: [https://github.com/blocklet/blocklet-specification/blob/main/docs/meta.md](https://github.com/blocklet/blocklet-specification/blob/main/docs/meta.md)
-- Full document of Blocklet Server & blocklet development: [https://docs.arcblock.io/abtnode/en/introduction](https://docs.arcblock.io/abtnode/en/introduction)
-
-## License
-
-The code is licensed under the Apache 2.0 license found in the
-[LICENSE](LICENSE) file.
+If you have any questions or need help getting started, please feel free to reach out to us at <liyechao@arcblock.io>. We are happy to help!
