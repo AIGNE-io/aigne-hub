@@ -5,7 +5,7 @@ import { Box, Typography } from '@mui/material';
 export default function Home() {
   return (
     <>
-      <Header />
+      <Header maxWidth={null} />
 
       <Box flexGrow={1} mx={2}>
         <Box mx="auto" my={4} maxWidth={800}>
