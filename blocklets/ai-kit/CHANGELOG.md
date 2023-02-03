@@ -1,3 +1,8 @@
+## 0.0.13 (2023-2-3)
+
+- docs: update blocklet.md
+- fix: full width header
+
 ## 0.0.12 (2023-2-2)
 
 - fix: add `/api/sdk/status` api for component.call
