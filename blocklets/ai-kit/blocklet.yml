@@ -20,6 +20,7 @@ files:
   - dist
   - logo.png
   - screenshots
+  - docs
   - api/hooks/pre-start.js
 interfaces:
   - type: web
@@ -55,7 +56,8 @@ capabilities:
   clusterMode: false
   component: true
   navigation: true
-screenshots: []
+screenshots:
+  - playground.gif
 components: []
 navigation:
   - id: playground
