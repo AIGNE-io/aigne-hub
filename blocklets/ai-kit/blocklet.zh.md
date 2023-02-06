@@ -10,9 +10,9 @@ AI Kit 是一个能够快速集成 AI 的 blocklet。使用 AI Kit，开发者�
 ## 安装和运行
 
 - 点击 Launch 按钮
-- 你需要首先购买一个套件服务器（如果你还没有的话）
-- 按照安装向导在套件服务器上安装套件
-- 在套件服务器控制台启动已安装的套件
+- 你需要首先购买一个 blocklet 服务器（如果你还没有的话）
+- 按照安装向导在 blocklet 服务器上安装 blocklet
+- 在 blocklet 服务器控制台启动已安装的 blocklet
 - 在 **Blocklets -> AI Kit -> Components -> AI Kit -> Settings -> Environment** 设置 `OPENAI_API_KEY` 并重启 blocklet
   ![setting-api-key](docs/setting-api-key.jpg)
 - 访问 AI Kit 的公网地址，你可以从管理员账户菜单中打开 Playground
@@ -56,7 +56,7 @@ const res = await Component.call({
 res // { choices: { text: string }[] }
 ```
 
-## How to get api key of OpenAI
+## 获取 OpenAI 的 api key
 
 1. 在 <https://openai.com/api> 创建 OpenAI 账户
 
