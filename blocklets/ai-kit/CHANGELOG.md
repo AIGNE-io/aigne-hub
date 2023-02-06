@@ -1,3 +1,7 @@
+## 0.0.16 (2023-2-6)
+
+- chore: add issue template
+
 ## 0.0.15 (2023-2-3)
 
 - chore: auto upload to prod store
