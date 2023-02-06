@@ -44,10 +44,11 @@ export default function Playground() {
         <Box maxWidth={800} mx="auto" overflow="auto">
           {conversations.map((item) => (
             <Box key={item.id} id={`conversation-${item.id}`}>
-              <ConversationItem avatar={<Avatar sx={{ bgcolor: 'secondary.main' }} />}>{item.prompt}</ConversationItem>
+              <ConversationItem avatar={<Avatar sx={{ bgcolor: 'secondary.main' }} />} text={item.prompt} />
               <ConversationItem
                 my={1}
                 id={`response-${item.id}`}
+                text={item.response}
                 showCursor={!!item.response && item.writing}
                 avatar={<Avatar sx={{ bgcolor: 'primary.main' }}>AI</Avatar>}
                 onCancel={
@@ -63,15 +64,15 @@ export default function Playground() {
                     : undefined
                 }>
                 {item.error ? (
-                  <Alert color="error" icon={<Error />}>
+                  <Alert color="error" icon={<Error />} sx={{ px: 1, py: 0 }}>
                     {(item.error as AxiosError<{ message: string }>).response?.data?.message || item.error.message}
                   </Alert>
-                ) : item.response ? (
-                  item.response
                 ) : (
-                  <Box minHeight={24} display="flex" alignItems="center">
-                    <CircularProgress size={16} />
-                  </Box>
+                  !item.response && (
+                    <Box minHeight={24} display="flex" alignItems="center">
+                      <CircularProgress size={16} />
+                    </Box>
+                  )
                 )}
               </ConversationItem>
             </Box>
@@ -124,6 +125,7 @@ export default function Playground() {
                       const item = draft.find((i) => i.id === id);
                       if (item) {
                         item.error = error;
+                        item.writing = false;
                       }
                     })
                   );
@@ -179,12 +181,13 @@ const Root = styled(Dashboard)`
 `;
 
 function ConversationItem({
+  text,
   children,
   showCursor,
   avatar,
   onCancel,
   ...props
-}: { children: ReactNode; showCursor?: boolean; avatar: ReactNode; onCancel?: () => void } & BoxProps) {
+}: { text?: string; children?: ReactNode; showCursor?: boolean; avatar: ReactNode; onCancel?: () => void } & BoxProps) {
   const [copied, setCopied] = useState<'copied' | boolean>(false);
 
   return (
@@ -192,9 +195,10 @@ function ConversationItem({
       <AvatarWrapper mr={1}>{avatar}</AvatarWrapper>
 
       <Box className={cx('message', showCursor && 'cursor')}>
+        {text}
         {children}
 
-        {typeof children === 'string' && (
+        {!!text && (
           <Box className="actions">
             {onCancel && (
               <Tooltip title="Stop" placement="top">
@@ -211,7 +215,7 @@ function ConversationItem({
                 onMouseEnter={() => setCopied(true)}
                 onMouseLeave={() => setCopied(false)}
                 onClick={() => {
-                  navigator.clipboard.writeText(children);
+                  navigator.clipboard.writeText(text);
                   setCopied('copied');
                   setTimeout(() => setCopied(false), 1500);
                 }}>
