@@ -47,10 +47,7 @@ function AppRoutes({ basename }: { basename: string }) {
     createRoutesFromElements(
       <Route>
         <Route index element={<HomeLazy />} />
-        <Route path="playground">
-          {isAdmin && <Route index element={<PlaygroundLazy />} />}
-          <Route path="*" element={<Navigate to="/" />} />
-        </Route>
+        <Route path="playground" element={isAdmin ? <PlaygroundLazy /> : <Navigate to="/" />} />
         <Route
           path="*"
           element={
