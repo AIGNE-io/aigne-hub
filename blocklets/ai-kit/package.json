@@ -1,6 +1,6 @@
 {
   "name": "ai-kit",
-  "version": "0.0.17",
+  "version": "0.0.18",
   "scripts": {
     "dev": "blocklet dev",
     "eject": "vite eject",

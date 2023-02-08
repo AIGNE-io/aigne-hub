@@ -1,3 +1,8 @@
+## 0.0.18 (2023-2-8)
+
+- fix: redirect to `/` if does not have permission
+- docs: update blocklet.zh.md
+
 ## 0.0.17 (2023-2-6)
 
 - fix: show loaded response after an error is raised
