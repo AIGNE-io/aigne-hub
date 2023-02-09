@@ -1,3 +1,7 @@
+## 0.0.19 (2023-2-9)
+
+- feat: template playground
+
 ## 0.0.18 (2023-2-8)
 
 - fix: redirect to `/` if does not have permission
