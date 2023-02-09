@@ -1,3 +1,7 @@
+## 0.0.20 (2023-2-9)
+
+- fix: remove nanoid version resolution
+
 ## 0.0.19 (2023-2-9)
 
 - feat: template playground
