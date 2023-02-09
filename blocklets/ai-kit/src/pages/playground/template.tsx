@@ -126,8 +126,10 @@ export default function TemplateView() {
 
   return (
     <Root footerProps={{ className: 'dashboard-footer' }}>
-      <Conversation ref={conversation} sx={{ flex: 1 }} />
+      <Conversation className="conversation" ref={conversation} sx={{ flex: 1 }} />
+
       <Divider orientation="vertical" />
+
       <Box flex={1} m={2}>
         <Grid container spacing={2}>
           <Grid item xs={12}>
@@ -250,6 +252,23 @@ const Root = styled(Dashboard)`
       padding-left: 0;
       padding-right: 0;
       overflow: hidden;
+
+      @media (max-width: 800px) {
+        flex-direction: column;
+        overflow: auto;
+
+        > .conversation {
+          overflow: unset;
+          flex-grow: 0;
+        }
+
+        > .MuiDivider-root {
+          height: 1px;
+          width: 100%;
+          margin: 32px 0;
+          border-bottom: 1px solid #eee;
+        }
+      }
     }
 
     > .dashboard-footer {
