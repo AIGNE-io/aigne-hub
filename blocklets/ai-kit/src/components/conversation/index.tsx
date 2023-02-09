@@ -1,4 +1,3 @@
-import Dashboard from '@blocklet/ui-react/lib/Dashboard';
 import { cx } from '@emotion/css';
 import styled from '@emotion/styled';
 import { Cancel, CopyAll, Error, Send } from '@mui/icons-material';
@@ -17,31 +16,36 @@ import {
 import { AxiosError } from 'axios';
 import produce from 'immer';
 import { nanoid } from 'nanoid';
-import { ReactNode, forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { ReactNode, RefObject, forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 
 import { completions } from '../../libs/ai';
 
 const nextId = () => nanoid(16);
 
-const STICKY_SCROLL_BOTTOM_GAP = 10;
+const STICKY_SCROLL_BOTTOM_GAP = 20;
 
-export default function Playground() {
-  const [conversations, setConversations] = useState<
-    { id: string; prompt: string; response?: string; writing?: boolean; error?: Error }[]
-  >(() => [{ id: nextId(), prompt: 'Hi!', response: 'Hi, I am AI Kit from ArcBlock!' }]);
+export interface ConversationRef extends ReturnType<typeof useConversation> {}
 
-  const scroll = useRef<AutoScrollToBottomRef>(null);
+export default forwardRef<ConversationRef, BoxProps>(({ maxWidth, ...props }: BoxProps, ref) => {
+  const scroller = useRef<HTMLDivElement>(null);
+  const conversation = useConversation({ scroller });
+  const { scrollToBottomElement, conversations, addConversation, cancelConversation } = conversation;
+
+  useImperativeHandle(ref, () => conversation);
 
   return (
-    <Root
-      footerProps={{
-        style: {
-          marginTop: 0,
-          padding: 0,
-        },
+    <Box
+      {...props}
+      ref={scroller}
+      sx={{
+        flexGrow: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'auto',
+        ...props.sx,
       }}>
-      <Box flexGrow={1} my={2}>
-        <Box maxWidth={800} mx="auto" overflow="auto">
+      <Box sx={{ mt: 2, mx: 2, flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+        <Box sx={{ flexGrow: 1, width: '100%', mx: 'auto', maxWidth }}>
           {conversations.map((item) => (
             <Box key={item.id} id={`conversation-${item.id}`}>
               <ConversationItem avatar={<Avatar sx={{ bgcolor: 'secondary.main' }} />} text={item.prompt} />
@@ -51,18 +55,7 @@ export default function Playground() {
                 text={item.response}
                 showCursor={!!item.response && item.writing}
                 avatar={<Avatar sx={{ bgcolor: 'primary.main' }}>AI</Avatar>}
-                onCancel={
-                  item.writing
-                    ? () => {
-                        setConversations((v) =>
-                          produce(v, (draft) => {
-                            const i = draft.find((i) => i.id === item.id);
-                            if (i) i.writing = false;
-                          })
-                        );
-                      }
-                    : undefined
-                }>
+                onCancel={item.writing ? () => cancelConversation(item.id) : undefined}>
                 {item.error ? (
                   <Alert color="error" icon={<Error />} sx={{ px: 1, py: 0 }}>
                     {(item.error as AxiosError<{ message: string }>).response?.data?.message || item.error.message}
@@ -78,87 +71,103 @@ export default function Playground() {
             </Box>
           ))}
 
-          <AutoScrollToBottom ref={scroll} />
+          {scrollToBottomElement}
         </Box>
-      </Box>
 
-      <Box sx={{ position: 'sticky', bottom: 0 }}>
-        <Box height={16} sx={{ pointerEvents: 'none', background: 'linear-gradient(transparent, white)' }} />
-        <Box pb={2} sx={{ bgcolor: 'background.paper' }}>
-          <Box maxWidth={800} mx="auto">
-            <Prompt
-              onSubmit={async (prompt) => {
-                const id = nextId();
-                setConversations((v) => v.concat({ id, prompt }));
-                scroll.current?.scrollToBottom({ force: true });
-                try {
-                  const response = await completions({ prompt, stream: true });
-
-                  const reader = response.getReader();
-                  const decoder = new TextDecoder();
-
-                  for (;;) {
-                    const { value, done } = await reader.read();
-                    const chunkValue = decoder.decode(value);
-                    setConversations((v) =>
-                      produce(v, (draft) => {
-                        const item = draft.find((i) => i.id === id);
-                        if (!item || item.writing === false) {
-                          return;
-                        }
-
-                        item.response ??= '';
-                        item.response += chunkValue;
-                        item.writing = !done;
-                      })
-                    );
-
-                    scroll.current?.scrollToBottom();
-
-                    if (done) {
-                      break;
-                    }
-                  }
-                } catch (error) {
-                  setConversations((v) =>
-                    produce(v, (draft) => {
-                      const item = draft.find((i) => i.id === id);
-                      if (item) {
-                        item.error = error;
-                        item.writing = false;
-                      }
-                    })
-                  );
-
-                  throw error;
-                }
-              }}
-            />
+        <Box sx={{ mx: 'auto', width: '100%', maxWidth, position: 'sticky', bottom: 0 }}>
+          <Box height={16} sx={{ pointerEvents: 'none', background: 'linear-gradient(transparent, white)' }} />
+          <Box pb={2} sx={{ bgcolor: 'background.paper' }}>
+            <Prompt onSubmit={addConversation} />
           </Box>
         </Box>
       </Box>
-    </Root>
+    </Box>
   );
+});
+
+function useConversation({ scroller }: { scroller: RefObject<HTMLDivElement> }) {
+  const { element: scrollToBottomElement, scrollToBottom } = useAutoScrollToBottom({ scroller });
+
+  const [conversations, setConversations] = useState<
+    { id: string; prompt: string; response?: string; writing?: boolean; error?: Error }[]
+  >(() => [{ id: nextId(), prompt: 'Hi!', response: 'Hi, I am AI Kit from ArcBlock!' }]);
+
+  const addConversation = useCallback(async (prompt: string) => {
+    const id = nextId();
+    setConversations((v) => v.concat({ id, prompt }));
+    scrollToBottom({ force: true });
+
+    try {
+      const response = await completions({ prompt, stream: true });
+
+      const reader = response.getReader();
+      const decoder = new TextDecoder();
+
+      for (;;) {
+        const { value, done } = await reader.read();
+        const chunkValue = decoder.decode(value);
+        setConversations((v) =>
+          produce(v, (draft) => {
+            const item = draft.find((i) => i.id === id);
+            if (!item || item.writing === false) {
+              return;
+            }
+
+            item.response ??= '';
+            item.response += chunkValue;
+            item.writing = !done;
+          })
+        );
+
+        scrollToBottom();
+
+        if (done) {
+          break;
+        }
+      }
+    } catch (error) {
+      setConversations((v) =>
+        produce(v, (draft) => {
+          const item = draft.find((i) => i.id === id);
+          if (item) {
+            item.error = error;
+            item.writing = false;
+          }
+        })
+      );
+
+      throw error;
+    }
+  }, []);
+
+  const cancelConversation = useCallback((id: string) => {
+    setConversations((v) =>
+      produce(v, (draft) => {
+        const i = draft.find((i) => i.id === id);
+        if (i) i.writing = false;
+      })
+    );
+  }, []);
+
+  return { scrollToBottomElement, conversations, addConversation, cancelConversation };
 }
 
-interface AutoScrollToBottomRef {
-  scrollToBottom: (options?: { force?: boolean }) => void;
-}
-
-const AutoScrollToBottom = forwardRef<AutoScrollToBottomRef>((_, ref) => {
+const useAutoScrollToBottom = ({ scroller }: { scroller: RefObject<HTMLDivElement> }) => {
   const element = useRef<HTMLDivElement>(null);
   const enableAutoScrollBottom = useRef(true);
 
   useEffect(() => {
+    const e = scroller.current;
+    if (!e) {
+      return () => {};
+    }
+
     const listener = () => {
-      const e = document.scrollingElement;
-      if (e) {
-        enableAutoScrollBottom.current = e.clientHeight + e.scrollTop >= e.scrollHeight - STICKY_SCROLL_BOTTOM_GAP;
-      }
+      enableAutoScrollBottom.current = e.clientHeight + e.scrollTop >= e.scrollHeight - STICKY_SCROLL_BOTTOM_GAP;
     };
-    window.addEventListener('scroll', listener);
-    return () => window.removeEventListener('scroll', listener);
-  }, []);
+    e.addEventListener('scroll', listener);
+    return () => e.removeEventListener('scroll', listener);
+  }, [scroller]);
 
   const scrollToBottom = useCallback(({ force }: { force?: boolean } = {}) => {
     if (force || enableAutoScrollBottom.current) {
@@ -168,17 +177,8 @@ const AutoScrollToBottom = forwardRef<AutoScrollToBottomRef>((_, ref) => {
     }
   }, []);
 
-  useImperativeHandle(ref, () => ({ scrollToBottom }), [scrollToBottom]);
-
-  return <div ref={element} />;
-});
-
-const Root = styled(Dashboard)`
-  > .dashboard-body > .dashboard-main > .dashboard-content {
-    display: flex;
-    flex-direction: column;
-  }
-`;
+  return { element: <div ref={element} />, scrollToBottom };
+};
 
 function ConversationItem({
   text,
