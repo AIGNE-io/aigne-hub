@@ -1,7 +1,7 @@
 import Toast from '@arcblock/ux/lib/Toast';
 import Dashboard from '@blocklet/ui-react/lib/Dashboard';
 import styled from '@emotion/styled';
-import { ArrowDropDown } from '@mui/icons-material';
+import { ArrowDropDown, CopyAll } from '@mui/icons-material';
 import {
   Box,
   Button,
@@ -204,11 +204,21 @@ export default function TemplateView() {
             </Button>
             <Button
               variant="outlined"
+              sx={{ mr: 1 }}
               onClick={() => {
                 setForm(templates.setTemplate({ ...form, id: nextId(), parameters: paramsMap }));
                 Toast.success('Saved');
               }}>
               Save As New
+            </Button>
+            <Button
+              startIcon={<CopyAll />}
+              variant="outlined"
+              onClick={() => {
+                navigator.clipboard.writeText(JSON.stringify({ ...form, parameters: paramsMap }));
+                Toast.success('Copied');
+              }}>
+              Copy
             </Button>
           </Grid>
         </Grid>
