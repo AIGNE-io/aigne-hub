@@ -1,3 +1,8 @@
+## 0.0.21 (2023-2-10)
+
+- fix: disable module preload
+- feat: support copy template to clipboard
+
 ## 0.0.20 (2023-2-9)
 
 - fix: remove nanoid version resolution
