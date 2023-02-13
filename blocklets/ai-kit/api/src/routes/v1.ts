@@ -1,7 +1,9 @@
+import { ReadStream } from 'fs';
+
 import { middlewares } from '@blocklet/sdk';
 import { ParsedEvent, ReconnectInterval, createParser } from 'eventsource-parser';
 import { Request, Response, Router } from 'express';
-import { Configuration, OpenAIApi } from 'openai';
+import { Configuration, CreateImageRequestSizeEnum, OpenAIApi } from 'openai';
 
 import env from '../libs/env';
 import { ensureAdmin } from '../libs/security';
@@ -84,5 +86,25 @@ async function completions(req: Request<{}, {}, { prompt: string; stream: boolea
 router.post('/completions', ensureAdmin, completions);
 
 router.post('/sdk/completions', middlewares.component.verifySig, completions);
+
+async function imageGenerations(
+  req: Request<{}, {}, { prompt: string; size?: CreateImageRequestSizeEnum; n?: number }>,
+  res: Response
+) {
+  const { prompt, size, n } = req.body;
+
+  const { openaiApiKey } = env;
+  if (!openaiApiKey) {
+    res.status(500).json({ message: 'Missing required openai apiKey' });
+    return;
+  }
+
+  const openai = new OpenAIApi(new Configuration({ apiKey: openaiApiKey }));
+  const response = await openai.createImage({ prompt, size, n }, { responseType: 'stream' });
+  (response.data as any as ReadStream).pipe(res);
+}
+
+router.post('/image/generations', ensureAdmin, imageGenerations);
+router.post('/sdk/image/generations', middlewares.component.verifySig, imageGenerations);
 
 export default router;

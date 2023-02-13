@@ -8,6 +8,7 @@ import {
   BoxProps,
   Button,
   CircularProgress,
+  Grid,
   IconButton,
   Input,
   InputAdornment,
@@ -18,7 +19,7 @@ import produce from 'immer';
 import { nanoid } from 'nanoid';
 import { ReactNode, RefObject, forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 
-import { completions } from '../../libs/ai';
+import { AIImageResponse, ImageGenerationSize, completions, imageGenerations } from '../../libs/ai';
 
 const nextId = () => nanoid(16);
 
@@ -48,14 +49,23 @@ export default forwardRef<ConversationRef, BoxProps>(({ maxWidth, ...props }: Bo
         <Box sx={{ flexGrow: 1, width: '100%', mx: 'auto', maxWidth }}>
           {conversations.map((item) => (
             <Box key={item.id} id={`conversation-${item.id}`}>
-              <ConversationItem avatar={<Avatar sx={{ bgcolor: 'secondary.main' }} />} text={item.prompt} />
-              <ConversationItem
+              <ConversationItemView avatar={<Avatar sx={{ bgcolor: 'secondary.main' }} />} text={item.prompt} />
+              <ConversationItemView
                 my={1}
                 id={`response-${item.id}`}
-                text={item.response}
+                text={typeof item.response === 'string' ? item.response : undefined}
                 showCursor={!!item.response && item.writing}
                 avatar={<Avatar sx={{ bgcolor: 'primary.main' }}>AI</Avatar>}
                 onCancel={item.writing ? () => cancelConversation(item.id) : undefined}>
+                {typeof item.response === 'object' && (
+                  <Grid container spacing={1}>
+                    {item.response.data.map(({ url }) => (
+                      <Grid key={url} item xs={4}>
+                        <Box component="img" src={url} sx={{ display: 'block', width: '100%' }} />
+                      </Grid>
+                    ))}
+                  </Grid>
+                )}
                 {item.error ? (
                   <Alert color="error" icon={<Error />} sx={{ px: 1, py: 0 }}>
                     {(item.error as AxiosError<{ message: string }>).response?.data?.message || item.error.message}
@@ -67,7 +77,7 @@ export default forwardRef<ConversationRef, BoxProps>(({ maxWidth, ...props }: Bo
                     </Box>
                   )
                 )}
-              </ConversationItem>
+              </ConversationItemView>
             </Box>
           ))}
 
@@ -85,12 +95,20 @@ export default forwardRef<ConversationRef, BoxProps>(({ maxWidth, ...props }: Bo
   );
 });
 
+export interface ConversationItem {
+  id: string;
+  prompt: string;
+  response?: string | AIImageResponse;
+  writing?: boolean;
+  error?: Error;
+}
+
 function useConversation({ scroller }: { scroller: RefObject<HTMLDivElement> }) {
   const { element: scrollToBottomElement, scrollToBottom } = useAutoScrollToBottom({ scroller });
 
-  const [conversations, setConversations] = useState<
-    { id: string; prompt: string; response?: string; writing?: boolean; error?: Error }[]
-  >(() => [{ id: nextId(), prompt: 'Hi!', response: 'Hi, I am AI Kit from ArcBlock!' }]);
+  const [conversations, setConversations] = useState<ConversationItem[]>(() => [
+    { id: nextId(), prompt: 'Hi!', response: 'Hi, I am AI Kit from ArcBlock!' },
+  ]);
 
   const addConversation = useCallback(async (prompt: string) => {
     const id = nextId();
@@ -98,6 +116,31 @@ function useConversation({ scroller }: { scroller: RefObject<HTMLDivElement> }) 
     scrollToBottom({ force: true });
 
     try {
+      const m = prompt.match(/^\/image(\s+(?<size>256|512|1024))?(\s+(?<n>[1-9]|10))?\s+(?<prompt>[\s\S]+)/);
+      if (m?.groups) {
+        const {
+          size = '256',
+          n = '1',
+          prompt,
+        } = m.groups as any as { size: '256' | '512' | '1024'; n: string; prompt: string };
+        const response = await imageGenerations({
+          prompt,
+          n: parseInt(n, 10),
+          size: `${size}x${size}` as ImageGenerationSize,
+        });
+        setConversations((v) =>
+          produce(v, (draft) => {
+            const item = draft.find((i) => i.id === id);
+            if (!item || item.writing === false) {
+              return;
+            }
+
+            item.response = response;
+          })
+        );
+        return;
+      }
+
       const response = await completions({ prompt, stream: true });
 
       const reader = response.getReader();
@@ -180,7 +223,7 @@ const useAutoScrollToBottom = ({ scroller }: { scroller: RefObject<HTMLDivElemen
   return { element: <div ref={element} />, scrollToBottom };
 };
 
-function ConversationItem({
+function ConversationItemView({
   text,
   children,
   showCursor,

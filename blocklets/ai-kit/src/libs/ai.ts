@@ -41,3 +41,18 @@ export async function completions(options: { prompt: string; stream?: boolean })
     }),
   ]);
 }
+
+export interface AIImageResponse {
+  created: number;
+  data: { url: string }[];
+}
+
+export type ImageGenerationSize = '256x256' | '512x512' | '1024x1024';
+
+export async function imageGenerations(options: {
+  prompt: string;
+  size: ImageGenerationSize;
+  n: number;
+}): Promise<AIImageResponse> {
+  return axios.post('/api/v1/image/generations', options).then((res) => res.data);
+}
