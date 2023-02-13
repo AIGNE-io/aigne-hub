@@ -3,6 +3,7 @@ import { ReadStream } from 'fs';
 import { middlewares } from '@blocklet/sdk';
 import { ParsedEvent, ReconnectInterval, createParser } from 'eventsource-parser';
 import { Request, Response, Router } from 'express';
+import Joi from 'joi';
 import { Configuration, CreateImageRequestSizeEnum, OpenAIApi } from 'openai';
 
 import env from '../libs/env';
@@ -10,27 +11,31 @@ import { ensureAdmin } from '../libs/security';
 
 const router = Router();
 
-async function status(_: Request<{}, {}, { prompt: string; stream: boolean | null }>, res: Response) {
+async function status(_: Request, res: Response) {
   const { openaiApiKey } = env;
   res.json({ available: !!openaiApiKey });
 }
 
 router.get('/status', ensureAdmin, status);
-
 router.get('/sdk/status', middlewares.component.verifySig, status);
 
-async function completions(req: Request<{}, {}, { prompt: string; stream: boolean | null }>, res: Response) {
-  const { prompt, stream } = req.body;
+const completionsRequestSchema = Joi.object<{ prompt: string; stream?: boolean }>({
+  prompt: Joi.string().required(),
+  stream: Joi.boolean(),
+});
 
-  const { openaiApiKey } = env;
-  if (!openaiApiKey) {
-    res.status(500).json({ message: 'Missing required openai apiKey' });
-    return;
-  }
-
-  const openai = new OpenAIApi(new Configuration({ apiKey: openaiApiKey }));
-
+async function completions(req: Request, res: Response) {
   try {
+    const { prompt, stream } = await completionsRequestSchema.validateAsync(req.body);
+
+    const { openaiApiKey } = env;
+    if (!openaiApiKey) {
+      res.status(500).json({ message: 'Missing required openai apiKey' });
+      return;
+    }
+
+    const openai = new OpenAIApi(new Configuration({ apiKey: openaiApiKey }));
+
     const r = await openai.createCompletion(
       {
         model: 'text-davinci-003',
@@ -75,33 +80,35 @@ async function completions(req: Request<{}, {}, { prompt: string; stream: boolea
       res.json(r.data);
     }
   } catch (error) {
-    if (stream) {
-      res.status(500).send(error.message);
-    } else {
-      res.status(500).json({ message: error.message });
-    }
+    res.status(500).json({ message: error.message });
   }
 }
 
 router.post('/completions', ensureAdmin, completions);
-
 router.post('/sdk/completions', middlewares.component.verifySig, completions);
 
-async function imageGenerations(
-  req: Request<{}, {}, { prompt: string; size?: CreateImageRequestSizeEnum; n?: number }>,
-  res: Response
-) {
-  const { prompt, size, n } = req.body;
+const imageGenerationRequestSchema = Joi.object<{ prompt: string; size: CreateImageRequestSizeEnum; n: number }>({
+  prompt: Joi.string().required(),
+  size: Joi.string().valid('256x256', '512x512', '1024x1024').default('256x256'),
+  n: Joi.number().min(1).max(10).default(1),
+});
 
-  const { openaiApiKey } = env;
-  if (!openaiApiKey) {
-    res.status(500).json({ message: 'Missing required openai apiKey' });
-    return;
+async function imageGenerations(req: Request, res: Response) {
+  try {
+    const { prompt, size, n } = await imageGenerationRequestSchema.validateAsync(req.body);
+
+    const { openaiApiKey } = env;
+    if (!openaiApiKey) {
+      res.status(500).json({ message: 'Missing required openai apiKey' });
+      return;
+    }
+
+    const openai = new OpenAIApi(new Configuration({ apiKey: openaiApiKey }));
+    const response = await openai.createImage({ prompt, size, n }, { responseType: 'stream' });
+    (response.data as any as ReadStream).pipe(res);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
-
-  const openai = new OpenAIApi(new Configuration({ apiKey: openaiApiKey }));
-  const response = await openai.createImage({ prompt, size, n }, { responseType: 'stream' });
-  (response.data as any as ReadStream).pipe(res);
 }
 
 router.post('/image/generations', ensureAdmin, imageGenerations);
