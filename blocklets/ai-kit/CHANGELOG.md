@@ -1,3 +1,8 @@
+## 0.0.22 (2023-2-14)
+
+- fix: validate request body by Joi
+- feat: support generate image
+
 ## 0.0.21 (2023-2-10)
 
 - fix: disable module preload
