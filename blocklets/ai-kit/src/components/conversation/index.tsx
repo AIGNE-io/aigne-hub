@@ -30,7 +30,7 @@ export interface ConversationRef extends ReturnType<typeof useConversation> {}
 export default forwardRef<ConversationRef, BoxProps>(({ maxWidth, ...props }: BoxProps, ref) => {
   const scroller = useRef<HTMLDivElement>(null);
   const conversation = useConversation({ scroller });
-  const { scrollToBottomElement, conversations, addConversation, cancelConversation } = conversation;
+  const { scrollToBottomElement, scrollToBottom, conversations, addConversation, cancelConversation } = conversation;
 
   useImperativeHandle(ref, () => conversation);
 
@@ -61,7 +61,12 @@ export default forwardRef<ConversationRef, BoxProps>(({ maxWidth, ...props }: Bo
                   <Grid container spacing={1}>
                     {item.response.data.map(({ url }) => (
                       <Grid key={url} item xs={4}>
-                        <Box component="img" src={url} sx={{ display: 'block', width: '100%' }} />
+                        <Box
+                          component="img"
+                          src={url}
+                          sx={{ display: 'block', width: '100%' }}
+                          onLoad={() => scrollToBottom()}
+                        />
                       </Grid>
                     ))}
                   </Grid>
@@ -192,7 +197,7 @@ function useConversation({ scroller }: { scroller: RefObject<HTMLDivElement> }) 
     );
   }, []);
 
-  return { scrollToBottomElement, conversations, addConversation, cancelConversation };
+  return { scrollToBottomElement, scrollToBottom, conversations, addConversation, cancelConversation };
 }
 
 const useAutoScrollToBottom = ({ scroller }: { scroller: RefObject<HTMLDivElement> }) => {
