@@ -1,3 +1,7 @@
+## 0.0.23 (2023-2-15)
+
+- fix: incorrect express error handing middleware
+
 ## 0.0.22 (2023-2-14)
 
 - fix: validate request body by Joi
