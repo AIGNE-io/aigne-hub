@@ -1,12 +1,12 @@
-# NFT-Blender Lib
+# AI-Kit Lib
 
-NFT-Blender common UX component
+AI-Kit common UX component
 
 ## Usage
 
 ```jsx
 import React from 'react';
-import { HelloWorld } from '@nft-studio/marketplace';
+import { HelloWorld } from '@blocklet/ai-kit';
 
 function App() {
   return <HelloWorld />;
@@ -17,13 +17,13 @@ function App() {
 
 ```
 
-# develop with @nft-blender/core and storybook
-pnpm run dev
+# develop with @blocklet/ai-kit and storybook
+npm run dev
 
-# only develop with @nft-blender/core
-pnpm run watch
+# only develop with @blocklet/ai-kit
+npm run watch
 
 # only develop with storybook
-pnpm run storybook
+npm run storybook
 
 ```
