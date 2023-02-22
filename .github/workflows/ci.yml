@@ -18,7 +18,7 @@ jobs:
       - name: Set yarn cache
         uses: c-hive/gha-yarn-cache@v2
 
-      - name: Install global dependencies
+      - name: Install lerna
         run: npm i -g lerna yarn
 
       - name: Install dependencies
