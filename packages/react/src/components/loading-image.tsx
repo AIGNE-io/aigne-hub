@@ -27,6 +27,11 @@ function LazyImage(props: any) {
           {...props}
           onLoad={() => {
             state.loading = false;
+            try {
+              props?.onLoad?.();
+            } catch (error) {
+              console.error('image onLoad error: ', error);
+            }
           }}
           loading="eager" // must be eager to make sure the image is loaded
         />

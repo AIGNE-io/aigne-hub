@@ -1,3 +1,4 @@
+import { ImagePreview } from '@blocklet/ai-kit';
 import { cx } from '@emotion/css';
 import styled from '@emotion/styled';
 import { Cancel, CopyAll, Error, Send } from '@mui/icons-material';
@@ -8,7 +9,6 @@ import {
   BoxProps,
   Button,
   CircularProgress,
-  Grid,
   IconButton,
   Input,
   InputAdornment,
@@ -58,18 +58,15 @@ export default forwardRef<ConversationRef, BoxProps>(({ maxWidth, ...props }: Bo
                 avatar={<Avatar sx={{ bgcolor: 'primary.main' }}>AI</Avatar>}
                 onCancel={item.writing ? () => cancelConversation(item.id) : undefined}>
                 {typeof item.response === 'object' && (
-                  <Grid container spacing={1}>
-                    {item.response.data.map(({ url }) => (
-                      <Grid key={url} item xs={4}>
-                        <Box
-                          component="img"
-                          src={url}
-                          sx={{ display: 'block', width: '100%' }}
-                          onLoad={() => scrollToBottom()}
-                        />
-                      </Grid>
-                    ))}
-                  </Grid>
+                  <ImagePreview
+                    itemWidth={100}
+                    dataSource={item.response.data.map((item) => {
+                      return {
+                        src: item.url,
+                        onLoad: () => scrollToBottom(),
+                      };
+                    })}
+                  />
                 )}
                 {item.error ? (
                   <Alert color="error" icon={<Error />} sx={{ px: 1, py: 0 }}>
