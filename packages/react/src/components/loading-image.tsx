@@ -1,16 +1,16 @@
 /* eslint-disable import/no-extraneous-dependencies */
 import { Skeleton } from '@mui/material';
 import { useReactive } from 'ahooks';
-import { useRef } from 'react';
+import { forwardRef, useRef } from 'react';
 
-function LazyImage(props: any) {
+const LoadingImage = forwardRef((props: any, ref: any) => {
   const imageRef = useRef(null);
   const state = useReactive({
     loading: true,
   });
 
   return (
-    <div style={{ position: 'relative' }} ref={imageRef}>
+    <div style={{ position: 'relative' }} ref={ref || imageRef}>
       <div
         className="lazy-image-wrapper"
         style={{
@@ -51,6 +51,6 @@ function LazyImage(props: any) {
       )}
     </div>
   );
-}
+});
 
-export default LazyImage;
+export default LoadingImage;

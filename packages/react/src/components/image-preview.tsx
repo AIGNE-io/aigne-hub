@@ -29,12 +29,7 @@ interface StateProps {
   };
 }
 
-const renderIconButton = (
-  children: React.ReactNode,
-  onClick: () => void,
-
-  extraProps = {}
-) => {
+const renderIconButton = (children: React.ReactNode, onClick: () => void, extraProps = {}) => {
   return (
     <IconButton
       sx={{
@@ -103,7 +98,6 @@ export default function ImagePreview({
       {
         key: 'download',
         disabled: !!state.downloadingIndexMap[currentIndex],
-        loading: !!state.downloadingIndexMap[currentIndex],
         ...extraProps,
       }
     );
