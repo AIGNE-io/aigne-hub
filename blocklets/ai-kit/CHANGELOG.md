@@ -1,3 +1,7 @@
+## 0.0.27 (2023-2-22)
+
+- fix: @blocklets/ai-kit bump version error
+
 ## 0.0.26 (2023-2-22)
 
 - fix: remove template support
