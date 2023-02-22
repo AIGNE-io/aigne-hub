@@ -41,7 +41,7 @@
     "watch": "vite build --watch",
     "prepublishOnly": "npm run build",
     "preview": "npm run storybook",
-    "storybook": "NODE_OPTIONS=--openssl-legacy-provider start-storybook -p 6009",
+    "storybook": "set NODE_OPTIONS=--openssl-legacy-provider && start-storybook -p 6009",
     "build-storybook": "build-storybook",
     "prepare": "npm run build"
   },
