@@ -16,7 +16,7 @@
     "build": "yarn workspaces run clean && yarn workspaces run build",
     "clean": "yarn workspaces run clean",
     "prepare": "husky install",
-    "bump-version": "yarn workspace ai-kit bump-version",
+    "bump-version": "zx scripts/bump-version.mjs",
     "update:deps": "lerna exec --no-bail -- \"ncu -u -f /arcblock\\|ocap\\|abtnode\\|ux\\|did-comment\\|blocklet/\""
   },
   "lint-staged": {
@@ -51,5 +51,6 @@
     "rimraf": "^3.0.2",
     "typescript": "^4.9.4",
     "zx": "^7.1.1"
-  }
+  },
+  "version": "0.0.24"
 }

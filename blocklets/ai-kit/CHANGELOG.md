@@ -1,3 +1,7 @@
+## 0.0.24 (2023-2-22)
+
+- feat: support preview image in chat
+
 ## 0.0.23 (2023-2-15)
 
 - fix: incorrect express error handing middleware

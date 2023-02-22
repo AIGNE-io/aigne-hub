@@ -1,6 +1,6 @@
 {
   "name": "ai-kit",
-  "version": "0.0.23",
+  "version": "0.0.24",
   "scripts": {
     "dev": "blocklet dev",
     "eject": "vite eject",
@@ -14,8 +14,7 @@
     "deploy": "npm run bundle && blocklet deploy .blocklet/bundle",
     "upload": "npm run bundle && blocklet upload .blocklet/release/blocklet.json",
     "update:deps": "npx taze -n '/arcblock|ocap|abtnode|blocklet|did-connect|did-comment|nedb/' -w && yarn && npm run deduplicate",
-    "deduplicate": "npx yarn-deduplicate ../../yarn.lock",
-    "bump-version": "zx scripts/bump-version.mjs"
+    "deduplicate": "npx yarn-deduplicate ../../yarn.lock"
   },
   "browserslist": {
     "production": [
