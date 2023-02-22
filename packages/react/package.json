@@ -10,7 +10,7 @@
   "license": "ISC",
   "main": "./lib/cjs/index.js",
   "module": "./lib/es/index.js",
-  "typings": "./lib/index.d.ts",
+  "typings": "./lib/types/index.d.ts",
   "exports": {
     ".": {
       "import": "./lib/es/index.js",
@@ -35,7 +35,7 @@
     "lint": "eslint src --ext .mjs,.js,.jsx,.ts,.tsx",
     "lint:fix": "npm run lint -- --fix",
     "pre-commit": "lint-staged",
-    "build": "vite build",
+    "build": "vite build && tsc -p tsconfig.types.json",
     "dev": "npm run storybook & npm run watch",
     "start": "npm run storybook",
     "watch": "vite build --watch",
