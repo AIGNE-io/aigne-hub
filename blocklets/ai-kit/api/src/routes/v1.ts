@@ -4,7 +4,7 @@ import { middlewares } from '@blocklet/sdk';
 import { ParsedEvent, ReconnectInterval, createParser } from 'eventsource-parser';
 import { Request, Response, Router } from 'express';
 import Joi from 'joi';
-import { Configuration, CreateImageRequestSizeEnum, OpenAIApi } from 'openai';
+import { Configuration, CreateImageRequestResponseFormatEnum, CreateImageRequestSizeEnum, OpenAIApi } from 'openai';
 
 import env from '../libs/env';
 import { ensureAdmin } from '../libs/security';
@@ -87,15 +87,22 @@ async function completions(req: Request, res: Response) {
 router.post('/completions', ensureAdmin, completions);
 router.post('/sdk/completions', middlewares.component.verifySig, completions);
 
-const imageGenerationRequestSchema = Joi.object<{ prompt: string; size: CreateImageRequestSizeEnum; n: number }>({
+const imageGenerationRequestSchema = Joi.object<{
+  prompt: string;
+  size: CreateImageRequestSizeEnum;
+  n: number;
+  response_format: CreateImageRequestResponseFormatEnum;
+}>({
   prompt: Joi.string().required(),
   size: Joi.string().valid('256x256', '512x512', '1024x1024').default('256x256'),
   n: Joi.number().min(1).max(10).default(1),
+  response_format: Joi.string().valid('url', 'b64_json').default('url'),
 });
 
 async function imageGenerations(req: Request, res: Response) {
   try {
-    const { prompt, size, n } = await imageGenerationRequestSchema.validateAsync(req.body);
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    const { prompt, size, n, response_format } = await imageGenerationRequestSchema.validateAsync(req.body);
 
     const { openaiApiKey } = env;
     if (!openaiApiKey) {
@@ -104,7 +111,15 @@ async function imageGenerations(req: Request, res: Response) {
     }
 
     const openai = new OpenAIApi(new Configuration({ apiKey: openaiApiKey }));
-    const response = await openai.createImage({ prompt, size, n }, { responseType: 'stream' });
+    const response = await openai.createImage(
+      {
+        prompt,
+        size,
+        n,
+        response_format,
+      },
+      { responseType: 'stream' }
+    );
     (response.data as any as ReadStream).pipe(res);
   } catch (error) {
     res.status(500).json({ message: error.message });

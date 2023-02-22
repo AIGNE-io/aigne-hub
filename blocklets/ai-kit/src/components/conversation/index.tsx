@@ -14,6 +14,7 @@ import {
   InputAdornment,
   Tooltip,
 } from '@mui/material';
+import { useHistoryTravel } from 'ahooks';
 import { AxiosError } from 'axios';
 import produce from 'immer';
 import { nanoid } from 'nanoid';
@@ -349,9 +350,15 @@ const AvatarWrapper = styled(Box)`
 
 function Prompt({ onSubmit }: { onSubmit: (prompt: string) => any }) {
   const [prompt, setPrompt] = useState('');
+  const { value: historyPrompt, setValue: setHistoryPrompt, forwardLength, back, go, forward } = useHistoryTravel('');
   const submit = () => {
-    onSubmit(prompt);
-    setPrompt('');
+    go(forwardLength);
+    // wait for history to set before submitting
+    setTimeout(() => {
+      setHistoryPrompt(prompt);
+      onSubmit(prompt);
+      setPrompt('');
+    }, 50);
   };
 
   return (
@@ -364,6 +371,18 @@ function Prompt({ onSubmit }: { onSubmit: (prompt: string) => any }) {
         disableUnderline
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}
+        onKeyDown={(e) => {
+          // if pressed up
+          if (e.keyCode === 38) {
+            back();
+            setPrompt(historyPrompt || '');
+            e.preventDefault();
+          } else if (e.keyCode === 40) {
+            forward();
+            setPrompt(historyPrompt || '');
+            e.preventDefault();
+          }
+        }}
         endAdornment={
           <InputAdornment position="end">
             <IconButton onClick={submit} size="small" type="submit">
