@@ -16,6 +16,7 @@ export default defineConfig(() => {
           esOutputDir: 'lib/es',
           commonJsOutputDir: 'lib/cjs',
           ...extraBuildConfig,
+          emitDeclaration: true,
         },
       }),
     ],
