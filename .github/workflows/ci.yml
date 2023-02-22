@@ -21,5 +21,8 @@ jobs:
       - name: Install dependencies
         run: yarn
 
+      - name: Build packages
+        run: yarn workspace @blocklet/ai-kit build
+
       - name: Lint
         run: yarn lint
