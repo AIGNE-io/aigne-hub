@@ -10,7 +10,7 @@ import { Navigate, Route, RouterProvider, createBrowserRouter, createRoutesFromE
 import Loading from './components/loading';
 import { SessionProvider, useIsRole } from './contexts/session';
 import { HomeLazy } from './pages/home';
-import { ChatLazy, TemplateLazy } from './pages/playground';
+import { ChatLazy } from './pages/playground';
 
 export default function App() {
   const basename = window.blocklet?.prefix || '/';
@@ -50,7 +50,6 @@ function AppRoutes({ basename }: { basename: string }) {
         <Route path="playground" element={isAdmin ? undefined : <Navigate to="/" />}>
           <Route index element={<Navigate to="/playground/chat" />} />
           <Route path="chat" element={<ChatLazy />} />
-          <Route path="template" element={<TemplateLazy />} />
         </Route>
         <Route
           path="*"

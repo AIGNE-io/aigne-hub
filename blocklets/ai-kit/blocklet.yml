@@ -14,7 +14,7 @@ repository:
   type: git
   url: git+https://github.com/blocklet/ai-kit.git
 specVersion: 1.2.7
-version: 0.0.25
+version: 0.0.26
 logo: logo.png
 files:
   - dist
@@ -64,16 +64,6 @@ navigation:
     title: Playground
     icon: carbon:run
     link: /playground
-    section:
-      - sessionManager
-      - dashboard
-    role:
-      - admin
-      - owner
-  - id: template
-    title: Template
-    icon: fluent:design-ideas-16-regular
-    link: /playground/template
     section:
       - sessionManager
       - dashboard

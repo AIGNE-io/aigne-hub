@@ -1,3 +1,7 @@
+## 0.0.26 (2023-2-22)
+
+- fix: remove template support
+
 ## 0.0.25 (2023-2-22)
 
 - fix: resolve npm publish error
