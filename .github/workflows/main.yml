@@ -26,7 +26,7 @@ jobs:
           npm config set '//registry.npmjs.org/:_authToken' "${{ secrets.NPM_TOKEN }}"
           VERSION=$(cat version | awk '{$1=$1;print}')
           echo "publish version ${VERSION}"
-          cd packages/react  && npm run publish --access public --no-git-checks
+          cd packages/react  && npm publish --access public --no-git-checks
 
       - name: Blocklet workflow
         uses: blocklet/action-workflow@v1

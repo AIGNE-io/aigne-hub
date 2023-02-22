@@ -12,7 +12,7 @@
   "scripts": {
     "dev": "yarn workspace ai-kit dev",
     "bundle": "yarn workspace ai-kit bundle",
-    "lint": "yarn workspaces run lint",
+    "lint": "yarn workspace @blocklet/ai-kit build && yarn workspaces run lint",
     "build": "yarn workspaces run clean && yarn workspaces run build",
     "clean": "yarn workspaces run clean",
     "prepare": "husky install",
@@ -52,5 +52,5 @@
     "typescript": "^4.9.4",
     "zx": "^7.1.1"
   },
-  "version": "0.0.24"
+  "version": "0.0.25"
 }

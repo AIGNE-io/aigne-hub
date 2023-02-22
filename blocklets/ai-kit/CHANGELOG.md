@@ -1,3 +1,7 @@
+## 0.0.25 (2023-2-22)
+
+- fix: resolve npm publish error
+
 ## 0.0.24 (2023-2-22)
 
 - feat: support preview image in chat
