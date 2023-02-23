@@ -1,3 +1,46 @@
+## 0.0.27 (2023-2-22)
+
+- fix: @blocklets/ai-kit bump version error
+
+## 0.0.26 (2023-2-22)
+
+- fix: remove template support
+
+## 0.0.25 (2023-2-22)
+
+- fix: resolve npm publish error
+
+## 0.0.24 (2023-2-22)
+
+- feat: support preview image in chat
+
+## 0.0.23 (2023-2-15)
+
+- fix: incorrect express error handing middleware
+
+## 0.0.22 (2023-2-14)
+
+- fix: validate request body by Joi
+- feat: support generate image
+
+## 0.0.21 (2023-2-10)
+
+- fix: disable module preload
+- feat: support copy template to clipboard
+
+## 0.0.20 (2023-2-9)
+
+- fix: remove nanoid version resolution
+
+## 0.0.19 (2023-2-9)
+
+- feat: template playground
+
+## 0.0.18 (2023-2-8)
+
+- fix: redirect to `/` if does not have permission
+- docs: update blocklet.zh.md
+
 ## 0.0.17 (2023-2-6)
 
 - fix: show loaded response after an error is raised

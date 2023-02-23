@@ -5,9 +5,11 @@
 .pnp.js
 .DS_Store
 node_modules
+packages/*/lib
 
 # testing
 coverage
+
 
 # production
 build

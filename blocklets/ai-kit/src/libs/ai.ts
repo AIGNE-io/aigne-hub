@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 import axios, { API_TIMEOUT } from './api';
 
 export async function getAIStatus(): Promise<{ enabled: boolean }> {
@@ -40,4 +41,40 @@ export async function completions(options: { prompt: string; stream?: boolean })
       setTimeout(() => reject(new Error('Timeout')), API_TIMEOUT);
     }),
   ]);
+}
+
+export interface AIImageResponse {
+  created: number;
+  data: { url: string }[];
+}
+
+export type ImageGenerationSize = '256x256' | '512x512' | '1024x1024';
+
+export async function imageGenerations(options: {
+  prompt: string;
+  size: ImageGenerationSize;
+  n: number;
+  response_format?: string;
+}): Promise<AIImageResponse> {
+  // client side default is b64_json, so that we can download image
+  const { response_format = 'b64_json' } = options;
+  return axios
+    .post('/api/v1/image/generations', {
+      ...options,
+      response_format,
+    })
+    .then((res) => {
+      if (response_format === 'b64_json') {
+        try {
+          res.data.data = res.data.data.map((item: any) => {
+            return {
+              url: `data:image/png;base64,${item.b64_json}`,
+            };
+          });
+        } catch (error) {
+          console.error('format b64_json error: ', error);
+        }
+      }
+      return res.data;
+    });
 }

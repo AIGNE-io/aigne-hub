@@ -1,6 +1,6 @@
 {
   "name": "ai-kit",
-  "version": "0.0.17",
+  "version": "0.0.27",
   "scripts": {
     "dev": "blocklet dev",
     "eject": "vite eject",
@@ -14,8 +14,7 @@
     "deploy": "npm run bundle && blocklet deploy .blocklet/bundle",
     "upload": "npm run bundle && blocklet upload .blocklet/release/blocklet.json",
     "update:deps": "npx taze -n '/arcblock|ocap|abtnode|blocklet|did-connect|did-comment|nedb/' -w && yarn && npm run deduplicate",
-    "deduplicate": "npx yarn-deduplicate ../../yarn.lock",
-    "bump-version": "zx scripts/bump-version.mjs"
+    "deduplicate": "npx yarn-deduplicate ../../yarn.lock"
   },
   "browserslist": {
     "production": [
@@ -34,6 +33,7 @@
     "@arcblock/did-auth-storage-nedb": "^1.7.1",
     "@arcblock/did-connect": "^2.4.66",
     "@arcblock/ux": "^2.4.66",
+    "@blocklet/ai-kit": "^0.0.27",
     "@blocklet/sdk": "^1.8.62",
     "@blocklet/ui-react": "^2.4.66",
     "@emotion/css": "^11.10.5",
@@ -44,6 +44,7 @@
     "@ocap/client": "^1.18.36",
     "@ocap/mcrypto": "^1.18.36",
     "@ocap/wallet": "^1.18.36",
+    "ahooks": "^3.7.4",
     "axios": "^0.27.2",
     "compression": "^1.7.4",
     "cookie-parser": "^1.4.6",
@@ -54,6 +55,8 @@
     "express-async-errors": "^3.1.1",
     "express-history-api-fallback": "^2.2.1",
     "immer": "^9.0.19",
+    "joi": "^17.7.1",
+    "lodash": "^4.17.21",
     "nanoid": "^4.0.0",
     "openai": "^3.1.0",
     "react": "^18.2.0",
@@ -66,6 +69,7 @@
     "@types/cors": "^2.8.13",
     "@types/dotenv-flow": "^3.2.0",
     "@types/express": "^4.17.14",
+    "@types/lodash": "^4.14.191",
     "@types/node": "^18.11.13",
     "@types/react": "^18.0.26",
     "@types/react-dom": "^18.0.9",
