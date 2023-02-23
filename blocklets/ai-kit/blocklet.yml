@@ -13,8 +13,8 @@ author:
 repository:
   type: git
   url: git+https://github.com/blocklet/ai-kit.git
-specVersion: 1.2.7
-version: 0.0.27
+specVersion: 1.2.8
+version: 0.0.28
 logo: logo.png
 files:
   - dist

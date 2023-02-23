@@ -1,3 +1,7 @@
+## 0.0.28 (2023-2-23)
+
+- chore: build @blocklet/ai-kit before release bundle
+
 ## 0.0.27 (2023-2-22)
 
 - fix: @blocklets/ai-kit bump version error
