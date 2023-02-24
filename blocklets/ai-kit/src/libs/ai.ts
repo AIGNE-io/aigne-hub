@@ -29,7 +29,13 @@ export async function completions(options: { prompt: string; stream?: boolean })
       }).then(async (res) => {
         if (res.status !== 200) {
           const text = await res.text();
-          throw new Error(text);
+          let json: any;
+          try {
+            json = JSON.parse(text);
+          } catch {
+            // eslint-disable-next-line no-empty
+          }
+          throw new Error(json?.error?.message || json?.message || text || res.status);
         }
         return res.body!;
       })

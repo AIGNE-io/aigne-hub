@@ -1,6 +1,7 @@
-import { ReadStream } from 'fs';
+import { IncomingMessage } from 'http';
 
 import { middlewares } from '@blocklet/sdk';
+import { AxiosResponse } from 'axios';
 import { ParsedEvent, ReconnectInterval, createParser } from 'eventsource-parser';
 import { Request, Response, Router } from 'express';
 import Joi from 'joi';
@@ -8,6 +9,31 @@ import { Configuration, CreateImageRequestResponseFormatEnum, CreateImageRequest
 
 import env from '../libs/env';
 import { ensureAdmin } from '../libs/security';
+
+function getAIProvider() {
+  const { openaiApiKey } = env;
+  if (!openaiApiKey) {
+    throw new Error('Missing required openai apiKey');
+  }
+  return new OpenAIApi(new Configuration({ apiKey: openaiApiKey }));
+}
+
+async function runWithCatch(run: () => Promise<void>, res: Response) {
+  try {
+    await run();
+  } catch (error) {
+    if (error.response) {
+      const { response }: { response: AxiosResponse } = error;
+      res.status(response.status);
+      const type = response.headers['content-type'];
+      if (type) res.type(type);
+      response.data.pipe(res);
+      return;
+    }
+
+    res.status(500).json({ error: { message: error.message } });
+  }
+}
 
 const router = Router();
 
@@ -25,18 +51,12 @@ const completionsRequestSchema = Joi.object<{ prompt: string; stream?: boolean }
 });
 
 async function completions(req: Request, res: Response) {
-  try {
+  await runWithCatch(async () => {
     const { prompt, stream } = await completionsRequestSchema.validateAsync(req.body);
 
-    const { openaiApiKey } = env;
-    if (!openaiApiKey) {
-      res.status(500).json({ message: 'Missing required openai apiKey' });
-      return;
-    }
+    const openai = getAIProvider();
 
-    const openai = new OpenAIApi(new Configuration({ apiKey: openaiApiKey }));
-
-    const r = await openai.createCompletion(
+    const r: AxiosResponse<IncomingMessage> = (await openai.createCompletion(
       {
         model: 'text-davinci-003',
         prompt,
@@ -47,8 +67,9 @@ async function completions(req: Request, res: Response) {
         presence_penalty: 0.0,
         stream,
       },
-      { responseType: stream ? 'stream' : 'json' }
-    );
+      { responseType: 'stream' }
+    )) as any;
+
     if (stream) {
       const decoder = new TextDecoder();
       let counter = 0;
@@ -72,16 +93,15 @@ async function completions(req: Request, res: Response) {
       };
 
       const parser = createParser(onParse);
-      for await (const chunk of r.data as any) {
+
+      for await (const chunk of r.data) {
         parser.feed(decoder.decode(chunk));
       }
       res.end();
     } else {
-      res.json(r.data);
+      r.data.pipe(res);
     }
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
+  }, res);
 }
 
 router.post('/completions', ensureAdmin, completions);
@@ -100,30 +120,16 @@ const imageGenerationRequestSchema = Joi.object<{
 });
 
 async function imageGenerations(req: Request, res: Response) {
-  try {
-    // eslint-disable-next-line @typescript-eslint/naming-convention
-    const { prompt, size, n, response_format } = await imageGenerationRequestSchema.validateAsync(req.body);
+  await runWithCatch(async () => {
+    const data = await imageGenerationRequestSchema.validateAsync(req.body);
 
-    const { openaiApiKey } = env;
-    if (!openaiApiKey) {
-      res.status(500).json({ message: 'Missing required openai apiKey' });
-      return;
-    }
+    const openai = getAIProvider();
 
-    const openai = new OpenAIApi(new Configuration({ apiKey: openaiApiKey }));
-    const response = await openai.createImage(
-      {
-        prompt,
-        size,
-        n,
-        response_format,
-      },
-      { responseType: 'stream' }
-    );
-    (response.data as any as ReadStream).pipe(res);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
+    const response: AxiosResponse<IncomingMessage> = (await openai.createImage(data, {
+      responseType: 'stream',
+    })) as any;
+    response.data.pipe(res);
+  }, res);
 }
 
 router.post('/image/generations', ensureAdmin, imageGenerations);

@@ -70,8 +70,9 @@ export default forwardRef<ConversationRef, BoxProps>(({ maxWidth, ...props }: Bo
                   />
                 )}
                 {item.error ? (
-                  <Alert color="error" icon={<Error />} sx={{ px: 1, py: 0 }}>
-                    {(item.error as AxiosError<{ message: string }>).response?.data?.message || item.error.message}
+                  <Alert color="warning" icon={<Error />} sx={{ px: 1, py: 0 }}>
+                    {(item.error as AxiosError<{ error?: { message?: string } }>).response?.data?.error?.message ||
+                      item.error.message}
                   </Alert>
                 ) : (
                   !item.response && (
