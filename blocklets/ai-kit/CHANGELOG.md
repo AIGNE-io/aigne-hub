@@ -1,3 +1,7 @@
+## 0.0.30 (2023-2-25)
+
+- fix: add missing export
+
 ## 0.0.29 (2023-2-25)
 
 - fix: remove useless hooks
