@@ -19,6 +19,10 @@
     "./components/": {
       "import": "./lib/es/components/",
       "require": "./lib/cjs/components/"
+    },
+    "./src/": {
+      "import": "./src/",
+      "require": "./src/"
     }
   },
   "files": [
@@ -71,6 +75,7 @@
   },
   "dependencies": {
     "@arcblock/ux": "^2.4.65",
+    "@emotion/css": "^11.10.6",
     "@emotion/react": "^11.10.6",
     "@emotion/styled": "^11.10.6",
     "@mui/icons-material": "^5.11.9",
@@ -78,7 +83,9 @@
     "@mui/material": "^5.11.10",
     "ahooks": "^3.7.4",
     "file-saver": "^2.0.5",
+    "immer": "^9.0.19",
     "lodash": "^4.17.21",
+    "nanoid": "^4.0.1",
     "react-photo-view": "^1.2.3"
   },
   "lint-staged": {
@@ -89,5 +96,8 @@
     "*.{css,less,scss,json,graphql}": [
       "prettier --write"
     ]
+  },
+  "peerDependencies": {
+    "react": "^18.2.0"
   }
 }

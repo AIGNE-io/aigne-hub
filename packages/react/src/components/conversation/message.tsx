@@ -1,0 +1,138 @@
+import { cx } from '@emotion/css';
+import styled from '@emotion/styled';
+import { CopyAll } from '@mui/icons-material';
+import { Box, BoxProps, Button, Tooltip } from '@mui/material';
+import { ReactNode, useState } from 'react';
+
+export default function Message({
+  avatar,
+  message,
+  children,
+  loading,
+  actions,
+  ...props
+}: {
+  avatar?: ReactNode;
+  message?: string;
+  children?: ReactNode;
+  loading?: boolean;
+  actions?: ReactNode[];
+} & BoxProps) {
+  return (
+    <Root {...props} display="flex">
+      <Box className="avatar" mr={1}>
+        {avatar}
+      </Box>
+
+      <Box className={cx('content')}>
+        <Box className={cx('message', loading && 'cursor')}>{message}</Box>
+
+        {children}
+
+        <Box className="actions">
+          {actions}
+          {message && <CopyButton key="copy" message={message} />}
+        </Box>
+      </Box>
+    </Root>
+  );
+}
+
+function CopyButton({ message }: { message: string }) {
+  const [copied, setCopied] = useState<'copied' | boolean>(false);
+
+  return (
+    <Tooltip title={copied === 'copied' ? 'Copied!' : 'Copy'} placement="top" open={Boolean(copied)}>
+      <Button
+        size="small"
+        className={cx('copy', copied && 'active')}
+        onMouseEnter={() => setCopied(true)}
+        onMouseLeave={() => setCopied(false)}
+        onClick={() => {
+          navigator.clipboard.writeText(message);
+          setCopied('copied');
+          setTimeout(() => setCopied(false), 1500);
+        }}>
+        <CopyAll fontSize="small" />
+      </Button>
+    </Tooltip>
+  );
+}
+
+const Root = styled(Box)`
+  > .avatar {
+    padding-top: 5px;
+
+    > .MuiAvatar-root {
+      width: 30px;
+      height: 30px;
+    }
+  }
+
+  > .content {
+    min-height: 40px;
+    flex: 1;
+    overflow: hidden;
+    word-break: break-word;
+    white-space: pre-wrap;
+    padding: 8px;
+    border-radius: 4px;
+    position: relative;
+
+    > .message {
+      &.cursor {
+        &:after {
+          content: '';
+          display: inline-block;
+          vertical-align: middle;
+          height: 1em;
+          margin-top: -0.15em;
+          margin-left: 0.15em;
+          border-right: 0.15em solid orange;
+          animation: blink-caret 0.75s step-end infinite;
+
+          @keyframes blink-caret {
+            from,
+            to {
+              border-color: transparent;
+            }
+            50% {
+              border-color: orange;
+            }
+          }
+        }
+      }
+    }
+
+    > .actions {
+      position: absolute;
+      right: 2px;
+      top: 2px;
+      border-radius: 4px;
+      opacity: 0;
+
+      &.active {
+        display: flex;
+      }
+
+      button {
+        min-width: 0;
+        padding: 0;
+        height: 24px;
+        width: 22px;
+        color: rgba(0, 0, 0, 0.4);
+      }
+    }
+  }
+
+  &:hover {
+    > .content {
+      background-color: rgba(0, 0, 0, 0.05);
+
+      > .actions {
+        opacity: 1;
+        background-color: rgba(240, 240, 240, 0.9);
+      }
+    }
+  }
+`;
