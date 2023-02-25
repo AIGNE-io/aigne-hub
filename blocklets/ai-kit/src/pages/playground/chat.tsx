@@ -9,14 +9,14 @@ import { HighlightOff } from '@mui/icons-material';
 import { Button, Tooltip } from '@mui/material';
 import { ReactNode, useCallback, useRef } from 'react';
 
-import { ImageGenerationSize, completions, imageGenerations } from '../../libs/ai';
+import { ImageGenerationSize, imageGenerations, textCompletions } from '../../libs/ai';
 
 export default function Chat() {
   const ref = useRef<ConversationRef>(null);
 
   const { messages, add, cancel } = useConversation({
     scrollToBottom: (o) => ref.current?.scrollToBottom(o),
-    textCompletions: (prompt) => completions({ prompt, stream: true }),
+    textCompletions: (prompt) => textCompletions({ prompt, stream: true }),
     imageGenerations: (prompt) =>
       imageGenerations({ ...prompt, size: prompt.size as ImageGenerationSize, response_format: 'b64_json' }).then(
         (res) => res.data.map((i) => ({ url: `data:image/png;base64,${i.b64_json}` }))
