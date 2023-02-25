@@ -1,6 +1,7 @@
 {
   "name": "ai-kit",
   "private": true,
+  "version": "0.0.29",
   "workspaces": [
     "blocklets/*",
     "packages/*"
@@ -51,6 +52,5 @@
     "rimraf": "^3.0.2",
     "typescript": "^4.9.4",
     "zx": "^7.1.1"
-  },
-  "version": "0.0.28"
+  }
 }

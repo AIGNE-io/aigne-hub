@@ -1,3 +1,11 @@
+## 0.0.29 (2023-2-25)
+
+- fix: remove useless hooks
+- chore: remove eslint deps from packages/ai-kit
+- feat: add `Conversation` component
+- style: remove unnecessary comment
+- fix: correctly display error message
+
 ## 0.0.28 (2023-2-23)
 
 - chore: build @blocklet/ai-kit before release bundle
