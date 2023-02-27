@@ -50,10 +50,14 @@ export const createTextCompletionApi =
           .then((res) => res.data)
           .catch(processResponseError);
 
+    if (!timeout) {
+      return promise;
+    }
+
     return Promise.race([
       promise,
       new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Timeout')), timeout || Infinity);
+        setTimeout(() => reject(new Error('Timeout')), timeout);
       }),
     ]);
   };
