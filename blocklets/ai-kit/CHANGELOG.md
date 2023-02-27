@@ -1,3 +1,7 @@
+## 0.0.31 (2023-2-27)
+
+- fix: timeout is optional
+
 ## 0.0.30 (2023-2-25)
 
 - fix: add missing export
