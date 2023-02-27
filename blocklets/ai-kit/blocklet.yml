@@ -61,7 +61,9 @@ screenshots:
 components: []
 navigation:
   - id: playground
-    title: Playground
+    title:
+      en: Playground
+      zh: 沙盒
     icon: carbon:run
     link: /playground
     section:
