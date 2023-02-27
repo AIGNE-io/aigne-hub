@@ -1,3 +1,7 @@
+## 0.0.32 (2023-2-28)
+
+- fix: trnaslate admin menu
+
 ## 0.0.31 (2023-2-27)
 
 - fix: timeout is optional
