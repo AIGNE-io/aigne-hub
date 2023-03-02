@@ -56,15 +56,10 @@ async function completions(req: Request, res: Response) {
 
     const openai = getAIProvider();
 
-    const r: AxiosResponse<IncomingMessage> = (await openai.createCompletion(
+    const r: AxiosResponse<IncomingMessage> = (await openai.createChatCompletion(
       {
-        model: 'text-davinci-003',
-        prompt,
-        temperature: 0.3,
-        max_tokens: 2048,
-        top_p: 1.0,
-        frequency_penalty: 0.0,
-        presence_penalty: 0.0,
+        model: 'gpt-3.5-turbo-0301',
+        messages: [{ role: 'user', content: prompt }],
         stream,
       },
       { responseType: 'stream' }
@@ -72,7 +67,7 @@ async function completions(req: Request, res: Response) {
 
     if (stream) {
       const decoder = new TextDecoder();
-      let counter = 0;
+      let hasText = false;
 
       const onParse = (event: ParsedEvent | ReconnectInterval) => {
         if (event.type === 'event') {
@@ -82,13 +77,14 @@ async function completions(req: Request, res: Response) {
             return;
           }
           const json = JSON.parse(data);
-          const { text } = json.choices[0];
-          if (counter < 2 && (text.match(/\n/) || []).length) {
-            // this is a prefix character (i.e., "\n\n"), do nothing
-            return;
+          let text: string = json.choices[0].delta.content || '';
+          if (!hasText) {
+            text = text.trimStart();
           }
-          res.write(text);
-          counter++;
+          if (text) {
+            hasText = true;
+            res.write(text);
+          }
         }
       };
 
