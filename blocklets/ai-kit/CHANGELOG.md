@@ -1,3 +1,7 @@
+## 0.0.33 (2023-3-2)
+
+- feat: upgrade text completions api
+
 ## 0.0.32 (2023-2-28)
 
 - fix: trnaslate admin menu
