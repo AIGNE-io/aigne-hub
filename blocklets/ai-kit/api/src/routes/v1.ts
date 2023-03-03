@@ -5,10 +5,16 @@ import { AxiosResponse } from 'axios';
 import { ParsedEvent, ReconnectInterval, createParser } from 'eventsource-parser';
 import { Request, Response, Router } from 'express';
 import Joi from 'joi';
+import { ChatVectorDBQAChain } from 'langchain/chains';
+import { Document } from 'langchain/document';
+import { OpenAIEmbeddings } from 'langchain/embeddings';
+import { OpenAI } from 'langchain/llms';
+import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
 import { Configuration, CreateImageRequestResponseFormatEnum, CreateImageRequestSizeEnum, OpenAIApi } from 'openai';
 
 import env from '../libs/env';
 import { ensureAdmin } from '../libs/security';
+import MyVectorStore from '../store/vectors';
 
 function getAIProvider() {
   const { openaiApiKey } = env;
@@ -45,14 +51,84 @@ async function status(_: Request, res: Response) {
 router.get('/status', ensureAdmin, status);
 router.get('/sdk/status', middlewares.component.verifySig, status);
 
-const completionsRequestSchema = Joi.object<{ prompt: string; stream?: boolean }>({
+const documentsRequestSchema = Joi.object<{
+  vectorStoreId: string;
+  docs: { type: 'text'; data: string }[];
+}>({
+  vectorStoreId: Joi.string().required(),
+  docs: Joi.array()
+    .items(
+      Joi.object({
+        type: Joi.string().valid('text').required(),
+        data: Joi.string().required(),
+      })
+    )
+    .required()
+    .min(1),
+});
+
+async function indexDocuments(req: Request, res: Response) {
+  await runWithCatch(async () => {
+    const { vectorStoreId, ...data } = await documentsRequestSchema.validateAsync(req.body);
+
+    const docs = new RecursiveCharacterTextSplitter({}).splitDocuments(
+      data.docs.map((item) => new Document({ pageContent: item.data }))
+    );
+
+    const vectorStore = await MyVectorStore.load(
+      vectorStoreId,
+      new OpenAIEmbeddings({
+        openAIApiKey: env.openaiApiKey,
+      })
+    );
+
+    await vectorStore.addDocuments(docs);
+    await vectorStore.save();
+
+    res.json({});
+  }, res);
+}
+
+router.post('/documents', ensureAdmin, indexDocuments);
+router.post('/sdk/documents', middlewares.component.verifySig, indexDocuments);
+
+const completionsRequestSchema = Joi.object<{ prompt: string; stream?: boolean; vectorStoreId?: string }>({
   prompt: Joi.string().required(),
   stream: Joi.boolean(),
+  vectorStoreId: Joi.string().empty(''),
 });
 
 async function completions(req: Request, res: Response) {
   await runWithCatch(async () => {
-    const { prompt, stream } = await completionsRequestSchema.validateAsync(req.body);
+    const { prompt, stream, vectorStoreId } = await completionsRequestSchema.validateAsync(req.body);
+
+    if (vectorStoreId) {
+      const vectorStore = await MyVectorStore.load(
+        vectorStoreId,
+        new OpenAIEmbeddings({
+          openAIApiKey: env.openaiApiKey,
+        })
+      );
+
+      const model = new OpenAI({
+        openAIApiKey: env.openaiApiKey,
+      });
+
+      const chain = ChatVectorDBQAChain.fromLLM(model, vectorStore);
+
+      const response = await chain.call({
+        question: prompt,
+        chat_history: [],
+      });
+
+      if (stream) {
+        res.send(response.text);
+      } else {
+        res.json({ text: response.text });
+      }
+
+      return;
+    }
 
     const openai = getAIProvider();
 
