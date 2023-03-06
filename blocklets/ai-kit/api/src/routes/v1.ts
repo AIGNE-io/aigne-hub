@@ -5,14 +5,10 @@ import { AxiosResponse } from 'axios';
 import { ParsedEvent, ReconnectInterval, createParser } from 'eventsource-parser';
 import { Request, Response, Router } from 'express';
 import Joi from 'joi';
-import { ChatVectorDBQAChain } from 'langchain/chains';
-import { Document } from 'langchain/document';
-import { OpenAIEmbeddings } from 'langchain/embeddings';
-import { OpenAI } from 'langchain/llms';
-import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
 import { Configuration, CreateImageRequestResponseFormatEnum, CreateImageRequestSizeEnum, OpenAIApi } from 'openai';
 
 import env from '../libs/env';
+import langchain from '../libs/langchain';
 import { ensureAdmin } from '../libs/security';
 import MyVectorStore from '../store/vectors';
 
@@ -71,7 +67,13 @@ async function indexDocuments(req: Request, res: Response) {
   await runWithCatch(async () => {
     const { vectorStoreId, ...data } = await documentsRequestSchema.validateAsync(req.body);
 
-    const docs = new RecursiveCharacterTextSplitter({}).splitDocuments(
+    const {
+      text_splitter: { RecursiveCharacterTextSplitter },
+      document: { Document },
+      embeddings: { OpenAIEmbeddings },
+    } = await langchain;
+
+    const docs = await new RecursiveCharacterTextSplitter({}).splitDocuments(
       data.docs.map((item) => new Document({ pageContent: item.data }))
     );
 
@@ -103,6 +105,12 @@ async function completions(req: Request, res: Response) {
     const { prompt, stream, vectorStoreId } = await completionsRequestSchema.validateAsync(req.body);
 
     if (vectorStoreId) {
+      const {
+        llms: { OpenAI },
+        embeddings: { OpenAIEmbeddings },
+        chains: { VectorDBQAChain },
+      } = await langchain;
+
       const vectorStore = await MyVectorStore.load(
         vectorStoreId,
         new OpenAIEmbeddings({
@@ -110,23 +118,44 @@ async function completions(req: Request, res: Response) {
         })
       );
 
-      const model = new OpenAI({
+      const openAIInput: ConstructorParameters<typeof OpenAI>[0] = {
+        streaming: stream,
         openAIApiKey: env.openaiApiKey,
-      });
+        modelName: 'gpt-3.5-turbo-0301',
+      };
 
-      const chain = ChatVectorDBQAChain.fromLLM(model, vectorStore);
-
-      const response = await chain.call({
-        question: prompt,
-        chat_history: [],
-      });
+      let streaming = false;
 
       if (stream) {
-        res.send(response.text);
-      } else {
-        res.json({ text: response.text });
+        openAIInput.callbackManager = {
+          handleStart() {
+            streaming = true;
+          },
+          handleNewToken(token) {
+            res.write(token);
+          },
+          handleEnd() {
+            res.end();
+          },
+          handleError(err) {
+            res.write(err);
+          },
+        };
       }
 
+      const model = new OpenAI(openAIInput);
+
+      const chain = VectorDBQAChain.fromLLM(model, vectorStore);
+
+      const output = await chain.call({
+        query: prompt,
+      });
+
+      if (!stream) {
+        res.json(output);
+      } else if (!streaming) {
+        res.send(output.text);
+      }
       return;
     }
 

@@ -1,5 +1,7 @@
 import 'express-async-errors';
 
+import './libs/fetch-polyfill';
+
 import path from 'path';
 
 import compression from 'compression';

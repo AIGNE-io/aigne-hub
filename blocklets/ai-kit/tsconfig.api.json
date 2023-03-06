@@ -5,5 +5,6 @@
     "noEmit": false,
     "noEmitOnError": true
   },
-  "include": ["api/*.d.ts", "api/src"]
+  "include": ["api/*.d.ts", "api/src"],
+  "exclude": ["api/src/**/*.js"]
 }
