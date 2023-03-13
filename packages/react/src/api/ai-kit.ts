@@ -25,7 +25,7 @@ export interface TextCompletionFn<P extends {} = { prompt: string }> {
 }
 
 export const createTextCompletionApi =
-  <P extends {}>({
+  <P extends {} = { prompt: string }>({
     axios,
     path,
     timeout,
@@ -86,7 +86,13 @@ export interface ImageGenerationFn<P extends {} = { prompt: string; size: ImageG
 }
 
 export const createImageGenerationApi =
-  <P extends {}>({ axios, path }: { axios: AxiosInstance; path: string }): ImageGenerationFn<P> =>
+  <P extends {} = { prompt: string; size: ImageGenerationSize; n: number }>({
+    axios,
+    path,
+  }: {
+    axios: AxiosInstance;
+    path: string;
+  }): ImageGenerationFn<P> =>
   async (options) => {
     return axios
       .post(path, options)
