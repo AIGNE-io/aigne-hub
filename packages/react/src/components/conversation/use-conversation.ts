@@ -50,7 +50,7 @@ export default function useConversation({
                 item.response = response;
               })
             );
-            return;
+            return { id, data: response };
           }
         }
 
@@ -59,9 +59,13 @@ export default function useConversation({
         const reader = response.getReader();
         const decoder = new TextDecoder();
 
+        let text = '';
+
         for (;;) {
           const { value, done } = await reader.read();
           const chunkValue = decoder.decode(value);
+          text += chunkValue;
+
           setConversations((v) =>
             produce(v, (draft) => {
               const item = draft.find((i) => i.id === id);
@@ -81,6 +85,7 @@ export default function useConversation({
             break;
           }
         }
+        return { id, text };
       } catch (error) {
         setConversations((v) =>
           produce(v, (draft) => {
