@@ -2,6 +2,7 @@ import 'express-async-errors';
 
 import path from 'path';
 
+import { isAxiosError } from 'axios';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
@@ -35,13 +36,26 @@ if (isProduction) {
   app.use(compression());
   app.use(express.static(staticDir, { maxAge: '30d', index: false }));
   app.use(fallback('index.html', { root: staticDir }));
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  app.use(<ErrorRequestHandler>((err, _req, res, _next) => {
-    logger.error(err.stack);
-    res.status(500).send('Something broke!');
-  }));
 }
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+app.use(<ErrorRequestHandler>((error, _req, res, _next) => {
+  logger.error(error.stack);
+
+  if (isAxiosError(error)) {
+    const { response } = error;
+
+    if (response) {
+      res.status(response.status);
+      const type = response.headers['content-type'];
+      if (type) res.type(type);
+      response.data.pipe(res);
+      return;
+    }
+  }
+
+  res.status(500).json({ error: { message: error.message } });
+}));
 
 const port = parseInt(process.env.BLOCKLET_PORT!, 10);
 

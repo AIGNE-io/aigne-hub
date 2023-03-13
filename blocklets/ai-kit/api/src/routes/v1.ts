@@ -18,23 +18,6 @@ function getAIProvider() {
   return new OpenAIApi(new Configuration({ apiKey: openaiApiKey }));
 }
 
-async function runWithCatch(run: () => Promise<void>, res: Response) {
-  try {
-    await run();
-  } catch (error) {
-    if (error.response) {
-      const { response }: { response: AxiosResponse } = error;
-      res.status(response.status);
-      const type = response.headers['content-type'];
-      if (type) res.type(type);
-      response.data.pipe(res);
-      return;
-    }
-
-    res.status(500).json({ error: { message: error.message } });
-  }
-}
-
 const router = Router();
 
 async function status(_: Request, res: Response) {
@@ -51,53 +34,51 @@ const completionsRequestSchema = Joi.object<{ prompt: string; stream?: boolean }
 });
 
 async function completions(req: Request, res: Response) {
-  await runWithCatch(async () => {
-    const { prompt, stream } = await completionsRequestSchema.validateAsync(req.body);
+  const { prompt, stream } = await completionsRequestSchema.validateAsync(req.body);
 
-    const openai = getAIProvider();
+  const openai = getAIProvider();
 
-    const r: AxiosResponse<IncomingMessage> = (await openai.createChatCompletion(
-      {
-        model: 'gpt-3.5-turbo-0301',
-        messages: [{ role: 'user', content: prompt }],
-        stream,
-      },
-      { responseType: 'stream' }
-    )) as any;
+  const r: AxiosResponse<IncomingMessage> = (await openai.createChatCompletion(
+    {
+      model: 'gpt-3.5-turbo-0301',
+      messages: [{ role: 'user', content: prompt }],
+      stream,
+    },
+    { responseType: 'stream' }
+  )) as any;
 
-    if (stream) {
-      const decoder = new TextDecoder();
-      let hasText = false;
+  if (stream) {
+    const decoder = new TextDecoder();
+    let hasText = false;
 
-      const onParse = (event: ParsedEvent | ReconnectInterval) => {
-        if (event.type === 'event') {
-          const { data } = event;
-          // https://beta.openai.com/docs/api-reference/completions/create#completions/create-stream
-          if (data === '[DONE]') {
-            return;
-          }
-          const json = JSON.parse(data);
-          let text: string = json.choices[0].delta.content || '';
-          if (!hasText) {
-            text = text.trimStart();
-          }
-          if (text) {
-            hasText = true;
-            res.write(text);
-          }
+    const onParse = (event: ParsedEvent | ReconnectInterval) => {
+      if (event.type === 'event') {
+        const { data } = event;
+        // https://beta.openai.com/docs/api-reference/completions/create#completions/create-stream
+        if (data === '[DONE]') {
+          return;
         }
-      };
-
-      const parser = createParser(onParse);
-
-      for await (const chunk of r.data) {
-        parser.feed(decoder.decode(chunk));
+        const json = JSON.parse(data);
+        let text: string = json.choices[0].delta.content || '';
+        if (!hasText) {
+          text = text.trimStart();
+        }
+        if (text) {
+          hasText = true;
+          res.write(text);
+        }
       }
-      res.end();
-    } else {
-      r.data.pipe(res);
+    };
+
+    const parser = createParser(onParse);
+
+    for await (const chunk of r.data) {
+      parser.feed(decoder.decode(chunk));
     }
-  }, res);
+    res.end();
+  } else {
+    r.data.pipe(res);
+  }
 }
 
 router.post('/completions', ensureAdmin, completions);
@@ -116,16 +97,14 @@ const imageGenerationRequestSchema = Joi.object<{
 });
 
 async function imageGenerations(req: Request, res: Response) {
-  await runWithCatch(async () => {
-    const data = await imageGenerationRequestSchema.validateAsync(req.body);
+  const data = await imageGenerationRequestSchema.validateAsync(req.body);
 
-    const openai = getAIProvider();
+  const openai = getAIProvider();
 
-    const response: AxiosResponse<IncomingMessage> = (await openai.createImage(data, {
-      responseType: 'stream',
-    })) as any;
-    response.data.pipe(res);
-  }, res);
+  const response: AxiosResponse<IncomingMessage> = (await openai.createImage(data, {
+    responseType: 'stream',
+  })) as any;
+  response.data.pipe(res);
 }
 
 router.post('/image/generations', ensureAdmin, imageGenerations);
