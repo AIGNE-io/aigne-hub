@@ -1,3 +1,7 @@
+## 0.0.36 (2023-3-13)
+
+- fix: catch error in error handler of express
+
 ## 0.0.35 (2023-3-13)
 
 - fix: set default parameter type for created api
