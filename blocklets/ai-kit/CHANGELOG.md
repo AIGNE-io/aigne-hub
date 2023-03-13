@@ -1,3 +1,7 @@
+## 0.0.35 (2023-3-13)
+
+- fix: set default parameter type for created api
+
 ## 0.0.34 (2023-3-13)
 
 - fix: allow custom parameter of created api
