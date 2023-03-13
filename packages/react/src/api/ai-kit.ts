@@ -1,7 +1,7 @@
 import { AxiosInstance } from 'axios';
 
 export const createStatusApi =
-  ({ axios, path }: { axios: AxiosInstance; path: string }): (() => Promise<{ enabled: boolean }>) =>
+  ({ axios, path }: { axios: AxiosInstance; path: string }): (() => Promise<{ available: boolean }>) =>
   () =>
     axios.get(path).then((res) => res.data);
 
@@ -18,14 +18,22 @@ export interface TextCompletions {
   };
 }
 
-export interface TextCompletionFn {
-  (options: { prompt: string; stream: true }): Promise<ReadableStream>;
-  (options: { prompt: string; stream?: boolean }): Promise<TextCompletions>;
-  (options: { prompt: string; stream?: boolean }): Promise<TextCompletions | ReadableStream>;
+export interface TextCompletionFn<P extends {} = { prompt: string }> {
+  (options: { stream: true } & P): Promise<ReadableStream>;
+  (options: { stream?: boolean } & P): Promise<TextCompletions>;
+  (options: { stream?: boolean } & P): Promise<TextCompletions | ReadableStream>;
 }
 
 export const createTextCompletionApi =
-  ({ axios, path, timeout }: { axios: AxiosInstance; path: string; timeout?: number }): TextCompletionFn =>
+  <P extends {}>({
+    axios,
+    path,
+    timeout,
+  }: {
+    axios: AxiosInstance;
+    path: string;
+    timeout?: number;
+  }): TextCompletionFn<P> =>
   async (options) => {
     const promise = options.stream
       ? fetch(axios.getUri({ url: path }), {
@@ -69,20 +77,16 @@ export interface ImageGenerations<T extends { url: string } | { b64_json: string
 
 export type ImageGenerationSize = '256x256' | '512x512' | '1024x1024';
 
-export interface ImageGenerationFn {
-  (options: { prompt: string; size: ImageGenerationSize; n: number; response_format?: 'url' }): Promise<
-    ImageGenerations<{ url: string }>
-  >;
-  (options: { prompt: string; size: ImageGenerationSize; n: number; response_format?: 'b64_json' }): Promise<
-    ImageGenerations<{ b64_json: string }>
-  >;
-  (options: { prompt: string; size: ImageGenerationSize; n: number; response_format?: 'url' | 'b64_json' }): Promise<
+export interface ImageGenerationFn<P extends {} = { prompt: string; size: ImageGenerationSize; n: number }> {
+  (options: P & { response_format?: 'url' }): Promise<ImageGenerations<{ url: string }>>;
+  (options: P & { response_format?: 'b64_json' }): Promise<ImageGenerations<{ b64_json: string }>>;
+  (options: P & { response_format?: 'url' | 'b64_json' }): Promise<
     ImageGenerations<{ url: string } | { b64_json: string }>
   >;
 }
 
 export const createImageGenerationApi =
-  ({ axios, path }: { axios: AxiosInstance; path: string }): ImageGenerationFn =>
+  <P extends {}>({ axios, path }: { axios: AxiosInstance; path: string }): ImageGenerationFn<P> =>
   async (options) => {
     return axios
       .post(path, options)
