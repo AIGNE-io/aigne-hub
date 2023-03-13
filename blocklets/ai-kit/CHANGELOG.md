@@ -1,3 +1,7 @@
+## 0.0.34 (2023-3-13)
+
+- fix: allow custom parameter of created api
+
 ## 0.0.33 (2023-3-2)
 
 - feat: upgrade text completions api
