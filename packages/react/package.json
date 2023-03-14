@@ -84,7 +84,7 @@
     "react-dom": "^18.2.0",
     "storybook": "^6.5.15",
     "typescript": "^4.9.4",
-    "vite": "^3.2.3",
+    "vite": "^4.1.4",
     "vite-plugin-build": "^0.7.1"
   }
 }
