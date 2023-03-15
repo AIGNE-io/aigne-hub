@@ -1,3 +1,7 @@
+## 0.0.39 (2023-3-15)
+
+- fix: reset loading status correctly
+
 ## 0.0.38 (2023-3-15)
 
 - feat: support custom default messages
