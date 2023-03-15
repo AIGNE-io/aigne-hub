@@ -15,14 +15,14 @@ export default function useConversation({
   textCompletions: (prompt: string) => Promise<ReadableStream<any>>;
   imageGenerations?: (prompt: { prompt: string; n: number; size: string }) => Promise<{ url: string }[]>;
 }) {
-  const [messages, setConversations] = useState<MessageItem[]>(() => [
-    { id: nextId(), prompt: 'Hi!', response: 'Hi, I am AI Kit from ArcBlock!' },
+  const [messages, setMessages] = useState<MessageItem[]>(() => [
+    { id: nextId(), response: 'Hi, I am AI Kit! How can I assist you today?' },
   ]);
 
   const add = useCallback(
     async (prompt: string, meta?: any) => {
       const id = nextId();
-      setConversations((v) => v.concat({ id, prompt, meta }));
+      setMessages((v) => v.concat({ id, prompt, loading: true, meta }));
       scrollToBottom?.({ force: true });
 
       try {
@@ -40,7 +40,7 @@ export default function useConversation({
               size: `${size}x${size}`,
             });
 
-            setConversations((v) =>
+            setMessages((v) =>
               produce(v, (draft) => {
                 const item = draft.find((i) => i.id === id);
                 if (!item || item.loading === false) {
@@ -66,7 +66,7 @@ export default function useConversation({
           const chunkValue = decoder.decode(value);
           text += chunkValue;
 
-          setConversations((v) =>
+          setMessages((v) =>
             produce(v, (draft) => {
               const item = draft.find((i) => i.id === id);
               if (!item || item.loading === false) {
@@ -87,7 +87,7 @@ export default function useConversation({
         }
         return { id, text };
       } catch (error) {
-        setConversations((v) =>
+        setMessages((v) =>
           produce(v, (draft) => {
             const item = draft.find((i) => i.id === id);
             if (item) {
@@ -104,7 +104,7 @@ export default function useConversation({
   );
 
   const cancel = useCallback(({ id }: Pick<MessageItem, 'id'>) => {
-    setConversations((v) =>
+    setMessages((v) =>
       produce(v, (draft) => {
         const i = draft.find((i) => i.id === id);
         if (i) i.loading = false;
@@ -112,5 +112,5 @@ export default function useConversation({
     );
   }, []);
 
-  return { messages, add, cancel };
+  return { messages, add, cancel, setMessages };
 }

@@ -1,5 +1,6 @@
 import { Error } from '@mui/icons-material';
 import { Alert, Avatar, Box, BoxProps, CircularProgress } from '@mui/material';
+import { isNil } from 'lodash';
 import { ReactNode, RefObject, forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from 'react';
 
 import ImagePreview from '../image-preview';
@@ -8,7 +9,7 @@ import Prompt from './prompt';
 
 export interface MessageItem {
   id: string;
-  prompt: string;
+  prompt?: string;
   response?: string | { url: string }[];
   loading?: boolean;
   error?: { message: string };
@@ -57,41 +58,45 @@ export default forwardRef<
 
             return (
               <Box key={msg.id} id={`conversation-${msg.id}`}>
-                <Message
-                  avatar={renderAvatar?.(msg, false) ?? <Avatar sx={{ bgcolor: 'secondary.main' }}>🧑</Avatar>}
-                  message={msg.prompt}
-                  actions={actions?.[0]}
-                />
-                <Message
-                  my={1}
-                  id={`response-${msg.id}`}
-                  loading={msg.loading}
-                  message={typeof msg.response === 'string' ? msg.response : undefined}
-                  avatar={renderAvatar?.(msg, true) ?? <Avatar sx={{ bgcolor: 'primary.main' }}>🤖️</Avatar>}
-                  actions={actions?.[1]}>
-                  {Array.isArray(msg.response) && (
-                    <ImagePreview
-                      itemWidth={100}
-                      dataSource={msg.response.map(({ url }) => {
-                        return {
-                          src: url,
-                          onLoad: () => scrollToBottom(),
-                        };
-                      })}
-                    />
-                  )}
-                  {msg.error ? (
-                    <Alert color="warning" icon={<Error />} sx={{ px: 1, py: 0 }}>
-                      {msg.error.message}
-                    </Alert>
-                  ) : (
-                    !msg.response && (
-                      <Box minHeight={24} display="flex" alignItems="center">
-                        <CircularProgress size={16} />
-                      </Box>
-                    )
-                  )}
-                </Message>
+                {!isNil(msg.prompt) && (
+                  <Message
+                    avatar={renderAvatar?.(msg, false) ?? <Avatar sx={{ bgcolor: 'secondary.main' }}>🧑</Avatar>}
+                    message={msg.prompt}
+                    actions={actions?.[0]}
+                  />
+                )}
+                {(!isNil(msg.response) || !isNil(msg.loading) || !isNil(msg.error)) && (
+                  <Message
+                    my={1}
+                    id={`response-${msg.id}`}
+                    loading={msg.loading && !!msg.response}
+                    message={typeof msg.response === 'string' ? msg.response : undefined}
+                    avatar={renderAvatar?.(msg, true) ?? <Avatar sx={{ bgcolor: 'primary.main' }}>🤖️</Avatar>}
+                    actions={actions?.[1]}>
+                    {Array.isArray(msg.response) && (
+                      <ImagePreview
+                        itemWidth={100}
+                        dataSource={msg.response.map(({ url }) => {
+                          return {
+                            src: url,
+                            onLoad: () => scrollToBottom(),
+                          };
+                        })}
+                      />
+                    )}
+                    {msg.error ? (
+                      <Alert color="warning" icon={<Error />} sx={{ px: 1, py: 0 }}>
+                        {msg.error.message}
+                      </Alert>
+                    ) : (
+                      !msg.response && (
+                        <Box minHeight={24} display="flex" alignItems="center">
+                          <CircularProgress size={16} />
+                        </Box>
+                      )
+                    )}
+                  </Message>
+                )}
               </Box>
             );
           })}
