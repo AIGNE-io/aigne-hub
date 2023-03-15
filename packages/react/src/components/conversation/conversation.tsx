@@ -25,8 +25,9 @@ export default forwardRef<
     messages: MessageItem[];
     onSubmit: (prompt: string) => void;
     customActions?: (item: MessageItem) => [ReactNode[], ReactNode[]];
+    renderAvatar?: (item: MessageItem, isAI: boolean) => ReactNode;
   }
->(({ messages, onSubmit, customActions, maxWidth, ...props }, ref) => {
+>(({ messages, onSubmit, customActions, renderAvatar, maxWidth, ...props }, ref) => {
   const scroller = useRef<HTMLDivElement>(null);
   const { element, scrollToBottom } = useAutoScrollToBottom({ scroller });
 
@@ -57,7 +58,7 @@ export default forwardRef<
             return (
               <Box key={msg.id} id={`conversation-${msg.id}`}>
                 <Message
-                  avatar={<Avatar sx={{ bgcolor: 'secondary.main' }} />}
+                  avatar={renderAvatar?.(msg, false) ?? <Avatar sx={{ bgcolor: 'secondary.main' }}>🧑</Avatar>}
                   message={msg.prompt}
                   actions={actions?.[0]}
                 />
@@ -66,7 +67,7 @@ export default forwardRef<
                   id={`response-${msg.id}`}
                   loading={msg.loading}
                   message={typeof msg.response === 'string' ? msg.response : undefined}
-                  avatar={<Avatar sx={{ bgcolor: 'primary.main' }}>AI</Avatar>}
+                  avatar={renderAvatar?.(msg, true) ?? <Avatar sx={{ bgcolor: 'primary.main' }}>🤖️</Avatar>}
                   actions={actions?.[1]}>
                   {Array.isArray(msg.response) && (
                     <ImagePreview
