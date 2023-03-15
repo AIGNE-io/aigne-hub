@@ -43,11 +43,7 @@ export default function useConversation({
             setMessages((v) =>
               produce(v, (draft) => {
                 const item = draft.find((i) => i.id === id);
-                if (!item || item.loading === false) {
-                  return;
-                }
-
-                item.response = response;
+                if (item) item.response = response;
               })
             );
             return { id, data: response };
@@ -90,14 +86,18 @@ export default function useConversation({
         setMessages((v) =>
           produce(v, (draft) => {
             const item = draft.find((i) => i.id === id);
-            if (item) {
-              item.error = error;
-              item.loading = false;
-            }
+            if (item) item.error = error;
           })
         );
 
         throw error;
+      } finally {
+        setMessages((v) =>
+          produce(v, (draft) => {
+            const item = draft.find((i) => i.id === id);
+            if (item) item.loading = false;
+          })
+        );
       }
     },
     [imageGenerations, scrollToBottom, textCompletions]
