@@ -1,3 +1,9 @@
+## 0.0.37 (2023-3-15)
+
+- chore: upgrade prettier
+- feat: support customer avatar renderer
+- chore: upgrade vite
+
 ## 0.0.36 (2023-3-13)
 
 - fix: catch error in error handler of express
