@@ -1,3 +1,7 @@
+## 0.0.38 (2023-3-15)
+
+- feat: support custom default messages
+
 ## 0.0.37 (2023-3-15)
 
 - chore: upgrade prettier
