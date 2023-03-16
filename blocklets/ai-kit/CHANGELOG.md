@@ -1,3 +1,7 @@
+## 0.0.40 (2023-3-16)
+
+- feat: support get the reference of prompt input
+
 ## 0.0.39 (2023-3-15)
 
 - fix: reset loading status correctly
