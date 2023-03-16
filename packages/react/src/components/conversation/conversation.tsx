@@ -28,9 +28,10 @@ export default forwardRef<
     customActions?: (item: MessageItem) => [ReactNode[], ReactNode[]];
     renderAvatar?: (item: MessageItem, isAI: boolean) => ReactNode;
     inputRef?: Ref<HTMLElement>;
+    scrollContainer?: HTMLElement;
   }
->(({ messages, onSubmit, customActions, renderAvatar, maxWidth, inputRef, ...props }, ref) => {
-  const scroller = useRef<HTMLDivElement>(null);
+>(({ messages, onSubmit, customActions, renderAvatar, maxWidth, inputRef, scrollContainer, ...props }, ref) => {
+  const scroller = useRef<HTMLElement>(scrollContainer ?? null);
   const { element, scrollToBottom } = useAutoScrollToBottom({ scroller });
 
   useImperativeHandle(
@@ -44,7 +45,7 @@ export default forwardRef<
   return (
     <Box
       {...props}
-      ref={scroller}
+      ref={scrollContainer ? undefined : scroller}
       sx={{
         flexGrow: 1,
         display: 'flex',
@@ -101,9 +102,9 @@ export default forwardRef<
               </Box>
             );
           })}
-        </Box>
 
-        {element}
+          {element}
+        </Box>
 
         <Box sx={{ mx: 'auto', width: '100%', maxWidth, position: 'sticky', bottom: 0 }}>
           <Box height={16} sx={{ pointerEvents: 'none', background: 'linear-gradient(transparent, white)' }} />
@@ -116,7 +117,7 @@ export default forwardRef<
   );
 });
 
-const STICKY_SCROLL_BOTTOM_GAP = 20;
+const STICKY_SCROLL_BOTTOM_GAP = 5;
 
 const useAutoScrollToBottom = ({ scroller }: { scroller: RefObject<HTMLElement> }) => {
   const element = useRef<HTMLDivElement>(null);
@@ -137,9 +138,7 @@ const useAutoScrollToBottom = ({ scroller }: { scroller: RefObject<HTMLElement> 
 
   const scrollToBottom = useCallback(({ force }: { force?: boolean } = {}) => {
     if (force || enableAutoScrollBottom.current) {
-      setTimeout(() => {
-        element.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      });
+      setTimeout(() => (element.current as any)?.scrollIntoViewIfNeeded?.());
     }
   }, []);
 
