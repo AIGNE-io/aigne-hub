@@ -1,7 +1,7 @@
 import { Error } from '@mui/icons-material';
 import { Alert, Avatar, Box, BoxProps, CircularProgress } from '@mui/material';
 import { isNil } from 'lodash';
-import { ReactNode, RefObject, forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from 'react';
+import { ReactNode, Ref, RefObject, forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from 'react';
 
 import ImagePreview from '../image-preview';
 import Message from './message';
@@ -27,8 +27,9 @@ export default forwardRef<
     onSubmit: (prompt: string) => void;
     customActions?: (item: MessageItem) => [ReactNode[], ReactNode[]];
     renderAvatar?: (item: MessageItem, isAI: boolean) => ReactNode;
+    inputRef?: Ref<HTMLElement>;
   }
->(({ messages, onSubmit, customActions, renderAvatar, maxWidth, ...props }, ref) => {
+>(({ messages, onSubmit, customActions, renderAvatar, maxWidth, inputRef, ...props }, ref) => {
   const scroller = useRef<HTMLDivElement>(null);
   const { element, scrollToBottom } = useAutoScrollToBottom({ scroller });
 
@@ -107,7 +108,7 @@ export default forwardRef<
         <Box sx={{ mx: 'auto', width: '100%', maxWidth, position: 'sticky', bottom: 0 }}>
           <Box height={16} sx={{ pointerEvents: 'none', background: 'linear-gradient(transparent, white)' }} />
           <Box pb={2} sx={{ bgcolor: 'background.paper' }}>
-            <Prompt onSubmit={onSubmit} />
+            <Prompt onSubmit={onSubmit} inputRef={inputRef} />
           </Box>
         </Box>
       </Box>

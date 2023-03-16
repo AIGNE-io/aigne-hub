@@ -1,12 +1,13 @@
 import { Send } from '@mui/icons-material';
 import { Box, BoxProps, IconButton, Input, InputAdornment } from '@mui/material';
 import { useHistoryTravel } from 'ahooks';
-import { useState } from 'react';
+import { Ref, useState } from 'react';
 
 export default function Prompt({
   onSubmit,
+  inputRef,
   ...props
-}: { onSubmit: (prompt: string) => any } & Omit<BoxProps, 'onSubmit'>) {
+}: { onSubmit: (prompt: string) => any; inputRef?: Ref<any> } & Omit<BoxProps, 'onSubmit'>) {
   const [prompt, setPrompt] = useState('');
 
   const { value: historyPrompt, setValue: setHistoryPrompt, forwardLength, back, go, forward } = useHistoryTravel('');
@@ -27,6 +28,7 @@ export default function Prompt({
       component="form"
       onSubmit={(e) => e.preventDefault()}>
       <Input
+        inputRef={inputRef}
         fullWidth
         disableUnderline
         value={prompt}
