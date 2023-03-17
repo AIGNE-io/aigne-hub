@@ -1,3 +1,9 @@
+## 0.0.42 (2023-3-17)
+
+- fix: avoid submiting empty prompts
+- fix: import dependencies as needed
+- feat: upgrade blocklet sdk
+
 ## 0.0.41 (2023-3-16)
 
 - fix: suppoort custom scroll container
