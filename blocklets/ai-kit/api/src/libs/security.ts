@@ -1,3 +1,3 @@
-import { middlewares } from '@blocklet/sdk';
+import { auth } from '@blocklet/sdk/lib/middlewares';
 
-export const ensureAdmin = middlewares.auth({ roles: ['owner', 'admin'] });
+export const ensureAdmin = auth({ roles: ['owner', 'admin'] });

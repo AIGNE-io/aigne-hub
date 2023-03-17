@@ -1,6 +1,6 @@
 import { IncomingMessage } from 'http';
 
-import { middlewares } from '@blocklet/sdk';
+import { component } from '@blocklet/sdk/lib/middlewares';
 import { AxiosResponse } from 'axios';
 import { ParsedEvent, ReconnectInterval, createParser } from 'eventsource-parser';
 import { Request, Response, Router } from 'express';
@@ -26,7 +26,7 @@ async function status(_: Request, res: Response) {
 }
 
 router.get('/status', ensureAdmin, status);
-router.get('/sdk/status', middlewares.component.verifySig, status);
+router.get('/sdk/status', component.verifySig, status);
 
 const completionsRequestSchema = Joi.object<{ prompt: string; stream?: boolean }>({
   prompt: Joi.string().required(),
@@ -82,7 +82,7 @@ async function completions(req: Request, res: Response) {
 }
 
 router.post('/completions', ensureAdmin, completions);
-router.post('/sdk/completions', middlewares.component.verifySig, completions);
+router.post('/sdk/completions', component.verifySig, completions);
 
 const imageGenerationRequestSchema = Joi.object<{
   prompt: string;
@@ -108,6 +108,6 @@ async function imageGenerations(req: Request, res: Response) {
 }
 
 router.post('/image/generations', ensureAdmin, imageGenerations);
-router.post('/sdk/image/generations', middlewares.component.verifySig, imageGenerations);
+router.post('/sdk/image/generations', component.verifySig, imageGenerations);
 
 export default router;
