@@ -12,6 +12,10 @@ export default function Prompt({
 
   const { value: historyPrompt, setValue: setHistoryPrompt, forwardLength, back, go, forward } = useHistoryTravel('');
   const submit = () => {
+    if (!prompt.trim()) {
+      return;
+    }
+
     go(forwardLength);
     // wait for history to set before submitting
     setTimeout(() => {
