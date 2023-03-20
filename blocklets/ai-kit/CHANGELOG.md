@@ -1,3 +1,7 @@
+## 0.0.43 (2023-3-20)
+
+- feat: support custom prompt props
+
 ## 0.0.42 (2023-3-17)
 
 - fix: avoid submiting empty prompts
