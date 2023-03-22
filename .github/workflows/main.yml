@@ -32,13 +32,10 @@ jobs:
         uses: blocklet/action-workflow@v1
         with:
           skip-upload: false
-          skip-deploy: false
+          skip-deploy: true
           working-directory: blocklets/ai-kit
           bundle-command: yarn bundle
           store-endpoint: ${{ secrets.STORE_ENDPOINT_TEST }}
           store-access-token: ${{ secrets.STORE_ACCESS_TOKEN_TEST }}
-          server-endpoint: ${{ secrets.STAGING_NODE_ENDPOINT }}
-          server-access-key: ${{ secrets.STAGING_NODE_ACCESS_KEY }}
-          server-access-secret: ${{ secrets.STAGING_NODE_ACCESS_SECRET }}
           slack-webhook: ${{ secrets.SLACK_WEBHOOK }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
