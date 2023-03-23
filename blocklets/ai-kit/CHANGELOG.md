@@ -1,3 +1,8 @@
+## 0.0.44 (2023-3-23)
+
+- fix: simplify the result of text completions
+- chore: skip deploy
+
 ## 0.0.43 (2023-3-20)
 
 - feat: support custom prompt props
