@@ -6,22 +6,13 @@ export const createStatusApi =
     axios.get(path).then((res) => res.data);
 
 export interface TextCompletions {
-  id: string;
-  model: string;
-  object: string;
-  created: number;
-  choices: { finish_reason: string; index: number; text: string }[];
-  usage: {
-    completion_tokens: number;
-    prompt_tokens: number;
-    total_tokens: number;
-  };
+  text?: string;
 }
 
 export interface TextCompletionFn<P extends {} = { prompt: string }> {
-  (options: { stream: true } & P): Promise<ReadableStream>;
+  (options: { stream: true } & P): Promise<ReadableStream<Uint8Array>>;
   (options: { stream?: boolean } & P): Promise<TextCompletions>;
-  (options: { stream?: boolean } & P): Promise<TextCompletions | ReadableStream>;
+  (options: { stream?: boolean } & P): Promise<TextCompletions | ReadableStream<Uint8Array>>;
 }
 
 export const createTextCompletionApi =
@@ -35,7 +26,7 @@ export const createTextCompletionApi =
     timeout?: number;
   }): TextCompletionFn<P> =>
   async (options) => {
-    const promise = options.stream
+    const promise: Promise<TextCompletions | ReadableStream<Uint8Array>> = options.stream
       ? fetch(axios.getUri({ url: path }), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -55,11 +46,11 @@ export const createTextCompletionApi =
         })
       : axios
           .post(path, options)
-          .then((res) => res.data)
+          .then(({ data }) => ({ text: data.text ?? data.choices?.[0]?.text ?? data.choices?.[0]?.message?.content }))
           .catch(processResponseError);
 
     if (!timeout) {
-      return promise;
+      return promise as any;
     }
 
     return Promise.race([
@@ -71,7 +62,6 @@ export const createTextCompletionApi =
   };
 
 export interface ImageGenerations<T extends { url: string } | { b64_json: string }> {
-  created: number;
   data: T[];
 }
 
@@ -100,7 +90,7 @@ export const createImageGenerationApi =
       .catch(processResponseError);
   };
 
-function processResponseError(error: any) {
+function processResponseError(error: any): never {
   const msg = error.response?.data?.error?.message || error.response?.data?.message;
   if (msg) {
     throw new Error(msg);

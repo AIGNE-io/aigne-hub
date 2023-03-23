@@ -38,16 +38,17 @@ async function completions(req: Request, res: Response) {
 
   const openai = getAIProvider();
 
-  const r: AxiosResponse<IncomingMessage> = (await openai.createChatCompletion(
-    {
-      model: 'gpt-3.5-turbo-0301',
-      messages: [{ role: 'user', content: prompt }],
-      stream,
-    },
-    { responseType: 'stream' }
-  )) as any;
+  const request: Parameters<typeof openai.createChatCompletion>[0] = {
+    model: 'gpt-3.5-turbo-0301',
+    messages: [{ role: 'user', content: prompt }],
+    stream,
+  };
 
   if (stream) {
+    const r: AxiosResponse<IncomingMessage> = (await openai.createChatCompletion(request, {
+      responseType: 'stream',
+    })) as any;
+
     const decoder = new TextDecoder();
     let hasText = false;
 
@@ -77,7 +78,9 @@ async function completions(req: Request, res: Response) {
     }
     res.end();
   } else {
-    r.data.pipe(res);
+    const r = await openai.createChatCompletion(request);
+
+    res.json({ text: r.data.choices[0]?.message?.content.trim() });
   }
 }
 
@@ -101,10 +104,10 @@ async function imageGenerations(req: Request, res: Response) {
 
   const openai = getAIProvider();
 
-  const response: AxiosResponse<IncomingMessage> = (await openai.createImage(data, {
-    responseType: 'stream',
-  })) as any;
-  response.data.pipe(res);
+  const response = await openai.createImage(data);
+  res.json({
+    data: response.data.data,
+  });
 }
 
 router.post('/image/generations', ensureAdmin, imageGenerations);
