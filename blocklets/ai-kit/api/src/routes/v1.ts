@@ -5,7 +5,13 @@ import { AxiosResponse } from 'axios';
 import { ParsedEvent, ReconnectInterval, createParser } from 'eventsource-parser';
 import { Request, Response, Router } from 'express';
 import Joi from 'joi';
-import { Configuration, CreateImageRequestResponseFormatEnum, CreateImageRequestSizeEnum, OpenAIApi } from 'openai';
+import {
+  ChatCompletionRequestMessage,
+  Configuration,
+  CreateImageRequestResponseFormatEnum,
+  CreateImageRequestSizeEnum,
+  OpenAIApi,
+} from 'openai';
 
 import env from '../libs/env';
 import { ensureAdmin } from '../libs/security';
@@ -28,19 +34,33 @@ async function status(_: Request, res: Response) {
 router.get('/status', ensureAdmin, status);
 router.get('/sdk/status', component.verifySig, status);
 
-const completionsRequestSchema = Joi.object<{ prompt: string; stream?: boolean }>({
-  prompt: Joi.string().required(),
+const completionsRequestSchema = Joi.object<
+  { stream?: boolean } & (
+    | { prompt: string; messages: undefined }
+    | { prompt: undefined; messages: ChatCompletionRequestMessage[] }
+  )
+>({
+  prompt: Joi.string(),
+  messages: Joi.array()
+    .items(
+      Joi.object({
+        role: Joi.string().valid('system', 'user', 'assistant').required(),
+        content: Joi.string().required(),
+        name: Joi.string().empty(''),
+      })
+    )
+    .min(1),
   stream: Joi.boolean(),
-});
+}).xor('prompt', 'messages');
 
 async function completions(req: Request, res: Response) {
-  const { prompt, stream } = await completionsRequestSchema.validateAsync(req.body);
+  const { prompt, messages, stream } = await completionsRequestSchema.validateAsync(req.body);
 
   const openai = getAIProvider();
 
   const request: Parameters<typeof openai.createChatCompletion>[0] = {
     model: 'gpt-3.5-turbo-0301',
-    messages: [{ role: 'user', content: prompt }],
+    messages: messages ?? [{ role: 'user', content: prompt }],
     stream,
   };
 

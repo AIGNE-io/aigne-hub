@@ -1,4 +1,5 @@
 import { AxiosInstance } from 'axios';
+import { ChatCompletionRequestMessage } from 'openai';
 
 export const createStatusApi =
   ({ axios, path }: { axios: AxiosInstance; path: string }): (() => Promise<{ available: boolean }>) =>
@@ -9,7 +10,7 @@ export interface TextCompletions {
   text?: string;
 }
 
-export interface TextCompletionFn<P extends {} = { prompt: string }> {
+export interface TextCompletionFn<P extends {} = { prompt: string } | { messages: ChatCompletionRequestMessage[] }> {
   (options: { stream: true } & P): Promise<ReadableStream<Uint8Array>>;
   (options: { stream?: boolean } & P): Promise<TextCompletions>;
   (options: { stream?: boolean } & P): Promise<TextCompletions | ReadableStream<Uint8Array>>;
