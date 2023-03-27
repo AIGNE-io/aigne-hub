@@ -1,3 +1,7 @@
+## 0.0.46 (2023-3-27)
+
+- fix: correct type defines for api creator
+
 ## 0.0.45 (2023-3-27)
 
 - feat: pass meta data out
