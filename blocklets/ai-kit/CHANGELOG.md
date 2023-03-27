@@ -1,3 +1,8 @@
+## 0.0.45 (2023-3-27)
+
+- feat: pass meta data out
+- feat: support complete chat messages
+
 ## 0.0.44 (2023-3-23)
 
 - fix: simplify the result of text completions
