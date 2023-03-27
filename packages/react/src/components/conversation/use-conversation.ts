@@ -12,8 +12,11 @@ export default function useConversation({
   imageGenerations,
 }: {
   scrollToBottom?: (options?: { force?: boolean }) => void;
-  textCompletions: (prompt: string) => Promise<ReadableStream<any>>;
-  imageGenerations?: (prompt: { prompt: string; n: number; size: string }) => Promise<{ url: string }[]>;
+  textCompletions: (prompt: string, options: { meta?: any }) => Promise<ReadableStream<any>>;
+  imageGenerations?: (
+    prompt: { prompt: string; n: number; size: string },
+    options: { meta?: any }
+  ) => Promise<{ url: string }[]>;
 }) {
   const [messages, setMessages] = useState<MessageItem[]>(() => [
     { id: nextId(), response: 'Hi, I am AI Kit! How can I assist you today?' },
@@ -34,11 +37,14 @@ export default function useConversation({
               n = '1',
               prompt,
             } = m.groups as any as { size: '256' | '512' | '1024'; n: string; prompt: string };
-            const response = await imageGenerations({
-              prompt,
-              n: parseInt(n, 10),
-              size: `${size}x${size}`,
-            });
+            const response = await imageGenerations(
+              {
+                prompt,
+                n: parseInt(n, 10),
+                size: `${size}x${size}`,
+              },
+              { meta }
+            );
 
             setMessages((v) =>
               produce(v, (draft) => {
@@ -50,7 +56,7 @@ export default function useConversation({
           }
         }
 
-        const response = await textCompletions(prompt);
+        const response = await textCompletions(prompt, { meta });
 
         const reader = response.getReader();
         const decoder = new TextDecoder();
