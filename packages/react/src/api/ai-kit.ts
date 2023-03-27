@@ -10,14 +10,14 @@ export interface TextCompletions {
   text?: string;
 }
 
-export interface TextCompletionFn<P extends {} = { prompt: string } | { messages: ChatCompletionRequestMessage[] }> {
+export interface TextCompletionFn<P extends {}> {
   (options: { stream: true } & P): Promise<ReadableStream<Uint8Array>>;
   (options: { stream?: boolean } & P): Promise<TextCompletions>;
   (options: { stream?: boolean } & P): Promise<TextCompletions | ReadableStream<Uint8Array>>;
 }
 
 export const createTextCompletionApi =
-  <P extends {} = { prompt: string }>({
+  <P extends {} = { prompt: string } | { messages: ChatCompletionRequestMessage[] }>({
     axios,
     path,
     timeout,
@@ -68,7 +68,7 @@ export interface ImageGenerations<T extends { url: string } | { b64_json: string
 
 export type ImageGenerationSize = '256x256' | '512x512' | '1024x1024';
 
-export interface ImageGenerationFn<P extends {} = { prompt: string; size: ImageGenerationSize; n: number }> {
+export interface ImageGenerationFn<P extends {}> {
   (options: P & { response_format?: 'url' }): Promise<ImageGenerations<{ url: string }>>;
   (options: P & { response_format?: 'b64_json' }): Promise<ImageGenerations<{ b64_json: string }>>;
   (options: P & { response_format?: 'url' | 'b64_json' }): Promise<
