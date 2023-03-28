@@ -1,3 +1,7 @@
+## 0.0.47 (2023-3-28)
+
+- feat: render result with markdown
+
 ## 0.0.46 (2023-3-27)
 
 - fix: correct type defines for api creator
