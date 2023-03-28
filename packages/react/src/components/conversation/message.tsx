@@ -3,6 +3,7 @@ import styled from '@emotion/styled';
 import { CopyAll } from '@mui/icons-material';
 import { Box, BoxProps, Button, Tooltip } from '@mui/material';
 import { ReactNode, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
 
 export default function Message({
   avatar,
@@ -25,7 +26,9 @@ export default function Message({
       </Box>
 
       <Box className={cx('content')}>
-        <Box className={cx('message', loading && 'cursor')}>{message}</Box>
+        <Box component={ReactMarkdown} className={cx('message', loading && 'cursor')}>
+          {message}
+        </Box>
 
         {children}
 
@@ -74,30 +77,46 @@ const Root = styled(Box)`
     flex: 1;
     overflow: hidden;
     word-break: break-word;
-    white-space: pre-wrap;
     padding: 8px;
     border-radius: 4px;
     position: relative;
 
     > .message {
-      &.cursor {
-        &:after {
-          content: '';
-          display: inline-block;
-          vertical-align: middle;
-          height: 1em;
-          margin-top: -0.15em;
-          margin-left: 0.15em;
-          border-right: 0.15em solid orange;
-          animation: blink-caret 0.75s step-end infinite;
+      > *:first-child {
+        margin-top: 0;
+      }
+      > *:last-child {
+        margin-bottom: 0;
+      }
 
-          @keyframes blink-caret {
-            from,
-            to {
-              border-color: transparent;
-            }
-            50% {
-              border-color: orange;
+      pre {
+        line-height: 1.2;
+        background-color: #f6f8fa;
+        overflow: auto;
+        padding: 16px;
+        border-radius: 3px;
+      }
+
+      &.cursor {
+        > *:last-child {
+          &:after {
+            content: '';
+            display: inline-block;
+            vertical-align: middle;
+            height: 1em;
+            margin-top: -0.15em;
+            margin-left: 0.15em;
+            border-right: 0.15em solid orange;
+            animation: blink-caret 0.75s step-end infinite;
+
+            @keyframes blink-caret {
+              from,
+              to {
+                border-color: transparent;
+              }
+              50% {
+                border-color: orange;
+              }
             }
           }
         }

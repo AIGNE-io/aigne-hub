@@ -67,6 +67,7 @@
     "lodash": "^4.17.21",
     "nanoid": "^4.0.1",
     "openai": "^3.2.1",
+    "react-markdown": "^8.0.6",
     "react-photo-view": "^1.2.3"
   },
   "devDependencies": {
