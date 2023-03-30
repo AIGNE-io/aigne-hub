@@ -47,13 +47,15 @@
     "preview": "npm run storybook",
     "storybook": "set NODE_OPTIONS=--openssl-legacy-provider && start-storybook -p 6009",
     "build-storybook": "build-storybook",
-    "prepare": "npm run build"
+    "prepare": "npm run build",
+    "update:deps": "npx taze -n '/arcblock|ocap|abtnode|blocklet|did-connect|did-comment|nedb/' -w && yarn && npm run deduplicate",
+    "deduplicate": "npx yarn-deduplicate ../../yarn.lock"
   },
   "peerDependencies": {
     "react": "^18.2.0"
   },
   "dependencies": {
-    "@arcblock/ux": "^2.5.12",
+    "@arcblock/ux": "^2.5.18",
     "@emotion/css": "^11.10.6",
     "@emotion/react": "^11.10.6",
     "@emotion/styled": "^11.10.6",

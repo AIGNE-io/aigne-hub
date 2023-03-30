@@ -39,7 +39,7 @@ payment:
 timeout:
   start: 60
 requirements:
-  server: '>=1.6.29'
+  server: '>=1.16.0'
   os: '*'
   cpu: '*'
 scripts:
