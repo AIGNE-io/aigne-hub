@@ -10,9 +10,6 @@ export default defineConfig(() => {
   return {
     plugins: [react(), createBlockletPlugin(), svgr()],
     build: {
-      // 禁止 preload 可以解决 js 的请求没有 refferer 的问题
-      modulePreload: false,
-      cssCodeSplit: false,
       commonjsOptions: {
         transformMixedEsModules: true,
       },
