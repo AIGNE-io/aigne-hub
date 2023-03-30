@@ -1,3 +1,7 @@
+## 0.0.48 (2023-3-30)
+
+- feat: update sdk to 1.16.0
+
 ## 0.0.47 (2023-3-28)
 
 - feat: render result with markdown
