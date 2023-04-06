@@ -91,7 +91,7 @@ export default forwardRef<
                         {msg.error.message}
                       </Alert>
                     ) : (
-                      !msg.response && (
+                      msg.loading && (
                         <Box minHeight={24} display="flex" alignItems="center">
                           <CircularProgress size={16} />
                         </Box>
