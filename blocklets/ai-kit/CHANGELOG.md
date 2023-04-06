@@ -1,3 +1,8 @@
+## 0.0.49 (2023-4-6)
+
+- fix: only show loading indicator when loading is true
+- fix: default `enter` send prompt
+
 ## 0.0.48 (2023-3-30)
 
 - feat: update sdk to 1.16.0
