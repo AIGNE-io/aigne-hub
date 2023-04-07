@@ -1,3 +1,7 @@
+## 0.0.50 (2023-4-7)
+
+- fix: hide loading indicator after writing
+
 ## 0.0.49 (2023-4-6)
 
 - fix: only show loading indicator when loading is true
