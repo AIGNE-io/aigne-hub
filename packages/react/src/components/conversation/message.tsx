@@ -82,7 +82,7 @@ const Root = styled(Box)`
     position: relative;
 
     > .message {
-      > *:first-child {
+      > *:first-of-type {
         margin-top: 0;
       }
       > *:last-child {
