@@ -1,3 +1,8 @@
+## 0.0.51 (2023-4-10)
+
+- fix: ignore enter event triggered by IME input
+- fix: use `first-of-type` instead of `first-child`
+
 ## 0.0.50 (2023-4-7)
 
 - fix: hide loading indicator after writing
