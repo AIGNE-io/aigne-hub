@@ -45,6 +45,9 @@ export default function Prompt({ startAdornment, endAdornment, onSubmit, InputPr
         sx={{ py: 0.8, px: 1, boxShadow: 2, borderRadius: 1 }}
         onChange={(e) => setPrompt(e.target.value)}
         onKeyDown={(e) => {
+          if (e.keyCode === 229) {
+            return;
+          }
           if (!e.shiftKey && e.key === 'Enter') {
             e.preventDefault();
             submit();
