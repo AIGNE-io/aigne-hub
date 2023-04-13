@@ -16,7 +16,11 @@ export default function Chat() {
 
   const { messages, add, cancel } = useConversation({
     scrollToBottom: (o) => ref.current?.scrollToBottom(o),
-    textCompletions: (prompt) => textCompletions({ prompt, stream: true }),
+    textCompletions: (prompt) =>
+      textCompletions({
+        ...(typeof prompt === 'string' ? { prompt } : { messages: prompt }),
+        stream: true,
+      }),
     imageGenerations: (prompt) =>
       imageGenerations({ ...prompt, size: prompt.size as ImageGenerationSize, response_format: 'b64_json' }).then(
         (res) => res.data.map((i) => ({ url: `data:image/png;base64,${i.b64_json}` }))

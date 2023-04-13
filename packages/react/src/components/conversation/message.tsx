@@ -2,7 +2,8 @@ import { cx } from '@emotion/css';
 import styled from '@emotion/styled';
 import { CopyAll } from '@mui/icons-material';
 import { Box, BoxProps, Button, Tooltip } from '@mui/material';
-import { ReactNode, useState } from 'react';
+import { ChatCompletionRequestMessage } from 'openai';
+import { ReactNode, useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 
 export default function Message({
@@ -14,11 +15,16 @@ export default function Message({
   ...props
 }: {
   avatar?: ReactNode;
-  message?: string;
+  message?: string | ChatCompletionRequestMessage[];
   children?: ReactNode;
   loading?: boolean;
   actions?: ReactNode[];
 } & BoxProps) {
+  const text = useMemo(
+    () => (typeof message === 'string' ? message : message?.map((i) => `${i.role}: ${i.content}`).join('\n\n')),
+    [message]
+  );
+
   return (
     <Root {...props} display="flex">
       <Box className="avatar" mr={1}>
@@ -27,14 +33,14 @@ export default function Message({
 
       <Box className={cx('content')}>
         <Box component={ReactMarkdown} className={cx('message', loading && 'cursor')}>
-          {message}
+          {text}
         </Box>
 
         {children}
 
         <Box className="actions">
           {actions}
-          {message && <CopyButton key="copy" message={message} />}
+          {text && <CopyButton key="copy" message={text} />}
         </Box>
       </Box>
     </Root>

@@ -1,6 +1,7 @@
 import { Error } from '@mui/icons-material';
 import { Alert, Avatar, Box, BoxProps, CircularProgress } from '@mui/material';
 import { isNil } from 'lodash';
+import { ChatCompletionRequestMessage } from 'openai';
 import { ReactNode, RefObject, forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from 'react';
 
 import ImagePreview from '../image-preview';
@@ -9,7 +10,7 @@ import Prompt, { PromptProps } from './prompt';
 
 export interface MessageItem {
   id: string;
-  prompt?: string;
+  prompt?: string | ChatCompletionRequestMessage[];
   response?: string | { url: string }[];
   loading?: boolean;
   error?: { message: string };

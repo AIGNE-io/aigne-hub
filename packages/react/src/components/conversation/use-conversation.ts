@@ -1,5 +1,6 @@
 import produce from 'immer';
 import { nanoid } from 'nanoid';
+import { ChatCompletionRequestMessage } from 'openai';
 import { useCallback, useState } from 'react';
 
 import { MessageItem } from './conversation';
@@ -12,7 +13,10 @@ export default function useConversation({
   imageGenerations,
 }: {
   scrollToBottom?: (options?: { force?: boolean }) => void;
-  textCompletions: (prompt: string, options: { meta?: any }) => Promise<ReadableStream<any>>;
+  textCompletions: (
+    prompt: string | ChatCompletionRequestMessage[],
+    options: { meta?: any }
+  ) => Promise<ReadableStream<any>>;
   imageGenerations?: (
     prompt: { prompt: string; n: number; size: string },
     options: { meta?: any }
@@ -23,13 +27,13 @@ export default function useConversation({
   ]);
 
   const add = useCallback(
-    async (prompt: string, meta?: any) => {
+    async (prompt: string | ChatCompletionRequestMessage[], meta?: any) => {
       const id = nextId();
       setMessages((v) => v.concat({ id, prompt, loading: true, meta }));
       scrollToBottom?.({ force: true });
 
       try {
-        if (imageGenerations) {
+        if (imageGenerations && typeof prompt === 'string') {
           const m = prompt.match(/^\/image(\s+(?<size>256|512|1024))?(\s+(?<n>[1-9]|10))?\s+(?<prompt>[\s\S]+)/);
           if (m?.groups) {
             const {
