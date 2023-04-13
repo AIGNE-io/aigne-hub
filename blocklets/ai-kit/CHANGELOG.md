@@ -1,3 +1,7 @@
+## 0.0.52 (2023-4-13)
+
+- feat: support multiple messages with different roles
+
 ## 0.0.51 (2023-4-10)
 
 - fix: ignore enter event triggered by IME input
