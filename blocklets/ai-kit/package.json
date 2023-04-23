@@ -1,6 +1,6 @@
 {
   "name": "ai-kit",
-  "version": "0.0.54",
+  "version": "0.0.55",
   "scripts": {
     "dev": "blocklet dev",
     "eject": "vite eject",
@@ -33,7 +33,7 @@
     "@arcblock/did-auth-storage-nedb": "^1.7.1",
     "@arcblock/did-connect": "^2.5.25",
     "@arcblock/ux": "^2.5.25",
-    "@blocklet/ai-kit": "^0.0.54",
+    "@blocklet/ai-kit": "^0.0.55",
     "@blocklet/sdk": "^1.16.5",
     "@blocklet/ui-react": "^2.5.25",
     "@emotion/css": "^11.10.5",

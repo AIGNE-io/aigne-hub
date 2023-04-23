@@ -1,3 +1,7 @@
+## 0.0.55 (2023-4-23)
+
+- fix: max temperature is 2
+
 ## 0.0.54 (2023-4-23)
 
 - feat: support config the model and temperature of ai
