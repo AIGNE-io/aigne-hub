@@ -1,3 +1,7 @@
+## 0.0.54 (2023-4-23)
+
+- feat: support config the model and temperature of ai
+
 ## 0.0.53 (2023-4-14)
 
 - chore: update deps
