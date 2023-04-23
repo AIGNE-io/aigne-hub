@@ -52,7 +52,7 @@ const completionsRequestSchema = Joi.object<
     )
     .min(1),
   stream: Joi.boolean(),
-  temperature: Joi.number().min(0).max(1),
+  temperature: Joi.number().min(0).max(2),
 }).xor('prompt', 'messages');
 
 async function completions(req: Request, res: Response) {
