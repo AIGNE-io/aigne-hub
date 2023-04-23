@@ -35,11 +35,12 @@ router.get('/status', ensureAdmin, status);
 router.get('/sdk/status', component.verifySig, status);
 
 const completionsRequestSchema = Joi.object<
-  { stream?: boolean } & (
+  { stream?: boolean; model: string; temperature?: number } & (
     | { prompt: string; messages: undefined }
     | { prompt: undefined; messages: ChatCompletionRequestMessage[] }
   )
 >({
+  model: Joi.string().default('gpt-3.5-turbo'),
   prompt: Joi.string(),
   messages: Joi.array()
     .items(
@@ -51,17 +52,19 @@ const completionsRequestSchema = Joi.object<
     )
     .min(1),
   stream: Joi.boolean(),
+  temperature: Joi.number().min(0).max(1),
 }).xor('prompt', 'messages');
 
 async function completions(req: Request, res: Response) {
-  const { prompt, messages, stream } = await completionsRequestSchema.validateAsync(req.body);
+  const { model, prompt, messages, stream, temperature } = await completionsRequestSchema.validateAsync(req.body);
 
   const openai = getAIProvider();
 
   const request: Parameters<typeof openai.createChatCompletion>[0] = {
-    model: 'gpt-3.5-turbo-0301',
+    model,
     messages: messages ?? [{ role: 'user', content: prompt }],
     stream,
+    temperature,
   };
 
   if (stream) {

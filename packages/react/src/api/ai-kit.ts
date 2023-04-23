@@ -10,10 +10,15 @@ export interface TextCompletions {
   text?: string;
 }
 
+export interface TextCompletionOptions {
+  model?: string;
+  temperature?: number;
+}
+
 export interface TextCompletionFn<P extends {}> {
-  (options: { stream: true } & P): Promise<ReadableStream<Uint8Array>>;
-  (options: { stream?: boolean } & P): Promise<TextCompletions>;
-  (options: { stream?: boolean } & P): Promise<TextCompletions | ReadableStream<Uint8Array>>;
+  (options: { stream: true } & TextCompletionOptions & P): Promise<ReadableStream<Uint8Array>>;
+  (options: { stream?: boolean } & TextCompletionOptions & P): Promise<TextCompletions>;
+  (options: { stream?: boolean } & TextCompletionOptions & P): Promise<TextCompletions | ReadableStream<Uint8Array>>;
 }
 
 export const createTextCompletionApi =
