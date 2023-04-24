@@ -8,7 +8,7 @@ import svgr from 'vite-plugin-svgr';
 // https://vitejs.dev/config/
 export default defineConfig(() => {
   return {
-    plugins: [react(), createBlockletPlugin(), svgr()],
+    plugins: [react(), createBlockletPlugin({ disableNodePolyfills: false }), svgr()],
     build: {
       commonjsOptions: {
         transformMixedEsModules: true,
