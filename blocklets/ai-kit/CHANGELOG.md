@@ -1,3 +1,7 @@
+## 0.0.56 (2023-4-24)
+
+- chore: update deps
+
 ## 0.0.55 (2023-4-23)
 
 - fix: max temperature is 2
