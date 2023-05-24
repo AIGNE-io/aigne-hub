@@ -18,7 +18,7 @@
     "clean": "yarn workspaces run clean",
     "prepare": "husky install",
     "bump-version": "zx scripts/bump-version.mjs",
-    "update:deps": "lerna exec --no-bail -- \"ncu -u -f /arcblock\\|ocap\\|abtnode\\|ux\\|did-comment\\|blocklet/\""
+    "update:deps": "yarn workspaces run update:deps"
   },
   "lint-staged": {
     "*.{mjs,js,jsx,ts,tsx}": [
