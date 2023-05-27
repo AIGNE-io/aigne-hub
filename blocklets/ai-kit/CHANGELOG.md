@@ -1,3 +1,7 @@
+## 0.0.59 (2023-5-27)
+
+- feat: add embeddings api
+
 ## 0.0.58 (2023-5-24)
 
 - chore: update deps
