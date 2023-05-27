@@ -8,6 +8,7 @@ import Joi from 'joi';
 import {
   ChatCompletionRequestMessage,
   Configuration,
+  CreateEmbeddingRequest,
   CreateImageRequestResponseFormatEnum,
   CreateImageRequestSizeEnum,
   OpenAIApi,
@@ -56,7 +57,9 @@ const completionsRequestSchema = Joi.object<
 }).xor('prompt', 'messages');
 
 async function completions(req: Request, res: Response) {
-  const { model, prompt, messages, stream, temperature } = await completionsRequestSchema.validateAsync(req.body);
+  const { model, prompt, messages, stream, temperature } = await completionsRequestSchema.validateAsync(req.body, {
+    stripUnknown: true,
+  });
 
   const openai = getAIProvider();
 
@@ -110,6 +113,25 @@ async function completions(req: Request, res: Response) {
 router.post('/completions', ensureAdmin, completions);
 router.post('/sdk/completions', component.verifySig, completions);
 
+const embeddingsRequestSchema = Joi.object<CreateEmbeddingRequest>({
+  model: Joi.string().required(),
+  input: Joi.alternatives().try(Joi.string(), Joi.array().items(Joi.string())).required(),
+  user: Joi.string().empty(Joi.valid('', null)),
+});
+
+async function embeddings(req: Request, res: Response) {
+  const input = await embeddingsRequestSchema.validateAsync(req.body, { stripUnknown: true });
+
+  const openai = getAIProvider();
+
+  const { data } = await openai.createEmbedding(input);
+
+  res.json(data);
+}
+
+router.post('/embeddings', ensureAdmin, embeddings);
+router.post('/sdk/embeddings', component.verifySig, embeddings);
+
 const imageGenerationRequestSchema = Joi.object<{
   prompt: string;
   size: CreateImageRequestSizeEnum;
@@ -123,7 +145,7 @@ const imageGenerationRequestSchema = Joi.object<{
 });
 
 async function imageGenerations(req: Request, res: Response) {
-  const data = await imageGenerationRequestSchema.validateAsync(req.body);
+  const data = await imageGenerationRequestSchema.validateAsync(req.body, { stripUnknown: true });
 
   const openai = getAIProvider();
 
