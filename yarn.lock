@@ -130,15 +130,15 @@
     semver "^7.3.8"
     tweetnacl-sealedbox-js "^1.2.0"
 
-"@arcblock/did-connect@^2.5.42":
-  version "2.5.42"
-  resolved "https://registry.yarnpkg.com/@arcblock/did-connect/-/did-connect-2.5.42.tgz#075bb5a801f240ccb61cb6b5a2cd844a33c6f424"
-  integrity sha512-PlkyNf1OD68w6rwU5Pv4H/18oWiHqrRjPwSInFxJaeP67dgLa72dNQdD3gUc7bwqezG+4eGEM0P1JbqSBulNhQ==
+"@arcblock/did-connect@^2.5.42", "@arcblock/did-connect@^2.5.45":
+  version "2.5.45"
+  resolved "https://registry.yarnpkg.com/@arcblock/did-connect/-/did-connect-2.5.45.tgz#bd0b8e1d60cc553abb9121f6a9a50840597d6f96"
+  integrity sha512-irw1q3SlUEQBRy7dHtDnvY/rBQBxYVx1DnZnc4/0nZBw0CMhYdxAoOg0SeDbo86cc1U8ECV1wmCvRwVV4wfIqA==
   dependencies:
-    "@arcblock/icons" "^2.5.42"
-    "@arcblock/react-hooks" "^2.5.42"
-    "@arcblock/ux" "^2.5.42"
-    "@arcblock/ws" "^1.18.78"
+    "@arcblock/icons" "^2.5.45"
+    "@arcblock/react-hooks" "^2.5.45"
+    "@arcblock/ux" "^2.5.45"
+    "@arcblock/ws" "^1.18.80"
     "@auth0/auth0-react" "^2.0.1"
     "@emotion/react" "^11.10.4"
     "@emotion/styled" "^11.10.4"
@@ -249,10 +249,10 @@
     amp-message "~0.1.2"
     axon "^2.0.3"
 
-"@arcblock/icons@^2.5.42":
-  version "2.5.42"
-  resolved "https://registry.yarnpkg.com/@arcblock/icons/-/icons-2.5.42.tgz#449763a216efd6450774f6321ac06a7b96d91976"
-  integrity sha512-oqz0G80B9t0ejG+sejD9Oi4psm2dLFoHY7R4Xh0PdxNuIKj49XuhF424trkYHeBd1P8HXXdPTXlCHnGoAn/J8w==
+"@arcblock/icons@^2.5.45":
+  version "2.5.45"
+  resolved "https://registry.yarnpkg.com/@arcblock/icons/-/icons-2.5.45.tgz#7c997885d8e96cfa8d5fdf75e47bca2b09523169"
+  integrity sha512-4AKa5chAkn63MXI3fgNgCfaq3pY4R8kbvdWrMoMe3irmXnzLhRAv/bBBXQakl48hnQyoLBrrOor+WNYLjpRLuQ==
 
 "@arcblock/jwt@1.18.80", "@arcblock/jwt@^1.18.80":
   version "1.18.80"
@@ -266,10 +266,10 @@
     json-stable-stringify "^1.0.1"
     semver "^7.3.8"
 
-"@arcblock/react-hooks@^2.5.42":
-  version "2.5.42"
-  resolved "https://registry.yarnpkg.com/@arcblock/react-hooks/-/react-hooks-2.5.42.tgz#7046bfc240e450dd4def0eac723287fd294b5328"
-  integrity sha512-XnjnTi9+VYnIy1+4jrvBIMHZgcy+OvHJa9MXVWq1vaJ2XZsrO6xH5Ef5uI/JfqDoP1RTX9OZJptul8GR2lVNmQ==
+"@arcblock/react-hooks@^2.5.45":
+  version "2.5.45"
+  resolved "https://registry.yarnpkg.com/@arcblock/react-hooks/-/react-hooks-2.5.45.tgz#ee77e13f9b70c16598ea65c69930217fd4b5207d"
+  integrity sha512-8TJ4zMOttwgK2ZwgPwz+vkX7OJo6BbcyOLn37Hwj7m0Ivz3P+Wn+RxP+BW4poTdsE71EI/A4o5kNFGC/PmPJbA==
   dependencies:
     core-js "^3.25.5"
     event-target-shim "^5.0.1"
@@ -287,14 +287,14 @@
     lodash.isnull "^3.0.0"
     lodash.set "^4.3.2"
 
-"@arcblock/ux@^2.5.42":
-  version "2.5.42"
-  resolved "https://registry.yarnpkg.com/@arcblock/ux/-/ux-2.5.42.tgz#5a210927092b12a05ad0b77f9f5c33c58ec27381"
-  integrity sha512-VlPJ9wogmOM85rXn6x7D9JAnen4HhZauzWkKR59iRicuAxHBNgENCswScfIUtYEoG1fpQXA/b1CV0ECuYzYlxw==
+"@arcblock/ux@^2.5.45":
+  version "2.5.45"
+  resolved "https://registry.yarnpkg.com/@arcblock/ux/-/ux-2.5.45.tgz#8bed06bbe8ba8aa71b0ee550f9f3b1dd562985bb"
+  integrity sha512-bzBeXqkD3yBBztgfiHn+xSbyQPR7/keH66jmNNQRSKVtwNs/2viZlJse/Irj7BRKbD1QHVUbSwz6tHhcY9aoJw==
   dependencies:
     "@arcblock/did-motif" "^1.1.10"
-    "@arcblock/icons" "^2.5.42"
-    "@arcblock/react-hooks" "^2.5.42"
+    "@arcblock/icons" "^2.5.45"
+    "@arcblock/react-hooks" "^2.5.45"
     "@babel/plugin-syntax-dynamic-import" "^7.8.3"
     "@emotion/react" "^11.10.4"
     "@emotion/styled" "^11.10.4"
@@ -356,7 +356,7 @@
     json-stable-stringify "^1.0.1"
     lodash "^4.17.21"
 
-"@arcblock/ws@1.18.80", "@arcblock/ws@^1.18.78", "@arcblock/ws@^1.18.80":
+"@arcblock/ws@1.18.80", "@arcblock/ws@^1.18.80":
   version "1.18.80"
   resolved "https://registry.yarnpkg.com/@arcblock/ws/-/ws-1.18.80.tgz#6d52f051929ec9700548b74024f82b9770adf3dc"
   integrity sha512-hLYYlvvHstbEDqrLRX4Q6IPOJp99dt7UYzcJloNUE6HMnaaEYM/PFwC6VBbYVIgIdRCd3f6r/EA54PQL4rvePw==
@@ -1609,13 +1609,13 @@
     ufo "^1.1.1"
     url-join "^4.0.1"
 
-"@blocklet/ui-react@^2.5.42":
-  version "2.5.42"
-  resolved "https://registry.yarnpkg.com/@blocklet/ui-react/-/ui-react-2.5.42.tgz#e30e758ef2974d0c7f4169635211207cbf2df1dc"
-  integrity sha512-0kxFfUh3gxq4dh3ZiHrX/wNvo5/x0xcbByEBKXetO2OfdYHUBh5Z3rhMhPgT4COSIM2PTqoTy07r8d6hV5rBgA==
+"@blocklet/ui-react@^2.5.45":
+  version "2.5.45"
+  resolved "https://registry.yarnpkg.com/@blocklet/ui-react/-/ui-react-2.5.45.tgz#8bf22bc49dbd983811ba7f05016997d5c6e4da25"
+  integrity sha512-Wc5dgbBw49RhzI2p2+xpv3/kfYyvKWcsjn+c/h1wxZejqPSRmIWIJsxOHtxBlPfNWbvdsaCtRQxt6HVOHoMiWg==
   dependencies:
-    "@arcblock/did-connect" "^2.5.42"
-    "@arcblock/ux" "^2.5.42"
+    "@arcblock/did-connect" "^2.5.45"
+    "@arcblock/ux" "^2.5.45"
     "@emotion/react" "^11.10.4"
     "@emotion/styled" "^11.10.4"
     "@iconify/iconify" "^2.2.1"
