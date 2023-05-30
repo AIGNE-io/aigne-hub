@@ -16,7 +16,9 @@ export default function useConversation({
   textCompletions: (
     prompt: string | ChatCompletionRequestMessage[],
     options: { meta?: any }
-  ) => Promise<ReadableStream<any>>;
+  ) => Promise<
+    ReadableStream<string | Uint8Array | { type: 'text'; text: string } | { type: 'images'; images: { url: string }[] }>
+  >;
   imageGenerations?: (
     prompt: { prompt: string; n: number; size: string },
     options: { meta?: any }
@@ -60,38 +62,55 @@ export default function useConversation({
           }
         }
 
-        const response = await textCompletions(prompt, { meta });
+        const result = await textCompletions(prompt, { meta });
 
-        const reader = response.getReader();
+        const isText = (i: any): i is { type: 'text'; text: string } => i.type === 'text';
+        const isImages = (i: any): i is { type: 'images'; images: { url: string }[] } => i.type === 'images';
+
+        const reader = result.getReader();
         const decoder = new TextDecoder();
 
-        let text = '';
+        let response: MessageItem['response'] = '';
 
         for (;;) {
           const { value, done } = await reader.read();
-          const chunkValue = decoder.decode(value);
-          text += chunkValue;
+          if (value) {
+            let delta = '';
 
-          setMessages((v) =>
-            produce(v, (draft) => {
-              const item = draft.find((i) => i.id === id);
-              if (!item || item.loading === false) {
-                return;
-              }
+            if (typeof value === 'string') {
+              delta = value;
+            } else if (isText(value)) {
+              response = value.text;
+            } else if (isImages(value)) {
+              response = value.images;
+            } else {
+              delta = decoder.decode(value);
+            }
 
-              item.response ??= '';
-              item.response += chunkValue;
-              item.loading = !done;
-            })
-          );
+            if (typeof response === 'string' && delta) {
+              response += delta;
+            }
 
-          scrollToBottom?.();
+            setMessages((v) =>
+              produce(v, (draft) => {
+                const item = draft.find((i) => i.id === id);
+                if (!item || item.loading === false) {
+                  return;
+                }
+
+                item.response = response;
+                item.loading = !done;
+              })
+            );
+
+            scrollToBottom?.();
+          }
 
           if (done) {
             break;
           }
         }
-        return { id, text };
+        return { id, text: response };
       } catch (error) {
         setMessages((v) =>
           produce(v, (draft) => {

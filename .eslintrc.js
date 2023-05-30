@@ -24,5 +24,6 @@ module.exports = {
     'react-hooks/exhaustive-deps': 'warn',
     'react/no-array-index-key': 'warn',
     'jsx-a11y/no-noninteractive-element-interactions': 'off',
+    '@typescript-eslint/no-loop-func': 'off',
   },
 };
