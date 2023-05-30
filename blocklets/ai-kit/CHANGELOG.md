@@ -1,3 +1,7 @@
+## 0.0.60 (2023-5-30)
+
+- feat: support image response
+
 ## 0.0.59 (2023-5-27)
 
 - feat: add embeddings api
