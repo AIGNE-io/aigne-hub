@@ -1,3 +1,7 @@
+## 0.0.62 (2023-6-25)
+
+- chore: update deps
+
 ## 0.0.61 (2023-6-19)
 
 - chore: update deps
