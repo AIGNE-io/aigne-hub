@@ -15,6 +15,7 @@ import {
 } from 'openai';
 
 import env from '../libs/env';
+import logger from '../libs/logger';
 import { ensureAdmin } from '../libs/security';
 
 function getAIProvider() {
@@ -70,30 +71,32 @@ async function completions(req: Request, res: Response) {
     temperature,
   };
 
+  if (env.verbose) logger.log('AI Kit completions input:', request);
+
+  let text = '';
+
   if (stream) {
     const r: AxiosResponse<IncomingMessage> = (await openai.createChatCompletion(request, {
       responseType: 'stream',
     })) as any;
 
     const decoder = new TextDecoder();
-    let hasText = false;
 
     const onParse = (event: ParsedEvent | ReconnectInterval) => {
       if (event.type === 'event') {
         const { data } = event;
-        // https://beta.openai.com/docs/api-reference/completions/create#completions/create-stream
         if (data === '[DONE]') {
           return;
         }
+
         const json = JSON.parse(data);
-        let text: string = json.choices[0].delta.content || '';
-        if (!hasText) {
-          text = text.trimStart();
-        }
-        if (text) {
-          hasText = true;
-          res.write(text);
-        }
+
+        let delta: string = json.choices[0].delta.content || '';
+        if (!text) delta = delta.trimStart();
+
+        text += delta;
+
+        if (delta) res.write(delta);
       }
     };
 
@@ -102,12 +105,15 @@ async function completions(req: Request, res: Response) {
     for await (const chunk of r.data) {
       parser.feed(decoder.decode(chunk));
     }
+
     res.end();
   } else {
-    const r = await openai.createChatCompletion(request);
+    text = (await openai.createChatCompletion(request)).data.choices[0]?.message?.content.trim() ?? '';
 
-    res.json({ text: r.data.choices[0]?.message?.content.trim() });
+    res.json({ text });
   }
+
+  if (env.verbose) logger.log('AI Kit completions output:', { text });
 }
 
 router.post('/completions', ensureAdmin, completions);
@@ -145,11 +151,14 @@ const imageGenerationRequestSchema = Joi.object<{
 });
 
 async function imageGenerations(req: Request, res: Response) {
-  const data = await imageGenerationRequestSchema.validateAsync(req.body, { stripUnknown: true });
+  const input = await imageGenerationRequestSchema.validateAsync(req.body, { stripUnknown: true });
+
+  if (env.verbose) logger.log('AI Kit image generations input:', input);
 
   const openai = getAIProvider();
 
-  const response = await openai.createImage(data);
+  const response = await openai.createImage(input);
+
   res.json({
     data: response.data.data,
   });

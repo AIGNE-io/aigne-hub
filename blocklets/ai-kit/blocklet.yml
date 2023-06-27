@@ -52,6 +52,12 @@ environments:
     default: ''
     secure: true
     shared: false
+  - name: VERBOSE
+    description: Logging input and output of AI
+    required: false
+    default: 'false'
+    secure: false
+    shared: false
 capabilities:
   clusterMode: false
   component: true

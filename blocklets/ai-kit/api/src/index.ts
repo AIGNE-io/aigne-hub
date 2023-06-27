@@ -45,16 +45,19 @@ app.use(<ErrorRequestHandler>((error, _req, res, _next) => {
   if (isAxiosError(error)) {
     const { response } = error;
 
-    if (response) {
-      res.status(response.status);
-      const type = response.headers['content-type'];
-      if (type) res.type(type);
-      response.data.pipe(res);
+    if (response?.data) {
+      if (!res.headersSent) {
+        res.status(response.status);
+        const type = response.headers['content-type'];
+        if (type) res.type(type);
+      }
+      if (res.writable) response.data.pipe(res);
       return;
     }
   }
 
-  res.status(500).json({ error: { message: error.message } });
+  if (!res.headersSent) res.status(500);
+  if (res.writable) res.json({ error: { message: error.message } });
 }));
 
 const port = parseInt(process.env.BLOCKLET_PORT!, 10);
