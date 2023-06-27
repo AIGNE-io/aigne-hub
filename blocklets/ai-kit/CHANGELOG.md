@@ -1,3 +1,8 @@
+## 0.0.63 (2023-6-27)
+
+- chore: update deps
+- feat: support logging ai input and output by `VERBOSE` env config
+
 ## 0.0.62 (2023-6-25)
 
 - chore: update deps
