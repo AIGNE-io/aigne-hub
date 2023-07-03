@@ -2,10 +2,10 @@
 # yarn lockfile v1
 
 
-"@abtnode/client@1.16.12":
-  version "1.16.12"
-  resolved "https://registry.yarnpkg.com/@abtnode/client/-/client-1.16.12.tgz#47a5430fff5f9f6461c83c438133abfb20de11f7"
-  integrity sha512-wnHNWAElGZUQlJopAqOW1G3m7Ge0PDgqjjd614i/lsGbXvPktkc48VOQiOL/ipYr3jxu+QWPdrsQdVzBZHpnHQ==
+"@abtnode/client@1.16.13":
+  version "1.16.13"
+  resolved "https://registry.yarnpkg.com/@abtnode/client/-/client-1.16.13.tgz#5be29fb04f2bcfd732eb6ccd5f59068cbf7f27a4"
+  integrity sha512-PLlXssJ6eNHxMrCET1/bTPkZ1Ia4kDnWyK/ajBqqv3TW9Sa0VYTLpkw4oFIMFmeqOcZCGXxkFqBX+1ICpC4ZjA==
   dependencies:
     "@arcblock/sdk-util" "^0.34.0"
     "@ocap/util" "1.18.84"
@@ -18,17 +18,17 @@
     lodash "^4.17.21"
     react-app-polyfill "^1.0.6"
 
-"@abtnode/constant@1.16.12":
-  version "1.16.12"
-  resolved "https://registry.yarnpkg.com/@abtnode/constant/-/constant-1.16.12.tgz#bf19d2f35cab72975dd08c67cecf30d500085d50"
-  integrity sha512-YM4KFVcmlDrOMxDlmPdBcAvEU6YrzLtzyxtTcm9U8igtK+rCRcqjOTWGMugg7KXsBWMH+S2HRMWN6bQPH62+WA==
+"@abtnode/constant@1.16.13":
+  version "1.16.13"
+  resolved "https://registry.yarnpkg.com/@abtnode/constant/-/constant-1.16.13.tgz#13851ee5d10191ef9c9d3fa8c91fd04abdd22c8b"
+  integrity sha512-F2zSR5Z3hdxNqOkHdNM56m0kq8bQUu6gSHAa8oNE0HcFze7yqRLOQDBrch2Ao/7X4LcLKxjd1kRzQ+lEBD5Y7Q==
 
-"@abtnode/logger@1.16.12":
-  version "1.16.12"
-  resolved "https://registry.yarnpkg.com/@abtnode/logger/-/logger-1.16.12.tgz#31e9c41c7d7241988202d18e01e07a4a552614e2"
-  integrity sha512-gbARXXHwQYE3y5MAYcieTFeZN9G43VRdQShtMC+64iGKkC5caC/r04D26yGgAH03pOMI3OHJWuDKSGuXxpLsRg==
+"@abtnode/logger@1.16.13":
+  version "1.16.13"
+  resolved "https://registry.yarnpkg.com/@abtnode/logger/-/logger-1.16.13.tgz#5d389602c0e435f46f3b322c33c5f5ba16188c7c"
+  integrity sha512-2A+kFk2QmiMJCfpjmK97+D7b5daK7eSTsMjC3W1PKhljLQzDCqGOMFvHnZS9IyJlEjmqN+Wz3JajdeFaZS907g==
   dependencies:
-    "@abtnode/constant" "1.16.12"
+    "@abtnode/constant" "1.16.13"
     debug "^4.3.4"
     fast-safe-stringify "^2.1.1"
     fs-extra "^10.1.0"
@@ -38,14 +38,14 @@
     winston "^3.8.2"
     winston-daily-rotate-file "^4.7.1"
 
-"@abtnode/util@1.16.12":
-  version "1.16.12"
-  resolved "https://registry.yarnpkg.com/@abtnode/util/-/util-1.16.12.tgz#0850ab1fda7fd6c1fa98d62345854c8d479ea8d2"
-  integrity sha512-s9J4CpaE07zmh9rxH+42X5woQfqPJhxDZX43EXfCCAgLmkxTyu2j+cOdigVrwoEZzQpIWP0pd+o9H2wYOQdtYA==
+"@abtnode/util@1.16.13":
+  version "1.16.13"
+  resolved "https://registry.yarnpkg.com/@abtnode/util/-/util-1.16.13.tgz#463e69119992567a1ccb12159f2fcdb981d9e2ac"
+  integrity sha512-sHJwh56VXtlFux1FUfI8WRGGsPKzoMU6f6OZ8GUVQ9Qx9HGNQ5BHvC9Z9A8+XG1jnBx8yNsJpFQzrStzHdGw3Q==
   dependencies:
-    "@abtnode/constant" "1.16.12"
-    "@abtnode/logger" "1.16.12"
-    "@blocklet/constant" "1.16.12"
+    "@abtnode/constant" "1.16.13"
+    "@abtnode/logger" "1.16.13"
+    "@blocklet/constant" "1.16.13"
     "@ocap/client" "1.18.84"
     "@ocap/mcrypto" "1.18.84"
     "@ocap/util" "1.18.84"
@@ -54,8 +54,10 @@
     axios "^0.27.2"
     axios-mock-adapter "^1.21.2"
     axon "^2.0.3"
+    cookie "^0.5.0"
+    cookie-parser "^1.4.6"
     cross-spawn "^7.0.3"
-    dayjs "^1.11.7"
+    dayjs "^1.11.8"
     debug "^4.3.4"
     fast-glob "^3.2.12"
     find-up "^5.0.0"
@@ -130,14 +132,14 @@
     semver "^7.3.8"
     tweetnacl-sealedbox-js "^1.2.0"
 
-"@arcblock/did-connect@^2.5.53", "@arcblock/did-connect@^2.5.54":
-  version "2.5.54"
-  resolved "https://registry.yarnpkg.com/@arcblock/did-connect/-/did-connect-2.5.54.tgz#b72519a8c0f5fa4bf79da66fefb981813396637f"
-  integrity sha512-6XZoI634SnCO1IR+4v11lYfNsqETPnTJ/ntTd61IJlmRyDY1de3jbyRHsEc0xpZJ+7r8yW5RT/pHAe90wYzl5A==
+"@arcblock/did-connect@^2.5.58":
+  version "2.5.58"
+  resolved "https://registry.yarnpkg.com/@arcblock/did-connect/-/did-connect-2.5.58.tgz#b0b3429d8bdc65efd081f5068d461d2659bf29dc"
+  integrity sha512-gokS/WRpWxsyQ8DQWKqtbSzZeHyFTrsOChVum/LJp47V+qaHLOKEbq5kHjhqnOZe2TzhUpFOwa7nsF2XKspArQ==
   dependencies:
-    "@arcblock/icons" "^2.5.54"
-    "@arcblock/react-hooks" "^2.5.54"
-    "@arcblock/ux" "^2.5.54"
+    "@arcblock/icons" "^2.5.58"
+    "@arcblock/react-hooks" "^2.5.58"
+    "@arcblock/ux" "^2.5.58"
     "@arcblock/ws" "^1.18.84"
     "@auth0/auth0-react" "^2.0.1"
     "@emotion/react" "^11.10.4"
@@ -171,10 +173,10 @@
     debug "^4.3.4"
     lodash "^4.17.21"
 
-"@arcblock/did-motif@^1.1.10":
-  version "1.1.10"
-  resolved "https://registry.yarnpkg.com/@arcblock/did-motif/-/did-motif-1.1.10.tgz#7187ad1e9e7f1cb971a740302d65c3d5ed8656d2"
-  integrity sha512-0y1UBuH0vDNpbA/IjW4NKUidKUHXUESCd2Oojc4v7fGFfaUgslJVAy/5P9lx9g5pYxRkkRhnz8zdO3Kj4H631A==
+"@arcblock/did-motif@^1.1.12":
+  version "1.1.12"
+  resolved "https://registry.yarnpkg.com/@arcblock/did-motif/-/did-motif-1.1.12.tgz#e4fa2eb57660021506ded2f86fecff2423c16ac2"
+  integrity sha512-CFSdvks9LpFyheA6MmkgWl796JbBKIMQxBC6Fq76PniYeSEb6efojZ3WfjRDowls0QHr9r9U7plWxX/jM2omrA==
   dependencies:
     bs58 "^5.0.0"
 
@@ -251,10 +253,10 @@
     amp-message "~0.1.2"
     axon "^2.0.3"
 
-"@arcblock/icons@^2.5.54":
-  version "2.5.54"
-  resolved "https://registry.yarnpkg.com/@arcblock/icons/-/icons-2.5.54.tgz#6c09a1e37442e5d02a70cbc91678e88172208efe"
-  integrity sha512-0gq1QVjjaSCIXlk1bH/P9c2HHbA7clsV0TLyv24Fe4ppcFTOikgHGYVh6Uf3WuqHJnTFMGX0Boao18JBjY9zgw==
+"@arcblock/icons@^2.5.58":
+  version "2.5.58"
+  resolved "https://registry.yarnpkg.com/@arcblock/icons/-/icons-2.5.58.tgz#fdf00049e4f79e4c3cfa5d9b6f8f7c1747101f3e"
+  integrity sha512-PL3j8yWXu9y8/bJ3XiIRAU1aO0m2bnYeOddazquWQR8ExCDTqUqq5ySaKcPHCYviZAsHCMhRCnk2H82KsrsTmw==
 
 "@arcblock/jwt@1.18.84", "@arcblock/jwt@^1.18.80":
   version "1.18.84"
@@ -268,10 +270,10 @@
     json-stable-stringify "^1.0.1"
     semver "^7.3.8"
 
-"@arcblock/react-hooks@^2.5.54":
-  version "2.5.54"
-  resolved "https://registry.yarnpkg.com/@arcblock/react-hooks/-/react-hooks-2.5.54.tgz#6de92f349c4f37f94884a720c318f027a63a459c"
-  integrity sha512-FhN+0E6vP/U6ZKk/ozNOKF4qnRjz43bp+qbCn9JcYTq39cu25ivx4F6K0QYmhCkJb4cGYeia2wF5WYlPw2b0gQ==
+"@arcblock/react-hooks@^2.5.58":
+  version "2.5.58"
+  resolved "https://registry.yarnpkg.com/@arcblock/react-hooks/-/react-hooks-2.5.58.tgz#d3665fce557073447c3e71841c1b586db88665fb"
+  integrity sha512-oKTGrk+N0x32UZa5s+UKbRjum79C88GoWxpTiO/S4r1INhh7UKf4GKxvX5Uu/MD6+aRAGvirB6vgZTDoia5wJQ==
   dependencies:
     core-js "^3.25.5"
     event-target-shim "^5.0.1"
@@ -289,14 +291,14 @@
     lodash.isnull "^3.0.0"
     lodash.set "^4.3.2"
 
-"@arcblock/ux@^2.5.54":
-  version "2.5.54"
-  resolved "https://registry.yarnpkg.com/@arcblock/ux/-/ux-2.5.54.tgz#65002d8a3c9928b9e07e1f9f92d4e43359acc342"
-  integrity sha512-nXV1duNfhuzoNaZRzSx595YmbPZsrAVZnPnvEYA+CUWQCqPrPKSYMJjTPs0e/icH2qpDvm8f3o6xX5dumA/JJQ==
+"@arcblock/ux@^2.5.58":
+  version "2.5.58"
+  resolved "https://registry.yarnpkg.com/@arcblock/ux/-/ux-2.5.58.tgz#04d746d03fac198587aac040a10b44626adfcac3"
+  integrity sha512-L/kLKSGwS8BscJjHZs4xm0DAUTiw3+PciXz9eo43dPv+fBro53IaKJ+YB8lJGDLltb84PDFF5ey7QouoaivRMw==
   dependencies:
-    "@arcblock/did-motif" "^1.1.10"
-    "@arcblock/icons" "^2.5.54"
-    "@arcblock/react-hooks" "^2.5.54"
+    "@arcblock/did-motif" "^1.1.12"
+    "@arcblock/icons" "^2.5.58"
+    "@arcblock/react-hooks" "^2.5.58"
     "@babel/plugin-syntax-dynamic-import" "^7.8.3"
     "@emotion/react" "^11.10.4"
     "@emotion/styled" "^11.10.4"
@@ -1532,30 +1534,30 @@
   resolved "https://registry.yarnpkg.com/@bcoe/v8-coverage/-/v8-coverage-0.2.3.tgz#75a2e8b51cb758a7553d6804a5932d7aace75c39"
   integrity sha512-0hYQ8SB4Db5zvZB4axdMHGwEaQjkZzFjQiN9LVYvIFB2nSUHW9tYpxWriPrWDASIxiaXax83REcLxuSdnGPZtw==
 
-"@blocklet/constant@1.16.12":
-  version "1.16.12"
-  resolved "https://registry.yarnpkg.com/@blocklet/constant/-/constant-1.16.12.tgz#5b55da70ca0f4243ea54af7e694a0531e2db3862"
-  integrity sha512-+NAD99YbYyWGsuWtDRYfB+LXtHqMd4bA34ap8l8Oa8+xlYhbbnMGg9+EG6nClpfCuMmtE1b9mbC3AXJdpSZcag==
+"@blocklet/constant@1.16.13":
+  version "1.16.13"
+  resolved "https://registry.yarnpkg.com/@blocklet/constant/-/constant-1.16.13.tgz#abae754d69efaef314dea6e92e981fbedd8c287a"
+  integrity sha512-4CyTjUzPHo7/zvLp7esCScqcQD8xXctJwHfSvF5f2sKCSfoW1zFvNjXakpb8HSkhXD9QXp9+xWqWxuxmavORmg==
 
-"@blocklet/env@1.16.12":
-  version "1.16.12"
-  resolved "https://registry.yarnpkg.com/@blocklet/env/-/env-1.16.12.tgz#0a01e5d665301405b1bbc04c4b0420b8253ef054"
-  integrity sha512-T4vxIjet6cw20za1Tg/qXqggiuQdd1Pj9ZHViT4L5IzlgcvFX9HgdW1gWh/hOdKT9P68R9Lbq0yR+r8IAHeoPg==
+"@blocklet/env@1.16.13":
+  version "1.16.13"
+  resolved "https://registry.yarnpkg.com/@blocklet/env/-/env-1.16.13.tgz#029c2ec5bb21b03e27c17f048af0c753715033d6"
+  integrity sha512-SpehTs7v7iVxhlQlHkuvJPUc4HH15/2g0dsOdET8nZx34EbB49HWdYYfr3wF9rJnXsDX3lMuVUHaIqmXQ+5w5g==
   dependencies:
-    "@blocklet/constant" "1.16.12"
+    "@blocklet/constant" "1.16.13"
 
-"@blocklet/meta@1.16.12":
-  version "1.16.12"
-  resolved "https://registry.yarnpkg.com/@blocklet/meta/-/meta-1.16.12.tgz#af3a52ffb78d76019200b0f068e5dd7fb0c55f61"
-  integrity sha512-F/EESCv9HAXGUnUnA6XXG7gVLRhbQdx4yibSMNRqtSHR3EmodssGXAMv2QfsTsKUjX0BDc3dGm3kuxUyv7cssg==
+"@blocklet/meta@1.16.13":
+  version "1.16.13"
+  resolved "https://registry.yarnpkg.com/@blocklet/meta/-/meta-1.16.13.tgz#9d79d37218bcb1f7eacf2da59b15993c8dcd9350"
+  integrity sha512-7lHRQsQ+PLmaH6HcOD8i8+QPuW/Pv4fqYjxgL/kfRTJJ2eqrMV1RFbrEGXK4HFmlY28NHjXBpIjlFr1+K+ci4w==
   dependencies:
-    "@abtnode/constant" "1.16.12"
-    "@abtnode/util" "1.16.12"
+    "@abtnode/constant" "1.16.13"
+    "@abtnode/util" "1.16.13"
     "@arcblock/did" "1.18.84"
     "@arcblock/did-ext" "1.18.84"
     "@arcblock/did-util" "1.18.84"
     "@arcblock/jwt" "1.18.84"
-    "@blocklet/constant" "1.16.12"
+    "@blocklet/constant" "1.16.13"
     "@ocap/asset" "1.18.84"
     "@ocap/mcrypto" "1.18.84"
     "@ocap/types" "1.18.84"
@@ -1582,20 +1584,20 @@
     utility-types "^3.10.0"
     validate-npm-package-name "^3.0.0"
 
-"@blocklet/sdk@^1.16.12":
-  version "1.16.12"
-  resolved "https://registry.yarnpkg.com/@blocklet/sdk/-/sdk-1.16.12.tgz#80d7788ae9e1015257c7f3c487e0fbb4b15192d0"
-  integrity sha512-HTjLEg7gyF1ZzJbhbrihZKxxHlNt66OMfBUtmNoX64WU1+wamcmkx3XO1xtwnnUYBI4fy4IvpLkDhFxjGCN2GQ==
+"@blocklet/sdk@^1.16.13":
+  version "1.16.13"
+  resolved "https://registry.yarnpkg.com/@blocklet/sdk/-/sdk-1.16.13.tgz#29828279621d0ff1e38711d78ad53e1e1bc82c84"
+  integrity sha512-BWWodZFwtLGWntoGCVTdYWIkeK01tPJpBkzcZMGATkrmiImmeHZjukux5RLl/8GAyhI7Hk1i/kfL1hxVUH+vog==
   dependencies:
-    "@abtnode/client" "1.16.12"
-    "@abtnode/constant" "1.16.12"
+    "@abtnode/client" "1.16.13"
+    "@abtnode/constant" "1.16.13"
     "@arcblock/did" "1.18.84"
     "@arcblock/did-auth" "1.18.84"
     "@arcblock/jwt" "1.18.84"
     "@arcblock/ws" "1.18.84"
-    "@blocklet/constant" "1.16.12"
-    "@blocklet/env" "1.16.12"
-    "@blocklet/meta" "1.16.12"
+    "@blocklet/constant" "1.16.13"
+    "@blocklet/env" "1.16.13"
+    "@blocklet/meta" "1.16.13"
     "@did-connect/authenticator" "^2.1.59"
     "@did-connect/handler" "^2.1.59"
     "@nedb/core" "^2.1.5"
@@ -1612,13 +1614,13 @@
     ufo "^1.1.1"
     url-join "^4.0.1"
 
-"@blocklet/ui-react@^2.5.54":
-  version "2.5.54"
-  resolved "https://registry.yarnpkg.com/@blocklet/ui-react/-/ui-react-2.5.54.tgz#0d6d3ca52655e80a17222301c588e842845fa74e"
-  integrity sha512-4K4pcBJTHhBfEsuT8wSPS70OwvTF0GFBBLH31DXv+z0Noy8XnHw9atTH/4CEOd9GdLe/xb3fgZl7CNdSDREhMA==
+"@blocklet/ui-react@^2.5.58":
+  version "2.5.58"
+  resolved "https://registry.yarnpkg.com/@blocklet/ui-react/-/ui-react-2.5.58.tgz#107f42556db47205f7bf4432e26d340997ab4fa5"
+  integrity sha512-wScMAoapbRw0a6CEIunNPP3BOa0d9Vb02mL4nSZWTiYj6epXfz9iMXTexbTE1jnWkWFXXmZ18PZ8mjNIdC9H5w==
   dependencies:
-    "@arcblock/did-connect" "^2.5.54"
-    "@arcblock/ux" "^2.5.54"
+    "@arcblock/did-connect" "^2.5.58"
+    "@arcblock/ux" "^2.5.58"
     "@emotion/react" "^11.10.4"
     "@emotion/styled" "^11.10.4"
     "@iconify/iconify" "^2.2.1"
@@ -6661,7 +6663,7 @@ cookie@0.4.1:
   resolved "https://registry.npmjs.org/cookie/-/cookie-0.4.1.tgz"
   integrity sha512-ZwrFkGJxUR3EIoXtO+yVE69Eb7KlixbaeAWfBQB9vVsNn/o+Yw69gBWSSDK825hQNdN+wF8zELf3dFNl/kxkUA==
 
-cookie@0.5.0:
+cookie@0.5.0, cookie@^0.5.0:
   version "0.5.0"
   resolved "https://registry.npmjs.org/cookie/-/cookie-0.5.0.tgz"
   integrity sha512-YZ3GUyn/o8gfKJlnlX7g7xq4gyO6OSuhGPKaaGssGB2qgDUS0gPgtTvoyZLTt9Ab6dC4hfc9dV5arkvc/OCmrw==
@@ -7007,10 +7009,10 @@ data-uri-to-buffer@^4.0.0:
   resolved "https://registry.npmjs.org/data-uri-to-buffer/-/data-uri-to-buffer-4.0.0.tgz"
   integrity sha512-Vr3mLBA8qWmcuschSLAOogKgQ/Jwxulv3RNE4FXnYWRGujzrRWQI4m12fQqRkwX06C0KanhLr4hK+GydchZsaA==
 
-dayjs@^1.11.5, dayjs@^1.11.7, dayjs@^1.9.1, dayjs@~1.11.5:
-  version "1.11.7"
-  resolved "https://registry.yarnpkg.com/dayjs/-/dayjs-1.11.7.tgz#4b296922642f70999544d1144a2c25730fce63e2"
-  integrity sha512-+Yw9U6YO5TQohxLcIkrXBeY73WP3ejHWVvx8XCk3gxvQDCTEmS48ZrSZCKciI7Bhl/uCMyxYtE9UqRILmFphkQ==
+dayjs@^1.11.5, dayjs@^1.11.8, dayjs@^1.9.1, dayjs@~1.11.5:
+  version "1.11.9"
+  resolved "https://registry.yarnpkg.com/dayjs/-/dayjs-1.11.9.tgz#9ca491933fadd0a60a2c19f6c237c03517d71d1a"
+  integrity sha512-QvzAURSbQ0pKdIye2txOzNaHmxtUBXerpY0FJsFXUMKbIZeFm5ht1LS/jFsrncjnmtv8HsG0W2g6c0zUjZWmpA==
 
 dayjs@~1.8.24:
   version "1.8.36"
