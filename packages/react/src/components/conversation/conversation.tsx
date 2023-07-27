@@ -1,6 +1,6 @@
 import { Error } from '@mui/icons-material';
 import { Alert, Avatar, Box, BoxProps, CircularProgress } from '@mui/material';
-import { isNil } from 'lodash';
+import isNil from 'lodash/isNil';
 import { ChatCompletionRequestMessage } from 'openai';
 import { ReactNode, RefObject, forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from 'react';
 
