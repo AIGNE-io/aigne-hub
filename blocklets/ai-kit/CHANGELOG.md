@@ -1,3 +1,7 @@
+## 0.0.65 (2023-7-27)
+
+- fix: import lodash on demand
+
 ## 0.0.64 (2023-7-3)
 
 - chore: update deps
