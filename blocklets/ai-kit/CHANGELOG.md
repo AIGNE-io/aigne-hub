@@ -1,3 +1,7 @@
+## 0.0.66 (2023-7-31)
+
+- fix: remove compression middleware
+
 ## 0.0.65 (2023-7-27)
 
 - fix: import lodash on demand
