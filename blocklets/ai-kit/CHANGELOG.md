@@ -1,3 +1,8 @@
+## 0.0.67 (2023-8-16)
+
+- fix: use smaller favicon
+- chore: update deps
+
 ## 0.0.66 (2023-7-31)
 
 - fix: remove compression middleware
