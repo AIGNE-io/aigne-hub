@@ -47,7 +47,7 @@ scripts:
   dev: npm run start
 environments:
   - name: OPENAI_API_KEY
-    description: Your OpenAI apiKey.
+    description: Your OpenAI apiKey separate with commas.
     required: false
     default: ''
     secure: true

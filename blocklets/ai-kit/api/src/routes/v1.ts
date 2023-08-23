@@ -8,25 +8,16 @@ import { GPTTokens } from 'gpt-tokens';
 import Joi from 'joi';
 import {
   ChatCompletionRequestMessage,
-  Configuration,
   CreateEmbeddingRequest,
   CreateImageRequestResponseFormatEnum,
   CreateImageRequestSizeEnum,
-  OpenAIApi,
 } from 'openai';
 
+import { getAIProvider } from '../libs/ai-provider';
 import env from '../libs/env';
 import logger from '../libs/logger';
 import { ensureAdmin } from '../libs/security';
 import Usage from '../store/models/usage';
-
-function getAIProvider() {
-  const { openaiApiKey } = env;
-  if (!openaiApiKey) {
-    throw new Error('Missing required openai apiKey');
-  }
-  return new OpenAIApi(new Configuration({ apiKey: openaiApiKey }));
-}
 
 const router = Router();
 
@@ -144,6 +135,7 @@ async function completions(req: Request, res: Response) {
   await Usage.create({
     promptTokens: tokens.promptUsedTokens,
     completionTokens: tokens.completionUsedTokens,
+    apiKey: openai.apiKey,
   });
 
   if (env.verbose) logger.log('AI Kit completions output:', { text });
