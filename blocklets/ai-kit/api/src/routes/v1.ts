@@ -122,14 +122,19 @@ async function completions(req: Request, res: Response) {
     res.end();
   } else {
     const result = await openai.createChatCompletion(request);
-    text = result.data.choices[0]?.message?.content.trim() ?? '';
+    text = result.data.choices[0]?.message?.content?.trim() ?? '';
 
     res.json({ text });
   }
 
   const tokens = new GPTTokens({
     model,
-    messages: messages.concat({ role: 'assistant', content: text }),
+    messages: messages
+      .concat({ role: 'assistant', content: text })
+      .filter(
+        (i): i is { role: GPTTokens['messages'][number]['role']; content: string } =>
+          i.role !== 'function' && Boolean(i.content)
+      ),
   });
 
   await Usage.create({
