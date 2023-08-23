@@ -13,7 +13,7 @@
     "bundle:api": "npm run clean && tsc -p tsconfig.api.json && blocklet bundle --zip --create-release",
     "deploy": "npm run bundle && blocklet deploy .blocklet/bundle",
     "upload": "npm run bundle && blocklet upload .blocklet/release/blocklet.json",
-    "update:deps": "npx taze -n '/arcblock|ocap|abtnode|blocklet|did-connect|did-comment|nedb/' -w && yarn && npm run deduplicate",
+    "update:deps": "npx taze -n '/arcblock|ocap|abtnode|blocklet|did-connect|did-comment|nedb/' -w && npm run deduplicate && yarn",
     "deduplicate": "npx yarn-deduplicate ../../yarn.lock"
   },
   "browserslist": {
@@ -31,11 +31,11 @@
   "dependencies": {
     "@arcblock/did-auth": "^1.18.89",
     "@arcblock/did-auth-storage-nedb": "^1.7.1",
-    "@arcblock/did-connect": "^2.7.8",
-    "@arcblock/ux": "^2.7.8",
+    "@arcblock/did-connect": "^2.7.11",
+    "@arcblock/ux": "^2.7.11",
     "@blocklet/ai-kit": "^0.0.68",
     "@blocklet/sdk": "^1.16.14",
-    "@blocklet/ui-react": "^2.7.8",
+    "@blocklet/ui-react": "^2.7.11",
     "@emotion/css": "^11.10.5",
     "@emotion/react": "^11.10.5",
     "@emotion/styled": "^11.10.5",
