@@ -1,3 +1,12 @@
+## 0.0.69 (2023-9-6)
+
+- chore: update deps
+
+## 0.0.68 (2023-8-23)
+
+- feat: support to use multiple apiKeys in turn
+- feat: record tokens usage per request
+
 ## 0.0.67 (2023-8-16)
 
 - fix: use smaller favicon

@@ -38,7 +38,7 @@ if (isProduction) {
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 app.use(<ErrorRequestHandler>((error, _req, res, _next) => {
-  logger.error(error.stack);
+  logger.error(error);
 
   if (isAxiosError(error)) {
     const { response } = error;
@@ -54,8 +54,11 @@ app.use(<ErrorRequestHandler>((error, _req, res, _next) => {
     }
   }
 
-  if (!res.headersSent) res.status(500);
-  if (res.writable) res.json({ error: { message: error.message } });
+  if (!res.headersSent) {
+    res.status(500);
+    res.contentType('json');
+  }
+  if (res.writable) res.write(JSON.stringify({ error: { message: error.message } }));
 }));
 
 const port = parseInt(process.env.BLOCKLET_PORT!, 10);
