@@ -1,5 +1,6 @@
 import { IncomingMessage } from 'http';
 
+import Config from '@blocklet/sdk/lib/config';
 import { component } from '@blocklet/sdk/lib/middlewares';
 import { AxiosResponse } from 'axios';
 import { ParsedEvent, ReconnectInterval, createParser } from 'eventsource-parser';
@@ -146,8 +147,28 @@ async function completions(req: Request, res: Response) {
   if (env.verbose) logger.log('AI Kit completions output:', { text });
 }
 
-router.post('/completions', ensureAdmin, completions);
-router.post('/sdk/completions', component.verifySig, completions);
+const retry = (callback: any): ((req: Request, res: Response) => Promise<void>) => {
+  const errorCodes = [429, 502];
+  const { preferences } = Config.env;
+
+  const fn = async (req: Request, res: Response, count: number = 0): Promise<void> => {
+    try {
+      await callback(req, res);
+    } catch (error) {
+      if (errorCodes.includes(error?.code) && count < preferences.MAX_RETRIES) {
+        await fn(req, res, count + 1);
+        return;
+      }
+
+      throw error;
+    }
+  };
+
+  return (req: Request, res: Response) => fn(req, res);
+};
+
+router.post('/completions', ensureAdmin, retry(completions));
+router.post('/sdk/completions', component.verifySig, retry(completions));
 
 const embeddingsRequestSchema = Joi.object<CreateEmbeddingRequest>({
   model: Joi.string().required(),

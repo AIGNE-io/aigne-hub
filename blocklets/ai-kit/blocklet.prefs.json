@@ -1,0 +1,51 @@
+{
+  "form": {
+    "labelCol": 6,
+    "wrapperCol": 12
+  },
+  "schema": {
+    "type": "object",
+    "properties": {
+      "p72faa2emzb": {
+        "type": "void",
+        "x-component": "FormTab",
+        "x-component-props": {},
+        "x-designable-id": "p72faa2emzb",
+        "properties": {
+          "doc1z1uo846": {
+            "type": "void",
+            "x-component": "FormTab.TabPane",
+            "x-component-props": {
+              "tab": "Settings"
+            },
+            "x-designable-id": "doc1z1uo846",
+            "properties": {
+              "MAX_RETRIES": {
+                "type": "number",
+                "title": "MAX RETRIES",
+                "x-decorator": "FormItem",
+                "x-component": "NumberPicker",
+                "x-validator": [
+                  {
+                    "triggerType": "onInput",
+                    "min": 0
+                  }
+                ],
+                "x-component-props": {},
+                "x-decorator-props": {},
+                "name": "MAX_RETRIES",
+                "default": 3,
+                "required": true,
+                "x-designable-id": "7m9oi0lw0c6",
+                "x-index": 0
+              }
+            },
+            "x-index": 0
+          }
+        },
+        "x-index": 0
+      }
+    },
+    "x-designable-id": "1e7qq05x9v4"
+  }
+}
