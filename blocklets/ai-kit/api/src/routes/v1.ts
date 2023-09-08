@@ -160,10 +160,10 @@ const retry = (callback: (req: Request, res: Response) => Promise<void>): any =>
 
   const fn = async (req: Request, res: Response, count: number = 0): Promise<void> => {
     try {
-      // mock error
       // if (count < 2) {
-      //   const err = new Error('message');
-      //   err.code = 502;
+      //   const err = new Error('mock error');
+      //   // @ts-ignore
+      //   err.code = 501;
       //   throw err;
       // }
       await callback(req, res);
@@ -174,7 +174,7 @@ const retry = (callback: (req: Request, res: Response) => Promise<void>): any =>
         return;
       }
 
-      throw error;
+      res.status(error.code).json({ message: error?.message });
     }
   };
 
