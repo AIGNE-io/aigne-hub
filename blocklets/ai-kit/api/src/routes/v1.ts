@@ -154,7 +154,7 @@ const retry = (callback: (req: Request, res: Response) => Promise<void>): any =>
     retryCodes: [429, 500, 502],
   };
 
-  function canRetry(error: any, retries: number) {
+  function canRetry(error: { code: number }, retries: number) {
     return options.retryCodes.includes(error.code) && retries <= options.maxRetries;
   }
 
