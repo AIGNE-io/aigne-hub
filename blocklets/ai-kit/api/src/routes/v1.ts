@@ -147,15 +147,29 @@ async function completions(req: Request, res: Response) {
   if (env.verbose) logger.log('AI Kit completions output:', { text });
 }
 
-const retry = (callback: any): ((req: Request, res: Response) => Promise<void>) => {
-  const errorCodes = [429, 502];
+const retry = (callback: (req: Request, res: Response) => Promise<void>): any => {
   const { preferences } = Config.env;
+  const options = {
+    maxRetries: preferences.MAX_RETRIES,
+    retryCodes: [429, 500, 502],
+  };
+
+  function canRetry(error: any, retries: number) {
+    return options.retryCodes.includes(error.code) && retries <= options.maxRetries;
+  }
 
   const fn = async (req: Request, res: Response, count: number = 0): Promise<void> => {
     try {
+      // mock error
+      // if (count < 2) {
+      //   const err = new Error('message');
+      //   err.code = 502;
+      //   throw err;
+      // }
       await callback(req, res);
     } catch (error) {
-      if (errorCodes.includes(error?.code) && count < preferences.MAX_RETRIES) {
+      if (canRetry(error, count)) {
+        logger.info('retry', count);
         await fn(req, res, count + 1);
         return;
       }
@@ -164,7 +178,9 @@ const retry = (callback: any): ((req: Request, res: Response) => Promise<void>) 
     }
   };
 
-  return (req: Request, res: Response) => fn(req, res);
+  return async (req: Request, res: Response): Promise<void> => {
+    await fn(req, res, 0);
+  };
 };
 
 router.post('/completions', ensureAdmin, retry(completions));
@@ -215,7 +231,7 @@ async function imageGenerations(req: Request, res: Response) {
   });
 }
 
-router.post('/image/generations', ensureAdmin, imageGenerations);
-router.post('/sdk/image/generations', component.verifySig, imageGenerations);
+router.post('/image/generations', ensureAdmin, retry(imageGenerations));
+router.post('/sdk/image/generations', component.verifySig, retry(imageGenerations));
 
 export default router;
