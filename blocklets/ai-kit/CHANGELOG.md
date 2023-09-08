@@ -1,3 +1,7 @@
+## 0.0.70 (2023-9-8)
+
+- feat: add retry callback
+
 ## 0.0.69 (2023-9-6)
 
 - chore: update deps
