@@ -193,8 +193,8 @@ async function embeddings(req: Request, res: Response) {
   res.json(data);
 }
 
-router.post('/embeddings', ensureAdmin, embeddings);
-router.post('/sdk/embeddings', component.verifySig, embeddings);
+router.post('/embeddings', ensureAdmin, retry(embeddings));
+router.post('/sdk/embeddings', component.verifySig, retry(embeddings));
 
 const imageGenerationRequestSchema = Joi.object<{
   prompt: string;
