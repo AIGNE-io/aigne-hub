@@ -149,10 +149,7 @@ async function completions(req: Request, res: Response) {
 
 const retry = (callback: (req: Request, res: Response) => Promise<void>): any => {
   const { preferences } = Config.env;
-  const options = {
-    maxRetries: preferences.MAX_RETRIES,
-    retryCodes: [429, 500, 502],
-  };
+  const options = { maxRetries: preferences.MAX_RETRIES, retryCodes: [429, 500, 502] };
 
   function canRetry(error: { code: number }, retries: number) {
     return options.retryCodes.includes(error.code) && retries <= options.maxRetries;
@@ -160,12 +157,6 @@ const retry = (callback: (req: Request, res: Response) => Promise<void>): any =>
 
   const fn = async (req: Request, res: Response, count: number = 0): Promise<void> => {
     try {
-      // if (count < 2) {
-      //   const err = new Error('mock error');
-      //   // @ts-ignore
-      //   err.code = 501;
-      //   throw err;
-      // }
       await callback(req, res);
     } catch (error) {
       if (canRetry(error, count)) {
