@@ -1,5 +1,6 @@
 import { IncomingMessage } from 'http';
 
+import Config from '@blocklet/sdk/lib/config';
 import { component } from '@blocklet/sdk/lib/middlewares';
 import { AxiosResponse } from 'axios';
 import { ParsedEvent, ReconnectInterval, createParser } from 'eventsource-parser';
@@ -146,8 +147,35 @@ async function completions(req: Request, res: Response) {
   if (env.verbose) logger.log('AI Kit completions output:', { text });
 }
 
-router.post('/completions', ensureAdmin, completions);
-router.post('/sdk/completions', component.verifySig, completions);
+const retry = (callback: (req: Request, res: Response) => Promise<void>): any => {
+  const { preferences } = Config.env;
+  const options = { maxRetries: preferences.MAX_RETRIES, retryCodes: [429, 500, 502] };
+
+  function canRetry(code: number, retries: number) {
+    return options.retryCodes.includes(code) && retries < options.maxRetries;
+  }
+
+  const fn = async (req: Request, res: Response, count: number = 0): Promise<void> => {
+    try {
+      await callback(req, res);
+    } catch (error) {
+      if (canRetry(error.response?.status, count)) {
+        logger.info('retry', count);
+        await fn(req, res, count + 1);
+        return;
+      }
+
+      throw error;
+    }
+  };
+
+  return async (req: Request, res: Response): Promise<void> => {
+    await fn(req, res, 0);
+  };
+};
+
+router.post('/completions', ensureAdmin, retry(completions));
+router.post('/sdk/completions', component.verifySig, retry(completions));
 
 const embeddingsRequestSchema = Joi.object<CreateEmbeddingRequest>({
   model: Joi.string().required(),
@@ -165,8 +193,8 @@ async function embeddings(req: Request, res: Response) {
   res.json(data);
 }
 
-router.post('/embeddings', ensureAdmin, embeddings);
-router.post('/sdk/embeddings', component.verifySig, embeddings);
+router.post('/embeddings', ensureAdmin, retry(embeddings));
+router.post('/sdk/embeddings', component.verifySig, retry(embeddings));
 
 const imageGenerationRequestSchema = Joi.object<{
   prompt: string;
@@ -194,7 +222,7 @@ async function imageGenerations(req: Request, res: Response) {
   });
 }
 
-router.post('/image/generations', ensureAdmin, imageGenerations);
-router.post('/sdk/image/generations', component.verifySig, imageGenerations);
+router.post('/image/generations', ensureAdmin, retry(imageGenerations));
+router.post('/sdk/image/generations', component.verifySig, retry(imageGenerations));
 
 export default router;
