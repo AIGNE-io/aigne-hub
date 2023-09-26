@@ -15,7 +15,7 @@ repository:
   type: git
   url: git+https://github.com/blocklet/ai-kit.git
 specVersion: 1.2.8
-version: 0.0.70
+version: 0.0.71
 logo: logo.png
 files:
   - dist
@@ -30,9 +30,9 @@ interfaces:
     prefix: '*'
     port: BLOCKLET_PORT
     protocol: http
-community: 'https://community.arcblock.io'
-documentation: 'https://developer.blocklet.io'
-homepage: 'https://store.blocklet.dev'
+community: https://community.arcblock.io
+documentation: https://developer.blocklet.io
+homepage: https://store.blocklet.dev
 license: ''
 payment:
   price: []
