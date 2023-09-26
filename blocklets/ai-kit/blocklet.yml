@@ -8,8 +8,9 @@ group: dapp
 did: z8ia3xzq2tMq8CRHfaXj1BTYJyYnEcHbqP8cJ
 main: api/dist/index.js
 author:
-  name: LiYechao
-  email: liyechao@yechao.xyz
+  name: arcblock
+  email: blocklet@arcblock.io
+  url: https://github.com/blocklet
 repository:
   type: git
   url: git+https://github.com/blocklet/ai-kit.git
@@ -29,9 +30,9 @@ interfaces:
     prefix: '*'
     port: BLOCKLET_PORT
     protocol: http
-community: ''
-documentation: ''
-homepage: ''
+community: 'https://community.arcblock.io'
+documentation: 'https://developer.blocklet.io'
+homepage: 'https://store.blocklet.dev'
 license: ''
 payment:
   price: []
