@@ -24,7 +24,8 @@ const router = Router();
 
 async function status(_: Request, res: Response) {
   const { openaiApiKey } = env;
-  res.json({ available: !!openaiApiKey });
+  const arr = Array.isArray(openaiApiKey) ? openaiApiKey : [openaiApiKey];
+  res.json({ available: !!arr.length });
 }
 
 router.get('/status', ensureAdmin, status);
