@@ -1,3 +1,7 @@
+## 0.0.72 (2023-9-27)
+
+- fix: check ai status
+
 ## 0.0.71 (2023-9-26)
 
 - chore: update author and links
