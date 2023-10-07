@@ -1,3 +1,7 @@
+## 0.0.73 (2023-10-7)
+
+- fix: include migration scripts
+
 ## 0.0.72 (2023-9-27)
 
 - fix: check ai status
