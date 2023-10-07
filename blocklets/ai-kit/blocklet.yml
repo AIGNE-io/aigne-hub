@@ -22,6 +22,7 @@ files:
   - logo.png
   - screenshots
   - docs
+  - api/dist/store/migrations/*.js
   - api/hooks/pre-start.js
 interfaces:
   - type: web
