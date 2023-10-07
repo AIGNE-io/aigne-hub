@@ -15,13 +15,14 @@ repository:
   type: git
   url: git+https://github.com/blocklet/ai-kit.git
 specVersion: 1.2.8
-version: 0.0.72
+version: 0.0.73
 logo: logo.png
 files:
   - dist
   - logo.png
   - screenshots
   - docs
+  - api/dist/store/migrations/*.js
   - api/hooks/pre-start.js
 interfaces:
   - type: web
