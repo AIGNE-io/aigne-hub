@@ -58,7 +58,10 @@ app.use(<ErrorRequestHandler>((error, _req, res, _next) => {
     res.status(500);
     res.contentType('json');
   }
+
   if (res.writable) res.write(JSON.stringify({ error: { message: error.message } }));
+
+  res.end();
 }));
 
 const port = parseInt(process.env.BLOCKLET_PORT!, 10);
