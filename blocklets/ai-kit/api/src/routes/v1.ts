@@ -48,9 +48,23 @@ export const Models = [
 export type Model = (typeof Models)[number];
 
 const completionsRequestSchema = Joi.object<
-  { stream?: boolean; model: Model; temperature?: number } & (
-    | { prompt: string; messages: undefined }
-    | { prompt: undefined; messages: ChatCompletionRequestMessage[] }
+  {
+    stream?: boolean;
+    model: Model;
+    temperature?: number;
+    topP?: number;
+    presencePenalty?: number;
+    frequencyPenalty?: number;
+    maxTokens?: number;
+  } & (
+    | {
+        prompt: string;
+        messages: undefined;
+      }
+    | {
+        prompt: undefined;
+        messages: ChatCompletionRequestMessage[];
+      }
   )
 >({
   model: Joi.string()
@@ -68,10 +82,14 @@ const completionsRequestSchema = Joi.object<
     .min(1),
   stream: Joi.boolean(),
   temperature: Joi.number().min(0).max(2),
+  topP: Joi.number().min(0.1).max(1).empty(null),
+  presencePenalty: Joi.number().min(-2).max(2).empty(null),
+  frequencyPenalty: Joi.number().min(-2).max(2).empty(null),
+  maxTokens: Joi.number().integer().min(1).empty(null),
 }).xor('prompt', 'messages');
 
 async function completions(req: Request, res: Response) {
-  const { model, stream, temperature, ...input } = await completionsRequestSchema.validateAsync(req.body, {
+  const { model, stream, ...input } = await completionsRequestSchema.validateAsync(req.body, {
     stripUnknown: true,
   });
 
@@ -83,7 +101,11 @@ async function completions(req: Request, res: Response) {
     model,
     messages,
     stream,
-    temperature,
+    temperature: input.temperature,
+    top_p: input.topP,
+    presence_penalty: input.presencePenalty,
+    frequency_penalty: input.frequencyPenalty,
+    max_tokens: input.maxTokens,
   };
 
   if (env.verbose) logger.log('AI Kit completions input:', request);

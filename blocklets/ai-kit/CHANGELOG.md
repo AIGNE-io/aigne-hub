@@ -1,3 +1,8 @@
+## 0.0.75 (2023-10-16)
+
+- chore: update deps
+- fix: support more model parameters
+
 ## 0.0.74 (2023-10-9)
 
 - fix: end error response
