@@ -1,10 +1,11 @@
 import { IncomingMessage } from 'http';
 
 import Config from '@blocklet/sdk/lib/config';
-import { component } from '@blocklet/sdk/lib/middlewares';
+import { auth, component } from '@blocklet/sdk/lib/middlewares';
 import { AxiosResponse } from 'axios';
 import { ParsedEvent, ReconnectInterval, createParser } from 'eventsource-parser';
 import { Request, Response, Router } from 'express';
+import proxy from 'express-http-proxy';
 import { GPTTokens } from 'gpt-tokens';
 import Joi from 'joi';
 import {
@@ -247,5 +248,19 @@ async function imageGenerations(req: Request, res: Response) {
 
 router.post('/image/generations', ensureAdmin, retry(imageGenerations));
 router.post('/sdk/image/generations', component.verifySig, retry(imageGenerations));
+
+const audioTranscriptions = proxy('api.openai.com', {
+  https: true,
+  proxyReqPathResolver() {
+    return '/v1/audio/transcriptions';
+  },
+  proxyReqOptDecorator(proxyReqOpts) {
+    proxyReqOpts.headers!.Authorization = `Bearer ${getAIProvider().apiKey}`;
+    return proxyReqOpts;
+  },
+});
+
+router.post('/audio/transcriptions', auth(), audioTranscriptions);
+router.post('/sdk/audio/transcriptions', component.verifySig, audioTranscriptions);
 
 export default router;

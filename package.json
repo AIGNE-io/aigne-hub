@@ -1,7 +1,7 @@
 {
   "name": "ai-kit",
   "private": true,
-  "version": "0.0.75",
+  "version": "0.0.76",
   "workspaces": [
     "blocklets/*",
     "packages/*"
@@ -44,10 +44,13 @@
     "husky": "^8.0.2",
     "import-sort-style-module": "^6.0.0",
     "lint-staged": "^12.5.0",
-    "prettier": "^2.8.4",
+    "prettier": "^2.3.0",
     "prettier-plugin-import-sort": "^0.0.7",
     "rimraf": "^3.0.2",
     "typescript": "^4.9.4",
     "zx": "^7.1.1"
+  },
+  "resolutions": {
+    "prettier": "^2.3.0"
   }
 }
