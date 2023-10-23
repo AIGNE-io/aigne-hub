@@ -1,3 +1,7 @@
+## 0.0.76 (2023-10-23)
+
+- feat: add audio transcriptions api
+
 ## 0.0.75 (2023-10-16)
 
 - chore: update deps
