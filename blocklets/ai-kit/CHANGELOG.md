@@ -1,3 +1,7 @@
+## 0.0.77 (2023-11-1)
+
+- fix: increase request body limit for audio transcriptions api
+
 ## 0.0.76 (2023-10-23)
 
 - feat: add audio transcriptions api
