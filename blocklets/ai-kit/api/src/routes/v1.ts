@@ -251,6 +251,7 @@ router.post('/sdk/image/generations', component.verifySig, retry(imageGeneration
 
 const audioTranscriptions = proxy('api.openai.com', {
   https: true,
+  limit: '10mb',
   proxyReqPathResolver() {
     return '/v1/audio/transcriptions';
   },
