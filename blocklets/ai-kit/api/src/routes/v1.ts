@@ -81,12 +81,12 @@ const completionsRequestSchema = Joi.object<
       })
     )
     .min(1),
-  stream: Joi.boolean(),
-  temperature: Joi.number().min(0).max(2),
-  topP: Joi.number().min(0.1).max(1).empty(null),
-  presencePenalty: Joi.number().min(-2).max(2).empty(null),
-  frequencyPenalty: Joi.number().min(-2).max(2).empty(null),
-  maxTokens: Joi.number().integer().min(1).empty(null),
+  stream: Joi.boolean().empty([null, '']),
+  temperature: Joi.number().min(0).max(2).empty([null, '']),
+  topP: Joi.number().min(0.1).max(1).empty([null, '']),
+  presencePenalty: Joi.number().min(-2).max(2).empty([null, '']),
+  frequencyPenalty: Joi.number().min(-2).max(2).empty([null, '']),
+  maxTokens: Joi.number().integer().min(1).empty([null, '']),
 }).xor('prompt', 'messages');
 
 async function completions(req: Request, res: Response) {
