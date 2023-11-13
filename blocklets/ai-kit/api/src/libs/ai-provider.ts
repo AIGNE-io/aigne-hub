@@ -1,4 +1,4 @@
-import { Configuration, OpenAIApi } from 'openai';
+import { OpenAI } from 'openai';
 
 import env from './env';
 
@@ -11,11 +11,5 @@ export function getAIProvider() {
 
   if (!apiKey) throw new Error('Missing required openai apiKey');
 
-  return new AIProvider(apiKey);
-}
-
-export class AIProvider extends OpenAIApi {
-  constructor(public readonly apiKey: string) {
-    super(new Configuration({ apiKey }));
-  }
+  return new OpenAI({ apiKey });
 }
