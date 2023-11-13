@@ -1,3 +1,7 @@
+## 0.0.79 (2023-11-13)
+
+- feat: support dall-e-3
+
 ## 0.0.78 (2023-11-13)
 
 - fix: ignore null or empty string value for temperature
