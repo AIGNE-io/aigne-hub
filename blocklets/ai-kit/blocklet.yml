@@ -60,6 +60,12 @@ environments:
     default: 'false'
     secure: false
     shared: false
+  - name: HTTPS_PROXY
+    description: Use the API behind a proxy
+    required: false
+    default: ''
+    secure: false
+    shared: false
 capabilities:
   clusterMode: false
   component: true

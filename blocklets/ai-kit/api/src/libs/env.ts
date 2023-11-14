@@ -9,4 +9,5 @@ export default {
     .map((i) => i.trim())
     .filter(Boolean),
   verbose: Joi.boolean().validate(process.env.VERBOSE).value ?? false,
+  proxyHost: process.env.HTTPS_PROXY || process.env.https_proxy! || '',
 };
