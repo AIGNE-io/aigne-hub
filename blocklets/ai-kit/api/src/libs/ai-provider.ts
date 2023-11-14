@@ -1,21 +1,19 @@
-import { Configuration, OpenAIApi } from 'openai';
+import { HttpsProxyAgent } from 'https-proxy-agent';
+import { OpenAI } from 'openai';
 
 import env from './env';
 
 let currentApiKeyIndex = 0;
 
 export function getAIProvider() {
-  const { openaiApiKey } = env;
+  const { openaiApiKey, httpsProxy } = env;
 
   const apiKey = openaiApiKey[currentApiKeyIndex++ % openaiApiKey.length];
 
   if (!apiKey) throw new Error('Missing required openai apiKey');
 
-  return new AIProvider(apiKey);
-}
-
-export class AIProvider extends OpenAIApi {
-  constructor(public readonly apiKey: string) {
-    super(new Configuration({ apiKey }));
-  }
+  return new OpenAI({
+    apiKey,
+    httpAgent: httpsProxy ? new HttpsProxyAgent(httpsProxy) : undefined,
+  });
 }

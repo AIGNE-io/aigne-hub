@@ -1,6 +1,6 @@
 import produce from 'immer';
 import { nanoid } from 'nanoid';
-import { ChatCompletionRequestMessage } from 'openai';
+import { ChatCompletionMessageParam } from 'openai/resources';
 import { useCallback, useState } from 'react';
 
 import { MessageItem } from './conversation';
@@ -14,7 +14,7 @@ export default function useConversation({
 }: {
   scrollToBottom?: (options?: { force?: boolean }) => void;
   textCompletions: (
-    prompt: string | ChatCompletionRequestMessage[],
+    prompt: string | ChatCompletionMessageParam[],
     options: { meta?: any }
   ) => Promise<
     ReadableStream<string | Uint8Array | { type: 'text'; text: string } | { type: 'images'; images: { url: string }[] }>
@@ -29,7 +29,7 @@ export default function useConversation({
   ]);
 
   const add = useCallback(
-    async (prompt: string | ChatCompletionRequestMessage[], meta?: any) => {
+    async (prompt: string | ChatCompletionMessageParam[], meta?: any) => {
       const id = nextId();
       setMessages((v) => v.concat({ id, prompt, loading: true, meta }));
       scrollToBottom?.({ force: true });

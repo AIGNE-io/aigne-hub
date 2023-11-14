@@ -15,7 +15,7 @@ repository:
   type: git
   url: git+https://github.com/blocklet/ai-kit.git
 specVersion: 1.2.8
-version: 0.0.78
+version: 0.0.80
 logo: logo.png
 files:
   - dist
@@ -58,6 +58,12 @@ environments:
     description: Logging input and output of AI
     required: false
     default: 'false'
+    secure: false
+    shared: false
+  - name: HTTPS_PROXY
+    description: Use the API behind a proxy
+    required: false
+    default: ''
     secure: false
     shared: false
 capabilities:

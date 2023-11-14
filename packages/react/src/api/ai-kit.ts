@@ -1,5 +1,5 @@
 import { AxiosInstance } from 'axios';
-import { ChatCompletionRequestMessage } from 'openai';
+import { ChatCompletionMessageParam } from 'openai/resources';
 
 export const createStatusApi =
   ({ axios, path }: { axios: AxiosInstance; path: string }): (() => Promise<{ available: boolean }>) =>
@@ -22,7 +22,7 @@ export interface TextCompletionFn<P extends {}> {
 }
 
 export const createTextCompletionApi =
-  <P extends {} = { prompt: string } | { messages: ChatCompletionRequestMessage[] }>({
+  <P extends {} = { prompt: string } | { messages: ChatCompletionMessageParam[] }>({
     axios,
     path,
     timeout,

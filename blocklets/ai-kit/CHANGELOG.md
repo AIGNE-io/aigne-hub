@@ -1,3 +1,12 @@
+## 0.0.80 (2023-11-14)
+
+- chore: set proxy url for ai
+- chore: upgrade openai
+
+## 0.0.79 (2023-11-13)
+
+- feat: support dall-e-3
+
 ## 0.0.78 (2023-11-13)
 
 - fix: ignore null or empty string value for temperature

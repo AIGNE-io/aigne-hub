@@ -2,7 +2,7 @@ import { cx } from '@emotion/css';
 import styled from '@emotion/styled';
 import { CopyAll } from '@mui/icons-material';
 import { Box, BoxProps, Button, Tooltip } from '@mui/material';
-import { ChatCompletionRequestMessage } from 'openai';
+import { ChatCompletionMessageParam } from 'openai/resources';
 import { ReactNode, useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 
@@ -15,7 +15,7 @@ export default function Message({
   ...props
 }: {
   avatar?: ReactNode;
-  message?: string | ChatCompletionRequestMessage[];
+  message?: string | ChatCompletionMessageParam[];
   children?: ReactNode;
   loading?: boolean;
   actions?: ReactNode[];

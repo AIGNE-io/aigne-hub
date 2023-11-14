@@ -1,19 +1,10 @@
-import { IncomingMessage } from 'http';
-
 import Config from '@blocklet/sdk/lib/config';
 import { auth, component } from '@blocklet/sdk/lib/middlewares';
-import { AxiosResponse } from 'axios';
-import { ParsedEvent, ReconnectInterval, createParser } from 'eventsource-parser';
 import { Request, Response, Router } from 'express';
 import proxy from 'express-http-proxy';
 import { GPTTokens } from 'gpt-tokens';
 import Joi from 'joi';
-import {
-  ChatCompletionRequestMessage,
-  CreateEmbeddingRequest,
-  CreateImageRequestResponseFormatEnum,
-  CreateImageRequestSizeEnum,
-} from 'openai';
+import { ChatCompletionMessageParam, EmbeddingCreateParams, ImageGenerateParams } from 'openai/resources';
 
 import { getAIProvider } from '../libs/ai-provider';
 import env from '../libs/env';
@@ -64,7 +55,7 @@ const completionsRequestSchema = Joi.object<
       }
     | {
         prompt: undefined;
-        messages: ChatCompletionRequestMessage[];
+        messages: ChatCompletionMessageParam[];
       }
   )
 >({
@@ -98,7 +89,7 @@ async function completions(req: Request, res: Response) {
 
   const messages = input.messages ?? [{ role: 'user', content: input.prompt }];
 
-  const request: Parameters<typeof openai.createChatCompletion>[0] = {
+  const request: Parameters<typeof openai.chat.completions.create>[0] = {
     model,
     messages,
     stream,
@@ -114,20 +105,20 @@ async function completions(req: Request, res: Response) {
   let text = '';
 
   if (stream) {
-    const r: AxiosResponse<IncomingMessage> = (await openai.createChatCompletion(request, {
-      responseType: 'stream',
-    })) as any;
+    const r = await openai.chat.completions.create({
+      ...request,
+      stream: true,
+    });
 
     const decoder = new TextDecoder();
 
-    const onParse = (event: ParsedEvent | ReconnectInterval) => {
-      if (event.type === 'event') {
-        const { data } = event;
-        if (data === '[DONE]') {
-          return;
-        }
+    const reader = r.toReadableStream().getReader();
 
-        const json = JSON.parse(data);
+    while (true) {
+      const { value, done } = await reader.read();
+
+      if (value) {
+        const json = JSON.parse(decoder.decode(value));
 
         let delta: string = json.choices[0].delta.content || '';
         if (!text) delta = delta.trimStart();
@@ -136,18 +127,16 @@ async function completions(req: Request, res: Response) {
 
         if (delta) res.write(delta);
       }
-    };
 
-    const parser = createParser(onParse);
-
-    for await (const chunk of r.data) {
-      parser.feed(decoder.decode(chunk));
+      if (done) {
+        break;
+      }
     }
 
     res.end();
   } else {
-    const result = await openai.createChatCompletion(request);
-    text = result.data.choices[0]?.message?.content?.trim() ?? '';
+    const result = await openai.chat.completions.create({ ...request, stream: false });
+    text = result.choices[0]?.message?.content?.trim() ?? '';
 
     res.json({ text });
   }
@@ -157,8 +146,8 @@ async function completions(req: Request, res: Response) {
     messages: messages
       .concat({ role: 'assistant', content: text })
       .filter(
-        (i): i is { role: GPTTokens['messages'][number]['role']; content: string } =>
-          i.role !== 'function' && Boolean(i.content)
+        (i): i is ConstructorParameters<typeof GPTTokens>[0]['messages'][number] =>
+          ['system', 'user', 'assistant'].includes(i.role) && typeof i.content === 'string'
       ),
   });
 
@@ -201,7 +190,7 @@ const retry = (callback: (req: Request, res: Response) => Promise<void>): any =>
 router.post('/completions', ensureAdmin, retry(completions));
 router.post('/sdk/completions', component.verifySig, retry(completions));
 
-const embeddingsRequestSchema = Joi.object<CreateEmbeddingRequest>({
+const embeddingsRequestSchema = Joi.object<EmbeddingCreateParams>({
   model: Joi.string().required(),
   input: Joi.alternatives().try(Joi.string(), Joi.array().items(Joi.string())).required(),
   user: Joi.string().empty(Joi.valid('', null)),
@@ -212,24 +201,30 @@ async function embeddings(req: Request, res: Response) {
 
   const openai = getAIProvider();
 
-  const { data } = await openai.createEmbedding(input);
+  const { data } = await openai.embeddings.create(input);
 
-  res.json(data);
+  res.json({ data });
 }
 
 router.post('/embeddings', ensureAdmin, retry(embeddings));
 router.post('/sdk/embeddings', component.verifySig, retry(embeddings));
 
 const imageGenerationRequestSchema = Joi.object<{
+  model: ImageGenerateParams['model'];
   prompt: string;
-  size: CreateImageRequestSizeEnum;
+  size: ImageGenerateParams['size'];
   n: number;
-  response_format: CreateImageRequestResponseFormatEnum;
+  response_format: ImageGenerateParams['response_format'];
+  style: ImageGenerateParams['style'];
+  quality: ImageGenerateParams['quality'];
 }>({
+  model: Joi.valid('dall-e-2', 'dall-e-3').empty([null, '']).default('dall-e-2'),
   prompt: Joi.string().required(),
-  size: Joi.string().valid('256x256', '512x512', '1024x1024').default('256x256'),
+  size: Joi.string().valid('256x256', '512x512', '1024x1024', '1024x1792', '1792x1024').default('256x256'),
   n: Joi.number().min(1).max(10).default(1),
   response_format: Joi.string().valid('url', 'b64_json').default('url'),
+  style: Joi.string().valid('vivid', 'natural').empty([null, '']),
+  quality: Joi.string().valid('standard', 'hd').empty([null, '']),
 });
 
 async function imageGenerations(req: Request, res: Response) {
@@ -239,10 +234,10 @@ async function imageGenerations(req: Request, res: Response) {
 
   const openai = getAIProvider();
 
-  const response = await openai.createImage(input);
+  const response = await openai.images.generate(input);
 
   res.json({
-    data: response.data.data,
+    data: response.data,
   });
 }
 
