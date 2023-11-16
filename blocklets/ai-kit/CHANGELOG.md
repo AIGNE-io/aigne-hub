@@ -1,3 +1,7 @@
+## 0.0.81 (2023-11-16)
+
+- feat: add speech api
+
 ## 0.0.80 (2023-11-14)
 
 - chore: set proxy url for ai
