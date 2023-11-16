@@ -259,4 +259,19 @@ const audioTranscriptions = proxy('api.openai.com', {
 router.post('/audio/transcriptions', auth(), audioTranscriptions);
 router.post('/sdk/audio/transcriptions', component.verifySig, audioTranscriptions);
 
+const audioSpeech = proxy('api.openai.com', {
+  https: true,
+  limit: '10mb',
+  proxyReqPathResolver() {
+    return '/v1/audio/speech';
+  },
+  proxyReqOptDecorator(proxyReqOpts) {
+    proxyReqOpts.headers!.Authorization = `Bearer ${getAIProvider().apiKey}`;
+    return proxyReqOpts;
+  },
+});
+
+router.post('/audio/speech', auth(), audioSpeech);
+router.post('/sdk/audio/speech', component.verifySig, audioSpeech);
+
 export default router;
