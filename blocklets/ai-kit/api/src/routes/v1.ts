@@ -1,10 +1,17 @@
 import Config from '@blocklet/sdk/lib/config';
 import { auth, component } from '@blocklet/sdk/lib/middlewares';
+import compression from 'compression';
 import { Request, Response, Router } from 'express';
 import proxy from 'express-http-proxy';
 import { GPTTokens } from 'gpt-tokens';
 import Joi from 'joi';
-import { ChatCompletionMessageParam, EmbeddingCreateParams, ImageGenerateParams } from 'openai/resources';
+import {
+  ChatCompletionChunk,
+  ChatCompletionMessageParam,
+  ChatCompletionTool,
+  EmbeddingCreateParams,
+  ImageGenerateParams,
+} from 'openai/resources';
 
 import { getAIProvider } from '../libs/ai-provider';
 import env from '../libs/env';
@@ -48,6 +55,7 @@ const completionsRequestSchema = Joi.object<
     presencePenalty?: number;
     frequencyPenalty?: number;
     maxTokens?: number;
+    tools?: ChatCompletionTool[];
   } & (
     | {
         prompt: string;
@@ -78,12 +86,24 @@ const completionsRequestSchema = Joi.object<
   presencePenalty: Joi.number().min(-2).max(2).empty([null, '']),
   frequencyPenalty: Joi.number().min(-2).max(2).empty([null, '']),
   maxTokens: Joi.number().integer().min(1).empty([null, '']),
+  tools: Joi.array().items(
+    Joi.object({
+      type: Joi.string().valid('function').required(),
+      function: Joi.object({
+        name: Joi.string().required(),
+        description: Joi.string().empty([null, '']),
+        parameters: Joi.object().pattern(Joi.string(), Joi.any()).required(),
+      }).required(),
+    })
+  ),
 }).xor('prompt', 'messages');
 
 async function completions(req: Request, res: Response) {
   const { model, stream, ...input } = await completionsRequestSchema.validateAsync(req.body, {
     stripUnknown: true,
   });
+
+  const isEventStream = req.accepts().includes('text/event-stream');
 
   const openai = getAIProvider();
 
@@ -92,19 +112,21 @@ async function completions(req: Request, res: Response) {
   const request: Parameters<typeof openai.chat.completions.create>[0] = {
     model,
     messages,
-    stream,
     temperature: input.temperature,
     top_p: input.topP,
     presence_penalty: input.presencePenalty,
     frequency_penalty: input.frequencyPenalty,
     max_tokens: input.maxTokens,
+    tools: input.tools,
   };
 
   if (env.verbose) logger.log('AI Kit completions input:', request);
 
   let text = '';
+  let promptTokens: number | undefined;
+  let completionTokens: number | undefined;
 
-  if (stream) {
+  if (stream || isEventStream) {
     const r = await openai.chat.completions.create({
       ...request,
       stream: true,
@@ -118,14 +140,42 @@ async function completions(req: Request, res: Response) {
       const { value, done } = await reader.read();
 
       if (value) {
-        const json = JSON.parse(decoder.decode(value));
+        const json: ChatCompletionChunk = JSON.parse(decoder.decode(value));
 
-        let delta: string = json.choices[0].delta.content || '';
-        if (!text) delta = delta.trimStart();
+        const choice = json.choices[0];
+        if (choice) {
+          const {
+            delta: { role, content, tool_calls: toolCalls },
+          } = choice;
 
-        text += delta;
+          text += content || '';
 
-        if (delta) res.write(delta);
+          if (isEventStream) {
+            if (!res.headersSent) {
+              res.setHeader('Content-Type', 'text/event-stream');
+              res.flushHeaders();
+            }
+
+            res.write(
+              `data: ${JSON.stringify({
+                delta: {
+                  role,
+                  content,
+                  tool_calls: toolCalls?.map((i) => ({
+                    type: i.type,
+                    function: i.function && {
+                      name: i.function.name,
+                      arguments: i.function.arguments,
+                    },
+                  })),
+                },
+              })}\n\n`
+            );
+            res.flush();
+          } else if (content) {
+            res.write(content);
+          }
+        }
       }
 
       if (done) {
@@ -136,24 +186,44 @@ async function completions(req: Request, res: Response) {
     res.end();
   } else {
     const result = await openai.chat.completions.create({ ...request, stream: false });
-    text = result.choices[0]?.message?.content?.trim() ?? '';
+    promptTokens = result.usage?.prompt_tokens;
+    completionTokens = result.usage?.completion_tokens;
 
-    res.json({ text });
+    const message = result.choices[0]?.message;
+    text = message?.content || '';
+
+    res.json({
+      role: message?.role,
+      text: message?.content,
+      tool_calls: message?.tool_calls?.map((i) => ({
+        type: i.type,
+        function: {
+          name: i.function.name,
+          arguments: i.function.arguments,
+        },
+      })),
+    });
   }
 
-  const tokens = new GPTTokens({
-    model,
-    messages: messages
-      .concat({ role: 'assistant', content: text })
-      .filter(
-        (i): i is ConstructorParameters<typeof GPTTokens>[0]['messages'][number] =>
-          ['system', 'user', 'assistant'].includes(i.role) && typeof i.content === 'string'
-      ),
-  });
+  if (!promptTokens || !completionTokens) {
+    // FIXME: GPTTokens 暂不支持计算 function 的 tokens
+    const tokens = new GPTTokens({
+      model,
+      messages: messages
+        .concat({ role: 'assistant', content: text })
+        .filter(
+          (i): i is ConstructorParameters<typeof GPTTokens>[0]['messages'][number] =>
+            ['system', 'user', 'assistant'].includes(i.role) && typeof i.content === 'string'
+        ),
+    });
+
+    promptTokens = tokens.promptUsedTokens;
+    completionTokens = tokens.completionUsedTokens;
+  }
 
   await Usage.create({
-    promptTokens: tokens.promptUsedTokens,
-    completionTokens: tokens.completionUsedTokens,
+    promptTokens,
+    completionTokens,
     apiKey: openai.apiKey,
   });
 
@@ -187,8 +257,8 @@ const retry = (callback: (req: Request, res: Response) => Promise<void>): any =>
   };
 };
 
-router.post('/completions', ensureAdmin, retry(completions));
-router.post('/sdk/completions', component.verifySig, retry(completions));
+router.post('/completions', compression(), ensureAdmin, retry(completions));
+router.post('/sdk/completions', compression(), component.verifySig, retry(completions));
 
 const embeddingsRequestSchema = Joi.object<EmbeddingCreateParams>({
   model: Joi.string().required(),
