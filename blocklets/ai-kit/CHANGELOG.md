@@ -1,3 +1,7 @@
+## 0.0.82 (2023-11-23)
+
+- feat: add function calling support
+
 ## 0.0.81 (2023-11-16)
 
 - feat: add speech api
