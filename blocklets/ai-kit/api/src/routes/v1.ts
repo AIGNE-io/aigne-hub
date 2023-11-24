@@ -173,7 +173,7 @@ async function completions(req: Request, res: Response) {
                 delta: {
                   role,
                   content,
-                  tool_calls: toolCalls?.map((i) => ({
+                  toolCalls: toolCalls?.map((i) => ({
                     type: i.type,
                     function: i.function && {
                       name: i.function.name,
@@ -207,7 +207,7 @@ async function completions(req: Request, res: Response) {
     res.json({
       role: message?.role,
       text: message?.content,
-      tool_calls: message?.tool_calls?.map((i) => ({
+      toolCalls: message?.tool_calls?.map((i) => ({
         type: i.type,
         function: {
           name: i.function.name,
