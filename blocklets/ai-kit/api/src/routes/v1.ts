@@ -76,9 +76,26 @@ const completionsRequestSchema = Joi.object<
   messages: Joi.array()
     .items(
       Joi.object({
-        role: Joi.string().valid('system', 'user', 'assistant').required(),
-        content: Joi.string().required(),
+        role: Joi.string().valid('system', 'user', 'assistant', 'tool').required(),
+        content: Joi.string().allow(null, '').required(),
         name: Joi.string().empty(''),
+        tool_call_id: Joi.string().empty('').when('role', {
+          is: 'tool',
+          then: Joi.required(),
+          otherwise: Joi.optional(),
+        }),
+        tool_calls: Joi.array()
+          .items(
+            Joi.object({
+              id: Joi.string().required(),
+              type: Joi.string().required(),
+              function: Joi.object({
+                name: Joi.string().optional(),
+                arguments: Joi.string().optional(),
+              }).optional(),
+            })
+          )
+          .optional(),
       })
     )
     .min(1),
@@ -174,6 +191,7 @@ async function completions(req: Request, res: Response) {
                   role,
                   content,
                   toolCalls: toolCalls?.map((i) => ({
+                    id: i.id,
                     type: i.type,
                     function: i.function && {
                       name: i.function.name,
