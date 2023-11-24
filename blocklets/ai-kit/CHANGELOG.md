@@ -1,3 +1,7 @@
+## 0.0.83 (2023-11-24)
+
+- chore: support new params
+
 ## 0.0.82 (2023-11-23)
 
 - feat: add function calling support
