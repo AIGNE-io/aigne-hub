@@ -9,6 +9,7 @@ import {
   ChatCompletionChunk,
   ChatCompletionMessageParam,
   ChatCompletionTool,
+  ChatCompletionToolChoiceOption,
   EmbeddingCreateParams,
   ImageGenerateParams,
 } from 'openai/resources';
@@ -56,6 +57,7 @@ const completionsRequestSchema = Joi.object<
     frequencyPenalty?: number;
     maxTokens?: number;
     tools?: ChatCompletionTool[];
+    toolChoice?: ChatCompletionToolChoiceOption;
   } & (
     | {
         prompt: string;
@@ -96,6 +98,15 @@ const completionsRequestSchema = Joi.object<
       }).required(),
     })
   ),
+  toolChoice: Joi.alternatives(
+    Joi.string().valid('none', 'auto'),
+    Joi.object({
+      type: Joi.string().valid('function').empty([null]),
+      function: Joi.object({
+        name: Joi.string().required(),
+      }),
+    })
+  ).empty([null]),
 }).xor('prompt', 'messages');
 
 async function completions(req: Request, res: Response) {
@@ -118,6 +129,7 @@ async function completions(req: Request, res: Response) {
     frequency_penalty: input.frequencyPenalty,
     max_tokens: input.maxTokens,
     tools: input.tools,
+    tool_choice: input.toolChoice,
   };
 
   if (env.verbose) logger.log('AI Kit completions input:', request);
