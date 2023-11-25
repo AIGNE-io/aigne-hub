@@ -239,9 +239,9 @@ async function completions(req: Request, res: Response) {
     tool_choice: input.toolChoice,
   };
 
-  if (env.verbose) logger.log('AI Kit completions input:', request);
+  if (env.verbose) logger.log('AI Kit completions input:', JSON.stringify(request, null, 2));
 
-  let text = '';
+  let content = '';
   let promptTokens: number | undefined;
   let completionTokens: number | undefined;
 
@@ -264,10 +264,10 @@ async function completions(req: Request, res: Response) {
         const choice = json.choices[0];
         if (choice) {
           const {
-            delta: { role, content, tool_calls: toolCalls },
+            delta: { role, ...delta },
           } = choice;
 
-          text += content || '';
+          content += delta.content || '';
 
           if (isEventStream) {
             if (!res.headersSent) {
@@ -279,8 +279,8 @@ async function completions(req: Request, res: Response) {
               `data: ${JSON.stringify({
                 delta: {
                   role,
-                  content,
-                  toolCalls: toolCalls?.map((i) => ({
+                  content: delta.content,
+                  toolCalls: delta.tool_calls?.map((i) => ({
                     id: i.id,
                     type: i.type,
                     function: i.function && {
@@ -292,8 +292,8 @@ async function completions(req: Request, res: Response) {
               })}\n\n`
             );
             res.flush();
-          } else if (content) {
-            res.write(content);
+          } else if (delta.content) {
+            res.write(delta.content);
           }
         }
       }
@@ -310,11 +310,11 @@ async function completions(req: Request, res: Response) {
     completionTokens = result.usage?.completion_tokens;
 
     const message = result.choices[0]?.message;
-    text = message?.content || '';
+    content = message?.content || '';
 
     res.json({
       role: message?.role,
-      text: message?.content,
+      content: message?.content,
       toolCalls: message?.tool_calls?.map((i) => ({
         id: i.id,
         type: i.type,
@@ -331,7 +331,7 @@ async function completions(req: Request, res: Response) {
     const tokens = new GPTTokens({
       model,
       messages: messages
-        .concat({ role: 'assistant', content: text })
+        .concat({ role: 'assistant', content })
         .filter(
           (i): i is ConstructorParameters<typeof GPTTokens>[0]['messages'][number] =>
             ['system', 'user', 'assistant'].includes(i.role) && typeof i.content === 'string'
@@ -348,7 +348,7 @@ async function completions(req: Request, res: Response) {
     apiKey: openai.apiKey,
   });
 
-  if (env.verbose) logger.log('AI Kit completions output:', { text });
+  if (env.verbose) logger.log('AI Kit completions output:', { content });
 }
 
 const retry = (callback: (req: Request, res: Response) => Promise<void>): any => {
