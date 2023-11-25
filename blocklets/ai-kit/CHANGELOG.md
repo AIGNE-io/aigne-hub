@@ -1,6 +1,6 @@
 ## 0.0.83 (2023-11-24)
 
-- chore: support new params
+- fix: add parameters for tool call
 
 ## 0.0.82 (2023-11-23)
 

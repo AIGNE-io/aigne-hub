@@ -86,7 +86,7 @@ const completionsRequestSchema = Joi.object<
             })
           | (Omit<ChatCompletionAssistantMessageParam, 'function_call' | 'tool_calls'> & {
               name?: string | null;
-              toolCalls: ChatCompletionAssistantMessageParam['tool_calls'];
+              toolCalls?: ChatCompletionAssistantMessageParam['tool_calls'];
             })
           | (Omit<ChatCompletionToolMessageParam, 'tool_call_id'> & {
               toolCallId: ChatCompletionToolMessageParam['tool_call_id'];
@@ -106,14 +106,14 @@ const completionsRequestSchema = Joi.object<
       })
         .when(Joi.object({ role: Joi.valid('system') }).unknown(), {
           then: Joi.object({
-            content: Joi.string().allow([null, '']).required(),
+            content: Joi.string().allow(null, '').required(),
             name: Joi.string().empty([null, '']),
           }),
         })
         .when(Joi.object({ role: Joi.valid('user') }).unknown(), {
           then: Joi.object({
             content: Joi.alternatives(
-              Joi.string().allow([null, '']),
+              Joi.string().allow(null, ''),
               Joi.array().items(
                 Joi.object({
                   type: Joi.string().valid('text', 'image_url').required(),
@@ -138,7 +138,7 @@ const completionsRequestSchema = Joi.object<
         })
         .when(Joi.object({ role: Joi.valid('assistant') }).unknown(), {
           then: Joi.object({
-            content: Joi.string().allow([null, '']).required(),
+            content: Joi.string().allow(null, '').required(),
             name: Joi.string().empty([null, '']),
             toolCalls: Joi.array().items(
               Joi.object({
@@ -316,6 +316,7 @@ async function completions(req: Request, res: Response) {
       role: message?.role,
       text: message?.content,
       toolCalls: message?.tool_calls?.map((i) => ({
+        id: i.id,
         type: i.type,
         function: {
           name: i.function.name,
