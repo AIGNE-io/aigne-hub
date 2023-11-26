@@ -314,6 +314,8 @@ async function completions(req: Request, res: Response) {
 
     res.json({
       role: message?.role,
+      // Deprecated: use `content` instead.
+      text: message?.content,
       content: message?.content,
       toolCalls: message?.tool_calls?.map((i) => ({
         id: i.id,
