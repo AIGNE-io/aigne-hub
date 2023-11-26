@@ -188,9 +188,7 @@ const completionsRequestSchema = Joi.object<
 }).xor('prompt', 'messages');
 
 async function completions(req: Request, res: Response) {
-  const { model, stream, ...input } = await completionsRequestSchema.validateAsync(req.body, {
-    stripUnknown: true,
-  });
+  const { model, stream, ...input } = await completionsRequestSchema.validateAsync(req.body, { stripUnknown: true });
 
   const isEventStream = req.accepts().includes('text/event-stream');
 
@@ -235,7 +233,7 @@ async function completions(req: Request, res: Response) {
     presence_penalty: input.presencePenalty,
     frequency_penalty: input.frequencyPenalty,
     max_tokens: input.maxTokens,
-    tools: input.tools,
+    tools: input?.tools?.length ? input.tools : undefined,
     tool_choice: input.toolChoice,
   };
 
@@ -246,10 +244,7 @@ async function completions(req: Request, res: Response) {
   let completionTokens: number | undefined;
 
   if (stream || isEventStream) {
-    const r = await openai.chat.completions.create({
-      ...request,
-      stream: true,
-    });
+    const r = await openai.chat.completions.create({ ...request, stream: true });
 
     const decoder = new TextDecoder();
 
