@@ -1,6 +1,6 @@
 ## 0.0.84 (2023-11-26)
 
-- fix: tools field is empty arrry
+- fix: set empty tools array to undefined
 
 ## 0.0.83 (2023-11-24)
 
