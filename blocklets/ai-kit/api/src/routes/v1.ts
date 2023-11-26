@@ -167,16 +167,18 @@ const completionsRequestSchema = Joi.object<
   presencePenalty: Joi.number().min(-2).max(2).empty([null, '']),
   frequencyPenalty: Joi.number().min(-2).max(2).empty([null, '']),
   maxTokens: Joi.number().integer().min(1).empty([null, '']),
-  tools: Joi.array().items(
-    Joi.object({
-      type: Joi.string().valid('function').required(),
-      function: Joi.object({
-        name: Joi.string().required(),
-        description: Joi.string().empty([null, '']),
-        parameters: Joi.object().pattern(Joi.string(), Joi.any()).required(),
-      }).required(),
-    })
-  ),
+  tools: Joi.array()
+    .items(
+      Joi.object({
+        type: Joi.string().valid('function').required(),
+        function: Joi.object({
+          name: Joi.string().required(),
+          description: Joi.string().empty([null, '']),
+          parameters: Joi.object().pattern(Joi.string(), Joi.any()).required(),
+        }).required(),
+      })
+    )
+    .empty(Joi.array().length(0)),
   toolChoice: Joi.alternatives(
     Joi.string().valid('none', 'auto'),
     Joi.object({
@@ -234,8 +236,8 @@ async function completions(req: Request, res: Response) {
     presence_penalty: input.presencePenalty,
     frequency_penalty: input.frequencyPenalty,
     max_tokens: input.maxTokens,
-    tools: input?.tools?.length ? input.tools : undefined,
-    tool_choice: input.toolChoice,
+    tools: input.tools,
+    tool_choice: input.tools?.length ? input.toolChoice : undefined,
   };
 
   if (env.verbose) logger.log('AI Kit completions input:', JSON.stringify(request, null, 2));
