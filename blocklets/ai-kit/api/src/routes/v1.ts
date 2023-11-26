@@ -5,6 +5,7 @@ import { Request, Response, Router } from 'express';
 import proxy from 'express-http-proxy';
 import { GPTTokens } from 'gpt-tokens';
 import Joi from 'joi';
+import { pick } from 'lodash';
 import {
   ChatCompletionAssistantMessageParam,
   ChatCompletionChunk,
@@ -332,7 +333,8 @@ async function completions(req: Request, res: Response) {
         .filter(
           (i): i is ConstructorParameters<typeof GPTTokens>[0]['messages'][number] =>
             ['system', 'user', 'assistant'].includes(i.role) && typeof i.content === 'string'
-        ),
+        )
+        .map((i) => pick(i, 'name', 'role', 'content')),
     });
 
     promptTokens = tokens.promptUsedTokens;
