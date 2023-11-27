@@ -3,11 +3,11 @@ import 'sqlite3';
 
 import { Sequelize } from 'sequelize';
 
-import env from '../libs/env';
+import { Config } from '../libs/env';
 import logger from '../libs/logger';
 
-const url = `sqlite:${env.dataDir}/aikit.db`;
+const url = `sqlite:${Config.dataDir}/aikit.db`;
 
 export const sequelize = new Sequelize(url, {
-  logging: env.verbose === false ? false : logger.log,
+  logging: Config.verbose === false ? false : logger.log,
 });

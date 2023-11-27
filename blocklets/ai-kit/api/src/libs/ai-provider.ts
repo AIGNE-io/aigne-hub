@@ -1,12 +1,12 @@
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import { OpenAI } from 'openai';
 
-import env from './env';
+import { Config } from './env';
 
 let currentApiKeyIndex = 0;
 
 export function getAIProvider() {
-  const { openaiApiKey, httpsProxy } = env;
+  const { openaiApiKey, httpsProxy } = Config;
 
   const apiKey = openaiApiKey[currentApiKeyIndex++ % openaiApiKey.length];
 

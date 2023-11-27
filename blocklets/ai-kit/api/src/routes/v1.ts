@@ -1,4 +1,3 @@
-import Config from '@blocklet/sdk/lib/config';
 import { auth, component } from '@blocklet/sdk/lib/middlewares';
 import compression from 'compression';
 import { Request, Response, Router } from 'express';
@@ -21,7 +20,7 @@ import {
 } from 'openai/resources';
 
 import { getAIProvider } from '../libs/ai-provider';
-import env from '../libs/env';
+import { Config } from '../libs/env';
 import logger from '../libs/logger';
 import { ensureAdmin } from '../libs/security';
 import Usage from '../store/models/usage';
@@ -29,7 +28,7 @@ import Usage from '../store/models/usage';
 const router = Router();
 
 async function status(_: Request, res: Response) {
-  const { openaiApiKey } = env;
+  const { openaiApiKey } = Config;
   const arr = Array.isArray(openaiApiKey) ? openaiApiKey : [openaiApiKey];
   res.json({ available: !!arr.filter(Boolean).length });
 }
@@ -240,7 +239,7 @@ async function completions(req: Request, res: Response) {
     tool_choice: input.tools?.length ? input.toolChoice : undefined,
   };
 
-  if (env.verbose) logger.log('AI Kit completions input:', JSON.stringify(request, null, 2));
+  if (Config.verbose) logger.log('AI Kit completions input:', JSON.stringify(request, null, 2));
 
   let content = '';
   let promptTokens: number | undefined;
@@ -349,12 +348,11 @@ async function completions(req: Request, res: Response) {
     apiKey: openai.apiKey,
   });
 
-  if (env.verbose) logger.log('AI Kit completions output:', { content });
+  if (Config.verbose) logger.log('AI Kit completions output:', { content });
 }
 
 const retry = (callback: (req: Request, res: Response) => Promise<void>): any => {
-  const { preferences } = Config.env;
-  const options = { maxRetries: preferences.MAX_RETRIES, retryCodes: [429, 500, 502] };
+  const options = { maxRetries: Config.maxRetries, retryCodes: [429, 500, 502] };
 
   function canRetry(code: number, retries: number) {
     return options.retryCodes.includes(code) && retries < options.maxRetries;
@@ -422,7 +420,7 @@ const imageGenerationRequestSchema = Joi.object<{
 async function imageGenerations(req: Request, res: Response) {
   const input = await imageGenerationRequestSchema.validateAsync(req.body, { stripUnknown: true });
 
-  if (env.verbose) logger.log('AI Kit image generations input:', input);
+  if (Config.verbose) logger.log('AI Kit image generations input:', input);
 
   const openai = getAIProvider();
 
