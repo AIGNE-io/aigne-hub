@@ -1,3 +1,7 @@
+## 0.0.87 (2023-11-29)
+
+- fix: httpsProxy from process.env
+
 ## 0.0.86 (2023-11-27)
 
 - fix: reactive configures
