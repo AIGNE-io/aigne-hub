@@ -28,8 +28,10 @@ export const Config = {
   _httpsProxy: undefined as string | undefined,
   get httpsProxy() {
     if (this._httpsProxy === undefined) {
-      this._httpsProxy = config.env.HTTPS_PROXY || config.env.https_proxy || '';
+      this._httpsProxy =
+        config.env.HTTPS_PROXY || config.env.https_proxy || process.env.HTTPS_PROXY || process.env.https_proxy || '';
     }
+
     return this._httpsProxy;
   },
 
