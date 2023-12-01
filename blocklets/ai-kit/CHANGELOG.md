@@ -1,3 +1,7 @@
+## 0.0.88 (2023-12-1)
+
+- fix: support custom oepnai url
+
 ## 0.0.87 (2023-11-29)
 
 - fix: httpsProxy from process.env

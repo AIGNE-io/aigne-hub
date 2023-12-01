@@ -15,7 +15,7 @@ repository:
   type: git
   url: git+https://github.com/blocklet/ai-kit.git
 specVersion: 1.2.8
-version: 0.0.87
+version: 0.0.88
 logo: logo.png
 files:
   - dist
@@ -55,7 +55,9 @@ environments:
     secure: true
     shared: false
   - name: OPENAI_BASE_URL
-    description: Override the default base URL for the API, e.g., "https://api.example.com/v2/".
+    description: >-
+      Override the default base URL for the API, e.g.,
+      "https://api.example.com/v2/".
     required: false
     default: ''
     secure: false
