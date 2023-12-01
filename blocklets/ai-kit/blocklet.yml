@@ -54,6 +54,12 @@ environments:
     default: ''
     secure: true
     shared: false
+  - name: OPENAI_BASE_URL
+    description: Override the default base URL for the API, e.g., "https://api.example.com/v2/".
+    required: false
+    default: ''
+    secure: false
+    shared: false
   - name: VERBOSE
     description: Logging input and output of AI
     required: false

@@ -25,14 +25,14 @@ export const Config = {
     return this._openaiApiKey;
   },
 
-  _httpsProxy: undefined as string | undefined,
-  get httpsProxy() {
-    if (this._httpsProxy === undefined) {
-      this._httpsProxy =
-        config.env.HTTPS_PROXY || config.env.https_proxy || process.env.HTTPS_PROXY || process.env.https_proxy || '';
-    }
+  get openaiBaseURL() {
+    const url = config.env.OPENAI_BASE_URL;
+    return url && typeof url === 'string' ? url : undefined;
+  },
 
-    return this._httpsProxy;
+  get httpsProxy() {
+    const proxy = config.env.HTTPS_PROXY;
+    return proxy && typeof proxy === 'string' ? proxy : undefined;
   },
 
   _maxRetries: undefined as number | undefined,
