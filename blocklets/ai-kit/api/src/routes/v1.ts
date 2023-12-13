@@ -400,34 +400,46 @@ router.post('/embeddings', ensureAdmin, retry(embeddings));
 router.post('/sdk/embeddings', component.verifySig, retry(embeddings));
 
 const imageGenerationRequestSchema = Joi.object<{
-  model: ImageGenerateParams['model'];
+  model?: ImageGenerateParams['model'];
   prompt: string;
-  size: ImageGenerateParams['size'];
-  n: number;
-  response_format: ImageGenerateParams['response_format'];
-  style: ImageGenerateParams['style'];
-  quality: ImageGenerateParams['quality'];
+  size?: ImageGenerateParams['size'];
+  n?: number;
+  responseFormat?: ImageGenerateParams['response_format'];
+  style?: ImageGenerateParams['style'];
+  quality?: ImageGenerateParams['quality'];
 }>({
-  model: Joi.valid('dall-e-2', 'dall-e-3').empty([null, '']).default('dall-e-2'),
+  model: Joi.valid('dall-e-2', 'dall-e-3').empty(['', null]),
   prompt: Joi.string().required(),
-  size: Joi.string().valid('256x256', '512x512', '1024x1024', '1024x1792', '1792x1024').default('256x256'),
-  n: Joi.number().min(1).max(10).default(1),
-  response_format: Joi.string().valid('url', 'b64_json').default('url'),
-  style: Joi.string().valid('vivid', 'natural').empty([null, '']),
-  quality: Joi.string().valid('standard', 'hd').empty([null, '']),
+  size: Joi.string().valid('256x256', '512x512', '1024x1024', '1024x1792', '1792x1024').empty(['', null]),
+  n: Joi.number().min(1).max(10).empty([null]),
+  responseFormat: Joi.string().valid('url', 'b64_json').empty([null]),
+  style: Joi.string().valid('vivid', 'natural').empty([null]),
+  quality: Joi.string().valid('standard', 'hd').empty([null]),
 });
 
 async function imageGenerations(req: Request, res: Response) {
-  const input = await imageGenerationRequestSchema.validateAsync(req.body, { stripUnknown: true });
+  const input = await imageGenerationRequestSchema.validateAsync(
+    {
+      ...req.body,
+      // Deprecated: 兼容 response_format 字段，一段时间以后删除
+      responseFormat: req.body.response_format || req.body.responseFormat,
+    },
+    { stripUnknown: true }
+  );
 
   if (Config.verbose) logger.log('AI Kit image generations input:', input);
 
   const openai = getAIProvider();
 
-  const response = await openai.images.generate(input);
+  const response = await openai.images.generate({ ...input, response_format: input.responseFormat });
 
   res.json({
-    data: response.data,
+    data: response.data.map((i) => ({
+      // Deprecated: use b64Json instead
+      b64_json: i.b64_json,
+      b64Json: i.b64_json,
+      url: i.url,
+    })),
   });
 }
 
