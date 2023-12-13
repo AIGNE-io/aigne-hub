@@ -1,6 +1,6 @@
 {
   "name": "ai-kit",
-  "version": "0.0.88",
+  "version": "0.0.89",
   "author": "Arcblock <blocklet@arcblock.io> https://github.com/blocklet",
   "scripts": {
     "dev": "blocklet dev",
@@ -34,7 +34,7 @@
     "@arcblock/did-auth-storage-nedb": "^1.7.1",
     "@arcblock/did-connect": "^2.8.12",
     "@arcblock/ux": "^2.8.12",
-    "@blocklet/ai-kit": "^0.0.88",
+    "@blocklet/ai-kit": "^0.0.89",
     "@blocklet/sdk": "^1.16.18",
     "@blocklet/ui-react": "^2.8.12",
     "@emotion/css": "^11.10.5",

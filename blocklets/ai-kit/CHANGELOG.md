@@ -1,3 +1,7 @@
+## 0.0.89 (2023-12-13)
+
+- fix: only prompt parameter is required
+
 ## 0.0.88 (2023-12-1)
 
 - fix: support custom oepnai url
