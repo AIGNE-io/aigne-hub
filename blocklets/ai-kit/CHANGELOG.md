@@ -1,3 +1,43 @@
+## 0.0.90 (2023-12-13)
+
+fix: omit unused parameters of image generations
+
+## 0.0.89 (2023-12-13)
+
+- fix: only prompt parameter is required
+
+## 0.0.88 (2023-12-1)
+
+- fix: support custom openai url
+
+## 0.0.87 (2023-11-29)
+
+- fix: httpsProxy from process.env
+
+## 0.0.86 (2023-11-27)
+
+- fix: reactive configures
+
+## 0.0.85 (2023-11-27)
+
+- fix: reactive configures
+
+## 0.0.84 (2023-11-26)
+
+- fix: set empty tools array to undefined
+
+## 0.0.83 (2023-11-24)
+
+- fix: add parameters for tool call
+
+## 0.0.82 (2023-11-23)
+
+- feat: add function calling support
+
+## 0.0.81 (2023-11-16)
+
+- feat: add speech api
+
 ## 0.0.80 (2023-11-14)
 
 - chore: set proxy url for ai
@@ -162,13 +202,13 @@
 
 ## 0.0.42 (2023-3-17)
 
-- fix: avoid submiting empty prompts
+- fix: avoid submitting empty prompts
 - fix: import dependencies as needed
 - feat: upgrade blocklet sdk
 
 ## 0.0.41 (2023-3-16)
 
-- fix: suppoort custom scroll container
+- fix: support custom scroll container
 
 ## 0.0.40 (2023-3-16)
 
@@ -206,7 +246,7 @@
 
 ## 0.0.32 (2023-2-28)
 
-- fix: trnaslate admin menu
+- fix: translate admin menu
 
 ## 0.0.31 (2023-2-27)
 
