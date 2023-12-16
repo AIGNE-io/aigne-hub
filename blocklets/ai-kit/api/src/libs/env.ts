@@ -25,6 +25,19 @@ export const Config = {
     return this._openaiApiKey;
   },
 
+  _geminiApiKey: undefined as string[] | undefined,
+  get geminiApiKey() {
+    if (this._geminiApiKey === undefined) {
+      const KEY = config.env.GEMINI_API_KEY;
+
+      this._geminiApiKey = (typeof KEY === 'string' ? KEY : '')
+        .split(',')
+        .map((i: string) => i.trim())
+        .filter(Boolean);
+    }
+    return this._geminiApiKey;
+  },
+
   get openaiBaseURL() {
     const url = config.env.OPENAI_BASE_URL;
     return url && typeof url === 'string' ? url : undefined;

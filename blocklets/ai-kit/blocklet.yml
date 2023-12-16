@@ -74,6 +74,12 @@ environments:
     default: ''
     secure: false
     shared: false
+  - name: GEMINI_API_KEY
+    description: Your Gemini apiKey separate with commas.
+    required: false
+    default: ''
+    secure: true
+    shared: false
 capabilities:
   clusterMode: false
   component: true

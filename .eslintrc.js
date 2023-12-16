@@ -25,5 +25,6 @@ module.exports = {
     'react/no-array-index-key': 'warn',
     'jsx-a11y/no-noninteractive-element-interactions': 'off',
     '@typescript-eslint/no-loop-func': 'off',
+    'max-classes-per-file': 'off',
   },
 };
