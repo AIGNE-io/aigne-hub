@@ -12,7 +12,7 @@ import { getAIApiKey, getOpenAI } from '../libs/ai-provider';
 import { Config } from '../libs/env';
 import logger from '../libs/logger';
 import { ensureAdmin } from '../libs/security';
-import { ChatCompletionChunk, ChatCompletionInput } from '../providers';
+import { ChatCompletionChunk, ChatCompletionInput, ChatCompletionResponse } from '../providers';
 import { geminiChatCompletion } from '../providers/gemini';
 import { openaiChatCompletion } from '../providers/openai';
 import Usage from '../store/models/usage';
@@ -156,9 +156,9 @@ async function completions(req: Request, res: Response) {
     : openaiChatCompletion(input, getOpenAI());
 
   let content = '';
-  const toolCalls: NonNullable<NonNullable<ChatCompletionChunk['delta']>['toolCalls']> = [];
+  const toolCalls: NonNullable<ChatCompletionChunk['delta']['toolCalls']> = [];
 
-  const emitEventStreamChunk = (chunk: ChatCompletionChunk) => {
+  const emitEventStreamChunk = (chunk: ChatCompletionResponse) => {
     if (!res.headersSent) {
       res.setHeader('Content-Type', 'text/event-stream');
       res.flushHeaders();

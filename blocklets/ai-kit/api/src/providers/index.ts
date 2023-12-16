@@ -1,5 +1,3 @@
-import { ReadableStream } from 'stream/web';
-
 export interface ChatCompletionInput {
   model: string;
   messages: (
@@ -41,8 +39,10 @@ export interface ChatCompletionInput {
   }[];
 }
 
+export type ChatCompletionResponse = ChatCompletionChunk | ChatCompletionError;
+
 export interface ChatCompletionChunk {
-  delta?: {
+  delta: {
     role?: 'system' | 'user' | 'assistant' | 'tool';
     content?: string | null;
     toolCalls?: {
@@ -54,13 +54,10 @@ export interface ChatCompletionChunk {
       };
     }[];
   };
+}
+
+export interface ChatCompletionError {
   error?: {
     message: string;
   };
-}
-
-export interface ChatCompletionStream extends ReadableStream<ChatCompletionChunk> {}
-
-export interface ChatProvider {
-  (input: ChatCompletionInput): Promise<ChatCompletionStream>;
 }
