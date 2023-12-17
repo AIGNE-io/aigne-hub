@@ -6,6 +6,7 @@ import { GPTTokens } from 'gpt-tokens';
 import Joi from 'joi';
 import omit from 'lodash/omit';
 import pick from 'lodash/pick';
+import OpenAI from 'openai';
 import { EmbeddingCreateParams, ImageGenerateParams } from 'openai/resources';
 
 import { getAIApiKey, getOpenAI } from '../libs/ai-provider';
@@ -28,32 +29,13 @@ async function status(_: Request, res: Response) {
 router.get('/status', ensureAdmin, status);
 router.get('/sdk/status', component.verifySig, status);
 
-export const Models = [
-  'gpt-3.5-turbo',
-  'gpt-3.5-turbo-0301',
-  'gpt-3.5-turbo-0613',
-  'gpt-3.5-turbo-16k',
-  'gpt-3.5-turbo-16k-0613',
-  'gpt-4',
-  'gpt-4-0314',
-  'gpt-4-0613',
-  'gpt-4-32k',
-  'gpt-4-32k-0314',
-  'gpt-4-32k-0613',
-  'gemini-pro',
-] as const;
-
-export type Model = (typeof Models)[number];
-
 const completionsRequestSchema = Joi.object<
   { stream?: boolean } & (
     | (ChatCompletionInput & { prompt: undefined })
     | (Omit<ChatCompletionInput, 'messages'> & { messages: undefined; prompt: string })
   )
 >({
-  model: Joi.string()
-    .valid(...Models)
-    .default('gpt-3.5-turbo'),
+  model: Joi.string().default('gpt-3.5-turbo'),
   prompt: Joi.string(),
   messages: Joi.array()
     .items(
@@ -153,7 +135,16 @@ async function completions(req: Request, res: Response) {
 
   const result = body.model.startsWith('gemini')
     ? geminiChatCompletion(input, { apiKey: getAIApiKey('gemini') })
-    : openaiChatCompletion(input, getOpenAI());
+    : body.model.startsWith('gpt')
+    ? openaiChatCompletion(input, getOpenAI())
+    : body.model.startsWith('openRouter/')
+    ? openaiChatCompletion(
+        { ...input, model: body.model.replace('openRouter/', '') },
+        new OpenAI({ baseURL: 'https://openrouter.ai/api/v1', apiKey: getAIApiKey('openRouter') })
+      )
+    : (() => {
+        throw new Error(`Unsupported model ${body.model}`);
+      })();
 
   let content = '';
   const toolCalls: NonNullable<ChatCompletionChunk['delta']['toolCalls']> = [];
@@ -180,6 +171,7 @@ async function completions(req: Request, res: Response) {
       }
     }
   } catch (error) {
+    console.error('Run AI error', error);
     if (isEventStream) {
       emitEventStreamChunk({ error: { message: error.message } });
     } else if (input.stream) {

@@ -47,7 +47,7 @@ export async function* openaiChatCompletion(
 
   for await (const chunk of res) {
     const choice = chunk.choices[0];
-    if (choice) {
+    if (choice?.delta) {
       const {
         delta: { role, ...delta },
       } = choice;

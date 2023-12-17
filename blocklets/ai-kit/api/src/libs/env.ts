@@ -38,6 +38,19 @@ export const Config = {
     return this._geminiApiKey;
   },
 
+  _openRouterApiKey: undefined as string[] | undefined,
+  get openRouterApiKey() {
+    if (this._openRouterApiKey === undefined) {
+      const KEY = config.env.OPEN_ROUTER_API_KEY;
+
+      this._openRouterApiKey = (typeof KEY === 'string' ? KEY : '')
+        .split(',')
+        .map((i: string) => i.trim())
+        .filter(Boolean);
+    }
+    return this._openRouterApiKey;
+  },
+
   get openaiBaseURL() {
     const url = config.env.OPENAI_BASE_URL;
     return url && typeof url === 'string' ? url : undefined;

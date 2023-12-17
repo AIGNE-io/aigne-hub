@@ -80,6 +80,12 @@ environments:
     default: ''
     secure: true
     shared: false
+  - name: OPEN_ROUTER_API_KEY
+    description: Your OpenRouter apiKey separate with commas.
+    required: false
+    default: ''
+    secure: true
+    shared: false
 capabilities:
   clusterMode: false
   component: true

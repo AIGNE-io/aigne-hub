@@ -13,12 +13,13 @@ export function getOpenAI() {
   });
 }
 
-export type AIProvider = 'gemini' | 'openai';
+export type AIProvider = 'gemini' | 'openai' | 'openRouter';
 
 const currentApiKeyIndex: { [key in AIProvider]?: number } = {};
 const apiKeys: { [key in AIProvider]: () => string[] } = {
   gemini: () => Config.geminiApiKey,
   openai: () => Config.openaiApiKey,
+  openRouter: () => Config.openRouterApiKey,
 };
 
 export function getAIApiKey(company: AIProvider) {
