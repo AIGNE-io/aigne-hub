@@ -1,6 +1,6 @@
 {
   "name": "@blocklet/ai-kit",
-  "version": "0.0.90",
+  "version": "0.0.91",
   "description": "The react.js component library for AI Kit",
   "publishConfig": {
     "access": "public"
@@ -55,7 +55,7 @@
     "react": "^18.2.0"
   },
   "dependencies": {
-    "@arcblock/ux": "^2.8.12",
+    "@arcblock/ux": "^2.8.21",
     "@emotion/css": "^11.10.6",
     "@emotion/react": "^11.10.6",
     "@emotion/styled": "^11.10.6",

@@ -15,7 +15,7 @@ repository:
   type: git
   url: git+https://github.com/blocklet/ai-kit.git
 specVersion: 1.2.8
-version: 0.0.90
+version: 0.0.91
 logo: logo.png
 files:
   - dist
@@ -73,6 +73,18 @@ environments:
     required: false
     default: ''
     secure: false
+    shared: false
+  - name: GEMINI_API_KEY
+    description: Your Gemini apiKey separate with commas.
+    required: false
+    default: ''
+    secure: true
+    shared: false
+  - name: OPEN_ROUTER_API_KEY
+    description: Your OpenRouter apiKey separate with commas.
+    required: false
+    default: ''
+    secure: true
     shared: false
 capabilities:
   clusterMode: false

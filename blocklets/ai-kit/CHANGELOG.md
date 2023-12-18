@@ -1,3 +1,7 @@
+## 0.0.91 (2023-12-16)
+
+- feat: support gemini
+
 ## 0.0.90 (2023-12-13)
 
 fix: omit unused parameters of image generations

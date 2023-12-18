@@ -3,18 +3,34 @@ import { OpenAI } from 'openai';
 
 import { Config } from './env';
 
-let currentApiKeyIndex = 0;
-
-export function getAIProvider() {
-  const { openaiApiKey, httpsProxy, openaiBaseURL } = Config;
-
-  const apiKey = openaiApiKey[currentApiKeyIndex++ % openaiApiKey.length];
-
-  if (!apiKey) throw new Error('Missing required openai apiKey');
+export function getOpenAI() {
+  const { httpsProxy, openaiBaseURL } = Config;
 
   return new OpenAI({
     baseURL: openaiBaseURL || undefined,
-    apiKey,
+    apiKey: getAIApiKey('openai'),
     httpAgent: httpsProxy ? new HttpsProxyAgent(httpsProxy) : undefined,
   });
+}
+
+export type AIProvider = 'gemini' | 'openai' | 'openRouter';
+
+const currentApiKeyIndex: { [key in AIProvider]?: number } = {};
+const apiKeys: { [key in AIProvider]: () => string[] } = {
+  gemini: () => Config.geminiApiKey,
+  openai: () => Config.openaiApiKey,
+  openRouter: () => Config.openRouterApiKey,
+};
+
+export function getAIApiKey(company: AIProvider) {
+  currentApiKeyIndex[company] ??= 0;
+
+  const index = currentApiKeyIndex[company]!++;
+  const keys = apiKeys[company]?.();
+
+  const apiKey = keys?.[index % keys.length];
+
+  if (!apiKey) throw new Error(`Missing required ${company} apiKey`);
+
+  return apiKey;
 }

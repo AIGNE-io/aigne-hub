@@ -6,24 +6,16 @@ import { GPTTokens } from 'gpt-tokens';
 import Joi from 'joi';
 import omit from 'lodash/omit';
 import pick from 'lodash/pick';
-import {
-  ChatCompletionAssistantMessageParam,
-  ChatCompletionChunk,
-  ChatCompletionContentPartImage,
-  ChatCompletionContentPartText,
-  ChatCompletionSystemMessageParam,
-  ChatCompletionTool,
-  ChatCompletionToolChoiceOption,
-  ChatCompletionToolMessageParam,
-  ChatCompletionUserMessageParam,
-  EmbeddingCreateParams,
-  ImageGenerateParams,
-} from 'openai/resources';
+import OpenAI from 'openai';
+import { EmbeddingCreateParams, ImageGenerateParams } from 'openai/resources';
 
-import { getAIProvider } from '../libs/ai-provider';
+import { getAIApiKey, getOpenAI } from '../libs/ai-provider';
 import { Config } from '../libs/env';
 import logger from '../libs/logger';
 import { ensureAdmin } from '../libs/security';
+import { ChatCompletionChunk, ChatCompletionInput, ChatCompletionResponse } from '../providers';
+import { geminiChatCompletion } from '../providers/gemini';
+import { openaiChatCompletion } from '../providers/openai';
 import Usage from '../store/models/usage';
 
 const router = Router();
@@ -37,68 +29,13 @@ async function status(_: Request, res: Response) {
 router.get('/status', ensureAdmin, status);
 router.get('/sdk/status', component.verifySig, status);
 
-export const Models = [
-  'gpt-3.5-turbo',
-  'gpt-3.5-turbo-0301',
-  'gpt-3.5-turbo-0613',
-  'gpt-3.5-turbo-16k',
-  'gpt-3.5-turbo-16k-0613',
-  'gpt-4',
-  'gpt-4-0314',
-  'gpt-4-0613',
-  'gpt-4-32k',
-  'gpt-4-32k-0314',
-  'gpt-4-32k-0613',
-] as const;
-
-export type Model = (typeof Models)[number];
-
 const completionsRequestSchema = Joi.object<
-  {
-    stream?: boolean;
-    model: Model;
-    temperature?: number;
-    topP?: number;
-    presencePenalty?: number;
-    frequencyPenalty?: number;
-    maxTokens?: number;
-    tools?: ChatCompletionTool[];
-    toolChoice?: ChatCompletionToolChoiceOption;
-  } & (
-    | {
-        prompt: string;
-        messages: undefined;
-      }
-    | {
-        prompt: undefined;
-        messages: (
-          | (ChatCompletionSystemMessageParam & { name?: string | null })
-          | (Omit<ChatCompletionUserMessageParam, 'content'> & {
-              name?: string | null;
-              content:
-                | string
-                | Array<
-                    | ChatCompletionContentPartText
-                    | (Omit<ChatCompletionContentPartImage, 'image_url'> & {
-                        imageUrl: ChatCompletionContentPartImage['image_url'];
-                      })
-                  >
-                | null;
-            })
-          | (Omit<ChatCompletionAssistantMessageParam, 'function_call' | 'tool_calls'> & {
-              name?: string | null;
-              toolCalls?: ChatCompletionAssistantMessageParam['tool_calls'];
-            })
-          | (Omit<ChatCompletionToolMessageParam, 'tool_call_id'> & {
-              toolCallId: ChatCompletionToolMessageParam['tool_call_id'];
-            })
-        )[];
-      }
+  { stream?: boolean } & (
+    | (ChatCompletionInput & { prompt: undefined })
+    | (Omit<ChatCompletionInput, 'messages'> & { messages: undefined; prompt: string })
   )
 >({
-  model: Joi.string()
-    .valid(...Models)
-    .default('gpt-3.5-turbo'),
+  model: Joi.string().default('gpt-3.5-turbo'),
   prompt: Joi.string(),
   messages: Joi.array()
     .items(
@@ -128,7 +65,6 @@ const completionsRequestSchema = Joi.object<
                     then: Joi.object({
                       imageUrl: Joi.object({
                         url: Joi.string().required(),
-                        detail: Joi.string().valid('low', 'high', 'auto').empty([null, '']),
                       }).required(),
                     }),
                   })
@@ -179,173 +115,97 @@ const completionsRequestSchema = Joi.object<
       })
     )
     .empty(Joi.array().length(0)),
-  toolChoice: Joi.alternatives(
-    Joi.string().valid('none', 'auto'),
-    Joi.object({
-      type: Joi.string().valid('function').empty([null]),
-      function: Joi.object({
-        name: Joi.string().required(),
-      }),
-    })
-  ).empty([null]),
 }).xor('prompt', 'messages');
 
 async function completions(req: Request, res: Response) {
-  const { model, stream, ...input } = await completionsRequestSchema.validateAsync(req.body, { stripUnknown: true });
+  const body = await completionsRequestSchema.validateAsync(req.body, { stripUnknown: true });
 
-  const isEventStream = req.accepts().includes('text/event-stream');
+  const isEventStream = req.accepts().some((i) => i.startsWith('text/event-stream'));
 
-  const openai = getAIProvider();
+  const messages = body.messages ?? [{ role: 'user', content: body.prompt }];
 
-  const messages = input.messages ?? [{ role: 'user', content: input.prompt }];
+  if (Config.verbose) logger.log('AI Kit completions input:', JSON.stringify(body, null, 2));
 
-  const request: Parameters<typeof openai.chat.completions.create>[0] = {
-    model,
-    messages: messages.map((msg) => {
-      if (msg.role === 'tool') {
-        return {
-          role: msg.role,
-          content: msg.content,
-          tool_call_id: msg.toolCallId,
-        };
-      }
-      if (msg.role === 'user') {
-        return {
-          role: msg.role,
-          content: Array.isArray(msg.content)
-            ? msg.content.map((i) => {
-                if (i.type === 'text') return { type: i.type, text: i.text };
-                return { type: i.type, image_url: i.imageUrl };
-              })
-            : msg.content,
-          name: msg.name,
-        };
-      }
-      if (msg.role === 'assistant') {
-        return {
-          role: msg.role,
-          content: msg.content,
-          name: msg.name,
-          tool_calls: msg.toolCalls,
-        };
-      }
-      return msg;
-    }),
-    temperature: input.temperature,
-    top_p: input.topP,
-    presence_penalty: input.presencePenalty,
-    frequency_penalty: input.frequencyPenalty,
-    max_tokens: input.maxTokens,
-    tools: input.tools,
-    tool_choice: input.tools?.length ? input.toolChoice : undefined,
+  const openai = getOpenAI();
+
+  const input = {
+    ...body,
+    messages: typeof body.prompt === 'string' ? [{ role: 'user' as const, content: body.prompt }] : body.messages,
   };
 
-  if (Config.verbose) logger.log('AI Kit completions input:', JSON.stringify(request, null, 2));
+  const result = body.model.startsWith('gemini')
+    ? geminiChatCompletion(input, { apiKey: getAIApiKey('gemini') })
+    : body.model.startsWith('gpt')
+    ? openaiChatCompletion(input, getOpenAI())
+    : body.model.startsWith('openRouter/')
+    ? openaiChatCompletion(
+        { ...input, model: body.model.replace('openRouter/', '') },
+        new OpenAI({ baseURL: 'https://openrouter.ai/api/v1', apiKey: getAIApiKey('openRouter') })
+      )
+    : (() => {
+        throw new Error(`Unsupported model ${body.model}`);
+      })();
 
   let content = '';
-  let promptTokens: number | undefined;
-  let completionTokens: number | undefined;
+  const toolCalls: NonNullable<ChatCompletionChunk['delta']['toolCalls']> = [];
 
-  if (stream || isEventStream) {
-    const r = await openai.chat.completions.create({ ...request, stream: true });
-
-    const decoder = new TextDecoder();
-
-    const reader = r.toReadableStream().getReader();
-
-    while (true) {
-      const { value, done } = await reader.read();
-
-      if (value) {
-        const json: ChatCompletionChunk = JSON.parse(decoder.decode(value));
-
-        const choice = json.choices[0];
-        if (choice) {
-          const {
-            delta: { role, ...delta },
-          } = choice;
-
-          content += delta.content || '';
-
-          if (isEventStream) {
-            if (!res.headersSent) {
-              res.setHeader('Content-Type', 'text/event-stream');
-              res.flushHeaders();
-            }
-
-            res.write(
-              `data: ${JSON.stringify({
-                delta: {
-                  role,
-                  content: delta.content,
-                  toolCalls: delta.tool_calls?.map((i) => ({
-                    id: i.id,
-                    type: i.type,
-                    function: i.function && {
-                      name: i.function.name,
-                      arguments: i.function.arguments,
-                    },
-                  })),
-                },
-              })}\n\n`
-            );
-            res.flush();
-          } else if (delta.content) {
-            res.write(delta.content);
-          }
-        }
-      }
-
-      if (done) {
-        break;
-      }
+  const emitEventStreamChunk = (chunk: ChatCompletionResponse) => {
+    if (!res.headersSent) {
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.flushHeaders();
     }
 
-    res.end();
-  } else {
-    const result = await openai.chat.completions.create({ ...request, stream: false });
-    promptTokens = result.usage?.prompt_tokens;
-    completionTokens = result.usage?.completion_tokens;
+    res.write(`data: ${JSON.stringify(chunk)}\n\n`);
+    res.flush();
+  };
 
-    const message = result.choices[0]?.message;
-    content = message?.content || '';
+  try {
+    for await (const chunk of result) {
+      content += chunk.delta?.content || '';
+      if (chunk.delta?.toolCalls?.length) toolCalls.push(...chunk.delta.toolCalls);
 
+      if (isEventStream) {
+        emitEventStreamChunk(chunk);
+      } else if (input.stream && chunk.delta?.content) {
+        res.write(chunk.delta.content);
+      }
+    }
+  } catch (error) {
+    console.error('Run AI error', error);
+    if (isEventStream) {
+      emitEventStreamChunk({ error: { message: error.message } });
+    } else if (input.stream) {
+      res.write(`ERROR: ${error.message}`);
+    }
+  }
+
+  if (!input.stream && !isEventStream) {
     res.json({
-      role: message?.role,
+      role: 'assistant',
       // Deprecated: use `content` instead.
-      text: message?.content,
-      content: message?.content,
-      toolCalls: message?.tool_calls?.map((i) => ({
-        id: i.id,
-        type: i.type,
-        function: {
-          name: i.function.name,
-          arguments: i.function.arguments,
-        },
-      })),
+      text: content,
+      content,
+      toolCalls: toolCalls.length ? toolCalls : undefined,
     });
   }
 
-  if (!promptTokens || !completionTokens) {
-    // FIXME: GPTTokens 暂不支持计算 function 的 tokens
-    const tokens = new GPTTokens({
-      model,
-      messages: messages
-        .concat({ role: 'assistant', content })
-        .filter(
-          (i): i is ConstructorParameters<typeof GPTTokens>[0]['messages'][number] =>
-            ['system', 'user', 'assistant'].includes(i.role) && typeof i.content === 'string'
-        )
-        .map((i) => pick(i, 'name', 'role', 'content')),
-    });
+  res.end();
 
-    promptTokens = tokens.promptUsedTokens;
-    completionTokens = tokens.completionUsedTokens;
-  }
+  // FIXME: GPTTokens 暂不支持计算 function 的 tokens
+  const tokens = new GPTTokens({
+    model: 'gpt-3.5-turbo',
+    messages: messages
+      .concat({ role: 'assistant', content })
+      .filter(
+        (i): i is ConstructorParameters<typeof GPTTokens>[0]['messages'][number] =>
+          ['system', 'user', 'assistant'].includes(i.role) && typeof i.content === 'string'
+      )
+      .map((i) => pick(i, 'name', 'role', 'content')),
+  });
 
   await Usage.create({
-    promptTokens,
-    completionTokens,
+    promptTokens: tokens.promptUsedTokens,
+    completionTokens: tokens.completionUsedTokens,
     apiKey: openai.apiKey,
   });
 
@@ -390,7 +250,7 @@ const embeddingsRequestSchema = Joi.object<EmbeddingCreateParams>({
 async function embeddings(req: Request, res: Response) {
   const input = await embeddingsRequestSchema.validateAsync(req.body, { stripUnknown: true });
 
-  const openai = getAIProvider();
+  const openai = getOpenAI();
 
   const { data } = await openai.embeddings.create(input);
 
@@ -430,7 +290,7 @@ async function imageGenerations(req: Request, res: Response) {
 
   if (Config.verbose) logger.log('AI Kit image generations input:', input);
 
-  const openai = getAIProvider();
+  const openai = getOpenAI();
 
   const response = await openai.images.generate({
     ...omit(input, 'responseFormat'),
@@ -457,7 +317,7 @@ const audioTranscriptions = proxy('api.openai.com', {
     return '/v1/audio/transcriptions';
   },
   proxyReqOptDecorator(proxyReqOpts) {
-    proxyReqOpts.headers!.Authorization = `Bearer ${getAIProvider().apiKey}`;
+    proxyReqOpts.headers!.Authorization = `Bearer ${getOpenAI().apiKey}`;
     return proxyReqOpts;
   },
 });
@@ -472,7 +332,7 @@ const audioSpeech = proxy('api.openai.com', {
     return '/v1/audio/speech';
   },
   proxyReqOptDecorator(proxyReqOpts) {
-    proxyReqOpts.headers!.Authorization = `Bearer ${getAIProvider().apiKey}`;
+    proxyReqOpts.headers!.Authorization = `Bearer ${getOpenAI().apiKey}`;
     return proxyReqOpts;
   },
 });
