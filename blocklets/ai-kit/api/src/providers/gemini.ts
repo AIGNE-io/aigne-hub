@@ -45,23 +45,33 @@ export async function* geminiChatCompletion(
   const stream = readFromReader(res.data);
 
   for await (const chunk of stream) {
-    yield {
-      delta: {
-        role: 'assistant',
-        content: chunk.candidates?.at(0)?.content.parts.at(0)?.text,
-        toolCalls: chunk.candidates?.[0]?.content?.parts
-          // FIXME: GenerateContentResponse not include functionCall property yet.
-          ?.filter((i: any) => typeof i.functionCall === 'object')
-          .map((i: any) => ({
-            id: randomId(),
-            type: 'function',
-            function: {
-              name: i.functionCall.name,
-              arguments: JSON.stringify(i.functionCall.args),
-            },
-          })),
-      },
-    };
+    const choice = chunk.candidates?.[0];
+    if (choice?.content.parts) {
+      yield {
+        delta: {
+          role: 'assistant',
+          content: choice.content.parts
+            .map((i) => i.text)
+            .filter(Boolean)
+            .join('\n'),
+          toolCalls: choice.content.parts
+            // FIXME: GenerateContentResponse not include functionCall property yet.
+            .filter((i: any) => typeof i.functionCall === 'object')
+            .map((i: any) => ({
+              id: randomId(),
+              type: 'function',
+              function: {
+                name: i.functionCall.name,
+                arguments: JSON.stringify(i.functionCall.args),
+              },
+            })),
+        },
+      };
+    } else if (chunk.promptFeedback?.blockReason) {
+      const { blockReason, blockReasonMessage } = chunk.promptFeedback;
+
+      throw new Error(['PROMPT_BLOCKED', blockReason, blockReasonMessage].filter(Boolean).join(' '));
+    }
   }
 }
 
@@ -106,9 +116,10 @@ function readFromReader(reader: Readable) {
     async start(controller) {
       try {
         let currentText = '';
+        const decoder = new TextDecoder();
 
         for await (const value of reader) {
-          const chunk = new TextDecoder().decode(value);
+          const chunk = decoder.decode(value, { stream: true });
           currentText += chunk;
           const match = currentText.match(responseLineRE);
           if (match) {
