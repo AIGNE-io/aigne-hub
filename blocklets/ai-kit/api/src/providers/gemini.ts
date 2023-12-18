@@ -42,7 +42,7 @@ export async function* geminiChatCompletion(
     validateStatus: () => true,
   });
 
-  const stream = readFromReader(Readable.toWeb(res.data).getReader());
+  const stream = readFromReader(res.data);
 
   for await (const chunk of stream) {
     yield {
@@ -101,17 +101,13 @@ function contentsFromMessages([...messages]: ChatCompletionInput['messages']) {
 
 const responseLineRE = /^data: (.*)\r\n/;
 
-function readFromReader(reader: ReadableStreamDefaultReader) {
+function readFromReader(reader: Readable) {
   return new ReadableStream<GenerateContentResponse>({
     async start(controller) {
       try {
         let currentText = '';
 
-        while (true) {
-          const { value, done } = await reader.read();
-          if (done) {
-            break;
-          }
+        for await (const value of reader) {
           const chunk = new TextDecoder().decode(value);
           currentText += chunk;
           const match = currentText.match(responseLineRE);
@@ -139,10 +135,10 @@ function readFromReader(reader: ReadableStreamDefaultReader) {
 
           if (typeof message === 'string') throw new Error(message);
         }
-
-        controller.close();
       } catch (error) {
         controller.error(error);
+      } finally {
+        controller.close();
       }
     },
   });
