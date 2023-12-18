@@ -1,3 +1,7 @@
+## 0.0.92 (2023-12-18)
+
+- fix: readable.toweb require node v17
+
 ## 0.0.91 (2023-12-16)
 
 - feat: support gemini
