@@ -1,3 +1,7 @@
+## 0.0.93 (2023-12-18)
+
+- fix: throw error if prompt has been blocked
+
 ## 0.0.92 (2023-12-18)
 
 - fix: readable.toweb require node v17
