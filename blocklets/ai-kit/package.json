@@ -9,6 +9,7 @@
     "lint:fix": "npm run lint -- --fix",
     "start": "cross-env NODE_ENV=development nodemon api/dev.ts -w api",
     "clean": "node scripts/build-clean.js",
+    "build": "tsc --noEmit && npm run bundle:client && tsc -p tsconfig.api.json",
     "bundle": "tsc --noEmit && npm run bundle:client && npm run bundle:api",
     "bundle:client": "vite build",
     "bundle:api": "npm run clean && tsc -p tsconfig.api.json && blocklet bundle --zip --create-release",
@@ -93,6 +94,7 @@
     "vite": "^4.1.4",
     "vite-plugin-blocklet": "^0.6.16",
     "vite-plugin-svgr": "^2.2.2",
+    "vite-tsconfig-paths": "^4.2.2",
     "zx": "^7.1.1"
   }
 }

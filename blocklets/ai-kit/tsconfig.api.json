@@ -3,7 +3,8 @@
   "compilerOptions": {
     "outDir": "api/dist",
     "noEmit": false,
-    "noEmitOnError": true
+    "noEmitOnError": true,
+    "module": "CommonJS"
   },
   "include": ["api/*.d.ts", "api/src"]
 }

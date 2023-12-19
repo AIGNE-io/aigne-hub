@@ -16,13 +16,23 @@
       "import": "./lib/es/index.js",
       "require": "./lib/cjs/index.js"
     },
+    "./api/": {
+      "import": "./lib/es/api/",
+      "require": "./lib/cjs/api/"
+    },
     "./components/": {
       "import": "./lib/es/components/",
       "require": "./lib/cjs/components/"
-    },
-    "./src/": {
-      "import": "./src/",
-      "require": "./src/"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "*": [
+        "./lib/types/index.d.ts"
+      ],
+      "api": [
+        "./lib/types/api/index.d.ts"
+      ]
     }
   },
   "files": [

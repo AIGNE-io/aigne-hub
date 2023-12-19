@@ -1,3 +1,17 @@
 {
-  "extends": "../../tsconfig"
+  "extends": "../../tsconfig",
+  "ts-node": {
+    "files": true,
+    "require": ["tsconfig-paths/register"],
+    "compilerOptions": {
+      "module": "CommonJS"
+    }
+  },
+  "compilerOptions": {
+    "baseUrl": "./",
+    "paths": {
+      "@blocklet/ai-kit": ["../../packages/ai-kit/src"],
+      "@blocklet/ai-kit/*": ["../../packages/ai-kit/src/*"]
+    }
+  }
 }

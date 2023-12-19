@@ -1,4 +1,4 @@
-import { create, ThemeProvider } from '@arcblock/ux/lib/Theme';
+import { ThemeProvider, create } from '@arcblock/ux/lib/Theme';
 
 const muiTheme = create();
 
