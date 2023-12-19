@@ -1,3 +1,4 @@
+import { wallet } from '@api/libs/auth';
 import { auth, component } from '@blocklet/sdk/lib/middlewares';
 import compression from 'compression';
 import { Request, Response, Router } from 'express';
@@ -199,6 +200,8 @@ async function completions(req: Request, res: Response) {
       completionTokens: completionUsedTokens,
       model: input.model,
       modelMetadata: pick(input, 'temperature', 'topP', 'frequencyPenalty', 'presencePenalty', 'maxTokens'),
+      // TODO: 作为公共 API 暴露出去后使用真实调用的客户端 did 作为 appId 保存，用来计算 token 消耗
+      appId: wallet.address,
     });
   } catch (error) {
     logger.error('Create token usage error', error);

@@ -23,6 +23,8 @@ export default class Usage extends Model<InferAttributes<Usage>, InferCreationAt
   declare model?: string;
 
   declare modelMetadata?: object;
+
+  declare appId?: string;
 }
 
 Usage.init(
@@ -57,6 +59,9 @@ Usage.init(
     },
     modelMetadata: {
       type: DataTypes.JSON,
+    },
+    appId: {
+      type: DataTypes.STRING,
     },
   },
   { sequelize }
