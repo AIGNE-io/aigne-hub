@@ -31,6 +31,7 @@
     ]
   },
   "dependencies": {
+    "@arcblock/did": "^1.18.106",
     "@arcblock/did-auth": "^1.18.105",
     "@arcblock/did-auth-storage-nedb": "^1.7.1",
     "@arcblock/did-connect": "^2.8.21",
@@ -38,6 +39,7 @@
     "@blocklet/ai-kit": "^0.0.94",
     "@blocklet/sdk": "^1.16.19",
     "@blocklet/ui-react": "^2.8.21",
+    "@did-pay/client": "^1.13.72",
     "@emotion/css": "^11.10.5",
     "@emotion/react": "^11.10.5",
     "@emotion/styled": "^11.10.5",

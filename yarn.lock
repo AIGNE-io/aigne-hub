@@ -174,13 +174,24 @@
     debug "^4.3.4"
     lodash "^4.17.21"
 
-"@arcblock/did@1.18.105", "@arcblock/did@^1.18.89", "@arcblock/did@^1.18.95":
+"@arcblock/did@1.18.105":
   version "1.18.105"
   resolved "https://registry.yarnpkg.com/@arcblock/did/-/did-1.18.105.tgz#3617b95553aec65c44e70df24ef057c0889e0bf2"
   integrity sha512-llGVoRQgxYWwIoj51ekzl8abC1sJFtnMWYnKYOv0o2JI7BCQhjaWPvrAyhz0ZABFudK5S4l9b12cDs1aHi94bw==
   dependencies:
     "@ocap/mcrypto" "1.18.105"
     "@ocap/util" "1.18.105"
+    bn.js "^5.2.1"
+    debug "^4.3.4"
+    lodash "^4.17.21"
+
+"@arcblock/did@^1.18.106", "@arcblock/did@^1.18.89", "@arcblock/did@^1.18.95":
+  version "1.18.106"
+  resolved "https://registry.yarnpkg.com/@arcblock/did/-/did-1.18.106.tgz#589ce88616dc862a722ad2ac2807e6cb17e1cb10"
+  integrity sha512-CPPTrO9AILJifpGuf9s481prgRI54jJU7/01yQ+/gim3iPBFHjIDq7g/Rdy9aF4HkPL+uUztxaj1kxfUbje2Ng==
+  dependencies:
+    "@ocap/mcrypto" "1.18.106"
+    "@ocap/util" "1.18.106"
     bn.js "^5.2.1"
     debug "^4.3.4"
     lodash "^4.17.21"
@@ -1791,6 +1802,19 @@
     "@ocap/mcrypto" "^1.18.95"
     joi "17.11.0"
 
+"@did-pay/client@^1.13.72":
+  version "1.13.72"
+  resolved "https://registry.yarnpkg.com/@did-pay/client/-/client-1.13.72.tgz#eca3b71c7b3c00b91cd2add174135312d58ea481"
+  integrity sha512-tX6MNaWFfUCY8geI13g3Qto/yzY+eWVYXN5+EPp35yWx4iKHq6DkMltcqtabmizZ+2JSg6ZoQHnKhWGCy+SoOA==
+  dependencies:
+    "@blocklet/sdk" "^1.16.19"
+    "@did-pay/types" "1.13.72"
+
+"@did-pay/types@1.13.72":
+  version "1.13.72"
+  resolved "https://registry.yarnpkg.com/@did-pay/types/-/types-1.13.72.tgz#2c9df54d3a68737295ed444771da515769a3a1f3"
+  integrity sha512-W6ekxi4eAKush4ZmrN9Pm9w6pYP6VNm5QjZm+dWBF4ZB2QPA31W5TcfBMIUl+j4mVXJ3xLLYMuFfaFjju4maJg==
+
 "@discoveryjs/json-ext@^0.5.3":
   version "0.5.7"
   resolved "https://registry.yarnpkg.com/@discoveryjs/json-ext/-/json-ext-0.5.7.tgz#1d572bfbbe14b7704e0ba0f39b74815b84870d70"
@@ -2696,12 +2720,28 @@
     randombytes "^2.1.0"
     tweetnacl "^1.0.3"
 
-"@ocap/mcrypto@1.18.105", "@ocap/mcrypto@^1.18.105", "@ocap/mcrypto@^1.18.89", "@ocap/mcrypto@^1.18.95":
+"@ocap/mcrypto@1.18.105":
   version "1.18.105"
   resolved "https://registry.yarnpkg.com/@ocap/mcrypto/-/mcrypto-1.18.105.tgz#349c24cc157f6b3f3cead08a08d2394961d0174a"
   integrity sha512-57uDO7wB9a4kvfKDLGx5lHvj2rmu/4jcmzDT9A08KzseFzagT/uVK9jfrSybStwS0dXGUm1NGR4azkQFSjn8qw==
   dependencies:
     "@ocap/util" "1.18.105"
+    bn.js "5.2.1"
+    crypto-js "^4.1.1"
+    elliptic "^6.5.4"
+    eth-lib "^0.2.8"
+    hash.js "^1.1.7"
+    interface "^1.2.1"
+    js-sha3 "^0.8.0"
+    randombytes "^2.1.0"
+    tweetnacl "^1.0.3"
+
+"@ocap/mcrypto@1.18.106", "@ocap/mcrypto@^1.18.105", "@ocap/mcrypto@^1.18.89", "@ocap/mcrypto@^1.18.95":
+  version "1.18.106"
+  resolved "https://registry.yarnpkg.com/@ocap/mcrypto/-/mcrypto-1.18.106.tgz#41d341467790a7e89a8efeaf9e552c05558a4fdb"
+  integrity sha512-UzwNmHHWbjMiGfqxHZ1Euo3fsmtzk1aq3M+JYnlyP3dTSsMqMkzAs7R4ra/RAHk4uZNjiEYac9eDBa9t7yWLfA==
+  dependencies:
+    "@ocap/util" "1.18.106"
     bn.js "5.2.1"
     crypto-js "^4.1.1"
     elliptic "^6.5.4"
@@ -2775,10 +2815,21 @@
     lodash "^4.17.21"
     utf8 "^3.0.0"
 
-"@ocap/util@1.18.105", "@ocap/util@^1.18.89", "@ocap/util@^1.18.95":
+"@ocap/util@1.18.105":
   version "1.18.105"
   resolved "https://registry.yarnpkg.com/@ocap/util/-/util-1.18.105.tgz#dd1ce7701a1091f7b1276a5aec7d8b2e43c202ff"
   integrity sha512-0bKdT8M65TxvO8pOajJcT4aUcvd6GIRjdp/MiiOnwRfg2Ay5I2/YyRxHOoEao6bh7tZaqrmEi9hMLmRnRd7Jzg==
+  dependencies:
+    base64-url "^2.3.3"
+    bn.js "5.2.1"
+    bs58 "^5.0.0"
+    lodash "^4.17.21"
+    utf8 "^3.0.0"
+
+"@ocap/util@1.18.106", "@ocap/util@^1.18.89", "@ocap/util@^1.18.95":
+  version "1.18.106"
+  resolved "https://registry.yarnpkg.com/@ocap/util/-/util-1.18.106.tgz#c2afb18832412f584b5f3e731d772f88fa8419bf"
+  integrity sha512-YMMbQ3txXtrhuFW8QaZ7P6ZimAyU6CyKhISqKU89cGru9H00+gnvvRYT65700UCOagq3FZc10lk7g/7dumH6XA==
   dependencies:
     base64-url "^2.3.3"
     bn.js "5.2.1"
@@ -8632,9 +8683,9 @@ focus-lock@^0.8.0:
     tslib "^1.9.3"
 
 follow-redirects@^1.15.0:
-  version "1.15.2"
-  resolved "https://registry.npmjs.org/follow-redirects/-/follow-redirects-1.15.2.tgz"
-  integrity sha512-VQLG33o04KaQ8uYi2tVNbdrWp1QWxNNea+nmIB4EVM28v0hmP17z7aG1+wAkNzVq4KeXTq3221ye5qTJP91JwA==
+  version "1.15.3"
+  resolved "https://registry.yarnpkg.com/follow-redirects/-/follow-redirects-1.15.3.tgz#fe2f3ef2690afce7e82ed0b44db08165b207123a"
+  integrity sha512-1VzOtuEM8pC9SFU1E+8KfTjZyMztRsgEfwQl44z8A25uy13jSzTj6dyK2Df52iV0vgHCfBwLhDWevLn95w5v6Q==
 
 for-each@^0.3.3:
   version "0.3.3"
