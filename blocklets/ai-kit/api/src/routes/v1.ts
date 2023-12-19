@@ -1,5 +1,4 @@
 import { wallet } from '@api/libs/auth';
-import { auth, component } from '@blocklet/sdk/lib/middlewares';
 import compression from 'compression';
 import { Request, Response, Router } from 'express';
 import proxy from 'express-http-proxy';
@@ -13,7 +12,7 @@ import { EmbeddingCreateParams, ImageGenerateParams } from 'openai/resources';
 import { getAIApiKey, getOpenAI } from '../libs/ai-provider';
 import { Config } from '../libs/env';
 import logger from '../libs/logger';
-import { ensureAdmin } from '../libs/security';
+import { ensureAdmin, ensureComponentCallOrAdmin } from '../libs/security';
 import { ChatCompletionChunk, ChatCompletionInput, ChatCompletionResponse } from '../providers';
 import { geminiChatCompletion } from '../providers/gemini';
 import { openaiChatCompletion } from '../providers/openai';
@@ -21,14 +20,11 @@ import Usage from '../store/models/usage';
 
 const router = Router();
 
-async function status(_: Request, res: Response) {
+router.get('/status', ensureComponentCallOrAdmin(), (_, res) => {
   const { openaiApiKey } = Config;
   const arr = Array.isArray(openaiApiKey) ? openaiApiKey : [openaiApiKey];
   res.json({ available: !!arr.filter(Boolean).length });
-}
-
-router.get('/status', ensureAdmin, status);
-router.get('/sdk/status', component.verifySig, status);
+});
 
 const completionsRequestSchema = Joi.object<
   { stream?: boolean } & (
@@ -118,7 +114,35 @@ const completionsRequestSchema = Joi.object<
     .empty(Joi.array().length(0)),
 }).xor('prompt', 'messages');
 
-async function completions(req: Request, res: Response) {
+const retry = (callback: (req: Request, res: Response) => Promise<void>): any => {
+  const options = { maxRetries: Config.maxRetries, retryCodes: [429, 500, 502] };
+
+  function canRetry(code: number, retries: number) {
+    return options.retryCodes.includes(code) && retries < options.maxRetries;
+  }
+
+  const fn = async (req: Request, res: Response, count: number = 0): Promise<void> => {
+    try {
+      await callback(req, res);
+    } catch (error) {
+      if (canRetry(error.response?.status, count)) {
+        logger.info('retry', count);
+        await fn(req, res, count + 1);
+        return;
+      }
+
+      throw error;
+    }
+  };
+
+  return async (req: Request, res: Response): Promise<void> => {
+    await fn(req, res, 0);
+  };
+};
+
+// TODO: completions 接口的 retry 机制需要重新实现，之前只是简单地在 catch 之后重新调用接口，没考虑到 event stream 中途报错的情况
+// 一旦开始写入返回数据之后的报错应该直接返回错误后关闭连接
+router.post('/completions', compression(), ensureComponentCallOrAdmin(), async (req, res) => {
   const body = await completionsRequestSchema.validateAsync(req.body, { stripUnknown: true });
 
   const isEventStream = req.accepts().some((i) => i.startsWith('text/event-stream'));
@@ -206,36 +230,7 @@ async function completions(req: Request, res: Response) {
   } catch (error) {
     logger.error('Create token usage error', error);
   }
-}
-
-const retry = (callback: (req: Request, res: Response) => Promise<void>): any => {
-  const options = { maxRetries: Config.maxRetries, retryCodes: [429, 500, 502] };
-
-  function canRetry(code: number, retries: number) {
-    return options.retryCodes.includes(code) && retries < options.maxRetries;
-  }
-
-  const fn = async (req: Request, res: Response, count: number = 0): Promise<void> => {
-    try {
-      await callback(req, res);
-    } catch (error) {
-      if (canRetry(error.response?.status, count)) {
-        logger.info('retry', count);
-        await fn(req, res, count + 1);
-        return;
-      }
-
-      throw error;
-    }
-  };
-
-  return async (req: Request, res: Response): Promise<void> => {
-    await fn(req, res, 0);
-  };
-};
-
-router.post('/completions', compression(), ensureAdmin, retry(completions));
-router.post('/sdk/completions', compression(), component.verifySig, retry(completions));
+});
 
 const embeddingsRequestSchema = Joi.object<EmbeddingCreateParams>({
   model: Joi.string().required(),
@@ -243,18 +238,19 @@ const embeddingsRequestSchema = Joi.object<EmbeddingCreateParams>({
   user: Joi.string().empty(Joi.valid('', null)),
 });
 
-async function embeddings(req: Request, res: Response) {
-  const input = await embeddingsRequestSchema.validateAsync(req.body, { stripUnknown: true });
+router.post(
+  '/embeddings',
+  ensureComponentCallOrAdmin(),
+  retry(async (req, res) => {
+    const input = await embeddingsRequestSchema.validateAsync(req.body, { stripUnknown: true });
 
-  const openai = getOpenAI();
+    const openai = getOpenAI();
 
-  const { data } = await openai.embeddings.create(input);
+    const { data } = await openai.embeddings.create(input);
 
-  res.json({ data });
-}
-
-router.post('/embeddings', ensureAdmin, retry(embeddings));
-router.post('/sdk/embeddings', component.verifySig, retry(embeddings));
+    res.json({ data });
+  })
+);
 
 const imageGenerationRequestSchema = Joi.object<{
   model?: ImageGenerateParams['model'];
@@ -274,66 +270,73 @@ const imageGenerationRequestSchema = Joi.object<{
   quality: Joi.string().valid('standard', 'hd').empty([null]),
 });
 
-async function imageGenerations(req: Request, res: Response) {
-  const input = await imageGenerationRequestSchema.validateAsync(
-    {
-      ...req.body,
-      // Deprecated: 兼容 response_format 字段，一段时间以后删除
-      responseFormat: req.body.response_format || req.body.responseFormat,
+router.post(
+  '/image/generations',
+  ensureAdmin,
+  retry(async (req, res) => {
+    const input = await imageGenerationRequestSchema.validateAsync(
+      {
+        ...req.body,
+        // Deprecated: 兼容 response_format 字段，一段时间以后删除
+        responseFormat: req.body.response_format || req.body.responseFormat,
+      },
+      { stripUnknown: true }
+    );
+
+    if (Config.verbose) logger.log('AI Kit image generations input:', input);
+
+    const openai = getOpenAI();
+
+    const response = await openai.images.generate({
+      ...omit(input, 'responseFormat'),
+      response_format: input.responseFormat,
+    });
+
+    res.json({
+      data: response.data.map((i) => ({
+        // Deprecated: use b64Json instead
+        b64_json: i.b64_json,
+        b64Json: i.b64_json,
+        url: i.url,
+      })),
+    });
+  })
+);
+
+// TODO: 之前只限制了普通用户就可以调用，现在改成 admin or component call
+// aistro 那边需要通过 component call proxy 到这个接口
+router.post(
+  '/audio/transcriptions',
+  ensureComponentCallOrAdmin(),
+  proxy('api.openai.com', {
+    https: true,
+    limit: '10mb',
+    proxyReqPathResolver() {
+      return '/v1/audio/transcriptions';
     },
-    { stripUnknown: true }
-  );
+    proxyReqOptDecorator(proxyReqOpts) {
+      proxyReqOpts.headers!.Authorization = `Bearer ${getOpenAI().apiKey}`;
+      return proxyReqOpts;
+    },
+  })
+);
 
-  if (Config.verbose) logger.log('AI Kit image generations input:', input);
-
-  const openai = getOpenAI();
-
-  const response = await openai.images.generate({
-    ...omit(input, 'responseFormat'),
-    response_format: input.responseFormat,
-  });
-
-  res.json({
-    data: response.data.map((i) => ({
-      // Deprecated: use b64Json instead
-      b64_json: i.b64_json,
-      b64Json: i.b64_json,
-      url: i.url,
-    })),
-  });
-}
-
-router.post('/image/generations', ensureAdmin, retry(imageGenerations));
-router.post('/sdk/image/generations', component.verifySig, retry(imageGenerations));
-
-const audioTranscriptions = proxy('api.openai.com', {
-  https: true,
-  limit: '10mb',
-  proxyReqPathResolver() {
-    return '/v1/audio/transcriptions';
-  },
-  proxyReqOptDecorator(proxyReqOpts) {
-    proxyReqOpts.headers!.Authorization = `Bearer ${getOpenAI().apiKey}`;
-    return proxyReqOpts;
-  },
-});
-
-router.post('/audio/transcriptions', auth(), audioTranscriptions);
-router.post('/sdk/audio/transcriptions', component.verifySig, audioTranscriptions);
-
-const audioSpeech = proxy('api.openai.com', {
-  https: true,
-  limit: '10mb',
-  proxyReqPathResolver() {
-    return '/v1/audio/speech';
-  },
-  proxyReqOptDecorator(proxyReqOpts) {
-    proxyReqOpts.headers!.Authorization = `Bearer ${getOpenAI().apiKey}`;
-    return proxyReqOpts;
-  },
-});
-
-router.post('/audio/speech', auth(), audioSpeech);
-router.post('/sdk/audio/speech', component.verifySig, audioSpeech);
+// TODO: 之前只限制了普通用户就可以调用，现在改成 admin or component call
+// aistro 那边需要通过 component call proxy 到这个接口
+router.post(
+  '/audio/speech',
+  ensureComponentCallOrAdmin(),
+  proxy('api.openai.com', {
+    https: true,
+    limit: '10mb',
+    proxyReqPathResolver() {
+      return '/v1/audio/speech';
+    },
+    proxyReqOptDecorator(proxyReqOpts) {
+      proxyReqOpts.headers!.Authorization = `Bearer ${getOpenAI().apiKey}`;
+      return proxyReqOpts;
+    },
+  })
+);
 
 export default router;
