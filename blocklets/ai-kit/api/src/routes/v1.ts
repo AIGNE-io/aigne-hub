@@ -2,8 +2,8 @@ import { auth, component } from '@blocklet/sdk/lib/middlewares';
 import compression from 'compression';
 import { Request, Response, Router } from 'express';
 import proxy from 'express-http-proxy';
-import { GPTTokens } from 'gpt-tokens';
 import Joi from 'joi';
+import { getEncoding } from 'js-tiktoken';
 import omit from 'lodash/omit';
 import pick from 'lodash/pick';
 import OpenAI from 'openai';
@@ -122,11 +122,7 @@ async function completions(req: Request, res: Response) {
 
   const isEventStream = req.accepts().some((i) => i.startsWith('text/event-stream'));
 
-  const messages = body.messages ?? [{ role: 'user', content: body.prompt }];
-
   if (Config.verbose) logger.log('AI Kit completions input:', JSON.stringify(body, null, 2));
-
-  const openai = getOpenAI();
 
   const input = {
     ...body,
@@ -191,25 +187,22 @@ async function completions(req: Request, res: Response) {
 
   res.end();
 
-  // FIXME: GPTTokens 暂不支持计算 function 的 tokens
-  const tokens = new GPTTokens({
-    model: 'gpt-3.5-turbo',
-    messages: messages
-      .concat({ role: 'assistant', content })
-      .filter(
-        (i): i is ConstructorParameters<typeof GPTTokens>[0]['messages'][number] =>
-          ['system', 'user', 'assistant'].includes(i.role) && typeof i.content === 'string'
-      )
-      .map((i) => pick(i, 'name', 'role', 'content')),
-  });
+  if (Config.verbose) logger.log('AI Kit completions output:', { content, toolCalls });
 
-  await Usage.create({
-    promptTokens: tokens.promptUsedTokens,
-    completionTokens: tokens.completionUsedTokens,
-    apiKey: openai.apiKey,
-  });
+  try {
+    // TODO: 更精确的 token 计算，暂时简单地 stringify 之后按照 gpt3/4 的 token 算法计算，尤其 function call 的计算偏差较大，需要改进
+    const promptUsedTokens = getEncoding('cl100k_base').encode(JSON.stringify(input.messages)).length;
+    const completionUsedTokens = getEncoding('cl100k_base').encode(JSON.stringify({ content, toolCalls })).length;
 
-  if (Config.verbose) logger.log('AI Kit completions output:', { content });
+    await Usage.create({
+      promptTokens: promptUsedTokens,
+      completionTokens: completionUsedTokens,
+      model: input.model,
+      modelMetadata: pick(input, 'temperature', 'topP', 'frequencyPenalty', 'presencePenalty', 'maxTokens'),
+    });
+  } catch (error) {
+    logger.error('Create token usage error', error);
+  }
 }
 
 const retry = (callback: (req: Request, res: Response) => Promise<void>): any => {

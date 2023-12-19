@@ -19,6 +19,10 @@ export default class Usage extends Model<InferAttributes<Usage>, InferCreationAt
   declare completionTokens: number;
 
   declare apiKey?: string;
+
+  declare model?: string;
+
+  declare modelMetadata?: object;
 }
 
 Usage.init(
@@ -47,6 +51,12 @@ Usage.init(
     },
     apiKey: {
       type: DataTypes.STRING,
+    },
+    model: {
+      type: DataTypes.STRING,
+    },
+    modelMetadata: {
+      type: DataTypes.JSON,
     },
   },
   { sequelize }
