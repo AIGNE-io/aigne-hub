@@ -1,3 +1,7 @@
+## 0.0.94 (2023-12-19)
+
+- chore: update tsconfig paths
+
 ## 0.0.93 (2023-12-18)
 
 - fix: throw error if prompt has been blocked
