@@ -10,6 +10,8 @@
   "compilerOptions": {
     "baseUrl": "./",
     "paths": {
+      "@app/*": ["./src/*"],
+      "@api/*": ["./api/src/*"],
       "@blocklet/ai-kit": ["../../packages/ai-kit/src"],
       "@blocklet/ai-kit/*": ["../../packages/ai-kit/src/*"]
     }
