@@ -2,7 +2,6 @@ import 'express-async-errors';
 
 import path from 'path';
 
-import { isAxiosError } from 'axios';
 import { compose } from 'compose-middleware';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
@@ -50,20 +49,6 @@ if (isProduction) {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 app.use(<ErrorRequestHandler>((error, _req, res, _next) => {
   logger.error(error);
-
-  if (isAxiosError(error)) {
-    const { response } = error;
-
-    if (response?.data) {
-      if (!res.headersSent) {
-        res.status(response.status);
-        const type = response.headers['content-type'];
-        if (type) res.type(type);
-      }
-      if (res.writable) response.data.pipe(res);
-      return;
-    }
-  }
 
   if (!res.headersSent) {
     res.status(500);

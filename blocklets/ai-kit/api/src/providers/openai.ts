@@ -1,9 +1,8 @@
+import { ChatCompletionChunk, ChatCompletionInput } from '@blocklet/ai-kit/api/types';
 import OpenAI from 'openai';
 
-import { ChatCompletionChunk, ChatCompletionInput } from '.';
-
 export async function* openaiChatCompletion(
-  input: ChatCompletionInput,
+  input: ChatCompletionInput & Required<Pick<ChatCompletionInput, 'model'>>,
   openai: OpenAI
 ): AsyncGenerator<ChatCompletionChunk> {
   const res = await openai.chat.completions.create({

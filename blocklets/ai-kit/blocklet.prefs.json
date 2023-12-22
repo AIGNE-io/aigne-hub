@@ -11,6 +11,7 @@
         "x-component": "FormTab",
         "x-component-props": {},
         "x-designable-id": "p72faa2emzb",
+        "x-index": 0,
         "properties": {
           "doc1z1uo846": {
             "type": "void",
@@ -19,6 +20,7 @@
               "tab": "Settings"
             },
             "x-designable-id": "doc1z1uo846",
+            "x-index": 0,
             "properties": {
               "MAX_RETRIES": {
                 "type": "number",
@@ -39,13 +41,234 @@
                 "x-designable-id": "7m9oi0lw0c6",
                 "x-index": 0
               }
+            }
+          },
+          "n7sdfnu0s0x": {
+            "type": "void",
+            "x-component": "FormTab.TabPane",
+            "x-component-props": {
+              "tab": "Pricing"
             },
-            "x-index": 0
+            "x-designable-id": "n7sdfnu0s0x",
+            "x-index": 1,
+            "properties": {
+              "subscriptionProductId": {
+                "type": "string",
+                "title": "Product Id",
+                "x-decorator": "FormItem",
+                "x-component": "Input",
+                "x-validator": [],
+                "x-component-props": {},
+                "x-decorator-props": {},
+                "name": "subscriptionProductId",
+                "required": false,
+                "x-designable-id": "1eq6nkg38ki",
+                "x-index": 0
+              },
+              "subscriptionPaymentLink": {
+                "type": "string",
+                "title": "Payment Link",
+                "x-decorator": "FormItem",
+                "x-component": "Input",
+                "x-validator": [],
+                "x-component-props": {},
+                "x-decorator-props": {},
+                "name": "subscriptionPaymentLink",
+                "required": false,
+                "x-designable-id": "3dqkovwroo9",
+                "x-index": 1
+              },
+              "basePricePerUnit": {
+                "type": "number",
+                "title": "Base Price",
+                "x-decorator": "FormItem",
+                "x-component": "NumberPicker",
+                "x-validator": [],
+                "x-component-props": {
+                  "max": null,
+                  "min": 0,
+                  "step": 0.1
+                },
+                "x-decorator-props": {},
+                "name": "basePricePerUnit",
+                "description": "For example: 0.001 ABT / 1K tokens",
+                "required": false,
+                "x-designable-id": "ijh86lq5v1o",
+                "x-index": 2
+              },
+              "pricingList": {
+                "type": "array",
+                "x-decorator": "FormItem",
+                "x-component": "ArrayTable",
+                "x-validator": [],
+                "x-component-props": {},
+                "x-decorator-props": {},
+                "name": "pricingList",
+                "x-designable-id": "cgn7sn6ubro",
+                "x-index": 3,
+                "items": {
+                  "type": "object",
+                  "x-designable-id": "63alcwzxuwe",
+                  "properties": {
+                    "u2rd8vlinya": {
+                      "type": "void",
+                      "x-component": "ArrayTable.Column",
+                      "x-component-props": {
+                        "title": "Type"
+                      },
+                      "x-designable-id": "u2rd8vlinya",
+                      "x-index": 0,
+                      "properties": {
+                        "type": {
+                          "x-decorator": "FormItem",
+                          "x-component": "Select",
+                          "x-validator": [],
+                          "x-component-props": {},
+                          "x-decorator-props": {},
+                          "name": "type",
+                          "enum": [
+                            {
+                              "children": [],
+                              "label": "ChatCompletion",
+                              "value": "chatCompletion"
+                            },
+                            {
+                              "children": [],
+                              "label": "Embedding",
+                              "value": "embedding"
+                            },
+                            {
+                              "children": [],
+                              "label": "ImageGeneration",
+                              "value": "imageGeneration"
+                            }
+                          ],
+                          "default": "chatCompletion",
+                          "x-designable-id": "cxl7ehhd1d8",
+                          "x-index": 0
+                        }
+                      }
+                    },
+                    "model": {
+                      "type": "void",
+                      "x-component": "ArrayTable.Column",
+                      "x-component-props": {
+                        "title": "Model"
+                      },
+                      "name": "model",
+                      "x-designable-id": "kvop5axdoe4",
+                      "x-index": 1,
+                      "properties": {
+                        "model": {
+                          "type": "string",
+                          "x-decorator": "FormItem",
+                          "x-component": "Input",
+                          "x-validator": [],
+                          "x-component-props": {},
+                          "x-decorator-props": {},
+                          "name": "model",
+                          "x-designable-id": "cafy8ij3edj",
+                          "x-index": 0,
+                          "required": true
+                        }
+                      }
+                    },
+                    "inputRate": {
+                      "type": "void",
+                      "x-component": "ArrayTable.Column",
+                      "x-component-props": {
+                        "title": "Input Rate"
+                      },
+                      "name": "inputRate",
+                      "x-designable-id": "uckf9fpo60h",
+                      "x-index": 2,
+                      "properties": {
+                        "inputRate": {
+                          "type": "number",
+                          "x-decorator": "FormItem",
+                          "x-component": "NumberPicker",
+                          "x-validator": [],
+                          "x-component-props": {},
+                          "x-decorator-props": {},
+                          "name": "inputRate",
+                          "x-designable-id": "8bo1k18od0x",
+                          "x-index": 0,
+                          "required": true
+                        }
+                      }
+                    },
+                    "outputRate": {
+                      "type": "void",
+                      "x-component": "ArrayTable.Column",
+                      "x-component-props": {
+                        "title": "Output Rate"
+                      },
+                      "name": "outputRate",
+                      "x-designable-id": "dev5n19xoaj",
+                      "x-index": 3,
+                      "properties": {
+                        "outputRate": {
+                          "type": "number",
+                          "x-decorator": "FormItem",
+                          "x-component": "NumberPicker",
+                          "x-validator": [],
+                          "x-component-props": {},
+                          "x-decorator-props": {},
+                          "name": "outputRate",
+                          "x-designable-id": "lifk8ihve0t",
+                          "x-index": 0,
+                          "required": true
+                        }
+                      }
+                    },
+                    "actions": {
+                      "type": "void",
+                      "x-component": "ArrayTable.Column",
+                      "x-component-props": {
+                        "title": "Actions"
+                      },
+                      "name": "actions",
+                      "x-designable-id": "c395sp7n417",
+                      "x-index": 4,
+                      "properties": {
+                        "1x3od1n04ag": {
+                          "type": "void",
+                          "x-component": "ArrayTable.Remove",
+                          "x-designable-id": "1x3od1n04ag",
+                          "x-index": 0
+                        },
+                        "f4dumh78veu": {
+                          "type": "void",
+                          "x-component": "ArrayTable.MoveDown",
+                          "x-designable-id": "f4dumh78veu",
+                          "x-index": 1
+                        },
+                        "2auqqr0hikr": {
+                          "type": "void",
+                          "x-component": "ArrayTable.MoveUp",
+                          "x-designable-id": "2auqqr0hikr",
+                          "x-index": 2
+                        }
+                      }
+                    }
+                  }
+                },
+                "properties": {
+                  "zehy6wuoomj": {
+                    "type": "void",
+                    "title": "Add",
+                    "x-component": "ArrayTable.Addition",
+                    "x-component-props": {},
+                    "x-designable-id": "zehy6wuoomj",
+                    "x-index": 0
+                  }
+                }
+              }
+            }
           }
-        },
-        "x-index": 0
+        }
       }
     },
-    "x-designable-id": "1e7qq05x9v4"
+    "x-designable-id": "jdhkqbtyd24"
   }
 }

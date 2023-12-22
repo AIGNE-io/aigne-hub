@@ -10,6 +10,13 @@ export default class App extends Model<InferAttributes<App>, InferCreationAttrib
   declare updatedAt: CreationOptional<Date>;
 
   declare publicKey?: string;
+
+  static async findPublicKeyById(appId: string) {
+    return App.findByPk(appId, { rejectOnEmpty: new Error('App not found') }).then((app) => {
+      if (!app.publicKey) throw new Error('Public key not set for this app');
+      return app.publicKey;
+    });
+  }
 }
 
 App.init(

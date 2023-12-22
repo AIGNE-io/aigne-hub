@@ -1,9 +1,38 @@
+import { Config } from '@api/libs/env';
+import { getActiveSubscriptionOfApp } from '@api/libs/payment';
 import App from '@api/store/models/app';
-import { fromPublicKey } from '@arcblock/did';
+import { appIdFromPublicKey, ensureRemoteComponentCall } from '@blocklet/ai-kit/api/utils/auth';
 import { Router } from 'express';
 import Joi from 'joi';
+import { withQuery } from 'ufo';
 
 const router = Router();
+
+router.get(
+  '/status',
+  async (req, res, next) => {
+    const appId = req.get('x-app-id');
+    const app = await App.findByPk(appId);
+    if (!app?.publicKey) {
+      res.json(null);
+      return;
+    }
+
+    next();
+  },
+  ensureRemoteComponentCall(App.findPublicKeyById),
+  async (req, res) => {
+    const { appId } = req.appClient!;
+    const app = await App.findByPk(appId, { rejectOnEmpty: new Error(`App ${appId} not found`) });
+
+    const subscription = await getActiveSubscriptionOfApp({ appId });
+
+    res.json({
+      id: app.id,
+      subscription,
+    });
+  }
+);
 
 export interface RegisterPayload {
   publicKey: string;
@@ -14,8 +43,10 @@ const registerBodySchema = Joi.object<RegisterPayload>({
 });
 
 router.post('/register', async (req, res) => {
+  if (!Config.pricing) throw new Error('Missing pricing preference');
+
   const payload = await registerBodySchema.validateAsync(req.body, { stripUnknown: true });
-  const appId = fromPublicKey(payload.publicKey);
+  const appId = appIdFromPublicKey(payload.publicKey);
 
   await App.findOrCreate({
     where: { id: appId },
@@ -25,11 +56,9 @@ router.post('/register', async (req, res) => {
     },
   });
 
-  // TODO: 检查 payment 是否已存在订阅，存在的话不返回支付链接
-  // TODO: 返回支付链接
   res.json({
     id: appId,
-    paymentLink: '',
+    paymentLink: withQuery(Config.pricing.subscriptionPaymentLink, { 'metadata.appId': appId }),
   });
 });
 
