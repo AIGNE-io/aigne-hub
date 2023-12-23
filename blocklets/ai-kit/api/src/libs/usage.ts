@@ -15,7 +15,7 @@ export async function createAndReportUsage({
   modelParams,
   promptTokens = 0,
   completionTokens = 0,
-  numberOfImageGeneration,
+  numberOfImageGeneration = 0,
   appId = wallet.address,
 }: Required<Pick<Usage, 'type' | 'model'>> &
   Partial<Pick<Usage, 'modelParams' | 'promptTokens' | 'completionTokens' | 'appId' | 'numberOfImageGeneration'>>) {
@@ -25,20 +25,29 @@ export async function createAndReportUsage({
     const { pricing } = Config;
     const price = Config.pricing?.list.find((i) => i.type === type && i.model === model);
 
+    // TODO: record used credits of audio transcriptions/speech
     if (pricing && price) {
-      const input = new BigNumber(promptTokens)
-        .div(1000)
-        .multipliedBy(price.inputRate)
-        .multipliedBy(pricing.basePricePerUnit);
+      if (type === 'imageGeneration') {
+        const output = new BigNumber(numberOfImageGeneration)
+          .multipliedBy(price.outputRate)
+          .multipliedBy(pricing.basePricePerUnit);
 
-      const output = new BigNumber(completionTokens)
-        .div(1000)
-        .multipliedBy(price.outputRate)
-        .multipliedBy(pricing.basePricePerUnit);
+        usedCredits = output.toNumber();
+      } else {
+        const input = new BigNumber(promptTokens)
+          .div(1000)
+          .multipliedBy(price.inputRate)
+          .multipliedBy(pricing.basePricePerUnit);
 
-      const n = input.plus(output);
+        const output = new BigNumber(completionTokens)
+          .div(1000)
+          .multipliedBy(price.outputRate)
+          .multipliedBy(pricing.basePricePerUnit);
 
-      usedCredits = n.toNumber();
+        const n = input.plus(output);
+
+        usedCredits = n.toNumber();
+      }
     }
 
     await Usage.create({
