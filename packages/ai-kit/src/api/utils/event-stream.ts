@@ -42,16 +42,16 @@ export class EventSourceParserStream extends TransformStream<any, ChatCompletion
 }
 
 export async function tryParseJsonFromResponseStream<T>(data: Readable): Promise<T | undefined> {
+  let text = '';
   let json;
 
   try {
-    let text = '';
     for await (const chunk of readableToWeb(data).pipeThrough(new TextDecoderStream())) {
       text += chunk;
     }
     json = JSON.parse(text);
   } catch (error) {
-    logger.error('parse json from response error', error);
+    logger.error('parse json from response error', text, error);
   }
 
   return json;

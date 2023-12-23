@@ -289,7 +289,7 @@ const imageGenerationRequestSchema = Joi.object<
 
 router.post(
   '/image/generations',
-  ensureAdmin,
+  ensureRemoteComponentCall(App.findPublicKeyById, ensureComponentCall(ensureAdmin)),
   retry(async (req, res) => {
     if (req.appClient?.appId) await checkSubscription({ appId: req.appClient.appId });
 
@@ -330,17 +330,16 @@ router.post(
   })
 );
 
-// TODO: 之前只限制了普通用户就可以调用，现在改成 admin or component call
-// aistro 那边需要通过 component call proxy 到这个接口
 router.post(
   '/audio/transcriptions',
-  ensureComponentCall(ensureAdmin),
+  ensureRemoteComponentCall(App.findPublicKeyById, ensureComponentCall(ensureAdmin)),
   proxy('api.openai.com', {
     https: true,
     limit: '10mb',
     proxyReqPathResolver() {
       return '/v1/audio/transcriptions';
     },
+    parseReqBody: false,
     proxyReqOptDecorator(proxyReqOpts) {
       proxyReqOpts.headers!.Authorization = `Bearer ${getOpenAI().apiKey}`;
       return proxyReqOpts;
@@ -348,11 +347,9 @@ router.post(
   })
 );
 
-// TODO: 之前只限制了普通用户就可以调用，现在改成 admin or component call
-// aistro 那边需要通过 component call proxy 到这个接口
 router.post(
   '/audio/speech',
-  ensureComponentCall(ensureAdmin),
+  ensureRemoteComponentCall(App.findPublicKeyById, ensureComponentCall(ensureAdmin)),
   proxy('api.openai.com', {
     https: true,
     limit: '10mb',

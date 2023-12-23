@@ -4122,10 +4122,10 @@
   resolved "https://registry.yarnpkg.com/@types/estree/-/estree-0.0.51.tgz#cfd70924a25a3fd32b218e5e420e6897e1ac4f40"
   integrity sha512-CuPgU6f3eT/XgKKPqKd/gLZV1Xmvf1a2R5POBOGQa6uv82xpls89HU5zKeVoyR8XzHd1RGNOlQlvUe3CFkjWNQ==
 
-"@types/express-http-proxy@^1.6.5":
-  version "1.6.5"
-  resolved "https://registry.yarnpkg.com/@types/express-http-proxy/-/express-http-proxy-1.6.5.tgz#575d79257a5181d08baa03f49155a8b47cc593c8"
-  integrity sha512-M6p0bQjjTMxqeuMtdo4yjsJGqwwKrlVC9sMwmDaAUogeMTI42You/TD0ibX8L0isEYohUZHpnKDEhsE16kI72g==
+"@types/express-http-proxy@^1.6.5", "@types/express-http-proxy@^1.6.6":
+  version "1.6.6"
+  resolved "https://registry.yarnpkg.com/@types/express-http-proxy/-/express-http-proxy-1.6.6.tgz#386c6f4c61a2d26ab8817ba1c2b2aac80e5638c9"
+  integrity sha512-J8ZqHG76rq1UB716IZ3RCmUhg406pbWxsM3oFCFccl5xlWUPzoR4if6Og/cE4juK8emH0H9quZa5ltn6ZdmQJg==
   dependencies:
     "@types/express" "*"
 
@@ -8741,7 +8741,7 @@ form-data-encoder@1.7.2:
 
 form-data@^4.0.0:
   version "4.0.0"
-  resolved "https://registry.npmjs.org/form-data/-/form-data-4.0.0.tgz"
+  resolved "https://registry.yarnpkg.com/form-data/-/form-data-4.0.0.tgz#93919daeaf361ee529584b9b31664dc12c9fa452"
   integrity sha512-ETEklSGi5t0QMZuiXoA/Q6vcnxcLQP5vdugSpuAyi6SVGi2clPPp+xgEhuMaHC+zGgn31Kd235W35f7Hykkaww==
   dependencies:
     asynckit "^0.4.0"

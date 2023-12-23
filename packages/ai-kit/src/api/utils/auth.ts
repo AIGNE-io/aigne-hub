@@ -14,7 +14,7 @@ const signer = getSigner(DidType('default').pk!);
 
 function hashData({ appId, timestamp, data }: { appId: string; timestamp: number; data: object }) {
   const hasher = getHasher(DidType('default').hash!);
-  return hasher(stringify({ appId, timestamp, data }), 1);
+  return hasher(stringify({ appId, timestamp, data: data || {} }), 1);
 }
 
 export function appIdFromPublicKey(publicKey: BytesType) {
