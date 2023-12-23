@@ -1,6 +1,6 @@
 {
   "name": "@blocklet/ai-kit",
-  "version": "0.0.92",
+  "version": "0.0.95",
   "description": "The react.js component library for AI Kit",
   "publishConfig": {
     "access": "public"
@@ -16,13 +16,42 @@
       "import": "./lib/es/index.js",
       "require": "./lib/cjs/index.js"
     },
+    "./api": {
+      "import": "./lib/es/api/index.js",
+      "require": "./lib/cjs/api/index.js"
+    },
+    "./api/": {
+      "import": "./lib/es/api/",
+      "require": "./lib/cjs/api/"
+    },
+    "./components": {
+      "import": "./lib/es/components/index.js",
+      "require": "./lib/cjs/components/index.js"
+    },
     "./components/": {
       "import": "./lib/es/components/",
       "require": "./lib/cjs/components/"
-    },
-    "./src/": {
-      "import": "./src/",
-      "require": "./src/"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "*": [
+        "./lib/types/index.d.ts"
+      ],
+      "api": [
+        "./lib/types/api/index.d.ts"
+      ],
+      "api/*": [
+        "./lib/types/api/*.d.ts",
+        "./lib/types/api/*/index.d.ts"
+      ],
+      "components": [
+        "./lib/types/components/index.d.ts"
+      ],
+      "components/*": [
+        "./lib/types/components/*.d.ts",
+        "./lib/types/components/*/index.d.ts"
+      ]
     }
   },
   "files": [

@@ -7,7 +7,7 @@ module.exports = {
     project: [
       join(__dirname, 'tsconfig.eslint.json'),
       join(__dirname, 'blocklets/ai-kit/tsconfig.json'),
-      join(__dirname, 'packages/react/tsconfig.json'),
+      join(__dirname, 'packages/ai-kit/tsconfig.json'),
     ],
   },
   globals: {

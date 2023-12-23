@@ -1,7 +1,7 @@
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { storiesOf } from '@storybook/react';
 
-import { ImagePreview } from '../src/index';
+import { ImagePreview } from '../src/components';
 
 storiesOf('Image Preview', module)
   .addParameters({

@@ -3,7 +3,7 @@ import { ToastProvider } from '@arcblock/ux/lib/Toast';
 import Footer from '@blocklet/ui-react/lib/Footer';
 import Header from '@blocklet/ui-react/lib/Header';
 import { Global, css } from '@emotion/react';
-import { Box, CssBaseline } from '@mui/material';
+import { Box, CssBaseline, ThemeProvider, createTheme } from '@mui/material';
 import { ReactNode, Suspense } from 'react';
 import { Navigate, Route, RouterProvider, createBrowserRouter, createRoutesFromElements } from 'react-router-dom';
 
@@ -12,31 +12,47 @@ import { SessionProvider, useIsRole } from './contexts/session';
 import { HomeLazy } from './pages/home';
 import { ChatLazy } from './pages/playground';
 
+const theme = createTheme({
+  typography: {
+    fontSize: 14,
+    allVariants: {
+      textTransform: 'none',
+    },
+  },
+});
+
 export default function App() {
   const basename = window.blocklet?.prefix || '/';
 
   return (
-    <CssBaseline>
-      <Global
-        styles={css`
-          #app {
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-          }
-        `}
-      />
+    <ThemeProvider theme={theme}>
+      <CssBaseline>
+        <Global
+          styles={css`
+            html,
+            body {
+              font-size: 14px;
+            }
 
-      <ToastProvider>
-        <LocaleProvider translations={{}}>
-          <SessionProvider serviceHost={basename}>
-            <Suspense fallback={<Loading />}>
-              <AppRoutes basename={basename} />
-            </Suspense>
-          </SessionProvider>
-        </LocaleProvider>
-      </ToastProvider>
-    </CssBaseline>
+            #app {
+              min-height: 100vh;
+              display: flex;
+              flex-direction: column;
+            }
+          `}
+        />
+
+        <ToastProvider>
+          <LocaleProvider translations={{}}>
+            <SessionProvider serviceHost={basename}>
+              <Suspense fallback={<Loading />}>
+                <AppRoutes basename={basename} />
+              </Suspense>
+            </SessionProvider>
+          </LocaleProvider>
+        </ToastProvider>
+      </CssBaseline>
+    </ThemeProvider>
   );
 }
 
@@ -48,7 +64,7 @@ function AppRoutes({ basename }: { basename: string }) {
       <Route>
         <Route index element={<HomeLazy />} />
         <Route path="playground" element={isAdmin ? undefined : <Navigate to="/" />}>
-          <Route index element={<Navigate to="/playground/chat" />} />
+          <Route index element={<Navigate to="/playground/chat" replace />} />
           <Route path="chat" element={<ChatLazy />} />
         </Route>
         <Route

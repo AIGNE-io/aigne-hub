@@ -1,8 +1,4 @@
-import Conversation, {
-  ConversationRef,
-  MessageItem,
-  useConversation,
-} from '@blocklet/ai-kit/src/components/conversation/index';
+import { Conversation, ConversationRef, MessageItem, useConversation } from '@blocklet/ai-kit/components';
 import Dashboard from '@blocklet/ui-react/lib/Dashboard';
 import styled from '@emotion/styled';
 import { HighlightOff } from '@mui/icons-material';
