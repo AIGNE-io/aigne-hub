@@ -1,3 +1,7 @@
+## 0.0.95 (2023-12-23)
+
+- fix: show login button in home page
+
 ## 0.0.94 (2023-12-19)
 
 - chore: update tsconfig paths
@@ -8,7 +12,7 @@
 
 ## 0.0.92 (2023-12-18)
 
-- fix: readable.toweb require node v17
+- fix: readable.toWeb require node v17
 
 ## 0.0.91 (2023-12-16)
 
