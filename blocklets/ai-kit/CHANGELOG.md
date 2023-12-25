@@ -1,3 +1,7 @@
+## 0.0.96 (2023-12-25)
+
+- feat: ai kit as service
+
 ## 0.0.95 (2023-12-23)
 
 - fix: show login button in home page
