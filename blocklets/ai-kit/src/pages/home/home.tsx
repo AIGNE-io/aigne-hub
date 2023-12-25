@@ -18,7 +18,7 @@ export default function Home() {
             <Stack alignItems="center" justifyContent="center" gap={3} minHeight="60vh">
               <Box component="img" src={blocklet.appLogo} width={80} borderRadius={80} />
               <Typography variant="h4">AI Kit</Typography>
-              <Typography variant="h5" component="div" color="text.secondary">
+              <Typography variant="h5" component="div" color="text.secondary" textAlign="center">
                 The decentralized AI access solution for blocklets
               </Typography>
 
