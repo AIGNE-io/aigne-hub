@@ -7,7 +7,7 @@ import { Op } from 'sequelize';
 import { wallet } from './auth';
 import { Config } from './env';
 import logger from './logger';
-import { getActiveSubscriptionOfApp } from './payment';
+import { getActiveSubscriptionOfApp, isPaymentInstalled } from './payment';
 
 export async function createAndReportUsage({
   type,
@@ -69,6 +69,8 @@ export async function createAndReportUsage({
 
 const reportUsage = throttle(
   async ({ appId }: { appId: string }) => {
+    if (!isPaymentInstalled()) return;
+
     const { pricing } = Config;
     if (!pricing) throw new Error('Missing required preference `pricing`');
 
