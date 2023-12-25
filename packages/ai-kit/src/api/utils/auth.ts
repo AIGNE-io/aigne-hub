@@ -1,6 +1,7 @@
 /// <reference path="./auth.type.d.ts" />
 
 import { DidType, fromPublicKey } from '@arcblock/did';
+import { auth } from '@blocklet/sdk/lib/middlewares';
 import getWallet from '@blocklet/sdk/lib/wallet';
 import { getHasher, getSigner, types } from '@ocap/mcrypto';
 import type { BytesType } from '@ocap/util';
@@ -9,7 +10,12 @@ import stringify from 'json-stable-stringify';
 
 const TOKEN_EXPIRES_IN_SECONDS = 30;
 
-const wallet = getWallet();
+export const wallet = getWallet();
+
+const ADMIN_ROLES = ['owner', 'admin'];
+
+export const ensureAdmin = auth({ roles: ADMIN_ROLES });
+
 const signer = getSigner(DidType('default').pk!);
 
 function hashData({ appId, timestamp, data }: { appId: string; timestamp: number; data: object }) {
