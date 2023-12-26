@@ -1,6 +1,6 @@
 {
   "name": "@blocklet/ai-kit",
-  "version": "0.0.97",
+  "version": "0.0.99",
   "description": "The react.js component library for AI Kit",
   "publishConfig": {
     "access": "public"
@@ -20,17 +20,25 @@
       "import": "./lib/es/api/index.js",
       "require": "./lib/cjs/api/index.js"
     },
-    "./api/": {
-      "import": "./lib/es/api/",
-      "require": "./lib/cjs/api/"
+    "./api/call": {
+      "import": "./lib/es/api/call/index.js",
+      "require": "./lib/cjs/api/call/index.js"
+    },
+    "./api/types": {
+      "import": "./lib/es/api/types/index.js",
+      "require": "./lib/cjs/api/types/index.js"
+    },
+    "./api/*": {
+      "import": "./lib/es/api/*.js",
+      "require": "./lib/cjs/api/*.js"
     },
     "./components": {
       "import": "./lib/es/components/index.js",
       "require": "./lib/cjs/components/index.js"
     },
-    "./components/": {
-      "import": "./lib/es/components/",
-      "require": "./lib/cjs/components/"
+    "./components/*": {
+      "import": "./lib/es/components/*.js",
+      "require": "./lib/cjs/components/*.js"
     }
   },
   "typesVersions": {
@@ -77,6 +85,7 @@
     "storybook": "set NODE_OPTIONS=--openssl-legacy-provider && start-storybook -p 6009",
     "build-storybook": "build-storybook",
     "prepare": "npm run build",
+    "clean": "rm -rf lib",
     "update:deps": "npx taze -n '/arcblock|ocap|abtnode|blocklet|did-connect|did-comment|nedb/' -w && npm run deduplicate && yarn",
     "deduplicate": "npx yarn-deduplicate ../../yarn.lock"
   },

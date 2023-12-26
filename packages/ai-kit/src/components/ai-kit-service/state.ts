@@ -19,7 +19,7 @@ export const useAIKitServiceStatus = create<AIKitServiceStatus>()(
         state.loading = true;
       });
       try {
-        const [app] = await Promise.all([appStatus()]);
+        const app = await appStatus();
         set((state) => {
           state.app = app;
           state.error = undefined;

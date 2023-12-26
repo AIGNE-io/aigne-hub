@@ -1,7 +1,7 @@
 {
   "name": "ai-kit",
   "private": true,
-  "version": "0.0.97",
+  "version": "0.0.99",
   "workspaces": [
     "blocklets/*",
     "packages/*"
@@ -9,7 +9,7 @@
   "author": "Arcblock <blocklet@arcblock.io> https://github.com/blocklet",
   "scripts": {
     "dev": "yarn workspace ai-kit dev",
-    "bundle": "yarn workspace ai-kit bundle",
+    "bundle": "yarn build:libs && yarn workspace ai-kit bundle",
     "lint": "yarn workspaces run lint",
     "build": "npm run build:libs && yarn workspace ai-kit build",
     "build:libs": "yarn workspace @blocklet/ai-kit build",

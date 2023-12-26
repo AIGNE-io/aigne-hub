@@ -1,6 +1,14 @@
-## 0.0.97 (2023-12-26)
+## 0.0.99 (2023-12-25)
 
-- chore: support usage credits search by date
+- fix: update exports of @blocklet/ai-kit/api
+
+## 0.0.98 (2023-12-25)
+
+- chore: bump version
+
+## 0.0.97 (2023-12-25)
+
+- chore: bundle api with tsc-alias
 
 ## 0.0.96 (2023-12-25)
 
