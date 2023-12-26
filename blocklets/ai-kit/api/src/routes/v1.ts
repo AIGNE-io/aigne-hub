@@ -154,6 +154,8 @@ router.post(
   compression(),
   ensureRemoteComponentCall(App.findPublicKeyById, ensureComponentCall(ensureAdmin)),
   async (req, res) => {
+    res.setHeader('X-Accel-Buffering', 'no');
+
     if (req.appClient?.appId) await checkSubscription({ appId: req.appClient.appId });
 
     const body = await completionsRequestSchema.validateAsync(req.body, { stripUnknown: true });
@@ -185,7 +187,6 @@ router.post(
 
     const emitEventStreamChunk = (chunk: ChatCompletionResponse) => {
       if (!res.headersSent) {
-        res.setHeader('X-Accel-Buffering', 'no');
         res.setHeader('Content-Type', 'text/event-stream');
         res.flushHeaders();
       }
@@ -203,6 +204,7 @@ router.post(
           emitEventStreamChunk(chunk);
         } else if (input.stream && chunk.delta?.content) {
           res.write(chunk.delta.content);
+          res.flush();
         }
       }
     } catch (error) {
@@ -211,6 +213,7 @@ router.post(
         emitEventStreamChunk({ error: { message: error.message } });
       } else if (input.stream) {
         res.write(`ERROR: ${error.message}`);
+        res.flush();
       }
     }
 

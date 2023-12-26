@@ -1,3 +1,7 @@
+## 0.0.101 (2023-12-26)
+
+- fix: disable nginx buffering in streaming api
+
 ## 0.0.100 (2023-12-26)
 
 - fix: set 'X-Accel-Buffering' to 'no' to disable nginx buffering
