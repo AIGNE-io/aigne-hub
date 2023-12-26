@@ -123,6 +123,11 @@ export interface AppStatusResult {
   aiKitServiceConfig: AIKitServiceConfig;
 }
 
+export interface AppUsedCreditsResult {
+  date: string;
+  totalUsedCredits: number;
+}
+
 export async function appStatus(options?: AIKitServiceApiOptions): Promise<AppStatusResult> {
   return aiKitServiceApi(options)
     .get('/status')
@@ -141,5 +146,14 @@ export async function setAppConfig(
 export async function appRegister(options?: Partial<AIKitServiceApiOptions>): Promise<AppRegisterResult> {
   return aiKitServiceApi(options)
     .post('/register')
+    .then((res) => res.data);
+}
+
+export async function appUsedCredits(
+  payload: { startOfMonth: string; endOfMonth: string },
+  options?: Partial<AIKitServiceApiOptions>
+): Promise<{ list: AppUsedCreditsResult[] }> {
+  return aiKitServiceApi(options)
+    .get('/usage/credits', { params: payload })
     .then((res) => res.data);
 }

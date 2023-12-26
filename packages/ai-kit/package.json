@@ -1,6 +1,6 @@
 {
   "name": "@blocklet/ai-kit",
-  "version": "0.0.101",
+  "version": "0.0.102",
   "description": "The react.js component library for AI Kit",
   "publishConfig": {
     "access": "public"
@@ -103,11 +103,13 @@
     "@mui/icons-material": "^5.11.9",
     "@mui/lab": "^5.0.0-alpha.120",
     "@mui/material": "^5.11.10",
+    "@mui/x-date-pickers": "^6.18.6",
     "@ocap/mcrypto": "^1.18.106",
     "@types/express": "^4.17.21",
     "@types/express-http-proxy": "^1.6.6",
     "ahooks": "^3.7.4",
     "axios": "^1.3.4",
+    "dayjs": "^1.11.10",
     "eventsource-parser": "^1.1.1",
     "express": "^4.18.2",
     "express-http-proxy": "^2.0.0",
@@ -122,6 +124,7 @@
     "react-markdown": "^8.0.6",
     "react-photo-view": "^1.2.3",
     "react-use": "^17.4.2",
+    "recharts": "^2.10.3",
     "recoil": "^0.7.7",
     "ufo": "^1.3.2",
     "yaml": "^2.3.4",

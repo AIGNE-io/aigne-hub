@@ -3,6 +3,7 @@ import { NextFunction, Request, Response, Router } from 'express';
 import Joi from 'joi';
 
 import Config, { AIKitServiceConfig } from '../../components/ai-kit-service/config';
+import { proxyToAIKit } from '../call';
 import { appRegister, appStatus } from '../call/app';
 import { ensureAdmin, wallet } from '../utils/auth';
 
@@ -46,6 +47,12 @@ router.post(
   catchAxiosError(async (_, res) => {
     res.json(await appRegister({ publicKey: wallet.publicKey }));
   })
+);
+
+router.get(
+  '/usage/credits',
+  ensureAdmin,
+  proxyToAIKit('/api/app/usage/credits', { useAIKitService: Config.useAIKitService })
 );
 
 export default router;

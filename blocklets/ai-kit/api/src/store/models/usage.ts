@@ -1,4 +1,4 @@
-import { CreationOptional, DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequelize';
+import { CreationOptional, DataTypes, InferAttributes, InferCreationAttributes, Model, Op } from 'sequelize';
 import { Worker } from 'snowflake-uuid';
 
 import { sequelize } from '../sequelize';
@@ -35,7 +35,53 @@ export default class Usage extends Model<InferAttributes<Usage>, InferCreationAt
   // reported: 已经把上一个**提交点**到这条记录间的 usage 上报至 payment
   declare usageReportStatus?: null | 'counted' | 'reported';
 
-  declare usedCredits?: number;
+  declare usedCredits?: number | null;
+
+  static async getSumUsedCredits({
+    appId,
+    startOfMonth,
+    endOfMonth,
+  }: {
+    appId: string;
+    startOfMonth?: string;
+    endOfMonth?: string;
+  }) {
+    const where: { appId: string; createdAt?: any } = { appId };
+
+    if (startOfMonth && endOfMonth) {
+      where.createdAt = {
+        [Op.between]: [startOfMonth, endOfMonth],
+      };
+    }
+
+    const results = await Usage.findAll({
+      attributes: [
+        [sequelize.fn('DATE', sequelize.col('createdAt')), 'date'],
+        [sequelize.fn('SUM', sequelize.col('usedCredits')), 'totalUsedCredits'],
+      ],
+      where,
+      group: [sequelize.fn('DATE', sequelize.col('createdAt'))],
+      order: [[sequelize.fn('DATE', sequelize.col('createdAt')), 'ASC']],
+    });
+
+    if (startOfMonth && endOfMonth) {
+      const dateRange = [];
+      const currentDate = new Date(startOfMonth);
+      while (currentDate <= new Date(endOfMonth)) {
+        dateRange.push(currentDate.toISOString().split('T')[0]);
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+
+      const dataWithPlaceholders = dateRange.map((date) => {
+        const existingData = results.find((result) => (result.dataValues as any)?.date === date);
+        return existingData || { date, totalUsedCredits: 0 };
+      });
+
+      return dataWithPlaceholders;
+    }
+
+    return results;
+  }
 }
 
 Usage.init(
