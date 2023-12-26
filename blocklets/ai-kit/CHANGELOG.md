@@ -1,3 +1,7 @@
+## 0.0.100 (2023-12-26)
+
+- chore: support usage credits chart by date
+
 ## 0.0.99 (2023-12-25)
 
 - fix: update exports of @blocklet/ai-kit/api
