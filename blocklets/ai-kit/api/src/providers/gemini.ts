@@ -2,14 +2,13 @@ import { IncomingMessage } from 'http';
 import { Readable } from 'stream';
 import { ReadableStream } from 'stream/web';
 
+import { ChatCompletionChunk, ChatCompletionInput } from '@blocklet/ai-kit/api/types';
 import { GenerateContentResponse } from '@google/generative-ai';
 import axios from 'axios';
 import { customAlphabet } from 'nanoid';
 
-import { ChatCompletionChunk, ChatCompletionInput } from '.';
-
 export async function* geminiChatCompletion(
-  input: ChatCompletionInput,
+  input: ChatCompletionInput & Required<Pick<ChatCompletionInput, 'model'>>,
   config: { apiKey: string }
 ): AsyncGenerator<ChatCompletionChunk> {
   const body = {

@@ -2,8 +2,6 @@ import 'express-async-errors';
 
 import path from 'path';
 
-import { isAxiosError } from 'axios';
-import { compose } from 'compose-middleware';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import dotenv from 'dotenv-flow';
@@ -22,16 +20,8 @@ export const app = express();
 app.set('trust proxy', true);
 app.use(cookieParser());
 
-const bodyParser = compose([express.json({ limit: '1 mb' }), express.urlencoded({ extended: true, limit: '1 mb' })]);
-
-app.use((req, res, next) => {
-  if (req.path.startsWith('/api/v1/audio')) {
-    next();
-    return;
-  }
-
-  bodyParser(req, res, next);
-});
+app.use(express.json({ limit: '1 mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1 mb' }));
 
 app.use(cors());
 
@@ -50,20 +40,6 @@ if (isProduction) {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 app.use(<ErrorRequestHandler>((error, _req, res, _next) => {
   logger.error(error);
-
-  if (isAxiosError(error)) {
-    const { response } = error;
-
-    if (response?.data) {
-      if (!res.headersSent) {
-        res.status(response.status);
-        const type = response.headers['content-type'];
-        if (type) res.type(type);
-      }
-      if (res.writable) response.data.pipe(res);
-      return;
-    }
-  }
 
   if (!res.headersSent) {
     res.status(500);

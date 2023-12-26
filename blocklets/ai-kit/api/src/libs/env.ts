@@ -1,7 +1,15 @@
+import Usage from '@api/store/models/usage';
 import config from '@blocklet/sdk/lib/config';
 import Joi from 'joi';
 
 import logger from './logger';
+
+type Pricing = {
+  subscriptionPaymentLink: string;
+  subscriptionProductId: string;
+  basePricePerUnit: number;
+  list: { type: NonNullable<Usage['type']>; model: string; inputRate: number; outputRate: number }[];
+};
 
 export const Config = {
   _verbose: undefined as boolean | undefined,
@@ -70,9 +78,48 @@ export const Config = {
         .max(100)
         .validate(config.env.preferences.MAX_RETRIES);
       if (error) logger.error('validate preferences.MAX_RETRIES error', error);
+
       this._maxRetries = (value as number) || 1;
     }
     return this._maxRetries;
+  },
+
+  _pricing: undefined as Pricing | undefined,
+  get pricing() {
+    if (this._pricing === undefined) {
+      const res = Joi.object<Pricing>({
+        subscriptionPaymentLink: Joi.string().required(),
+        subscriptionProductId: Joi.string().required(),
+        basePricePerUnit: Joi.number().min(0).required(),
+        list: Joi.array().items(
+          Joi.object({
+            type: Joi.string().valid('chatCompletion', 'embedding', 'imageGeneration').required(),
+            model: Joi.string().required(),
+            inputRate: Joi.number().min(0).required(),
+            outputRate: Joi.number().min(0).required(),
+          })
+        ),
+      }).validate(
+        {
+          subscriptionPaymentLink: config.env.preferences.subscriptionPaymentLink,
+          subscriptionProductId: config.env.preferences.subscriptionProductId,
+          basePricePerUnit: config.env.preferences.basePricePerUnit,
+          list: config.env.preferences.pricingList,
+        },
+        { stripUnknown: true }
+      );
+      if (res.error) {
+        logger.error('validate preferences.MAX_RETRIES error', res.error);
+      } else {
+        this._pricing = res.value;
+      }
+    }
+
+    return this._pricing;
+  },
+
+  get usageReportThrottleTime() {
+    return 600e3;
   },
 
   get dataDir() {

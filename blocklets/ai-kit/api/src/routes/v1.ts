@@ -1,41 +1,45 @@
-import { auth, component } from '@blocklet/sdk/lib/middlewares';
+import { checkSubscription } from '@api/libs/payment';
+import { createAndReportUsage } from '@api/libs/usage';
+import App from '@api/store/models/app';
+import {
+  ChatCompletionChunk,
+  ChatCompletionInput,
+  ChatCompletionResponse,
+  EmbeddingInput,
+  ImageGenerationInput,
+} from '@blocklet/ai-kit/api/types';
+import { ensureRemoteComponentCall } from '@blocklet/ai-kit/api/utils/auth';
 import compression from 'compression';
 import { Request, Response, Router } from 'express';
 import proxy from 'express-http-proxy';
-import { GPTTokens } from 'gpt-tokens';
 import Joi from 'joi';
+import { getEncoding } from 'js-tiktoken';
 import omit from 'lodash/omit';
 import pick from 'lodash/pick';
 import OpenAI from 'openai';
-import { EmbeddingCreateParams, ImageGenerateParams } from 'openai/resources';
 
 import { getAIApiKey, getOpenAI } from '../libs/ai-provider';
 import { Config } from '../libs/env';
 import logger from '../libs/logger';
-import { ensureAdmin } from '../libs/security';
-import { ChatCompletionChunk, ChatCompletionInput, ChatCompletionResponse } from '../providers';
+import { ensureAdmin, ensureComponentCall } from '../libs/security';
 import { geminiChatCompletion } from '../providers/gemini';
 import { openaiChatCompletion } from '../providers/openai';
-import Usage from '../store/models/usage';
 
 const router = Router();
 
-async function status(_: Request, res: Response) {
+router.get('/status', ensureComponentCall(ensureAdmin), (_, res) => {
   const { openaiApiKey } = Config;
   const arr = Array.isArray(openaiApiKey) ? openaiApiKey : [openaiApiKey];
   res.json({ available: !!arr.filter(Boolean).length });
-}
-
-router.get('/status', ensureAdmin, status);
-router.get('/sdk/status', component.verifySig, status);
+});
 
 const completionsRequestSchema = Joi.object<
-  { stream?: boolean } & (
+  { model: string } & (
     | (ChatCompletionInput & { prompt: undefined })
     | (Omit<ChatCompletionInput, 'messages'> & { messages: undefined; prompt: string })
   )
 >({
-  model: Joi.string().default('gpt-3.5-turbo'),
+  model: Joi.string().empty(['', null]).default('gpt-3.5-turbo'),
   prompt: Joi.string(),
   messages: Joi.array()
     .items(
@@ -117,101 +121,6 @@ const completionsRequestSchema = Joi.object<
     .empty(Joi.array().length(0)),
 }).xor('prompt', 'messages');
 
-async function completions(req: Request, res: Response) {
-  const body = await completionsRequestSchema.validateAsync(req.body, { stripUnknown: true });
-
-  const isEventStream = req.accepts().some((i) => i.startsWith('text/event-stream'));
-
-  const messages = body.messages ?? [{ role: 'user', content: body.prompt }];
-
-  if (Config.verbose) logger.log('AI Kit completions input:', JSON.stringify(body, null, 2));
-
-  const openai = getOpenAI();
-
-  const input = {
-    ...body,
-    messages: typeof body.prompt === 'string' ? [{ role: 'user' as const, content: body.prompt }] : body.messages,
-  };
-
-  const result = body.model.startsWith('gemini')
-    ? geminiChatCompletion(input, { apiKey: getAIApiKey('gemini') })
-    : body.model.startsWith('gpt')
-    ? openaiChatCompletion(input, getOpenAI())
-    : body.model.startsWith('openRouter/')
-    ? openaiChatCompletion(
-        { ...input, model: body.model.replace('openRouter/', '') },
-        new OpenAI({ baseURL: 'https://openrouter.ai/api/v1', apiKey: getAIApiKey('openRouter') })
-      )
-    : (() => {
-        throw new Error(`Unsupported model ${body.model}`);
-      })();
-
-  let content = '';
-  const toolCalls: NonNullable<ChatCompletionChunk['delta']['toolCalls']> = [];
-
-  const emitEventStreamChunk = (chunk: ChatCompletionResponse) => {
-    if (!res.headersSent) {
-      res.setHeader('Content-Type', 'text/event-stream');
-      res.flushHeaders();
-    }
-
-    res.write(`data: ${JSON.stringify(chunk)}\n\n`);
-    res.flush();
-  };
-
-  try {
-    for await (const chunk of result) {
-      content += chunk.delta?.content || '';
-      if (chunk.delta?.toolCalls?.length) toolCalls.push(...chunk.delta.toolCalls);
-
-      if (isEventStream) {
-        emitEventStreamChunk(chunk);
-      } else if (input.stream && chunk.delta?.content) {
-        res.write(chunk.delta.content);
-      }
-    }
-  } catch (error) {
-    console.error('Run AI error', error);
-    if (isEventStream) {
-      emitEventStreamChunk({ error: { message: error.message } });
-    } else if (input.stream) {
-      res.write(`ERROR: ${error.message}`);
-    }
-  }
-
-  if (!input.stream && !isEventStream) {
-    res.json({
-      role: 'assistant',
-      // Deprecated: use `content` instead.
-      text: content,
-      content,
-      toolCalls: toolCalls.length ? toolCalls : undefined,
-    });
-  }
-
-  res.end();
-
-  // FIXME: GPTTokens 暂不支持计算 function 的 tokens
-  const tokens = new GPTTokens({
-    model: 'gpt-3.5-turbo',
-    messages: messages
-      .concat({ role: 'assistant', content })
-      .filter(
-        (i): i is ConstructorParameters<typeof GPTTokens>[0]['messages'][number] =>
-          ['system', 'user', 'assistant'].includes(i.role) && typeof i.content === 'string'
-      )
-      .map((i) => pick(i, 'name', 'role', 'content')),
-  });
-
-  await Usage.create({
-    promptTokens: tokens.promptUsedTokens,
-    completionTokens: tokens.completionUsedTokens,
-    apiKey: openai.apiKey,
-  });
-
-  if (Config.verbose) logger.log('AI Kit completions output:', { content });
-}
-
 const retry = (callback: (req: Request, res: Response) => Promise<void>): any => {
   const options = { maxRetries: Config.maxRetries, retryCodes: [429, 500, 502] };
 
@@ -238,106 +147,220 @@ const retry = (callback: (req: Request, res: Response) => Promise<void>): any =>
   };
 };
 
-router.post('/completions', compression(), ensureAdmin, retry(completions));
-router.post('/sdk/completions', compression(), component.verifySig, retry(completions));
+// TODO: completions 接口的 retry 机制需要重新实现，之前只是简单地在 catch 之后重新调用接口，没考虑到 event stream 中途报错的情况
+// 一旦开始写入返回数据之后的报错应该直接返回错误后关闭连接
+router.post(
+  '/:type(chat)?/completions',
+  compression(),
+  ensureRemoteComponentCall(App.findPublicKeyById, ensureComponentCall(ensureAdmin)),
+  async (req, res) => {
+    if (req.appClient?.appId) await checkSubscription({ appId: req.appClient.appId });
 
-const embeddingsRequestSchema = Joi.object<EmbeddingCreateParams>({
+    const body = await completionsRequestSchema.validateAsync(req.body, { stripUnknown: true });
+
+    const isEventStream = req.accepts().some((i) => i.startsWith('text/event-stream'));
+
+    if (Config.verbose) logger.log('AI Kit completions input:', JSON.stringify(body, null, 2));
+
+    const input = {
+      ...body,
+      messages: typeof body.prompt === 'string' ? [{ role: 'user' as const, content: body.prompt }] : body.messages,
+    };
+
+    const result = body.model.startsWith('gemini')
+      ? geminiChatCompletion(input, { apiKey: getAIApiKey('gemini') })
+      : body.model.startsWith('gpt')
+      ? openaiChatCompletion(input, getOpenAI())
+      : body.model.startsWith('openRouter/')
+      ? openaiChatCompletion(
+          { ...input, model: body.model.replace('openRouter/', '') },
+          new OpenAI({ baseURL: 'https://openrouter.ai/api/v1', apiKey: getAIApiKey('openRouter') })
+        )
+      : (() => {
+          throw new Error(`Unsupported model ${body.model}`);
+        })();
+
+    let content = '';
+    const toolCalls: NonNullable<ChatCompletionChunk['delta']['toolCalls']> = [];
+
+    const emitEventStreamChunk = (chunk: ChatCompletionResponse) => {
+      if (!res.headersSent) {
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.flushHeaders();
+      }
+
+      res.write(`data: ${JSON.stringify(chunk)}\n\n`);
+      res.flush();
+    };
+
+    try {
+      for await (const chunk of result) {
+        content += chunk.delta?.content || '';
+        if (chunk.delta?.toolCalls?.length) toolCalls.push(...chunk.delta.toolCalls);
+
+        if (isEventStream) {
+          emitEventStreamChunk(chunk);
+        } else if (input.stream && chunk.delta?.content) {
+          res.write(chunk.delta.content);
+        }
+      }
+    } catch (error) {
+      console.error('Run AI error', error);
+      if (isEventStream) {
+        emitEventStreamChunk({ error: { message: error.message } });
+      } else if (input.stream) {
+        res.write(`ERROR: ${error.message}`);
+      }
+    }
+
+    if (!input.stream && !isEventStream) {
+      res.json({
+        role: 'assistant',
+        // Deprecated: use `content` instead.
+        text: content,
+        content,
+        toolCalls: toolCalls.length ? toolCalls : undefined,
+      });
+    }
+
+    res.end();
+
+    if (Config.verbose) logger.log('AI Kit completions output:', { content, toolCalls });
+
+    // TODO: 更精确的 token 计算，暂时简单地 stringify 之后按照 gpt3/4 的 token 算法计算，尤其 function call 的计算偏差较大，需要改进
+    const promptUsedTokens = getEncoding('cl100k_base').encode(JSON.stringify(input.messages)).length;
+    const completionUsedTokens = getEncoding('cl100k_base').encode(JSON.stringify({ content, toolCalls })).length;
+
+    createAndReportUsage({
+      type: 'chatCompletion',
+      promptTokens: promptUsedTokens,
+      completionTokens: completionUsedTokens,
+      model: input.model,
+      modelParams: pick(input, 'temperature', 'topP', 'frequencyPenalty', 'presencePenalty', 'maxTokens'),
+      appId: req.appClient?.appId,
+    });
+  }
+);
+
+const embeddingsRequestSchema = Joi.object<EmbeddingInput>({
   model: Joi.string().required(),
-  input: Joi.alternatives().try(Joi.string(), Joi.array().items(Joi.string())).required(),
-  user: Joi.string().empty(Joi.valid('', null)),
+  input: Joi.alternatives()
+    .try(
+      Joi.string(),
+      Joi.array().items(Joi.alternatives().try(Joi.string(), Joi.number(), Joi.array().items(Joi.number())))
+    )
+    .required(),
 });
 
-async function embeddings(req: Request, res: Response) {
-  const input = await embeddingsRequestSchema.validateAsync(req.body, { stripUnknown: true });
+router.post(
+  '/embeddings',
+  ensureRemoteComponentCall(App.findPublicKeyById, ensureComponentCall(ensureAdmin)),
+  retry(async (req, res) => {
+    if (req.appClient?.appId) await checkSubscription({ appId: req.appClient.appId });
 
-  const openai = getOpenAI();
+    const input = await embeddingsRequestSchema.validateAsync(req.body, { stripUnknown: true });
 
-  const { data } = await openai.embeddings.create(input);
+    const openai = getOpenAI();
 
-  res.json({ data });
-}
+    const { data, usage } = await openai.embeddings.create(input);
 
-router.post('/embeddings', ensureAdmin, retry(embeddings));
-router.post('/sdk/embeddings', component.verifySig, retry(embeddings));
+    res.json({ data });
 
-const imageGenerationRequestSchema = Joi.object<{
-  model?: ImageGenerateParams['model'];
-  prompt: string;
-  size?: ImageGenerateParams['size'];
-  n?: number;
-  responseFormat?: ImageGenerateParams['response_format'];
-  style?: ImageGenerateParams['style'];
-  quality?: ImageGenerateParams['quality'];
-}>({
-  model: Joi.valid('dall-e-2', 'dall-e-3').empty(['', null]),
+    createAndReportUsage({
+      type: 'embedding',
+      promptTokens: usage.prompt_tokens,
+      model: input.model,
+      appId: req.appClient?.appId,
+    });
+  })
+);
+
+const imageGenerationRequestSchema = Joi.object<
+  ImageGenerationInput & Required<Pick<ImageGenerationInput, 'model' | 'n'>>
+>({
+  model: Joi.valid('dall-e-2', 'dall-e-3').empty(['', null]).default('dall-e-2'),
   prompt: Joi.string().required(),
   size: Joi.string().valid('256x256', '512x512', '1024x1024', '1024x1792', '1792x1024').empty(['', null]),
-  n: Joi.number().min(1).max(10).empty([null]),
+  n: Joi.number().min(1).max(10).empty([null]).default(1),
   responseFormat: Joi.string().valid('url', 'b64_json').empty([null]),
   style: Joi.string().valid('vivid', 'natural').empty([null]),
   quality: Joi.string().valid('standard', 'hd').empty([null]),
 });
 
-async function imageGenerations(req: Request, res: Response) {
-  const input = await imageGenerationRequestSchema.validateAsync(
-    {
-      ...req.body,
-      // Deprecated: 兼容 response_format 字段，一段时间以后删除
-      responseFormat: req.body.response_format || req.body.responseFormat,
+router.post(
+  '/image/generations',
+  ensureRemoteComponentCall(App.findPublicKeyById, ensureComponentCall(ensureAdmin)),
+  retry(async (req, res) => {
+    if (req.appClient?.appId) await checkSubscription({ appId: req.appClient.appId });
+
+    const input = await imageGenerationRequestSchema.validateAsync(
+      {
+        ...req.body,
+        // Deprecated: 兼容 response_format 字段，一段时间以后删除
+        responseFormat: req.body.response_format || req.body.responseFormat,
+      },
+      { stripUnknown: true }
+    );
+
+    if (Config.verbose) logger.log('AI Kit image generations input:', input);
+
+    const openai = getOpenAI();
+
+    const response = await openai.images.generate({
+      ...omit(input, 'responseFormat'),
+      response_format: input.responseFormat,
+    });
+
+    res.json({
+      data: response.data.map((i) => ({
+        // Deprecated: use b64Json instead
+        b64_json: i.b64_json,
+        b64Json: i.b64_json,
+        url: i.url,
+      })),
+    });
+
+    createAndReportUsage({
+      type: 'imageGeneration',
+      model: input.model,
+      modelParams: pick(input, 'size', 'responseFormat', 'style', 'quality'),
+      numberOfImageGeneration: input.n,
+      appId: req.appClient?.appId,
+    });
+  })
+);
+
+router.post(
+  '/audio/transcriptions',
+  ensureRemoteComponentCall(App.findPublicKeyById, ensureComponentCall(ensureAdmin)),
+  proxy('api.openai.com', {
+    https: true,
+    limit: '10mb',
+    proxyReqPathResolver() {
+      return '/v1/audio/transcriptions';
     },
-    { stripUnknown: true }
-  );
+    parseReqBody: false,
+    proxyReqOptDecorator(proxyReqOpts) {
+      proxyReqOpts.headers!.Authorization = `Bearer ${getOpenAI().apiKey}`;
+      return proxyReqOpts;
+    },
+  })
+);
 
-  if (Config.verbose) logger.log('AI Kit image generations input:', input);
-
-  const openai = getOpenAI();
-
-  const response = await openai.images.generate({
-    ...omit(input, 'responseFormat'),
-    response_format: input.responseFormat,
-  });
-
-  res.json({
-    data: response.data.map((i) => ({
-      // Deprecated: use b64Json instead
-      b64_json: i.b64_json,
-      b64Json: i.b64_json,
-      url: i.url,
-    })),
-  });
-}
-
-router.post('/image/generations', ensureAdmin, retry(imageGenerations));
-router.post('/sdk/image/generations', component.verifySig, retry(imageGenerations));
-
-const audioTranscriptions = proxy('api.openai.com', {
-  https: true,
-  limit: '10mb',
-  proxyReqPathResolver() {
-    return '/v1/audio/transcriptions';
-  },
-  proxyReqOptDecorator(proxyReqOpts) {
-    proxyReqOpts.headers!.Authorization = `Bearer ${getOpenAI().apiKey}`;
-    return proxyReqOpts;
-  },
-});
-
-router.post('/audio/transcriptions', auth(), audioTranscriptions);
-router.post('/sdk/audio/transcriptions', component.verifySig, audioTranscriptions);
-
-const audioSpeech = proxy('api.openai.com', {
-  https: true,
-  limit: '10mb',
-  proxyReqPathResolver() {
-    return '/v1/audio/speech';
-  },
-  proxyReqOptDecorator(proxyReqOpts) {
-    proxyReqOpts.headers!.Authorization = `Bearer ${getOpenAI().apiKey}`;
-    return proxyReqOpts;
-  },
-});
-
-router.post('/audio/speech', auth(), audioSpeech);
-router.post('/sdk/audio/speech', component.verifySig, audioSpeech);
+router.post(
+  '/audio/speech',
+  ensureRemoteComponentCall(App.findPublicKeyById, ensureComponentCall(ensureAdmin)),
+  proxy('api.openai.com', {
+    https: true,
+    limit: '10mb',
+    proxyReqPathResolver() {
+      return '/v1/audio/speech';
+    },
+    proxyReqOptDecorator(proxyReqOpts) {
+      proxyReqOpts.headers!.Authorization = `Bearer ${getOpenAI().apiKey}`;
+      return proxyReqOpts;
+    },
+  })
+);
 
 export default router;

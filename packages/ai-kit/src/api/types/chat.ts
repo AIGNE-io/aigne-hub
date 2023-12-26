@@ -1,5 +1,6 @@
 export interface ChatCompletionInput {
-  model: string;
+  stream?: boolean;
+  model?: string;
   messages: (
     | {
         role: 'system';
@@ -57,7 +58,15 @@ export interface ChatCompletionChunk {
 }
 
 export interface ChatCompletionError {
-  error?: {
+  error: {
     message: string;
   };
+}
+
+export function isChatCompletionChunk(data: ChatCompletionResponse): data is ChatCompletionChunk {
+  return typeof (data as ChatCompletionChunk).delta === 'object';
+}
+
+export function isChatCompletionError(data: ChatCompletionResponse): data is ChatCompletionError {
+  return typeof (data as ChatCompletionError).error === 'object';
 }

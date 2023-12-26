@@ -1,3 +1,19 @@
+## 0.0.99 (2023-12-25)
+
+- fix: update exports of @blocklet/ai-kit/api
+
+## 0.0.98 (2023-12-25)
+
+- chore: bump version
+
+## 0.0.97 (2023-12-25)
+
+- chore: bundle api with tsc-alias
+
+## 0.0.96 (2023-12-25)
+
+- feat: ai kit as service
+
 ## 0.0.95 (2023-12-23)
 
 - fix: show login button in home page
