@@ -1,3 +1,7 @@
+## 0.0.97 (2023-12-26)
+
+- chore: support usage credits search by date
+
 ## 0.0.96 (2023-12-25)
 
 - feat: ai kit as service

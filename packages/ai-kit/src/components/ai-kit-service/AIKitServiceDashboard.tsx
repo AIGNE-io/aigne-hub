@@ -139,7 +139,6 @@ function UseCreditsCharts() {
   });
 
   const list = data.data?.list || [];
-  const interval = Math.floor(list.length / 15);
 
   return (
     <Stack width={1}>
@@ -163,7 +162,7 @@ function UseCreditsCharts() {
       ) : (
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={list} barSize={20} margin={{ top: 20, right: 30, left: 30, bottom: 20 }}>
-            <XAxis dataKey="date" scale="point" interval={interval} padding={{ left: 10, right: 10 }} />
+            <XAxis dataKey="date" scale="point" interval={8} padding={{ left: 10, right: 10 }} />
             <Tooltip formatter={CustomTooltipFormatter} />
             <CartesianGrid strokeDasharray="3 3" />
             <Bar dataKey="totalUsedCredits" fill="#8884d8" background={{ fill: '#eee' }} />

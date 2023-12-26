@@ -43,7 +43,7 @@ const usageCreditsSchema = Joi.object<UsageCredits>({
 
 router.get('/usage/credits', ensureRemoteComponentCall(App.findPublicKeyById), async (req, res) => {
   const { appId } = req.appClient!;
-  const payload = await usageCreditsSchema.validateAsync(req.body, { stripUnknown: true });
+  const payload = await usageCreditsSchema.validateAsync(req.query, { stripUnknown: true });
   const { startOfMonth, endOfMonth } = payload;
 
   const result = await Usage.getSumUsedCredits({ appId, startOfMonth, endOfMonth });
