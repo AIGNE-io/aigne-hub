@@ -3,7 +3,7 @@ import { NextFunction, Request, Response, Router } from 'express';
 import Joi from 'joi';
 
 import Config, { AIKitServiceConfig } from '../../components/ai-kit-service/config';
-import { appRegister, appStatus } from '../call/app';
+import { appRegister, appStatus, appUsedCredits } from '../call/app';
 import { ensureAdmin, wallet } from '../utils/auth';
 
 const router = Router();
@@ -45,6 +45,15 @@ router.post(
   ensureAdmin,
   catchAxiosError(async (_, res) => {
     res.json(await appRegister({ publicKey: wallet.publicKey }));
+  })
+);
+
+router.get(
+  '/used-credits',
+  ensureAdmin,
+  catchAxiosError(async (req, res) => {
+    const { startOfMonth, endOfMonth } = req.query as { startOfMonth: string; endOfMonth: string };
+    res.json({ ...(await appUsedCredits({ startOfMonth: startOfMonth || '', endOfMonth: endOfMonth || '' })) });
   })
 );
 

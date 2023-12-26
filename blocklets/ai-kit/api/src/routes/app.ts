@@ -1,6 +1,7 @@
 import { Config } from '@api/libs/env';
 import { getActiveSubscriptionOfApp } from '@api/libs/payment';
 import App from '@api/store/models/app';
+import Usage from '@api/store/models/usage';
 import { appIdFromPublicKey, ensureRemoteComponentCall } from '@blocklet/ai-kit/api/utils/auth';
 import { Router } from 'express';
 import Joi from 'joi';
@@ -24,15 +25,19 @@ router.get(
   async (req, res) => {
     const { appId } = req.appClient!;
     const app = await App.findByPk(appId, { rejectOnEmpty: new Error(`App ${appId} not found`) });
-
     const subscription = await getActiveSubscriptionOfApp({ appId });
 
-    res.json({
-      id: app.id,
-      subscription,
-    });
+    res.json({ id: app.id, subscription });
   }
 );
+
+router.get('/used-credits', ensureRemoteComponentCall(App.findPublicKeyById), async (req, res) => {
+  const { appId } = req.appClient!;
+  const { startOfMonth, endOfMonth } = req.query as { startOfMonth: string; endOfMonth: string };
+
+  const result = await Usage.getSumUsedCredits({ appId, startOfMonth, endOfMonth });
+  res.json({ list: result });
+});
 
 export interface RegisterPayload {
   publicKey: string;
