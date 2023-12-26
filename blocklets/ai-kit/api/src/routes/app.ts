@@ -31,22 +31,22 @@ router.get(
   }
 );
 
-export interface UsageCredits {
+export interface UsageCreditsQuery {
   startOfMonth: string;
   endOfMonth: string;
 }
 
-const usageCreditsSchema = Joi.object<UsageCredits>({
+const usageCreditsSchema = Joi.object<UsageCreditsQuery>({
   startOfMonth: Joi.string().required(),
   endOfMonth: Joi.string().required(),
 });
 
 router.get('/usage/credits', ensureRemoteComponentCall(App.findPublicKeyById), async (req, res) => {
   const { appId } = req.appClient!;
-  const payload = await usageCreditsSchema.validateAsync(req.query, { stripUnknown: true });
-  const { startOfMonth, endOfMonth } = payload;
+  const { startOfMonth, endOfMonth } = await usageCreditsSchema.validateAsync(req.query, { stripUnknown: true });
 
   const result = await Usage.getSumUsedCredits({ appId, startOfMonth, endOfMonth });
+
   res.json({ list: result });
 });
 
