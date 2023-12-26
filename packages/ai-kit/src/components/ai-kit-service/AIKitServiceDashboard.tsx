@@ -79,8 +79,8 @@ function UseAIKitServiceSwitch() {
               defaultChecked={app.aiKitServiceConfig.useAIKitService}
               checked={isSwitchOn}
               onChange={async (_, checked) => {
-                const AIKIT = window.blocklet?.componentMountPoints.find(
-                  (x) => x.did === 'z8ia3xzq2tMq8CRHfaXj1BTYJyYnEcHbqP8cJ'
+                const AIKIT = (window.blocklet?.componentMountPoints || [])?.find(
+                  (x: { did: string }) => x.did === 'z8ia3xzq2tMq8CRHfaXj1BTYJyYnEcHbqP8cJ'
                 );
 
                 if (!AIKIT) {
