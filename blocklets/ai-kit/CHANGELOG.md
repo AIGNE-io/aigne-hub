@@ -1,6 +1,10 @@
+## 0.0.101 (2023-12-26)
+
+- fix: disable nginx buffering in streaming api
+
 ## 0.0.100 (2023-12-26)
 
-- chore: support usage credits chart by date
+- fix: set 'X-Accel-Buffering' to 'no' to disable nginx buffering
 
 ## 0.0.99 (2023-12-25)
 

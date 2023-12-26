@@ -5,6 +5,7 @@ import { call, getComponentWebEndpoint } from '@blocklet/sdk/lib/component';
 import { sign } from '@blocklet/sdk/lib/util/verify-sign';
 import axios, { AxiosResponse, isAxiosError } from 'axios';
 import FormData from 'form-data';
+import stringify from 'json-stable-stringify';
 import { joinURL } from 'ufo';
 
 import {
@@ -66,9 +67,15 @@ export async function chatCompletions(
 ): Promise<ReadableStream<ChatCompletionChunk> | AxiosResponse<IncomingMessage, any>> {
   const response = catchAndRethrowUpstreamError(
     options?.useAIKitService
-      ? aiKitApi.post<IncomingMessage>('/api/v1/chat/completions', input, {
+      ? aiKitApi<IncomingMessage>('/api/v1/chat/completions', {
           responseType: 'stream',
-          headers: { ...getRemoteComponentCallHeaders(input), Accept: 'text/event-stream' },
+          method: 'POST',
+          data: stringify(input),
+          headers: {
+            ...getRemoteComponentCallHeaders(input),
+            Accept: 'text/event-stream',
+            'Content-Type': 'application/json',
+          },
         })
       : call({
           name: 'ai-kit',
@@ -221,7 +228,7 @@ export async function audioSpeech(
   return response;
 }
 
-async function catchAndRethrowUpstreamError(response: Promise<AxiosResponse<any, any>>) {
+async function catchAndRethrowUpstreamError(response: Promise<any>) {
   return response.catch(async (error) => {
     if (isAxiosError(error) && error.response?.data) {
       const { data } = error.response;
