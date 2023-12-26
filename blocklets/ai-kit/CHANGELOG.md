@@ -1,3 +1,7 @@
+## 0.0.102 (2023-12-26)
+
+- feat: add ai kit dashboard component
+
 ## 0.0.101 (2023-12-26)
 
 - fix: disable nginx buffering in streaming api
