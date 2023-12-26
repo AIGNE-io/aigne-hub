@@ -65,7 +65,6 @@ export async function chatCompletions(
   options?: { useAIKitService?: boolean; responseType?: 'stream' }
 ): Promise<ReadableStream<ChatCompletionChunk> | AxiosResponse<IncomingMessage, any>> {
   const response = catchAndRethrowUpstreamError(
-    // @ts-ignore
     options?.useAIKitService
       ? aiKitApi.post<IncomingMessage>('/api/v1/chat/completions', input, {
           responseType: 'stream',
@@ -118,7 +117,6 @@ export async function imageGenerations(
   options?: { useAIKitService?: boolean; responseType?: 'stream' }
 ): Promise<ImageGenerationResponse | AxiosResponse<IncomingMessage, any>> {
   const response = await catchAndRethrowUpstreamError(
-    // @ts-ignore
     options?.useAIKitService
       ? aiKitApi.post('/api/v1/image/generations', input, {
           responseType: options.responseType,
@@ -150,7 +148,6 @@ export async function embeddings(
   options?: { useAIKitService?: boolean; responseType?: 'stream' }
 ): Promise<EmbeddingResponse | AxiosResponse<IncomingMessage, any>> {
   const response = await catchAndRethrowUpstreamError(
-    // @ts-ignore
     options?.useAIKitService
       ? aiKitApi.post('/api/v1/embeddings', input, {
           responseType: options.responseType,
@@ -208,7 +205,6 @@ export async function audioSpeech(
   options?: { useAIKitService?: boolean }
 ): Promise<AxiosResponse<IncomingMessage, any>> {
   const response = await catchAndRethrowUpstreamError(
-    // @ts-ignore
     options?.useAIKitService
       ? aiKitApi.post('/api/v1/audio/speech', input, {
           responseType: 'stream',

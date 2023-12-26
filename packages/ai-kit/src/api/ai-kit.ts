@@ -154,6 +154,6 @@ export async function appUsedCredits(
   options?: Partial<AIKitServiceApiOptions>
 ): Promise<{ list: AppUsedCreditsResult[] }> {
   return aiKitServiceApi(options)
-    .get('/used-credits', { params: payload })
+    .get('/usage/credits', { params: payload })
     .then((res) => res.data);
 }

@@ -38,6 +38,6 @@ export async function appUsedCredits({
   endOfMonth: string;
 }): Promise<AppUsedCreditsResult> {
   return aiKitApi
-    .get('/api/app/used-credits', { params: { startOfMonth, endOfMonth }, headers: getRemoteComponentCallHeaders({}) })
+    .get('/api/app/usage/credits', { params: { startOfMonth, endOfMonth }, headers: getRemoteComponentCallHeaders({}) })
     .then((res) => res.data);
 }
