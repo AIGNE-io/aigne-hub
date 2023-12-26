@@ -221,7 +221,7 @@ export async function audioSpeech(
   return response;
 }
 
-async function catchAndRethrowUpstreamError(response: Promise<AxiosResponse<any, any>>) {
+async function catchAndRethrowUpstreamError(response: Promise<any>) {
   return response.catch(async (error) => {
     if (isAxiosError(error) && error.response?.data) {
       const { data } = error.response;

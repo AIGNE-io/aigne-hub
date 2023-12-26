@@ -1,3 +1,7 @@
+## 0.0.100 (2023-12-26)
+
+- fix: set 'X-Accel-Buffering' to 'no' to disable nginx buffering
+
 ## 0.0.99 (2023-12-25)
 
 - fix: update exports of @blocklet/ai-kit/api

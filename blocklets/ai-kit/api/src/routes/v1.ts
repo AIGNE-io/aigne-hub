@@ -185,6 +185,7 @@ router.post(
 
     const emitEventStreamChunk = (chunk: ChatCompletionResponse) => {
       if (!res.headersSent) {
+        res.setHeader('X-Accel-Buffering', 'no');
         res.setHeader('Content-Type', 'text/event-stream');
         res.flushHeaders();
       }

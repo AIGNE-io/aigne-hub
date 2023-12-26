@@ -62,7 +62,7 @@ export function getRemoteComponentCallHeaders(data: object) {
 
   return {
     'x-app-id': appId,
-    'x-timestamp': timestamp,
+    'x-timestamp': timestamp.toString(),
     'x-component-sig': sig,
   };
 }
