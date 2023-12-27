@@ -1,3 +1,7 @@
+## 0.0.106 (2023-12-28)
+
+- fix: polish billing page
+
 ## 0.0.105 (2023-12-27)
 
 - chore: update deps
