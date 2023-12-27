@@ -124,8 +124,12 @@ export interface AppStatusResult {
 }
 
 export interface AppUsedCreditsResult {
+  model: string;
   date: string;
-  totalUsedCredits: number;
+  usedCredits: string;
+  promptTokens: number;
+  completionTokens: number;
+  numberOfImageGeneration: number;
 }
 
 export async function appStatus(options?: AIKitServiceApiOptions): Promise<AppStatusResult> {
@@ -150,10 +154,10 @@ export async function appRegister(options?: Partial<AIKitServiceApiOptions>): Pr
 }
 
 export async function appUsedCredits(
-  payload: { startOfMonth: string; endOfMonth: string },
+  query: { startTime?: string; endTime: string },
   options?: Partial<AIKitServiceApiOptions>
 ): Promise<{ list: AppUsedCreditsResult[] }> {
   return aiKitServiceApi(options)
-    .get('/usage/credits', { params: payload })
+    .get('/usage', { params: query })
     .then((res) => res.data);
 }

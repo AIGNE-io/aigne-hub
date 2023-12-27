@@ -37,50 +37,40 @@ export default class Usage extends Model<InferAttributes<Usage>, InferCreationAt
 
   declare usedCredits?: number | null;
 
-  static async getSumUsedCredits({
+  static async sumUsedCredits({
     appId,
-    startOfMonth,
-    endOfMonth,
+    startTime,
+    endTime,
   }: {
     appId: string;
-    startOfMonth?: string;
-    endOfMonth?: string;
-  }) {
-    const where: { appId: string; createdAt?: any } = { appId };
-
-    if (startOfMonth && endOfMonth) {
-      where.createdAt = {
-        [Op.between]: [startOfMonth, endOfMonth],
-      };
-    }
-
-    const results = await Usage.findAll({
+    startTime?: string;
+    endTime?: string;
+  }): Promise<
+    {
+      date: string;
+      usedCredits: string;
+      promptTokens: number;
+      completionTokens: number;
+      numberOfImageGeneration: number;
+    }[]
+  > {
+    return Usage.findAll({
       attributes: [
+        'model',
         [sequelize.fn('DATE', sequelize.col('createdAt')), 'date'],
-        [sequelize.fn('SUM', sequelize.col('usedCredits')), 'totalUsedCredits'],
+        [sequelize.cast(sequelize.fn('SUM', sequelize.col('usedCredits')), 'varchar(100)'), 'usedCredits'],
+        [sequelize.fn('COALESCE', sequelize.fn('SUM', sequelize.col('promptTokens')), 0), 'promptTokens'],
+        [sequelize.fn('COALESCE', sequelize.fn('SUM', sequelize.col('completionTokens')), 0), 'completionTokens'],
+        [
+          sequelize.fn('COALESCE', sequelize.fn('SUM', sequelize.col('numberOfImageGeneration')), 0),
+          'numberOfImageGeneration',
+        ],
       ],
-      where,
-      group: [sequelize.fn('DATE', sequelize.col('createdAt'))],
-      order: [[sequelize.fn('DATE', sequelize.col('createdAt')), 'ASC']],
-    });
-
-    if (startOfMonth && endOfMonth) {
-      const dateRange = [];
-      const currentDate = new Date(startOfMonth);
-      while (currentDate <= new Date(endOfMonth)) {
-        dateRange.push(currentDate.toISOString().split('T')[0]);
-        currentDate.setDate(currentDate.getDate() + 1);
-      }
-
-      const dataWithPlaceholders = dateRange.map((date) => {
-        const existingData = results.find((result) => (result.dataValues as any)?.date === date);
-        return existingData || { date, totalUsedCredits: 0 };
-      });
-
-      return dataWithPlaceholders;
-    }
-
-    return results;
+      where: { appId, createdAt: { [Op.gte]: startTime, [Op.lte]: endTime } },
+      group: ['model', 'date'],
+      order: [['date', 'ASC']],
+      raw: true,
+    }) as any;
   }
 }
 

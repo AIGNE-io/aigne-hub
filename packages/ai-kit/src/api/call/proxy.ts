@@ -14,7 +14,7 @@ export function proxyToAIKit(
     | '/api/v1/embeddings'
     | '/api/v1/audio/transcriptions'
     | '/api/v1/audio/speech'
-    | '/api/app/usage/credits',
+    | '/api/app/usage',
   options?: { useAIKitService?: boolean }
 ) {
   const url = parseURL(joinURL(options?.useAIKitService ? AI_KIT_BASE_URL : getComponentWebEndpoint('ai-kit'), path));

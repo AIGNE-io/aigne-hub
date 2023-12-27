@@ -1,5 +1,7 @@
+import { wallet } from '@api/libs/auth';
 import { Config } from '@api/libs/env';
 import { getActiveSubscriptionOfApp } from '@api/libs/payment';
+import { ensureAdmin, ensureComponentCall } from '@api/libs/security';
 import App from '@api/store/models/app';
 import Usage from '@api/store/models/usage';
 import { appIdFromPublicKey, ensureRemoteComponentCall } from '@blocklet/ai-kit/api/utils/auth';
@@ -32,23 +34,29 @@ router.get(
 );
 
 export interface UsageCreditsQuery {
-  startOfMonth: string;
-  endOfMonth: string;
+  startTime: string;
+  endTime: string;
 }
 
 const usageCreditsSchema = Joi.object<UsageCreditsQuery>({
-  startOfMonth: Joi.string().required(),
-  endOfMonth: Joi.string().required(),
+  startTime: Joi.string().required(),
+  endTime: Joi.string().required(),
 });
 
-router.get('/usage/credits', ensureRemoteComponentCall(App.findPublicKeyById), async (req, res) => {
-  const { appId } = req.appClient!;
-  const { startOfMonth, endOfMonth } = await usageCreditsSchema.validateAsync(req.query, { stripUnknown: true });
+router.get(
+  '/usage',
+  ensureRemoteComponentCall(App.findPublicKeyById, ensureComponentCall(ensureAdmin)),
+  async (req, res) => {
+    // 如果没有 appClient 的话，相当于 component.call，查询当前应用的 usage
+    const appId = req.appClient?.appId ?? wallet.address;
 
-  const result = await Usage.getSumUsedCredits({ appId, startOfMonth, endOfMonth });
+    const { startTime, endTime } = await usageCreditsSchema.validateAsync(req.query, { stripUnknown: true });
 
-  res.json({ list: result });
-});
+    const result = await Usage.sumUsedCredits({ appId, startTime, endTime });
+
+    res.json({ list: result });
+  }
+);
 
 export interface RegisterPayload {
   publicKey: string;

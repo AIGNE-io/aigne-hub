@@ -49,8 +49,8 @@ router.post(
   })
 );
 
-router.get('/usage/credits', ensureAdmin, (req, res, next) => {
-  proxyToAIKit('/api/app/usage/credits', { useAIKitService: Config.useAIKitService })(req, res, next);
+router.get('/usage', ensureAdmin, (req, res, next) => {
+  proxyToAIKit('/api/app/usage', { useAIKitService: Config.useAIKitService })(req, res, next);
 });
 
 export default router;
