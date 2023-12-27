@@ -1,3 +1,7 @@
+## 0.0.104 (2023-12-27)
+
+- fix: generic event stream
+
 ## 0.0.103 (2023-12-27)
 
 - fix: use latest value of config
