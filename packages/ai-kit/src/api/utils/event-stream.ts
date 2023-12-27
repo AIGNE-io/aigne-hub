@@ -4,8 +4,6 @@ import { ReadableStream, TextDecoderStream, TransformStream } from 'stream/web';
 import { logger } from '@blocklet/sdk/lib/config';
 import { createParser } from 'eventsource-parser';
 
-import { ChatCompletionResponse } from '../types';
-
 export function readableToWeb(readable: Readable) {
   return new ReadableStream({
     async start(controller) {
@@ -17,7 +15,7 @@ export function readableToWeb(readable: Readable) {
   });
 }
 
-export class EventSourceParserStream extends TransformStream<any, ChatCompletionResponse> {
+export class EventSourceParserStream<T> extends TransformStream<any, T> {
   constructor() {
     let parser: ReturnType<typeof createParser> | undefined;
 
@@ -26,7 +24,7 @@ export class EventSourceParserStream extends TransformStream<any, ChatCompletion
         parser = createParser((event) => {
           if (event.type === 'event') {
             try {
-              const json = JSON.parse(event.data) as ChatCompletionResponse;
+              const json = JSON.parse(event.data) as T;
               controller.enqueue(json);
             } catch (error) {
               console.error('parse chunk error', error, event.data);
