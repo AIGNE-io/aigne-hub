@@ -2,7 +2,7 @@ import 'dayjs/locale/zh-cn';
 
 import { LocaleProvider, useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import Toast from '@arcblock/ux/lib/Toast';
-import { CheckCircleOutlineRounded, ErrorOutlineRounded } from '@mui/icons-material';
+import { CheckCircleOutlineRounded, ErrorOutlineRounded, RouterRounded, ShoppingCartSharp } from '@mui/icons-material';
 import { LoadingButton } from '@mui/lab';
 import {
   Box,
@@ -46,13 +46,6 @@ function AIKitServiceDashboardContent() {
     fetch();
   }, [fetch]);
 
-  const linkToAiKit = useCallback(async () => {
-    const res = await appRegister();
-    if (res.paymentLink) {
-      window.location.href = res.paymentLink;
-    }
-  }, []);
-
   if (loading) {
     return (
       <Stack alignItems="center" py={10}>
@@ -69,17 +62,50 @@ function AIKitServiceDashboardContent() {
         <UseAIKitServiceSwitch />
       </Stack>
 
-      {app?.subscription?.status === 'active' ? (
+      {!app?.aiKitServiceConfig.useAIKitService || app?.subscription?.status === 'active' ? (
         <Stack alignItems="center">
-          <UseCreditsCharts key={app.aiKitServiceConfig.useAIKitService?.toString()} />
+          <UseCreditsCharts key={app?.aiKitServiceConfig.useAIKitService?.toString()} />
         </Stack>
       ) : (
-        <Stack alignItems="center">
-          <LoadingButton variant="contained" onClick={linkToAiKit}>
-            {t('subscribeAIService')}
-          </LoadingButton>
-        </Stack>
+        <NonSubscriptions />
       )}
+    </Stack>
+  );
+}
+
+function NonSubscriptions() {
+  const { t } = useLocaleContext();
+  const [loading, setLoading] = useState(false);
+
+  const linkToAiKit = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await appRegister();
+      if (res.paymentLink) {
+        window.location.href = res.paymentLink;
+      }
+    } catch (error) {
+      Toast.error(error.message);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return (
+    <Stack alignItems="center" gap={4} my={10}>
+      <RouterRounded sx={{ fontSize: 56, color: 'text.disabled' }} />
+
+      <Typography variant="body2">{t('subscribeAITip')}</Typography>
+
+      <LoadingButton
+        variant="contained"
+        onClick={linkToAiKit}
+        endIcon={<ShoppingCartSharp />}
+        loading={loading}
+        loadingPosition="end">
+        {t('subscribeAIService')}
+      </LoadingButton>
     </Stack>
   );
 }

@@ -6,5 +6,6 @@ export default flat({
   aiProviderSubscription: '订阅 AI Kit 服务',
   aiProviderLocalAIKit: '本地 AI Kit 组件',
   selectMonth: '选择月份',
+  subscribeAITip: '现在订阅 AI Kit 来获得 AI 能力吧！',
   subscribeAIService: '订阅 AI 服务',
 });
