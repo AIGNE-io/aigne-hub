@@ -1,3 +1,8 @@
+## 0.0.109 (2023-12-28)
+
+- fix: allow disable models not in the pricing list
+- fix: show usage of local ai kit
+
 ## 0.0.108 (2023-12-28)
 
 - fix: invalid openai base url
