@@ -28,25 +28,11 @@ export async function createAndReportUsage({
     // TODO: record used credits of audio transcriptions/speech
     if (pricing && price) {
       if (type === 'imageGeneration') {
-        const output = new BigNumber(numberOfImageGeneration)
-          .multipliedBy(price.outputRate)
-          .multipliedBy(pricing.basePricePerUnit);
-
-        usedCredits = output.toNumber();
+        usedCredits = new BigNumber(numberOfImageGeneration).multipliedBy(price.outputRate).toNumber();
       } else {
-        const input = new BigNumber(promptTokens)
-          .div(1000)
-          .multipliedBy(price.inputRate)
-          .multipliedBy(pricing.basePricePerUnit);
-
-        const output = new BigNumber(completionTokens)
-          .div(1000)
-          .multipliedBy(price.outputRate)
-          .multipliedBy(pricing.basePricePerUnit);
-
-        const n = input.plus(output);
-
-        usedCredits = n.toNumber();
+        const input = new BigNumber(promptTokens).multipliedBy(price.inputRate);
+        const output = new BigNumber(completionTokens).multipliedBy(price.outputRate);
+        usedCredits = input.plus(output).toNumber();
       }
     }
 
@@ -101,7 +87,7 @@ const reportUsage = throttle(
 
     await payment.subscriptionItems.createUsageRecord({
       subscription_item_id: subscriptionItem.id,
-      quantity,
+      quantity: quantity || 0,
     });
 
     await end.update({ usageReportStatus: 'reported' });
