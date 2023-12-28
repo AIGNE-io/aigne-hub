@@ -7,7 +7,10 @@ export function getOpenAI() {
   const { httpsProxy, openaiBaseURL } = Config;
 
   return new OpenAI({
-    baseURL: openaiBaseURL || undefined,
+    // NOTE: if `baseURL` is undefined, the OpenAI constructor will
+    // use the `OPENAI_BASE_URL` environment variable (this variable maybe a empty string).
+    // Therefore, we pass `null` to OpenAI to make it use the default url of OpenAI.
+    baseURL: openaiBaseURL || null,
     apiKey: getAIApiKey('openai'),
     httpAgent: httpsProxy ? new HttpsProxyAgent(httpsProxy) : undefined,
   });
