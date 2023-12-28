@@ -8,6 +8,7 @@ type Pricing = {
   subscriptionPaymentLink: string;
   subscriptionProductId: string;
   basePricePerUnit: number;
+  onlyEnableModelsInPricing?: boolean;
   list: { type: NonNullable<Usage['type']>; model: string; inputRate: number; outputRate: number }[];
 };
 
@@ -91,6 +92,7 @@ export const Config = {
         subscriptionPaymentLink: Joi.string().required(),
         subscriptionProductId: Joi.string().required(),
         basePricePerUnit: Joi.number().min(0).required(),
+        onlyEnableModelsInPricing: Joi.boolean().empty(null),
         list: Joi.array().items(
           Joi.object({
             type: Joi.string().valid('chatCompletion', 'embedding', 'imageGeneration').required(),
@@ -104,6 +106,7 @@ export const Config = {
           subscriptionPaymentLink: config.env.preferences.subscriptionPaymentLink,
           subscriptionProductId: config.env.preferences.subscriptionProductId,
           basePricePerUnit: config.env.preferences.basePricePerUnit,
+          onlyEnableModelsInPricing: config.env.preferences.onlyEnableModelsInPricing,
           list: config.env.preferences.pricingList,
         },
         { stripUnknown: true }
