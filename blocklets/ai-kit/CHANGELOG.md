@@ -1,3 +1,7 @@
+## 0.0.107 (2023-12-28)
+
+- fix: correct usage report
+
 ## 0.0.106 (2023-12-28)
 
 - fix: polish billing page
