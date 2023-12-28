@@ -1,3 +1,7 @@
+## 0.0.108 (2023-12-28)
+
+- fix: invalid openai base url
+
 ## 0.0.107 (2023-12-28)
 
 - fix: correct usage report
