@@ -1,7 +1,7 @@
 {
   "name": "ai-kit",
   "private": true,
-  "version": "0.0.102",
+  "version": "0.0.107",
   "workspaces": [
     "blocklets/*",
     "packages/*"
@@ -16,7 +16,7 @@
     "clean": "yarn workspaces run clean",
     "prepare": "husky install",
     "bump-version": "zx scripts/bump-version.mjs",
-    "update:deps": "yarn workspaces run update:deps"
+    "update:deps": "npx -y taze -r -w && yarn install && npx -y yarn-deduplicate yarn.lock && yarn"
   },
   "lint-staged": {
     "*.{mjs,js,jsx,ts,tsx}": [
@@ -38,21 +38,34 @@
     }
   },
   "devDependencies": {
-    "@arcblock/eslint-config": "^0.2.3",
-    "@arcblock/eslint-config-ts": "^0.2.3",
+    "@arcblock/eslint-config": "^0.2.4",
+    "@arcblock/eslint-config-ts": "^0.2.4",
     "bumpp": "^8.2.1",
-    "eslint": "^8.27.0",
-    "husky": "^8.0.2",
+    "eslint": "^8.56.0",
+    "husky": "^8.0.3",
     "import-sort-style-module": "^6.0.0",
     "lint-staged": "^12.5.0",
-    "prettier": "^2.3.0",
+    "prettier": "^2.8.8",
     "prettier-plugin-import-sort": "^0.0.7",
     "rimraf": "^3.0.2",
-    "typescript": "^4.9.4",
-    "zx": "^7.1.1"
+    "typescript": "^4.9.5",
+    "zx": "^7.2.3"
   },
   "resolutions": {
-    "prettier": "^2.3.0",
-    "axios": "^1.6.2"
+    "axios": "^1.6.3",
+    "prettier": "^2.8.8",
+    "@arcblock/did": "^1.18.107",
+    "@arcblock/did-ext": "^1.18.107",
+    "@arcblock/did-util": "^1.18.107",
+    "@arcblock/did-auth": "^1.18.107",
+    "@arcblock/event-hub": "^1.18.107",
+    "@arcblock/jwt": "^1.18.107",
+    "@arcblock/validator": "^1.18.107",
+    "@arcblock/ws": "^1.18.107",
+    "@ocap/client": "^1.18.107",
+    "@ocap/wallet": "^1.18.107",
+    "@ocap/util": "^1.18.107",
+    "@ocap/types": "^1.18.107",
+    "@ocap/asset": "^1.18.107"
   }
 }

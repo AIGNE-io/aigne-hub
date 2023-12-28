@@ -1,3 +1,23 @@
+## 0.0.107 (2023-12-28)
+
+- fix: correct usage report
+
+## 0.0.106 (2023-12-28)
+
+- fix: polish billing page
+
+## 0.0.105 (2023-12-27)
+
+- chore: update deps
+
+## 0.0.104 (2023-12-27)
+
+- fix: generic event stream
+
+## 0.0.103 (2023-12-27)
+
+- fix: use latest value of config
+
 ## 0.0.102 (2023-12-26)
 
 - feat: add ai kit dashboard component

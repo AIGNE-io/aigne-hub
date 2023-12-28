@@ -4,15 +4,15 @@ export interface ChatCompletionInput {
   messages: (
     | {
         role: 'system';
-        content: string | null;
+        content: string;
       }
     | {
         role: 'user';
-        content: string | ({ type: 'text'; text: string } | { type: 'image_url'; imageUrl: { url: string } })[] | null;
+        content: string | ({ type: 'text'; text: string } | { type: 'image_url'; imageUrl: { url: string } })[];
       }
     | {
         role: 'assistant';
-        content: string | null;
+        content: string;
         toolCalls?: {
           id: string;
           type: 'function';
@@ -21,7 +21,7 @@ export interface ChatCompletionInput {
       }
     | {
         role: 'tool';
-        content: string | null;
+        content: string;
         toolCallId: string;
       }
   )[];

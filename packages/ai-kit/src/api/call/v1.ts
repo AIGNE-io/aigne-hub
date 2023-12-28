@@ -11,6 +11,7 @@ import { joinURL } from 'ufo';
 import {
   ChatCompletionChunk,
   ChatCompletionInput,
+  ChatCompletionResponse,
   EmbeddingInput,
   EmbeddingResponse,
   ImageGenerationInput,
@@ -93,7 +94,7 @@ export async function chatCompletions(
       try {
         const stream = readableToWeb((await response).data)
           .pipeThrough(new TextDecoderStream())
-          .pipeThrough(new EventSourceParserStream());
+          .pipeThrough(new EventSourceParserStream<ChatCompletionResponse>());
 
         for await (const chunk of stream) {
           if (isChatCompletionError(chunk)) {

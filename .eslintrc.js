@@ -27,5 +27,8 @@ module.exports = {
     '@typescript-eslint/no-loop-func': 'off',
     'max-classes-per-file': 'off',
     'unicorn/filename-case': 'off',
+    'import/prefer-default-export': 'off',
+    '@typescript-eslint/comma-dangle': 'off',
+    'require-await': 'off',
   },
 };
