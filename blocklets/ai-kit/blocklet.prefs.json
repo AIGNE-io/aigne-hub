@@ -96,6 +96,18 @@
                 "x-designable-id": "ijh86lq5v1o",
                 "x-index": 2
               },
+              "onlyEnableModelsInPricing": {
+                "type": "boolean",
+                "title": "Only enable models in the list",
+                "x-decorator": "FormItem",
+                "x-component": "Switch",
+                "x-validator": [],
+                "x-component-props": {},
+                "x-decorator-props": {},
+                "name": "onlyEnableModelsInPricing",
+                "x-designable-id": "p3sc4q9xj5g",
+                "x-index": 3
+              },
               "pricingList": {
                 "type": "array",
                 "x-decorator": "FormItem",
@@ -105,7 +117,7 @@
                 "x-decorator-props": {},
                 "name": "pricingList",
                 "x-designable-id": "cgn7sn6ubro",
-                "x-index": 3,
+                "x-index": 4,
                 "items": {
                   "type": "object",
                   "x-designable-id": "63alcwzxuwe",
@@ -269,6 +281,6 @@
         }
       }
     },
-    "x-designable-id": "jdhkqbtyd24"
+    "x-designable-id": "1ggbj9smw6f"
   }
 }

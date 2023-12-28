@@ -1,5 +1,6 @@
 import { checkSubscription } from '@api/libs/payment';
 import { createAndReportUsage } from '@api/libs/usage';
+import { chatCompletion, checkModelAvailable } from '@api/providers';
 import App from '@api/store/models/app';
 import {
   ChatCompletionChunk,
@@ -16,14 +17,11 @@ import Joi from 'joi';
 import { getEncoding } from 'js-tiktoken';
 import omit from 'lodash/omit';
 import pick from 'lodash/pick';
-import OpenAI from 'openai';
 
-import { getAIApiKey, getOpenAI } from '../libs/ai-provider';
+import { getOpenAI } from '../libs/ai-provider';
 import { Config } from '../libs/env';
 import logger from '../libs/logger';
 import { ensureAdmin, ensureComponentCall } from '../libs/security';
-import { geminiChatCompletion } from '../providers/gemini';
-import { openaiChatCompletion } from '../providers/openai';
 
 const router = Router();
 
@@ -154,33 +152,24 @@ router.post(
   compression(),
   ensureRemoteComponentCall(App.findPublicKeyById, ensureComponentCall(ensureAdmin)),
   async (req, res) => {
-    res.setHeader('X-Accel-Buffering', 'no');
-
-    if (req.appClient?.appId) await checkSubscription({ appId: req.appClient.appId });
-
     const body = await completionsRequestSchema.validateAsync(req.body, { stripUnknown: true });
-
-    const isEventStream = req.accepts().some((i) => i.startsWith('text/event-stream'));
-
-    if (Config.verbose) logger.log('AI Kit completions input:', JSON.stringify(body, null, 2));
 
     const input = {
       ...body,
       messages: typeof body.prompt === 'string' ? [{ role: 'user' as const, content: body.prompt }] : body.messages,
     };
 
-    const result = body.model.startsWith('gemini')
-      ? geminiChatCompletion(input, { apiKey: getAIApiKey('gemini') })
-      : body.model.startsWith('gpt')
-      ? openaiChatCompletion(input, getOpenAI())
-      : body.model.startsWith('openRouter/')
-      ? openaiChatCompletion(
-          { ...input, model: body.model.replace('openRouter/', '') },
-          new OpenAI({ baseURL: 'https://openrouter.ai/api/v1', apiKey: getAIApiKey('openRouter') })
-        )
-      : (() => {
-          throw new Error(`Unsupported model ${body.model}`);
-        })();
+    checkModelAvailable(input.model);
+
+    if (req.appClient?.appId) await checkSubscription({ appId: req.appClient.appId });
+
+    if (Config.verbose) logger.log('AI Kit completions input:', JSON.stringify(body, null, 2));
+
+    res.setHeader('X-Accel-Buffering', 'no');
+
+    const isEventStream = req.accepts().some((i) => i.startsWith('text/event-stream'));
+
+    const result = chatCompletion(input);
 
     let content = '';
     const toolCalls: NonNullable<ChatCompletionChunk['delta']['toolCalls']> = [];
@@ -260,9 +249,11 @@ router.post(
   '/embeddings',
   ensureRemoteComponentCall(App.findPublicKeyById, ensureComponentCall(ensureAdmin)),
   retry(async (req, res) => {
-    if (req.appClient?.appId) await checkSubscription({ appId: req.appClient.appId });
-
     const input = await embeddingsRequestSchema.validateAsync(req.body, { stripUnknown: true });
+
+    checkModelAvailable(input.model);
+
+    if (req.appClient?.appId) await checkSubscription({ appId: req.appClient.appId });
 
     const openai = getOpenAI();
 
@@ -295,8 +286,6 @@ router.post(
   '/image/generations',
   ensureRemoteComponentCall(App.findPublicKeyById, ensureComponentCall(ensureAdmin)),
   retry(async (req, res) => {
-    if (req.appClient?.appId) await checkSubscription({ appId: req.appClient.appId });
-
     const input = await imageGenerationRequestSchema.validateAsync(
       {
         ...req.body,
@@ -305,6 +294,10 @@ router.post(
       },
       { stripUnknown: true }
     );
+
+    checkModelAvailable(input.model);
+
+    if (req.appClient?.appId) await checkSubscription({ appId: req.appClient.appId });
 
     if (Config.verbose) logger.log('AI Kit image generations input:', input);
 
