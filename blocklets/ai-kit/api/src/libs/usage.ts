@@ -55,42 +55,46 @@ export async function createAndReportUsage({
 
 const reportUsage = throttle(
   async ({ appId }: { appId: string }) => {
-    if (!isPaymentInstalled()) return;
+    try {
+      if (!isPaymentInstalled()) return;
 
-    const { pricing } = Config;
-    if (!pricing) throw new Error('Missing required preference `pricing`');
+      const { pricing } = Config;
+      if (!pricing) throw new Error('Missing required preference `pricing`');
 
-    const start = await Usage.findOne({
-      where: { appId, usageReportStatus: { [Op.not]: null } },
-      order: [['id', 'desc']],
-      limit: 1,
-    });
-    const end = await Usage.findOne({
-      where: { appId, id: { [Op.gt]: start?.id || '' } },
-      order: [['id', 'desc']],
-      limit: 1,
-    });
+      const start = await Usage.findOne({
+        where: { appId, usageReportStatus: { [Op.not]: null } },
+        order: [['id', 'desc']],
+        limit: 1,
+      });
+      const end = await Usage.findOne({
+        where: { appId, id: { [Op.gt]: start?.id || '' } },
+        order: [['id', 'desc']],
+        limit: 1,
+      });
 
-    if (!end) return;
+      if (!end) return;
 
-    const quantity = await Usage.sum('usedCredits', {
-      where: { appId, id: { [Op.gt]: start?.id || '', [Op.lte]: end.id } },
-    });
+      const quantity = await Usage.sum('usedCredits', {
+        where: { appId, id: { [Op.gt]: start?.id || '', [Op.lte]: end.id } },
+      });
 
-    const subscription = await getActiveSubscriptionOfApp({ appId });
-    if (!subscription) throw new Error('Subscription not active');
+      const subscription = await getActiveSubscriptionOfApp({ appId });
+      if (!subscription) throw new Error('Subscription not active');
 
-    const subscriptionItem = subscription.items.find((i) => i.price.product_id === pricing.subscriptionProductId);
-    if (!subscriptionItem) throw new Error(`Subscription item of product ${pricing.subscriptionProductId} not found`);
+      const subscriptionItem = subscription.items.find((i) => i.price.product_id === pricing.subscriptionProductId);
+      if (!subscriptionItem) throw new Error(`Subscription item of product ${pricing.subscriptionProductId} not found`);
 
-    await end.update({ usageReportStatus: 'counted' });
+      await end.update({ usageReportStatus: 'counted' });
 
-    await payment.subscriptionItems.createUsageRecord({
-      subscription_item_id: subscriptionItem.id,
-      quantity: quantity || 0,
-    });
+      await payment.subscriptionItems.createUsageRecord({
+        subscription_item_id: subscriptionItem.id,
+        quantity: quantity || 0,
+      });
 
-    await end.update({ usageReportStatus: 'reported' });
+      await end.update({ usageReportStatus: 'reported' });
+    } catch (error) {
+      logger.error('report usage error', error);
+    }
   },
   Config.usageReportThrottleTime,
   { leading: false }

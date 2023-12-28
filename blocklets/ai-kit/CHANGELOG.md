@@ -1,3 +1,7 @@
+## 0.0.110 (2023-12-28)
+
+- fix: catch error of usage reporting
+
 ## 0.0.109 (2023-12-28)
 
 - fix: allow disable models not in the pricing list
