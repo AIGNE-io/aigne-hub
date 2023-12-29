@@ -36,6 +36,7 @@
     "@arcblock/did-connect": "^2.8.23",
     "@arcblock/ux": "^2.8.23",
     "@blocklet/ai-kit": "^0.0.110",
+    "@blocklet/logger": "^1.16.20",
     "@blocklet/sdk": "^1.16.20",
     "@blocklet/ui-react": "^2.8.23",
     "@did-pay/client": "^1.13.84",
