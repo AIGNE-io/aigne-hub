@@ -1,8 +1,9 @@
 import { Readable } from 'stream';
 import { ReadableStream, TextDecoderStream, TransformStream } from 'stream/web';
 
-import { logger } from '@blocklet/sdk/lib/config';
 import { createParser } from 'eventsource-parser';
+
+import logger from '../../libs/logger';
 
 export function readableToWeb(readable: Readable) {
   return new ReadableStream({
@@ -27,7 +28,7 @@ export class EventSourceParserStream<T> extends TransformStream<any, T> {
               const json = JSON.parse(event.data) as T;
               controller.enqueue(json);
             } catch (error) {
-              console.error('parse chunk error', error, event.data);
+              logger.error('parse chunk error', error, event.data);
             }
           }
         });

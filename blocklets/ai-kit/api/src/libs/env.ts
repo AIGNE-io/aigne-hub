@@ -85,14 +85,14 @@ export const Config = {
     return this._maxRetries;
   },
 
-  _pricing: undefined as Pricing | undefined,
+  _pricing: undefined as Pricing | undefined | null,
   get pricing() {
     if (this._pricing === undefined) {
       const res = Joi.object<Pricing>({
         subscriptionPaymentLink: Joi.string().required(),
         subscriptionProductId: Joi.string().required(),
         basePricePerUnit: Joi.number().min(0).required(),
-        onlyEnableModelsInPricing: Joi.boolean().empty(null),
+        onlyEnableModelsInPricing: Joi.boolean().empty([null, '']),
         list: Joi.array().items(
           Joi.object({
             type: Joi.string().valid('chatCompletion', 'embedding', 'imageGeneration').required(),
@@ -113,6 +113,7 @@ export const Config = {
       );
       if (res.error) {
         logger.error('validate preferences.MAX_RETRIES error', res.error);
+        this._pricing = null;
       } else {
         this._pricing = res.value;
       }

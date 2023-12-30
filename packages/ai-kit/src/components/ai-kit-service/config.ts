@@ -5,6 +5,8 @@ import { join } from 'path';
 import config from '@blocklet/sdk/lib/config';
 import { parse, stringify } from 'yaml';
 
+import logger from '../../libs/logger';
+
 export interface AIKitServiceConfig {
   useAIKitService?: boolean;
 }
@@ -19,7 +21,7 @@ class Config extends EventEmitter {
         this.config = parse(readFileSync(Config.CONFIG_FILE_PATH).toString());
       }
     } catch (error) {
-      console.error(`Parse ${Config.CONFIG_FILE_PATH} error`, error);
+      logger.error(`Parse ${Config.CONFIG_FILE_PATH} error`, error);
     }
   }
 

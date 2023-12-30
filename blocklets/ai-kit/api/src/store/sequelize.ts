@@ -9,5 +9,5 @@ import logger from '../libs/logger';
 const url = `sqlite:${Config.dataDir}/aikit.db`;
 
 export const sequelize = new Sequelize(url, {
-  logging: Config.verbose === false ? false : logger.log,
+  logging: Config.verbose === false ? false : logger.info.bind(logger),
 });

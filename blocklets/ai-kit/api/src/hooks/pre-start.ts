@@ -3,7 +3,8 @@ import '@blocklet/sdk/lib/error-handler';
 import dotenv from 'dotenv-flow';
 
 import { ensureSqliteBinaryFile } from '../libs/ensure-sqlite';
-import logger from '../libs/logger';
+
+const logger = console;
 
 dotenv.config();
 

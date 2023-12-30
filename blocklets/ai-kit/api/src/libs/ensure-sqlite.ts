@@ -2,9 +2,9 @@ import { spawnSync } from 'child_process';
 import { chmodSync, existsSync, mkdirSync, symlinkSync } from 'fs';
 import { dirname, join } from 'path';
 
-import logger from './logger';
-
 const { name } = require('../../../package.json');
+
+const logger = console;
 
 export async function ensureSqliteBinaryFile() {
   logger.info(`${name} ensure sqlite3 installed`);

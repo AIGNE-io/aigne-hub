@@ -1,3 +1,7 @@
+## 0.0.111 (2023-12-30)
+
+- fix: use logger instead of console
+
 ## 0.0.110 (2023-12-28)
 
 - fix: catch error of usage reporting

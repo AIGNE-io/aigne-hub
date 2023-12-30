@@ -163,7 +163,7 @@ router.post(
 
     if (req.appClient?.appId) await checkSubscription({ appId: req.appClient.appId });
 
-    if (Config.verbose) logger.log('AI Kit completions input:', JSON.stringify(body, null, 2));
+    if (Config.verbose) logger.info('AI Kit completions input:', JSON.stringify(body, null, 2));
 
     res.setHeader('X-Accel-Buffering', 'no');
 
@@ -197,7 +197,7 @@ router.post(
         }
       }
     } catch (error) {
-      console.error('Run AI error', error);
+      logger.error('Run AI error', error);
       if (isEventStream) {
         emitEventStreamChunk({ error: { message: error.message } });
       } else if (input.stream) {
@@ -218,7 +218,7 @@ router.post(
 
     res.end();
 
-    if (Config.verbose) logger.log('AI Kit completions output:', { content, toolCalls });
+    if (Config.verbose) logger.info('AI Kit completions output:', { content, toolCalls });
 
     // TODO: 更精确的 token 计算，暂时简单地 stringify 之后按照 gpt3/4 的 token 算法计算，尤其 function call 的计算偏差较大，需要改进
     const promptUsedTokens = getEncoding('cl100k_base').encode(JSON.stringify(input.messages)).length;
@@ -299,7 +299,7 @@ router.post(
 
     if (req.appClient?.appId) await checkSubscription({ appId: req.appClient.appId });
 
-    if (Config.verbose) logger.log('AI Kit image generations input:', input);
+    if (Config.verbose) logger.info('AI Kit image generations input:', input);
 
     const openai = getOpenAI();
 
