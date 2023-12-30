@@ -21,7 +21,7 @@ class Config extends EventEmitter {
         this.config = parse(readFileSync(Config.CONFIG_FILE_PATH).toString());
       }
     } catch (error) {
-      logger.error(`Parse ${Config.CONFIG_FILE_PATH} error`, error);
+      logger.error(`Parse ${Config.CONFIG_FILE_PATH} error`, { error });
     }
   }
 

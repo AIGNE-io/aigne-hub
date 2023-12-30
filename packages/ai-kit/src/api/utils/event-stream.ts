@@ -28,7 +28,7 @@ export class EventSourceParserStream<T> extends TransformStream<any, T> {
               const json = JSON.parse(event.data) as T;
               controller.enqueue(json);
             } catch (error) {
-              logger.error('parse chunk error', error, event.data);
+              logger.error('parse chunk error', { error, data: event.data });
             }
           }
         });
@@ -50,7 +50,7 @@ export async function tryParseJsonFromResponseStream<T>(data: Readable): Promise
     }
     json = JSON.parse(text);
   } catch (error) {
-    logger.error('parse json from response error', text, error);
+    logger.error('parse json from response error', { text, error });
   }
 
   return json;
