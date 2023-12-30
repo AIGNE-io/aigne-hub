@@ -131,7 +131,7 @@ const retry = (callback: (req: Request, res: Response) => Promise<void>): any =>
       await callback(req, res);
     } catch (error) {
       if (canRetry(error.response?.status, count)) {
-        logger.info('retry', count);
+        logger.info('ai route retry', { count });
         await fn(req, res, count + 1);
         return;
       }
@@ -163,7 +163,7 @@ router.post(
 
     if (req.appClient?.appId) await checkSubscription({ appId: req.appClient.appId });
 
-    if (Config.verbose) logger.info('AI Kit completions input:', JSON.stringify(body, null, 2));
+    if (Config.verbose) logger.info('AI Kit completions input:', body);
 
     res.setHeader('X-Accel-Buffering', 'no');
 
@@ -197,7 +197,7 @@ router.post(
         }
       }
     } catch (error) {
-      logger.error('Run AI error', error);
+      logger.error('Run AI error', { error });
       if (isEventStream) {
         emitEventStreamChunk({ error: { message: error.message } });
       } else if (input.stream) {

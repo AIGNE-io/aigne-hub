@@ -49,7 +49,7 @@ export async function createAndReportUsage({
 
     await reportUsage({ appId });
   } catch (error) {
-    logger.error('Create token usage error', error);
+    logger.error('Create token usage error', { error });
   }
 }
 
@@ -93,7 +93,7 @@ const reportUsage = throttle(
 
       await end.update({ usageReportStatus: 'reported' });
     } catch (error) {
-      logger.error('report usage error', error);
+      logger.error('report usage error', { error });
     }
   },
   Config.usageReportThrottleTime,

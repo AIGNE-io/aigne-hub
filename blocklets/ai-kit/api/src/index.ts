@@ -39,7 +39,7 @@ if (isProduction) {
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 app.use(<ErrorRequestHandler>((error, _req, res, _next) => {
-  logger.error(error);
+  logger.error('handle route error', { error });
 
   if (!res.headersSent) {
     res.status(500);

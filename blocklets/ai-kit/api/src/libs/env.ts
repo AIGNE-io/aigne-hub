@@ -78,7 +78,7 @@ export const Config = {
         .min(1)
         .max(100)
         .validate(config.env.preferences.MAX_RETRIES);
-      if (error) logger.error('validate preferences.MAX_RETRIES error', error);
+      if (error) logger.error('validate preferences.MAX_RETRIES error', { error });
 
       this._maxRetries = (value as number) || 1;
     }
@@ -112,7 +112,7 @@ export const Config = {
         { stripUnknown: true }
       );
       if (res.error) {
-        logger.error('validate preferences.MAX_RETRIES error', res.error);
+        logger.error('validate preferences.MAX_RETRIES error', { error: res.error });
         this._pricing = null;
       } else {
         this._pricing = res.value;
