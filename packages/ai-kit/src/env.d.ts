@@ -1,5 +1,7 @@
 declare module '@arcblock/ux/*';
 
+declare module '@blocklet/logger';
+
 declare var blocklet:
   | {
       prefix: string;

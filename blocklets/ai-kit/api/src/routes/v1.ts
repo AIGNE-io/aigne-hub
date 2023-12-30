@@ -197,7 +197,7 @@ router.post(
         }
       }
     } catch (error) {
-      console.error('Run AI error', error);
+      logger.error('Run AI error', error);
       if (isEventStream) {
         emitEventStreamChunk({ error: { message: error.message } });
       } else if (input.stream) {

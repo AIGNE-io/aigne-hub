@@ -174,12 +174,12 @@
     "@ocap/wallet" "1.18.108"
 
 "@arcblock/did@1.18.105", "@arcblock/did@1.18.107", "@arcblock/did@1.18.108", "@arcblock/did@^1.18.107", "@arcblock/did@^1.18.89", "@arcblock/did@^1.18.95":
-  version "1.18.107"
-  resolved "https://registry.yarnpkg.com/@arcblock/did/-/did-1.18.107.tgz#cf098c13c5378da52773a4ec901e2951f4df7817"
-  integrity sha512-bO3cEiH3I4xxwlZhgKRGmUnCRDN2rQXJ2ObvtpJF4S9/Uo5x7DJaFhYPWm06FqqRCLKKs3S93ECMrNVnHdwI3A==
+  version "1.18.108"
+  resolved "https://registry.yarnpkg.com/@arcblock/did/-/did-1.18.108.tgz#29dc532ceae19f313dda9175a59f4701ad5163e5"
+  integrity sha512-Q5SxeD2ygi4HZi1xAa2pW/TAFisAWegQcUBcgu2zuQ0yKKF927w25csTCtXFPcQ+3OTmX9SCGgbsPfvPxmPakg==
   dependencies:
-    "@ocap/mcrypto" "1.18.107"
-    "@ocap/util" "1.18.107"
+    "@ocap/mcrypto" "1.18.108"
+    "@ocap/util" "1.18.108"
     bn.js "^5.2.1"
     debug "^4.3.4"
     lodash "^4.17.21"
@@ -2821,13 +2821,13 @@
     utf8 "^3.0.0"
 
 "@ocap/wallet@1.18.105", "@ocap/wallet@1.18.107", "@ocap/wallet@1.18.108", "@ocap/wallet@^1.18.107", "@ocap/wallet@^1.18.95":
-  version "1.18.107"
-  resolved "https://registry.yarnpkg.com/@ocap/wallet/-/wallet-1.18.107.tgz#bfc235c0d4d78b2c3f6bef0eaf3d28c8b25c56fa"
-  integrity sha512-/YFH/mjI4wgBqTXkcxO/aUvOohbtd6ANrpi9OgQSqsu8O4m7maCJYhIb9RPhpEI9u7eI/PIj/MYkvJR9VFkYDw==
+  version "1.18.108"
+  resolved "https://registry.yarnpkg.com/@ocap/wallet/-/wallet-1.18.108.tgz#b864417a00027bc6ceb1f3c175411a54748487a6"
+  integrity sha512-CaZICd5/0gacGkvb0BwzEC9sWXeGwZYBeK4SEGNqzsdLoCbw3OBdMH7+dSLg6K7uZY8rvGHSaTe84m31eb44bw==
   dependencies:
-    "@arcblock/did" "1.18.107"
-    "@ocap/mcrypto" "1.18.107"
-    "@ocap/util" "1.18.107"
+    "@arcblock/did" "1.18.108"
+    "@ocap/mcrypto" "1.18.108"
+    "@ocap/util" "1.18.108"
 
 "@pmmmwh/react-refresh-webpack-plugin@^0.5.3":
   version "0.5.10"

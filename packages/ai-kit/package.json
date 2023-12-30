@@ -93,6 +93,7 @@
   "dependencies": {
     "@arcblock/did": "^1.18.107",
     "@arcblock/ux": "^2.8.23",
+    "@blocklet/logger": "^1.16.20",
     "@blocklet/sdk": "^1.16.20",
     "@did-pay/client": "^1.13.84",
     "@emotion/css": "^11.11.2",
