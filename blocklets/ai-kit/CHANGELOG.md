@@ -1,3 +1,8 @@
+## 0.0.112 (2023-12-30)
+
+- chore: update deps
+- fix: correct logger parameters
+
 ## 0.0.111 (2023-12-30)
 
 - fix: use logger instead of console
