@@ -23,6 +23,7 @@ import dayjs from 'dayjs';
 import { groupBy } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { withQuery } from 'ufo';
 
 import { appServiceRegister, appUsedCredits } from '../../libs/app';
 import { useAIKitServiceStatus } from './state';
@@ -71,7 +72,7 @@ function NonSubscriptions() {
     try {
       const res = await appServiceRegister();
       if (res.paymentLink) {
-        window.location.href = res.paymentLink;
+        window.location.href = withQuery(res.paymentLink, { redirect: window.location.href });
       }
     } catch (error) {
       Toast.error(error.message);
