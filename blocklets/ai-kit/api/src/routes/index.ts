@@ -1,6 +1,6 @@
 import { proxyToAIKit } from '@blocklet/ai-kit/api/call';
 import AIKitConfig from '@blocklet/ai-kit/api/config';
-import { AI_KIT_BASE_URL } from '@blocklet/ai-kit/constants';
+import { AI_KIT_BASE_URL } from '@blocklet/ai-kit/api/constants';
 import { Router } from 'express';
 import { parseURL } from 'ufo';
 

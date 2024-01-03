@@ -4,8 +4,8 @@ import { NextFunction, Request, Response } from 'express';
 import proxy from 'express-http-proxy';
 import { joinURL, parseURL, withQuery } from 'ufo';
 
-import { AI_KIT_BASE_URL } from '../../constants';
 import AIKitConfig from '../config';
+import { AI_KIT_BASE_URL } from '../constants';
 import { getRemoteComponentCallHeaders } from '../utils/auth';
 
 export function proxyToAIKit(
