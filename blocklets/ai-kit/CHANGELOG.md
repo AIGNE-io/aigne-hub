@@ -1,3 +1,7 @@
+## 0.0.114 (2024-1-3)
+
+- fix: expose status api
+
 ## 0.0.113 (2024-1-3)
 
 - feat: support use ai kit service api
