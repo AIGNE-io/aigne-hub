@@ -1,6 +1,6 @@
 import 'dayjs/locale/zh-cn';
 
-import { LocaleProvider, useLocaleContext } from '@arcblock/ux/lib/Locale/context';
+import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import Toast from '@arcblock/ux/lib/Toast';
 import { CheckCircleOutlineRounded, ErrorOutlineRounded, RouterRounded, ShoppingCartSharp } from '@mui/icons-material';
 import { LoadingButton } from '@mui/lab';
@@ -13,40 +13,32 @@ import {
   Stack,
   TextField,
   Typography,
-  useTheme,
 } from '@mui/material';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { fromUnitToToken } from '@ocap/util';
 import { useRequest } from 'ahooks';
+import BigNumber from 'bignumber.js';
 import dayjs from 'dayjs';
 import { groupBy } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { withQuery } from 'ufo';
 
-import { appRegister, appUsedCredits } from '../../api/ai-kit';
-import { translations } from './locales';
+import { appServiceRegister, appUsedCredits } from '../../libs/app';
 import { useAIKitServiceStatus } from './state';
 
-export default function AIKitServiceDashboard() {
-  const { locale } = useLocaleContext();
-
-  return (
-    <LocaleProvider translations={translations} fallbackLocale="en" locale={locale}>
-      <AIKitServiceDashboardContent />
-    </LocaleProvider>
-  );
-}
-
-function AIKitServiceDashboardContent() {
+export default function BillingPage() {
   const { t } = useLocaleContext();
-  const { app, loading, fetch } = useAIKitServiceStatus();
+  const { app, error, fetch } = useAIKitServiceStatus();
+  if (error) throw error;
 
   useEffect(() => {
     fetch();
   }, [fetch]);
 
-  if (loading) {
+  if (!app) {
     return (
       <Stack alignItems="center" py={10}>
         <CircularProgress size={24} />
@@ -62,9 +54,9 @@ function AIKitServiceDashboardContent() {
         <UseAIKitServiceSwitch />
       </Stack>
 
-      {!app?.aiKitServiceConfig.useAIKitService || app?.subscription?.status === 'active' ? (
+      {!app?.config.useAIKitService || app?.subscription?.status === 'active' ? (
         <Stack alignItems="center">
-          <UseCreditsCharts key={app?.aiKitServiceConfig.useAIKitService?.toString()} />
+          <UseCreditsCharts />
         </Stack>
       ) : (
         <NonSubscriptions />
@@ -80,9 +72,9 @@ function NonSubscriptions() {
   const linkToAiKit = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await appRegister();
+      const res = await appServiceRegister();
       if (res.paymentLink) {
-        window.location.href = res.paymentLink;
+        window.location.href = withQuery(res.paymentLink, { redirect: window.location.href });
       }
     } catch (error) {
       Toast.error(error.message);
@@ -120,18 +112,19 @@ function UseAIKitServiceSwitch() {
   if (!app) return null;
 
   return (
-    <Stack direction="row" overflow="hidden" alignItems="center" gap={1}>
+    <Stack direction="row" overflow="hidden" alignItems="center" gap={1} pr="3px">
       <FormControlLabel
-        key={app.aiKitServiceConfig.useAIKitService?.toString()}
+        key={app.config.useAIKitService?.toString()}
         labelPlacement="start"
         label={<Box>{t('aiProvider')}</Box>}
         sx={{ pr: 1, gap: 1 }}
         control={
           <TextField
             select
+            size="small"
             hiddenLabel
             SelectProps={{ autoWidth: true }}
-            defaultValue={app.aiKitServiceConfig.useAIKitService ? 'subscribe' : 'local'}
+            defaultValue={app.config.useAIKitService ? 'subscribe' : 'local'}
             onChange={async (e) => {
               try {
                 setUpdating(true);
@@ -164,12 +157,8 @@ function UseAIKitServiceSwitch() {
   );
 }
 
-const CustomTooltipFormatter = (value: any, name: string) => {
-  const nameMap: any = { totalUsedCredits: 'total' };
-  return [value, nameMap[name] || name];
-};
-
 function UseCreditsCharts() {
+  const { app } = useAIKitServiceStatus();
   const [date, setDate] = useState(dayjs(new Date()));
 
   const [startTime, endTime] = useMemo(() => {
@@ -179,14 +168,40 @@ function UseCreditsCharts() {
     return [startTime.format('YYYY-MM-DD'), endTime.format('YYYY-MM-DD')];
   }, [date]);
 
-  const { data, loading } = useRequest(() => appUsedCredits({ startTime, endTime }), {
-    refreshDeps: [startTime, endTime],
-  });
+  const { data, loading } = useRequest(
+    () => appUsedCredits({ startTime, endTime }, { useAIKitService: app?.config.useAIKitService }),
+    {
+      refreshDeps: [startTime, endTime, app?.config.useAIKitService],
+    }
+  );
+
+  const { price, symbol } = useMemo(() => {
+    if (!app?.config.useAIKitService || !app?.subscription) return {};
+
+    const price = app.subscription.items.find((i) => i.price.currency_id === app.subscription!.currency_id)?.price;
+    const { decimal } = app.subscription.paymentCurrency;
+
+    if (!price) return {};
+
+    return {
+      price: new BigNumber(fromUnitToToken(price.unit_amount, decimal)).dividedBy(
+        price.transform_quantity?.divide_by ?? 1
+      ),
+      symbol: app.subscription.paymentCurrency.symbol,
+    };
+  }, [app]);
 
   const map = Object.fromEntries(
     Object.values(groupBy(data?.list || [], 'date')).map((list) => [
       list[0]!.date,
-      Object.fromEntries(list.map((i) => [i.model, i.usedCredits])),
+      Object.fromEntries(
+        list.map((i) => [
+          i.model,
+          price
+            ? price.multipliedBy(i.usedCredits).toString()
+            : i.promptTokens + i.completionTokens + i.numberOfImageGeneration,
+        ])
+      ),
     ])
   );
   const list = new Array(dayjs(date).daysInMonth()).fill(0).map((_, index) => {
@@ -198,25 +213,7 @@ function UseCreditsCharts() {
 
   const models = [...new Set(data?.list.map((i) => i.model))];
 
-  const { palette } = useTheme();
-  const colors = [
-    palette.primary.dark,
-    palette.primary.main,
-    palette.primary.light,
-    palette.secondary.dark,
-    palette.secondary.main,
-    palette.secondary.light,
-    palette.secondary.light,
-    palette.warning.dark,
-    palette.warning.main,
-    palette.warning.light,
-    palette.info.dark,
-    palette.info.main,
-    palette.info.light,
-    palette.success.dark,
-    palette.success.main,
-    palette.success.light,
-  ];
+  const colors = ['#ffc800', '#b7ff00', '#40ff00', '#00ffae', '#00c3ff', '#0066ff', '#5500ff', '#ae00ff'];
 
   return (
     <Stack width={1} gap={2}>
@@ -239,9 +236,9 @@ function UseCreditsCharts() {
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={list} barSize={10}>
             <XAxis dataKey="date" scale="point" interval={8} padding={{ left: 10, right: 10 }} />
-            <YAxis />
+            <YAxis unit={symbol ?? 'unit'} width={100} />
             <Legend />
-            <Tooltip formatter={CustomTooltipFormatter} />
+            <Tooltip formatter={(v) => `${v} ${symbol ?? 'unit'}`} />
             <CartesianGrid strokeDasharray="3 3" />
             {models.map((model, index) => (
               <Bar key={model} dataKey={model} stackId="usedCredits" fill={colors[index] || 'black'} />

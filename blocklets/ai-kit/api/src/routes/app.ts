@@ -4,6 +4,8 @@ import { getActiveSubscriptionOfApp } from '@api/libs/payment';
 import { ensureAdmin, ensureComponentCall } from '@api/libs/security';
 import App from '@api/store/models/app';
 import Usage from '@api/store/models/usage';
+import { proxyToAIKit } from '@blocklet/ai-kit/api/call';
+import AIKitConfig from '@blocklet/ai-kit/api/config';
 import { appIdFromPublicKey, ensureRemoteComponentCall } from '@blocklet/ai-kit/api/utils/auth';
 import { Router } from 'express';
 import Joi from 'joi';
@@ -32,6 +34,26 @@ router.get(
     res.json({ id: app.id, subscription });
   }
 );
+
+export interface SetAppConfigPayload {
+  useAIKitService?: boolean;
+}
+
+router.get('/config', ensureAdmin, async (_, res) => {
+  res.json(AIKitConfig.config);
+});
+
+const setConfigPayloadSchema = Joi.object<SetAppConfigPayload>({
+  useAIKitService: Joi.boolean().empty([null]),
+});
+
+router.patch('/config', ensureAdmin, async (req, res) => {
+  const payload = await setConfigPayloadSchema.validateAsync(req.body, { stripUnknown: true });
+  AIKitConfig.config = { ...AIKitConfig.config, ...payload };
+  AIKitConfig.save();
+
+  res.json(AIKitConfig.config);
+});
 
 export interface UsageCreditsQuery {
   startTime: string;
@@ -85,5 +107,25 @@ router.post('/register', async (req, res) => {
     paymentLink: withQuery(Config.pricing.subscriptionPaymentLink, { 'metadata.appId': appId }),
   });
 });
+
+router.get('/service/status', proxyToAIKit('/api/app/status', { useAIKitService: true }));
+
+router.get('/service/usage', ensureAdmin, proxyToAIKit('/api/app/usage', { useAIKitService: true }));
+
+router.post(
+  '/service/register',
+  proxyToAIKit('/api/app/register', {
+    useAIKitService: true,
+    proxyReqOptDecorator(proxyReqOpts) {
+      proxyReqOpts.headers!['Content-Type'] = 'application/json';
+      return proxyReqOpts;
+    },
+    proxyReqBodyDecorator() {
+      return {
+        publicKey: wallet.publicKey,
+      };
+    },
+  })
+);
 
 export default router;

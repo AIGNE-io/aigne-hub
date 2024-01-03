@@ -1,10 +1,5 @@
-import { TSubscriptionExpanded } from '@did-pay/client';
-import axios, { AxiosInstance } from 'axios';
+import { AxiosInstance } from 'axios';
 import { ChatCompletionMessageParam } from 'openai/resources';
-import { joinURL } from 'ufo';
-
-import { AIKitServiceConfig } from '../components/ai-kit-service/config';
-import type { AppRegisterResult } from './call';
 
 export const createStatusApi =
   ({ axios, path }: { axios: AxiosInstance; path: string }): (() => Promise<{ available: boolean }>) =>
@@ -107,57 +102,4 @@ function processResponseError(error: any): never {
     throw new Error(msg);
   }
   throw error;
-}
-
-export interface AIKitServiceApiOptions {
-  prefix?: string;
-}
-
-function aiKitServiceApi(options?: AIKitServiceApiOptions) {
-  return axios.create({ baseURL: joinURL('/', window.blocklet?.prefix || '/', options?.prefix ?? '/api/ai-kit') });
-}
-
-export interface AppStatusResult {
-  id: string;
-  subscription?: TSubscriptionExpanded;
-  aiKitServiceConfig: AIKitServiceConfig;
-}
-
-export interface AppUsedCreditsResult {
-  model: string;
-  date: string;
-  usedCredits: string;
-  promptTokens: number;
-  completionTokens: number;
-  numberOfImageGeneration: number;
-}
-
-export async function appStatus(options?: AIKitServiceApiOptions): Promise<AppStatusResult> {
-  return aiKitServiceApi(options)
-    .get('/status')
-    .then((res) => res.data);
-}
-
-export async function setAppConfig(
-  payload: AIKitServiceConfig,
-  options?: AIKitServiceApiOptions
-): Promise<AppStatusResult> {
-  return aiKitServiceApi(options)
-    .patch('/config', payload)
-    .then((res) => res.data);
-}
-
-export async function appRegister(options?: Partial<AIKitServiceApiOptions>): Promise<AppRegisterResult> {
-  return aiKitServiceApi(options)
-    .post('/register')
-    .then((res) => res.data);
-}
-
-export async function appUsedCredits(
-  query: { startTime?: string; endTime: string },
-  options?: Partial<AIKitServiceApiOptions>
-): Promise<{ list: AppUsedCreditsResult[] }> {
-  return aiKitServiceApi(options)
-    .get('/usage', { params: query })
-    .then((res) => res.data);
 }

@@ -27,7 +27,14 @@ app.use(cors());
 
 const router = express.Router();
 router.use('/api', routes);
-app.use(router);
+
+app.use((req, _, next) => {
+  // NOTE: Rewrite path from `/api/v1/sdk` to `/api/v1` compatible with old api
+  if (req.url.startsWith('/api/v1/sdk/')) {
+    req.url = req.url.replace('/sdk/', '/');
+  }
+  next();
+}, router);
 
 const isProduction = process.env.NODE_ENV === 'production' || process.env.ABT_NODE_SERVICE_ENV === 'production';
 

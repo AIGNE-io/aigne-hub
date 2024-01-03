@@ -105,14 +105,14 @@
     semver "^7.3.8"
     tweetnacl-sealedbox-js "^1.2.0"
 
-"@arcblock/did-connect@^2.8.23":
-  version "2.8.23"
-  resolved "https://registry.yarnpkg.com/@arcblock/did-connect/-/did-connect-2.8.23.tgz#f77804eb0678638b94892f81e305e73f39638f59"
-  integrity sha512-dXiKGcuvEWTB76+VZDO6WLgwq6WeBP1LKgMhtfIv0QKtbuT42PvX+nw2zwUJoMH4yrIg47SDaAWtl8MRfEddTw==
+"@arcblock/did-connect@^2.8.26":
+  version "2.8.26"
+  resolved "https://registry.yarnpkg.com/@arcblock/did-connect/-/did-connect-2.8.26.tgz#e1b6667dfb2c8a32830697d1de6dbf1e98d0b0c2"
+  integrity sha512-CjQP5lIOz7PjZv9XXcLLfp2xj0Tg9oVXHfLU+70Dpcq3AsYiQpvWBbtPNWlW/sdcnrfUIp3xYsCvVzL6+uQcaQ==
   dependencies:
-    "@arcblock/icons" "^2.8.23"
-    "@arcblock/react-hooks" "^2.8.23"
-    "@arcblock/ux" "^2.8.23"
+    "@arcblock/icons" "^2.8.26"
+    "@arcblock/react-hooks" "^2.8.26"
+    "@arcblock/ux" "^2.8.26"
     "@arcblock/ws" "^1.18.90"
     "@auth0/auth0-react" "^2.0.1"
     "@emotion/react" "^11.10.4"
@@ -233,10 +233,10 @@
     amp-message "~0.1.2"
     axon "^2.0.3"
 
-"@arcblock/icons@^2.8.23":
-  version "2.8.23"
-  resolved "https://registry.yarnpkg.com/@arcblock/icons/-/icons-2.8.23.tgz#5fb7e7d8a9419bbf99906a0da07cfaefa919531a"
-  integrity sha512-1zIawGSnuxMTZT+dR/7AhcYcjPDb8/VaJZ1uWxwzhpF30mOhE+Oj/R5QOmGJLes8zjO+NQuAS1z/Zf9iCMaV3A==
+"@arcblock/icons@^2.8.26":
+  version "2.8.26"
+  resolved "https://registry.yarnpkg.com/@arcblock/icons/-/icons-2.8.26.tgz#328705cbe4b09923f34a81195bad72c7009327f6"
+  integrity sha512-U39VzdEUKnHqv9TzRvGGj0bQT9fZIZTxfqwqcUNjgp1HeP6lckBGRF3CjdivaisyyIQQKbcaRgQgkxaiO9iC2w==
 
 "@arcblock/jwt@1.18.105", "@arcblock/jwt@1.18.107", "@arcblock/jwt@1.18.108", "@arcblock/jwt@^1.18.108", "@arcblock/jwt@^1.18.95":
   version "1.18.108"
@@ -250,10 +250,10 @@
     json-stable-stringify "^1.0.1"
     semver "^7.3.8"
 
-"@arcblock/react-hooks@^2.8.23":
-  version "2.8.23"
-  resolved "https://registry.yarnpkg.com/@arcblock/react-hooks/-/react-hooks-2.8.23.tgz#679d13bbfc1fab0c1482f3e8308723dc9abda2c0"
-  integrity sha512-YffZdh8syDBLp5UnlvRhDT3aTcH3lVnVH/K1oBD8UNdc+fgTwQ8fMyWkOJdd11tYQ6ygGUe7BjzrGD0XpBqSeQ==
+"@arcblock/react-hooks@^2.8.26":
+  version "2.8.26"
+  resolved "https://registry.yarnpkg.com/@arcblock/react-hooks/-/react-hooks-2.8.26.tgz#e20345cb1caa6f5897d8d617217dffe3ca025ef7"
+  integrity sha512-k2SlXOYit71qdbuoE+r+MxUB+ZFuBCEVxCayayfOinuXyb2FolUT23Mtk7gFT4rG2xCUJ/I/Nl/+BkgEvY44Qg==
   dependencies:
     core-js "^3.25.5"
     event-target-shim "^5.0.1"
@@ -271,14 +271,14 @@
     lodash.isnull "^3.0.0"
     lodash.set "^4.3.2"
 
-"@arcblock/ux@^2.8.23":
-  version "2.8.23"
-  resolved "https://registry.yarnpkg.com/@arcblock/ux/-/ux-2.8.23.tgz#1044a6b76ea6806553be3ac448e36bcbe92d9067"
-  integrity sha512-I2h6jUUh9PuXiWTRmLWXmfBRsY7sYKIOLGP/4o1cXmwKRKyqEBqzBK4ZxsurPCO9UjVehiPHoqF+dPPofRw+Aw==
+"@arcblock/ux@^2.8.26":
+  version "2.8.26"
+  resolved "https://registry.yarnpkg.com/@arcblock/ux/-/ux-2.8.26.tgz#20d101fe731eb26774315da52ad50f348f240e17"
+  integrity sha512-AxeY6re+8xoK6r1pNhWyApyzXucgBXxdFd23lFPt63zm1CQd9BBbuyFfoNnnmEkOpSnZ8UAZVpp2Q5BuS1maSw==
   dependencies:
     "@arcblock/did-motif" "^1.1.13"
-    "@arcblock/icons" "^2.8.23"
-    "@arcblock/react-hooks" "^2.8.23"
+    "@arcblock/icons" "^2.8.26"
+    "@arcblock/react-hooks" "^2.8.26"
     "@babel/plugin-syntax-dynamic-import" "^7.8.3"
     "@emotion/react" "^11.10.4"
     "@emotion/styled" "^11.10.4"
@@ -1691,13 +1691,13 @@
     url-join "^4.0.1"
     wait-port "^1.1.0"
 
-"@blocklet/ui-react@^2.8.23":
-  version "2.8.23"
-  resolved "https://registry.yarnpkg.com/@blocklet/ui-react/-/ui-react-2.8.23.tgz#521d56a468fa158c8762605ad8c06cd2edde1a3e"
-  integrity sha512-rjme4uTDJnH162LQ2UZUVFJMmWI4oucEAvANVhvW23bZ+EGnP43I+bbisWP1qchYRLnW3DTiaGQ8RHKUbCVtbQ==
+"@blocklet/ui-react@^2.8.26":
+  version "2.8.26"
+  resolved "https://registry.yarnpkg.com/@blocklet/ui-react/-/ui-react-2.8.26.tgz#6263f00e5638bb8a3e6ad62211f2dd4ddb3c7c48"
+  integrity sha512-eXVwBk05Cp4PjvQIeD6Bo9E3FrHswI7A+9X9T4P78CezXXn56w1Bxrwfp7yOG9mpVKLr6+wyxi7d1tGcuL3y2g==
   dependencies:
-    "@arcblock/did-connect" "^2.8.23"
-    "@arcblock/ux" "^2.8.23"
+    "@arcblock/did-connect" "^2.8.26"
+    "@arcblock/ux" "^2.8.26"
     "@emotion/react" "^11.10.4"
     "@emotion/styled" "^11.10.4"
     "@mui/material" "^5.14.8"
@@ -1833,18 +1833,18 @@
     "@ocap/mcrypto" "^1.18.95"
     joi "17.11.0"
 
-"@did-pay/client@^1.13.86":
-  version "1.13.86"
-  resolved "https://registry.yarnpkg.com/@did-pay/client/-/client-1.13.86.tgz#2bd4601e2dee62826643e63d33c9248647eaca8d"
-  integrity sha512-7t2xseeCZtqRmlxFRuj5PeYPKVs94Dmn/kSjvIR2Spww72DGETvMlzUfRyd+HrqTMBUd0MO3MfYUCkPo5JeCqQ==
+"@did-pay/client@^1.13.87":
+  version "1.13.87"
+  resolved "https://registry.yarnpkg.com/@did-pay/client/-/client-1.13.87.tgz#44c21614bd4c9435dcda028a4b2646795488d608"
+  integrity sha512-Zqh3cwe607l6ImvQR6a/O/h8vu5d6Rj0u7MkWgBN8THpu0Wz5MKsOMX6bGNZQYFIcsuROeOFPy1QP9O8ByzN5Q==
   dependencies:
     "@blocklet/sdk" "1.16.21-beta-e828f413"
-    "@did-pay/types" "1.13.86"
+    "@did-pay/types" "1.13.87"
 
-"@did-pay/types@1.13.86":
-  version "1.13.86"
-  resolved "https://registry.yarnpkg.com/@did-pay/types/-/types-1.13.86.tgz#be6d54cf3914d2fcadf9919b7b0dcef512f9a51d"
-  integrity sha512-YYJETeDctvRoMcGy2sFAed6lEkd2jP5mYtIpszvsP8RUCcSaVVc4IUcOBuiQpk10G6z3a/4S0gw8EkIXDMjIMQ==
+"@did-pay/types@1.13.87":
+  version "1.13.87"
+  resolved "https://registry.yarnpkg.com/@did-pay/types/-/types-1.13.87.tgz#5d8f94e7f20a9fcf98b120d36ac48ed1fe383ea2"
+  integrity sha512-9rvhHVbFUrBPXXgQbCrvrGTRLSOZ62VLHVYeJo+OElUDvN8a7XVPSXpbSshE862MoWf4Xpr0vxZpBNkGsjFLag==
 
 "@discoveryjs/json-ext@^0.5.3":
   version "0.5.7"
@@ -9081,9 +9081,9 @@ focus-lock@^0.8.0:
     tslib "^1.9.3"
 
 follow-redirects@^1.15.0:
-  version "1.15.3"
-  resolved "https://registry.yarnpkg.com/follow-redirects/-/follow-redirects-1.15.3.tgz#fe2f3ef2690afce7e82ed0b44db08165b207123a"
-  integrity sha512-1VzOtuEM8pC9SFU1E+8KfTjZyMztRsgEfwQl44z8A25uy13jSzTj6dyK2Df52iV0vgHCfBwLhDWevLn95w5v6Q==
+  version "1.15.4"
+  resolved "https://registry.yarnpkg.com/follow-redirects/-/follow-redirects-1.15.4.tgz#cdc7d308bf6493126b17ea2191ea0ccf3e535adf"
+  integrity sha512-Cr4D/5wlrb0z9dgERpUL3LrmPKVDsETIJhaCMeDfuFYcqa5bldGV6wBsAN6X/vxlXQtFBMrXdXxdL8CbDTGniw==
 
 for-each@^0.3.3:
   version "0.3.3"

@@ -1,3 +1,7 @@
+## 0.0.113 (2024-1-3)
+
+- feat: support use ai kit service api
+
 ## 0.0.112 (2023-12-30)
 
 - chore: update deps

@@ -5,12 +5,13 @@ import { auth } from '@blocklet/sdk/lib/middlewares';
 import getWallet from '@blocklet/sdk/lib/wallet';
 import { getHasher, getSigner, types } from '@ocap/mcrypto';
 import type { BytesType } from '@ocap/util';
+import type { WalletObject } from '@ocap/wallet';
 import type { NextFunction, Request, Response } from 'express';
 import stringify from 'json-stable-stringify';
 
 const TOKEN_EXPIRES_IN_SECONDS = 30;
 
-export const wallet = getWallet();
+export const wallet: WalletObject = getWallet();
 
 const ADMIN_ROLES = ['owner', 'admin'];
 
