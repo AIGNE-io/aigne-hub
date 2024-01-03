@@ -30,13 +30,14 @@ class Config extends EventEmitter {
     }
   };
 
-  config: { useAIKitService?: boolean } = {};
+  config: { useAIKitService?: boolean } | undefined;
 
   get useAIKitService() {
-    return this.config.useAIKitService;
+    return this.config?.useAIKitService;
   }
 
   set useAIKitService(value: boolean | undefined) {
+    this.config ??= {};
     this.config.useAIKitService = value;
     this.save();
     this.emit('change', this.config);
