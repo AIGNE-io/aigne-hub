@@ -13,12 +13,13 @@ import {
   Stack,
   TextField,
   Typography,
-  useTheme,
 } from '@mui/material';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { fromUnitToToken } from '@ocap/util';
 import { useRequest } from 'ahooks';
+import BigNumber from 'bignumber.js';
 import dayjs from 'dayjs';
 import { groupBy } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -156,11 +157,6 @@ function UseAIKitServiceSwitch() {
   );
 }
 
-const CustomTooltipFormatter = (value: any, name: string) => {
-  const nameMap: any = { totalUsedCredits: 'total' };
-  return [value, nameMap[name] || name];
-};
-
 function UseCreditsCharts() {
   const { app } = useAIKitServiceStatus();
   const [date, setDate] = useState(dayjs(new Date()));
@@ -179,10 +175,33 @@ function UseCreditsCharts() {
     }
   );
 
+  const { price, symbol } = useMemo(() => {
+    if (!app?.config.useAIKitService || !app?.subscription) return {};
+
+    const price = app.subscription.items.find((i) => i.price.currency_id === app.subscription!.currency_id)?.price;
+    const { decimal } = app.subscription.paymentCurrency;
+
+    if (!price) return {};
+
+    return {
+      price: new BigNumber(fromUnitToToken(price.unit_amount, decimal)).dividedBy(
+        price.transform_quantity?.divide_by ?? 1
+      ),
+      symbol: app.subscription.paymentCurrency.symbol,
+    };
+  }, [app]);
+
   const map = Object.fromEntries(
     Object.values(groupBy(data?.list || [], 'date')).map((list) => [
       list[0]!.date,
-      Object.fromEntries(list.map((i) => [i.model, i.usedCredits])),
+      Object.fromEntries(
+        list.map((i) => [
+          i.model,
+          price
+            ? price.multipliedBy(i.usedCredits).toString()
+            : i.promptTokens + i.completionTokens + i.numberOfImageGeneration,
+        ])
+      ),
     ])
   );
   const list = new Array(dayjs(date).daysInMonth()).fill(0).map((_, index) => {
@@ -194,25 +213,7 @@ function UseCreditsCharts() {
 
   const models = [...new Set(data?.list.map((i) => i.model))];
 
-  const { palette } = useTheme();
-  const colors = [
-    palette.primary.dark,
-    palette.primary.main,
-    palette.primary.light,
-    palette.secondary.dark,
-    palette.secondary.main,
-    palette.secondary.light,
-    palette.secondary.light,
-    palette.warning.dark,
-    palette.warning.main,
-    palette.warning.light,
-    palette.info.dark,
-    palette.info.main,
-    palette.info.light,
-    palette.success.dark,
-    palette.success.main,
-    palette.success.light,
-  ];
+  const colors = ['#ffc800', '#c3ff00', '#5eff00', '#00ffa6', '#00c3ff', '#0066ff', '#5500ff', '#ae00ff'];
 
   return (
     <Stack width={1} gap={2}>
@@ -235,9 +236,9 @@ function UseCreditsCharts() {
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={list} barSize={10}>
             <XAxis dataKey="date" scale="point" interval={8} padding={{ left: 10, right: 10 }} />
-            <YAxis />
+            <YAxis unit={symbol ?? 'unit'} width={100} />
             <Legend />
-            <Tooltip formatter={CustomTooltipFormatter} />
+            <Tooltip formatter={(v) => `${v} ${symbol ?? 'unit'}`} />
             <CartesianGrid strokeDasharray="3 3" />
             {models.map((model, index) => (
               <Bar key={model} dataKey={model} stackId="usedCredits" fill={colors[index] || 'black'} />

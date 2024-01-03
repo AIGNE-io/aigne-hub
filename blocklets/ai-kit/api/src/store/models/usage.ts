@@ -119,6 +119,9 @@ Usage.init(
     usedCredits: {
       type: DataTypes.DECIMAL,
     },
+    usageReportStatus: {
+      type: DataTypes.STRING,
+    },
   },
   { sequelize }
 );

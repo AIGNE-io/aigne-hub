@@ -1,7 +1,7 @@
 import Usage from '@api/store/models/usage';
 import payment from '@did-pay/client';
 import BigNumber from 'bignumber.js';
-import { throttle } from 'lodash';
+import { DebouncedFunc, throttle } from 'lodash';
 import { Op } from 'sequelize';
 
 import { wallet } from './auth';
@@ -53,49 +53,56 @@ export async function createAndReportUsage({
   }
 }
 
-const reportUsage = throttle(
-  async ({ appId }: { appId: string }) => {
-    try {
-      if (!isPaymentInstalled()) return;
+const tasks: { [key: string]: DebouncedFunc<(options: { appId: string }) => Promise<void>> } = {};
 
-      const { pricing } = Config;
-      if (!pricing) throw new Error('Missing required preference `pricing`');
+async function reportUsage({ appId }: { appId: string }) {
+  tasks[appId] ??= throttle(
+    async ({ appId }: { appId: string }) => {
+      try {
+        if (!isPaymentInstalled()) return;
 
-      const start = await Usage.findOne({
-        where: { appId, usageReportStatus: { [Op.not]: null } },
-        order: [['id', 'desc']],
-        limit: 1,
-      });
-      const end = await Usage.findOne({
-        where: { appId, id: { [Op.gt]: start?.id || '' } },
-        order: [['id', 'desc']],
-        limit: 1,
-      });
+        const { pricing } = Config;
+        if (!pricing) throw new Error('Missing required preference `pricing`');
 
-      if (!end) return;
+        const start = await Usage.findOne({
+          where: { appId, usageReportStatus: { [Op.not]: null } },
+          order: [['id', 'desc']],
+          limit: 1,
+        });
+        const end = await Usage.findOne({
+          where: { appId, id: { [Op.gt]: start?.id || '' } },
+          order: [['id', 'desc']],
+          limit: 1,
+        });
 
-      const quantity = await Usage.sum('usedCredits', {
-        where: { appId, id: { [Op.gt]: start?.id || '', [Op.lte]: end.id } },
-      });
+        if (!end) return;
 
-      const subscription = await getActiveSubscriptionOfApp({ appId });
-      if (!subscription) throw new Error('Subscription not active');
+        const quantity = await Usage.sum('usedCredits', {
+          where: { appId, id: { [Op.gt]: start?.id || '', [Op.lte]: end.id } },
+        });
 
-      const subscriptionItem = subscription.items.find((i) => i.price.product_id === pricing.subscriptionProductId);
-      if (!subscriptionItem) throw new Error(`Subscription item of product ${pricing.subscriptionProductId} not found`);
+        const subscription = await getActiveSubscriptionOfApp({ appId });
+        if (!subscription) throw new Error('Subscription not active');
 
-      await end.update({ usageReportStatus: 'counted' });
+        const subscriptionItem = subscription.items.find((i) => i.price.product_id === pricing.subscriptionProductId);
+        if (!subscriptionItem)
+          throw new Error(`Subscription item of product ${pricing.subscriptionProductId} not found`);
 
-      await payment.subscriptionItems.createUsageRecord({
-        subscription_item_id: subscriptionItem.id,
-        quantity: quantity || 0,
-      });
+        await end.update({ usageReportStatus: 'counted' });
 
-      await end.update({ usageReportStatus: 'reported' });
-    } catch (error) {
-      logger.error('report usage error', { error });
-    }
-  },
-  Config.usageReportThrottleTime,
-  { leading: false }
-);
+        await payment.subscriptionItems.createUsageRecord({
+          subscription_item_id: subscriptionItem.id,
+          quantity: quantity || 0,
+        });
+
+        await end.update({ usageReportStatus: 'reported' });
+      } catch (error) {
+        logger.error('report usage error', { error });
+      }
+    },
+    Config.usageReportThrottleTime,
+    { leading: false, trailing: true }
+  );
+
+  tasks[appId]!({ appId });
+}

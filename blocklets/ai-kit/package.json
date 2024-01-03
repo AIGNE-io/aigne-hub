@@ -50,6 +50,7 @@
     "@mui/x-date-pickers": "^6.18.6",
     "@ocap/client": "^1.18.108",
     "@ocap/mcrypto": "^1.18.108",
+    "@ocap/util": "^1.18.108",
     "@ocap/wallet": "^1.18.108",
     "ahooks": "^3.7.8",
     "axios": "^1.6.3",
