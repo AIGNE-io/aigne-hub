@@ -4,11 +4,13 @@ import Footer from '@blocklet/ui-react/lib/Footer';
 import Header from '@blocklet/ui-react/lib/Header';
 import { Global, css } from '@emotion/react';
 import { Box, CssBaseline, ThemeProvider, createTheme } from '@mui/material';
-import { ReactNode, Suspense } from 'react';
+import { ReactNode, Suspense, lazy } from 'react';
 import { Navigate, Route, RouterProvider, createBrowserRouter, createRoutesFromElements } from 'react-router-dom';
 
+import NotFoundView from './components/error/not-found';
 import Loading from './components/loading';
 import { SessionProvider, useIsRole } from './contexts/session';
+import { translations } from './locales';
 import { HomeLazy } from './pages/home';
 import { ChatLazy } from './pages/playground';
 
@@ -43,7 +45,7 @@ export default function App() {
         />
 
         <ToastProvider>
-          <LocaleProvider translations={{}}>
+          <LocaleProvider translations={translations} fallbackLocale="en">
             <SessionProvider serviceHost={basename}>
               <Suspense fallback={<Loading />}>
                 <AppRoutes basename={basename} />
@@ -67,12 +69,13 @@ function AppRoutes({ basename }: { basename: string }) {
           <Route index element={<Navigate to="/playground/chat" replace />} />
           <Route path="chat" element={<ChatLazy />} />
         </Route>
+        <Route path="billing/*" element={<BillingRoutes />} />
         <Route
           path="*"
           element={
             <Layout>
-              <Box flexGrow={1} textAlign="center">
-                <div>Not Found.</div>
+              <Box flex={1}>
+                <NotFoundView />
               </Box>
             </Layout>
           }
@@ -84,6 +87,8 @@ function AppRoutes({ basename }: { basename: string }) {
 
   return <RouterProvider router={router} />;
 }
+
+const BillingRoutes = lazy(() => import('./pages/billing'));
 
 function Layout({ children }: { children: ReactNode }) {
   return (

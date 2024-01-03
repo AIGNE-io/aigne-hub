@@ -1,8 +1,7 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 
-import { AppStatusResult, appStatus, setAppConfig } from '../../api';
-import { AIKitServiceConfig } from './config';
+import { AIKitServiceConfig, AppStatusResult, appStatus, setAppConfig } from '../../libs/app';
 
 export interface AIKitServiceStatus {
   app?: AppStatusResult;
@@ -32,10 +31,10 @@ export const useAIKitServiceStatus = create<AIKitServiceStatus>()(
         });
       }
     },
-    setConfig: async (config: AIKitServiceConfig) => {
-      const app = await setAppConfig(config);
+    setConfig: async (payload: AIKitServiceConfig) => {
+      const config = await setAppConfig(payload);
       set((state) => {
-        state.app = app;
+        state.app!.config = config;
       });
     },
   }))

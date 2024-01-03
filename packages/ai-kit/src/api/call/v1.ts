@@ -8,6 +8,7 @@ import FormData from 'form-data';
 import stringify from 'json-stable-stringify';
 import { joinURL } from 'ufo';
 
+import AIKitConfig from '../config';
 import {
   ChatCompletionChunk,
   ChatCompletionInput,
@@ -32,12 +33,15 @@ export async function status(options: {
   useAIKitService?: boolean;
   responseType: 'stream';
 }): Promise<AxiosResponse<IncomingMessage, any>>;
-export async function status(options?: {
+export async function status({
+  useAIKitService = AIKitConfig.useAIKitService,
+  ...options
+}: {
   useAIKitService?: boolean;
   responseType?: 'stream';
-}): Promise<StatusResponse | AxiosResponse<IncomingMessage, any>> {
+} = {}): Promise<StatusResponse | AxiosResponse<IncomingMessage, any>> {
   const response = await catchAndRethrowUpstreamError(
-    options?.useAIKitService
+    useAIKitService
       ? aiKitApi
           .get('/api/v1/status', {
             responseType: options.responseType,
@@ -64,10 +68,13 @@ export async function chatCompletions(
 ): Promise<AxiosResponse<IncomingMessage, any>>;
 export async function chatCompletions(
   input: ChatCompletionInput,
-  options?: { useAIKitService?: boolean; responseType?: 'stream' }
+  {
+    useAIKitService = AIKitConfig.useAIKitService,
+    ...options
+  }: { useAIKitService?: boolean; responseType?: 'stream' } = {}
 ): Promise<ReadableStream<ChatCompletionChunk> | AxiosResponse<IncomingMessage, any>> {
   const response = catchAndRethrowUpstreamError(
-    options?.useAIKitService
+    useAIKitService
       ? aiKitApi<IncomingMessage>('/api/v1/chat/completions', {
           responseType: 'stream',
           method: 'POST',
@@ -122,10 +129,13 @@ export async function imageGenerations(
 ): Promise<AxiosResponse<IncomingMessage, any>>;
 export async function imageGenerations(
   input: ImageGenerationInput,
-  options?: { useAIKitService?: boolean; responseType?: 'stream' }
+  {
+    useAIKitService = AIKitConfig.useAIKitService,
+    ...options
+  }: { useAIKitService?: boolean; responseType?: 'stream' } = {}
 ): Promise<ImageGenerationResponse | AxiosResponse<IncomingMessage, any>> {
   const response = await catchAndRethrowUpstreamError(
-    options?.useAIKitService
+    useAIKitService
       ? aiKitApi.post('/api/v1/image/generations', input, {
           responseType: options.responseType,
           headers: { ...getRemoteComponentCallHeaders(input) },
@@ -153,10 +163,13 @@ export async function embeddings(
 ): Promise<AxiosResponse<IncomingMessage, any>>;
 export async function embeddings(
   input: EmbeddingInput,
-  options?: { useAIKitService?: boolean; responseType?: 'stream' }
+  {
+    useAIKitService = AIKitConfig.useAIKitService,
+    ...options
+  }: { useAIKitService?: boolean; responseType?: 'stream' } = {}
 ): Promise<EmbeddingResponse | AxiosResponse<IncomingMessage, any>> {
   const response = await catchAndRethrowUpstreamError(
-    options?.useAIKitService
+    useAIKitService
       ? aiKitApi.post('/api/v1/embeddings', input, {
           responseType: options.responseType,
           headers: { ...getRemoteComponentCallHeaders(input) },
@@ -184,7 +197,10 @@ export async function audioTranscriptions(
 ): Promise<AxiosResponse<IncomingMessage, any>>;
 export async function audioTranscriptions(
   input: AudioTranscriptionsInput,
-  options?: { useAIKitService?: boolean; responseType?: 'stream' }
+  {
+    useAIKitService = AIKitConfig.useAIKitService,
+    ...options
+  }: { useAIKitService?: boolean; responseType?: 'stream' } = {}
 ): Promise<EmbeddingResponse | AxiosResponse<IncomingMessage, any>> {
   const form = new FormData();
   for (const [key, val] of Object.entries(input)) {
@@ -192,7 +208,7 @@ export async function audioTranscriptions(
   }
 
   const response = await catchAndRethrowUpstreamError(
-    options?.useAIKitService
+    useAIKitService
       ? aiKitApi.post('/api/v1/audio/transcriptions', form, {
           responseType: options.responseType,
           headers: { ...getRemoteComponentCallHeaders({}) },
@@ -210,10 +226,10 @@ export async function audioTranscriptions(
 
 export async function audioSpeech(
   input: AudioSpeechInput,
-  options?: { useAIKitService?: boolean }
+  { useAIKitService = AIKitConfig.useAIKitService }: { useAIKitService?: boolean } = {}
 ): Promise<AxiosResponse<IncomingMessage, any>> {
   const response = await catchAndRethrowUpstreamError(
-    options?.useAIKitService
+    useAIKitService
       ? aiKitApi.post('/api/v1/audio/speech', input, {
           responseType: 'stream',
           headers: { ...getRemoteComponentCallHeaders(input) },

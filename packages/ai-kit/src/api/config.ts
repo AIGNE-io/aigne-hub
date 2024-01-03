@@ -1,31 +1,36 @@
 import { EventEmitter } from 'events';
-import { existsSync, readFileSync, writeFileSync } from 'fs';
+import { existsSync, readFileSync, watch, writeFileSync } from 'fs';
 import { join } from 'path';
 
 import config from '@blocklet/sdk/lib/config';
 import { parse, stringify } from 'yaml';
 
-import logger from '../../libs/logger';
-
-export interface AIKitServiceConfig {
-  useAIKitService?: boolean;
-}
+import logger from '../libs/logger';
 
 class Config extends EventEmitter {
-  static CONFIG_FILE_PATH = join(config.env.dataDir, 'ai-kit-service.config.yaml');
+  static CONFIG_FILE_PATH = join(config.env.dataDir, '../ai-kit', 'ai-kit-service.config.yaml');
 
   constructor() {
     super();
+
+    if (!existsSync(Config.CONFIG_FILE_PATH)) {
+      writeFileSync(Config.CONFIG_FILE_PATH, '');
+    }
+
+    watch(Config.CONFIG_FILE_PATH, this.reloadConfigFile);
+
+    this.reloadConfigFile();
+  }
+
+  private reloadConfigFile = () => {
     try {
-      if (existsSync(Config.CONFIG_FILE_PATH)) {
-        this.config = parse(readFileSync(Config.CONFIG_FILE_PATH).toString());
-      }
+      this.config = parse(readFileSync(Config.CONFIG_FILE_PATH).toString());
     } catch (error) {
       logger.error(`Parse ${Config.CONFIG_FILE_PATH} error`, { error });
     }
-  }
+  };
 
-  config: AIKitServiceConfig = {};
+  config: { useAIKitService?: boolean } = {};
 
   get useAIKitService() {
     return this.config.useAIKitService;
@@ -42,4 +47,6 @@ class Config extends EventEmitter {
   }
 }
 
-export default new Config();
+const AIKitConfig = new Config();
+
+export default AIKitConfig;
