@@ -30,13 +30,14 @@ import { useAIKitServiceStatus } from './state';
 
 export default function BillingPage() {
   const { t } = useLocaleContext();
-  const { app, loading, fetch } = useAIKitServiceStatus();
+  const { app, error, fetch } = useAIKitServiceStatus();
+  if (error) throw error;
 
   useEffect(() => {
     fetch();
   }, [fetch]);
 
-  if (loading) {
+  if (!app) {
     return (
       <Stack alignItems="center" py={10}>
         <CircularProgress size={24} />

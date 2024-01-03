@@ -1,3 +1,4 @@
+import ErrorBoundary from '@app/components/error/error-boundary';
 import NotFoundView from '@app/components/error/not-found';
 import Dashboard from '@blocklet/ui-react/lib/Dashboard';
 import { styled } from '@mui/material';
@@ -7,10 +8,12 @@ import { Route, Routes } from 'react-router-dom';
 export default function BillingRoutes() {
   return (
     <AdminLayout footerProps={{ className: 'dashboard-footer' }} sx={{ bgcolor: 'background.paper' }}>
-      <Routes>
-        <Route index element={<BillingPage />} />
-        <Route path="*" element={<NotFoundView />} />
-      </Routes>
+      <ErrorBoundary>
+        <Routes>
+          <Route index element={<BillingPage />} />
+          <Route path="*" element={<NotFoundView />} />
+        </Routes>
+      </ErrorBoundary>
     </AdminLayout>
   );
 }
