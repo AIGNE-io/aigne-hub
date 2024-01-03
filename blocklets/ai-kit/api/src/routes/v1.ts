@@ -25,7 +25,7 @@ import { ensureAdmin, ensureComponentCall } from '../libs/security';
 
 const router = Router();
 
-router.get('/status', ensureComponentCall(ensureAdmin), (_, res) => {
+router.get('/status', ensureRemoteComponentCall(App.findPublicKeyById, ensureComponentCall(ensureAdmin)), (_, res) => {
   const { openaiApiKey } = Config;
   const arr = Array.isArray(openaiApiKey) ? openaiApiKey : [openaiApiKey];
   res.json({ available: !!arr.filter(Boolean).length });
