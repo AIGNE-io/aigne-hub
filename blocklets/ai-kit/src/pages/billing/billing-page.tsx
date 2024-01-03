@@ -213,7 +213,7 @@ function UseCreditsCharts() {
 
   const models = [...new Set(data?.list.map((i) => i.model))];
 
-  const colors = ['#ffc800', '#c3ff00', '#5eff00', '#00ffa6', '#00c3ff', '#0066ff', '#5500ff', '#ae00ff'];
+  const colors = ['#ffc800', '#b7ff00', '#40ff00', '#00ffae', '#00c3ff', '#0066ff', '#5500ff', '#ae00ff'];
 
   return (
     <Stack width={1} gap={2}>
