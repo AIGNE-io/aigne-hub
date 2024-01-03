@@ -54,7 +54,7 @@ export default function BillingPage() {
         <UseAIKitServiceSwitch />
       </Stack>
 
-      {!app?.config.useAIKitService || app?.subscription?.status === 'active' ? (
+      {!app?.config?.useAIKitService || app?.subscription?.status === 'active' ? (
         <Stack alignItems="center">
           <UseCreditsCharts />
         </Stack>
@@ -114,7 +114,7 @@ function UseAIKitServiceSwitch() {
   return (
     <Stack direction="row" overflow="hidden" alignItems="center" gap={1} pr="3px">
       <FormControlLabel
-        key={app.config.useAIKitService?.toString()}
+        key={app.config?.useAIKitService?.toString()}
         labelPlacement="start"
         label={<Box>{t('aiProvider')}</Box>}
         sx={{ pr: 1, gap: 1 }}
@@ -124,7 +124,7 @@ function UseAIKitServiceSwitch() {
             size="small"
             hiddenLabel
             SelectProps={{ autoWidth: true }}
-            defaultValue={app.config.useAIKitService ? 'subscribe' : 'local'}
+            defaultValue={app.config?.useAIKitService ? 'subscribe' : 'local'}
             onChange={async (e) => {
               try {
                 setUpdating(true);
@@ -169,14 +169,14 @@ function UseCreditsCharts() {
   }, [date]);
 
   const { data, loading } = useRequest(
-    () => appUsedCredits({ startTime, endTime }, { useAIKitService: app?.config.useAIKitService }),
+    () => appUsedCredits({ startTime, endTime }, { useAIKitService: app?.config?.useAIKitService }),
     {
-      refreshDeps: [startTime, endTime, app?.config.useAIKitService],
+      refreshDeps: [startTime, endTime, app?.config?.useAIKitService],
     }
   );
 
   const { price, symbol } = useMemo(() => {
-    if (!app?.config.useAIKitService || !app?.subscription) return {};
+    if (!app?.config?.useAIKitService || !app?.subscription) return {};
 
     const price = app.subscription.items.find((i) => i.price.currency_id === app.subscription!.currency_id)?.price;
     const { decimal } = app.subscription.paymentCurrency;

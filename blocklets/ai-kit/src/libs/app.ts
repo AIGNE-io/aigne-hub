@@ -5,7 +5,7 @@ import api from './api';
 export interface AppStatusResult {
   id: string;
   subscription?: TSubscriptionExpanded;
-  config: AIKitServiceConfig;
+  config?: AIKitServiceConfig | null;
 }
 
 export async function appStatus(): Promise<AppStatusResult> {
@@ -19,7 +19,7 @@ export interface AIKitServiceConfig {
   useAIKitService?: boolean;
 }
 
-export async function appConfig(): Promise<AIKitServiceConfig> {
+export async function appConfig(): Promise<AIKitServiceConfig | null> {
   return api.get('/api/app/config').then((res) => res.data);
 }
 

@@ -1,3 +1,7 @@
+## 0.0.116 (2024-1-3)
+
+- fix: billing page error
+
 ## 0.0.115 (2024-1-3)
 
 - fix: config maybe empty
