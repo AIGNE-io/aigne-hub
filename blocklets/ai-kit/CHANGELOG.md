@@ -1,3 +1,7 @@
+## 0.0.115 (2024-1-3)
+
+- fix: config maybe empty
+
 ## 0.0.114 (2024-1-3)
 
 - fix: expose status api
