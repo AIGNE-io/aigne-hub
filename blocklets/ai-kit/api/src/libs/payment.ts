@@ -10,6 +10,7 @@ export const isPaymentInstalled = () => !!config.components.find((i) => i.did ==
 export async function getActiveSubscriptionOfApp({ appId }: { appId: string }) {
   if (!isPaymentInstalled()) return undefined;
 
+  // @ts-ignore TODO: remove ts-ignore after upgrade @did-pay/client
   const subscription = (await payment.subscriptions.list({ 'metadata.appId': appId })).list.find(
     (i) =>
       ['active', 'trialing'].includes(i.status) &&
