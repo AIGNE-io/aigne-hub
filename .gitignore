@@ -30,3 +30,5 @@ pnpm-debug.log*
 lerna-debug.log*
 
 *.env
+
+.vscode

@@ -2,6 +2,7 @@ import config from '@blocklet/sdk/lib/config';
 import payment from '@did-pay/client';
 
 import { Config } from './env';
+import throwSubscriptionError, { SubscriptionErrorType } from './subscription-error';
 
 const PAYMENT_DID = 'z2qaCNvKMv5GjouKdcDWexv6WqtHbpNPQDnAk';
 
@@ -21,5 +22,5 @@ export async function getActiveSubscriptionOfApp({ appId }: { appId: string }) {
 
 export async function checkSubscription({ appId }: { appId: string }) {
   const subscription = await getActiveSubscriptionOfApp({ appId });
-  if (!subscription) throw new Error('Your subscription is not available');
+  if (!subscription) throwSubscriptionError(SubscriptionErrorType.UNSUBSCRIBED);
 }

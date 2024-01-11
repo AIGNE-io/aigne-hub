@@ -9,6 +9,7 @@ import express, { ErrorRequestHandler } from 'express';
 import fallback from 'express-history-api-fallback';
 
 import logger from './libs/logger';
+import { SubscriptionError } from './libs/subscription-error';
 import routes from './routes';
 
 dotenv.config();
@@ -48,12 +49,33 @@ if (isProduction) {
 app.use(<ErrorRequestHandler>((error, _req, res, _next) => {
   logger.error('handle route error', { error });
 
+  let errorData = null;
+
+  if (error instanceof SubscriptionError) {
+    errorData = {
+      message: error.message,
+      timestamp: error.timestamp,
+      type: error.type,
+    };
+  } else {
+    errorData = {
+      message: error.message,
+    };
+  }
+
   if (!res.headersSent) {
     res.status(500);
     res.contentType('json');
   }
 
-  if (res.writable) res.write(JSON.stringify({ error: { message: error.message } }));
+  if (res.writable) {
+    // 在响应里加入errorData
+    res.write(
+      JSON.stringify({
+        error: errorData,
+      })
+    );
+  }
 
   res.end();
 }));

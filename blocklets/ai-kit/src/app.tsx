@@ -9,6 +9,7 @@ import { Navigate, Route, RouterProvider, createBrowserRouter, createRoutesFromE
 
 import NotFoundView from './components/error/not-found';
 import Loading from './components/loading';
+import SubscribeButton from './components/subscribe';
 import { SessionProvider, useIsRole } from './contexts/session';
 import { translations } from './locales';
 import { HomeLazy } from './pages/home';
@@ -93,7 +94,7 @@ const BillingRoutes = lazy(() => import('./pages/billing'));
 function Layout({ children }: { children: ReactNode }) {
   return (
     <>
-      <Header maxWidth={null} />
+      <Header maxWidth={null} addons={(exists: ReactNode[]) => [<SubscribeButton />, ...exists]} />
 
       {children}
 

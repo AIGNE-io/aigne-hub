@@ -46,6 +46,9 @@ export const createTextCompletionApi =
             } catch {
               // eslint-disable-next-line no-empty
             }
+            if (json?.error?.type) {
+              throw new Error(JSON.stringify(json.error));
+            }
             throw new Error(json?.error?.message || json?.message || text || res.status);
           }
           return res.body!;
