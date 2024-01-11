@@ -53,3 +53,7 @@ export async function appUsedCredits(
     .get(options?.useAIKitService ? '/api/app/service/usage' : '/api/app/usage', { params: query })
     .then((res) => res.data);
 }
+
+export async function unsubscribe(): Promise<void> {
+  return api.post('/api/app/service/unsubscribe');
+}

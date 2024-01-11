@@ -72,6 +72,7 @@
     "joi": "^17.11.0",
     "js-tiktoken": "^1.0.8",
     "lodash": "^4.17.21",
+    "material-ui-popup-state": "^5.0.10",
     "nanoid": "^3.3.7",
     "openai": "^4.24.3",
     "react": "^18.2.0",

@@ -24,3 +24,10 @@ export async function checkSubscription({ appId }: { appId: string }) {
   const subscription = await getActiveSubscriptionOfApp({ appId });
   if (!subscription) throw new Error('Your subscription is not available');
 }
+
+export async function unsubscribe({ appId }: { appId: string }) {
+  const subscription = await getActiveSubscriptionOfApp({ appId });
+  if (!subscription) return undefined;
+
+  return payment.subscriptions.cancel(subscription.id);
+}
