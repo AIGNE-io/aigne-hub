@@ -1,3 +1,8 @@
+## 0.0.117 (2024-1-11)
+
+- fix: support unsubscribe
+- chore: update deps
+
 ## 0.0.116 (2024-1-3)
 
 - fix: billing page error
