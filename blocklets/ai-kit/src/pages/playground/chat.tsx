@@ -44,7 +44,9 @@ export default function Chat() {
   );
 
   return (
-    <Root footerProps={{ className: 'dashboard-footer' }}>
+    <Root
+      footerProps={{ className: 'dashboard-footer' }}
+      headerAddons={(exists: ReactNode[]) => [<SubscribeButton />, ...exists]}>
       <Conversation
         ref={ref}
         sx={{ maxWidth: 800, mx: 'auto', width: '100%' }}
