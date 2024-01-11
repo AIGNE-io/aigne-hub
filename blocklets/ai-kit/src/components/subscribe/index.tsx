@@ -2,19 +2,17 @@ import { appServiceRegister } from '@app/libs/app';
 import { useAIKitServiceStatus } from '@app/pages/billing/state';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import Toast from '@arcblock/ux/lib/Toast';
-import { LoadingButton } from '@mui/lab';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect } from 'react';
 import { withQuery } from 'ufo';
+
+import LoadingButton from '../loading/loading-button';
 
 export default function SubscribeButton({ shouldOpenInNewTab = false }: { shouldOpenInNewTab?: boolean }) {
   const { t } = useLocaleContext();
   const app = useAIKitServiceStatus((i) => i.app);
   const fetch = useAIKitServiceStatus((i) => i.fetch);
 
-  const [loading, setLoading] = useState(false);
-
   const linkToAiKit = useCallback(async () => {
-    setLoading(true);
     try {
       const res = await appServiceRegister();
       if (res.paymentLink) {
@@ -28,8 +26,6 @@ export default function SubscribeButton({ shouldOpenInNewTab = false }: { should
     } catch (error) {
       Toast.error(error.message);
       throw error;
-    } finally {
-      setLoading(false);
     }
   }, [shouldOpenInNewTab]);
 
@@ -41,7 +37,6 @@ export default function SubscribeButton({ shouldOpenInNewTab = false }: { should
     return (
       <LoadingButton
         onClick={linkToAiKit}
-        loading={loading}
         size="small"
         key="button"
         variant="outlined"

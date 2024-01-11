@@ -8,4 +8,8 @@ export default flat({
   selectMonth: '选择月份',
   subscribeAITip: '现在订阅 AI Kit 来获得 AI 能力吧！',
   subscribeAIService: '订阅 AI 服务',
+  unsubscribe: '取消订阅',
+  unsubscribeTip: '取消订阅后将无法继续使用我们提供的 AI 服务！',
+  cancel: '取消',
+  unsubscribeAt: '订阅失效于',
 });
