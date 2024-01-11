@@ -9,8 +9,8 @@ import LoadingButton from '../loading/loading-button';
 
 export default function SubscribeButton({ shouldOpenInNewTab = false }: { shouldOpenInNewTab?: boolean }) {
   const { t } = useLocaleContext();
-  const app = useAIKitServiceStatus((i) => i.app);
   const fetch = useAIKitServiceStatus((i) => i.fetch);
+  const isSubscriptionAvailable = useAIKitServiceStatus((i) => i.computed?.isSubscriptionAvailable);
 
   const linkToAiKit = useCallback(async () => {
     try {
@@ -33,7 +33,7 @@ export default function SubscribeButton({ shouldOpenInNewTab = false }: { should
     fetch();
   }, [fetch]);
 
-  if (app?.subscription?.status !== 'active') {
+  if (!isSubscriptionAvailable) {
     return (
       <LoadingButton
         onClick={linkToAiKit}

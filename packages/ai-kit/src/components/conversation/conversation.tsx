@@ -4,6 +4,7 @@ import isNil from 'lodash/isNil';
 import { ChatCompletionMessageParam } from 'openai/resources';
 import { ReactNode, RefObject, forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from 'react';
 
+import { SubscriptionErrorType } from '../../api';
 import ImagePreview from '../image-preview';
 import Message from './message';
 import Prompt, { PromptProps } from './prompt';
@@ -15,13 +16,6 @@ export interface MessageItem {
   loading?: boolean;
   error?: { message: string; [key: string]: unknown };
   meta?: any;
-}
-
-export enum SubscriptionErrorType {
-  UNSUBSCRIBED = 'UNSUBSCRIBED',
-  NON_PAID = 'NON_PAID',
-  EXCEEDED = 'EXCEEDED',
-  UNKNOWN = 'UNKNOWN',
 }
 
 export interface ConversationRef {

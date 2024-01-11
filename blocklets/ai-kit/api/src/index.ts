@@ -2,6 +2,7 @@ import 'express-async-errors';
 
 import path from 'path';
 
+import { SubscriptionError } from '@blocklet/ai-kit/api';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import dotenv from 'dotenv-flow';
@@ -9,7 +10,6 @@ import express, { ErrorRequestHandler } from 'express';
 import fallback from 'express-history-api-fallback';
 
 import logger from './libs/logger';
-import { SubscriptionError } from './libs/subscription-error';
 import routes from './routes';
 
 dotenv.config();
@@ -69,7 +69,6 @@ app.use(<ErrorRequestHandler>((error, _req, res, _next) => {
   }
 
   if (res.writable) {
-    // 在响应里加入errorData
     res.write(
       JSON.stringify({
         error: errorData,

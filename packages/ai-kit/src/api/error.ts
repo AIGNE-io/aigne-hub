@@ -26,9 +26,3 @@ export class SubscriptionError extends Error {
     this.type = type;
   }
 }
-
-function throwSubscriptionError(type: SubscriptionErrorType): never {
-  throw new SubscriptionError(type);
-}
-
-export default throwSubscriptionError;
