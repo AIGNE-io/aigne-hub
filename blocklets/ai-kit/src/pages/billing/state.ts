@@ -17,6 +17,7 @@ export interface AIKitServiceStatus {
 
 export const useAIKitServiceStatus = create<AIKitServiceStatus>()(
   immer((set, get) => ({
+    loading: true,
     fetch: async () => {
       set((state) => {
         state.loading = true;

@@ -112,25 +112,10 @@ export default function useConversation({
         }
         return { id, text: response };
       } catch (error) {
-        let chatError: {
-          message: string;
-          [key: string]: unknown;
-        };
-
-        try {
-          const parsedError = JSON.parse(error.message);
-          if (typeof parsedError === 'object') {
-            chatError = parsedError;
-          } else {
-            chatError = { message: error.message };
-          }
-        } catch (e) {
-          chatError = { message: error.message };
-        }
         setMessages((v) =>
           produce(v, (draft) => {
             const item = draft.find((i) => i.id === id);
-            if (item) item.error = chatError;
+            if (item) item.error = error;
           })
         );
 

@@ -11,6 +11,7 @@ export default function SubscribeButton({ shouldOpenInNewTab = false }: { should
   const { t } = useLocaleContext();
   const fetch = useAIKitServiceStatus((i) => i.fetch);
   const isSubscriptionAvailable = useAIKitServiceStatus((i) => i.computed?.isSubscriptionAvailable);
+  const loading = useAIKitServiceStatus((i) => i.loading);
 
   const linkToAiKit = useCallback(async () => {
     try {
@@ -33,7 +34,7 @@ export default function SubscribeButton({ shouldOpenInNewTab = false }: { should
     fetch();
   }, [fetch]);
 
-  if (!isSubscriptionAvailable) {
+  if (!loading && !isSubscriptionAvailable) {
     return (
       <LoadingButton
         onClick={linkToAiKit}
