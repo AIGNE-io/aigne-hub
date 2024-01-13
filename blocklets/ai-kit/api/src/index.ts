@@ -2,6 +2,7 @@ import 'express-async-errors';
 
 import path from 'path';
 
+import { SubscriptionError } from '@blocklet/ai-kit/api';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import dotenv from 'dotenv-flow';
@@ -48,12 +49,32 @@ if (isProduction) {
 app.use(<ErrorRequestHandler>((error, _req, res, _next) => {
   logger.error('handle route error', { error });
 
+  let errorData = null;
+
+  if (error instanceof SubscriptionError) {
+    errorData = {
+      message: error.message,
+      timestamp: error.timestamp,
+      type: error.type,
+    };
+  } else {
+    errorData = {
+      message: error.message,
+    };
+  }
+
   if (!res.headersSent) {
     res.status(500);
     res.contentType('json');
   }
 
-  if (res.writable) res.write(JSON.stringify({ error: { message: error.message } }));
+  if (res.writable) {
+    res.write(
+      JSON.stringify({
+        error: errorData,
+      })
+    );
+  }
 
   res.end();
 }));

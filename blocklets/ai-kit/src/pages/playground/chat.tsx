@@ -1,3 +1,4 @@
+import SubscribeButton from '@app/components/subscribe';
 import { Conversation, ConversationRef, MessageItem, useConversation } from '@blocklet/ai-kit/components';
 import Dashboard from '@blocklet/ui-react/lib/Dashboard';
 import styled from '@emotion/styled';
@@ -24,7 +25,7 @@ export default function Chat() {
   });
 
   const customActions = useCallback(
-    (msg: MessageItem): [ReactNode[], ReactNode[]] => {
+    (msg: MessageItem): Array<ReactNode[]> => {
       return [
         [],
         [
@@ -36,13 +37,16 @@ export default function Chat() {
             </Tooltip>
           ),
         ],
+        [<SubscribeButton shouldOpenInNewTab key="subscribe" />],
       ];
     },
     [cancel]
   );
 
   return (
-    <Root footerProps={{ className: 'dashboard-footer' }}>
+    <Root
+      footerProps={{ className: 'dashboard-footer' }}
+      headerAddons={(exists: ReactNode[]) => [<SubscribeButton />, ...exists]}>
       <Conversation
         ref={ref}
         sx={{ maxWidth: 800, mx: 'auto', width: '100%' }}

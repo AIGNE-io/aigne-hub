@@ -1,9 +1,10 @@
 import { Error } from '@mui/icons-material';
-import { Alert, Avatar, Box, BoxProps, CircularProgress } from '@mui/material';
+import { Alert, Avatar, Box, BoxProps, CircularProgress, Stack } from '@mui/material';
 import isNil from 'lodash/isNil';
 import { ChatCompletionMessageParam } from 'openai/resources';
 import { ReactNode, RefObject, forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from 'react';
 
+import { SubscriptionErrorType } from '../../api';
 import ImagePreview from '../image-preview';
 import Message from './message';
 import Prompt, { PromptProps } from './prompt';
@@ -13,7 +14,7 @@ export interface MessageItem {
   prompt?: string | ChatCompletionMessageParam[];
   response?: string | { url: string }[];
   loading?: boolean;
-  error?: { message: string };
+  error?: { message: string; [key: string]: unknown };
   meta?: any;
 }
 
@@ -26,7 +27,7 @@ export default forwardRef<
   Omit<BoxProps, 'onSubmit'> & {
     messages: MessageItem[];
     onSubmit: (prompt: string) => void;
-    customActions?: (item: MessageItem) => [ReactNode[], ReactNode[]];
+    customActions?: (item: MessageItem) => Array<ReactNode[]>;
     renderAvatar?: (item: MessageItem, isAI: boolean) => ReactNode;
     scrollContainer?: HTMLElement;
     promptProps?: Partial<PromptProps>;
@@ -88,8 +89,26 @@ export default forwardRef<
                       />
                     )}
                     {msg.error ? (
-                      <Alert color="warning" icon={<Error />} sx={{ px: 1, py: 0 }}>
-                        {msg.error.message}
+                      <Alert
+                        color="warning"
+                        icon={<Error />}
+                        sx={{
+                          px: 1,
+                          py: 0,
+                          '& .MuiAlert-message': {
+                            width: '100%',
+                          },
+                        }}>
+                        {msg.error.type === SubscriptionErrorType.UNSUBSCRIBED ? (
+                          <>
+                            {msg.error.message}
+                            <Stack direction="row" sx={{ justifyContent: 'flex-end' }}>
+                              {actions?.[2]}
+                            </Stack>
+                          </>
+                        ) : (
+                          msg.error.message
+                        )}
                       </Alert>
                     ) : (
                       msg.loading &&

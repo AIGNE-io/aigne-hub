@@ -1,6 +1,8 @@
 import { AxiosInstance } from 'axios';
 import { ChatCompletionMessageParam } from 'openai/resources';
 
+import { SubscriptionError } from './error';
+
 export const createStatusApi =
   ({ axios, path }: { axios: AxiosInstance; path: string }): (() => Promise<{ available: boolean }>) =>
   () =>
@@ -45,6 +47,9 @@ export const createTextCompletionApi =
               json = JSON.parse(text);
             } catch {
               // eslint-disable-next-line no-empty
+            }
+            if (json?.error?.type) {
+              throw new SubscriptionError(json?.error?.type);
             }
             throw new Error(json?.error?.message || json?.message || text || res.status);
           }

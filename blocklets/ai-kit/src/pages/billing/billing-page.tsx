@@ -1,13 +1,27 @@
 import 'dayjs/locale/zh-cn';
 
+import LoadingButton from '@app/components/loading/loading-button';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
+import RelativeTime from '@arcblock/ux/lib/RelativeTime';
 import Toast from '@arcblock/ux/lib/Toast';
-import { CheckCircleOutlineRounded, ErrorOutlineRounded, RouterRounded, ShoppingCartSharp } from '@mui/icons-material';
-import { LoadingButton } from '@mui/lab';
+import {
+  AccessAlarmRounded,
+  CheckCircleOutlineRounded,
+  ErrorOutlineRounded,
+  MoreHorizRounded,
+  RouterRounded,
+  ShoppingCartSharp,
+} from '@mui/icons-material';
 import {
   Box,
+  Button,
   CircularProgress,
-  FormControlLabel,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  IconButton,
+  Menu,
   MenuItem,
   Skeleton,
   Stack,
@@ -22,6 +36,7 @@ import { useRequest } from 'ahooks';
 import BigNumber from 'bignumber.js';
 import dayjs from 'dayjs';
 import { groupBy } from 'lodash';
+import { bindDialog, bindMenu, bindTrigger, usePopupState } from 'material-ui-popup-state/hooks';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { withQuery } from 'ufo';
@@ -31,7 +46,12 @@ import { useAIKitServiceStatus } from './state';
 
 export default function BillingPage() {
   const { t } = useLocaleContext();
-  const { app, error, fetch } = useAIKitServiceStatus();
+  const {
+    app,
+    error,
+    computed: { isSubscriptionAvailable },
+    fetch,
+  } = useAIKitServiceStatus();
   if (error) throw error;
 
   useEffect(() => {
@@ -54,23 +74,17 @@ export default function BillingPage() {
         <UseAIKitServiceSwitch />
       </Stack>
 
-      {!app?.config?.useAIKitService || app?.subscription?.status === 'active' ? (
-        <Stack alignItems="center">
-          <UseCreditsCharts />
-        </Stack>
-      ) : (
-        <NonSubscriptions />
-      )}
+      {app?.config?.useAIKitService && !isSubscriptionAvailable && <NonSubscriptions />}
+
+      {app.id && <UseCreditsCharts />}
     </Stack>
   );
 }
 
 function NonSubscriptions() {
   const { t } = useLocaleContext();
-  const [loading, setLoading] = useState(false);
 
   const linkToAiKit = useCallback(async () => {
-    setLoading(true);
     try {
       const res = await appServiceRegister();
       if (res.paymentLink) {
@@ -79,8 +93,6 @@ function NonSubscriptions() {
     } catch (error) {
       Toast.error(error.message);
       throw error;
-    } finally {
-      setLoading(false);
     }
   }, []);
 
@@ -90,12 +102,7 @@ function NonSubscriptions() {
 
       <Typography variant="body2">{t('subscribeAITip')}</Typography>
 
-      <LoadingButton
-        variant="contained"
-        onClick={linkToAiKit}
-        endIcon={<ShoppingCartSharp />}
-        loading={loading}
-        loadingPosition="end">
+      <LoadingButton variant="contained" onClick={linkToAiKit} endIcon={<ShoppingCartSharp />} loadingPosition="end">
         {t('subscribeAIService')}
       </LoadingButton>
     </Stack>
@@ -103,55 +110,100 @@ function NonSubscriptions() {
 }
 
 function UseAIKitServiceSwitch() {
-  const { t } = useLocaleContext();
+  const { t, locale } = useLocaleContext();
+  const menuState = usePopupState({ variant: 'popper' });
+  const unsubscribeDialogState = usePopupState({ variant: 'dialog' });
 
-  const { app, setConfig } = useAIKitServiceStatus();
+  const {
+    app,
+    computed: { isSubscriptionAvailable },
+    setConfig,
+    unsubscribe,
+  } = useAIKitServiceStatus();
+
+  const cancelAt = app?.subscription?.cancel_at;
 
   const [updating, setUpdating] = useState<boolean | 'success' | 'error'>(false);
+
+  const handleUnsubscribe = async () => {
+    try {
+      await unsubscribe();
+    } catch (error) {
+      Toast.error(error.message);
+      throw error;
+    }
+  };
 
   if (!app) return null;
 
   return (
-    <Stack direction="row" overflow="hidden" alignItems="center" gap={1} pr="3px">
-      <FormControlLabel
-        key={app.config?.useAIKitService?.toString()}
-        labelPlacement="start"
-        label={<Box>{t('aiProvider')}</Box>}
-        sx={{ pr: 1, gap: 1 }}
-        control={
-          <TextField
-            select
-            size="small"
-            hiddenLabel
-            SelectProps={{ autoWidth: true }}
-            defaultValue={app.config?.useAIKitService ? 'subscribe' : 'local'}
-            onChange={async (e) => {
-              try {
-                setUpdating(true);
-                await setConfig({ useAIKitService: e.target.value === 'subscribe' });
-                setUpdating('success');
-              } catch (error) {
-                setUpdating('error');
-                Toast.error(error.message);
-                throw error;
-              }
-            }}>
-            <MenuItem value="subscribe">{t('aiProviderSubscription')}</MenuItem>
-            <MenuItem value="local">{t('aiProviderLocalAIKit')}</MenuItem>
-          </TextField>
-        }
-      />
+    <Stack gap={1}>
+      <Stack direction="row" overflow="hidden" alignItems="center" gap={1}>
+        <Box>{t('aiProvider')}</Box>
 
-      {updating && (
-        <Stack justifyContent="center" alignItems="center" width={24} height={24}>
-          {updating === true ? (
-            <CircularProgress size={20} />
-          ) : updating === 'success' ? (
-            <CheckCircleOutlineRounded color="success" sx={{ fontSize: 24 }} />
-          ) : updating === 'error' ? (
-            <ErrorOutlineRounded color="error" sx={{ fontSize: 24 }} />
-          ) : null}
-        </Stack>
+        <TextField
+          select
+          size="small"
+          hiddenLabel
+          SelectProps={{ autoWidth: true }}
+          defaultValue={app.config?.useAIKitService ? 'subscribe' : 'local'}
+          onChange={async (e) => {
+            try {
+              setUpdating(true);
+              await setConfig({ useAIKitService: e.target.value === 'subscribe' });
+              setUpdating('success');
+            } catch (error) {
+              setUpdating('error');
+              Toast.error(error.message);
+              throw error;
+            }
+          }}>
+          <MenuItem value="subscribe">{t('aiProviderSubscription')}</MenuItem>
+          <MenuItem value="local">{t('aiProviderLocalAIKit')}</MenuItem>
+        </TextField>
+
+        {updating && (
+          <Stack justifyContent="center" alignItems="center" width={24} height={24}>
+            {updating === true ? (
+              <CircularProgress size={20} />
+            ) : updating === 'success' ? (
+              <CheckCircleOutlineRounded color="success" sx={{ fontSize: 24 }} />
+            ) : updating === 'error' ? (
+              <ErrorOutlineRounded color="error" sx={{ fontSize: 24 }} />
+            ) : null}
+          </Stack>
+        )}
+
+        {app.config?.useAIKitService && !cancelAt && isSubscriptionAvailable && (
+          <>
+            <IconButton {...bindTrigger(menuState)}>
+              <MoreHorizRounded />
+            </IconButton>
+
+            <Menu {...bindMenu(menuState)}>
+              <MenuItem {...bindTrigger(unsubscribeDialogState)}>{t('unsubscribe')}</MenuItem>
+            </Menu>
+
+            <Dialog {...bindDialog(unsubscribeDialogState)} fullWidth maxWidth="sm">
+              <DialogTitle>{t('unsubscribe')}</DialogTitle>
+              <DialogContent>{t('unsubscribeTip')}</DialogContent>
+              <DialogActions>
+                <Button onClick={unsubscribeDialogState.close}>{t('cancel')}</Button>
+                <LoadingButton onClick={handleUnsubscribe} variant="contained" color="warning">
+                  {t('unsubscribe')}
+                </LoadingButton>
+              </DialogActions>
+            </Dialog>
+          </>
+        )}
+      </Stack>
+
+      {cancelAt && (
+        <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+          <AccessAlarmRounded color="warning" fontSize="small" />
+          <Box component="span">&nbsp;{t('unsubscribeAt')}&nbsp;</Box>
+          <RelativeTime locale={locale} type="absolute" value={cancelAt * 1000} />
+        </Typography>
       )}
     </Stack>
   );

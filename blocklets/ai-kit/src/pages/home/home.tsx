@@ -1,7 +1,9 @@
+import SubscribeButton from '@app/components/subscribe';
 import { useIsRole, useSessionContext } from '@app/contexts/session';
 import Footer from '@blocklet/ui-react/lib/Footer';
 import Header from '@blocklet/ui-react/lib/Header';
 import { Box, Button, Stack, Typography } from '@mui/material';
+import { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 
 export default function Home() {
@@ -10,7 +12,7 @@ export default function Home() {
 
   return (
     <>
-      <Header maxWidth={null} />
+      <Header maxWidth={null} addons={(exists: ReactNode[]) => [<SubscribeButton />, ...exists]} />
 
       <Box flexGrow={1} mx={2}>
         <Box mx="auto" my={4} maxWidth={800}>
