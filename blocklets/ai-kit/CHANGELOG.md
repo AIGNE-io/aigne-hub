@@ -1,3 +1,7 @@
+## 0.0.119 (2024-1-14)
+
+- feat: handle exceptions
+
 ## 0.0.118 (2024-1-11)
 
 - feat: remind users to subscribe in advance

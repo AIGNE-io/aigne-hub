@@ -106,7 +106,11 @@ export async function chatCompletions(
 
         for await (const chunk of stream) {
           if (isChatCompletionError(chunk)) {
-            controller.error(new Error(JSON.stringify(pick(chunk.error, 'message', 'type', 'timestamp'))));
+            if (chunk.error.type) {
+              controller.error(new Error(JSON.stringify(pick(chunk.error, 'message', 'type', 'timestamp'))));
+            } else {
+              controller.error(new Error(chunk.error.message));
+            }
             break;
           }
           controller.enqueue(chunk);
