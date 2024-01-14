@@ -9,7 +9,7 @@ import type { WalletObject } from '@ocap/wallet';
 import type { NextFunction, Request, Response } from 'express';
 import stringify from 'json-stable-stringify';
 
-const TOKEN_EXPIRES_IN_SECONDS = 30;
+const TOKEN_EXPIRES_IN_SECONDS = 60 * 10;
 
 export const wallet: WalletObject = getWallet();
 

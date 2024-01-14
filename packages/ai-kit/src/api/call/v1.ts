@@ -6,6 +6,7 @@ import { sign } from '@blocklet/sdk/lib/util/verify-sign';
 import axios, { AxiosResponse, isAxiosError } from 'axios';
 import FormData from 'form-data';
 import stringify from 'json-stable-stringify';
+import { pick } from 'lodash';
 import { joinURL } from 'ufo';
 
 import AIKitConfig from '../config';
@@ -105,7 +106,7 @@ export async function chatCompletions(
 
         for await (const chunk of stream) {
           if (isChatCompletionError(chunk)) {
-            controller.error(new Error(chunk.error.message));
+            controller.error(new Error(JSON.stringify(pick(chunk.error, 'message', 'type', 'timestamp'))));
             break;
           }
           controller.enqueue(chunk);
