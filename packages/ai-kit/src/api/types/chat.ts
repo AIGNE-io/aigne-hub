@@ -61,7 +61,7 @@ export interface ChatCompletionError {
   error: {
     message: string;
     type?: string;
-    timeStamp?: number;
+    timeStamp?: string;
   };
 }
 

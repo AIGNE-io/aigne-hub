@@ -6,10 +6,10 @@ import { sign } from '@blocklet/sdk/lib/util/verify-sign';
 import axios, { AxiosResponse, isAxiosError } from 'axios';
 import FormData from 'form-data';
 import stringify from 'json-stable-stringify';
-import { pick } from 'lodash';
 import { joinURL } from 'ufo';
 
 import AIKitConfig from '../config';
+import { SubscriptionError, SubscriptionErrorType } from '../error';
 import {
   ChatCompletionChunk,
   ChatCompletionInput,
@@ -107,7 +107,10 @@ export async function chatCompletions(
         for await (const chunk of stream) {
           if (isChatCompletionError(chunk)) {
             if (chunk.error.type) {
-              controller.error(new Error(JSON.stringify(pick(chunk.error, 'message', 'type', 'timestamp'))));
+              const error = new Error(chunk.error.message) as SubscriptionError;
+              error.type = chunk.error.type as SubscriptionErrorType;
+              error.timeStamp = chunk.error.timeStamp!;
+              controller.error(error);
             } else {
               controller.error(new Error(chunk.error.message));
             }

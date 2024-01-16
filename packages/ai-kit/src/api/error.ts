@@ -14,7 +14,7 @@ const SubscriptionErrors: Record<SubscriptionErrorType, string> = {
 };
 
 export class SubscriptionError extends Error {
-  timestamp: string;
+  timeStamp: string;
 
   type: SubscriptionErrorType;
 
@@ -22,7 +22,7 @@ export class SubscriptionError extends Error {
     const message = SubscriptionErrors[type] || SubscriptionErrors[SubscriptionErrorType.UNKNOWN];
     super(message);
 
-    this.timestamp = new Date().toISOString();
+    this.timeStamp = new Date().toISOString();
     this.type = type;
   }
 }

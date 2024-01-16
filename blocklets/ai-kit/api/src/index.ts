@@ -55,7 +55,7 @@ app.use(<ErrorRequestHandler>((error, req, res, _next) => {
   if (error instanceof SubscriptionError) {
     errorData = {
       message: error.message,
-      timestamp: error.timestamp,
+      timeStamp: error.timeStamp,
       type: error.type,
     };
   } else {
@@ -70,10 +70,12 @@ app.use(<ErrorRequestHandler>((error, req, res, _next) => {
     res.flushHeaders();
   }
 
-  if (isEventStream) {
-    res.write(`data: ${JSON.stringify({ error: errorData })}\n\n`);
-  } else if (res.writable) {
-    res.write(JSON.stringify({ error: errorData }));
+  if (res.writable) {
+    if (isEventStream) {
+      res.write(`data: ${JSON.stringify({ error: errorData })}\n\n`);
+    } else {
+      res.write(JSON.stringify({ error: errorData }));
+    }
   }
 
   res.end();
