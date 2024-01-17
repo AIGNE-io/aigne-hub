@@ -109,7 +109,7 @@ export async function chatCompletions(
             if (chunk.error.type) {
               const error = new Error(chunk.error.message) as SubscriptionError;
               error.type = chunk.error.type as SubscriptionErrorType;
-              error.timeStamp = chunk.error.timeStamp!;
+              error.timestamp = chunk.error.timestamp!;
               controller.error(error);
             } else {
               controller.error(new Error(chunk.error.message));

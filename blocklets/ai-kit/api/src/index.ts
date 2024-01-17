@@ -55,7 +55,7 @@ app.use(<ErrorRequestHandler>((error, req, res, _next) => {
   if (error instanceof SubscriptionError) {
     errorData = {
       message: error.message,
-      timeStamp: error.timeStamp,
+      timestamp: error.timestamp,
       type: error.type,
     };
   } else {
