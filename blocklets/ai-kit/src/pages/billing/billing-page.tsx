@@ -20,8 +20,13 @@ import {
   IconButton,
   Menu,
   MenuItem,
+  Paper,
   Skeleton,
   Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableRow,
   TextField,
   Typography,
 } from '@mui/material';
@@ -32,10 +37,21 @@ import { fromUnitToToken } from '@ocap/util';
 import { useRequest } from 'ahooks';
 import BigNumber from 'bignumber.js';
 import dayjs from 'dayjs';
-import { groupBy } from 'lodash';
+import { groupBy, isNil } from 'lodash';
 import { bindMenu, bindTrigger, usePopupState } from 'material-ui-popup-state/hooks';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Legend,
+  ResponsiveContainer,
+  Tooltip,
+  TooltipProps,
+  XAxis,
+  YAxis,
+} from 'recharts';
+import { NameType, ValueType } from 'recharts/types/component/DefaultTooltipContent';
 import { withQuery } from 'ufo';
 
 import { appServiceRegister, appUsedCredits } from '../../libs/app';
@@ -228,6 +244,7 @@ function UseAIKitServiceSwitch() {
 }
 
 function UseCreditsCharts() {
+  const { t } = useLocaleContext();
   const { app } = useAIKitServiceStatus();
   const [date, setDate] = useState(dayjs(new Date()));
 
@@ -261,16 +278,23 @@ function UseCreditsCharts() {
     };
   }, [app]);
 
+  const TooltipContent = useMemo(() => createTooltipContentComponent({ unit: symbol }), [symbol]);
+
+  let total = new BigNumber(0);
+
   const map = Object.fromEntries(
     Object.values(groupBy(data?.list || [], 'date')).map((list) => [
       list[0]!.date,
       Object.fromEntries(
-        list.map((i) => [
-          i.model,
-          price
+        list.map((i) => {
+          const value = price
             ? price.multipliedBy(i.usedCredits).toString()
-            : i.promptTokens + i.completionTokens + i.numberOfImageGeneration,
-        ])
+            : i.promptTokens + i.completionTokens + i.numberOfImageGeneration;
+
+          total = total.plus(value);
+
+          return [i.model, value];
+        })
       ),
     ])
   );
@@ -288,6 +312,14 @@ function UseCreditsCharts() {
   return (
     <Stack width={1} gap={2}>
       <Stack direction="row" alignItems="center" justifyContent="space-between">
+        <Typography variant="subtitle1" fontWeight="bold">
+          {t('monthlySpend')}
+
+          <Typography component="span" sx={{ ml: 1 }}>
+            {total.toNumber()} {symbol || ''}
+          </Typography>
+        </Typography>
+
         <Box />
 
         <MonthPicker
@@ -308,7 +340,7 @@ function UseCreditsCharts() {
             <XAxis dataKey="date" scale="point" interval={8} padding={{ left: 10, right: 10 }} />
             <YAxis unit={symbol ?? 'unit'} width={100} />
             <Legend />
-            <Tooltip formatter={(v) => `${v} ${symbol ?? 'unit'}`} />
+            <Tooltip formatter={(v) => `${v} ${symbol ?? 'unit'}`} content={TooltipContent} />
             <CartesianGrid strokeDasharray="3 3" />
             {models.map((model, index) => (
               <Bar key={model} dataKey={model} stackId="usedCredits" fill={colors[index] || 'black'} />
@@ -318,6 +350,52 @@ function UseCreditsCharts() {
       )}
     </Stack>
   );
+}
+
+function createTooltipContentComponent({ unit }: { unit?: string } = {}) {
+  return function TooltipContent(props: TooltipProps<ValueType, NameType>) {
+    const { t } = useLocaleContext();
+
+    if (!props.payload?.length) return null;
+
+    return (
+      <Paper sx={{ py: 2 }}>
+        <Typography variant="subtitle1" sx={{ mx: 2, mb: 1 }}>
+          {props.label}
+        </Typography>
+
+        <Table size="small" sx={{ td: { border: 'none', py: 0 } }}>
+          <TableBody>
+            <TableRow>
+              <TableCell>{t('total')}</TableCell>
+              <TableCell>
+                {props.payload
+                  .reduce(
+                    (res, i) => res.plus(typeof i.value === 'string' || typeof i.value === 'number' ? i.value : 0),
+                    new BigNumber(0)
+                  )
+                  .toNumber()}{' '}
+                {unit ?? ''}
+              </TableCell>
+            </TableRow>
+
+            {props.payload
+              .map((i, index) => (
+                <TableRow key={i.dataKey}>
+                  <TableCell sx={{ color: i.color }}>{i.dataKey}</TableCell>
+                  <TableCell sx={{ color: i.color }}>
+                    {props.formatter && !isNil(i.value) && !isNil(i.name)
+                      ? props.formatter(i.value, i.name, i, index, props.payload!)
+                      : i.value}
+                  </TableCell>
+                </TableRow>
+              ))
+              .reverse()}
+          </TableBody>
+        </Table>
+      </Paper>
+    );
+  };
 }
 
 type DatePickerProps = React.ComponentProps<typeof DatePicker>;

@@ -16,4 +16,6 @@ export default flat({
   recoverSubscription: 'Recover Subscription',
   recoverSubscriptionTip: 'After recover the subscription, you can use the AI services we provide!',
   recoverSubscriptionSucceed: 'Subscription recover successful!',
+  total: 'Total',
+  monthlySpend: 'Monthly Spend',
 });
