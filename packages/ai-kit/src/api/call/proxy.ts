@@ -18,8 +18,7 @@ export function proxyToAIKit(
     | '/api/v1/audio/speech'
     | '/api/app/status'
     | '/api/app/usage'
-    | '/api/app/register'
-    | '/api/app/unsubscribe',
+    | '/api/app/register',
   options: { useAIKitService?: boolean } & proxy.ProxyOptions = {}
 ) {
   return (req: Request, res: Response, next: NextFunction) => {

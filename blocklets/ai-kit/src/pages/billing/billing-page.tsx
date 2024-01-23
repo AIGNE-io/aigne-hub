@@ -15,6 +15,7 @@ import {
 } from '@mui/icons-material';
 import {
   Box,
+  Button,
   CircularProgress,
   IconButton,
   Menu,
@@ -118,6 +119,8 @@ function UseAIKitServiceSwitch() {
   } = useAIKitServiceStatus();
 
   const cancelAt = app?.subscription?.cancel_at;
+  const canCancel = app?.subscription?.cancel_at_period_end === false && isSubscriptionAvailable;
+  const canRecover = app?.subscription?.cancel_at_period_end === true;
 
   const [updating, setUpdating] = useState<boolean | 'success' | 'error'>(false);
 
@@ -161,7 +164,7 @@ function UseAIKitServiceSwitch() {
           </Stack>
         )}
 
-        {app.config?.useAIKitService && !cancelAt && isSubscriptionAvailable && (
+        {app.config?.useAIKitService && canCancel && isSubscriptionAvailable && (
           <>
             <IconButton {...bindTrigger(menuState)}>
               <MoreHorizRounded />
@@ -169,21 +172,23 @@ function UseAIKitServiceSwitch() {
 
             <Menu {...bindMenu(menuState)}>
               <MenuItem
-                onClick={() =>
+                onClick={() => {
+                  menuState.close();
+
                   connectApi.open({
                     locale,
-                    action: 'unsubscribe-ai-service',
+                    action: 'cancel-subscription-ai-service',
                     messages: {
                       title: t('unsubscribe'),
                       scan: t('unsubscribeTip'),
                       confirm: t('unsubscribe'),
                       success: `${t('cancelled')}`,
                     },
-                    async onSuccessAuth() {
+                    async onSuccess() {
                       await fetch();
                     },
-                  })
-                }>
+                  });
+                }}>
                 {t('unsubscribe')}
               </MenuItem>
             </Menu>
@@ -191,11 +196,31 @@ function UseAIKitServiceSwitch() {
         )}
       </Stack>
 
-      {cancelAt && (
+      {canRecover && !!cancelAt && (
         <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
           <AccessAlarmRounded color="warning" fontSize="small" />
           <Box component="span">&nbsp;{t('unsubscribeAt')}&nbsp;</Box>
           <RelativeTime locale={locale} type="absolute" value={cancelAt * 1000} />
+
+          <Button
+            sx={{ ml: 1 }}
+            onClick={() =>
+              connectApi.open({
+                locale,
+                action: 'recover-subscription-ai-service',
+                messages: {
+                  title: t('recoverSubscription'),
+                  scan: t('recoverSubscriptionTip'),
+                  confirm: t('recoverSubscription'),
+                  success: `${t('recoverSubscriptionSucceed')}`,
+                },
+                async onSuccess() {
+                  await fetch();
+                },
+              })
+            }>
+            Recover
+          </Button>
         </Typography>
       )}
     </Stack>
