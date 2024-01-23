@@ -1,6 +1,6 @@
 import { SubscriptionError, SubscriptionErrorType } from '@blocklet/ai-kit/api';
+import payment from '@blocklet/payment-js';
 import config from '@blocklet/sdk/lib/config';
-import payment from '@did-pay/client';
 
 import { Config } from './env';
 

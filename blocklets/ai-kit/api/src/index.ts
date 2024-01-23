@@ -11,6 +11,7 @@ import fallback from 'express-history-api-fallback';
 
 import logger from './libs/logger';
 import routes from './routes';
+import { initAuthRouter } from './routes/auth';
 
 dotenv.config();
 
@@ -27,6 +28,7 @@ app.use(express.urlencoded({ extended: true, limit: '1 mb' }));
 app.use(cors());
 
 const router = express.Router();
+initAuthRouter(router);
 router.use('/api', routes);
 
 app.use((req, _, next) => {

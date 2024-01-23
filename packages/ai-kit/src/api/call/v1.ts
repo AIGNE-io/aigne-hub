@@ -3,7 +3,7 @@ import { ReadableStream, TextDecoderStream } from 'stream/web';
 
 import { call, getComponentWebEndpoint } from '@blocklet/sdk/lib/component';
 import { sign } from '@blocklet/sdk/lib/util/verify-sign';
-import axios, { AxiosResponse, isAxiosError } from 'axios';
+import axios, { AxiosResponse } from 'axios';
 import FormData from 'form-data';
 import stringify from 'json-stable-stringify';
 import { joinURL } from 'ufo';
@@ -23,8 +23,8 @@ import {
 import { AudioSpeechInput, AudioTranscriptionsInput } from '../types/audio';
 import { StatusResponse } from '../types/status';
 import { getRemoteComponentCallHeaders } from '../utils/auth';
-import { EventSourceParserStream, readableToWeb, tryParseJsonFromResponseStream } from '../utils/event-stream';
-import aiKitApi from './api';
+import { EventSourceParserStream, readableToWeb } from '../utils/event-stream';
+import aiKitApi, { catchAndRethrowUpstreamError } from './api';
 
 export async function status(options?: {
   useAIKitService?: boolean;
@@ -251,19 +251,4 @@ export async function audioSpeech(
   );
 
   return response;
-}
-
-async function catchAndRethrowUpstreamError(response: Promise<any>) {
-  return response.catch(async (error) => {
-    if (isAxiosError(error) && error.response?.data) {
-      const { data } = error.response;
-      const json =
-        typeof data[Symbol.iterator] === 'function'
-          ? await tryParseJsonFromResponseStream<{ error: { message: string } }>(data)
-          : data;
-      const message = json?.error?.message;
-      if (typeof message === 'string') throw new Error(message);
-    }
-    throw error;
-  });
 }

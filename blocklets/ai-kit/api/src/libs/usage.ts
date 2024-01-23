@@ -1,5 +1,5 @@
 import Usage from '@api/store/models/usage';
-import payment from '@did-pay/client';
+import payment from '@blocklet/payment-js';
 import BigNumber from 'bignumber.js';
 import { DebouncedFunc, throttle } from 'lodash';
 import { Op } from 'sequelize';

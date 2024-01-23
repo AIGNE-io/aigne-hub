@@ -12,4 +12,5 @@ export default flat({
   unsubscribeTip: 'After unsubscribing, you will no longer be able to continue using the AI services we provide!',
   cancel: 'Cancel',
   unsubscribeAt: 'Unsubscribe at',
+  cancelled: 'Cancelled',
 });

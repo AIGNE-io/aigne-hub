@@ -1,6 +1,7 @@
 import 'dayjs/locale/zh-cn';
 
 import LoadingButton from '@app/components/loading/loading-button';
+import { useSessionContext } from '@app/contexts/session';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import RelativeTime from '@arcblock/ux/lib/RelativeTime';
 import Toast from '@arcblock/ux/lib/Toast';
@@ -14,12 +15,7 @@ import {
 } from '@mui/icons-material';
 import {
   Box,
-  Button,
   CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   IconButton,
   Menu,
   MenuItem,
@@ -36,7 +32,7 @@ import { useRequest } from 'ahooks';
 import BigNumber from 'bignumber.js';
 import dayjs from 'dayjs';
 import { groupBy } from 'lodash';
-import { bindDialog, bindMenu, bindTrigger, usePopupState } from 'material-ui-popup-state/hooks';
+import { bindMenu, bindTrigger, usePopupState } from 'material-ui-popup-state/hooks';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { withQuery } from 'ufo';
@@ -111,28 +107,19 @@ function NonSubscriptions() {
 
 function UseAIKitServiceSwitch() {
   const { t, locale } = useLocaleContext();
+  const { connectApi } = useSessionContext();
   const menuState = usePopupState({ variant: 'popper' });
-  const unsubscribeDialogState = usePopupState({ variant: 'dialog' });
 
   const {
     app,
     computed: { isSubscriptionAvailable },
     setConfig,
-    unsubscribe,
+    fetch,
   } = useAIKitServiceStatus();
 
   const cancelAt = app?.subscription?.cancel_at;
 
   const [updating, setUpdating] = useState<boolean | 'success' | 'error'>(false);
-
-  const handleUnsubscribe = async () => {
-    try {
-      await unsubscribe();
-    } catch (error) {
-      Toast.error(error.message);
-      throw error;
-    }
-  };
 
   if (!app) return null;
 
@@ -181,19 +168,25 @@ function UseAIKitServiceSwitch() {
             </IconButton>
 
             <Menu {...bindMenu(menuState)}>
-              <MenuItem {...bindTrigger(unsubscribeDialogState)}>{t('unsubscribe')}</MenuItem>
+              <MenuItem
+                onClick={() =>
+                  connectApi.open({
+                    locale,
+                    action: 'unsubscribe-ai-service',
+                    messages: {
+                      title: t('unsubscribe'),
+                      scan: t('unsubscribeTip'),
+                      confirm: t('unsubscribe'),
+                      success: `${t('cancelled')}`,
+                    },
+                    async onSuccessAuth() {
+                      await fetch();
+                    },
+                  })
+                }>
+                {t('unsubscribe')}
+              </MenuItem>
             </Menu>
-
-            <Dialog {...bindDialog(unsubscribeDialogState)} fullWidth maxWidth="sm">
-              <DialogTitle>{t('unsubscribe')}</DialogTitle>
-              <DialogContent>{t('unsubscribeTip')}</DialogContent>
-              <DialogActions>
-                <Button onClick={unsubscribeDialogState.close}>{t('cancel')}</Button>
-                <LoadingButton onClick={handleUnsubscribe} variant="contained" color="warning">
-                  {t('unsubscribe')}
-                </LoadingButton>
-              </DialogActions>
-            </Dialog>
           </>
         )}
       </Stack>

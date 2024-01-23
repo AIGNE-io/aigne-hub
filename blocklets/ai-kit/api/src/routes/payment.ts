@@ -1,6 +1,6 @@
 import logger from '@api/libs/logger';
+import { Event } from '@blocklet/payment-js';
 import { verifySig } from '@blocklet/sdk/lib/middlewares/component';
-import { Event } from '@did-pay/client';
 import { Router } from 'express';
 import Joi from 'joi';
 
