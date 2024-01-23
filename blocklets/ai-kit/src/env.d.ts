@@ -12,4 +12,3 @@ declare var blocklet:
 
 declare module '@arcblock/ux/*';
 declare module '@arcblock/did-connect/*';
-declare module '@blocklet/ui-react/*';

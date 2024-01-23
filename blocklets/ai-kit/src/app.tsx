@@ -94,11 +94,23 @@ const BillingRoutes = lazy(() => import('./pages/billing'));
 function Layout({ children }: { children: ReactNode }) {
   return (
     <>
-      <Header maxWidth={null} addons={(exists: ReactNode[]) => [<SubscribeButton />, ...exists]} />
+      <Header
+        maxWidth={null}
+        addons={(exists: ReactNode[]) => [<SubscribeButton />, ...exists]}
+        // FIXME: remove following undefined props after issue https://github.com/ArcBlock/ux/issues/1136 solved
+        meta={undefined}
+        sessionManagerProps={undefined}
+        homeLink={undefined}
+        theme={undefined}
+      />
 
       {children}
 
-      <Footer />
+      <Footer
+        // FIXME: remove following undefined props after issue https://github.com/ArcBlock/ux/issues/1136 solved
+        meta={undefined}
+        theme={undefined}
+      />
     </>
   );
 }

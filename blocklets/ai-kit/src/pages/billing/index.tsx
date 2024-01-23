@@ -7,7 +7,16 @@ import { Route, Routes } from 'react-router-dom';
 
 export default function BillingRoutes() {
   return (
-    <AdminLayout footerProps={{ className: 'dashboard-footer' }} sx={{ bgcolor: 'background.paper' }}>
+    <AdminLayout
+      footerProps={{ className: 'dashboard-footer' }}
+      sx={{ bgcolor: 'background.paper' }}
+      // FIXME: remove following undefined props after issue https://github.com/ArcBlock/ux/issues/1136 solved
+      meta={undefined}
+      fallbackUrl={undefined}
+      invalidPathFallback={undefined}
+      headerAddons={undefined}
+      sessionManagerProps={undefined}
+      links={undefined}>
       <ErrorBoundary>
         <Routes>
           <Route index element={<BillingPage />} />

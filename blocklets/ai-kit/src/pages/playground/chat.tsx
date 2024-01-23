@@ -46,7 +46,13 @@ export default function Chat() {
   return (
     <Root
       footerProps={{ className: 'dashboard-footer' }}
-      headerAddons={(exists: ReactNode[]) => [<SubscribeButton />, ...exists]}>
+      headerAddons={(exists: ReactNode[]) => [<SubscribeButton />, ...exists]}
+      // FIXME: remove following undefined props after issue https://github.com/ArcBlock/ux/issues/1136 solved
+      meta={undefined}
+      fallbackUrl={undefined}
+      invalidPathFallback={undefined}
+      sessionManagerProps={undefined}
+      links={undefined}>
       <Conversation
         ref={ref}
         sx={{ maxWidth: 800, mx: 'auto', width: '100%' }}
