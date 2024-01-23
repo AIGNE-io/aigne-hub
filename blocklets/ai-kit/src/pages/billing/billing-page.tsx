@@ -127,7 +127,7 @@ function UseAIKitServiceSwitch() {
   if (!app) return null;
 
   return (
-    <Stack gap={1}>
+    <Stack gap={1} alignItems="flex-end">
       <Stack direction="row" overflow="hidden" alignItems="center" gap={1}>
         <Box>{t('aiProvider')}</Box>
 
@@ -219,7 +219,7 @@ function UseAIKitServiceSwitch() {
                 },
               })
             }>
-            Recover
+            {t('recoverSubscription')}
           </Button>
         </Typography>
       )}
