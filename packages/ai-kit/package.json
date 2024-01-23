@@ -1,6 +1,6 @@
 {
   "name": "@blocklet/ai-kit",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "The react.js component library for AI Kit",
   "publishConfig": {
     "access": "public"
@@ -9,35 +9,35 @@
   "homepage": "https://github.com/blocklet/ai-kit#readme",
   "license": "ISC",
   "main": "./lib/cjs/index.js",
-  "module": "./lib/es/index.js",
+  "module": "./lib/esm/index.js",
   "typings": "./lib/types/index.d.ts",
   "exports": {
     ".": {
-      "import": "./lib/es/index.js",
+      "import": "./lib/esm/index.js",
       "require": "./lib/cjs/index.js"
     },
     "./api": {
-      "import": "./lib/es/api/index.js",
+      "import": "./lib/esm/api/index.js",
       "require": "./lib/cjs/api/index.js"
     },
     "./api/call": {
-      "import": "./lib/es/api/call/index.js",
+      "import": "./lib/esm/api/call/index.js",
       "require": "./lib/cjs/api/call/index.js"
     },
     "./api/types": {
-      "import": "./lib/es/api/types/index.js",
+      "import": "./lib/esm/api/types/index.js",
       "require": "./lib/cjs/api/types/index.js"
     },
     "./api/*": {
-      "import": "./lib/es/api/*.js",
+      "import": "./lib/esm/api/*.js",
       "require": "./lib/cjs/api/*.js"
     },
     "./components": {
-      "import": "./lib/es/components/index.js",
+      "import": "./lib/esm/components/index.js",
       "require": "./lib/cjs/components/index.js"
     },
     "./components/*": {
-      "import": "./lib/es/components/*.js",
+      "import": "./lib/esm/components/*.js",
       "require": "./lib/cjs/components/*.js"
     }
   },

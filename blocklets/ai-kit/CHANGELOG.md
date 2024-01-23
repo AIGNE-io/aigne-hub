@@ -1,3 +1,7 @@
+## 0.1.1 (2024-1-23)
+
+- fix: correct exported module path
+
 ## 0.1.0 (2024-1-23)
 
 - chore: use tsc bundle libs
