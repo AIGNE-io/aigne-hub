@@ -3,11 +3,9 @@ import axios, { isAxiosError } from 'axios';
 import { AI_KIT_BASE_URL } from '../constants';
 import { tryParseJsonFromResponseStream } from '../utils/event-stream';
 
-const aiKitApi = axios.create({
+export const aiKitApi = axios.create({
   baseURL: AI_KIT_BASE_URL,
 });
-
-export default aiKitApi;
 
 export async function catchAndRethrowUpstreamError(response: Promise<any>) {
   return response.catch(async (error) => {

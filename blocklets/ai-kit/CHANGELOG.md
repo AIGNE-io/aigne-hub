@@ -1,3 +1,11 @@
+## 0.1.0 (2024-1-23)
+
+- chore: use tsc bundle libs
+
+## 0.0.121 (2024-1-23)
+
+- fix: correct module of exported api
+
 ## 0.0.120 (2024-1-23)
 
 - fix: support recover a subscription

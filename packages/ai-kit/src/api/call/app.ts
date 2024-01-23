@@ -5,7 +5,7 @@ import { AxiosResponse } from 'axios';
 
 import AIKitConfig from '../config';
 import { getRemoteComponentCallHeaders } from '../utils/auth';
-import aiKitApi, { catchAndRethrowUpstreamError } from './api';
+import { aiKitApi, catchAndRethrowUpstreamError } from './api';
 
 export async function cancelSubscription(options?: {
   useAIKitService?: boolean;

@@ -1,6 +1,6 @@
 {
   "name": "@blocklet/ai-kit",
-  "version": "0.0.120",
+  "version": "0.1.0",
   "description": "The react.js component library for AI Kit",
   "publishConfig": {
     "access": "public"
@@ -76,7 +76,10 @@
     "lint": "eslint src --ext .mjs,.js,.jsx,.ts,.tsx",
     "lint:fix": "npm run lint -- --fix",
     "pre-commit": "lint-staged",
-    "build": "vite build && tsc -p tsconfig.types.json",
+    "build": "run-p build:*",
+    "build:cjs": "tsc --module commonjs --outDir lib/cjs",
+    "build:esm": "tsc --module es2022 --outDir lib/esm",
+    "build:types": "tsc --declaration --emitDeclarationOnly --outDir lib/types",
     "dev": "npm run storybook & npm run watch",
     "start": "npm run storybook",
     "watch": "vite build --watch",
@@ -138,6 +141,7 @@
     "@types/react": "^18.2.48",
     "@types/react-dom": "^18.2.18",
     "@vitejs/plugin-react": "^2.2.0",
+    "npm-run-all": "^4.1.5",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "storybook": "^6.5.16",
