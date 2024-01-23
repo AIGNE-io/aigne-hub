@@ -1,3 +1,8 @@
+## 0.0.120 (2024-1-23)
+
+- fix: support recover a subscription
+- fix: wallet confirm when unsubscribing from the AI service
+
 ## 0.0.119 (2024-1-14)
 
 - feat: handle exceptions
