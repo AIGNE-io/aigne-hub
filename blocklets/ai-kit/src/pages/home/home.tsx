@@ -12,7 +12,15 @@ export default function Home() {
 
   return (
     <>
-      <Header maxWidth={null} addons={(exists: ReactNode[]) => [<SubscribeButton />, ...exists]} />
+      <Header
+        // FIXME: remove following undefined props after issue https://github.com/ArcBlock/ux/issues/1136 solved
+        meta={undefined}
+        sessionManagerProps={undefined}
+        homeLink={undefined}
+        theme={undefined}
+        maxWidth={null}
+        addons={(exists: ReactNode[]) => [<SubscribeButton />, ...exists]}
+      />
 
       <Box flexGrow={1} mx={2}>
         <Box mx="auto" my={4} maxWidth={800}>
@@ -40,7 +48,11 @@ export default function Home() {
         </Box>
       </Box>
 
-      <Footer />
+      <Footer
+        // FIXME: remove following undefined props after issue https://github.com/ArcBlock/ux/issues/1136 solved
+        meta={undefined}
+        theme={undefined}
+      />
     </>
   );
 }

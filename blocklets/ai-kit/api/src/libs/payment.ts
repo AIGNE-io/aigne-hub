@@ -1,6 +1,6 @@
 import { SubscriptionError, SubscriptionErrorType } from '@blocklet/ai-kit/api';
+import payment from '@blocklet/payment-js';
 import config from '@blocklet/sdk/lib/config';
-import payment from '@did-pay/client';
 
 import { Config } from './env';
 
@@ -26,9 +26,16 @@ export async function checkSubscription({ appId }: { appId: string }) {
   if (!subscription) throw new SubscriptionError(SubscriptionErrorType.UNSUBSCRIBED);
 }
 
-export async function unsubscribe({ appId }: { appId: string }) {
+export async function cancelSubscription({ appId }: { appId: string }) {
   const subscription = await getActiveSubscriptionOfApp({ appId });
   if (!subscription) return undefined;
 
   return payment.subscriptions.cancel(subscription.id);
+}
+
+export async function recoverSubscription({ appId }: { appId: string }) {
+  const subscription = await getActiveSubscriptionOfApp({ appId });
+  if (!subscription) return undefined;
+
+  return payment.subscriptions.recover(subscription.id);
 }

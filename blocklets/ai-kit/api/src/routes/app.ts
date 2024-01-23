@@ -1,6 +1,6 @@
 import { wallet } from '@api/libs/auth';
 import { Config } from '@api/libs/env';
-import { getActiveSubscriptionOfApp, unsubscribe } from '@api/libs/payment';
+import { cancelSubscription, getActiveSubscriptionOfApp, recoverSubscription } from '@api/libs/payment';
 import { ensureAdmin, ensureComponentCall } from '@api/libs/security';
 import App from '@api/store/models/app';
 import Usage from '@api/store/models/usage';
@@ -108,10 +108,18 @@ router.post('/register', async (req, res) => {
   });
 });
 
-router.post('/unsubscribe', ensureRemoteComponentCall(App.findPublicKeyById), async (req, res) => {
+router.post('/subscription/cancel', ensureRemoteComponentCall(App.findPublicKeyById), async (req, res) => {
   const { appId } = req.appClient!;
 
-  await unsubscribe({ appId });
+  await cancelSubscription({ appId });
+
+  res.json(null);
+});
+
+router.post('/subscription/recover', ensureRemoteComponentCall(App.findPublicKeyById), async (req, res) => {
+  const { appId } = req.appClient!;
+
+  await recoverSubscription({ appId });
 
   res.json(null);
 });
@@ -135,7 +143,5 @@ router.post(
     },
   })
 );
-
-router.post('/service/unsubscribe', ensureAdmin, proxyToAIKit('/api/app/unsubscribe', { useAIKitService: true }));
 
 export default router;

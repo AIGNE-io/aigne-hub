@@ -60,6 +60,8 @@ export interface ChatCompletionChunk {
 export interface ChatCompletionError {
   error: {
     message: string;
+    type?: string;
+    timestamp?: string;
   };
 }
 

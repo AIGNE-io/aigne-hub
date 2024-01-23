@@ -1,4 +1,4 @@
-import { TSubscriptionExpanded } from '@did-pay/client';
+import { TSubscriptionExpanded } from '@blocklet/payment-js';
 
 import api from './api';
 

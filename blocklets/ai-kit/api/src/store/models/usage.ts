@@ -66,7 +66,7 @@ export default class Usage extends Model<InferAttributes<Usage>, InferCreationAt
           'numberOfImageGeneration',
         ],
       ],
-      where: { appId, createdAt: { [Op.gte]: startTime, [Op.lte]: endTime } },
+      where: { appId, createdAt: { [Op.gte]: startTime, [Op.lte]: endTime }, usedCredits: { [Op.not]: null } },
       group: ['model', 'date'],
       order: [['date', 'ASC']],
       raw: true,

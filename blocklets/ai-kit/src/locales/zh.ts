@@ -12,4 +12,10 @@ export default flat({
   unsubscribeTip: '取消订阅后将无法继续使用我们提供的 AI 服务！',
   cancel: '取消',
   unsubscribeAt: '订阅失效于',
+  cancelled: '取消成功',
+  recoverSubscription: '恢复订阅',
+  recoverSubscriptionTip: '恢复订阅后即可使用我们提供的 AI 服务！',
+  recoverSubscriptionSucceed: '恢复订阅成功！',
+  total: '合计',
+  monthlySpend: '月度消费',
 });

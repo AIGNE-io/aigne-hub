@@ -11,6 +11,7 @@ import fallback from 'express-history-api-fallback';
 
 import logger from './libs/logger';
 import routes from './routes';
+import { initAuthRouter } from './routes/auth';
 
 dotenv.config();
 
@@ -27,6 +28,7 @@ app.use(express.urlencoded({ extended: true, limit: '1 mb' }));
 app.use(cors());
 
 const router = express.Router();
+initAuthRouter(router);
 router.use('/api', routes);
 
 app.use((req, _, next) => {
@@ -46,10 +48,11 @@ if (isProduction) {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-app.use(<ErrorRequestHandler>((error, _req, res, _next) => {
+app.use(<ErrorRequestHandler>((error, req, res, _next) => {
   logger.error('handle route error', { error });
 
   let errorData = null;
+  const isEventStream = req.accepts().some((i) => i.startsWith('text/event-stream'));
 
   if (error instanceof SubscriptionError) {
     errorData = {
@@ -64,16 +67,17 @@ app.use(<ErrorRequestHandler>((error, _req, res, _next) => {
   }
 
   if (!res.headersSent) {
-    res.status(500);
-    res.contentType('json');
+    res.status(isEventStream ? 200 : 500);
+    res.contentType(isEventStream ? 'text/event-stream' : 'json');
+    res.flushHeaders();
   }
 
   if (res.writable) {
-    res.write(
-      JSON.stringify({
-        error: errorData,
-      })
-    );
+    if (isEventStream) {
+      res.write(`data: ${JSON.stringify({ error: errorData })}\n\n`);
+    } else {
+      res.write(JSON.stringify({ error: errorData }));
+    }
   }
 
   res.end();
