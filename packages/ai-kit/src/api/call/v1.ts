@@ -24,7 +24,7 @@ import { AudioSpeechInput, AudioTranscriptionsInput } from '../types/audio';
 import { StatusResponse } from '../types/status';
 import { getRemoteComponentCallHeaders } from '../utils/auth';
 import { EventSourceParserStream, readableToWeb } from '../utils/event-stream';
-import aiKitApi, { catchAndRethrowUpstreamError } from './api';
+import { aiKitApi, catchAndRethrowUpstreamError } from './api';
 
 export async function status(options?: {
   useAIKitService?: boolean;
