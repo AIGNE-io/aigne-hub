@@ -1,8 +1,8 @@
 import { IncomingMessage } from 'http';
-import { Readable } from 'stream';
-import { ReadableStream } from 'stream/web';
+import { TextDecoderStream } from 'stream/web';
 
 import { ChatCompletionChunk, ChatCompletionInput } from '@blocklet/ai-kit/api/types';
+import { EventSourceParserStream, readableToWeb } from '@blocklet/ai-kit/api/utils/event-stream';
 import { GenerateContentResponse } from '@google/generative-ai';
 import axios from 'axios';
 import { customAlphabet } from 'nanoid';
@@ -41,7 +41,9 @@ export async function* geminiChatCompletion(
     validateStatus: () => true,
   });
 
-  const stream = readFromReader(res.data);
+  const stream = readableToWeb(res.data)
+    .pipeThrough(new TextDecoderStream())
+    .pipeThrough(new EventSourceParserStream<GenerateContentResponse>());
 
   for await (const chunk of stream) {
     const choice = chunk.candidates?.[0];
@@ -106,52 +108,6 @@ function contentsFromMessages([...messages]: ChatCompletionInput['messages']) {
   }
 
   return contents;
-}
-
-const responseLineRE = /^data: (.*)\r\n/;
-
-function readFromReader(reader: Readable) {
-  return new ReadableStream<GenerateContentResponse>({
-    async start(controller) {
-      try {
-        let currentText = '';
-        const decoder = new TextDecoder();
-
-        for await (const value of reader) {
-          const chunk = decoder.decode(value, { stream: true });
-          currentText += chunk;
-          const match = currentText.match(responseLineRE);
-          if (match) {
-            let parsedResponse;
-            try {
-              parsedResponse = JSON.parse(match[1]!);
-            } catch (e) {
-              throw new Error(`Error parsing JSON response: "${match[1]}"`);
-            }
-            currentText = '';
-            controller.enqueue(parsedResponse);
-          }
-        }
-
-        if (currentText) {
-          let message: string | undefined;
-
-          try {
-            const json = JSON.parse(currentText);
-            message = json.error?.message;
-          } catch (error) {
-            throw new Error(`Error parsing JSON response: "${currentText}"`);
-          }
-
-          if (typeof message === 'string') throw new Error(message);
-        }
-      } catch (error) {
-        controller.error(error);
-      } finally {
-        controller.close();
-      }
-    },
-  });
 }
 
 const randomId = customAlphabet('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789');
