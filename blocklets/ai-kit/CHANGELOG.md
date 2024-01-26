@@ -1,3 +1,7 @@
+## 0.1.3 (2024-1-26)
+
+- chore: upgrade immer to 10.x
+
 ## 0.1.2 (2024-1-26)
 
 - chore: update deps
