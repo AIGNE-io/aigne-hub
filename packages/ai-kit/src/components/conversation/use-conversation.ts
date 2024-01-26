@@ -1,4 +1,4 @@
-import produce from 'immer';
+import { produce } from 'immer';
 import { nanoid } from 'nanoid';
 import { ChatCompletionMessageParam } from 'openai/resources';
 import { useCallback, useState } from 'react';
