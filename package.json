@@ -1,7 +1,7 @@
 {
   "name": "ai-kit",
   "private": true,
-  "version": "0.1.1",
+  "version": "0.1.2",
   "workspaces": [
     "blocklets/*",
     "packages/*"
@@ -65,7 +65,7 @@
     "@ocap/types": "^1.18.108",
     "@ocap/util": "^1.18.108",
     "@ocap/wallet": "^1.18.108",
-    "axios": "^1.6.5",
+    "axios": "^1.6.7",
     "prettier": "^2.8.8"
   }
 }

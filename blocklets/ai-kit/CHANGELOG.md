@@ -1,3 +1,8 @@
+## 0.1.2 (2024-1-26)
+
+- chore: update deps
+- fix: use event source parser parse gemini response
+
 ## 0.1.1 (2024-1-23)
 
 - fix: correct exported module path
