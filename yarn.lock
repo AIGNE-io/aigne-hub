@@ -1583,18 +1583,18 @@
     utility-types "^3.10.0"
     validate-npm-package-name "^3.0.0"
 
-"@blocklet/payment-js@^1.13.117":
-  version "1.13.117"
-  resolved "https://registry.yarnpkg.com/@blocklet/payment-js/-/payment-js-1.13.117.tgz#8a9221b870011862f99af89e103fe788181712c0"
-  integrity sha512-xFAiJkNnyzX3zuvIuajOp18qhAiUT0mNHKrK3oT+fHEGcmZNP/Zib5bxeicczmT0pAEjPYZmmkYYUIqut3nLzA==
+"@blocklet/payment-js@^1.13.117", "@blocklet/payment-js@^1.13.121":
+  version "1.13.121"
+  resolved "https://registry.yarnpkg.com/@blocklet/payment-js/-/payment-js-1.13.121.tgz#b4c7ba1aff1e2f89e63942907738a076280618cb"
+  integrity sha512-uVsAKxubgtFc08FHZf+7p8NzSQdtA9jcS0UffjhwTjMXgdiv5dnsRlrVtqTw9D0D3Xvf3xtqJFXE8TsUQrjKZQ==
   dependencies:
-    "@blocklet/payment-types" "1.13.117"
+    "@blocklet/payment-types" "1.13.121"
     "@blocklet/sdk" "1.16.22"
 
-"@blocklet/payment-types@1.13.117":
-  version "1.13.117"
-  resolved "https://registry.yarnpkg.com/@blocklet/payment-types/-/payment-types-1.13.117.tgz#7ac565032a2d90fc8caf5b64e002ca0abf1dd7ab"
-  integrity sha512-jRuRP0Srr4O1R00CkmmNKgccckF5mwYYAYUYVqMa8eXfOVeW+C7So6BIv+L1gvOInKfjESw1BG3YXz+48+CA4g==
+"@blocklet/payment-types@1.13.121":
+  version "1.13.121"
+  resolved "https://registry.yarnpkg.com/@blocklet/payment-types/-/payment-types-1.13.121.tgz#1cb0416489714d9ce00e4d6bd2ff139ee53e9e77"
+  integrity sha512-m/ryzPuyqSJzF9cLS+jbZpbwuXsYs1fPEjSiEfbI87zDJY4GchV60SyZsy8/qgpf06hJ1OlqgruJeaxiAvkUsw==
 
 "@blocklet/sdk@1.16.22", "@blocklet/sdk@^1.16.22":
   version "1.16.22"

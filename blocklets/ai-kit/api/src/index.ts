@@ -3,6 +3,8 @@ import 'express-async-errors';
 import path from 'path';
 
 import { SubscriptionError } from '@blocklet/ai-kit/api';
+import { appStatus } from '@blocklet/ai-kit/api/call/app';
+import config from '@blocklet/sdk/lib/config';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import dotenv from 'dotenv-flow';
@@ -89,3 +91,18 @@ export const server = app.listen(port, (err?: any) => {
   if (err) throw err;
   logger.info(`> ${name} v${version} ready on ${port}`);
 });
+
+// 更新 payment 中订阅的描述
+const subscriptionDescription = [config.env.appName, `<${config.env.appUrl}>`].join(' ');
+
+appStatus({ description: subscriptionDescription }, { useAIKitService: true })
+  .then((res) => {
+    if (res?.subscription) {
+      logger.info('update description of billing success', { description: subscriptionDescription });
+    } else {
+      logger.info('update description of billing error: no subscription updated');
+    }
+  })
+  .catch((error) => {
+    logger.error('update description of billing error', { error });
+  });

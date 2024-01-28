@@ -97,6 +97,7 @@
     "@arcblock/did": "^1.18.108",
     "@arcblock/ux": "^2.9.19",
     "@blocklet/logger": "^1.16.22",
+    "@blocklet/payment-js": "^1.13.121",
     "@blocklet/sdk": "^1.16.22",
     "@emotion/css": "^11.11.2",
     "@emotion/react": "^11.11.3",

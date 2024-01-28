@@ -13,6 +13,10 @@ import { withQuery } from 'ufo';
 
 const router = Router();
 
+const statusQuerySchema = Joi.object<{ description?: string }>({
+  description: Joi.string().empty([null, '']),
+});
+
 router.get(
   '/status',
   async (req, res, next) => {
@@ -27,9 +31,11 @@ router.get(
   },
   ensureRemoteComponentCall(App.findPublicKeyById),
   async (req, res) => {
+    const { description } = await statusQuerySchema.validateAsync(req.query, { stripUnknown: true });
+
     const { appId } = req.appClient!;
     const app = await App.findByPk(appId, { rejectOnEmpty: new Error(`App ${appId} not found`) });
-    const subscription = await getActiveSubscriptionOfApp({ appId });
+    const subscription = await getActiveSubscriptionOfApp({ appId, description });
 
     res.json({ id: app.id, subscription });
   }

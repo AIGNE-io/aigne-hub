@@ -101,7 +101,12 @@ function NonSubscriptions() {
     try {
       const res = await appServiceRegister();
       if (res.paymentLink) {
-        window.location.href = withQuery(res.paymentLink, { redirect: window.location.href });
+        window.location.href = withQuery(res.paymentLink, {
+          redirect: window.location.href,
+          'subscription_data.description': [blocklet?.appName, blocklet?.appUrl && `<${blocklet.appUrl}>`]
+            .filter(Boolean)
+            .join(' '),
+        });
       }
     } catch (error) {
       Toast.error(error.message);

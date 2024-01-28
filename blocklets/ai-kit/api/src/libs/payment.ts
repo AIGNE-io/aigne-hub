@@ -8,7 +8,7 @@ const PAYMENT_DID = 'z2qaCNvKMv5GjouKdcDWexv6WqtHbpNPQDnAk';
 
 export const isPaymentInstalled = () => !!config.components.find((i) => i.did === PAYMENT_DID);
 
-export async function getActiveSubscriptionOfApp({ appId }: { appId: string }) {
+export async function getActiveSubscriptionOfApp({ appId, description }: { appId: string; description?: string }) {
   if (!isPaymentInstalled()) return undefined;
 
   // @ts-ignore TODO: remove ts-ignore after upgrade @did-pay/client
@@ -17,6 +17,10 @@ export async function getActiveSubscriptionOfApp({ appId }: { appId: string }) {
       ['active', 'trialing'].includes(i.status) &&
       i.items.some((j) => j.price.product.id === Config.pricing?.subscriptionProductId)
   );
+
+  if (description && subscription) {
+    await payment.subscriptions.update(subscription.id, { description });
+  }
 
   return subscription;
 }
