@@ -1,3 +1,8 @@
+## 0.1.4 (2024-1-29)
+
+- chore: update deps
+- fix: pass app name/url as description to payment
+
 ## 0.1.3 (2024-1-26)
 
 - chore: upgrade immer to 10.x
