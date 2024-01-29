@@ -1,10 +1,11 @@
 import 'dayjs/locale/zh-cn';
 
-import SubscribeButton from '@app/components/subscribe';
 import { useSessionContext } from '@app/contexts/session';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import RelativeTime from '@arcblock/ux/lib/RelativeTime';
 import Toast from '@arcblock/ux/lib/Toast';
+import { appUsedCredits } from '@blocklet/ai-kit/api';
+import { SubscribeButton } from '@blocklet/ai-kit/components';
 import {
   AccessAlarmRounded,
   CheckCircleOutlineRounded,
@@ -52,7 +53,6 @@ import {
 } from 'recharts';
 import { NameType, ValueType } from 'recharts/types/component/DefaultTooltipContent';
 
-import { appUsedCredits } from '../../libs/app';
 import { useAIKitServiceStatus } from './state';
 
 export default function BillingPage() {

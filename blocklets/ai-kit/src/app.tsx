@@ -1,5 +1,6 @@
 import { LocaleProvider } from '@arcblock/ux/lib/Locale/context';
 import { ToastProvider } from '@arcblock/ux/lib/Toast';
+import { SubscribeButton } from '@blocklet/ai-kit/components';
 import Footer from '@blocklet/ui-react/lib/Footer';
 import Header from '@blocklet/ui-react/lib/Header';
 import { Global, css } from '@emotion/react';
@@ -9,7 +10,6 @@ import { Navigate, Route, RouterProvider, createBrowserRouter, createRoutesFromE
 
 import NotFoundView from './components/error/not-found';
 import Loading from './components/loading';
-import SubscribeButton from './components/subscribe';
 import { SessionProvider, useIsRole } from './contexts/session';
 import { translations } from './locales';
 import { HomeLazy } from './pages/home';
