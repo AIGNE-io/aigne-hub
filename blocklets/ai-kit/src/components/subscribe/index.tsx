@@ -3,7 +3,7 @@ import { useAIKitServiceStatus } from '@app/pages/billing/state';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import Toast from '@arcblock/ux/lib/Toast';
 import { useCallback, useEffect } from 'react';
-import { withQuery } from 'ufo';
+import { joinURL, parseURL, withQuery } from 'ufo';
 
 import LoadingButton from '../loading/loading-button';
 
@@ -17,11 +17,23 @@ export default function SubscribeButton({ shouldOpenInNewTab = false }: { should
     try {
       const res = await appServiceRegister();
       if (res.paymentLink) {
+        const { origin, href } = window.location;
+        const prefix = window.blocklet?.componentMountPoints.find((i) => i.name === 'ai-kit')?.mountPoint || '/';
+        const payLink = withQuery(res.paymentLink, {
+          'subscription_data.description': [
+            blocklet?.appName,
+            blocklet?.appUrl && `<${parseURL(blocklet.appUrl).host}>`,
+          ]
+            .filter(Boolean)
+            .join(' '),
+          redirect: withQuery(joinURL(origin, prefix, '/api/app/client/subscription/success'), { redirect: href }),
+        });
+
         if (shouldOpenInNewTab) {
-          const win = window.open(withQuery(res.paymentLink, { redirect: window.location.href }), '_blank');
+          const win = window.open(payLink, '_blank');
           win?.focus();
         } else {
-          window.location.href = withQuery(res.paymentLink, { redirect: window.location.href });
+          window.location.href = payLink;
         }
       }
     } catch (error) {
