@@ -1,3 +1,7 @@
+## 0.1.5 (2024-1-29)
+
+- fix: enable subscription after subscribe succeed
+
 ## 0.1.4 (2024-1-29)
 
 - chore: update deps
