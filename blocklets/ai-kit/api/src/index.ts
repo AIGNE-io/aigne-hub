@@ -10,6 +10,7 @@ import cors from 'cors';
 import dotenv from 'dotenv-flow';
 import express, { ErrorRequestHandler } from 'express';
 import fallback from 'express-history-api-fallback';
+import { parseURL } from 'ufo';
 
 import logger from './libs/logger';
 import routes from './routes';
@@ -93,7 +94,7 @@ export const server = app.listen(port, (err?: any) => {
 });
 
 // 更新 payment 中订阅的描述
-const subscriptionDescription = [config.env.appName, `<${config.env.appUrl}>`].join(' ');
+const subscriptionDescription = [config.env.appName, `<${parseURL(config.env.appUrl).host}>`].join(' ');
 
 appStatus({ description: subscriptionDescription }, { useAIKitService: true })
   .then((res) => {

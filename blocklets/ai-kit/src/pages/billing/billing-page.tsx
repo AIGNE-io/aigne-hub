@@ -52,7 +52,7 @@ import {
   YAxis,
 } from 'recharts';
 import { NameType, ValueType } from 'recharts/types/component/DefaultTooltipContent';
-import { withQuery } from 'ufo';
+import { parseURL, withQuery } from 'ufo';
 
 import { appServiceRegister, appUsedCredits } from '../../libs/app';
 import { useAIKitServiceStatus } from './state';
@@ -103,7 +103,10 @@ function NonSubscriptions() {
       if (res.paymentLink) {
         window.location.href = withQuery(res.paymentLink, {
           redirect: window.location.href,
-          'subscription_data.description': [blocklet?.appName, blocklet?.appUrl && `<${blocklet.appUrl}>`]
+          'subscription_data.description': [
+            blocklet?.appName,
+            blocklet?.appUrl && `<${parseURL(blocklet.appUrl).host}>`,
+          ]
             .filter(Boolean)
             .join(' '),
         });
