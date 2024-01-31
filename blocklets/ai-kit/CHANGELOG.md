@@ -1,3 +1,7 @@
+## 0.1.8 (2024-1-31)
+
+- chore: upgrade @arcblock and @blocklet deps
+
 ## 0.1.7 (2024-1-29)
 
 - fix: type error
