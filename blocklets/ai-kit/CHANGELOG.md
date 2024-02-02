@@ -1,3 +1,7 @@
+## 0.1.9 (2024-2-2)
+
+- chore: update deps
+
 ## 0.1.8 (2024-1-31)
 
 - chore: upgrade @arcblock and @blocklet deps
