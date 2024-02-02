@@ -1,11 +1,57 @@
 import type { IncomingMessage } from 'http';
 
+import { TSubscriptionExpanded } from '@blocklet/payment-js';
 import { call } from '@blocklet/sdk/lib/component';
 import { AxiosResponse } from 'axios';
 
 import AIKitConfig from '../config';
 import { getRemoteComponentCallHeaders } from '../utils/auth';
 import { aiKitApi, catchAndRethrowUpstreamError } from './api';
+
+export interface AppStatusResult {
+  id: string;
+  subscription?: TSubscriptionExpanded;
+}
+
+export async function appStatus(
+  { description }: { description?: string },
+  options?: { useAIKitService?: boolean; responseType?: undefined }
+): Promise<AppStatusResult | null>;
+export async function appStatus(
+  { description }: { description?: string },
+  options: {
+    useAIKitService?: boolean;
+    responseType: 'stream';
+  }
+): Promise<AxiosResponse<IncomingMessage, any>>;
+export async function appStatus(
+  { description }: { description?: string },
+  {
+    useAIKitService = AIKitConfig.useAIKitService,
+    ...options
+  }: { useAIKitService?: boolean; responseType?: 'stream' } = {}
+): Promise<AppStatusResult | null | AxiosResponse<IncomingMessage, any>> {
+  const response = await catchAndRethrowUpstreamError(
+    useAIKitService
+      ? aiKitApi.get('/api/app/status', {
+          params: { description },
+          responseType: options.responseType,
+          headers: { ...getRemoteComponentCallHeaders({}) },
+        })
+      : call({
+          name: 'ai-kit',
+          method: 'GET',
+          path: '/api/app/status',
+          params: { description },
+          data: {},
+          responseType: options?.responseType!,
+        })
+  );
+
+  if (options?.responseType === 'stream') return response;
+
+  return response.data;
+}
 
 export async function cancelSubscription(options?: {
   useAIKitService?: boolean;

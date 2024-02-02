@@ -1,5 +1,5 @@
-import SubscribeButton from '@app/components/subscribe';
 import { useIsRole, useSessionContext } from '@app/contexts/session';
+import { SubscribeButton } from '@blocklet/ai-kit/components';
 import Footer from '@blocklet/ui-react/lib/Footer';
 import Header from '@blocklet/ui-react/lib/Header';
 import { Box, Button, Stack, Typography } from '@mui/material';

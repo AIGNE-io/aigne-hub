@@ -7,11 +7,16 @@ import Usage from '@api/store/models/usage';
 import { proxyToAIKit } from '@blocklet/ai-kit/api/call';
 import AIKitConfig from '@blocklet/ai-kit/api/config';
 import { appIdFromPublicKey, ensureRemoteComponentCall } from '@blocklet/ai-kit/api/utils/auth';
+import { config, getComponentMountPoint } from '@blocklet/sdk';
 import { Router } from 'express';
 import Joi from 'joi';
-import { withQuery } from 'ufo';
+import { joinURL, withQuery } from 'ufo';
 
 const router = Router();
+
+const statusQuerySchema = Joi.object<{ description?: string }>({
+  description: Joi.string().empty([null, '']),
+});
 
 router.get(
   '/status',
@@ -27,9 +32,11 @@ router.get(
   },
   ensureRemoteComponentCall(App.findPublicKeyById),
   async (req, res) => {
+    const { description } = await statusQuerySchema.validateAsync(req.query, { stripUnknown: true });
+
     const { appId } = req.appClient!;
     const app = await App.findByPk(appId, { rejectOnEmpty: new Error(`App ${appId} not found`) });
-    const subscription = await getActiveSubscriptionOfApp({ appId });
+    const subscription = await getActiveSubscriptionOfApp({ appId, description });
 
     res.json({ id: app.id, subscription });
   }
@@ -106,6 +113,23 @@ router.post('/register', async (req, res) => {
     id: appId,
     paymentLink: withQuery(Config.pricing.subscriptionPaymentLink, { 'metadata.appId': appId }),
   });
+});
+
+const subscriptionSuccessQuery = Joi.object<{
+  redirect?: string;
+  checkout_session_id: string;
+}>({
+  redirect: Joi.string().empty([null, '']),
+  checkout_session_id: Joi.string().required(),
+});
+
+router.get('/client/subscription/success', async (req, res) => {
+  const query = await subscriptionSuccessQuery.validateAsync(req.query, { stripUnknown: true });
+
+  AIKitConfig.config = { ...AIKitConfig.config, useAIKitService: true };
+  AIKitConfig.save();
+
+  res.redirect(301, query.redirect || joinURL(config.env.appUrl, getComponentMountPoint('ai-kit')));
 });
 
 router.post('/subscription/cancel', ensureRemoteComponentCall(App.findPublicKeyById), async (req, res) => {

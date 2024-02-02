@@ -7,6 +7,7 @@ declare var blocklet:
       prefix: string;
       appId: string;
       appName: string;
+      appUrl: string;
       appLogo: string;
       appDescription: string;
       version: string;

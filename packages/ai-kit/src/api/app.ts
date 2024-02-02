@@ -1,10 +1,9 @@
-import { TSubscriptionExpanded } from '@blocklet/payment-js';
-
 import api from './api';
 
 export interface AppStatusResult {
   id: string;
-  subscription?: TSubscriptionExpanded;
+  // FIXME: use `TSubscriptionExpanded` after issue (https://github.com/sequelize/sequelize/issues/16268) fixed
+  subscription?: any;
   config?: AIKitServiceConfig | null;
 }
 

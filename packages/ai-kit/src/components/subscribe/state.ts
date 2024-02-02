@@ -1,16 +1,13 @@
-import { AIKitServiceConfig, AppStatusResult, appStatus, setAppConfig, unsubscribe } from '@blocklet/ai-kit/api';
-import { TSubscriptionExpanded } from '@blocklet/payment-js';
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 
+import { AppStatusResult, appStatus } from '../../api/app';
+
 export interface AIKitServiceStatus {
-  // FIXME: remove `{ subscription?: TSubscriptionExpanded }` after issue (https://github.com/sequelize/sequelize/issues/16268) fixed
-  app?: Omit<AppStatusResult, 'subscription'> & { subscription?: TSubscriptionExpanded };
+  app?: AppStatusResult;
   loading?: boolean;
   error?: Error;
   fetch: () => Promise<void>;
-  unsubscribe: () => Promise<void>;
-  setConfig: (payload: AIKitServiceConfig) => Promise<void>;
   computed: {
     isSubscriptionAvailable?: boolean;
   };
@@ -36,16 +33,6 @@ export const useAIKitServiceStatus = create<AIKitServiceStatus>()(
           state.loading = false;
         });
       }
-    },
-    unsubscribe: async () => {
-      await unsubscribe();
-      await get().fetch();
-    },
-    setConfig: async (payload: AIKitServiceConfig) => {
-      const config = await setAppConfig(payload);
-      set((state) => {
-        state.app!.config = config;
-      });
     },
     computed: {
       get isSubscriptionAvailable() {

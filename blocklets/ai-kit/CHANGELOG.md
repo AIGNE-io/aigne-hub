@@ -1,3 +1,32 @@
+## 0.1.9 (2024-2-2)
+
+- chore: update deps
+
+## 0.1.8 (2024-1-31)
+
+- chore: upgrade @arcblock and @blocklet deps
+
+## 0.1.7 (2024-1-29)
+
+- fix: type error
+
+## 0.1.6 (2024-1-29)
+
+- fix: type error
+
+## 0.1.5 (2024-1-29)
+
+- fix: enable subscription after subscribe succeed
+
+## 0.1.4 (2024-1-29)
+
+- chore: update deps
+- fix: pass app name/url as description to payment
+
+## 0.1.3 (2024-1-26)
+
+- chore: upgrade immer to 10.x
+
 ## 0.1.2 (2024-1-26)
 
 - chore: update deps

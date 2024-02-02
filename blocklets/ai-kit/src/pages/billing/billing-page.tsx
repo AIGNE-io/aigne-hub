@@ -1,17 +1,17 @@
 import 'dayjs/locale/zh-cn';
 
-import LoadingButton from '@app/components/loading/loading-button';
 import { useSessionContext } from '@app/contexts/session';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import RelativeTime from '@arcblock/ux/lib/RelativeTime';
 import Toast from '@arcblock/ux/lib/Toast';
+import { appUsedCredits } from '@blocklet/ai-kit/api';
+import { SubscribeButton } from '@blocklet/ai-kit/components';
 import {
   AccessAlarmRounded,
   CheckCircleOutlineRounded,
   ErrorOutlineRounded,
   MoreHorizRounded,
   RouterRounded,
-  ShoppingCartSharp,
 } from '@mui/icons-material';
 import {
   Box,
@@ -39,7 +39,7 @@ import BigNumber from 'bignumber.js';
 import dayjs from 'dayjs';
 import { groupBy, isNil } from 'lodash';
 import { bindMenu, bindTrigger, usePopupState } from 'material-ui-popup-state/hooks';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Bar,
   BarChart,
@@ -52,9 +52,7 @@ import {
   YAxis,
 } from 'recharts';
 import { NameType, ValueType } from 'recharts/types/component/DefaultTooltipContent';
-import { withQuery } from 'ufo';
 
-import { appServiceRegister, appUsedCredits } from '../../libs/app';
 import { useAIKitServiceStatus } from './state';
 
 export default function BillingPage() {
@@ -97,27 +95,13 @@ export default function BillingPage() {
 function NonSubscriptions() {
   const { t } = useLocaleContext();
 
-  const linkToAiKit = useCallback(async () => {
-    try {
-      const res = await appServiceRegister();
-      if (res.paymentLink) {
-        window.location.href = withQuery(res.paymentLink, { redirect: window.location.href });
-      }
-    } catch (error) {
-      Toast.error(error.message);
-      throw error;
-    }
-  }, []);
-
   return (
     <Stack alignItems="center" gap={4} my={10}>
       <RouterRounded sx={{ fontSize: 56, color: 'text.disabled' }} />
 
       <Typography variant="body2">{t('subscribeAITip')}</Typography>
 
-      <LoadingButton variant="contained" onClick={linkToAiKit} endIcon={<ShoppingCartSharp />} loadingPosition="end">
-        {t('subscribeAIService')}
-      </LoadingButton>
+      <SubscribeButton />
     </Stack>
   );
 }
