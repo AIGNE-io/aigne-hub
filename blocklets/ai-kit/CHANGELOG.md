@@ -1,3 +1,15 @@
+## 0.1.13 (2024-2-20)
+
+- fix: auto update subscription description after app name updated
+
+## 0.1.12 (2024-2-18)
+
+- chore: update deps
+
+## 0.1.11 (2024-2-18)
+
+- chore: update deps
+
 ## 0.1.10 (2024-2-7)
 
 - chore: update deps

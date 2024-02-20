@@ -2,7 +2,7 @@ import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import Toast from '@arcblock/ux/lib/Toast';
 import { LoadingButton } from '@mui/lab';
 import { useCallback, useEffect, useState } from 'react';
-import { joinURL, parseURL, withQuery } from 'ufo';
+import { joinURL, withQuery } from 'ufo';
 
 import { appServiceRegister } from '../../api/app';
 import { useAIKitServiceStatus } from './state';
@@ -23,12 +23,6 @@ export default function SubscribeButton({ shouldOpenInNewTab = false }: { should
         const { origin, href } = window.location;
         const prefix = window.blocklet?.componentMountPoints.find((i) => i.name === 'ai-kit')?.mountPoint || '/';
         const payLink = withQuery(res.paymentLink, {
-          'subscription_data.description': [
-            blocklet?.appName,
-            blocklet?.appUrl && `<${parseURL(blocklet.appUrl).host}>`,
-          ]
-            .filter(Boolean)
-            .join(' '),
           redirect: withQuery(joinURL(origin, prefix, '/api/app/client/subscription/success'), { redirect: href }),
         });
 
