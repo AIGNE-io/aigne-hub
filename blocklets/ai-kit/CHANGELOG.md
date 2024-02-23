@@ -1,3 +1,11 @@
+## 0.1.14 (2024-2-20)
+
+- fix: stop counting when there is an error
+
+## 0.1.13 (2024-2-20)
+
+- fix: auto update subscription description after app name updated
+
 ## 0.1.12 (2024-2-18)
 
 - chore: update deps

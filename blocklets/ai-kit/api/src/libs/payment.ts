@@ -1,8 +1,11 @@
 import { SubscriptionError, SubscriptionErrorType } from '@blocklet/ai-kit/api';
+import { appStatus } from '@blocklet/ai-kit/api/call/app';
 import payment from '@blocklet/payment-js';
 import config from '@blocklet/sdk/lib/config';
+import { parseURL } from 'ufo';
 
 import { Config } from './env';
+import logger from './logger';
 
 const PAYMENT_DID = 'z2qaCNvKMv5GjouKdcDWexv6WqtHbpNPQDnAk';
 
@@ -42,4 +45,38 @@ export async function recoverSubscription({ appId }: { appId: string }) {
   if (!subscription) return undefined;
 
   return payment.subscriptions.recover(subscription.id);
+}
+
+export function getSubscriptionDescription() {
+  return ['[AI Service]', config.env.appName, `<${parseURL(config.env.appUrl).host}>`].join(' ');
+}
+
+// 更新 payment 中订阅的描述
+export function autoUpdateSubscriptionMeta() {
+  function updateDescription() {
+    const subscriptionDescription = getSubscriptionDescription();
+
+    appStatus({ description: subscriptionDescription }, { useAIKitService: true })
+      .then((res) => {
+        if (res?.subscription) {
+          logger.info('update description of billing success', { description: subscriptionDescription });
+        } else {
+          logger.info('update description of billing error: no subscription updated');
+        }
+      })
+      .catch((error) => {
+        logger.error('update description of billing error', { error });
+      });
+  }
+
+  updateDescription();
+
+  let old = config.env.appName;
+
+  config.events.on(config.Events.envUpdate, () => {
+    if (old !== config.env.appName) {
+      old = config.env.appName;
+      updateDescription();
+    }
+  });
 }

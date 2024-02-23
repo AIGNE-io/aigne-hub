@@ -1,6 +1,11 @@
 import { wallet } from '@api/libs/auth';
 import { Config } from '@api/libs/env';
-import { cancelSubscription, getActiveSubscriptionOfApp, recoverSubscription } from '@api/libs/payment';
+import {
+  cancelSubscription,
+  getActiveSubscriptionOfApp,
+  getSubscriptionDescription,
+  recoverSubscription,
+} from '@api/libs/payment';
 import { ensureAdmin, ensureComponentCall } from '@api/libs/security';
 import App from '@api/store/models/app';
 import Usage from '@api/store/models/usage';
@@ -111,7 +116,10 @@ router.post('/register', async (req, res) => {
 
   res.json({
     id: appId,
-    paymentLink: withQuery(Config.pricing.subscriptionPaymentLink, { 'metadata.appId': appId }),
+    paymentLink: withQuery(Config.pricing.subscriptionPaymentLink, {
+      'metadata.appId': appId,
+      'subscription_data.description': getSubscriptionDescription(),
+    }),
   });
 });
 
