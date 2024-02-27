@@ -52,6 +52,19 @@
             "x-designable-id": "n7sdfnu0s0x",
             "x-index": 1,
             "properties": {
+              "calcTokenUsage": {
+                "type": "boolean",
+                "title": "Calc Token Usage",
+                "x-decorator": "FormItem",
+                "x-component": "Switch",
+                "x-validator": [],
+                "x-component-props": {},
+                "x-decorator-props": {},
+                "name": "calcTokenUsage",
+                "default": true,
+                "x-designable-id": "f05q0lvyn1h",
+                "x-index": 0
+              },
               "subscriptionProductId": {
                 "type": "string",
                 "title": "Product Id",
@@ -63,7 +76,7 @@
                 "name": "subscriptionProductId",
                 "required": false,
                 "x-designable-id": "1eq6nkg38ki",
-                "x-index": 0
+                "x-index": 1
               },
               "subscriptionPaymentLink": {
                 "type": "string",
@@ -76,7 +89,7 @@
                 "name": "subscriptionPaymentLink",
                 "required": false,
                 "x-designable-id": "3dqkovwroo9",
-                "x-index": 1
+                "x-index": 2
               },
               "basePricePerUnit": {
                 "type": "number",
@@ -94,7 +107,7 @@
                 "description": "For example: 0.001 ABT / 1K tokens",
                 "required": false,
                 "x-designable-id": "ijh86lq5v1o",
-                "x-index": 2
+                "x-index": 3
               },
               "onlyEnableModelsInPricing": {
                 "type": "boolean",
@@ -106,7 +119,7 @@
                 "x-decorator-props": {},
                 "name": "onlyEnableModelsInPricing",
                 "x-designable-id": "p3sc4q9xj5g",
-                "x-index": 3
+                "x-index": 4
               },
               "pricingList": {
                 "type": "array",
@@ -117,7 +130,7 @@
                 "x-decorator-props": {},
                 "name": "pricingList",
                 "x-designable-id": "cgn7sn6ubro",
-                "x-index": 4,
+                "x-index": 5,
                 "items": {
                   "type": "object",
                   "x-designable-id": "63alcwzxuwe",
@@ -281,6 +294,6 @@
         }
       }
     },
-    "x-designable-id": "1ggbj9smw6f"
+    "x-designable-id": "8w02tlee9rz"
   }
 }
