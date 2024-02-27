@@ -1,3 +1,7 @@
+## 0.1.15 (2024-2-27)
+
+- feat: support disable token usage calculating
+
 ## 0.1.14 (2024-2-20)
 
 - fix: stop counting when there is an error

@@ -222,18 +222,20 @@ router.post(
 
     if (Config.verbose) logger.info('AI Kit completions output:', { content, toolCalls });
 
-    // TODO: 更精确的 token 计算，暂时简单地 stringify 之后按照 gpt3/4 的 token 算法计算，尤其 function call 的计算偏差较大，需要改进
-    const promptUsedTokens = getEncoding('cl100k_base').encode(JSON.stringify(input.messages)).length;
-    const completionUsedTokens = getEncoding('cl100k_base').encode(JSON.stringify({ content, toolCalls })).length;
+    if (Config.calcTokenUsages) {
+      // TODO: 更精确的 token 计算，暂时简单地 stringify 之后按照 gpt3/4 的 token 算法计算，尤其 function call 的计算偏差较大，需要改进
+      const promptUsedTokens = getEncoding('cl100k_base').encode(JSON.stringify(input.messages)).length;
+      const completionUsedTokens = getEncoding('cl100k_base').encode(JSON.stringify({ content, toolCalls })).length;
 
-    createAndReportUsage({
-      type: 'chatCompletion',
-      promptTokens: promptUsedTokens,
-      completionTokens: completionUsedTokens,
-      model: input.model,
-      modelParams: pick(input, 'temperature', 'topP', 'frequencyPenalty', 'presencePenalty', 'maxTokens'),
-      appId: req.appClient?.appId,
-    });
+      createAndReportUsage({
+        type: 'chatCompletion',
+        promptTokens: promptUsedTokens,
+        completionTokens: completionUsedTokens,
+        model: input.model,
+        modelParams: pick(input, 'temperature', 'topP', 'frequencyPenalty', 'presencePenalty', 'maxTokens'),
+        appId: req.appClient?.appId,
+      });
+    }
   }
 );
 
@@ -263,12 +265,14 @@ router.post(
 
     res.json({ data });
 
-    createAndReportUsage({
-      type: 'embedding',
-      promptTokens: usage.prompt_tokens,
-      model: input.model,
-      appId: req.appClient?.appId,
-    });
+    if (Config.calcTokenUsages) {
+      createAndReportUsage({
+        type: 'embedding',
+        promptTokens: usage.prompt_tokens,
+        model: input.model,
+        appId: req.appClient?.appId,
+      });
+    }
   })
 );
 
@@ -319,13 +323,15 @@ router.post(
       })),
     });
 
-    createAndReportUsage({
-      type: 'imageGeneration',
-      model: input.model,
-      modelParams: pick(input, 'size', 'responseFormat', 'style', 'quality'),
-      numberOfImageGeneration: input.n,
-      appId: req.appClient?.appId,
-    });
+    if (Config.calcTokenUsages) {
+      createAndReportUsage({
+        type: 'imageGeneration',
+        model: input.model,
+        modelParams: pick(input, 'size', 'responseFormat', 'style', 'quality'),
+        numberOfImageGeneration: input.n,
+        appId: req.appClient?.appId,
+      });
+    }
   })
 );
 
