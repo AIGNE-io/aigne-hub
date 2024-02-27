@@ -204,6 +204,8 @@ router.post(
         res.write(`ERROR: ${error.message}`);
         res.flush();
       }
+      res.end();
+      return;
     }
 
     if (!input.stream && !isEventStream) {
