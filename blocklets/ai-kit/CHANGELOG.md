@@ -1,3 +1,7 @@
+## 0.1.16 (2024-2-27)
+
+- fix: correct description of subscription
+
 ## 0.1.15 (2024-2-27)
 
 - feat: support disable token usage calculating

@@ -1,6 +1,6 @@
 {
   "name": "@blocklet/ai-kit",
-  "version": "0.1.15",
+  "version": "0.1.16",
   "description": "The react.js component library for AI Kit",
   "publishConfig": {
     "access": "public"
