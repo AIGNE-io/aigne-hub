@@ -1,3 +1,7 @@
+## 0.1.14 (2024-2-27)
+
+- feat: support disable token usage calculating
+
 ## 0.1.13 (2024-2-20)
 
 - fix: auto update subscription description after app name updated
