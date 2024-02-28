@@ -1,6 +1,6 @@
 {
   "name": "ai-kit",
-  "version": "0.1.16",
+  "version": "0.1.17",
   "author": "Arcblock <blocklet@arcblock.io> https://github.com/blocklet",
   "scripts": {
     "dev": "blocklet dev",

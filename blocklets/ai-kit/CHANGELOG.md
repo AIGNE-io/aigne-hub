@@ -1,3 +1,7 @@
+## 0.1.17 (2024-2-28)
+
+- feat: bundle uses a compact mode
+
 ## 0.1.16 (2024-2-27)
 
 - fix: correct description of subscription
