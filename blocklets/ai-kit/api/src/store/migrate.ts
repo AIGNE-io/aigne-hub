@@ -5,7 +5,7 @@ import { sequelize } from './sequelize';
 
 const umzug = new Umzug({
   migrations: {
-    glob: ['migrations/*.{ts,js}', { cwd: __dirname }],
+    glob: ['**/migrations/*.{ts,js}', { cwd: __dirname }],
     resolve: ({ name, path, context }) => {
       // eslint-disable-next-line import/no-dynamic-require, global-require
       const migration = require(path!);

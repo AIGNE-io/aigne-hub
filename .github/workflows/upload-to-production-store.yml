@@ -26,14 +26,11 @@ jobs:
       - name: Build packages
         run: yarn workspace @blocklet/ai-kit build
 
-      - name: Prepare @blocklet/cli deps
-        run: yarn global add @blocklet/cli@beta
-        shell: bash
-
       - name: Upload to production store
         uses: blocklet/action-workflow@v1
         with:
-          skip-deps: true
+          deps-server-version: beta
+          skip-deps: false
           skip-release: true
           skip-upload: false
           skip-deploy: true
