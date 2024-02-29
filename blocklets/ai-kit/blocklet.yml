@@ -24,6 +24,8 @@ files:
   - docs
   - api/dist/store/migrations/*.js
   - api/hooks/pre-start.js
+  # FIXME: remove tiktoken_bg.wasm after the wasm bundle has been supported
+  - tiktoken_bg.wasm
 interfaces:
   - type: web
     name: publicUrl
