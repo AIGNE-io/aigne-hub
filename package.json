@@ -41,7 +41,7 @@
     "@arcblock/eslint-config": "^0.2.4",
     "@arcblock/eslint-config-ts": "^0.2.4",
     "bumpp": "^8.2.1",
-    "eslint": "^8.56.0",
+    "eslint": "^8.57.0",
     "husky": "^8.0.3",
     "import-sort-style-module": "^6.0.0",
     "lint-staged": "^12.5.0",

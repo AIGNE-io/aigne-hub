@@ -10,7 +10,6 @@ packages/*/lib
 # testing
 coverage
 
-
 # production
 build
 dist
@@ -30,5 +29,6 @@ pnpm-debug.log*
 lerna-debug.log*
 
 *.env
+.env.development
 
 .vscode
