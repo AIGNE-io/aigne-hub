@@ -1,3 +1,8 @@
+## 0.1.18 (2024-2-29)
+
+- fix: the end time of the query for usage should include the end day
+- fix: use wasm tiktoken calc token usage
+
 ## 0.1.17 (2024-2-28)
 
 - feat: bundle uses a compact mode

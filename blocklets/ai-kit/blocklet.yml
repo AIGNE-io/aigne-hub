@@ -15,7 +15,7 @@ repository:
   type: git
   url: git+https://github.com/blocklet/ai-kit.git
 specVersion: 1.2.8
-version: 0.1.17
+version: 0.1.18
 logo: logo.png
 files:
   - dist
@@ -24,7 +24,6 @@ files:
   - docs
   - api/dist/store/migrations/*.js
   - api/hooks/pre-start.js
-  # FIXME: remove tiktoken_bg.wasm after the wasm bundle has been supported
   - tiktoken_bg.wasm
 interfaces:
   - type: web
