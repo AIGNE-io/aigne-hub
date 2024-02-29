@@ -35,7 +35,7 @@
     "@arcblock/did-auth-storage-nedb": "^1.7.1",
     "@arcblock/did-connect": "^2.9.34",
     "@arcblock/ux": "^2.9.34",
-    "@blocklet/ai-kit": "^0.1.16",
+    "@blocklet/ai-kit": "^0.1.17",
     "@blocklet/logger": "^1.16.23",
     "@blocklet/payment-js": "^1.13.145",
     "@blocklet/sdk": "^1.16.23",
