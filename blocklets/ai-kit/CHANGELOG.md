@@ -1,3 +1,7 @@
+## 0.1.21 (2024-3-6)
+
+- fix: determine the current env through `config.env.mode`
+
 ## 0.1.20 (2024-3-6)
 
 - fix: correct directory of db migrations
