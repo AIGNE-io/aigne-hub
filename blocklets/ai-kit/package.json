@@ -3,7 +3,7 @@
   "version": "0.1.19",
   "author": "Arcblock <blocklet@arcblock.io> https://github.com/blocklet",
   "scripts": {
-    "dev": "blocklet dev",
+    "dev": "cross-env NODE_ENV=development COMPONENT_STORE_URL=https://test.store.blocklet.dev blocklet dev",
     "eject": "vite eject",
     "lint": "tsc --noEmit && eslint src api/src --ext .mjs,.js,.jsx,.ts,.tsx",
     "lint:fix": "npm run lint -- --fix",

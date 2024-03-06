@@ -9,6 +9,7 @@ import dotenv from 'dotenv-flow';
 import express, { ErrorRequestHandler } from 'express';
 import fallback from 'express-history-api-fallback';
 
+import { Config, isProduction } from './libs/env';
 import logger from './libs/logger';
 import { autoUpdateSubscriptionMeta } from './libs/payment';
 import routes from './routes';
@@ -40,10 +41,8 @@ app.use((req, _, next) => {
   next();
 }, router);
 
-const isProduction = process.env.NODE_ENV === 'production' || process.env.ABT_NODE_SERVICE_ENV === 'production';
-
 if (isProduction) {
-  const staticDir = path.resolve(process.env.BLOCKLET_APP_DIR!, 'dist');
+  const staticDir = path.resolve(Config.appDir, 'dist');
   app.use(express.static(staticDir, { maxAge: '30d', index: false }));
   app.use(fallback('index.html', { root: staticDir }));
 }
