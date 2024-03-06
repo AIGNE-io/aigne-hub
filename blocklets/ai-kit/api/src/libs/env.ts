@@ -4,7 +4,7 @@ import Joi from 'joi';
 
 import logger from './logger';
 
-export const isProduction = process.env.NODE_ENV === 'production' || process.env.ABT_NODE_SERVICE_ENV === 'production';
+export const isDevelopment = config.env.mode === 'development';
 
 type Pricing = {
   subscriptionPaymentLink: string;

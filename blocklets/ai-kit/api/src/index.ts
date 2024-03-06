@@ -9,7 +9,7 @@ import dotenv from 'dotenv-flow';
 import express, { ErrorRequestHandler } from 'express';
 import fallback from 'express-history-api-fallback';
 
-import { Config, isProduction } from './libs/env';
+import { Config, isDevelopment } from './libs/env';
 import logger from './libs/logger';
 import { autoUpdateSubscriptionMeta } from './libs/payment';
 import routes from './routes';
@@ -41,7 +41,7 @@ app.use((req, _, next) => {
   next();
 }, router);
 
-if (isProduction) {
+if (!isDevelopment) {
   const staticDir = path.resolve(Config.appDir, 'dist');
   app.use(express.static(staticDir, { maxAge: '30d', index: false }));
   app.use(fallback('index.html', { root: staticDir }));
