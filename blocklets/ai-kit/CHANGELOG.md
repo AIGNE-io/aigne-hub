@@ -1,3 +1,7 @@
+## 0.1.20 (2024-3-6)
+
+- fix: correct directory of db migrations
+
 ## 0.1.19 (2024-2-29)
 
 - chore: use external tiktoken dep
