@@ -4,6 +4,8 @@ import Joi from 'joi';
 
 import logger from './logger';
 
+export const isDevelopment = config.env.mode === 'development';
+
 type Pricing = {
   subscriptionPaymentLink: string;
   subscriptionProductId: string;
@@ -13,6 +15,10 @@ type Pricing = {
 };
 
 export const Config = {
+  get appDir() {
+    return process.env.BLOCKLET_APP_DIR!;
+  },
+
   _verbose: undefined as boolean | undefined,
   get verbose() {
     if (this._verbose === undefined) {

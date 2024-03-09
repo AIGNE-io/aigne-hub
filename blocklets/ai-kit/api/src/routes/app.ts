@@ -10,6 +10,7 @@ import { ensureAdmin, ensureComponentCall } from '@api/libs/security';
 import App from '@api/store/models/app';
 import Usage from '@api/store/models/usage';
 import { proxyToAIKit } from '@blocklet/ai-kit/api/call';
+import { appRegister } from '@blocklet/ai-kit/api/call/app';
 import AIKitConfig from '@blocklet/ai-kit/api/config';
 import { appIdFromPublicKey, ensureRemoteComponentCall } from '@blocklet/ai-kit/api/utils/auth';
 import { config, getComponentMountPoint } from '@blocklet/sdk';
@@ -118,7 +119,6 @@ router.post('/register', async (req, res) => {
     id: appId,
     paymentLink: withQuery(Config.pricing.subscriptionPaymentLink, {
       'metadata.appId': appId,
-      'subscription_data.description': getSubscriptionDescription(),
     }),
   });
 });
@@ -160,20 +160,14 @@ router.get('/service/status', proxyToAIKit('/api/app/status', { useAIKitService:
 
 router.get('/service/usage', ensureAdmin, proxyToAIKit('/api/app/usage', { useAIKitService: true }));
 
-router.post(
-  '/service/register',
-  proxyToAIKit('/api/app/register', {
-    useAIKitService: true,
-    proxyReqOptDecorator(proxyReqOpts) {
-      proxyReqOpts.headers!['Content-Type'] = 'application/json';
-      return proxyReqOpts;
-    },
-    proxyReqBodyDecorator() {
-      return {
-        publicKey: wallet.publicKey,
-      };
-    },
-  })
-);
+router.post('/service/register', async (_, res) => {
+  const result = await appRegister({ publicKey: wallet.publicKey }, { useAIKitService: true });
+  res.json({
+    ...result,
+    paymentLink:
+      result.paymentLink &&
+      withQuery(result.paymentLink, { 'subscription_data.description': getSubscriptionDescription() }),
+  });
+});
 
 export default router;

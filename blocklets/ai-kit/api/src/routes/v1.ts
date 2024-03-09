@@ -10,11 +10,11 @@ import {
   ImageGenerationInput,
 } from '@blocklet/ai-kit/api/types';
 import { ensureRemoteComponentCall } from '@blocklet/ai-kit/api/utils/auth';
+import { get_encoding } from '@dqbd/tiktoken';
 import compression from 'compression';
 import { Request, Response, Router } from 'express';
 import proxy from 'express-http-proxy';
 import Joi from 'joi';
-import { getEncoding } from 'js-tiktoken';
 import omit from 'lodash/omit';
 import pick from 'lodash/pick';
 
@@ -224,17 +224,22 @@ router.post(
 
     if (Config.calcTokenUsages) {
       // TODO: 更精确的 token 计算，暂时简单地 stringify 之后按照 gpt3/4 的 token 算法计算，尤其 function call 的计算偏差较大，需要改进
-      const promptUsedTokens = getEncoding('cl100k_base').encode(JSON.stringify(input.messages)).length;
-      const completionUsedTokens = getEncoding('cl100k_base').encode(JSON.stringify({ content, toolCalls })).length;
+      const enc = get_encoding('cl100k_base');
+      try {
+        const promptUsedTokens = enc.encode(JSON.stringify(input.messages)).length;
+        const completionUsedTokens = enc.encode(JSON.stringify({ content, toolCalls })).length;
 
-      createAndReportUsage({
-        type: 'chatCompletion',
-        promptTokens: promptUsedTokens,
-        completionTokens: completionUsedTokens,
-        model: input.model,
-        modelParams: pick(input, 'temperature', 'topP', 'frequencyPenalty', 'presencePenalty', 'maxTokens'),
-        appId: req.appClient?.appId,
-      });
+        createAndReportUsage({
+          type: 'chatCompletion',
+          promptTokens: promptUsedTokens,
+          completionTokens: completionUsedTokens,
+          model: input.model,
+          modelParams: pick(input, 'temperature', 'topP', 'frequencyPenalty', 'presencePenalty', 'maxTokens'),
+          appId: req.appClient?.appId,
+        });
+      } finally {
+        enc.free();
+      }
     }
   }
 );

@@ -53,6 +53,50 @@ export async function appStatus(
   return response.data;
 }
 
+export interface RegisterPayload {
+  publicKey: string;
+}
+
+export interface RegisterResult {
+  appId: string;
+  paymentLink?: string;
+}
+
+export async function appRegister(
+  payload: RegisterPayload,
+  options?: { useAIKitService?: boolean; responseType?: undefined }
+): Promise<RegisterResult>;
+export async function appRegister(
+  payload: RegisterPayload,
+  options: {
+    useAIKitService?: boolean;
+    responseType: 'stream';
+  }
+): Promise<AxiosResponse<IncomingMessage, any>>;
+export async function appRegister(
+  payload: RegisterPayload,
+  {
+    useAIKitService = AIKitConfig.useAIKitService,
+    ...options
+  }: { useAIKitService?: boolean; responseType?: 'stream' } = {}
+): Promise<RegisterResult | AxiosResponse<IncomingMessage, any>> {
+  const response = await catchAndRethrowUpstreamError(
+    useAIKitService
+      ? aiKitApi.post('/api/app/register', payload, { responseType: options.responseType })
+      : call({
+          name: 'ai-kit',
+          method: 'GET',
+          path: '/api/app/register',
+          data: payload,
+          responseType: options?.responseType!,
+        })
+  );
+
+  if (options?.responseType === 'stream') return response;
+
+  return response.data;
+}
+
 export async function cancelSubscription(options?: {
   useAIKitService?: boolean;
   responseType?: undefined;

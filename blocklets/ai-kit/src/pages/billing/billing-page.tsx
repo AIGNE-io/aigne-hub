@@ -240,7 +240,11 @@ function UseCreditsCharts() {
   }, [date]);
 
   const { data, loading } = useRequest(
-    () => appUsedCredits({ startTime, endTime }, { useAIKitService: app?.config?.useAIKitService }),
+    () =>
+      appUsedCredits(
+        { startTime, endTime: dayjs(endTime).endOf('day').format('YYYY-MM-DD HH:mm:ss') },
+        { useAIKitService: app?.config?.useAIKitService }
+      ),
     {
       refreshDeps: [startTime, endTime, app?.config?.useAIKitService],
     }

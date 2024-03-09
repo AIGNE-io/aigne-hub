@@ -21,6 +21,9 @@ jobs:
       - name: Install dependencies
         run: yarn
 
+      - name: Build libs
+        run: yarn build:libs
+
       - name: Publish to NPM
         run: |
           npm config set '//registry.npmjs.org/:_authToken' "${{ secrets.NPM_TOKEN }}"
@@ -31,11 +34,18 @@ jobs:
       - name: Blocklet workflow
         uses: blocklet/action-workflow@v1
         with:
+          deps-server-version: beta
+          skip-deps: false
           skip-upload: false
-          skip-deploy: true
+          skip-deploy: false
           working-directory: blocklets/ai-kit
           bundle-command: yarn bundle
           store-endpoint: ${{ secrets.STORE_ENDPOINT_TEST }}
           store-access-token: ${{ secrets.STORE_ACCESS_TOKEN_TEST }}
           slack-webhook: ${{ secrets.SLACK_WEBHOOK }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          abtnode-endpoint: ${{ secrets.STAGING_NODE_ENDPOINT }}
+          access-key: ${{ secrets.STAGING_NODE_ACCESS_KEY }}
+          access-secret: ${{ secrets.STAGING_NODE_ACCESS_SECRET }}
+          deploy-app-did: zNKq56yExCXmaQpir9nFRu9aPFSYvSoKQr1e
+          deploy-mount-point: /ai-kit

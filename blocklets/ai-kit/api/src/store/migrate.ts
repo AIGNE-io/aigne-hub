@@ -1,3 +1,6 @@
+import { join } from 'path';
+
+import { Config, isDevelopment } from '@api/libs/env';
 import { SequelizeStorage, Umzug } from 'umzug';
 
 import logger from '../libs/logger';
@@ -5,7 +8,7 @@ import { sequelize } from './sequelize';
 
 const umzug = new Umzug({
   migrations: {
-    glob: ['migrations/*.{ts,js}', { cwd: __dirname }],
+    glob: ['**/migrations/*.{ts,js}', { cwd: isDevelopment ? __dirname : join(Config.appDir, 'api/dist/store') }],
     resolve: ({ name, path, context }) => {
       // eslint-disable-next-line import/no-dynamic-require, global-require
       const migration = require(path!);

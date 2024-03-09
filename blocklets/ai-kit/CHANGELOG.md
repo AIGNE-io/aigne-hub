@@ -1,3 +1,32 @@
+## 0.1.22 (2024-3-9)
+
+- chore: bump version
+
+## 0.1.21 (2024-3-6)
+
+- fix: determine the current env through `config.env.mode`
+
+## 0.1.20 (2024-3-6)
+
+- fix: correct directory of db migrations
+
+## 0.1.19 (2024-2-29)
+
+- chore: use external tiktoken dep
+
+## 0.1.18 (2024-2-29)
+
+- fix: the end time of the query for usage should include the end day
+- fix: use wasm tiktoken calc token usage
+
+## 0.1.17 (2024-2-28)
+
+- feat: bundle uses a compact mode
+
+## 0.1.16 (2024-2-27)
+
+- fix: correct description of subscription
+
 ## 0.1.15 (2024-2-27)
 
 - feat: support disable token usage calculating
