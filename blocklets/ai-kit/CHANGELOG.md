@@ -1,3 +1,7 @@
+## 0.1.23 (2024-3-12)
+
+- fix: use async fs functions
+
 ## 0.1.22 (2024-3-9)
 
 - chore: bump version
