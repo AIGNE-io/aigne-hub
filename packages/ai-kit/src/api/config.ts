@@ -1,5 +1,6 @@
 import { EventEmitter } from 'events';
-import { existsSync, readFileSync, watch, writeFileSync } from 'fs';
+import { existsSync, watch, writeFileSync } from 'fs';
+import { readFile, writeFile } from 'fs/promises';
 import { join } from 'path';
 
 import config from '@blocklet/sdk/lib/config';
@@ -22,9 +23,9 @@ class Config extends EventEmitter {
     this.reloadConfigFile();
   }
 
-  private reloadConfigFile = () => {
+  private reloadConfigFile = async () => {
     try {
-      this.config = parse(readFileSync(Config.CONFIG_FILE_PATH).toString());
+      this.config = parse((await readFile(Config.CONFIG_FILE_PATH)).toString());
     } catch (error) {
       logger.error(`Parse ${Config.CONFIG_FILE_PATH} error`, { error });
     }
@@ -43,8 +44,8 @@ class Config extends EventEmitter {
     this.emit('change', this.config);
   }
 
-  save() {
-    writeFileSync(Config.CONFIG_FILE_PATH, stringify(this.config));
+  async save() {
+    await writeFile(Config.CONFIG_FILE_PATH, stringify(this.config));
   }
 }
 
