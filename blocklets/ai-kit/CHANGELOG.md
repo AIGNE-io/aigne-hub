@@ -1,3 +1,7 @@
+## 0.1.24 (2024-3-15)
+
+- chore: change to pnpm
+
 ## 0.1.23 (2024-3-12)
 
 - fix: use async fs functions

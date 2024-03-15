@@ -80,7 +80,7 @@ importers:
         specifier: ^2.9.51
         version: 2.9.51(@babel/core@7.24.0)(@mui/icons-material@5.15.13)(@mui/material@5.15.13)(@types/react@18.2.66)(prop-types@15.8.1)(react-dom@18.2.0)(react@18.2.0)
       '@blocklet/ai-kit':
-        specifier: ^0.1.23
+        specifier: ^0.1.24
         version: link:../../packages/ai-kit
       '@blocklet/logger':
         specifier: ^1.16.24
@@ -2598,7 +2598,7 @@ packages:
       '@arcblock/jwt': 1.18.113
       '@blocklet/constant': 1.16.24
       '@ocap/asset': 1.18.113
-      '@ocap/mcrypto': 1.18.113
+      '@ocap/mcrypto': 1.18.110
       '@ocap/types': 1.18.113
       '@ocap/util': 1.18.113
       '@ocap/wallet': 1.18.113
