@@ -8,15 +8,15 @@
   ],
   "author": "Arcblock <blocklet@arcblock.io> https://github.com/blocklet",
   "scripts": {
-    "dev": "yarn workspace ai-kit dev",
-    "bundle": "yarn build:libs && yarn workspace ai-kit bundle",
-    "lint": "yarn workspaces run lint",
-    "build": "npm run build:libs && yarn workspace ai-kit build",
-    "build:libs": "yarn workspace @blocklet/ai-kit build",
-    "clean": "yarn workspaces run clean",
+    "dev": "pnpm -F ai-kit dev",
+    "bundle": "pnpm build:libs && pnpm -F ai-kit bundle",
+    "lint": "pnpm -r run lint",
+    "build": "pnpm build:libs && pnpm -F ai-kit build",
+    "build:libs": "pnpm -F @blocklet/ai-kit build",
+    "clean": "pnpm -r run clean",
     "prepare": "husky install",
-    "bump-version": "zx scripts/bump-version.mjs",
-    "update:deps": "npx -y taze -r -w && yarn install && npx -y yarn-deduplicate yarn.lock && yarn"
+    "bump-version": "zx scripts/bump-version.mjs && pnpm install",
+    "update:deps": "npx -y taze -r -w && pnpm install"
   },
   "lint-staged": {
     "*.{mjs,js,jsx,ts,tsx}": [

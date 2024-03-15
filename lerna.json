@@ -2,6 +2,6 @@
   "version": "independent",
   "private": true,
   "useWorkspaces": true,
-  "npmClient": "yarn",
+  "npmClient": "pnpm",
   "packages": ["blocklets/*", "packages/*"]
 }
