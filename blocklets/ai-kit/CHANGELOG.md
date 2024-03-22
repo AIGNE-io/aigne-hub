@@ -1,3 +1,7 @@
+## 0.1.25 (2024-3-22)
+
+- chore: update deps
+
 ## 0.1.24 (2024-3-15)
 
 - chore: change to pnpm
