@@ -48,7 +48,7 @@
     "prettier": "^2.8.8",
     "prettier-plugin-import-sort": "^0.0.7",
     "rimraf": "^3.0.2",
-    "typescript": "^5.4.2",
+    "typescript": "^5.4.3",
     "zx": "^7.2.3"
   },
   "resolutions": {
@@ -65,7 +65,7 @@
     "@ocap/types": "^1.18.113",
     "@ocap/util": "^1.18.113",
     "@ocap/wallet": "^1.18.113",
-    "axios": "^1.6.7",
+    "axios": "^1.6.8",
     "prettier": "^2.8.8"
   }
 }
