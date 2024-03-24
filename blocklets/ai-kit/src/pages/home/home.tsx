@@ -14,6 +14,7 @@ export default function Home() {
     <>
       <Header
         // FIXME: remove following undefined props after issue https://github.com/ArcBlock/ux/issues/1136 solved
+        hideNavMenu={undefined}
         meta={undefined}
         sessionManagerProps={undefined}
         homeLink={undefined}

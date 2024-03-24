@@ -13,18 +13,25 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: release
 
-      - name: Set yarn cache
-        uses: c-hive/gha-yarn-cache@v2
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 8
+
+      - name: Setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: pnpm
 
       - name: Install dependencies
-        run: yarn
+        run: pnpm install
 
       - name: Build libs
-        run: yarn build:libs
+        run: pnpm build:libs
 
       - name: Upload to production store
         uses: blocklet/action-workflow@v1
@@ -35,7 +42,7 @@ jobs:
           skip-upload: false
           skip-deploy: true
           working-directory: blocklets/ai-kit
-          bundle-command: yarn bundle
+          bundle-command: pnpm bundle
           store-endpoint: ${{ secrets.STORE_ENDPOINT_PROD }}
           store-access-token: ${{ secrets.STORE_ACCESS_TOKEN_PROD }}
           slack-webhook: ${{ secrets.SLACK_WEBHOOK }}

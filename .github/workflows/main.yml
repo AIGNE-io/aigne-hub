@@ -13,16 +13,17 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
-      - name: Set yarn cache
-        uses: c-hive/gha-yarn-cache@v2
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 8
 
       - name: Install dependencies
-        run: yarn
+        run: pnpm install
 
       - name: Build libs
-        run: yarn build:libs
+        run: pnpm build:libs
 
       - name: Publish to NPM
         run: |
@@ -39,7 +40,7 @@ jobs:
           skip-upload: false
           skip-deploy: false
           working-directory: blocklets/ai-kit
-          bundle-command: yarn bundle
+          bundle-command: pnpm bundle
           store-endpoint: ${{ secrets.STORE_ENDPOINT_TEST }}
           store-access-token: ${{ secrets.STORE_ACCESS_TOKEN_TEST }}
           slack-webhook: ${{ secrets.SLACK_WEBHOOK }}

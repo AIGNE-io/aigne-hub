@@ -33,6 +33,6 @@
 - [ ] 本次变更中新增了修改后端数据的 API，我给这个 API 增加了 AuditLog
 - [ ] 本次变更新增了文件，对应 package.json 的 files 字段包括了这些新增的文件
 - [ ] 本次变更增加了依赖，并且放在了 dependencies 和 devDependencies 里面了
-- [ ] 本次变更中有添加或更新 npm 依赖，并且没有导致同 1 个依赖出现多个版本【检查 yarn.lock 的 diff】: `npx yarn-deduplicate yarn.lock`
-- [ ] 本次变更我已经把 ArcBlock 的依赖升级到了最新：`npm run update:deps`
-- [ ] (merge master 前检测) 成功 yarn dev, yarn bundle, yarn bump-version
+- [ ] 本次变更中有添加或更新 npm 依赖，并且没有导致同 1 个依赖出现多个版本【检查 pnpm-lock.yaml 的 diff】
+- [ ] 本次变更我已经把 ArcBlock 的依赖升级到了最新：`pnpm update:deps`
+- [ ] (merge master 前检测) 成功 pnpm dev, pnpm bundle, pnpm bump-version
