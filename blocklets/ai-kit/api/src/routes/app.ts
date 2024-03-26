@@ -1,5 +1,5 @@
 import { wallet } from '@api/libs/auth';
-import { Config } from '@api/libs/env';
+import { Config, PAYMENT_DID } from '@api/libs/env';
 import {
   cancelSubscription,
   getActiveSubscriptionOfApp,
@@ -44,7 +44,11 @@ router.get(
     const app = await App.findByPk(appId, { rejectOnEmpty: new Error(`App ${appId} not found`) });
     const subscription = await getActiveSubscriptionOfApp({ appId, description });
 
-    res.json({ id: app.id, subscription });
+    const subscriptionDetailUrl =
+      subscription &&
+      joinURL(config.env.appUrl, getComponentMountPoint(PAYMENT_DID), 'customer/subscription', subscription.id);
+
+    res.json({ id: app.id, subscription, subscriptionDetailUrl });
   }
 );
 
