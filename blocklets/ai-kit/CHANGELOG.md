@@ -1,3 +1,7 @@
+## 0.1.26 (2024-3-26)
+
+- fix: add a link to subscription detail page
+
 ## 0.1.25 (2024-3-22)
 
 - chore: update deps
