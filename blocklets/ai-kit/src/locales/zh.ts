@@ -18,4 +18,5 @@ export default flat({
   recoverSubscriptionSucceed: '恢复订阅成功！',
   total: '合计',
   monthlySpend: '月度消费',
+  viewSubscriptionDetail: '查看订阅详情',
 });

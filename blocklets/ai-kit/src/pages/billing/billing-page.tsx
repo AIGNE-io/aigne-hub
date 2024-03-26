@@ -11,6 +11,7 @@ import {
   CheckCircleOutlineRounded,
   ErrorOutlineRounded,
   MoreHorizRounded,
+  OpenInNewRounded,
   RouterRounded,
 } from '@mui/icons-material';
 import {
@@ -196,33 +197,41 @@ function UseAIKitServiceSwitch() {
         )}
       </Stack>
 
-      {canRecover && !!cancelAt && (
-        <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-          <AccessAlarmRounded color="warning" fontSize="small" />
-          <Box component="span">&nbsp;{t('unsubscribeAt')}&nbsp;</Box>
-          <RelativeTime locale={locale} type="absolute" value={cancelAt * 1000} />
+      <Stack direction="row" alignItems="center" gap={2}>
+        {canRecover && !!cancelAt && (
+          <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+            <AccessAlarmRounded color="warning" fontSize="small" />
+            <Box component="span">&nbsp;{t('unsubscribeAt')}&nbsp;</Box>
+            <RelativeTime locale={locale} type="absolute" value={cancelAt * 1000} />
 
-          <Button
-            sx={{ ml: 1 }}
-            onClick={() =>
-              connectApi.open({
-                locale,
-                action: 'recover-subscription-ai-service',
-                messages: {
-                  title: t('recoverSubscription'),
-                  scan: t('recoverSubscriptionTip'),
-                  confirm: t('recoverSubscription'),
-                  success: `${t('recoverSubscriptionSucceed')}`,
-                },
-                async onSuccess() {
-                  await fetch();
-                },
-              })
-            }>
-            {t('recoverSubscription')}
+            <Button
+              sx={{ ml: 1 }}
+              onClick={() =>
+                connectApi.open({
+                  locale,
+                  action: 'recover-subscription-ai-service',
+                  messages: {
+                    title: t('recoverSubscription'),
+                    scan: t('recoverSubscriptionTip'),
+                    confirm: t('recoverSubscription'),
+                    success: `${t('recoverSubscriptionSucceed')}`,
+                  },
+                  async onSuccess() {
+                    await fetch();
+                  },
+                })
+              }>
+              {t('recoverSubscription')}
+            </Button>
+          </Typography>
+        )}
+
+        {app.subscriptionDetailUrl && (
+          <Button component="a" href={app.subscriptionDetailUrl} target="_blank" endIcon={<OpenInNewRounded />}>
+            {t('viewSubscriptionDetail')}
           </Button>
-        </Typography>
-      )}
+        )}
+      </Stack>
     </Stack>
   );
 }

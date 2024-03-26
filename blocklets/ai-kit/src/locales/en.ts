@@ -18,4 +18,5 @@ export default flat({
   recoverSubscriptionSucceed: 'Subscription recover successful!',
   total: 'Total',
   monthlySpend: 'Monthly Spend',
+  viewSubscriptionDetail: 'View subscription details',
 });

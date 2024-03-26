@@ -4,6 +4,7 @@ export interface AppStatusResult {
   id: string;
   // FIXME: use `TSubscriptionExpanded` after issue (https://github.com/sequelize/sequelize/issues/16268) fixed
   subscription?: any;
+  subscriptionDetailUrl?: string;
   config?: AIKitServiceConfig | null;
 }
 

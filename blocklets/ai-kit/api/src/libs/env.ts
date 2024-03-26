@@ -6,6 +6,8 @@ import logger from './logger';
 
 export const isDevelopment = config.env.mode === 'development';
 
+export const PAYMENT_DID = 'z2qaCNvKMv5GjouKdcDWexv6WqtHbpNPQDnAk';
+
 type Pricing = {
   subscriptionPaymentLink: string;
   subscriptionProductId: string;
