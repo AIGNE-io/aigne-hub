@@ -1,3 +1,7 @@
+## 0.1.27 (2024-4-19)
+
+- chore: chore: remove /config permission logic
+
 ## 0.1.26 (2024-3-26)
 
 - fix: add a link to subscription detail page
