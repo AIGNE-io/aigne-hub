@@ -56,7 +56,8 @@ export interface SetAppConfigPayload {
   useAIKitService?: boolean;
 }
 
-router.get('/config', ensureAdmin, async (_, res) => {
+// support multi-tenant
+router.get('/config', async (_, res) => {
   res.json(AIKitConfig.config);
 });
 
