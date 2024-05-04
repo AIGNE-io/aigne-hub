@@ -1,3 +1,7 @@
+## 0.1.30 (2024-5-4)
+
+- fix: use switchDid instead of switchPassport
+
 ## 0.1.29 (2024-4-30)
 
 - chore: update deps
