@@ -7,8 +7,6 @@ import path from 'path';
 
 import { $, chalk, fs } from 'zx';
 
-import batchModifyDepsVersion from './batch-modify-deps-version.mjs';
-
 execSync('bumpp --no-tag --no-commit --no-push package.json blocklets/*/package.json packages/*/package.json', {
   stdio: 'inherit',
 });
@@ -49,13 +47,6 @@ for (const ymlDir of pathList) {
   }
 }
 console.log(chalk.greenBright('[info]: all blocklets version modified.'));
-
-// modify the /create-app/templates plugin version
-await batchModifyDepsVersion({
-  dirPath: './blocklets',
-  depList: ['@blocklet/ai-kit'], // scan the packages directory to get the dep list
-  version: `^${version}`,
-});
 
 process.stdin.setRawMode(true);
 process.stdin.resume();

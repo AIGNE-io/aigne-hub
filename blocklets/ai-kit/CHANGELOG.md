@@ -1,3 +1,19 @@
+## 0.1.30 (2024-5-4)
+
+- fix: use switchDid instead of switchPassport
+
+## 0.1.29 (2024-4-30)
+
+- chore: update deps
+
+## 0.1.28 (2024-4-28)
+
+- chore: update deps
+
+## 0.1.27 (2024-4-19)
+
+- chore: chore: remove /config permission logic
+
 ## 0.1.26 (2024-3-26)
 
 - fix: add a link to subscription detail page

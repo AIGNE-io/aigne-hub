@@ -1,7 +1,7 @@
 {
   "name": "ai-kit",
   "private": true,
-  "version": "0.1.26",
+  "version": "0.1.30",
   "workspaces": [
     "blocklets/*",
     "packages/*"
@@ -15,7 +15,7 @@
     "build:libs": "pnpm -F @blocklet/ai-kit build",
     "clean": "pnpm -r run clean",
     "prepare": "husky install",
-    "bump-version": "zx scripts/bump-version.mjs && pnpm install",
+    "bump-version": "zx scripts/bump-version.mjs",
     "update:deps": "npx -y taze -r -w && pnpm install"
   },
   "lint-staged": {
@@ -48,23 +48,23 @@
     "prettier": "^2.8.8",
     "prettier-plugin-import-sort": "^0.0.7",
     "rimraf": "^3.0.2",
-    "typescript": "^5.4.3",
+    "typescript": "^5.4.5",
     "zx": "^7.2.3"
   },
   "resolutions": {
-    "@arcblock/did": "^1.18.113",
-    "@arcblock/did-auth": "^1.18.113",
-    "@arcblock/did-ext": "^1.18.113",
-    "@arcblock/did-util": "^1.18.113",
-    "@arcblock/event-hub": "^1.18.113",
-    "@arcblock/jwt": "^1.18.113",
-    "@arcblock/validator": "^1.18.113",
-    "@arcblock/ws": "^1.18.113",
-    "@ocap/asset": "^1.18.113",
-    "@ocap/client": "^1.18.113",
-    "@ocap/types": "^1.18.113",
-    "@ocap/util": "^1.18.113",
-    "@ocap/wallet": "^1.18.113",
+    "@arcblock/did": "^1.18.116",
+    "@arcblock/did-auth": "^1.18.116",
+    "@arcblock/did-ext": "^1.18.116",
+    "@arcblock/did-util": "^1.18.116",
+    "@arcblock/event-hub": "^1.18.116",
+    "@arcblock/jwt": "^1.18.116",
+    "@arcblock/validator": "^1.18.116",
+    "@arcblock/ws": "^1.18.116",
+    "@ocap/asset": "^1.18.116",
+    "@ocap/client": "^1.18.116",
+    "@ocap/types": "^1.18.116",
+    "@ocap/util": "^1.18.116",
+    "@ocap/wallet": "^1.18.116",
     "axios": "^1.6.8",
     "prettier": "^2.8.8"
   }
