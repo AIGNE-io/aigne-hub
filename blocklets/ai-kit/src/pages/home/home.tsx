@@ -39,7 +39,7 @@ export default function Home() {
                     Playground
                   </Button>
                 ) : (
-                  <Button onClick={session.user ? session.switchPassport : session.login} variant="contained">
+                  <Button onClick={session.user ? session.switchDid : session.login} variant="contained">
                     Login as Admin to access playground
                   </Button>
                 )}
