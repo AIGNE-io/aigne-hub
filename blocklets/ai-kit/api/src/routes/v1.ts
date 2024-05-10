@@ -166,6 +166,7 @@ router.post(
     if (Config.verbose) logger.info('AI Kit completions input:', body);
 
     res.setHeader('X-Accel-Buffering', 'no');
+    res.setHeader('Cache-Control', 'no-cache');
 
     const isEventStream = req.accepts().some((i) => i.startsWith('text/event-stream'));
 
