@@ -302,8 +302,7 @@ function UseCreditsCharts() {
     return { ...map[d], date: d };
   });
 
-  const models = [...new Set(data?.list.map((i) => i.model))];
-
+  const models = [...new Set((data?.list || []).map((i) => i.model))];
   const colors = ['#ffc800', '#b7ff00', '#40ff00', '#00ffae', '#00c3ff', '#0066ff', '#5500ff', '#ae00ff'];
 
   return (

@@ -117,6 +117,18 @@ const completionsRequestSchema = Joi.object<
       })
     )
     .empty(Joi.array().length(0)),
+  toolChoice: Joi.alternatives()
+    .try(
+      Joi.string().valid('auto', 'none', 'required'),
+      Joi.object({
+        type: Joi.string().valid('function').required(),
+        function: Joi.object({
+          name: Joi.string().required(),
+          description: Joi.string(),
+        }).required(),
+      })
+    )
+    .optional(),
 }).xor('prompt', 'messages');
 
 const retry = (callback: (req: Request, res: Response) => Promise<void>): any => {
@@ -189,7 +201,6 @@ router.post(
       for await (const chunk of result) {
         content += chunk.delta?.content || '';
         if (chunk.delta?.toolCalls?.length) toolCalls.push(...chunk.delta.toolCalls);
-
         if (isEventStream) {
           emitEventStreamChunk(chunk);
         } else if (input.stream && chunk.delta?.content) {

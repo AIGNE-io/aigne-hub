@@ -30,6 +30,17 @@ export interface ChatCompletionInput {
   presencePenalty?: number;
   frequencyPenalty?: number;
   maxTokens?: number;
+  toolChoice?:
+    | 'auto'
+    | 'none'
+    | 'required'
+    | {
+        type: 'function';
+        function: {
+          name: string;
+          description?: string;
+        };
+      };
   tools?: {
     type: 'function';
     function: {
