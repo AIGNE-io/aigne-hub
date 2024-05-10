@@ -1,3 +1,7 @@
+## 0.1.31 (2024-5-10)
+
+- fix: disable accel-buffering for nginx & only pass necessary headers in proxy
+
 ## 0.1.30 (2024-5-4)
 
 - fix: use switchDid instead of switchPassport
