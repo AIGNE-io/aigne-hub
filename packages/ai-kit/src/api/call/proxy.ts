@@ -1,8 +1,11 @@
+import http from 'http';
+import https from 'https';
+
 import { getComponentWebEndpoint } from '@blocklet/sdk/lib/component';
 import { sign } from '@blocklet/sdk/lib/util/verify-sign';
 import { NextFunction, Request, Response } from 'express';
-import proxy from 'express-http-proxy';
-import { joinURL, parseURL, withQuery } from 'ufo';
+import { isNil, pick } from 'lodash';
+import { joinURL, parseURL, stringifyParsedURL } from 'ufo';
 
 import AIKitConfig from '../config';
 import { AI_KIT_BASE_URL } from '../constants';
@@ -19,35 +22,53 @@ export function proxyToAIKit(
     | '/api/app/status'
     | '/api/app/usage'
     | '/api/app/register',
-  options: { useAIKitService?: boolean } & proxy.ProxyOptions = {}
+  {
+    useAIKitService = AIKitConfig.useAIKitService,
+    proxyReqHeaders = ['accept', 'content-type'],
+    proxyResHeaders = ['content-type', 'cache-control'],
+  }: {
+    useAIKitService?: boolean;
+    proxyReqHeaders?: string[];
+    proxyResHeaders?: string[];
+  } = {}
 ) {
-  return (req: Request, res: Response, next: NextFunction) => {
-    const { useAIKitService = AIKitConfig.useAIKitService } = options;
+  const parseReqBody = path !== '/api/v1/audio/transcriptions';
 
+  return (req: Request, res: Response, next: NextFunction) => {
     const url = parseURL(joinURL(useAIKitService ? AI_KIT_BASE_URL : getComponentWebEndpoint('ai-kit'), path));
 
-    proxy(url.host!, {
-      https: url.protocol === 'https:',
-      limit: '10mb',
-      parseReqBody: path !== '/api/v1/audio/transcriptions',
-      proxyReqPathResolver(req) {
-        return withQuery(url.pathname, req.query);
-      },
-      ...options,
-      proxyReqOptDecorator(proxyReqOpts, srcReq) {
-        proxyReqOpts.headers = {
-          ...proxyReqOpts.headers,
+    const proxyReq = (url.protocol === 'https:' ? https : http).request(
+      stringifyParsedURL(url),
+      {
+        headers: {
+          ...pick(req.headers, ...proxyReqHeaders),
           ...(useAIKitService
-            ? getRemoteComponentCallHeaders(srcReq.body || {})
-            : { 'x-component-sig': sign(srcReq.body || {}) }),
-        };
-
-        if (options.proxyReqOptDecorator) {
-          return options.proxyReqOptDecorator(proxyReqOpts, srcReq);
-        }
-
-        return proxyReqOpts;
+            ? getRemoteComponentCallHeaders(req.body || {})
+            : { 'x-component-sig': sign(req.body || {}) }),
+        },
+        method: req.method,
       },
-    })(req, res, next);
+      (proxyRes) => {
+        res.setHeader('X-Accel-Buffering', 'no');
+
+        for (const [k, v] of Object.entries(pick(proxyRes.headers, ...proxyResHeaders))) {
+          if (!isNil(v)) res.setHeader(k, v);
+        }
+        proxyRes.pipe(res);
+      }
+    );
+
+    proxyReq.on('error', (e) => next(e));
+
+    req.on('aborted', () => {
+      proxyReq.destroy();
+    });
+
+    if (parseReqBody) {
+      proxyReq.write(JSON.stringify(req.body));
+      proxyReq.end();
+    } else {
+      req.pipe(proxyReq);
+    }
   };
 }

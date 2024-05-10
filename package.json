@@ -1,7 +1,7 @@
 {
   "name": "ai-kit",
   "private": true,
-  "version": "0.1.30",
+  "version": "0.1.31",
   "workspaces": [
     "blocklets/*",
     "packages/*"
@@ -52,19 +52,19 @@
     "zx": "^7.2.3"
   },
   "resolutions": {
-    "@arcblock/did": "^1.18.116",
-    "@arcblock/did-auth": "^1.18.116",
-    "@arcblock/did-ext": "^1.18.116",
-    "@arcblock/did-util": "^1.18.116",
-    "@arcblock/event-hub": "^1.18.116",
-    "@arcblock/jwt": "^1.18.116",
-    "@arcblock/validator": "^1.18.116",
-    "@arcblock/ws": "^1.18.116",
-    "@ocap/asset": "^1.18.116",
-    "@ocap/client": "^1.18.116",
-    "@ocap/types": "^1.18.116",
-    "@ocap/util": "^1.18.116",
-    "@ocap/wallet": "^1.18.116",
+    "@arcblock/did": "^1.18.117",
+    "@arcblock/did-auth": "^1.18.117",
+    "@arcblock/did-ext": "^1.18.117",
+    "@arcblock/did-util": "^1.18.117",
+    "@arcblock/event-hub": "^1.18.117",
+    "@arcblock/jwt": "^1.18.117",
+    "@arcblock/validator": "^1.18.117",
+    "@arcblock/ws": "^1.18.117",
+    "@ocap/asset": "^1.18.117",
+    "@ocap/client": "^1.18.117",
+    "@ocap/types": "^1.18.117",
+    "@ocap/util": "^1.18.117",
+    "@ocap/wallet": "^1.18.117",
     "axios": "^1.6.8",
     "prettier": "^2.8.8"
   }
