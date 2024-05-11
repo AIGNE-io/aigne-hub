@@ -1,3 +1,7 @@
+## 0.1.32 (2024-5-11)
+
+- chore: support tool choice
+
 ## 0.1.31 (2024-5-10)
 
 - fix: disable accel-buffering for nginx & only pass necessary headers in proxy
