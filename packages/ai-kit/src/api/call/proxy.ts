@@ -5,7 +5,7 @@ import { getComponentWebEndpoint } from '@blocklet/sdk/lib/component';
 import { sign } from '@blocklet/sdk/lib/util/verify-sign';
 import { NextFunction, Request, Response } from 'express';
 import { isNil, pick } from 'lodash';
-import { joinURL, parseURL, stringifyParsedURL } from 'ufo';
+import { joinURL, parseURL, stringifyParsedURL, withQuery } from 'ufo';
 
 import AIKitConfig from '../config';
 import { AI_KIT_BASE_URL } from '../constants';
@@ -35,7 +35,9 @@ export function proxyToAIKit(
   const parseReqBody = path !== '/api/v1/audio/transcriptions';
 
   return (req: Request, res: Response, next: NextFunction) => {
-    const url = parseURL(joinURL(useAIKitService ? AI_KIT_BASE_URL : getComponentWebEndpoint('ai-kit'), path));
+    const url = parseURL(
+      withQuery(joinURL(useAIKitService ? AI_KIT_BASE_URL : getComponentWebEndpoint('ai-kit'), path), req.query)
+    );
 
     const proxyReq = (url.protocol === 'https:' ? https : http).request(
       stringifyParsedURL(url),
