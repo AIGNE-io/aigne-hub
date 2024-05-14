@@ -1,3 +1,7 @@
+## 0.1.33 (2024-5-14)
+
+- chore: support tool choice
+
 ## 0.1.32 (2024-5-13)
 
 - fix: forward search params to ai-kit service
