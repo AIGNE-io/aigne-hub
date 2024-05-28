@@ -1,7 +1,6 @@
 ## 0.1.36 (2024-5-28)
 
 - fix: force customer account for subscription detail url
-- fix: forward search params to ai-kit service
 
 ## 0.1.35 (2024-5-28)
 
