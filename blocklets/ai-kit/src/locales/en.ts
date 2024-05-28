@@ -19,6 +19,6 @@ export default flat({
   monthlySpend: 'Monthly Spend',
   viewSubscriptionDetail: 'View subscription details',
   subscriptionPastDueTip:
-    'Your subscription has expired due to an outstanding balance. Please make a payment to restore your subscription.',
+    'Your subscription is overdue. Please make a payment promptly to restore your subscription service.',
   payNow: 'Pay Now',
 });
