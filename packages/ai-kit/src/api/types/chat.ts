@@ -30,6 +30,17 @@ export interface ChatCompletionInput {
   presencePenalty?: number;
   frequencyPenalty?: number;
   maxTokens?: number;
+  toolChoice?:
+    | 'auto'
+    | 'none'
+    | 'required'
+    | {
+        type: 'function';
+        function: {
+          name: string;
+          description?: string;
+        };
+      };
   tools?: {
     type: 'function';
     function: {
@@ -38,6 +49,9 @@ export interface ChatCompletionInput {
       parameters: Record<string, any>;
     };
   }[];
+  responseFormat?: {
+    type?: 'text' | 'json_object';
+  };
 }
 
 export type ChatCompletionResponse = ChatCompletionChunk | ChatCompletionError;

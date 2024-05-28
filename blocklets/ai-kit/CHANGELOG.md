@@ -1,3 +1,19 @@
+## 0.1.35 (2024-5-28)
+
+- feat: support response_format parameter for othe chat completion api
+
+## 0.1.34 (2024-5-24)
+
+- chore: update deps
+
+## 0.1.33 (2024-5-14)
+
+- chore: support tool choice
+
+## 0.1.32 (2024-5-13)
+
+- fix: forward search params to ai-kit service
+
 ## 0.1.31 (2024-5-10)
 
 - fix: disable accel-buffering for nginx & only pass necessary headers in proxy

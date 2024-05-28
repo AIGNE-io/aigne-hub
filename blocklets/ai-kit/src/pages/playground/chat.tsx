@@ -81,7 +81,7 @@ const Root = styled(Dashboard)`
 
     > .dashboard-footer {
       margin-top: 0;
-      padding: 0;
+      padding: 8px 0;
 
       .logo-container {
         svg {

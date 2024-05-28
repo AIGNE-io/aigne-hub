@@ -1,11 +1,15 @@
 {
   "name": "ai-kit",
   "private": true,
-  "version": "0.1.31",
+  "version": "0.1.35",
   "workspaces": [
     "blocklets/*",
     "packages/*"
   ],
+  "engines": {
+    "node": ">=18",
+    "pnpm": ">=9"
+  },
   "author": "Arcblock <blocklet@arcblock.io> https://github.com/blocklet",
   "scripts": {
     "dev": "pnpm -F ai-kit dev",
@@ -52,20 +56,20 @@
     "zx": "^7.2.3"
   },
   "resolutions": {
-    "@arcblock/did": "^1.18.117",
-    "@arcblock/did-auth": "^1.18.117",
-    "@arcblock/did-ext": "^1.18.117",
-    "@arcblock/did-util": "^1.18.117",
-    "@arcblock/event-hub": "^1.18.117",
-    "@arcblock/jwt": "^1.18.117",
-    "@arcblock/validator": "^1.18.117",
-    "@arcblock/ws": "^1.18.117",
-    "@ocap/asset": "^1.18.117",
-    "@ocap/client": "^1.18.117",
-    "@ocap/types": "^1.18.117",
-    "@ocap/util": "^1.18.117",
-    "@ocap/wallet": "^1.18.117",
-    "axios": "^1.6.8",
+    "@arcblock/did": "^1.18.121",
+    "@arcblock/did-auth": "^1.18.121",
+    "@arcblock/did-ext": "^1.18.121",
+    "@arcblock/did-util": "^1.18.121",
+    "@arcblock/event-hub": "^1.18.121",
+    "@arcblock/jwt": "^1.18.121",
+    "@arcblock/validator": "^1.18.121",
+    "@arcblock/ws": "^1.18.121",
+    "@ocap/asset": "^1.18.121",
+    "@ocap/client": "^1.18.121",
+    "@ocap/types": "^1.18.121",
+    "@ocap/util": "^1.18.121",
+    "@ocap/wallet": "^1.18.121",
+    "axios": "^1.7.2",
     "prettier": "^2.8.8"
   }
 }
