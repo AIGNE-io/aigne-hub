@@ -15,6 +15,7 @@ import {
   RouterRounded,
 } from '@mui/icons-material';
 import {
+  Alert,
   Box,
   Button,
   CircularProgress,
@@ -70,6 +71,8 @@ export default function BillingPage() {
     fetch();
   }, [fetch]);
 
+  const isPastDue = app?.subscription?.status === 'past_due';
+
   if (!app) {
     return (
       <Stack alignItems="center" py={10}>
@@ -86,7 +89,13 @@ export default function BillingPage() {
         <UseAIKitServiceSwitch />
       </Stack>
 
-      {app?.config?.useAIKitService && !isSubscriptionAvailable && <NonSubscriptions />}
+      {app?.config?.useAIKitService && isPastDue ? (
+        <Alert severity="warning" action={<Button href={app.subscriptionDetailUrl}>{t('payNow')}</Button>}>
+          {t('subscriptionPastDueTip')}
+        </Alert>
+      ) : (
+        !isSubscriptionAvailable && <NonSubscriptions />
+      )}
 
       {app.id && <UseCreditsCharts />}
     </Stack>

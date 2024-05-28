@@ -42,7 +42,11 @@ router.get(
 
     const { appId } = req.appClient!;
     const app = await App.findByPk(appId, { rejectOnEmpty: new Error(`App ${appId} not found`) });
-    const subscription = await getActiveSubscriptionOfApp({ appId, description });
+    const subscription = await getActiveSubscriptionOfApp({
+      appId,
+      description,
+      status: ['active', 'trialing', 'past_due'],
+    });
 
     const subscriptionDetailUrl =
       subscription &&
@@ -52,8 +56,6 @@ router.get(
           '__did-connect__': Buffer.from(
             JSON.stringify({
               forceConnected: subscription.customer.did,
-              // TODO: 等 zhanghan 实现不需要传 sourceAppPid
-              // sourceAppPid: 'current user did',
               switchBehavior: 'required',
             }),
             'utf8'
