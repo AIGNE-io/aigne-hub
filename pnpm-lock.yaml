@@ -86,8 +86,8 @@ importers:
         specifier: ^1.16.26
         version: 1.16.26
       '@blocklet/payment-js':
-        specifier: ^1.13.265
-        version: 1.13.265(encoding@0.1.13)
+        specifier: ^1.13.266
+        version: 1.13.266(encoding@0.1.13)
       '@blocklet/sdk':
         specifier: ^1.16.26
         version: 1.16.26(encoding@0.1.13)
@@ -309,8 +309,8 @@ importers:
         specifier: ^1.16.26
         version: 1.16.26
       '@blocklet/payment-js':
-        specifier: ^1.13.265
-        version: 1.13.265(encoding@0.1.13)
+        specifier: ^1.13.266
+        version: 1.13.266(encoding@0.1.13)
       '@blocklet/sdk':
         specifier: ^1.16.26
         version: 1.16.26(encoding@0.1.13)
@@ -558,7 +558,7 @@ packages:
       '@emotion/react': ^11.10.4
       '@emotion/styled': ^11.10.4
       '@mui/icons-material': '>=5.15.0'
-      '@mui/material': '>=5.15.0'
+      '@mui/material': ^5.15.18
       react: '>=18.2.0'
       react-router-dom: '>=6.22.3'
 
@@ -1431,11 +1431,11 @@ packages:
   '@blocklet/meta@1.16.26':
     resolution: {integrity: sha512-vcllgfWxDOoxx/LdHT5bIH89k63vRW9jeEyE+PF8dKD2C3rB/bnJNAP5SVNOFlf9xLQ0yMpB7z6dvBg3M2wNUQ==}
 
-  '@blocklet/payment-js@1.13.265':
-    resolution: {integrity: sha512-Q5xPwp7Ro++tZ7UbVbhh4xK13esmWMUvFwFuiSpgmWvW2L8PeI/pwjn25APRhpZMh8Uq7p0zkJPbaKt6jPZ3JA==}
+  '@blocklet/payment-js@1.13.266':
+    resolution: {integrity: sha512-w+XQBHKaxkpIubE8tZK9zARf7KJfCJpikghlo5whAxwvQghbrpcx8+m9yKrNQ2ezJjAt/e2E9Az3woVcBG2cJA==}
 
-  '@blocklet/payment-types@1.13.265':
-    resolution: {integrity: sha512-tmCePERC7AB4VxiKk4annfBd9/MG81dTT1fI4kaei12C5hzLQ5efGNqWr9YdWEWeNhK0ft5/2hbZaEw4KsFxPQ==}
+  '@blocklet/payment-types@1.13.266':
+    resolution: {integrity: sha512-noKixVelSPFKdKfdpBA1SdQSUrj0hIXG3ZRW9Wgg3uPfeNACbt9MwM8Aaqt4rFL/SvPGD5cI0/fFHKyf3MvNVg==}
 
   '@blocklet/sdk@1.16.26':
     resolution: {integrity: sha512-yOZ0YEKTDliQYMinamY0h0h22VYJyuY9lxSk/qVdAci/KEcbj4tkhP+9vnRVS0eiSGpL2qfi6UyaJ+SDDAojog==}
@@ -1905,8 +1905,8 @@ packages:
     peerDependencies:
       '@emotion/react': ^11.5.0
       '@emotion/styled': ^11.3.0
-      '@mui/material': '>=5.15.0'
-      '@types/react': ^17.0.0 || ^18.0.0
+      '@mui/material': ^5.15.18
+      '@types/react': ^18.3.3
       react: ^17.0.0 || ^18.0.0
       react-dom: ^17.0.0 || ^18.0.0
     peerDependenciesMeta:
@@ -10149,7 +10149,7 @@ snapshots:
 
   '@arcblock/did@1.18.121':
     dependencies:
-      '@ocap/mcrypto': 1.18.115
+      '@ocap/mcrypto': 1.18.121
       '@ocap/util': 1.18.121
       bn.js: 5.2.1
       debug: 4.3.4(supports-color@9.4.0)
@@ -11490,9 +11490,9 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@blocklet/payment-js@1.13.265(encoding@0.1.13)':
+  '@blocklet/payment-js@1.13.266(encoding@0.1.13)':
     dependencies:
-      '@blocklet/payment-types': 1.13.265
+      '@blocklet/payment-types': 1.13.266
       '@blocklet/sdk': 1.16.26(encoding@0.1.13)
     transitivePeerDependencies:
       - bufferutil
@@ -11501,7 +11501,7 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@blocklet/payment-types@1.13.265': {}
+  '@blocklet/payment-types@1.13.266': {}
 
   '@blocklet/sdk@1.16.26(encoding@0.1.13)':
     dependencies:
