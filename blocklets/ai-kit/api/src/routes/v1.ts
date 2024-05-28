@@ -129,6 +129,9 @@ const completionsRequestSchema = Joi.object<
       })
     )
     .optional(),
+  responseFormat: Joi.object({
+    type: Joi.string().valid('text', 'json_object').empty([null, '']),
+  }),
 }).xor('prompt', 'messages');
 
 const retry = (callback: (req: Request, res: Response) => Promise<void>): any => {

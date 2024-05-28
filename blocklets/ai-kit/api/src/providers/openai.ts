@@ -42,6 +42,7 @@ export async function* openaiChatCompletion(
     max_tokens: input.maxTokens,
     tools: input.tools,
     tool_choice: input.tools?.length ? input.toolChoice ?? 'auto' : undefined,
+    response_format: input.responseFormat,
   });
 
   for await (const chunk of res) {
