@@ -42,11 +42,26 @@ router.get(
 
     const { appId } = req.appClient!;
     const app = await App.findByPk(appId, { rejectOnEmpty: new Error(`App ${appId} not found`) });
-    const subscription = await getActiveSubscriptionOfApp({ appId, description });
+    const subscription = await getActiveSubscriptionOfApp({
+      appId,
+      description,
+      status: ['active', 'trialing', 'past_due'],
+    });
 
     const subscriptionDetailUrl =
       subscription &&
-      joinURL(config.env.appUrl, getComponentMountPoint(PAYMENT_DID), 'customer/subscription', subscription.id);
+      withQuery(
+        joinURL(config.env.appUrl, getComponentMountPoint(PAYMENT_DID), 'customer/subscription', subscription.id),
+        {
+          '__did-connect__': Buffer.from(
+            JSON.stringify({
+              forceConnected: subscription.customer.did,
+              switchBehavior: 'required',
+            }),
+            'utf8'
+          ).toString('base64url'),
+        }
+      );
 
     res.json({ id: app.id, subscription, subscriptionDetailUrl });
   }

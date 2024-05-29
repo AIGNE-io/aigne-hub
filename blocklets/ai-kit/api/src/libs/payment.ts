@@ -1,6 +1,6 @@
 import { SubscriptionError, SubscriptionErrorType } from '@blocklet/ai-kit/api';
 import { appStatus } from '@blocklet/ai-kit/api/call/app';
-import payment from '@blocklet/payment-js';
+import payment, { Subscription } from '@blocklet/payment-js';
 import config from '@blocklet/sdk/lib/config';
 import { parseURL } from 'ufo';
 
@@ -11,14 +11,21 @@ const PAYMENT_DID = 'z2qaCNvKMv5GjouKdcDWexv6WqtHbpNPQDnAk';
 
 export const isPaymentInstalled = () => !!config.components.find((i) => i.did === PAYMENT_DID);
 
-export async function getActiveSubscriptionOfApp({ appId, description }: { appId: string; description?: string }) {
+export async function getActiveSubscriptionOfApp({
+  appId,
+  description,
+  status = ['active', 'trialing'],
+}: {
+  appId: string;
+  description?: string;
+  status?: Subscription['status'][];
+}) {
   if (!isPaymentInstalled()) return undefined;
 
   // @ts-ignore TODO: remove ts-ignore after upgrade @did-pay/client
   const subscription = (await payment.subscriptions.list({ 'metadata.appId': appId })).list.find(
     (i) =>
-      ['active', 'trialing'].includes(i.status) &&
-      i.items.some((j) => j.price.product.id === Config.pricing?.subscriptionProductId)
+      status.includes(i.status) && i.items.some((j) => j.price.product.id === Config.pricing?.subscriptionProductId)
   );
 
   if (description && subscription) {

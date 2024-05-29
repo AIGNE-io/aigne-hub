@@ -1,17 +1,23 @@
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import Toast from '@arcblock/ux/lib/Toast';
 import { LoadingButton } from '@mui/lab';
+import { Typography } from '@mui/material';
 import { useCallback, useEffect, useState } from 'react';
 import { joinURL, withQuery } from 'ufo';
 
 import { appServiceRegister } from '../../api/app';
+import withLocaleProvider from '../../utils/withLocaleProvider';
 import { useAIKitServiceStatus } from './state';
 
-export default function SubscribeButton({ shouldOpenInNewTab = false }: { shouldOpenInNewTab?: boolean }) {
+function SubscribeButton({ shouldOpenInNewTab = false }: { shouldOpenInNewTab?: boolean }) {
   const { t } = useLocaleContext();
   const fetch = useAIKitServiceStatus((i) => i.fetch);
   const isSubscriptionAvailable = useAIKitServiceStatus((i) => i.computed?.isSubscriptionAvailable);
   const loading = useAIKitServiceStatus((i) => i.loading);
+  const subscription = useAIKitServiceStatus((i) => i.app?.subscription);
+  const subscriptionDetailUrl = useAIKitServiceStatus((i) => i.app?.subscriptionDetailUrl);
+
+  const isPastDue = subscription?.status === 'past_due';
 
   const [submitting, setSubmitting] = useState(false);
 
@@ -48,18 +54,26 @@ export default function SubscribeButton({ shouldOpenInNewTab = false }: { should
   if (!loading && !isSubscriptionAvailable) {
     return (
       <LoadingButton
-        onClick={linkToAiKit}
+        onClick={isPastDue && subscriptionDetailUrl ? undefined : linkToAiKit}
+        href={subscriptionDetailUrl}
         size="small"
         key="button"
         variant="outlined"
-        color="primary"
+        color={isPastDue ? 'error' : 'primary'}
         type="button"
-        sx={{ mx: 0.5 }}
+        sx={{ mx: 0.5, minWidth: 0 }}
         loading={submitting}>
-        {t('subscribeAIService')}
+        <Typography noWrap>{t(isPastDue ? 'aiServicePastDue' : 'subscribeAIService')}</Typography>
       </LoadingButton>
     );
   }
 
   return null;
 }
+
+export default withLocaleProvider(SubscribeButton, {
+  translations: {
+    en: { subscribeAIService: 'Subscribe AI Service', aiServicePastDue: 'Pay for overdue AI service' },
+    zh: { subscribeAIService: '订阅 AI 服务', aiServicePastDue: '支付 AI 服务欠费' },
+  },
+});

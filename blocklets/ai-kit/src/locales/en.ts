@@ -7,7 +7,6 @@ export default flat({
   aiProviderLocalAIKit: 'Local AIKit component',
   selectMonth: 'Select Month',
   subscribeAITip: 'Subscribe to AI Kit now to unlock the power of AI!',
-  subscribeAIService: 'Subscribe AI Service',
   unsubscribe: 'Unsubscribe',
   unsubscribeTip: 'After unsubscribing, you will no longer be able to continue using the AI services we provide!',
   cancel: 'Cancel',
@@ -19,4 +18,7 @@ export default flat({
   total: 'Total',
   monthlySpend: 'Monthly Spend',
   viewSubscriptionDetail: 'View subscription details',
+  subscriptionPastDueTip:
+    'Your subscription is overdue. Please make a payment promptly to restore your subscription service.',
+  payNow: 'Pay Now',
 });

@@ -51,6 +51,7 @@ export function proxyToAIKit(
         method: req.method,
       },
       (proxyRes) => {
+        if (proxyRes.statusCode) res.status(proxyRes.statusCode);
         res.setHeader('X-Accel-Buffering', 'no');
 
         for (const [k, v] of Object.entries(pick(proxyRes.headers, ...proxyResHeaders))) {
