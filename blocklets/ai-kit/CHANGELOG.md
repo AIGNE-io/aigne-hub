@@ -1,3 +1,7 @@
+## 0.1.37 (2024-6-6)
+
+- feat: return usage in stream response
+
 ## 0.1.36 (2024-5-28)
 
 - fix: force customer account for subscription detail url
