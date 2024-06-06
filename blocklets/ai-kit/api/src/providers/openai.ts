@@ -63,13 +63,15 @@ export async function* openaiChatCompletion(
             function: i.function && { name: i.function.name, arguments: i.function.arguments },
           })),
         },
-        usage: chunk.usage
-          ? {
-              promptTokens: chunk.usage.prompt_tokens,
-              completionTokens: chunk.usage.completion_tokens,
-              totalTokens: chunk.usage.total_tokens,
-            }
-          : undefined,
+      };
+    }
+    if (chunk.usage) {
+      yield {
+        usage: {
+          promptTokens: chunk.usage.prompt_tokens,
+          completionTokens: chunk.usage.completion_tokens,
+          totalTokens: chunk.usage.total_tokens,
+        },
       };
     }
   }

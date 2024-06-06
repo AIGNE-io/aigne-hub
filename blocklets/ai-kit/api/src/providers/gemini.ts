@@ -67,11 +67,15 @@ export async function* geminiChatCompletion(
             })),
         },
       };
-    } else if (chunk.promptFeedback?.blockReason) {
+    }
+
+    if (chunk.promptFeedback?.blockReason) {
       const { blockReason, blockReasonMessage } = chunk.promptFeedback;
 
       throw new Error(['PROMPT_BLOCKED', blockReason, blockReasonMessage].filter(Boolean).join(' '));
-    } else if (chunk.usageMetadata) {
+    }
+
+    if (chunk.usageMetadata) {
       yield {
         usage: {
           promptTokens: chunk.usageMetadata.promptTokenCount,
