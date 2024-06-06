@@ -81,9 +81,9 @@ export type ImageGenerationSize = '256x256' | '512x512' | '1024x1024';
 export interface ImageGenerationFn<P extends {}> {
   (options: P & { response_format?: 'url' }): Promise<ImageGenerations<{ url: string }>>;
   (options: P & { response_format?: 'b64_json' }): Promise<ImageGenerations<{ b64_json: string }>>;
-  (options: P & { response_format?: 'url' | 'b64_json' }): Promise<
-    ImageGenerations<{ url: string } | { b64_json: string }>
-  >;
+  (
+    options: P & { response_format?: 'url' | 'b64_json' }
+  ): Promise<ImageGenerations<{ url: string } | { b64_json: string }>>;
 }
 
 export const createImageGenerationApi =

@@ -47,7 +47,7 @@ export async function* geminiChatCompletion(
 
   for await (const chunk of stream) {
     const choice = chunk.candidates?.[0];
-    if (choice?.content.parts) {
+    if (choice?.content?.parts) {
       yield {
         delta: {
           role: 'assistant',

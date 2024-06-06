@@ -1,6 +1,6 @@
-import flat from 'flat';
+import { flatten } from 'flat';
 
-export default flat({
+export default flatten({
   usage: '使用情况',
   aiProvider: 'AI 提供商',
   aiProviderSubscription: '订阅 AI Kit 服务',

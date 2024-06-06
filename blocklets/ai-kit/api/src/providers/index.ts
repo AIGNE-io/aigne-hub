@@ -12,15 +12,15 @@ export function chatCompletion(
   const result = input.model.startsWith('gemini')
     ? geminiChatCompletion(input, { apiKey: getAIApiKey('gemini') })
     : input.model.startsWith('gpt')
-    ? openaiChatCompletion(input, getOpenAI())
-    : input.model.startsWith('openRouter/')
-    ? openaiChatCompletion(
-        { ...input, model: input.model.replace('openRouter/', '') },
-        new OpenAI({ baseURL: 'https://openrouter.ai/api/v1', apiKey: getAIApiKey('openRouter') })
-      )
-    : (() => {
-        throw new Error(`Unsupported model ${input.model}`);
-      })();
+      ? openaiChatCompletion(input, getOpenAI())
+      : input.model.startsWith('openRouter/')
+        ? openaiChatCompletion(
+            { ...input, model: input.model.replace('openRouter/', '') },
+            new OpenAI({ baseURL: 'https://openrouter.ai/api/v1', apiKey: getAIApiKey('openRouter') })
+          )
+        : (() => {
+            throw new Error(`Unsupported model ${input.model}`);
+          })();
 
   return result;
 }
