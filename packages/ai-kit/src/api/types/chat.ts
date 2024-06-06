@@ -54,7 +54,7 @@ export interface ChatCompletionInput {
   };
 }
 
-export type ChatCompletionResponse = ChatCompletionChunk | ChatCompletionError;
+export type ChatCompletionResponse = ChatCompletionChunk | ChatCompletionError | ChatCompletionUsage;
 
 export interface ChatCompletionChunk {
   delta: {
@@ -79,8 +79,20 @@ export interface ChatCompletionError {
   };
 }
 
+export interface ChatCompletionUsage {
+  usage: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  };
+}
+
 export function isChatCompletionChunk(data: ChatCompletionResponse): data is ChatCompletionChunk {
   return typeof (data as ChatCompletionChunk).delta === 'object';
+}
+
+export function isChatCompletionUsage(data: ChatCompletionResponse): data is ChatCompletionUsage {
+  return typeof (data as ChatCompletionUsage).usage === 'object';
 }
 
 export function isChatCompletionError(data: ChatCompletionResponse): data is ChatCompletionError {

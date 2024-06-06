@@ -29,14 +29,6 @@ export const Config = {
     return this._verbose;
   },
 
-  _calcTokenUsages: undefined as boolean | undefined,
-  get calcTokenUsages() {
-    if (this._calcTokenUsages === undefined) {
-      this._calcTokenUsages = Joi.boolean().validate(config.env.preferences.calcTokenUsage).value ?? false;
-    }
-    return this._calcTokenUsages;
-  },
-
   _openaiApiKey: undefined as string[] | undefined,
   get openaiApiKey() {
     if (this._openaiApiKey === undefined) {

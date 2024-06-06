@@ -11,7 +11,7 @@ import { joinURL } from 'ufo';
 import AIKitConfig from '../config';
 import { SubscriptionError, SubscriptionErrorType } from '../error';
 import {
-  ChatCompletionChunk,
+  ChatCompletionError,
   ChatCompletionInput,
   ChatCompletionResponse,
   EmbeddingInput,
@@ -62,7 +62,7 @@ export async function status({
 export async function chatCompletions(
   input: ChatCompletionInput,
   options?: { useAIKitService?: boolean; responseType?: undefined }
-): Promise<ReadableStream<ChatCompletionChunk>>;
+): Promise<ReadableStream<Exclude<ChatCompletionResponse, ChatCompletionError>>>;
 export async function chatCompletions(
   input: ChatCompletionInput,
   options: { useAIKitService?: boolean; responseType: 'stream' }
@@ -73,7 +73,7 @@ export async function chatCompletions(
     useAIKitService = AIKitConfig.useAIKitService,
     ...options
   }: { useAIKitService?: boolean; responseType?: 'stream' } = {}
-): Promise<ReadableStream<ChatCompletionChunk> | AxiosResponse<IncomingMessage, any>> {
+): Promise<ReadableStream<Exclude<ChatCompletionResponse, ChatCompletionError>> | AxiosResponse<IncomingMessage, any>> {
   const response = catchAndRethrowUpstreamError(
     useAIKitService
       ? aiKitApi<IncomingMessage>('/api/v1/chat/completions', {
@@ -97,7 +97,7 @@ export async function chatCompletions(
 
   if (options?.responseType === 'stream') return response;
 
-  return new ReadableStream<ChatCompletionChunk>({
+  return new ReadableStream<Exclude<ChatCompletionResponse, ChatCompletionError>>({
     async start(controller) {
       try {
         const stream = readableToWeb((await response).data)
