@@ -1,3 +1,7 @@
+## 0.1.38 (2024-6-20)
+
+- chore: ensure blocklet works in isolation mode
+
 ## 0.1.37 (2024-6-6)
 
 - feat: return usage in stream response
