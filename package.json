@@ -65,6 +65,7 @@
     "@arcblock/jwt": "^1.18.123",
     "@arcblock/validator": "^1.18.123",
     "@arcblock/ws": "^1.18.123",
+    "@blocklet/js-sdk": "1.16.28-beta-32519531",
     "@blocklet/logger": "1.16.28-beta-32519531",
     "@blocklet/sdk": "1.16.28-beta-32519531",
     "@ocap/asset": "^1.18.123",

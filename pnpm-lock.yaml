@@ -13,6 +13,7 @@ overrides:
   '@arcblock/jwt': ^1.18.123
   '@arcblock/validator': ^1.18.123
   '@arcblock/ws': ^1.18.123
+  '@blocklet/js-sdk': 1.16.28-beta-32519531
   '@blocklet/logger': 1.16.28-beta-32519531
   '@blocklet/sdk': 1.16.28-beta-32519531
   '@ocap/asset': ^1.18.123
@@ -512,7 +513,7 @@ packages:
     resolution: {integrity: sha512-cYj/XTXmwX8VX4wl0jvkwEI0KXGYznngEKblGb2o/ZlK+n/zDen7lFday1n/ro94c1EjTRlwLTAWmPwQ8rhF1g==}
     peerDependencies:
       '@arcblock/ux': ^2.9.79
-      '@blocklet/js-sdk': ^1.16.28-beta-641c9f13
+      '@blocklet/js-sdk': 1.16.28-beta-32519531
       '@emotion/react': ^11.10.4
       '@emotion/styled': ^11.10.4
       '@mui/material': ^5.15.0
@@ -1368,7 +1369,7 @@ packages:
     peerDependencies:
       '@arcblock/did-connect': ^2.9.79
       '@arcblock/ux': ^2.9.79
-      '@blocklet/js-sdk': ^1.16.28-beta-641c9f13
+      '@blocklet/js-sdk': 1.16.28-beta-32519531
       '@emotion/react': ^11.10.4
       '@emotion/styled': ^11.10.4
       '@mui/icons-material': ^5.15.0
