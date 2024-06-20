@@ -1,3 +1,7 @@
+## 0.1.39 (2024-6-20)
+
+- fix: avoid read ai-kit config from other blocklets
+
 ## 0.1.38 (2024-6-20)
 
 - chore: ensure blocklet works in isolation mode
