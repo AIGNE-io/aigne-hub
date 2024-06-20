@@ -55,16 +55,16 @@ function SubscribeErrorAlert({ error, ...props }: { error: any } & AlertProps) {
 export default withLocaleProvider(SubscribeErrorAlert, {
   translations: {
     en: {
-      notSubscribeTip: 'Hello, in order to continue chatting, please first subscribe to AI service!',
-      pastDueTip: 'Your subscription is past due, please renew your subscription!',
-      notEnableAIServiceTip: 'You have not enabled the AI ​​service, switch to use AI service to continue chatting!',
-      successTip: 'Your subscription has been enabled, please continue!',
+      notSubscribeTip: 'Hello, please subscribe to AI service first!',
+      pastDueTip: 'Your AI service has expired, please renew it first!',
+      notEnableAIServiceTip: 'You have not enabled AI service, please enable AI service first!',
+      successTip: 'Congratulations, your subscription is successful!',
     },
     zh: {
-      notSubscribeTip: '你好，请订阅AI服务后继续！',
-      pastDueTip: '您的订阅已过期，请续订您的订阅！',
-      notEnableAIServiceTip: '您尚未启用AI服务，请切换使用AI服务继续！',
-      successTip: '您的订阅已启用，请继续！',
+      notSubscribeTip: '你好，请订阅 AI 服务后继续！',
+      pastDueTip: '您的 AI 服务已过期，请续订后继续！',
+      notEnableAIServiceTip: '您尚未启用AI服务，请启用 AI 服务后继续！',
+      successTip: '恭喜，您的订阅已生效！',
     },
   },
 });
