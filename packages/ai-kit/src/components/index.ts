@@ -6,3 +6,4 @@ export { default as Conversation } from './conversation';
 export * from './conversation';
 
 export { default as SubscribeButton } from './subscribe/button';
+export { default as SubscribeErrorAlert } from './subscribe/alert';
