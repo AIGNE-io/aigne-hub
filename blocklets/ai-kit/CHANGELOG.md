@@ -1,3 +1,7 @@
+## 0.1.40 (2024-6-20)
+
+- fix: show switch ai service button in the error view
+
 ## 0.1.39 (2024-6-20)
 
 - fix: avoid read ai-kit config from other blocklets
