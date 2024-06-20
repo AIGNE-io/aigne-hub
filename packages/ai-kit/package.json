@@ -118,7 +118,7 @@
     "json-stable-stringify": "^1.1.1",
     "lodash": "^4.17.21",
     "nanoid": "^5.0.7",
-    "openai": "^4.51.0",
+    "openai": "^4.52.0",
     "react-markdown": "^9.0.1",
     "react-photo-view": "^1.2.6",
     "react-use": "^17.5.0",
