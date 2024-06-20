@@ -80,7 +80,7 @@ const setConfigPayloadSchema = Joi.object<SetAppConfigPayload>({
   useAIKitService: Joi.boolean().empty([null]),
 });
 
-router.patch('/config', ensureAdmin, async (req, res) => {
+router.patch('/config', ensureComponentCall(ensureAdmin), async (req, res) => {
   const payload = await setConfigPayloadSchema.validateAsync(req.body, { stripUnknown: true });
   AIKitConfig.config = { ...AIKitConfig.config, ...payload };
   AIKitConfig.save();

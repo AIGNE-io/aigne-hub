@@ -8,7 +8,6 @@ import FormData from 'form-data';
 import stringify from 'json-stable-stringify';
 import { joinURL } from 'ufo';
 
-import AIKitConfig from '../config';
 import { SubscriptionError, SubscriptionErrorType } from '../error';
 import {
   ChatCompletionError,
@@ -35,7 +34,7 @@ export async function status(options: {
   responseType: 'stream';
 }): Promise<AxiosResponse<IncomingMessage, any>>;
 export async function status({
-  useAIKitService = AIKitConfig.useAIKitService,
+  useAIKitService,
   ...options
 }: {
   useAIKitService?: boolean;
@@ -69,10 +68,7 @@ export async function chatCompletions(
 ): Promise<AxiosResponse<IncomingMessage, any>>;
 export async function chatCompletions(
   input: ChatCompletionInput,
-  {
-    useAIKitService = AIKitConfig.useAIKitService,
-    ...options
-  }: { useAIKitService?: boolean; responseType?: 'stream' } = {}
+  { useAIKitService, ...options }: { useAIKitService?: boolean; responseType?: 'stream' } = {}
 ): Promise<ReadableStream<Exclude<ChatCompletionResponse, ChatCompletionError>> | AxiosResponse<IncomingMessage, any>> {
   const response = catchAndRethrowUpstreamError(
     useAIKitService
@@ -137,10 +133,7 @@ export async function imageGenerations(
 ): Promise<AxiosResponse<IncomingMessage, any>>;
 export async function imageGenerations(
   input: ImageGenerationInput,
-  {
-    useAIKitService = AIKitConfig.useAIKitService,
-    ...options
-  }: { useAIKitService?: boolean; responseType?: 'stream' } = {}
+  { useAIKitService, ...options }: { useAIKitService?: boolean; responseType?: 'stream' } = {}
 ): Promise<ImageGenerationResponse | AxiosResponse<IncomingMessage, any>> {
   const response = await catchAndRethrowUpstreamError(
     useAIKitService
@@ -171,10 +164,7 @@ export async function embeddings(
 ): Promise<AxiosResponse<IncomingMessage, any>>;
 export async function embeddings(
   input: EmbeddingInput,
-  {
-    useAIKitService = AIKitConfig.useAIKitService,
-    ...options
-  }: { useAIKitService?: boolean; responseType?: 'stream' } = {}
+  { useAIKitService, ...options }: { useAIKitService?: boolean; responseType?: 'stream' } = {}
 ): Promise<EmbeddingResponse | AxiosResponse<IncomingMessage, any>> {
   const response = await catchAndRethrowUpstreamError(
     useAIKitService
@@ -205,10 +195,7 @@ export async function audioTranscriptions(
 ): Promise<AxiosResponse<IncomingMessage, any>>;
 export async function audioTranscriptions(
   input: AudioTranscriptionsInput,
-  {
-    useAIKitService = AIKitConfig.useAIKitService,
-    ...options
-  }: { useAIKitService?: boolean; responseType?: 'stream' } = {}
+  { useAIKitService, ...options }: { useAIKitService?: boolean; responseType?: 'stream' } = {}
 ): Promise<EmbeddingResponse | AxiosResponse<IncomingMessage, any>> {
   const form = new FormData();
   for (const [key, val] of Object.entries(input)) {
@@ -234,7 +221,7 @@ export async function audioTranscriptions(
 
 export async function audioSpeech(
   input: AudioSpeechInput,
-  { useAIKitService = AIKitConfig.useAIKitService }: { useAIKitService?: boolean } = {}
+  { useAIKitService }: { useAIKitService?: boolean } = {}
 ): Promise<AxiosResponse<IncomingMessage, any>> {
   const response = await catchAndRethrowUpstreamError(
     useAIKitService
