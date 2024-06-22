@@ -1,3 +1,4 @@
+import { SubscriptionError, SubscriptionErrorType } from '@blocklet/ai-kit/api';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import { OpenAI } from 'openai';
 
@@ -33,7 +34,7 @@ export function getAIApiKey(company: AIProvider) {
 
   const apiKey = keys?.[index % keys.length];
 
-  if (!apiKey) throw new Error(`Missing required ${company} apiKey`);
+  if (!apiKey) throw new SubscriptionError(SubscriptionErrorType.UNSUBSCRIBED);
 
   return apiKey;
 }

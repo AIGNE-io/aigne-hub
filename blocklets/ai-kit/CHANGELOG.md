@@ -1,3 +1,27 @@
+## 0.1.42 (2024-6-22)
+
+- chore: update deps
+
+## 0.1.41 (2024-6-21)
+
+- chore: set success color for the alert after the subscription activated
+
+## 0.1.40 (2024-6-20)
+
+- fix: show switch ai service button in the error view
+
+## 0.1.39 (2024-6-20)
+
+- fix: avoid read ai-kit config from other blocklets
+
+## 0.1.38 (2024-6-20)
+
+- chore: ensure blocklet works in isolation mode
+
+## 0.1.37 (2024-6-6)
+
+- feat: return usage in stream response
+
 ## 0.1.36 (2024-5-28)
 
 - fix: force customer account for subscription detail url

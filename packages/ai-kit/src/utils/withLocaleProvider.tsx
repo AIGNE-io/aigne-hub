@@ -8,12 +8,12 @@ export default function withLocaleProvider<T>(
     fallbackLocale = 'en',
   }: { fallbackLocale?: string; translations: { [locale: string]: { [key: string]: string } } }
 ): ComponentType<T> {
-  return ((...args: any) => {
+  return ((args: T) => {
     const { locale } = useLocaleContext();
 
     return (
       <LocaleProvider translations={translations} fallbackLocale={fallbackLocale} locale={locale}>
-        <C {...args} />
+        <C {...(args as any)} />
       </LocaleProvider>
     );
   }) as any;

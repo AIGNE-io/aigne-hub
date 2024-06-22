@@ -13,5 +13,9 @@ namespace Express {
       role: string;
       fullName: string;
     };
+
+    appClient?: {
+      appId: string;
+    };
   }
 }

@@ -9,12 +9,20 @@ import { appServiceRegister } from '../../api/app';
 import withLocaleProvider from '../../utils/withLocaleProvider';
 import { useAIKitServiceStatus } from './state';
 
-function SubscribeButton({ shouldOpenInNewTab = false }: { shouldOpenInNewTab?: boolean }) {
+function SubscribeButton({
+  shouldOpenInNewTab = false,
+  showUseAIServiceButton,
+}: {
+  shouldOpenInNewTab?: boolean;
+  showUseAIServiceButton?: boolean;
+}) {
   const { t } = useLocaleContext();
   const fetch = useAIKitServiceStatus((i) => i.fetch);
   const isSubscriptionAvailable = useAIKitServiceStatus((i) => i.computed?.isSubscriptionAvailable);
   const loading = useAIKitServiceStatus((i) => i.loading);
+  const setConfig = useAIKitServiceStatus((i) => i.setConfig);
   const subscription = useAIKitServiceStatus((i) => i.app?.subscription);
+  const useAIKitService = useAIKitServiceStatus((i) => i.app?.config?.useAIKitService);
   const subscriptionDetailUrl = useAIKitServiceStatus((i) => i.app?.subscriptionDetailUrl);
 
   const isPastDue = subscription?.status === 'past_due';
@@ -68,12 +76,41 @@ function SubscribeButton({ shouldOpenInNewTab = false }: { shouldOpenInNewTab?: 
     );
   }
 
+  if (showUseAIServiceButton && isSubscriptionAvailable && !useAIKitService) {
+    return (
+      <LoadingButton
+        loading={submitting}
+        onClick={async () => {
+          setSubmitting(true);
+          try {
+            await setConfig({ useAIKitService: true });
+            Toast.success('Successfully changed to AI service!');
+          } catch (error) {
+            Toast.error(error.message);
+            throw error;
+          } finally {
+            setSubmitting(false);
+          }
+        }}>
+        {t('useAIService')}
+      </LoadingButton>
+    );
+  }
+
   return null;
 }
 
 export default withLocaleProvider(SubscribeButton, {
   translations: {
-    en: { subscribeAIService: 'Subscribe AI Service', aiServicePastDue: 'Pay for overdue AI service' },
-    zh: { subscribeAIService: '订阅 AI 服务', aiServicePastDue: '支付 AI 服务欠费' },
+    en: {
+      subscribeAIService: 'Subscribe AI Service',
+      aiServicePastDue: 'Pay for overdue AI service',
+      useAIService: 'Enable AI Service',
+    },
+    zh: {
+      subscribeAIService: '订阅 AI 服务',
+      aiServicePastDue: '支付 AI 服务欠费',
+      useAIService: '启用 AI 服务',
+    },
   },
 });

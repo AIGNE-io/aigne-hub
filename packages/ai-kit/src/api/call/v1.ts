@@ -8,10 +8,9 @@ import FormData from 'form-data';
 import stringify from 'json-stable-stringify';
 import { joinURL } from 'ufo';
 
-import AIKitConfig from '../config';
 import { SubscriptionError, SubscriptionErrorType } from '../error';
 import {
-  ChatCompletionChunk,
+  ChatCompletionError,
   ChatCompletionInput,
   ChatCompletionResponse,
   EmbeddingInput,
@@ -35,7 +34,7 @@ export async function status(options: {
   responseType: 'stream';
 }): Promise<AxiosResponse<IncomingMessage, any>>;
 export async function status({
-  useAIKitService = AIKitConfig.useAIKitService,
+  useAIKitService,
   ...options
 }: {
   useAIKitService?: boolean;
@@ -62,18 +61,15 @@ export async function status({
 export async function chatCompletions(
   input: ChatCompletionInput,
   options?: { useAIKitService?: boolean; responseType?: undefined }
-): Promise<ReadableStream<ChatCompletionChunk>>;
+): Promise<ReadableStream<Exclude<ChatCompletionResponse, ChatCompletionError>>>;
 export async function chatCompletions(
   input: ChatCompletionInput,
   options: { useAIKitService?: boolean; responseType: 'stream' }
 ): Promise<AxiosResponse<IncomingMessage, any>>;
 export async function chatCompletions(
   input: ChatCompletionInput,
-  {
-    useAIKitService = AIKitConfig.useAIKitService,
-    ...options
-  }: { useAIKitService?: boolean; responseType?: 'stream' } = {}
-): Promise<ReadableStream<ChatCompletionChunk> | AxiosResponse<IncomingMessage, any>> {
+  { useAIKitService, ...options }: { useAIKitService?: boolean; responseType?: 'stream' } = {}
+): Promise<ReadableStream<Exclude<ChatCompletionResponse, ChatCompletionError>> | AxiosResponse<IncomingMessage, any>> {
   const response = catchAndRethrowUpstreamError(
     useAIKitService
       ? aiKitApi<IncomingMessage>('/api/v1/chat/completions', {
@@ -97,7 +93,7 @@ export async function chatCompletions(
 
   if (options?.responseType === 'stream') return response;
 
-  return new ReadableStream<ChatCompletionChunk>({
+  return new ReadableStream<Exclude<ChatCompletionResponse, ChatCompletionError>>({
     async start(controller) {
       try {
         const stream = readableToWeb((await response).data)
@@ -137,10 +133,7 @@ export async function imageGenerations(
 ): Promise<AxiosResponse<IncomingMessage, any>>;
 export async function imageGenerations(
   input: ImageGenerationInput,
-  {
-    useAIKitService = AIKitConfig.useAIKitService,
-    ...options
-  }: { useAIKitService?: boolean; responseType?: 'stream' } = {}
+  { useAIKitService, ...options }: { useAIKitService?: boolean; responseType?: 'stream' } = {}
 ): Promise<ImageGenerationResponse | AxiosResponse<IncomingMessage, any>> {
   const response = await catchAndRethrowUpstreamError(
     useAIKitService
@@ -171,10 +164,7 @@ export async function embeddings(
 ): Promise<AxiosResponse<IncomingMessage, any>>;
 export async function embeddings(
   input: EmbeddingInput,
-  {
-    useAIKitService = AIKitConfig.useAIKitService,
-    ...options
-  }: { useAIKitService?: boolean; responseType?: 'stream' } = {}
+  { useAIKitService, ...options }: { useAIKitService?: boolean; responseType?: 'stream' } = {}
 ): Promise<EmbeddingResponse | AxiosResponse<IncomingMessage, any>> {
   const response = await catchAndRethrowUpstreamError(
     useAIKitService
@@ -205,10 +195,7 @@ export async function audioTranscriptions(
 ): Promise<AxiosResponse<IncomingMessage, any>>;
 export async function audioTranscriptions(
   input: AudioTranscriptionsInput,
-  {
-    useAIKitService = AIKitConfig.useAIKitService,
-    ...options
-  }: { useAIKitService?: boolean; responseType?: 'stream' } = {}
+  { useAIKitService, ...options }: { useAIKitService?: boolean; responseType?: 'stream' } = {}
 ): Promise<EmbeddingResponse | AxiosResponse<IncomingMessage, any>> {
   const form = new FormData();
   for (const [key, val] of Object.entries(input)) {
@@ -234,7 +221,7 @@ export async function audioTranscriptions(
 
 export async function audioSpeech(
   input: AudioSpeechInput,
-  { useAIKitService = AIKitConfig.useAIKitService }: { useAIKitService?: boolean } = {}
+  { useAIKitService }: { useAIKitService?: boolean } = {}
 ): Promise<AxiosResponse<IncomingMessage, any>> {
   const response = await catchAndRethrowUpstreamError(
     useAIKitService

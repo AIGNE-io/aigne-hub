@@ -7,7 +7,6 @@ import { NextFunction, Request, Response } from 'express';
 import { isNil, pick } from 'lodash';
 import { joinURL, parseURL, stringifyParsedURL, withQuery } from 'ufo';
 
-import AIKitConfig from '../config';
 import { AI_KIT_BASE_URL } from '../constants';
 import { getRemoteComponentCallHeaders } from '../utils/auth';
 
@@ -23,7 +22,7 @@ export function proxyToAIKit(
     | '/api/app/usage'
     | '/api/app/register',
   {
-    useAIKitService = AIKitConfig.useAIKitService,
+    useAIKitService,
     proxyReqHeaders = ['accept', 'content-type'],
     proxyResHeaders = ['content-type', 'cache-control'],
   }: {

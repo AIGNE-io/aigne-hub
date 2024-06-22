@@ -1,6 +1,6 @@
 import { getAIApiKey, getOpenAI } from '@api/libs/ai-provider';
 import { Config } from '@api/libs/env';
-import { ChatCompletionChunk, ChatCompletionInput } from '@blocklet/ai-kit/api/types';
+import { ChatCompletionInput, ChatCompletionResponse } from '@blocklet/ai-kit/api/types';
 import OpenAI from 'openai';
 
 import { geminiChatCompletion } from './gemini';
@@ -8,19 +8,19 @@ import { openaiChatCompletion } from './openai';
 
 export function chatCompletion(
   input: ChatCompletionInput & Required<Pick<ChatCompletionInput, 'model'>>
-): AsyncGenerator<ChatCompletionChunk> {
+): AsyncGenerator<ChatCompletionResponse> {
   const result = input.model.startsWith('gemini')
     ? geminiChatCompletion(input, { apiKey: getAIApiKey('gemini') })
     : input.model.startsWith('gpt')
-    ? openaiChatCompletion(input, getOpenAI())
-    : input.model.startsWith('openRouter/')
-    ? openaiChatCompletion(
-        { ...input, model: input.model.replace('openRouter/', '') },
-        new OpenAI({ baseURL: 'https://openrouter.ai/api/v1', apiKey: getAIApiKey('openRouter') })
-      )
-    : (() => {
-        throw new Error(`Unsupported model ${input.model}`);
-      })();
+      ? openaiChatCompletion(input, getOpenAI())
+      : input.model.startsWith('openRouter/')
+        ? openaiChatCompletion(
+            { ...input, model: input.model.replace('openRouter/', '') },
+            new OpenAI({ baseURL: 'https://openrouter.ai/api/v1', apiKey: getAIApiKey('openRouter') })
+          )
+        : (() => {
+            throw new Error(`Unsupported model ${input.model}`);
+          })();
 
   return result;
 }

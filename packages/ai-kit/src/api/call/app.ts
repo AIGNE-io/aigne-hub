@@ -4,7 +4,6 @@ import { TSubscriptionExpanded } from '@blocklet/payment-js';
 import { call } from '@blocklet/sdk/lib/component';
 import { AxiosResponse } from 'axios';
 
-import AIKitConfig from '../config';
 import { getRemoteComponentCallHeaders } from '../utils/auth';
 import { aiKitApi, catchAndRethrowUpstreamError } from './api';
 
@@ -26,10 +25,7 @@ export async function appStatus(
 ): Promise<AxiosResponse<IncomingMessage, any>>;
 export async function appStatus(
   { description }: { description?: string },
-  {
-    useAIKitService = AIKitConfig.useAIKitService,
-    ...options
-  }: { useAIKitService?: boolean; responseType?: 'stream' } = {}
+  { useAIKitService, ...options }: { useAIKitService?: boolean; responseType?: 'stream' } = {}
 ): Promise<AppStatusResult | null | AxiosResponse<IncomingMessage, any>> {
   const response = await catchAndRethrowUpstreamError(
     useAIKitService
@@ -75,10 +71,7 @@ export async function appRegister(
 ): Promise<AxiosResponse<IncomingMessage, any>>;
 export async function appRegister(
   payload: RegisterPayload,
-  {
-    useAIKitService = AIKitConfig.useAIKitService,
-    ...options
-  }: { useAIKitService?: boolean; responseType?: 'stream' } = {}
+  { useAIKitService, ...options }: { useAIKitService?: boolean; responseType?: 'stream' } = {}
 ): Promise<RegisterResult | AxiosResponse<IncomingMessage, any>> {
   const response = await catchAndRethrowUpstreamError(
     useAIKitService
@@ -106,7 +99,7 @@ export async function cancelSubscription(options: {
   responseType: 'stream';
 }): Promise<AxiosResponse<IncomingMessage, any>>;
 export async function cancelSubscription({
-  useAIKitService = AIKitConfig.useAIKitService,
+  useAIKitService,
   ...options
 }: { useAIKitService?: boolean; responseType?: 'stream' } = {}): Promise<null | AxiosResponse<IncomingMessage, any>> {
   const response = await catchAndRethrowUpstreamError(
@@ -141,7 +134,7 @@ export async function recoverSubscription(options: {
   responseType: 'stream';
 }): Promise<AxiosResponse<IncomingMessage, any>>;
 export async function recoverSubscription({
-  useAIKitService = AIKitConfig.useAIKitService,
+  useAIKitService,
   ...options
 }: { useAIKitService?: boolean; responseType?: 'stream' } = {}): Promise<null | AxiosResponse<IncomingMessage, any>> {
   const response = await catchAndRethrowUpstreamError(

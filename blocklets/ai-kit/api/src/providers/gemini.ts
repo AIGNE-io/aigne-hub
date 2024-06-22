@@ -1,7 +1,7 @@
 import { IncomingMessage } from 'http';
 import { TextDecoderStream } from 'stream/web';
 
-import { ChatCompletionChunk, ChatCompletionInput } from '@blocklet/ai-kit/api/types';
+import { ChatCompletionInput, ChatCompletionResponse } from '@blocklet/ai-kit/api/types';
 import { EventSourceParserStream, readableToWeb } from '@blocklet/ai-kit/api/utils/event-stream';
 import { GenerateContentResponse } from '@google/generative-ai';
 import axios from 'axios';
@@ -10,7 +10,7 @@ import { customAlphabet } from 'nanoid';
 export async function* geminiChatCompletion(
   input: ChatCompletionInput & Required<Pick<ChatCompletionInput, 'model'>>,
   config: { apiKey: string }
-): AsyncGenerator<ChatCompletionChunk> {
+): AsyncGenerator<ChatCompletionResponse> {
   const body = {
     contents: contentsFromMessages(input.messages),
     generationConfig: {
@@ -47,7 +47,7 @@ export async function* geminiChatCompletion(
 
   for await (const chunk of stream) {
     const choice = chunk.candidates?.[0];
-    if (choice?.content.parts) {
+    if (choice?.content?.parts) {
       yield {
         delta: {
           role: 'assistant',
@@ -56,9 +56,8 @@ export async function* geminiChatCompletion(
             .filter(Boolean)
             .join('\n'),
           toolCalls: choice.content.parts
-            // FIXME: GenerateContentResponse not include functionCall property yet.
-            .filter((i: any) => typeof i.functionCall === 'object')
-            .map((i: any) => ({
+            .filter((i): i is typeof i & Required<Pick<typeof i, 'functionCall'>> => typeof i.functionCall === 'object')
+            .map((i) => ({
               id: randomId(),
               type: 'function',
               function: {
@@ -68,10 +67,22 @@ export async function* geminiChatCompletion(
             })),
         },
       };
-    } else if (chunk.promptFeedback?.blockReason) {
+    }
+
+    if (chunk.promptFeedback?.blockReason) {
       const { blockReason, blockReasonMessage } = chunk.promptFeedback;
 
       throw new Error(['PROMPT_BLOCKED', blockReason, blockReasonMessage].filter(Boolean).join(' '));
+    }
+
+    if (chunk.usageMetadata) {
+      yield {
+        usage: {
+          promptTokens: chunk.usageMetadata.promptTokenCount,
+          completionTokens: chunk.usageMetadata.candidatesTokenCount,
+          totalTokens: chunk.usageMetadata.totalTokenCount,
+        },
+      };
     }
   }
 }

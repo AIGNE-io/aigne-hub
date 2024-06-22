@@ -6,8 +6,11 @@ import {
   ChatCompletionChunk,
   ChatCompletionInput,
   ChatCompletionResponse,
+  ChatCompletionUsage,
   EmbeddingInput,
   ImageGenerationInput,
+  isChatCompletionChunk,
+  isChatCompletionUsage,
 } from '@blocklet/ai-kit/api/types';
 import { ensureRemoteComponentCall } from '@blocklet/ai-kit/api/utils/auth';
 import { get_encoding } from '@dqbd/tiktoken';
@@ -200,15 +203,27 @@ router.post(
       res.flush();
     };
 
+    let usage: ChatCompletionUsage['usage'] | undefined;
+
     try {
       for await (const chunk of result) {
-        content += chunk.delta?.content || '';
-        if (chunk.delta?.toolCalls?.length) toolCalls.push(...chunk.delta.toolCalls);
+        if (isChatCompletionUsage(chunk)) {
+          usage = chunk.usage;
+        }
+
         if (isEventStream) {
           emitEventStreamChunk(chunk);
-        } else if (input.stream && chunk.delta?.content) {
-          res.write(chunk.delta.content);
-          res.flush();
+        }
+
+        if (isChatCompletionChunk(chunk)) {
+          content += chunk.delta?.content || '';
+
+          if (chunk.delta?.toolCalls?.length) toolCalls.push(...chunk.delta.toolCalls);
+
+          if (input.stream && !isEventStream && chunk.delta?.content) {
+            res.write(chunk.delta.content);
+            res.flush();
+          }
         }
       }
     } catch (error) {
@@ -237,25 +252,27 @@ router.post(
 
     if (Config.verbose) logger.info('AI Kit completions output:', { content, toolCalls });
 
-    if (Config.calcTokenUsages) {
+    if (!usage) {
       // TODO: 更精确的 token 计算，暂时简单地 stringify 之后按照 gpt3/4 的 token 算法计算，尤其 function call 的计算偏差较大，需要改进
       const enc = get_encoding('cl100k_base');
       try {
-        const promptUsedTokens = enc.encode(JSON.stringify(input.messages)).length;
-        const completionUsedTokens = enc.encode(JSON.stringify({ content, toolCalls })).length;
+        const promptTokens = enc.encode(JSON.stringify(input.messages)).length;
+        const completionTokens = enc.encode(JSON.stringify({ content, toolCalls })).length;
 
-        createAndReportUsage({
-          type: 'chatCompletion',
-          promptTokens: promptUsedTokens,
-          completionTokens: completionUsedTokens,
-          model: input.model,
-          modelParams: pick(input, 'temperature', 'topP', 'frequencyPenalty', 'presencePenalty', 'maxTokens'),
-          appId: req.appClient?.appId,
-        });
+        usage = { promptTokens, completionTokens, totalTokens: promptTokens + completionTokens };
       } finally {
         enc.free();
       }
     }
+
+    createAndReportUsage({
+      type: 'chatCompletion',
+      promptTokens: usage.promptTokens,
+      completionTokens: usage.completionTokens,
+      model: input.model,
+      modelParams: pick(input, 'temperature', 'topP', 'frequencyPenalty', 'presencePenalty', 'maxTokens'),
+      appId: req.appClient?.appId,
+    });
   }
 );
 
@@ -285,14 +302,12 @@ router.post(
 
     res.json({ data });
 
-    if (Config.calcTokenUsages) {
-      createAndReportUsage({
-        type: 'embedding',
-        promptTokens: usage.prompt_tokens,
-        model: input.model,
-        appId: req.appClient?.appId,
-      });
-    }
+    createAndReportUsage({
+      type: 'embedding',
+      promptTokens: usage.prompt_tokens,
+      model: input.model,
+      appId: req.appClient?.appId,
+    });
   })
 );
 
@@ -343,15 +358,13 @@ router.post(
       })),
     });
 
-    if (Config.calcTokenUsages) {
-      createAndReportUsage({
-        type: 'imageGeneration',
-        model: input.model,
-        modelParams: pick(input, 'size', 'responseFormat', 'style', 'quality'),
-        numberOfImageGeneration: input.n,
-        appId: req.appClient?.appId,
-      });
-    }
+    createAndReportUsage({
+      type: 'imageGeneration',
+      model: input.model,
+      modelParams: pick(input, 'size', 'responseFormat', 'style', 'quality'),
+      numberOfImageGeneration: input.n,
+      appId: req.appClient?.appId,
+    });
   })
 );
 

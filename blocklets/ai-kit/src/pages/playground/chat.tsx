@@ -42,7 +42,7 @@ export default function Chat() {
             </Tooltip>
           ),
         ],
-        [<SubscribeButton shouldOpenInNewTab key="subscribe" />],
+        [<SubscribeButton shouldOpenInNewTab showUseAIServiceButton key="subscribe" />],
       ];
     },
     [cancel]

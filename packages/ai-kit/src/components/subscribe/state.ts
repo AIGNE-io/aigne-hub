@@ -1,13 +1,14 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 
-import { AppStatusResult, appStatus } from '../../api/app';
+import { AIKitServiceConfig, AppStatusResult, appStatus, setAppConfig } from '../../api/app';
 
 export interface AIKitServiceStatus {
   app?: AppStatusResult;
   loading?: boolean;
   error?: Error;
   fetch: () => Promise<void>;
+  setConfig: (config: AIKitServiceConfig) => Promise<void>;
   computed: {
     isSubscriptionAvailable?: boolean;
   };
@@ -33,6 +34,12 @@ export const useAIKitServiceStatus = create<AIKitServiceStatus>()(
           state.loading = false;
         });
       }
+    },
+    setConfig: async (config) => {
+      const result = await setAppConfig(config);
+      set((state) => {
+        if (state.app) state.app.config = result;
+      });
     },
     computed: {
       get isSubscriptionAvailable() {

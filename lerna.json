@@ -1,7 +1,6 @@
 {
   "version": "independent",
   "private": true,
-  "useWorkspaces": true,
   "npmClient": "pnpm",
   "packages": ["blocklets/*", "packages/*"]
 }

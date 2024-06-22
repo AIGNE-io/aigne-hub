@@ -1,10 +1,10 @@
-import { ChatCompletionChunk, ChatCompletionInput } from '@blocklet/ai-kit/api/types';
+import { ChatCompletionInput, ChatCompletionResponse } from '@blocklet/ai-kit/api/types';
 import OpenAI from 'openai';
 
 export async function* openaiChatCompletion(
   input: ChatCompletionInput & Required<Pick<ChatCompletionInput, 'model'>>,
   openai: OpenAI
-): AsyncGenerator<ChatCompletionChunk> {
+): AsyncGenerator<ChatCompletionResponse> {
   const res = await openai.chat.completions.create({
     stream: true,
     model: input.model,
@@ -43,6 +43,7 @@ export async function* openaiChatCompletion(
     tools: input.tools,
     tool_choice: input.tools?.length ? input.toolChoice ?? 'auto' : undefined,
     response_format: input.responseFormat,
+    stream_options: { include_usage: true },
   });
 
   for await (const chunk of res) {
@@ -61,6 +62,15 @@ export async function* openaiChatCompletion(
             type: i.type,
             function: i.function && { name: i.function.name, arguments: i.function.arguments },
           })),
+        },
+      };
+    }
+    if (chunk.usage) {
+      yield {
+        usage: {
+          promptTokens: chunk.usage.prompt_tokens,
+          completionTokens: chunk.usage.completion_tokens,
+          totalTokens: chunk.usage.total_tokens,
         },
       };
     }
