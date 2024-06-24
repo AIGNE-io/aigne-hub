@@ -16,7 +16,11 @@ export async function catchAndRethrowUpstreamError(response: Promise<any>) {
           ? await tryParseJsonFromResponseStream<{ error: { message: string } }>(data)
           : data;
       const message = json?.error?.message;
-      if (typeof message === 'string') throw new Error(message);
+      if (typeof message === 'string') {
+        const error = new Error(message);
+        (error as any).type = json?.error?.type;
+        throw error;
+      }
     }
     throw error;
   });
