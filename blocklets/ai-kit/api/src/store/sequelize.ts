@@ -11,3 +11,7 @@ const url = `sqlite:${Config.dataDir}/aikit.db`;
 export const sequelize = new Sequelize(url, {
   logging: Config.verbose === false ? false : logger.info.bind(logger),
 });
+
+sequelize.query('pragma journal_mode = WAL;');
+sequelize.query('pragma synchronous = normal;');
+sequelize.query('pragma journal_size_limit = 67108864;');
