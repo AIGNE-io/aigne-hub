@@ -50,7 +50,7 @@
     "husky": "^9.0.11",
     "import-sort-style-module": "^6.0.0",
     "lint-staged": "^15.2.7",
-    "prettier": "^3.3.2",
+    "prettier": "^3.3.3",
     "prettier-plugin-import-sort": "^0.0.7",
     "rimraf": "^5.0.9",
     "typescript": "^5.5.3",
