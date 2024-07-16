@@ -1,3 +1,7 @@
+## 0.1.45 (2024-7-16)
+
+- chore: enable sqlite wal mode for better performance
+
 ## 0.1.44 (2024-7-9)
 
 - chore: update deps
