@@ -13,12 +13,7 @@ export default function Home() {
   return (
     <>
       <Header
-        // FIXME: remove following undefined props after issue https://github.com/ArcBlock/ux/issues/1136 solved
-        hideNavMenu={undefined}
-        meta={undefined}
-        sessionManagerProps={undefined}
-        homeLink={undefined}
-        theme={undefined}
+        // @ts-ignore
         maxWidth={null}
         addons={(exists: ReactNode[]) => [<SubscribeButton />, ...exists]}
       />

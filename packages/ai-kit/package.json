@@ -97,14 +97,14 @@
     "@arcblock/did": "^1.18.126",
     "@arcblock/ux": "^2.10.5",
     "@blocklet/logger": "^1.16.28",
-    "@blocklet/payment-js": "^1.13.301",
+    "@blocklet/payment-js": "^1.13.303",
     "@blocklet/sdk": "^1.16.28",
     "@emotion/css": "^11.11.2",
     "@emotion/react": "^11.11.4",
     "@emotion/styled": "^11.11.5",
-    "@mui/icons-material": "^5.16.1",
+    "@mui/icons-material": "^5.16.4",
     "@mui/lab": "^5.0.0-alpha.172",
-    "@mui/material": "^5.16.1",
+    "@mui/material": "^5.16.4",
     "@ocap/mcrypto": "^1.18.126",
     "@types/express": "^4.17.21",
     "ahooks": "^3.8.0",
@@ -124,7 +124,7 @@
     "react-use": "^17.5.0",
     "recoil": "^0.7.7",
     "sequelize": "^6.37.3",
-    "ufo": "^1.5.3",
+    "ufo": "^1.5.4",
     "yaml": "^2.4.5",
     "zustand": "^4.5.4"
   },
@@ -147,7 +147,7 @@
     "react-dom": "^18.3.1",
     "storybook": "^8.2.4",
     "typescript": "^5.5.3",
-    "vite": "^5.3.3",
+    "vite": "^5.3.4",
     "vite-plugin-build": "^0.10.0"
   }
 }
