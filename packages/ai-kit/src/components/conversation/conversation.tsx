@@ -4,9 +4,9 @@ import { ChatCompletionMessageParam } from 'openai/resources';
 import { ReactNode, RefObject, forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from 'react';
 
 import ImagePreview from '../image-preview';
+import SubscribeErrorAlert from '../subscribe/alert';
 import Message from './message';
 import Prompt, { PromptProps } from './prompt';
-import SubscribeErrorAlert from '../subscribe/alert';
 
 export interface MessageItem {
   id: string;

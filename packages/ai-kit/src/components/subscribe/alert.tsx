@@ -1,9 +1,9 @@
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import { Alert, AlertProps, CircularProgress, Stack } from '@mui/material';
 
-import SubscribeButton from './button';
 import { SubscriptionErrorType } from '../../api/error';
 import withLocaleProvider from '../../utils/withLocaleProvider';
+import SubscribeButton from './button';
 import { useAIKitServiceStatus } from './state';
 
 function SubscribeErrorAlert({ error, ...props }: { error: any } & AlertProps) {
