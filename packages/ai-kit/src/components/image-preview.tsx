@@ -2,9 +2,10 @@ import CloudDownloadOutlinedIcon from '@mui/icons-material/CloudDownloadOutlined
 import RotateRightOutlinedIcon from '@mui/icons-material/RotateRightOutlined';
 import ZoomInOutlinedIcon from '@mui/icons-material/ZoomInOutlined';
 import ZoomOutOutlinedIcon from '@mui/icons-material/ZoomOutOutlined';
-import { Box, GlobalStyles, Grid, IconButton } from '@mui/material';
+import { Box, GlobalStyles, Grid, IconButton, IconButtonProps } from '@mui/material';
 import { useReactive } from 'ahooks';
 import { saveAs } from 'file-saver';
+import React from 'react';
 import { PhotoProvider, PhotoView } from 'react-photo-view';
 
 import LoadingImage from './loading-image';
@@ -29,9 +30,14 @@ interface StateProps {
   };
 }
 
-const renderIconButton = (children: React.ReactNode, onClick: () => void, extraProps = {}) => {
+const renderIconButton = (
+  children: React.ReactNode,
+  onClick: () => void,
+  { key, ...extraProps }: { key?: React.Key } & IconButtonProps = {}
+) => {
   return (
     <IconButton
+      key={key}
       sx={{
         transition: 'all 0.3s',
         color: 'rgba(255,255,255,0.75)',
