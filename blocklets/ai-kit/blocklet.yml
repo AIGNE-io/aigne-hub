@@ -15,7 +15,7 @@ repository:
   type: git
   url: git+https://github.com/blocklet/ai-kit.git
 specVersion: 1.2.8
-version: 0.1.45
+version: 0.1.46
 logo: logo.png
 files:
   - dist
