@@ -41,7 +41,7 @@ export async function* openaiChatCompletion(
     frequency_penalty: input.frequencyPenalty,
     max_tokens: input.maxTokens,
     tools: input.tools,
-    tool_choice: input.tools?.length ? input.toolChoice ?? 'auto' : undefined,
+    tool_choice: input.tools?.length ? (input.toolChoice ?? 'auto') : undefined,
     response_format: input.responseFormat,
     stream_options: { include_usage: true },
   });

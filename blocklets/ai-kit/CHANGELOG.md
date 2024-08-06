@@ -1,3 +1,15 @@
+## 0.1.46 (2024-8-6)
+
+- chore: update deps
+
+## 0.1.45 (2024-7-16)
+
+- chore: enable sqlite wal mode for better performance
+
+## 0.1.44 (2024-7-9)
+
+- chore: update deps
+
 ## 0.1.43 (2024-6-24)
 
 - chore: rethrow the error with the error type
