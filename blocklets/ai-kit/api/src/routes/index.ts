@@ -3,6 +3,7 @@ import AIKitConfig from '@blocklet/ai-kit/api/config';
 import { Router } from 'express';
 
 import app from './app';
+import meilisearch from './meilisearch';
 import payment from './payment';
 import v1 from './v1';
 
@@ -23,5 +24,6 @@ router.use('/v1', (req, res, next) => {
 
 router.use('/app', app);
 router.use('/payment', payment);
+router.use('/meilisearch', meilisearch);
 
 export default router;

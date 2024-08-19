@@ -69,6 +69,7 @@
     "flat": "^6.0.1",
     "https-proxy-agent": "^7.0.5",
     "joi": "^17.13.3",
+    "langchain": "^0.2.16",
     "lodash": "^4.17.21",
     "material-ui-popup-state": "^5.1.2",
     "nanoid": "^5.0.7",
