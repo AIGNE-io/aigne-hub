@@ -1,3 +1,6 @@
+import { createHash } from 'crypto';
+
+import { wallet } from '@api/libs/auth';
 import { Event } from '@blocklet/payment-js';
 import { call } from '@blocklet/sdk/lib/component';
 import { Router } from 'express';
@@ -20,7 +23,13 @@ const embeddingsBodySchema = Joi.object<{
   }).required(),
 });
 
+const securityKey = createHash('sha256').update(`${wallet.secretKey}:/ai-kit/api/meilisearch/embeddings`).digest('hex');
+
 router.post('/embeddings', async (req, res) => {
+  if (req.get('authorization')?.replace(/^bearer\s+/i, '') !== securityKey) {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
+
   const input = await embeddingsBodySchema.validateAsync(req.body, { stripUnknown: true });
 
   const splitter = new RecursiveCharacterTextSplitter({ chunkSize: 2048 });
