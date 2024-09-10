@@ -9,7 +9,7 @@ import { parse, stringify } from 'yaml';
 import logger from '../libs/logger';
 
 class Config extends EventEmitter {
-  static CONFIG_FILE_PATH = join(config.env.dataDir, '../ai-kit', 'ai-kit-service.config.yaml');
+  static CONFIG_FILE_PATH = join(config.env.dataDir, 'ai-kit-service.config.yaml');
 
   constructor() {
     super();
