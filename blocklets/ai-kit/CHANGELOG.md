@@ -1,3 +1,7 @@
+## 0.1.48 (2024-9-11)
+
+- chore: avoid access other blocklet data dir
+
 ## 0.1.47 (2024-8-19)
 
 - feat: add embeddings api for meilisearch ai powered search
