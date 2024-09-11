@@ -2,7 +2,9 @@ import '@blocklet/sdk/lib/error-handler';
 
 import dotenv from 'dotenv-flow';
 
-dotenv.config();
+if (process.env.NODE_ENV === 'development') {
+  dotenv.config();
+}
 
 (async () => {
   try {
