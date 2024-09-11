@@ -1,3 +1,7 @@
+## 0.1.50 (2024-9-11)
+
+- chore: skip dotenv config for non-development environments
+
 ## 0.1.49 (2024-9-11)
 
 - chore: ignore auth validation for meilisearch embeddings api
