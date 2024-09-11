@@ -1,3 +1,7 @@
+## 0.1.49 (2024-9-11)
+
+- chore: ignore auth validation for meilisearch embeddings api
+
 ## 0.1.48 (2024-9-11)
 
 - chore: avoid access other blocklet data dir
