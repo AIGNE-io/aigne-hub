@@ -15,7 +15,9 @@ import { autoUpdateSubscriptionMeta } from './libs/payment';
 import routes from './routes';
 import { initAuthRouter } from './routes/auth';
 
-dotenv.config();
+if (process.env.NODE_ENV === 'development') {
+  dotenv.config();
+}
 
 const { name, version } = require('../../package.json');
 

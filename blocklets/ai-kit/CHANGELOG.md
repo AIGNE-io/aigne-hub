@@ -1,3 +1,19 @@
+## 0.1.50 (2024-9-11)
+
+- chore: skip dotenv config for non-development environments
+
+## 0.1.49 (2024-9-11)
+
+- chore: ignore auth validation for meilisearch embeddings api
+
+## 0.1.48 (2024-9-11)
+
+- chore: avoid access other blocklet data dir
+
+## 0.1.47 (2024-8-19)
+
+- feat: add embeddings api for meilisearch ai powered search
+
 ## 0.1.46 (2024-8-6)
 
 - chore: update deps

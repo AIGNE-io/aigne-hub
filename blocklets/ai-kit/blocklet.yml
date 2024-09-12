@@ -15,7 +15,7 @@ repository:
   type: git
   url: git+https://github.com/blocklet/ai-kit.git
 specVersion: 1.2.8
-version: 0.1.46
+version: 0.1.50
 logo: logo.png
 files:
   - dist
@@ -31,6 +31,11 @@ interfaces:
     prefix: '*'
     port: BLOCKLET_PORT
     protocol: http
+    services:
+      - name: auth
+        config:
+          ignoreUrls:
+            - /api/meilisearch/embeddings
 community: https://community.arcblock.io
 documentation: https://developer.blocklet.io
 homepage: https://store.blocklet.dev
