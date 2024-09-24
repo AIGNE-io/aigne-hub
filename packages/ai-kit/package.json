@@ -1,6 +1,6 @@
 {
   "name": "@blocklet/ai-kit",
-  "version": "0.1.50",
+  "version": "0.1.53",
   "description": "The react.js component library for AI Kit",
   "publishConfig": {
     "access": "public"
@@ -10,35 +10,42 @@
   "license": "ISC",
   "main": "./lib/cjs/index.js",
   "module": "./lib/esm/index.js",
-  "typings": "./lib/types/index.d.ts",
+  "types": "./lib/types/index.d.ts",
   "exports": {
     ".": {
       "import": "./lib/esm/index.js",
-      "require": "./lib/cjs/index.js"
+      "require": "./lib/cjs/index.js",
+      "types": "./lib/types/index.d.ts"
     },
     "./api": {
       "import": "./lib/esm/api/index.js",
-      "require": "./lib/cjs/api/index.js"
+      "require": "./lib/cjs/api/index.js",
+      "types": "./lib/types/api/index.d.ts"
     },
     "./api/call": {
       "import": "./lib/esm/api/call/index.js",
-      "require": "./lib/cjs/api/call/index.js"
+      "require": "./lib/cjs/api/call/index.js",
+      "types": "./lib/types/api/call/index.d.ts"
     },
     "./api/types": {
       "import": "./lib/esm/api/types/index.js",
-      "require": "./lib/cjs/api/types/index.js"
+      "require": "./lib/cjs/api/types/index.js",
+      "types": "./lib/types/api/types/index.d.ts"
     },
     "./api/*": {
       "import": "./lib/esm/api/*.js",
-      "require": "./lib/cjs/api/*.js"
+      "require": "./lib/cjs/api/*.js",
+      "types": "./lib/types/api/*.d.ts"
     },
     "./components": {
       "import": "./lib/esm/components/index.js",
-      "require": "./lib/cjs/components/index.js"
+      "require": "./lib/cjs/components/index.js",
+      "types": "./lib/types/components/index.d.ts"
     },
     "./components/*": {
       "import": "./lib/esm/components/*.js",
-      "require": "./lib/cjs/components/*.js"
+      "require": "./lib/cjs/components/*.js",
+      "types": "./lib/types/components/*.d.ts"
     }
   },
   "typesVersions": {
@@ -77,9 +84,9 @@
     "lint:fix": "npm run lint -- --fix",
     "pre-commit": "lint-staged",
     "build": "run-p build:*",
-    "build:cjs": "tsc --module commonjs --outDir lib/cjs",
-    "build:esm": "tsc --module es2022 --outDir lib/esm",
-    "build:types": "tsc --declaration --emitDeclarationOnly --outDir lib/types",
+    "build:cjs": "tsc --module commonjs --moduleResolution node --incremental false --outDir lib/cjs",
+    "build:esm": "tsc --module es2022 --incremental false --outDir lib/esm",
+    "build:types": "tsc --module commonjs --declaration --emitDeclarationOnly --incremental false --outDir lib/types",
     "dev": "npm run storybook & npm run watch",
     "start": "npm run storybook",
     "watch": "vite build --watch",
@@ -95,9 +102,9 @@
   },
   "dependencies": {
     "@arcblock/did": "^1.18.135",
-    "@arcblock/ux": "^2.10.31",
+    "@arcblock/ux": "^2.10.33",
     "@blocklet/logger": "^1.16.31",
-    "@blocklet/payment-js": "^1.15.4",
+    "@blocklet/payment-js": "^1.15.8",
     "@blocklet/sdk": "^1.16.31",
     "@emotion/css": "^11.13.0",
     "@emotion/react": "^11.13.0",

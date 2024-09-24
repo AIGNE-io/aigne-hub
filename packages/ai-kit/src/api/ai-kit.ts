@@ -1,5 +1,5 @@
 import { AxiosInstance } from 'axios';
-import { ChatCompletionMessageParam } from 'openai/resources';
+import { ChatCompletionMessageParam } from 'openai/resources/index';
 
 import { SubscriptionError } from './error';
 

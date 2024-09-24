@@ -1,7 +1,7 @@
 {
   "name": "ai-kit",
   "private": true,
-  "version": "0.1.50",
+  "version": "0.1.53",
   "workspaces": [
     "blocklets/*",
     "packages/*"
@@ -69,9 +69,9 @@
     "@arcblock/jwt": "^1.18.135",
     "@arcblock/validator": "^1.18.135",
     "@arcblock/ws": "^1.18.135",
-    "@blocklet/js-sdk": "1.16.28",
-    "@blocklet/logger": "1.16.28",
-    "@blocklet/sdk": "1.16.28",
+    "@blocklet/js-sdk": "^1.16.31",
+    "@blocklet/logger": "^1.16.31",
+    "@blocklet/sdk": "^1.16.31",
     "@ocap/asset": "^1.18.135",
     "@ocap/client": "^1.18.135",
     "@ocap/types": "^1.18.135",

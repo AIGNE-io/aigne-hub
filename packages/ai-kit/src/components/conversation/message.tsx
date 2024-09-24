@@ -2,7 +2,7 @@ import { cx } from '@emotion/css';
 import styled from '@emotion/styled';
 import { CopyAll } from '@mui/icons-material';
 import { Box, BoxProps, Button, Tooltip } from '@mui/material';
-import { ChatCompletionMessageParam } from 'openai/resources';
+import { ChatCompletionMessageParam } from 'openai/resources/index';
 import { ReactNode, useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 

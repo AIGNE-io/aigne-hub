@@ -1,6 +1,6 @@
 import { Avatar, Box, BoxProps, CircularProgress } from '@mui/material';
 import isNil from 'lodash/isNil';
-import { ChatCompletionMessageParam } from 'openai/resources';
+import { ChatCompletionMessageParam } from 'openai/resources/index';
 import { ReactNode, RefObject, forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from 'react';
 
 import ImagePreview from '../image-preview';

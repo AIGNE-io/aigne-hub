@@ -1,3 +1,7 @@
+## 0.1.51 (2024-9-23)
+
+- chore: update deps
+
 ## 0.1.50 (2024-9-11)
 
 - chore: skip dotenv config for non-development environments

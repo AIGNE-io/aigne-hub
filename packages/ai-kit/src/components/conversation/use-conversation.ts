@@ -1,6 +1,6 @@
 import { produce } from 'immer';
 import { nanoid } from 'nanoid';
-import { ChatCompletionMessageParam } from 'openai/resources';
+import { ChatCompletionMessageParam } from 'openai/resources/index';
 import { useCallback, useState } from 'react';
 
 import { MessageItem } from './conversation';
