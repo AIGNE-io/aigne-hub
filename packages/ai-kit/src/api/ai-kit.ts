@@ -25,17 +25,17 @@ export interface TextCompletionFn<P extends {}> {
 
 export const createTextCompletionApi =
   <P extends {} = { prompt: string } | { messages: ChatCompletionMessageParam[] }>({
-    axios,
+    fetch,
     path,
     timeout,
   }: {
-    axios: AxiosInstance;
+    fetch: typeof globalThis.fetch;
     path: string;
     timeout?: number;
   }): TextCompletionFn<P> =>
   async (options) => {
     const promise: Promise<TextCompletions | ReadableStream<Uint8Array>> = options.stream
-      ? fetch(axios.getUri({ url: path }), {
+      ? fetch(path, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(options),
@@ -55,9 +55,9 @@ export const createTextCompletionApi =
           }
           return res.body!;
         })
-      : axios
-          .post(path, options)
-          .then(({ data }) => ({ text: data.text ?? data.choices?.[0]?.text ?? data.choices?.[0]?.message?.content }))
+      : fetch(path, options)
+          .then((res) => res.json())
+          .then((data) => ({ text: data.text ?? data.choices?.[0]?.text ?? data.choices?.[0]?.message?.content }))
           .catch(processResponseError);
 
     if (!timeout) {

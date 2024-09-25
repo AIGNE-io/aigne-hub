@@ -20,12 +20,10 @@ declare module '@blocklet/logger' {
 }
 
 namespace Express {
+  import { SessionUser } from '@blocklet/sdk/lib/util/login';
+
   interface Request {
-    user?: {
-      did: string;
-      role: string;
-      fullName: string;
-    };
+    user?: SessionUser;
 
     appClient?: {
       appId: string;

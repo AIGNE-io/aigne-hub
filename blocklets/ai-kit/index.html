@@ -1,15 +1,32 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" />
     <meta name="theme-color" content="#4F6AF5" />
-    <meta name="description" content="Web site created using create-blocklet" />
+    <meta property="og:title" content="{{ogTitle}}" />
+    <meta property="og:description" content="{{ogDescription}}" />
+    <meta property="og:image" content="{{&ogImage}}" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@did_labs" />
+    <meta name="twitter:creator" content="@did_labs" />
+    <meta name="twitter:image:src" content="{{&ogImage}}" />
+    <meta name="twitter:image" content="{{&ogImage}}" />
+    <meta property="twitter:description" content="{{ogDescription}}" />
+    <meta property="twitter:title" content="{{ogTitle}}" />
+    <meta name="description" content="{{ogDescription}}" />
+    <title>{{ogTitle}}</title>
     <link rel="icon" href="/favicon.ico?imageFilter=resize&w=32" />
+    <!-- INJECT_HEAD_ELEMENTS -->
   </head>
   <body>
     <noscript> You need to enable JavaScript to run this app. </noscript>
     <div id="app"></div>
+    <script>
+      if (document.title.match(/^\{\{.*\}\}$/)) {
+        document.title = ''
+      }
+    </script>
     <script type="module" src="/src/index.tsx"></script>
   </body>
 </html>
