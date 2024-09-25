@@ -7,13 +7,13 @@ import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import dotenv from 'dotenv-flow';
 import express, { ErrorRequestHandler } from 'express';
-import fallback from 'express-history-api-fallback';
 
 import { Config, isDevelopment } from './libs/env';
 import logger from './libs/logger';
 import { autoUpdateSubscriptionMeta } from './libs/payment';
 import routes from './routes';
 import { initAuthRouter } from './routes/auth';
+import setupHtmlRouter from './routes/html';
 
 if (process.env.NODE_ENV === 'development') {
   dotenv.config();
@@ -46,7 +46,7 @@ app.use((req, _, next) => {
 if (!isDevelopment) {
   const staticDir = path.resolve(Config.appDir, 'dist');
   app.use(express.static(staticDir, { maxAge: '30d', index: false }));
-  app.use(fallback('index.html', { root: staticDir }));
+  setupHtmlRouter(app);
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars

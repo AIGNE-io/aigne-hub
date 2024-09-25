@@ -12,7 +12,12 @@ export default function withLocaleProvider<T>(
     const { locale } = useLocaleContext();
 
     return (
-      <LocaleProvider translations={translations} fallbackLocale={fallbackLocale} locale={locale}>
+      <LocaleProvider
+        translations={translations}
+        fallbackLocale={fallbackLocale}
+        locale={locale}
+        onLoadingTranslation={undefined}
+        languages={undefined}>
         <C {...(args as any)} />
       </LocaleProvider>
     );

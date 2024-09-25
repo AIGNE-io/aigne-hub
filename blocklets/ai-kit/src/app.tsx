@@ -46,7 +46,12 @@ export default function App() {
         />
 
         <ToastProvider>
-          <LocaleProvider translations={translations} fallbackLocale="en">
+          <LocaleProvider
+            translations={translations}
+            fallbackLocale="en"
+            locale={undefined}
+            onLoadingTranslation={undefined}
+            languages={undefined}>
             <SessionProvider serviceHost={basename}>
               <Suspense fallback={<Loading />}>
                 <AppRoutes basename={basename} />
