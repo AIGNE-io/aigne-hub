@@ -211,7 +211,16 @@ function UseAIKitServiceSwitch() {
           <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
             <AccessAlarmRounded color="warning" fontSize="small" />
             <Box component="span">&nbsp;{t('unsubscribeAt')}&nbsp;</Box>
-            <RelativeTime locale={locale} type="absolute" value={cancelAt * 1000} />
+            <RelativeTime
+              locale={locale}
+              type="absolute"
+              value={cancelAt * 1000}
+              withoutSuffix={undefined}
+              from={undefined}
+              to={undefined}
+              tz={undefined}
+              relativeRange={undefined}
+            />
 
             <Button
               sx={{ ml: 1 }}
