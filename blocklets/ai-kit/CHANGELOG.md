@@ -1,3 +1,7 @@
+## 0.1.55 (2024-9-25)
+
+- feat: add open graph support
+
 ## 0.1.54 (2024-9-24)
 
 - chore: use fetch instead of axios to support csrf
