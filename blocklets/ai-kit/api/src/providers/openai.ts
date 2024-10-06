@@ -42,7 +42,12 @@ export async function* openaiChatCompletion(
     max_tokens: input.maxTokens,
     tools: input.tools,
     tool_choice: input.tools?.length ? (input.toolChoice ?? 'auto') : undefined,
-    response_format: input.responseFormat?.type ? { type: input.responseFormat.type } : undefined,
+    response_format:
+      input.responseFormat?.type === 'json_schema'
+        ? { type: 'json_schema', json_schema: input.responseFormat.jsonSchema }
+        : input.responseFormat?.type
+          ? { type: input.responseFormat.type }
+          : undefined,
     stream_options: { include_usage: true },
   });
 

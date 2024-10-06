@@ -49,9 +49,19 @@ export interface ChatCompletionInput {
       parameters: Record<string, any>;
     };
   }[];
-  responseFormat?: {
-    type?: 'text' | 'json_object';
-  };
+  responseFormat?:
+    | {
+        type?: 'text' | 'json_object';
+      }
+    | {
+        type: 'json_schema';
+        jsonSchema: {
+          name: string;
+          description?: string;
+          schema: Record<string, any>;
+          strict?: boolean;
+        };
+      };
 }
 
 export type ChatCompletionResponse = ChatCompletionChunk | ChatCompletionError | ChatCompletionUsage;
