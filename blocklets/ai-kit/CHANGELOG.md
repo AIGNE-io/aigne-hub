@@ -1,3 +1,7 @@
+## 0.1.58 (2024-10-6)
+
+- feat: add json_schema support
+
 ## 0.1.57 (2024-9-29)
 
 - chore: update deps
