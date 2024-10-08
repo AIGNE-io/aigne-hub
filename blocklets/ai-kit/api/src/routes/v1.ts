@@ -133,7 +133,16 @@ const completionsRequestSchema = Joi.object<
     )
     .optional(),
   responseFormat: Joi.object({
-    type: Joi.string().valid('text', 'json_object').empty([null, '']),
+    type: Joi.string().valid('text', 'json_object', 'json_schema').empty([null, '']),
+  }).when(Joi.object({ type: Joi.valid('json_schema') }), {
+    then: Joi.object({
+      jsonSchema: Joi.object({
+        name: Joi.string().required(),
+        description: Joi.string().empty([null, '']),
+        schema: Joi.object().pattern(Joi.string(), Joi.any()).required(),
+        strict: Joi.boolean().empty([null, '']),
+      }),
+    }),
   }),
 }).xor('prompt', 'messages');
 

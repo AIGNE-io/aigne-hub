@@ -1,3 +1,15 @@
+## 0.1.58 (2024-10-6)
+
+- feat: add json_schema support
+
+## 0.1.57 (2024-9-29)
+
+- chore: update deps
+
+## 0.1.56 (2024-9-26)
+
+- chore: optimize image previewer by image service
+
 ## 0.1.55 (2024-9-25)
 
 - feat: add open graph support

@@ -7,6 +7,7 @@ import { useReactive } from 'ahooks';
 import { saveAs } from 'file-saver';
 import React from 'react';
 import { PhotoProvider, PhotoView } from 'react-photo-view';
+import { withQuery } from 'ufo';
 
 import LoadingImage from './loading-image';
 
@@ -149,6 +150,11 @@ export default function ImagePreview({
                 <PhotoView {...item}>
                   <LoadingImage
                     {...item}
+                    src={withQuery(item.src, {
+                      imageFilter: 'resize',
+                      f: 'webp',
+                      w: typeof itemWidth === 'number' ? Math.min(itemWidth * 2, 1200) : undefined,
+                    })}
                     style={{
                       transition,
                       objectFit: 'cover',
