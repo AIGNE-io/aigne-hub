@@ -1,3 +1,7 @@
+## 0.1.59 (2024-10-16)
+
+- fix: remove config watcher that not working in docker mode
+
 ## 0.1.58 (2024-10-6)
 
 - feat: add json_schema support
