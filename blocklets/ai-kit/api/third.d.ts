@@ -16,7 +16,13 @@ declare module 'express-history-api-fallback';
 declare module 'express-async-errors';
 
 declare module '@blocklet/logger' {
-  export default function createLogger(name: string): typeof console;
+  function createLogger(name: string): typeof console;
+
+  namespace createLogger {
+    function getAccessLogStream(): any;
+  }
+
+  export default createLogger;
 }
 
 namespace Express {
