@@ -127,7 +127,7 @@ const completionsRequestSchema = Joi.object<
         type: Joi.string().valid('function').required(),
         function: Joi.object({
           name: Joi.string().required(),
-          description: Joi.string(),
+          description: Joi.string().empty([null, '']),
         }).required(),
       })
     )
