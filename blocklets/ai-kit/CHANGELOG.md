@@ -1,3 +1,7 @@
+## 0.1.61 (2024-10-30)
+
+- chore: upgrade @blocklet/sdk
+
 ## 0.1.60 (2024-10-29)
 
 - chore: add access logger
