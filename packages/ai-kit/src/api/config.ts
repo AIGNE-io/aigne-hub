@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events';
-import { existsSync, watch, writeFileSync } from 'fs';
+import { existsSync, writeFileSync } from 'fs';
 import { readFile, writeFile } from 'fs/promises';
 import { join } from 'path';
 
@@ -17,8 +17,6 @@ class Config extends EventEmitter {
     if (!existsSync(Config.CONFIG_FILE_PATH)) {
       writeFileSync(Config.CONFIG_FILE_PATH, '');
     }
-
-    watch(Config.CONFIG_FILE_PATH, this.reloadConfigFile);
 
     this.reloadConfigFile();
   }

@@ -1,7 +1,13 @@
 declare module '@arcblock/ux/*';
 
 declare module '@blocklet/logger' {
-  export default function createLogger(name: string): typeof console;
+  function createLogger(name: string): typeof console;
+
+  namespace createLogger {
+    function getAccessLogStream(): any;
+  }
+
+  export default createLogger;
 }
 
 declare var blocklet:

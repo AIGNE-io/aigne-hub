@@ -1,3 +1,16 @@
+## 0.1.61 (2024-10-30)
+
+- chore: upgrade @blocklet/sdk
+
+## 0.1.60 (2024-10-29)
+
+- chore: add access logger
+- chore: auto remove empty string from request
+
+## 0.1.59 (2024-10-16)
+
+- fix: remove config watcher that not working in docker mode
+
 ## 0.1.58 (2024-10-6)
 
 - feat: add json_schema support
