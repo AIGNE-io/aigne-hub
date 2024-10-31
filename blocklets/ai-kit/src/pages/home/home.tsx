@@ -20,9 +20,9 @@ export default function Home() {
 
       <Box flexGrow={1} mx={2}>
         <Box mx="auto" my={4} maxWidth={800}>
-          {blocklet && (
+          {window.blocklet && (
             <Stack alignItems="center" justifyContent="center" gap={3} minHeight="60vh">
-              <Box component="img" src={blocklet.appLogo} width={80} borderRadius={80} />
+              <Box component="img" src={window.blocklet.appLogo} width={80} borderRadius={80} />
               <Typography variant="h4">AI Kit</Typography>
               <Typography variant="h5" component="div" color="text.secondary" textAlign="center">
                 The decentralized AI access solution for blocklets

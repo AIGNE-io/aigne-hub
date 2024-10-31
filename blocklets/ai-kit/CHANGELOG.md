@@ -1,3 +1,7 @@
+## 0.1.62 (2024-10-31)
+
+- chore: update @blocklet/sdk
+
 ## 0.1.61 (2024-10-30)
 
 - chore: upgrade @blocklet/sdk
