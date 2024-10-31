@@ -2,7 +2,7 @@ import type { IncomingMessage } from 'http';
 import { ReadableStream, TextDecoderStream } from 'stream/web';
 
 import { call, getComponentWebEndpoint } from '@blocklet/sdk/lib/component';
-import { sign } from '@blocklet/sdk/lib/util/verify-sign';
+import { getSignData, sign } from '@blocklet/sdk/lib/util/verify-sign';
 import axios, { AxiosResponse } from 'axios';
 import FormData from 'form-data';
 import stringify from 'json-stable-stringify';
@@ -209,7 +209,16 @@ export async function audioTranscriptions(
           headers: { ...getRemoteComponentCallHeaders({}) },
         })
       : axios.post(joinURL(getComponentWebEndpoint('ai-kit'), '/api/v1/audio/transcriptions'), form, {
-          headers: { 'x-component-sig': sign({}) },
+          headers: {
+            'x-component-sig': sign(
+              getSignData({
+                data: {},
+                params: {},
+                method: 'post',
+                url: joinURL(getComponentWebEndpoint('ai-kit'), '/api/v1/audio/transcriptions'),
+              })
+            ),
+          },
           responseType: options?.responseType!,
         })
   );

@@ -1,15 +1,7 @@
-declare var blocklet:
-  | {
-      prefix: string;
-      appId: string;
-      appName: string;
-      appUrl: string;
-      appLogo: string;
-      appDescription: string;
-      version: string;
-      componentMountPoints: { title: string; name: string; did: string; mountPoint: string }[];
-    }
-  | undefined;
+declare global {
+  import type { WindowBlocklet } from '@blocklet/sdk';
+  declare var blocklet: WindowBlocklet | undefined;
+}
 
 declare module '@arcblock/ux/*';
 declare module '@arcblock/did-connect/*';

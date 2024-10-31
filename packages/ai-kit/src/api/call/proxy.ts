@@ -2,7 +2,7 @@ import http from 'http';
 import https from 'https';
 
 import { getComponentWebEndpoint } from '@blocklet/sdk/lib/component';
-import { sign } from '@blocklet/sdk/lib/util/verify-sign';
+import { getSignData, sign } from '@blocklet/sdk/lib/util/verify-sign';
 import { NextFunction, Request, Response } from 'express';
 import { isNil, pick } from 'lodash';
 import { joinURL, parseURL, stringifyParsedURL, withQuery } from 'ufo';
@@ -45,7 +45,16 @@ export function proxyToAIKit(
           ...pick(req.headers, ...proxyReqHeaders),
           ...(useAIKitService
             ? getRemoteComponentCallHeaders(req.body || {})
-            : { 'x-component-sig': sign(req.body || {}) }),
+            : {
+                'x-component-sig': sign(
+                  getSignData({
+                    data: req.body,
+                    params: req.query,
+                    method: req.method,
+                    url: req.url,
+                  })
+                ),
+              }),
         },
         method: req.method,
       },
