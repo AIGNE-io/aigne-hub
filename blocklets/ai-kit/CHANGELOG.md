@@ -1,3 +1,7 @@
+## 0.1.63 (2024-11-1)
+
+- chore: polish screen shots
+
 ## 0.1.62 (2024-10-31)
 
 - chore: update @blocklet/sdk
