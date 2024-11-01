@@ -96,7 +96,7 @@ capabilities:
   component: true
   navigation: true
 screenshots:
-  - playground.gif
+  - ed16b175448bbd24c457760ff6219bff.gif
 components: []
 navigation:
   - id: playground
