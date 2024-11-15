@@ -15,8 +15,7 @@ AI Kit is a blocklet that brings AI capabilities to other blocklets. With AI Kit
 - Start the installed blocklet in the Blocklet Server console
 - Set `OPENAI_API_KEY` in **Blocklets -> AI Kit -> Components -> AI Kit -> Settings -> Environment** and restart blocklet
   ![setting-api-key](docs/setting-api-key.jpg)
-- Access the public address of the blocklet, you can open playground from admin account menus
-  ![playground](docs/playground.jpg)
+- Access the public address of the blocklet, you can open playground from apps menu
 
 ## Integrate into your blocklet
 

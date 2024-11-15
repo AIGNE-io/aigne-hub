@@ -15,8 +15,7 @@ AI Kit 是一个能够快速集成 AI 的 blocklet。使用 AI Kit，开发者�
 - 在 blocklet 服务器控制台启动已安装的 blocklet
 - 在 **Blocklets -> AI Kit -> Components -> AI Kit -> Settings -> Environment** 设置 `OPENAI_API_KEY` 并重启 blocklet
   ![setting-api-key](docs/setting-api-key.jpg)
-- 访问 AI Kit 的公网地址，你可以从管理员账户菜单中打开 Playground
-  ![playground](docs/playground.jpg)
+- 访问 AI Kit 的公网地址，你可以应用菜单中打开 Playground
 
 ## 集成到你的 blocklet
 

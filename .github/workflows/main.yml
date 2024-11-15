@@ -31,6 +31,7 @@ jobs:
         run: pnpm build:libs
 
       - name: Publish to NPM
+        if: "! contains(toJSON(github.event.commits.*.message), '[skip npm]')"
         run: |
           npm config set '//registry.npmjs.org/:_authToken' "${{ secrets.NPM_TOKEN }}"
           VERSION=$(cat version | awk '{$1=$1;print}')
@@ -38,6 +39,7 @@ jobs:
           pnpm publish --filter "@blocklet/*" --access public --no-git-checks
 
       - name: Blocklet workflow
+        if: "! contains(toJSON(github.event.commits.*.message), '[skip blocklet]')"
         uses: blocklet/action-workflow@v1
         with:
           deps-server-version: beta
