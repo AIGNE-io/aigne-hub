@@ -1,3 +1,11 @@
+## 0.1.67 (2025-2-5)
+
+- chore: update deps
+
+## 0.1.66 (2024-12-5)
+
+- chore: update deps
+
 ## 0.1.65 (2024-11-12)
 
 - chore: polish screenshots
