@@ -1,7 +1,7 @@
 import { IncomingMessage } from 'http';
 import { TextDecoderStream } from 'stream/web';
 
-import { ChatCompletionInput, ChatCompletionResponse } from '@blocklet/ai-kit/api/types';
+import { ChatCompletionChunk, ChatCompletionInput, ChatCompletionResponse } from '@blocklet/ai-kit/api/types';
 import { EventSourceParserStream, readableToWeb } from '@blocklet/ai-kit/api/utils/event-stream';
 import { GenerateContentResponse } from '@google/generative-ai';
 import axios from 'axios';
@@ -45,9 +45,32 @@ export async function* geminiChatCompletion(
     .pipeThrough(new TextDecoderStream())
     .pipeThrough(new EventSourceParserStream<GenerateContentResponse>());
 
+  const toolCalls: ChatCompletionChunk['delta']['toolCalls'] = [];
+
   for await (const chunk of stream) {
     const choice = chunk.candidates?.[0];
     if (choice?.content?.parts) {
+      const calls = choice.content.parts
+        .map((part) => {
+          if (part.functionCall) {
+            return {
+              id: randomId(),
+              type: 'function' as const,
+              function: {
+                name: part.functionCall.name,
+                arguments: JSON.stringify(part.functionCall.args),
+              },
+            };
+          }
+
+          return undefined;
+        })
+        .filter((i): i is NonNullable<typeof i> => !!i);
+
+      if (calls.length) {
+        toolCalls.push(...calls);
+      }
+
       yield {
         delta: {
           role: 'assistant',
@@ -55,16 +78,7 @@ export async function* geminiChatCompletion(
             .map((i) => i.text)
             .filter(Boolean)
             .join('\n'),
-          toolCalls: choice.content.parts
-            .filter((i): i is typeof i & Required<Pick<typeof i, 'functionCall'>> => typeof i.functionCall === 'object')
-            .map((i) => ({
-              id: randomId(),
-              type: 'function',
-              function: {
-                name: i.functionCall.name,
-                arguments: JSON.stringify(i.functionCall.args),
-              },
-            })),
+          toolCalls,
         },
       };
     }
