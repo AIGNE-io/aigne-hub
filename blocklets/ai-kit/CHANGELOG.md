@@ -1,3 +1,7 @@
+## 0.1.68 (2025-2-18)
+
+- fix: correct function calling response
+
 ## 0.1.67 (2025-2-5)
 
 - chore: update deps
