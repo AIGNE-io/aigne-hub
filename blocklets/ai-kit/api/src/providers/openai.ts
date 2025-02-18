@@ -64,11 +64,11 @@ export async function* openaiChatCompletion(
         for (const call of delta.tool_calls) {
           toolCalls[call.index] ??= {};
           const c = toolCalls[call.index]!;
-          c.id = call.id;
-          c.type = call.type;
+          if (call.id) c.id = call.id;
+          if (call.type) c.type = call.type;
           c.function ??= {};
-          c.function.name = (c.function.name || '') + (call.function?.name || '');
-          c.function.arguments = (c.function.arguments || '') + (call.function?.arguments || '');
+          if (call.function?.name) c.function.name = call.function.name;
+          if (call.function?.arguments) c.function.arguments = (c.function.arguments || '') + call.function.arguments;
         }
       }
 
