@@ -1,4 +1,4 @@
-import { ChatCompletionInput, ChatCompletionResponse } from '@blocklet/ai-kit/api/types';
+import { ChatCompletionChunk, ChatCompletionInput, ChatCompletionResponse } from '@blocklet/ai-kit/api/types';
 import OpenAI from 'openai';
 
 export async function* openaiChatCompletion(
@@ -51,6 +51,8 @@ export async function* openaiChatCompletion(
     stream_options: { include_usage: true },
   });
 
+  const toolCalls: ChatCompletionChunk['delta']['toolCalls'] = [];
+
   for await (const chunk of res) {
     const choice = chunk.choices[0];
     if (choice?.delta) {
@@ -58,15 +60,23 @@ export async function* openaiChatCompletion(
         delta: { role, ...delta },
       } = choice;
 
+      if (delta.tool_calls) {
+        for (const call of delta.tool_calls) {
+          toolCalls[call.index] ??= {};
+          const c = toolCalls[call.index]!;
+          if (call.id) c.id = call.id;
+          if (call.type) c.type = call.type;
+          c.function ??= {};
+          if (call.function?.name) c.function.name = call.function.name;
+          if (call.function?.arguments) c.function.arguments = (c.function.arguments || '') + call.function.arguments;
+        }
+      }
+
       yield {
         delta: {
           role,
           content: delta.content,
-          toolCalls: delta.tool_calls?.map((i) => ({
-            id: i.id,
-            type: i.type,
-            function: i.function && { name: i.function.name, arguments: i.function.arguments },
-          })),
+          toolCalls,
         },
       };
     }
