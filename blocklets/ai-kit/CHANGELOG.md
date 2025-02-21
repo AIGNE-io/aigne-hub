@@ -1,3 +1,7 @@
+## 0.1.70 (2025-2-21)
+
+- fix: remove empty parameters for gemini function calling
+
 ## 0.1.69 (2025-2-20)
 
 - chore: update deps
