@@ -25,7 +25,8 @@ export async function* geminiChatCompletion(
               function_declarations: input.tools.map((i) => ({
                 name: i.function.name,
                 description: i.function.description,
-                parameters: i.function.parameters,
+                parameters:
+                  Object.keys(i.function.parameters?.properties ?? {}).length === 0 ? undefined : i.function.parameters,
               })),
             },
           ]
