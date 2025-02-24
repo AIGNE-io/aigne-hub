@@ -1,3 +1,7 @@
+## 0.1.71 (2025-2-25)
+
+- fix: support multi function calls
+
 ## 0.1.70 (2025-2-21)
 
 - fix: remove empty parameters for gemini function calling
