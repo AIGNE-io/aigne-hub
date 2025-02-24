@@ -5,36 +5,39 @@ export async function* openaiChatCompletion(
   input: ChatCompletionInput & Required<Pick<ChatCompletionInput, 'model'>>,
   openai: OpenAI
 ): AsyncGenerator<ChatCompletionResponse> {
+  const messages = input.messages.map((msg) => {
+    if (msg.role === 'user') {
+      return {
+        role: msg.role,
+        content: Array.isArray(msg.content)
+          ? msg.content.map((i) => {
+              if (i.type === 'text') return { type: i.type, text: i.text };
+              return { type: i.type, image_url: i.imageUrl };
+            })
+          : msg.content,
+      };
+    }
+    if (msg.role === 'assistant') {
+      return {
+        role: msg.role,
+        content: msg.content,
+        tool_calls: msg.toolCalls,
+      };
+    }
+    if (msg.role === 'tool') {
+      return {
+        role: msg.role,
+        content: msg.content,
+        tool_call_id: msg.toolCallId,
+      };
+    }
+    return msg;
+  });
+
   const res = await openai.chat.completions.create({
     stream: true,
     model: input.model,
-    messages: input.messages.map((msg) => {
-      if (msg.role === 'user') {
-        return {
-          role: msg.role,
-          content: Array.isArray(msg.content)
-            ? msg.content.map((i) => {
-                if (i.type === 'text') return { type: i.type, text: i.text };
-                return { type: i.type, image_url: i.imageUrl };
-              })
-            : msg.content,
-        };
-      }
-      if (msg.role === 'assistant') {
-        return {
-          role: msg.role,
-          content: msg.content,
-        };
-      }
-      if (msg.role === 'tool') {
-        return {
-          role: msg.role,
-          content: msg.content,
-          tool_call_id: msg.toolCallId,
-        };
-      }
-      return msg;
-    }),
+    messages,
     temperature: input.temperature,
     top_p: input.topP,
     presence_penalty: input.presencePenalty,

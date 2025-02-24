@@ -12,7 +12,7 @@ export interface ChatCompletionInput {
       }
     | {
         role: 'assistant';
-        content: string;
+        content?: string;
         toolCalls?: {
           id: string;
           type: 'function';

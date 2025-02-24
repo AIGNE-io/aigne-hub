@@ -80,7 +80,7 @@ const completionsRequestSchema = Joi.object<
         })
         .when(Joi.object({ role: Joi.valid('assistant') }).unknown(), {
           then: Joi.object({
-            content: Joi.string().allow(null, '').required(),
+            content: Joi.string().allow(null, ''),
             name: Joi.string().empty([null, '']),
             toolCalls: Joi.array().items(
               Joi.object({
