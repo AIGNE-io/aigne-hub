@@ -15,7 +15,7 @@ repository:
   type: git
   url: git+https://github.com/blocklet/ai-kit.git
 specVersion: 1.2.8
-version: 0.1.71
+version: 0.1.72
 logo: screenshots/a9793769824431ba7220c198694a8baa.png
 files:
   - dist
@@ -35,6 +35,7 @@ interfaces:
         config:
           ignoreUrls:
             - /api/meilisearch/embeddings
+    proxyBehavior: service
 community: https://community.arcblock.io
 documentation: https://developer.blocklet.io
 homepage: https://store.blocklet.dev

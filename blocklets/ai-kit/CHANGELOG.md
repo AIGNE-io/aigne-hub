@@ -1,3 +1,7 @@
+## 0.1.72 (2025-3-17)
+
+- chore: update deps
+
 ## 0.1.71 (2025-2-25)
 
 - fix: support multi function calls
