@@ -57,7 +57,8 @@ export default function Chat() {
       fallbackUrl={undefined}
       invalidPathFallback={undefined}
       sessionManagerProps={undefined}
-      links={undefined}>
+      links={undefined}
+      showDomainWarningDialog={undefined}>
       <Conversation
         ref={ref}
         sx={{ maxWidth: 800, mx: 'auto', width: '100%' }}

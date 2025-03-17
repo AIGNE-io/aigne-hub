@@ -16,7 +16,8 @@ export default function BillingRoutes() {
       invalidPathFallback={undefined}
       headerAddons={undefined}
       sessionManagerProps={undefined}
-      links={undefined}>
+      links={undefined}
+      showDomainWarningDialog={undefined}>
       <ErrorBoundary>
         <Routes>
           <Route index element={<BillingPage />} />
