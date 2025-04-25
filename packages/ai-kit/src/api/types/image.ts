@@ -6,6 +6,10 @@ export interface ImageGenerationInput {
   responseFormat?: 'url' | 'b64_json';
   style?: 'vivid' | 'natural';
   quality?: 'standard' | 'hd';
+  background?: 'transparent' | 'opaque' | 'auto';
+  outputFormat?: 'jpeg' | 'png' | 'webp';
+  moderation?: 'low' | 'auto';
+  outputCompression?: number;
 }
 
 export interface ImageGenerationResponse {
