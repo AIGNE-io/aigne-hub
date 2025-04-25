@@ -326,10 +326,12 @@ const imageGenerationRequestSchema = Joi.object<
 >({
   model: Joi.valid('dall-e-2', 'dall-e-3', 'gpt-image-1').empty(['', null]).default('dall-e-2'),
   prompt: Joi.string().required(),
-  size: Joi.string().valid('256x256', '512x512', '1024x1024', '1024x1792', '1792x1024').empty(['', null]),
+  size: Joi.string()
+    .valid('256x256', '512x512', '1024x1024', '1024x1792', '1792x1024', '1536x1024', '1024x1536', 'auto')
+    .empty(['', null]),
   n: Joi.number().min(1).max(10).empty([null]).default(1),
   style: Joi.string().valid('vivid', 'natural').empty([null]),
-  quality: Joi.string().valid('standard', 'hd', 'high', 'medium', 'low', 'auto').empty([null]).default('auto'),
+  quality: Joi.string().valid('standard', 'hd', 'high', 'medium', 'low', 'auto').empty([null]),
 
   // Only support for dall-e-2 and dall-e-3
   responseFormat: Joi.string().valid('url', 'b64_json').empty([null]),
@@ -362,23 +364,34 @@ router.post(
 
     const openai = getOpenAI();
 
-    let params: Partial<ImageGenerateParams> = {
-      ...omit(input, ['responseFormat', 'background', 'outputFormat', 'moderation', 'outputCompression']),
-    };
-
-    if (input.model === 'dall-e-2' || input.model === 'dall-e-3') {
-      params.response_format = input.responseFormat;
-    }
-
-    if (input.model === 'gpt-image-1') {
-      params = {
-        ...params,
+    const modelParams: Record<string, Partial<ImageGenerateParams>> = {
+      'dall-e-2': { response_format: input.responseFormat },
+      'dall-e-3': {
+        response_format: input.responseFormat,
+        quality: input.quality,
+        style: input.style,
+      },
+      'gpt-image-1': {
+        quality: input.quality,
         background: input.background,
         output_format: input.outputFormat,
         moderation: input.moderation,
         output_compression: input.outputCompression,
-      };
-    }
+      },
+    };
+
+    const params: Partial<ImageGenerateParams> = {
+      ...omit(input, [
+        'quality',
+        'style',
+        'responseFormat',
+        'background',
+        'outputFormat',
+        'moderation',
+        'outputCompression',
+      ]),
+      ...modelParams[input.model],
+    };
 
     const response = await openai.images.generate(params as ImageGenerateParams);
 
