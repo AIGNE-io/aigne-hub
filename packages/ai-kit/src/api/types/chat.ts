@@ -68,7 +68,7 @@ export type ChatCompletionResponse = ChatCompletionChunk | ChatCompletionError |
 
 export interface ChatCompletionChunk {
   delta: {
-    role?: 'system' | 'user' | 'assistant' | 'tool';
+    role?: 'system' | 'user' | 'assistant' | 'tool' | 'developer';
     content?: string | null;
     toolCalls?: {
       id?: string;
