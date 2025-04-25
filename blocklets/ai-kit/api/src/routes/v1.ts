@@ -326,7 +326,9 @@ const imageGenerationRequestSchema = Joi.object<
 >({
   model: Joi.valid('dall-e-2', 'dall-e-3', 'gpt-image-1').empty(['', null]).default('dall-e-2'),
   prompt: Joi.string().required(),
-  size: Joi.string().valid('256x256', '512x512', '1024x1024', '1024x1792', '1792x1024').empty(['', null]),
+  size: Joi.string()
+    .valid('256x256', '512x512', '1024x1024', '1024x1792', '1792x1024', '1536x1024', '1024x1536', 'auto')
+    .empty(['', null]),
   n: Joi.number().min(1).max(10).empty([null]).default(1),
   style: Joi.string().valid('vivid', 'natural').empty([null]),
   quality: Joi.string().valid('standard', 'hd', 'high', 'medium', 'low', 'auto').empty([null]).default('auto'),
