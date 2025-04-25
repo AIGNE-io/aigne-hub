@@ -5,7 +5,7 @@ export interface ImageGenerationInput {
   n?: number;
   responseFormat?: 'url' | 'b64_json';
   style?: 'vivid' | 'natural';
-  quality?: 'standard' | 'hd';
+  quality?: 'standard' | 'hd' | 'high' | 'medium' | 'low' | 'auto';
   background?: 'transparent' | 'opaque' | 'auto';
   outputFormat?: 'jpeg' | 'png' | 'webp';
   moderation?: 'low' | 'auto';

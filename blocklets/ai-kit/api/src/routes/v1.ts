@@ -329,7 +329,7 @@ const imageGenerationRequestSchema = Joi.object<
   size: Joi.string().valid('256x256', '512x512', '1024x1024', '1024x1792', '1792x1024').empty(['', null]),
   n: Joi.number().min(1).max(10).empty([null]).default(1),
   style: Joi.string().valid('vivid', 'natural').empty([null]),
-  quality: Joi.string().valid('standard', 'hd').empty([null]),
+  quality: Joi.string().valid('standard', 'hd', 'high', 'medium', 'low', 'auto').empty([null]).default('auto'),
 
   // Only support for dall-e-2 and dall-e-3
   responseFormat: Joi.string().valid('url', 'b64_json').empty([null]),
