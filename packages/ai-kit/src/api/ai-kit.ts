@@ -76,7 +76,15 @@ export interface ImageGenerations<T extends { url: string } | { b64_json: string
   data: T[];
 }
 
-export type ImageGenerationSize = '256x256' | '512x512' | '1024x1024';
+export type ImageGenerationSize =
+  | '256x256'
+  | '512x512'
+  | '1024x1024'
+  | '1024x1792'
+  | '1792x1024'
+  | '1536x1024'
+  | '1024x1536'
+  | 'auto';
 
 export interface ImageGenerationFn<P extends {}> {
   (options: P & { response_format?: 'url' }): Promise<ImageGenerations<{ url: string }>>;

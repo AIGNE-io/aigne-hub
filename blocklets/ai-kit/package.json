@@ -1,6 +1,6 @@
 {
   "name": "ai-kit",
-  "version": "0.1.72",
+  "version": "0.1.73",
   "author": "Arcblock <blocklet@arcblock.io> https://github.com/blocklet",
   "scripts": {
     "dev": "cross-env COMPONENT_STORE_URL=https://test.store.blocklet.dev blocklet dev",
@@ -77,7 +77,7 @@
     "morgan": "^1.10.0",
     "mustache": "^4.2.0",
     "nanoid": "^5.0.7",
-    "openai": "^4.56.0",
+    "openai": "^4.96.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.26.1",

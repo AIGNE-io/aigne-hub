@@ -20,6 +20,7 @@ import proxy from 'express-http-proxy';
 import Joi from 'joi';
 import omit from 'lodash/omit';
 import pick from 'lodash/pick';
+import { ImageGenerateParams } from 'openai/resources/images';
 
 import { getOpenAI } from '../libs/ai-provider';
 import { Config } from '../libs/env';
@@ -323,13 +324,23 @@ router.post(
 const imageGenerationRequestSchema = Joi.object<
   ImageGenerationInput & Required<Pick<ImageGenerationInput, 'model' | 'n'>>
 >({
-  model: Joi.valid('dall-e-2', 'dall-e-3').empty(['', null]).default('dall-e-2'),
+  model: Joi.valid('dall-e-2', 'dall-e-3', 'gpt-image-1').empty(['', null]).default('dall-e-2'),
   prompt: Joi.string().required(),
-  size: Joi.string().valid('256x256', '512x512', '1024x1024', '1024x1792', '1792x1024').empty(['', null]),
+  size: Joi.string()
+    .valid('256x256', '512x512', '1024x1024', '1024x1792', '1792x1024', '1536x1024', '1024x1536', 'auto')
+    .empty(['', null]),
   n: Joi.number().min(1).max(10).empty([null]).default(1),
-  responseFormat: Joi.string().valid('url', 'b64_json').empty([null]),
   style: Joi.string().valid('vivid', 'natural').empty([null]),
-  quality: Joi.string().valid('standard', 'hd').empty([null]),
+  quality: Joi.string().valid('standard', 'hd', 'high', 'medium', 'low', 'auto').empty([null]),
+
+  // Only support for dall-e-2 and dall-e-3
+  responseFormat: Joi.string().valid('url', 'b64_json').empty([null]),
+
+  // Only support for gpt-image-1
+  background: Joi.string().valid('transparent', 'opaque', 'auto').empty([null]).default('auto'),
+  outputFormat: Joi.valid('jpeg', 'png', 'webp').empty([null]).default('jpeg'),
+  moderation: Joi.valid('low', 'auto').empty([null]).default('auto'),
+  outputCompression: Joi.number().min(0).max(100).empty([null]).default(100),
 });
 
 router.post(
@@ -353,13 +364,39 @@ router.post(
 
     const openai = getOpenAI();
 
-    const response = await openai.images.generate({
-      ...omit(input, 'responseFormat'),
-      response_format: input.responseFormat,
-    });
+    const modelParams: Record<string, Partial<ImageGenerateParams>> = {
+      'dall-e-2': { response_format: input.responseFormat },
+      'dall-e-3': {
+        response_format: input.responseFormat,
+        quality: input.quality,
+        style: input.style,
+      },
+      'gpt-image-1': {
+        quality: input.quality,
+        background: input.background,
+        output_format: input.outputFormat,
+        moderation: input.moderation,
+        output_compression: input.outputCompression,
+      },
+    };
+
+    const params: Partial<ImageGenerateParams> = {
+      ...omit(input, [
+        'quality',
+        'style',
+        'responseFormat',
+        'background',
+        'outputFormat',
+        'moderation',
+        'outputCompression',
+      ]),
+      ...modelParams[input.model],
+    };
+
+    const response = await openai.images.generate(params as ImageGenerateParams);
 
     res.json({
-      data: response.data.map((i) => ({
+      data: response.data?.map((i) => ({
         // Deprecated: use b64Json instead
         b64_json: i.b64_json,
         b64Json: i.b64_json,
