@@ -1,3 +1,7 @@
+## 0.1.74 (2025-4-28)
+
+- feat: support gpt-image-1 image edit
+
 ## 0.1.73 (2025-4-25)
 
 - feat: support gpt-image-1
