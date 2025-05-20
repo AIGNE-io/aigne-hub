@@ -22,7 +22,9 @@ interface ImagePreviewProps {
   itemWidth?: number;
   itemHeight?: number;
   transition?: string;
+  borderRadius?: number;
   formatDownloadSrc?: (src: string) => string;
+  showDownloadButton?: boolean;
 }
 
 interface StateProps {
@@ -69,7 +71,9 @@ export default function ImagePreview({
   itemHeight,
   spacing = 1,
   transition = 'all 0.3s',
+  borderRadius = 0,
   formatDownloadSrc = (value) => value,
+  showDownloadButton = true,
 }: ImagePreviewProps) {
   const state: StateProps = useReactive({
     downloadingIndexMap: {},
@@ -157,6 +161,7 @@ export default function ImagePreview({
                     })}
                     style={{
                       transition,
+                      borderRadius,
                       objectFit: 'cover',
                       width: width || itemWidth || '100%',
                       height: height || itemHeight || '100%',
@@ -172,9 +177,10 @@ export default function ImagePreview({
                     opacity: 0,
                     background: 'rgba(0,0,0,0.7)',
                   }}>
-                  {getDownloadButton(index, {
-                    size: 'small',
-                  })}
+                  {showDownloadButton &&
+                    getDownloadButton(index, {
+                      size: 'small',
+                    })}
                 </Box>
               </Box>
             </Grid>
