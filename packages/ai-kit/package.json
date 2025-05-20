@@ -101,10 +101,10 @@
     "react": "^18.2.0"
   },
   "dependencies": {
-    "@arcblock/did": "^1.20.8",
-    "@arcblock/ux": "^2.13.29",
+    "@arcblock/did": "^1.20.11",
+    "@arcblock/ux": "^2.13.41",
     "@blocklet/logger": "^1.16.43",
-    "@blocklet/payment-js": "^1.18.40",
+    "@blocklet/payment-js": "^1.18.46",
     "@blocklet/sdk": "^1.16.43",
     "@emotion/css": "^11.13.0",
     "@emotion/react": "^11.13.0",
@@ -112,7 +112,7 @@
     "@mui/icons-material": "^5.16.7",
     "@mui/lab": "^5.0.0-alpha.173",
     "@mui/material": "^5.16.7",
-    "@ocap/mcrypto": "^1.20.8",
+    "@ocap/mcrypto": "^1.20.11",
     "@types/express": "^4.17.21",
     "ahooks": "^3.8.1",
     "axios": "^1.7.4",
