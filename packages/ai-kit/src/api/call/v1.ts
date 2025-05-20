@@ -125,15 +125,15 @@ export async function chatCompletions(
 
 export async function imageGenerations(
   input: ImageGenerationInput,
-  options?: { useAIKitService?: boolean; responseType?: undefined }
+  options?: { useAIKitService?: boolean; responseType?: undefined; timeout?: number }
 ): Promise<ImageGenerationResponse>;
 export async function imageGenerations(
   input: ImageGenerationInput,
-  options: { useAIKitService?: boolean; responseType: 'stream' }
+  options: { useAIKitService?: boolean; responseType: 'stream'; timeout?: number }
 ): Promise<AxiosResponse<IncomingMessage, any>>;
 export async function imageGenerations(
   input: ImageGenerationInput,
-  { useAIKitService, ...options }: { useAIKitService?: boolean; responseType?: 'stream' } = {}
+  { useAIKitService, ...options }: { useAIKitService?: boolean; responseType?: 'stream'; timeout?: number } = {}
 ): Promise<ImageGenerationResponse | AxiosResponse<IncomingMessage, any>> {
   const response = await catchAndRethrowUpstreamError(
     useAIKitService
@@ -141,11 +141,13 @@ export async function imageGenerations(
           responseType: options.responseType,
           headers: { ...getRemoteComponentCallHeaders(input) },
         })
-      : call({
+      : // @ts-ignore
+        call({
           name: 'ai-kit',
           path: '/api/v1/image/generations',
           data: input,
           responseType: options?.responseType!,
+          timeout: options?.timeout,
         })
   );
 
