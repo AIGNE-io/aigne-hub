@@ -1,3 +1,7 @@
+## 0.1.77 (2025-5-20)
+
+- chore: update deps
+
 ## 0.1.76 (2025-5-18)
 
 - feat: add timeout option to imageGenerations
