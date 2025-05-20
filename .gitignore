@@ -34,3 +34,4 @@ lerna-debug.log*
 .vscode
 *.tsbuildinfo
 .idea
+node-compile-cache
