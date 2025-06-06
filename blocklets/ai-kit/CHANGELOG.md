@@ -1,3 +1,7 @@
+## 0.1.79 (2025-6-6)
+
+- chore: update deps
+
 ## 0.1.78 (2025-5-20)
 
 - fix: enhance image preview component
