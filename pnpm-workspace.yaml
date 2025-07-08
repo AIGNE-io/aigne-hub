@@ -1,3 +1,16 @@
 packages:
-  - 'blocklets/*'
-  - 'packages/*'
+  - blocklets/*
+  - packages/*
+
+onlyBuiltDependencies:
+  - core-js
+  - core-js-pure
+  - es5-ext
+  - esbuild
+  - fast-folder-size
+  - fsevents
+  - husky
+  - iframe-resizer
+  - nodemon
+  - protobufjs
+  - sqlite3

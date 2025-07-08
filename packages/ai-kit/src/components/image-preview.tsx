@@ -66,9 +66,9 @@ function getExtFromBase64(base64: string) {
 }
 
 export default function ImagePreview({
-  dataSource,
-  itemWidth,
-  itemHeight,
+  dataSource = [],
+  itemWidth = undefined,
+  itemHeight = undefined,
   spacing = 1,
   transition = 'all 0.3s',
   borderRadius = 0,
@@ -136,7 +136,6 @@ export default function ImagePreview({
           const { width, height } = item;
           return (
             <Grid
-              item
               // eslint-disable-next-line react/no-array-index-key
               key={index}
               className="photo-item"

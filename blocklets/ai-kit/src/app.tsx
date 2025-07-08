@@ -80,7 +80,10 @@ function AppRoutes({ basename }: { basename: string }) {
           path="*"
           element={
             <Layout>
-              <Box flex={1}>
+              <Box
+                sx={{
+                  flex: 1,
+                }}>
                 <NotFoundView />
               </Box>
             </Layout>

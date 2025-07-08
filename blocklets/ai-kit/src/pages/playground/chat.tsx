@@ -8,7 +8,7 @@ import {
 import Dashboard from '@blocklet/ui-react/lib/Dashboard';
 import styled from '@emotion/styled';
 import { HighlightOff } from '@mui/icons-material';
-import { Button, Tooltip } from '@mui/material';
+import { Box, Button, Tooltip } from '@mui/material';
 import { ReactNode, useCallback, useRef } from 'react';
 
 import { ImageGenerationSize, imageGenerations, textCompletions } from '../../libs/ai';
@@ -49,28 +49,31 @@ export default function Chat() {
   );
 
   return (
-    <Root
-      footerProps={{ className: 'dashboard-footer' }}
-      headerAddons={(exists: ReactNode[]) => [<SubscribeButton />, ...exists]}
-      // FIXME: remove following undefined props after issue https://github.com/ArcBlock/ux/issues/1136 solved
-      meta={undefined}
-      fallbackUrl={undefined}
-      invalidPathFallback={undefined}
-      sessionManagerProps={undefined}
-      links={undefined}
-      showDomainWarningDialog={undefined}>
-      <Conversation
-        ref={ref}
-        sx={{ maxWidth: 800, mx: 'auto', width: '100%' }}
-        messages={messages}
-        onSubmit={(prompt) => add(prompt)}
-        customActions={customActions}
-      />
+    <Root>
+      <Dashboard
+        footerProps={{ className: 'dashboard-footer' }}
+        // @ts-ignore
+        headerAddons={(exists: ReactNode[]) => [<SubscribeButton />, ...exists]}
+        // FIXME: remove following undefined props after issue https://github.com/ArcBlock/ux/issues/1136 solved
+        meta={undefined}
+        fallbackUrl={undefined}
+        invalidPathFallback={undefined}
+        sessionManagerProps={undefined}
+        links={undefined}
+        showDomainWarningDialog={undefined}>
+        <Conversation
+          ref={ref}
+          sx={{ maxWidth: 800, mx: 'auto', width: '100%' }}
+          messages={messages}
+          onSubmit={(prompt) => add(prompt)}
+          customActions={customActions}
+        />
+      </Dashboard>
     </Root>
   );
 }
 
-const Root = styled(Dashboard)`
+const Root = styled(Box)`
   > .dashboard-body > .dashboard-main {
     > .dashboard-content {
       display: flex;

@@ -17,18 +17,49 @@ export default function Home() {
         maxWidth={null}
         addons={(exists: ReactNode[]) => [<SubscribeButton />, ...exists]}
       />
-
-      <Box flexGrow={1} mx={2}>
-        <Box mx="auto" my={4} maxWidth={800}>
+      <Box
+        sx={{
+          flexGrow: 1,
+          mx: 2,
+        }}>
+        <Box
+          sx={{
+            mx: 'auto',
+            my: 4,
+            maxWidth: 800,
+          }}>
           {window.blocklet && (
-            <Stack alignItems="center" justifyContent="center" gap={3} minHeight="60vh">
-              <Box component="img" src={window.blocklet.appLogo} width={80} borderRadius={80} />
+            <Stack
+              sx={{
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 3,
+                minHeight: '60vh',
+              }}>
+              <Box
+                component="img"
+                src={window.blocklet.appLogo}
+                sx={{
+                  width: 80,
+                  borderRadius: 80,
+                }}
+              />
               <Typography variant="h4">AI Kit</Typography>
-              <Typography variant="h5" component="div" color="text.secondary" textAlign="center">
+              <Typography
+                variant="h5"
+                component="div"
+                sx={{
+                  color: 'text.secondary',
+                  textAlign: 'center',
+                }}>
                 The decentralized AI access solution for blocklets
               </Typography>
 
-              <Stack direction="row" gap={3}>
+              <Stack
+                direction="row"
+                sx={{
+                  gap: 3,
+                }}>
                 {isAdmin ? (
                   <Button component={Link} to="/playground" variant="contained">
                     Playground
@@ -43,7 +74,6 @@ export default function Home() {
           )}
         </Box>
       </Box>
-
       <Footer
         // FIXME: remove following undefined props after issue https://github.com/ArcBlock/ux/issues/1136 solved
         meta={undefined}

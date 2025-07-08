@@ -73,6 +73,7 @@ export default function useConversation({
         let response: MessageItem['response'] = '';
 
         for (;;) {
+          // eslint-disable-next-line no-await-in-loop
           const { value, done } = await reader.read();
           if (value) {
             let delta = '';
