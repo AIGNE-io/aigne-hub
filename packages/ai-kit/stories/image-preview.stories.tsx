@@ -1,18 +1,26 @@
-// eslint-disable-next-line import/no-extraneous-dependencies
-import { storiesOf } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { ImagePreview } from '../src/components';
 
-storiesOf('Image Preview', module)
-  .addParameters({
-    // More on Story layout: https://storybook.js.org/docs/react/configure/story-layout
+const meta: Meta<typeof ImagePreview> = {
+  title: 'Components/Image Preview',
+  component: ImagePreview,
+  parameters: {
     layout: 'fullscreen',
     readme: {
       sidebar: '<!-- PROPS -->',
     },
-  })
-  .add('Default', () => {
-    const mockDataSource = [
+  },
+  tags: ['autodocs'],
+};
+
+export default meta;
+
+type Story = StoryObj<typeof meta>;
+
+export const Default: Story = {
+  args: {
+    dataSource: [
       {
         src: 'https://storage.staging.abtnet.io/app/resolve/display?assetId=zjdmpgwF3FzQrnoj14m8TK8BVWgZukEJ4Nnw',
       },
@@ -28,6 +36,8 @@ storiesOf('Image Preview', module)
       {
         src: 'https://react-photo-view.vercel.app/_next/static/media/2.b43f1ead.jpg',
       },
-    ];
-    return <ImagePreview dataSource={mockDataSource} itemWidth={200} itemHeight={200} />;
-  });
+    ],
+    itemWidth: 200,
+    itemHeight: 200,
+  },
+};

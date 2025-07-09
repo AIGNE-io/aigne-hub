@@ -1,3 +1,7 @@
+## 0.2.0 (2025-7-8)
+
+- feat(deps): major framework upgrades
+
 ## 0.1.79 (2025-6-6)
 
 - chore: update deps

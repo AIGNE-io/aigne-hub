@@ -1,6 +1,6 @@
 {
   "name": "@blocklet/ai-kit",
-  "version": "0.1.79",
+  "version": "0.2.0",
   "description": "The react.js component library for AI Kit",
   "publishConfig": {
     "access": "public"
@@ -13,39 +13,39 @@
   "types": "./lib/types/index.d.ts",
   "exports": {
     ".": {
+      "types": "./lib/types/index.d.ts",
       "import": "./lib/esm/index.js",
-      "require": "./lib/cjs/index.js",
-      "types": "./lib/types/index.d.ts"
+      "require": "./lib/cjs/index.js"
     },
     "./api": {
+      "types": "./lib/types/api/index.d.ts",
       "import": "./lib/esm/api/index.js",
-      "require": "./lib/cjs/api/index.js",
-      "types": "./lib/types/api/index.d.ts"
+      "require": "./lib/cjs/api/index.js"
     },
     "./api/call": {
+      "types": "./lib/types/api/call/index.d.ts",
       "import": "./lib/esm/api/call/index.js",
-      "require": "./lib/cjs/api/call/index.js",
-      "types": "./lib/types/api/call/index.d.ts"
+      "require": "./lib/cjs/api/call/index.js"
     },
     "./api/types": {
+      "types": "./lib/types/api/types/index.d.ts",
       "import": "./lib/esm/api/types/index.js",
-      "require": "./lib/cjs/api/types/index.js",
-      "types": "./lib/types/api/types/index.d.ts"
+      "require": "./lib/cjs/api/types/index.js"
     },
     "./api/*": {
+      "types": "./lib/types/api/*.d.ts",
       "import": "./lib/esm/api/*.js",
-      "require": "./lib/cjs/api/*.js",
-      "types": "./lib/types/api/*.d.ts"
+      "require": "./lib/cjs/api/*.js"
     },
     "./components": {
+      "types": "./lib/types/components/index.d.ts",
       "import": "./lib/esm/components/index.js",
-      "require": "./lib/cjs/components/index.js",
-      "types": "./lib/types/components/index.d.ts"
+      "require": "./lib/cjs/components/index.js"
     },
     "./components/*": {
+      "types": "./lib/types/components/*.d.ts",
       "import": "./lib/esm/components/*.js",
-      "require": "./lib/cjs/components/*.js",
-      "types": "./lib/types/components/*.d.ts"
+      "require": "./lib/cjs/components/*.js"
     }
   },
   "typesVersions": {
@@ -92,8 +92,8 @@
     "watch": "vite build --watch",
     "prepublishOnly": "npm run build",
     "preview": "npm run storybook",
-    "storybook": "set NODE_OPTIONS=--openssl-legacy-provider && start-storybook -p 6009",
-    "build-storybook": "build-storybook",
+    "storybook": "NODE_OPTIONS=--openssl-legacy-provider npx storybook dev -p 6009",
+    "build-storybook": "npx storybook build",
     "prepare": "npm run build",
     "clean": "rm -rf lib"
   },
@@ -101,18 +101,18 @@
     "react": "^18.2.0"
   },
   "dependencies": {
-    "@arcblock/did": "^1.20.13",
-    "@arcblock/ux": "^2.13.62",
-    "@blocklet/logger": "^1.16.44",
-    "@blocklet/payment-js": "^1.18.52",
-    "@blocklet/sdk": "^1.16.44",
-    "@emotion/css": "^11.13.0",
-    "@emotion/react": "^11.13.0",
-    "@emotion/styled": "^11.13.0",
-    "@mui/icons-material": "^5.16.7",
-    "@mui/lab": "^5.0.0-alpha.173",
-    "@mui/material": "^5.16.7",
-    "@ocap/mcrypto": "^1.20.13",
+    "@arcblock/did": "^1.20.15",
+    "@arcblock/ux": "^3.0.22",
+    "@blocklet/logger": "^1.16.45",
+    "@blocklet/payment-js": "^1.19.2",
+    "@blocklet/sdk": "^1.16.45",
+    "@emotion/css": "^11.13.5",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/icons-material": "^7.2.0",
+    "@mui/lab": "^7.0.0-beta.14",
+    "@mui/material": "^7.2.0",
+    "@ocap/mcrypto": "^1.20.15",
     "@types/express": "^4.17.21",
     "ahooks": "^3.8.1",
     "axios": "^1.7.4",
@@ -136,25 +136,23 @@
     "zustand": "^4.5.5"
   },
   "devDependencies": {
-    "@storybook/addon-actions": "^8.2.9",
-    "@storybook/addon-essentials": "^8.2.9",
-    "@storybook/addon-interactions": "^8.2.9",
-    "@storybook/addon-links": "^8.2.9",
-    "@storybook/builder-vite": "^8.2.9",
-    "@storybook/react": "^8.2.9",
-    "@storybook/testing-library": "^0.2.2",
+    "@storybook/addon-a11y": "9.0.15",
+    "@storybook/addon-coverage": "2.0.0",
+    "@storybook/addon-docs": "9.0.15",
+    "@storybook/addon-vitest": "9.0.15",
+    "@storybook/react": "9.0.15",
+    "@storybook/react-vite": "9.0.15",
     "@types/express": "^4.17.21",
     "@types/file-saver": "^2.0.7",
     "@types/json-stable-stringify": "^1.0.36",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
-    "@vitejs/plugin-react": "^4.3.1",
+    "@vitejs/plugin-react": "^4.6.0",
     "npm-run-all": "^4.1.5",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "storybook": "^8.2.9",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "storybook": "9.0.15",
     "typescript": "^5.5.4",
-    "vite": "^5.4.1",
-    "vite-plugin-build": "^0.10.0"
+    "vite": "^7.0.2"
   }
 }

@@ -1,9 +1,13 @@
 /* eslint-disable import/no-extraneous-dependencies */
 import { Skeleton } from '@mui/material';
 import { useReactive } from 'ahooks';
-import { forwardRef, useRef } from 'react';
+import { ImgHTMLAttributes, useRef } from 'react';
 
-const LoadingImage = forwardRef((props: any, ref: any) => {
+function LoadingImage({
+  ref = undefined,
+  onLoad = () => {},
+  ...props
+}: { ref?: any; onLoad?: () => void } & Omit<ImgHTMLAttributes<HTMLImageElement>, 'onLoad'>) {
   const imageRef = useRef(null);
   const state = useReactive({
     loading: true,
@@ -28,7 +32,7 @@ const LoadingImage = forwardRef((props: any, ref: any) => {
           onLoad={() => {
             state.loading = false;
             try {
-              props?.onLoad?.();
+              onLoad();
             } catch (error) {
               console.error('image onLoad error: ', error);
             }
@@ -51,6 +55,6 @@ const LoadingImage = forwardRef((props: any, ref: any) => {
       )}
     </div>
   );
-});
+}
 
 export default LoadingImage;

@@ -1,7 +1,7 @@
 {
   "name": "ai-kit",
   "private": true,
-  "version": "0.1.79",
+  "version": "0.2.0",
   "workspaces": [
     "blocklets/*",
     "packages/*"
@@ -60,25 +60,25 @@
     "zx": "^8.1.4"
   },
   "resolutions": {
-    "@arcblock/did": "^1.20.13",
-    "@arcblock/did-auth": "^1.20.13",
-    "@arcblock/did-ext": "^1.20.13",
-    "@arcblock/did-util": "^1.20.13",
-    "@arcblock/event-hub": "^1.20.13",
-    "@arcblock/jwt": "^1.20.13",
-    "@arcblock/validator": "^1.20.13",
-    "@arcblock/ws": "^1.20.13",
-    "@blocklet/constant": "^1.16.44",
-    "@blocklet/js-sdk": "^1.16.44",
-    "@blocklet/logger": "^1.16.44",
-    "@blocklet/sdk": "^1.16.44",
-    "@ocap/asset": "^1.20.13",
-    "@ocap/client": "^1.20.13",
-    "@ocap/types": "^1.20.13",
-    "@ocap/util": "^1.20.13",
-    "@ocap/wallet": "^1.20.13",
+    "@arcblock/did": "^1.20.15",
+    "@arcblock/did-auth": "^1.20.15",
+    "@arcblock/did-ext": "^1.20.15",
+    "@arcblock/did-util": "^1.20.15",
+    "@arcblock/event-hub": "^1.20.15",
+    "@arcblock/jwt": "^1.20.15",
+    "@arcblock/validator": "^1.20.15",
+    "@arcblock/ws": "^1.20.15",
+    "@blocklet/constant": "^1.16.45",
+    "@blocklet/js-sdk": "^1.16.45",
+    "@blocklet/logger": "^1.16.45",
+    "@blocklet/sdk": "^1.16.45",
+    "@ocap/asset": "^1.20.15",
+    "@ocap/client": "^1.20.15",
+    "@ocap/types": "^1.20.15",
+    "@ocap/util": "^1.20.15",
+    "@ocap/wallet": "^1.20.15",
     "axios": "^1.7.4",
     "nanoid": "^3.3.7",
-    "vite-tsconfig-paths": "4.3.2"
+    "vite-tsconfig-paths": "5.1.4"
   }
 }

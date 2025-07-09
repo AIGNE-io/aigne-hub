@@ -11,7 +11,7 @@ import { useAIKitServiceStatus } from './state';
 
 function SubscribeButton({
   shouldOpenInNewTab = false,
-  showUseAIServiceButton,
+  showUseAIServiceButton = false,
 }: {
   shouldOpenInNewTab?: boolean;
   showUseAIServiceButton?: boolean;

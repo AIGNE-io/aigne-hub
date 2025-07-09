@@ -1,7 +1,7 @@
 import { Avatar, Box, BoxProps, CircularProgress } from '@mui/material';
 import isNil from 'lodash/isNil';
 import { ChatCompletionMessageParam } from 'openai/resources/index';
-import { ReactNode, RefObject, forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from 'react';
+import { ReactNode, RefObject, useCallback, useEffect, useImperativeHandle, useRef } from 'react';
 
 import ImagePreview from '../image-preview';
 import SubscribeErrorAlert from '../subscribe/alert';
@@ -21,17 +21,24 @@ export interface ConversationRef {
   scrollToBottom: (options?: { force?: boolean }) => void;
 }
 
-export default forwardRef<
-  ConversationRef,
-  Omit<BoxProps, 'onSubmit'> & {
-    messages: MessageItem[];
-    onSubmit: (prompt: string) => void;
-    customActions?: (item: MessageItem) => Array<ReactNode[]>;
-    renderAvatar?: (item: MessageItem, isAI: boolean) => ReactNode;
-    scrollContainer?: HTMLElement;
-    promptProps?: Partial<PromptProps>;
-  }
->(({ messages, onSubmit, customActions, renderAvatar, maxWidth, scrollContainer, promptProps, ...props }, ref) => {
+export default function Conversation({
+  ref,
+  messages,
+  onSubmit,
+  customActions = () => [],
+  renderAvatar = undefined,
+  maxWidth = 1000,
+  scrollContainer = undefined,
+  promptProps = {},
+  ...props
+}: Omit<BoxProps, 'onSubmit'> & {
+  messages: MessageItem[];
+  onSubmit: (prompt: string) => void;
+  customActions?: (item: MessageItem) => Array<ReactNode[]>;
+  renderAvatar?: (item: MessageItem, isAI: boolean) => ReactNode;
+  scrollContainer?: HTMLElement;
+  promptProps?: Partial<PromptProps>;
+}) {
   const scroller = useRef<HTMLElement>(scrollContainer ?? null);
   const { element, scrollToBottom } = useAutoScrollToBottom({ scroller });
 
@@ -92,7 +99,12 @@ export default forwardRef<
                     ) : (
                       msg.loading &&
                       !msg.response && (
-                        <Box minHeight={24} display="flex" alignItems="center">
+                        <Box
+                          sx={{
+                            minHeight: 24,
+                            display: 'flex',
+                            alignItems: 'center',
+                          }}>
                           <CircularProgress size={16} />
                         </Box>
                       )
@@ -107,19 +119,29 @@ export default forwardRef<
         </Box>
 
         <Box sx={{ mx: 'auto', width: '100%', maxWidth, position: 'sticky', bottom: 0 }}>
-          <Box height={16} sx={{ pointerEvents: 'none', background: 'linear-gradient(transparent, white)' }} />
-          <Box pb={2} sx={{ bgcolor: 'background.paper' }}>
+          <Box
+            sx={{
+              height: 16,
+              pointerEvents: 'none',
+              background: 'linear-gradient(transparent, white)',
+            }}
+          />
+          <Box
+            sx={{
+              pb: 2,
+              bgcolor: 'background.paper',
+            }}>
             <Prompt onSubmit={onSubmit} {...promptProps} />
           </Box>
         </Box>
       </Box>
     </Box>
   );
-});
+}
 
 const STICKY_SCROLL_BOTTOM_GAP = 5;
 
-const useAutoScrollToBottom = ({ scroller }: { scroller: RefObject<HTMLElement> }) => {
+const useAutoScrollToBottom = ({ scroller }: { scroller: RefObject<HTMLElement | null> }) => {
   const element = useRef<HTMLDivElement>(null);
   const enableAutoScrollBottom = useRef(true);
 

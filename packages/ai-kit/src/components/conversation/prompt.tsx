@@ -1,16 +1,24 @@
 import { Send } from '@mui/icons-material';
-import { Box, BoxProps, IconButton, Input, InputAdornment, InputProps } from '@mui/material';
+import { Box, BoxProps, IconButton, Input, InputAdornment, InputProps, SxProps } from '@mui/material';
 import { useHistoryTravel } from 'ahooks';
 import { ReactNode, useState } from 'react';
 
-export interface PromptProps extends Omit<BoxProps, 'onSubmit'> {
+export interface PromptProps extends Omit<BoxProps<'form'>, 'onSubmit' | 'sx'> {
   onSubmit: (prompt: string) => any;
   startAdornment?: ReactNode;
   endAdornment?: ReactNode;
   InputProps?: Partial<InputProps>;
+  sx?: SxProps;
 }
 
-export default function Prompt({ startAdornment, endAdornment, onSubmit, InputProps, ...props }: PromptProps) {
+export default function Prompt({
+  startAdornment = undefined,
+  endAdornment = undefined,
+  onSubmit,
+  InputProps = {},
+  sx = {},
+  ...props
+}: PromptProps) {
   const [prompt, setPrompt] = useState('');
 
   const { value: historyPrompt, setValue: setHistoryPrompt, forwardLength, back, go, forward } = useHistoryTravel('');
@@ -31,9 +39,9 @@ export default function Prompt({ startAdornment, endAdornment, onSubmit, InputPr
   return (
     <Box
       {...props}
-      sx={{ display: 'flex', gap: 1, alignItems: 'center', ...props.sx }}
+      sx={{ display: 'flex', gap: 1, alignItems: 'center', ...sx }}
       component="form"
-      onSubmit={(e) => e.preventDefault()}>
+      onSubmit={(e: React.FormEvent<HTMLFormElement>) => e.preventDefault()}>
       {startAdornment}
 
       <Input

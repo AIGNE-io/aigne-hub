@@ -7,11 +7,11 @@ import { ReactNode, useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 
 export default function Message({
-  avatar,
-  message,
-  children,
-  loading,
-  actions,
+  avatar = undefined,
+  message = undefined,
+  children = undefined,
+  loading = false,
+  actions = undefined,
   ...props
 }: {
   avatar?: ReactNode;
@@ -27,10 +27,13 @@ export default function Message({
 
   return (
     <Root {...props} display="flex">
-      <Box className="avatar" mr={1}>
+      <Box
+        className="avatar"
+        sx={{
+          mr: 1,
+        }}>
         {avatar}
       </Box>
-
       <Box className={cx('content')}>
         <Box component={ReactMarkdown} className={cx('message', loading && 'cursor')}>
           {text}

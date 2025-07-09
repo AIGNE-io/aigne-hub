@@ -75,20 +75,33 @@ export default function BillingPage() {
 
   if (!app) {
     return (
-      <Stack alignItems="center" py={10}>
+      <Stack
+        sx={{
+          alignItems: 'center',
+          py: 10,
+        }}>
         <CircularProgress size={24} />
       </Stack>
     );
   }
 
   return (
-    <Stack p={3} gap={4}>
-      <Stack direction="row" alignItems="center" justifyContent="space-between" gap={1}>
+    <Stack
+      sx={{
+        p: 3,
+        gap: 4,
+      }}>
+      <Stack
+        direction="row"
+        sx={{
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 1,
+        }}>
         <Typography variant="h5">{t('usage')}</Typography>
 
         <UseAIKitServiceSwitch />
       </Stack>
-
       {app?.config?.useAIKitService && isPastDue ? (
         <Alert severity="warning" action={<Button href={app.subscriptionDetailUrl}>{t('payNow')}</Button>}>
           {t('subscriptionPastDueTip')}
@@ -96,7 +109,6 @@ export default function BillingPage() {
       ) : (
         !isSubscriptionAvailable && <NonSubscriptions />
       )}
-
       {app.id && <UseCreditsCharts />}
     </Stack>
   );
@@ -106,11 +118,14 @@ function NonSubscriptions() {
   const { t } = useLocaleContext();
 
   return (
-    <Stack alignItems="center" gap={4} my={10}>
+    <Stack
+      sx={{
+        alignItems: 'center',
+        gap: 4,
+        my: 10,
+      }}>
       <RouterRounded sx={{ fontSize: 56, color: 'text.disabled' }} />
-
       <Typography variant="body2">{t('subscribeAITip')}</Typography>
-
       <SubscribeButton />
     </Stack>
   );
@@ -137,15 +152,24 @@ function UseAIKitServiceSwitch() {
   if (!app) return null;
 
   return (
-    <Stack gap={1} alignItems="flex-end">
-      <Stack direction="row" overflow="hidden" alignItems="center" gap={1}>
+    <Stack
+      sx={{
+        gap: 1,
+        alignItems: 'flex-end',
+      }}>
+      <Stack
+        direction="row"
+        sx={{
+          overflow: 'hidden',
+          alignItems: 'center',
+          gap: 1,
+        }}>
         <Box>{t('aiProvider')}</Box>
 
         <TextField
           select
           size="small"
           hiddenLabel
-          SelectProps={{ autoWidth: true }}
           defaultValue={app.config?.useAIKitService ? 'subscribe' : 'local'}
           onChange={async (e) => {
             try {
@@ -157,13 +181,22 @@ function UseAIKitServiceSwitch() {
               Toast.error(error.message);
               throw error;
             }
+          }}
+          slotProps={{
+            select: { autoWidth: true },
           }}>
           <MenuItem value="subscribe">{t('aiProviderSubscription')}</MenuItem>
           <MenuItem value="local">{t('aiProviderLocalAIKit')}</MenuItem>
         </TextField>
 
         {updating && (
-          <Stack justifyContent="center" alignItems="center" width={24} height={24}>
+          <Stack
+            sx={{
+              justifyContent: 'center',
+              alignItems: 'center',
+              width: 24,
+              height: 24,
+            }}>
             {updating === true ? (
               <CircularProgress size={20} />
             ) : updating === 'success' ? (
@@ -205,8 +238,12 @@ function UseAIKitServiceSwitch() {
           </>
         )}
       </Stack>
-
-      <Stack direction="row" alignItems="center" gap={2}>
+      <Stack
+        direction="row"
+        sx={{
+          alignItems: 'center',
+          gap: 2,
+        }}>
         {canRecover && !!cancelAt && (
           <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
             <AccessAlarmRounded color="warning" fontSize="small" />
@@ -324,9 +361,22 @@ function UseCreditsCharts() {
   const colors = ['#ffc800', '#b7ff00', '#40ff00', '#00ffae', '#00c3ff', '#0066ff', '#5500ff', '#ae00ff'];
 
   return (
-    <Stack width={1} gap={2}>
-      <Stack direction="row" alignItems="center" justifyContent="space-between">
-        <Typography variant="subtitle1" fontWeight="bold">
+    <Stack
+      sx={{
+        width: 1,
+        gap: 2,
+      }}>
+      <Stack
+        direction="row"
+        sx={{
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}>
+        <Typography
+          variant="subtitle1"
+          sx={{
+            fontWeight: 'bold',
+          }}>
           {t('monthlySpend')}
 
           <Typography component="span" sx={{ ml: 1 }}>
@@ -343,9 +393,11 @@ function UseCreditsCharts() {
           }}
         />
       </Stack>
-
       {loading ? (
-        <Box width="100%">
+        <Box
+          sx={{
+            width: '100%',
+          }}>
           <Skeleton variant="rounded" height={260} sx={{ margin: '20px 30px 30px 20px' }} />
         </Box>
       ) : (
