@@ -68,8 +68,106 @@ export const Config = {
     return this._openRouterApiKey;
   },
 
+  _anthropicApiKey: undefined as string[] | undefined,
+  get anthropicApiKey() {
+    if (this._anthropicApiKey === undefined) {
+      const KEY = config.env.ANTHROPIC_API_KEY;
+
+      this._anthropicApiKey = (typeof KEY === 'string' ? KEY : '')
+        .split(',')
+        .map((i: string) => i.trim())
+        .filter(Boolean);
+    }
+    return this._anthropicApiKey;
+  },
+
+  _awsAccessKeyId: undefined as string[] | undefined,
+  get awsAccessKeyId() {
+    if (this._awsAccessKeyId === undefined) {
+      const KEY = config.env.AWS_ACCESS_KEY_ID;
+      this._awsAccessKeyId = (typeof KEY === 'string' ? KEY : '')
+        .split(',')
+        .map((i: string) => i.trim())
+        .filter(Boolean);
+    }
+    return this._awsAccessKeyId;
+  },
+
+  _awsSecretAccessKey: undefined as string[] | undefined,
+  get awsSecretAccessKey() {
+    if (this._awsSecretAccessKey === undefined) {
+      const KEY = config.env.AWS_SECRET_ACCESS_KEY;
+      this._awsSecretAccessKey = (typeof KEY === 'string' ? KEY : '')
+        .split(',')
+        .map((i: string) => i.trim())
+        .filter(Boolean);
+    }
+    return this._awsSecretAccessKey;
+  },
+
+  _awsRegion: undefined as string[] | undefined,
+  get awsRegion() {
+    if (this._awsRegion === undefined) {
+      const KEY = config.env.AWS_REGION;
+      this._awsRegion = (typeof KEY === 'string' ? KEY : '')
+        .split(',')
+        .map((i: string) => i.trim())
+        .filter(Boolean);
+    }
+    return this._awsRegion;
+  },
+
+  _deepseekApiKey: undefined as string[] | undefined,
+  get deepseekApiKey() {
+    if (this._deepseekApiKey === undefined) {
+      const KEY = config.env.DEEPSEEK_API_KEY;
+
+      this._deepseekApiKey = (typeof KEY === 'string' ? KEY : '')
+        .split(',')
+        .map((i: string) => i.trim())
+        .filter(Boolean);
+    }
+    return this._deepseekApiKey;
+  },
+
+  _ollamaApiKey: undefined as string[] | undefined,
+  get ollamaApiKey() {
+    if (this._ollamaApiKey === undefined) {
+      const KEY = config.env.OLLAMA_API_KEY;
+
+      this._ollamaApiKey = (typeof KEY === 'string' ? KEY : '')
+        .split(',')
+        .map((i: string) => i.trim())
+        .filter(Boolean);
+    }
+    return this._ollamaApiKey;
+  },
+
+  _xaiApiKey: undefined as string[] | undefined,
+  get xaiApiKey() {
+    if (this._xaiApiKey === undefined) {
+      const KEY = config.env.XAI_API_KEY;
+
+      this._xaiApiKey = (typeof KEY === 'string' ? KEY : '')
+        .split(',')
+        .map((i: string) => i.trim())
+        .filter(Boolean);
+    }
+    return this._xaiApiKey;
+  },
+
   get openaiBaseURL() {
     const url = config.env.OPENAI_BASE_URL;
+    return url && typeof url === 'string' ? url : undefined;
+  },
+
+  get anthropicBaseURL() {
+    const url = config.env.ANTHROPIC_BASE_URL;
+    return url && typeof url === 'string' ? url : undefined;
+  },
+
+  get ollamaBaseURL() {
+    const url = config.env.OLLAMA_BASE_URL;
     return url && typeof url === 'string' ? url : undefined;
   },
 

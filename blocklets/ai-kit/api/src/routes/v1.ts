@@ -1,6 +1,6 @@
 import { checkSubscription } from '@api/libs/payment';
 import { createAndReportUsage } from '@api/libs/usage';
-import { chatCompletion, checkModelAvailable } from '@api/providers';
+import { checkModelAvailable } from '@api/providers';
 import App from '@api/store/models/app';
 import {
   ChatCompletionChunk,
@@ -27,6 +27,8 @@ import { Config } from '../libs/env';
 import { processImageUrl } from '../libs/image';
 import logger from '../libs/logger';
 import { ensureAdmin, ensureComponentCall } from '../libs/security';
+import { ChatCompletion } from '../providers/chat-completion';
+import { chatCompletionByFrameworkModel } from '../providers/models';
 
 const router = Router();
 
@@ -199,7 +201,7 @@ router.post(
 
     const isEventStream = req.accepts().some((i) => i.startsWith('text/event-stream'));
 
-    const result = chatCompletion(input);
+    const result = await chatCompletionByFrameworkModel(input);
 
     let content = '';
     const toolCalls: NonNullable<ChatCompletionChunk['delta']['toolCalls']> = [];
@@ -284,6 +286,16 @@ router.post(
       modelParams: pick(input, 'temperature', 'topP', 'frequencyPenalty', 'presencePenalty', 'maxTokens'),
       appId: req.appClient?.appId,
     });
+  }
+);
+
+router.post(
+  '/chat/new-completions',
+  compression(),
+  ensureRemoteComponentCall(App.findPublicKeyById, ensureComponentCall(ensureAdmin)),
+  async (req, res) => {
+    const server = new ChatCompletion();
+    await server.invoke(req, res);
   }
 );
 
