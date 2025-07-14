@@ -207,7 +207,7 @@ export function loadModel(model: string, { provider }: { provider?: string } = {
       m.model.toLowerCase().includes(model.toLowerCase())
   );
 
-  if (!m) throw new Error(`Model ${model} not found`);
+  if (!m) throw new Error(`Provider ${provider} model ${model} not found, Please check the model name and provider.`);
 
   let params: { apiKey?: string; baseURL?: string; accessKeyId?: string; secretAccessKey?: string; region?: string };
 

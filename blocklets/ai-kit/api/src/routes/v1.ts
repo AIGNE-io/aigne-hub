@@ -1,3 +1,5 @@
+import { AIGNE } from '@aigne/core';
+import { AIGNEHTTPServer } from '@aigne/transport/http-server/index';
 import { checkSubscription } from '@api/libs/payment';
 import { createAndReportUsage } from '@api/libs/usage';
 import { checkModelAvailable } from '@api/providers';
@@ -27,8 +29,7 @@ import { Config } from '../libs/env';
 import { processImageUrl } from '../libs/image';
 import logger from '../libs/logger';
 import { ensureAdmin, ensureComponentCall } from '../libs/security';
-import { ChatCompletion } from '../providers/chat-completion';
-import { chatCompletionByFrameworkModel } from '../providers/models';
+import { chatCompletionByFrameworkModel, getModel } from '../providers/models';
 
 const router = Router();
 
@@ -286,16 +287,6 @@ router.post(
       modelParams: pick(input, 'temperature', 'topP', 'frequencyPenalty', 'presencePenalty', 'maxTokens'),
       appId: req.appClient?.appId,
     });
-  }
-);
-
-router.post(
-  '/chat/new-completions',
-  compression(),
-  ensureRemoteComponentCall(App.findPublicKeyById, ensureComponentCall(ensureAdmin)),
-  async (req, res) => {
-    const server = new ChatCompletion();
-    await server.invoke(req, res);
   }
 );
 
