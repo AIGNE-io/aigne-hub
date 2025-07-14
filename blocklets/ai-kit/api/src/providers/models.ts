@@ -2,7 +2,14 @@ import type { Agent } from 'node:https';
 
 import { AnthropicChatModel } from '@aigne/anthropic';
 import { BedrockChatModel } from '@aigne/bedrock';
-import { AgentResponseStream, ChatModel, ChatModelOptions, ChatModelOutput, isAgentResponseDelta } from '@aigne/core';
+import {
+  AgentResponseStream,
+  ChatModel,
+  ChatModelOptions,
+  ChatModelOutput,
+  Message,
+  isAgentResponseDelta,
+} from '@aigne/core';
 import { DeepSeekChatModel } from '@aigne/deepseek';
 import { GeminiChatModel } from '@aigne/gemini';
 import { OllamaChatModel } from '@aigne/ollama';
@@ -49,13 +56,12 @@ function convertToFrameworkMessages(
         return {
           role: 'agent' as const,
           content: message.content,
-          // @ts-ignore
           toolCalls: (message.toolCalls || [])?.map((call) => ({
             id: call.id,
             type: 'function' as const,
             function: {
               name: call.function.name,
-              arguments: call.function.arguments,
+              arguments: call.function.arguments as unknown as Message,
             },
           })),
         };
