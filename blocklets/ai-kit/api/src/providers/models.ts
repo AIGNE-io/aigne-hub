@@ -2,7 +2,7 @@ import type { Agent } from 'node:https';
 
 import { AnthropicChatModel } from '@aigne/anthropic';
 import { BedrockChatModel } from '@aigne/bedrock';
-import { AgentResponseStream, ChatModel, ChatModelOptions, ChatModelOutput } from '@aigne/core';
+import { AgentResponseStream, ChatModel, ChatModelOptions, ChatModelOutput, isAgentResponseDelta } from '@aigne/core';
 import { DeepSeekChatModel } from '@aigne/deepseek';
 import { GeminiChatModel } from '@aigne/gemini';
 import { OllamaChatModel } from '@aigne/ollama';
@@ -193,6 +193,12 @@ export function getBedrockCredentials() {
   return { accessKeyId, secretAccessKey, region };
 }
 
+const BASE_URL_CONFIG_MAP = {
+  openai: () => Config.openaiBaseURL,
+  anthropic: () => Config.anthropicBaseURL,
+  ollama: () => Config.ollamaBaseURL,
+} as const;
+
 export function loadModel(model: string, { provider }: { provider?: string } = {}) {
   const models = availableModels();
   const m = models.find(
@@ -211,19 +217,13 @@ export function loadModel(model: string, { provider }: { provider?: string } = {
     params = getAIApiKey(m.provider);
   }
 
-  if (provider === 'openai') {
-    const { openaiBaseURL } = Config;
-    params.baseURL = openaiBaseURL || undefined;
-  }
+  const baseURLGetter = BASE_URL_CONFIG_MAP[m.provider as keyof typeof BASE_URL_CONFIG_MAP];
+  if (baseURLGetter) {
+    const baseURL = baseURLGetter();
 
-  if (provider === 'anthropic') {
-    const { anthropicBaseURL } = Config;
-    params.baseURL = anthropicBaseURL || undefined;
-  }
-
-  if (provider === 'ollama') {
-    const { ollamaBaseURL } = Config;
-    params.baseURL = ollamaBaseURL || undefined;
+    if (baseURL) {
+      params.baseURL = baseURL;
+    }
   }
 
   return m.create({ ...params, model });
@@ -247,7 +247,9 @@ export const getModel = (input: ChatCompletionInput & Required<Pick<ChatCompleti
   const modelArray = input.model.split('/');
   const [provider, model] =
     modelArray.length > 1 ? [modelArray[0], modelArray.slice(1).join('/')] : [getDefaultProvider(), input.model];
-  if (!model) throw new Error('Model is required, Please check your model name');
+
+  if (!model) throw new Error(`Provider ${provider} model ${input.model} not found`);
+
   const m = loadModel(model, { provider });
   return m;
 };
@@ -255,9 +257,9 @@ export const getModel = (input: ChatCompletionInput & Required<Pick<ChatCompleti
 export async function chatCompletionByFrameworkModel(
   input: ChatCompletionInput & Required<Pick<ChatCompletionInput, 'model'>>
 ): Promise<AsyncGenerator<ChatCompletionResponse>> {
-  const m = getModel(input);
+  const model = getModel(input);
 
-  const stream = await m.invoke(
+  const response = await model.invoke(
     {
       messages: convertToFrameworkMessages(input.messages),
       responseFormat: input.responseFormat?.type === 'json_schema' ? input.responseFormat : { type: 'text' },
@@ -265,50 +267,50 @@ export async function chatCompletionByFrameworkModel(
       tools: input.tools,
       modelOptions: pick(input, ['temperature', 'topP', 'presencePenalty', 'frequencyPenalty', 'maxTokens']),
     },
-    { streaming: input.stream }
+    { streaming: true }
   );
 
-  return adaptStreamToOldFormat(stream as any);
+  return adaptStreamToOldFormat(response);
 }
 
 export async function* adaptStreamToOldFormat(
-  stream: ReadableStream<AgentResponseStream<ChatModelOutput>>
+  stream: AgentResponseStream<ChatModelOutput>
 ): AsyncGenerator<ChatCompletionResponse> {
-  const reader = stream.getReader();
-
   const toolCalls: ChatCompletionChunk['delta']['toolCalls'] = [];
   const role: ChatCompletionChunk['delta']['role'] = 'assistant';
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
+  for await (const chunk of stream) {
+    if (isAgentResponseDelta(chunk)) {
+      const { delta } = chunk;
 
-    const { delta } = value as any;
-
-    if (delta.json?.toolCalls) {
-      for (const call of delta.json.toolCalls) {
-        toolCalls.push(call);
+      if (delta.json?.toolCalls && Array.isArray(delta.json.toolCalls)) {
+        for (const call of delta.json.toolCalls) {
+          toolCalls.push(call);
+        }
       }
-    }
 
-    if (delta.text?.text || delta.json?.toolCalls) {
-      yield {
-        delta: {
-          role,
-          content: delta.text?.text,
-          toolCalls: toolCalls.length ? [...toolCalls] : [],
-        },
-      };
-    }
+      if (delta.text?.text || delta.json?.toolCalls) {
+        yield {
+          delta: {
+            role,
+            content: delta.text?.text,
+            toolCalls: toolCalls.length > 0 ? [...toolCalls] : [],
+          },
+        };
+      }
 
-    if (delta.json?.usage) {
-      yield {
-        usage: {
-          promptTokens: delta.json.usage.inputTokens ?? 0,
-          completionTokens: delta.json.usage.outputTokens ?? 0,
-          totalTokens: (delta.json.usage.inputTokens ?? 0) + (delta.json.usage.outputTokens ?? 0),
-        },
-      };
+      if (delta.json?.usage) {
+        const { inputTokens = 0, outputTokens = 0 } =
+          (delta.json.usage as { inputTokens: number; outputTokens: number }) || {};
+
+        yield {
+          usage: {
+            promptTokens: inputTokens,
+            completionTokens: outputTokens,
+            totalTokens: inputTokens + outputTokens,
+          },
+        };
+      }
     }
   }
 }

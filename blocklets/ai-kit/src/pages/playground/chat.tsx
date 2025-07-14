@@ -23,7 +23,6 @@ const modelGroups = [
       { value: 'openai/gpt-4o', label: 'GPT-4o' },
       { value: 'openai/gpt-4o-mini', label: 'GPT-4o Mini' },
       { value: 'openai/gpt-4.1', label: 'GPT-4.1' },
-      { value: 'openai/gpt-4-turbo-2024-04-09', label: 'GPT-4 Turbo 2024-04-09' },
       { value: 'openai/gpt-4-turbo', label: 'GPT-4 Turbo' },
       { value: 'openai/gpt-4', label: 'GPT-4' },
       { value: 'openai/gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
@@ -36,6 +35,7 @@ const modelGroups = [
       { value: 'openrouter/anthropic/claude-3-opus', label: 'Claude 3 Opus' },
       { value: 'openrouter/anthropic/claude-3-haiku', label: 'Claude 3 Haiku' },
       { value: 'openrouter/openai/gpt-4o', label: 'GPT-4o' },
+      { value: 'openrouter/openai/gpt-4.1', label: 'GPT-4.1' },
       { value: 'openrouter/openai/gpt-4o-mini', label: 'GPT-4o Mini' },
       { value: 'openrouter/meta-llama/llama-3.1-70b-instruct', label: 'Llama 3.1 70B' },
       { value: 'openrouter/mistralai/mistral-7b-instruct', label: 'Mistral 7B Instruct' },
@@ -94,6 +94,7 @@ const modelGroups = [
   {
     provider: 'xAI',
     models: [
+      { value: 'xai/grok-4', label: 'Grok 4' },
       { value: 'xai/grok-3', label: 'Grok 3' },
       { value: 'xai/grok-3-mini', label: 'Grok 3 Mini' },
       { value: 'xai/grok-2', label: 'Grok 2' },
