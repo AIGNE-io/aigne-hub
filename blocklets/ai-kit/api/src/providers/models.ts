@@ -79,7 +79,6 @@ type AIProvider = 'openai' | 'anthropic' | 'bedrock' | 'deepseek' | 'google' | '
 export function availableModels(): {
   name: string;
   provider: AIProvider;
-  model: string;
   create: (options: { model?: string; modelOptions?: ChatModelOptions }) => ChatModel;
 }[] {
   const { httpsProxy } = Config;
@@ -94,19 +93,16 @@ export function availableModels(): {
     {
       name: OpenAIChatModel.name,
       provider: 'openai',
-      model: 'gpt',
       create: (params) => new OpenAIChatModel({ ...params, clientOptions }),
     },
     {
       name: AnthropicChatModel.name,
       provider: 'anthropic',
-      model: 'claude',
       create: (params) => new AnthropicChatModel({ ...params, clientOptions }),
     },
     {
       name: BedrockChatModel.name,
       provider: 'bedrock',
-      model: 'amazon',
       create: (params) =>
         new BedrockChatModel({
           ...params,
@@ -119,31 +115,26 @@ export function availableModels(): {
     {
       name: DeepSeekChatModel.name,
       provider: 'deepseek',
-      model: 'deepseek',
       create: (params) => new DeepSeekChatModel({ ...params, clientOptions }),
     },
     {
       name: GeminiChatModel.name,
       provider: 'google',
-      model: 'gemini',
       create: (params) => new GeminiChatModel({ ...params, clientOptions }),
     },
     {
       name: OllamaChatModel.name,
       provider: 'ollama',
-      model: 'llama3',
       create: (params) => new OllamaChatModel({ ...params, clientOptions }),
     },
     {
       name: OpenRouterChatModel.name,
       provider: 'openRouter',
-      model: 'openRouter',
       create: (params) => new OpenRouterChatModel({ ...params, clientOptions }),
     },
     {
       name: XAIChatModel.name,
       provider: 'xai',
-      model: 'grok',
       create: (params) => new XAIChatModel({ ...params, clientOptions }),
     },
   ];
@@ -201,11 +192,7 @@ const BASE_URL_CONFIG_MAP = {
 
 export function loadModel(model: string, { provider }: { provider?: string } = {}) {
   const models = availableModels();
-  const m = models.find(
-    (m) =>
-      (provider && m.provider.toLowerCase().includes(provider.toLowerCase())) ||
-      m.model.toLowerCase().includes(model.toLowerCase())
-  );
+  const m = models.find((m) => provider && m.provider.toLowerCase().includes(provider.toLowerCase()));
 
   if (!m) throw new Error(`Provider ${provider} model ${model} not found, Please check the model name and provider.`);
 
