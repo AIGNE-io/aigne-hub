@@ -1,5 +1,3 @@
-import { AIGNE } from '@aigne/core';
-import { AIGNEHTTPServer } from '@aigne/transport/http-server/index';
 import { checkSubscription } from '@api/libs/payment';
 import { createAndReportUsage } from '@api/libs/usage';
 import { checkModelAvailable } from '@api/providers';
@@ -29,7 +27,7 @@ import { Config } from '../libs/env';
 import { processImageUrl } from '../libs/image';
 import logger from '../libs/logger';
 import { ensureAdmin, ensureComponentCall } from '../libs/security';
-import { chatCompletionByFrameworkModel, getModel } from '../providers/models';
+import { chatCompletionByFrameworkModel } from '../providers/models';
 
 const router = Router();
 
