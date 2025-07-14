@@ -20,8 +20,7 @@ export function proxyToAIKit(
     | '/api/v1/audio/speech'
     | '/api/app/status'
     | '/api/app/usage'
-    | '/api/app/register'
-    | '/api/v2/chat/completions',
+    | '/api/app/register',
   {
     useAIKitService,
     proxyReqHeaders = ['accept', 'content-type'],

@@ -35,6 +35,7 @@
     "@aigne/core": "^1.33.0",
     "@aigne/deepseek": "^0.6.3",
     "@aigne/gemini": "^0.7.0",
+    "@aigne/observability-api": "^0.7.2",
     "@aigne/ollama": "^0.6.3",
     "@aigne/open-router": "^0.6.3",
     "@aigne/openai": "^0.9.0",
