@@ -1,3 +1,7 @@
+## 0.2.2 (2025-7-15)
+
+- chore: update package to latest
+
 ## 0.2.1 (2025-7-14)
 
 - feat: update aigne framework models
