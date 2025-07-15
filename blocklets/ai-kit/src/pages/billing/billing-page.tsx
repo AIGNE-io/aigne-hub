@@ -4,130 +4,75 @@ import { useSessionContext } from '@app/contexts/session';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import RelativeTime from '@arcblock/ux/lib/RelativeTime';
 import Toast from '@arcblock/ux/lib/Toast';
-import { appUsedCredits } from '@blocklet/ai-kit/api';
-import { SubscribeButton } from '@blocklet/ai-kit/components';
+import { CreditTabs } from '@blocklet/ai-kit/components';
+import withLocaleProvider from '@blocklet/ai-kit/utils/withLocaleProvider';
 import {
   AccessAlarmRounded,
   CheckCircleOutlineRounded,
   ErrorOutlineRounded,
   MoreHorizRounded,
   OpenInNewRounded,
-  RouterRounded,
 } from '@mui/icons-material';
 import {
-  Alert,
   Box,
   Button,
   CircularProgress,
+  Container,
   IconButton,
   Menu,
   MenuItem,
-  Paper,
-  Skeleton,
   Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableRow,
   TextField,
   Typography,
 } from '@mui/material';
-import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { fromUnitToToken } from '@ocap/util';
-import { useRequest } from 'ahooks';
-import BigNumber from 'bignumber.js';
-import dayjs from 'dayjs';
-import { groupBy, isNil } from 'lodash';
 import { bindMenu, bindTrigger, usePopupState } from 'material-ui-popup-state/hooks';
-import { useEffect, useMemo, useState } from 'react';
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Legend,
-  ResponsiveContainer,
-  Tooltip,
-  TooltipProps,
-  XAxis,
-  YAxis,
-} from 'recharts';
-import { NameType, ValueType } from 'recharts/types/component/DefaultTooltipContent';
+import { useEffect, useState } from 'react';
 
 import { useAIKitServiceStatus } from './state';
 
-export default function BillingPage() {
+function BillingPage() {
   const { t } = useLocaleContext();
-  const {
-    app,
-    error,
-    computed: { isSubscriptionAvailable },
-    fetch,
-  } = useAIKitServiceStatus();
-  if (error) throw error;
+  const { app, loading, fetch } = useAIKitServiceStatus();
 
   useEffect(() => {
     fetch();
   }, [fetch]);
 
-  const isPastDue = app?.subscription?.status === 'past_due';
-
-  if (!app) {
+  if (loading) {
     return (
-      <Stack
-        sx={{
-          alignItems: 'center',
-          py: 10,
-        }}>
-        <CircularProgress size={24} />
-      </Stack>
+      <Container maxWidth="lg" sx={{ py: 4 }}>
+        <Stack spacing={3}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center">
+            <Box sx={{ width: 200, height: 32 }} />
+            <Box sx={{ width: 150, height: 36 }} />
+          </Stack>
+          <Box sx={{ height: 400 }} />
+        </Stack>
+      </Container>
     );
   }
 
   return (
-    <Stack
-      sx={{
-        p: 3,
-        gap: 4,
-      }}>
-      <Stack
-        direction="row"
-        sx={{
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 1,
-        }}>
-        <Typography variant="h5">{t('usage')}</Typography>
+    <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Stack spacing={4}>
+        {/* Header with AI Provider Switch */}
+        <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={2}>
+          <Box>
+            <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+              {t('creditManagement')}
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              {t('creditManagementDescription')}
+            </Typography>
+          </Box>
 
-        <UseAIKitServiceSwitch />
+          {app && <UseAIKitServiceSwitch />}
+        </Stack>
+
+        {/* Credit Tabs with Service Configuration */}
+        <CreditTabs useAIKitService={!!app?.config?.useAIKitService} />
       </Stack>
-      {app?.config?.useAIKitService && isPastDue ? (
-        <Alert severity="warning" action={<Button href={app.subscriptionDetailUrl}>{t('payNow')}</Button>}>
-          {t('subscriptionPastDueTip')}
-        </Alert>
-      ) : (
-        !isSubscriptionAvailable && <NonSubscriptions />
-      )}
-      {app.id && <UseCreditsCharts />}
-    </Stack>
-  );
-}
-
-function NonSubscriptions() {
-  const { t } = useLocaleContext();
-
-  return (
-    <Stack
-      sx={{
-        alignItems: 'center',
-        gap: 4,
-        my: 10,
-      }}>
-      <RouterRounded sx={{ fontSize: 56, color: 'text.disabled' }} />
-      <Typography variant="body2">{t('subscribeAITip')}</Typography>
-      <SubscribeButton />
-    </Stack>
+    </Container>
   );
 }
 
@@ -170,15 +115,17 @@ function UseAIKitServiceSwitch() {
           select
           size="small"
           hiddenLabel
-          defaultValue={app.config?.useAIKitService ? 'subscribe' : 'local'}
+          defaultValue={!app.config?.useAIKitService ? 'local' : 'subscribe'}
           onChange={async (e) => {
             try {
               setUpdating(true);
               await setConfig({ useAIKitService: e.target.value === 'subscribe' });
               setUpdating('success');
+              setTimeout(() => setUpdating(false), 1500);
             } catch (error) {
               setUpdating('error');
               Toast.error(error.message);
+              setTimeout(() => setUpdating(false), 1500);
               throw error;
             }
           }}
@@ -291,202 +238,37 @@ function UseAIKitServiceSwitch() {
   );
 }
 
-function UseCreditsCharts() {
-  const { t } = useLocaleContext();
-  const { app } = useAIKitServiceStatus();
-  const [date, setDate] = useState(dayjs(new Date()));
-
-  const [startTime, endTime] = useMemo(() => {
-    const startTime = dayjs(date).startOf('month');
-    const endTime = dayjs(date).endOf('month');
-
-    return [startTime.format('YYYY-MM-DD'), endTime.format('YYYY-MM-DD')];
-  }, [date]);
-
-  const { data, loading } = useRequest(
-    () =>
-      appUsedCredits(
-        { startTime, endTime: dayjs(endTime).endOf('day').format('YYYY-MM-DD HH:mm:ss') },
-        { useAIKitService: app?.config?.useAIKitService }
-      ),
-    {
-      refreshDeps: [startTime, endTime, app?.config?.useAIKitService],
-    }
-  );
-
-  const { price, symbol } = useMemo(() => {
-    if (!app?.config?.useAIKitService || !app?.subscription) return {};
-
-    const price = app.subscription.items.find((i) => i.price.currency_id === app.subscription!.currency_id)?.price;
-    const { decimal } = app.subscription.paymentCurrency;
-
-    if (!price) return {};
-
-    return {
-      price: new BigNumber(fromUnitToToken(price.unit_amount, decimal)).dividedBy(
-        price.transform_quantity?.divide_by ?? 1
-      ),
-      symbol: app.subscription.paymentCurrency.symbol,
-    };
-  }, [app]);
-
-  const TooltipContent = useMemo(() => createTooltipContentComponent({ unit: symbol }), [symbol]);
-
-  let total = new BigNumber(0);
-
-  const map = Object.fromEntries(
-    Object.values(groupBy(data?.list || [], 'date')).map((list) => [
-      list[0]!.date,
-      Object.fromEntries(
-        list.map((i) => {
-          const value = price
-            ? price.multipliedBy(i.usedCredits).toString()
-            : i.promptTokens + i.completionTokens + i.numberOfImageGeneration;
-
-          total = total.plus(value);
-
-          return [i.model, value];
-        })
-      ),
-    ])
-  );
-  const list = new Array(dayjs(date).daysInMonth()).fill(0).map((_, index) => {
-    const d = dayjs(date)
-      .date(index + 1)
-      .format('YYYY-MM-DD');
-    return { ...map[d], date: d };
-  });
-
-  const models = [...new Set((data?.list || []).map((i) => i.model))];
-  const colors = ['#ffc800', '#b7ff00', '#40ff00', '#00ffae', '#00c3ff', '#0066ff', '#5500ff', '#ae00ff'];
-
-  return (
-    <Stack
-      sx={{
-        width: 1,
-        gap: 2,
-      }}>
-      <Stack
-        direction="row"
-        sx={{
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}>
-        <Typography
-          variant="subtitle1"
-          sx={{
-            fontWeight: 'bold',
-          }}>
-          {t('monthlySpend')}
-
-          <Typography component="span" sx={{ ml: 1 }}>
-            {total.toNumber()} {symbol || ''}
-          </Typography>
-        </Typography>
-
-        <Box />
-
-        <MonthPicker
-          value={date}
-          onChange={(newValue: any) => {
-            setDate(newValue);
-          }}
-        />
-      </Stack>
-      {loading ? (
-        <Box
-          sx={{
-            width: '100%',
-          }}>
-          <Skeleton variant="rounded" height={260} sx={{ margin: '20px 30px 30px 20px' }} />
-        </Box>
-      ) : (
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={list} barSize={10}>
-            <XAxis dataKey="date" scale="point" interval={8} padding={{ left: 10, right: 10 }} />
-            <YAxis unit={symbol ?? 'unit'} width={100} />
-            <Legend />
-            <Tooltip formatter={(v) => `${v} ${symbol ?? 'unit'}`} content={TooltipContent} />
-            <CartesianGrid strokeDasharray="3 3" />
-            {models.map((model, index) => (
-              <Bar key={model} dataKey={model} stackId="usedCredits" fill={colors[index] || 'black'} />
-            ))}
-          </BarChart>
-        </ResponsiveContainer>
-      )}
-    </Stack>
-  );
-}
-
-function createTooltipContentComponent({ unit }: { unit?: string } = {}) {
-  return function TooltipContent(props: TooltipProps<ValueType, NameType>) {
-    const { t } = useLocaleContext();
-
-    if (!props.payload?.length) return null;
-
-    return (
-      <Paper sx={{ py: 2 }}>
-        <Typography variant="subtitle1" sx={{ mx: 2, mb: 1 }}>
-          {props.label}
-        </Typography>
-
-        <Table size="small" sx={{ td: { border: 'none', py: 0 } }}>
-          <TableBody>
-            <TableRow>
-              <TableCell>{t('total')}</TableCell>
-              <TableCell>
-                {props.payload
-                  .reduce(
-                    (res, i) => res.plus(typeof i.value === 'string' || typeof i.value === 'number' ? i.value : 0),
-                    new BigNumber(0)
-                  )
-                  .toNumber()}{' '}
-                {unit ?? ''}
-              </TableCell>
-            </TableRow>
-
-            {props.payload
-              .map((i, index) => (
-                <TableRow key={i.dataKey}>
-                  <TableCell sx={{ color: i.color }}>{i.dataKey}</TableCell>
-                  <TableCell sx={{ color: i.color }}>
-                    {props.formatter && !isNil(i.value) && !isNil(i.name)
-                      ? props.formatter(i.value, i.name, i, index, props.payload!)
-                      : i.value}
-                  </TableCell>
-                </TableRow>
-              ))
-              .reverse()}
-          </TableBody>
-        </Table>
-      </Paper>
-    );
-  };
-}
-
-type DatePickerProps = React.ComponentProps<typeof DatePicker>;
-
-interface MonthPickerProps {
-  value: DatePickerProps['value'];
-  onChange: DatePickerProps['onChange'];
-}
-
-function MonthPicker({ value, onChange }: MonthPickerProps) {
-  const { t, locale } = useLocaleContext();
-
-  return (
-    <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale={/zh/i.test(locale) ? 'zh-cn' : 'en'}>
-      <DatePicker
-        views={['year', 'month']}
-        label={t('selectMonth')}
-        openTo="month"
-        format="YYYY-MM"
-        defaultValue={dayjs(new Date())}
-        maxDate={dayjs(new Date())}
-        value={value}
-        onChange={onChange}
-        slotProps={{ textField: { size: 'small' } }}
-      />
-    </LocalizationProvider>
-  );
-}
+export default withLocaleProvider(BillingPage, {
+  translations: {
+    en: {
+      creditManagement: 'Credit Management',
+      creditManagementDescription: 'Manage your credits and view usage statistics',
+      aiProvider: 'AI Provider',
+      aiProviderSubscription: 'Subscription Service',
+      aiProviderLocalAIKit: 'Local AI Kit',
+      unsubscribe: 'Unsubscribe',
+      unsubscribeTip: 'Confirm to unsubscribe AI service',
+      cancelled: 'Cancelled',
+      unsubscribeAt: 'Will unsubscribe at',
+      recoverSubscription: 'Recover Subscription',
+      recoverSubscriptionTip: 'Confirm to recover subscription',
+      recoverSubscriptionSucceed: 'Subscription recovered successfully',
+      viewSubscriptionDetail: 'View Subscription Details',
+    },
+    zh: {
+      creditManagement: '积分管理',
+      creditManagementDescription: '管理您的积分并查看使用统计',
+      aiProvider: 'AI 提供商',
+      aiProviderSubscription: '订阅服务',
+      aiProviderLocalAIKit: '本地 AI Kit',
+      unsubscribe: '取消订阅',
+      unsubscribeTip: '确认取消订阅 AI 服务',
+      cancelled: '已取消',
+      unsubscribeAt: '将在以下时间取消订阅',
+      recoverSubscription: '恢复订阅',
+      recoverSubscriptionTip: '确认恢复订阅',
+      recoverSubscriptionSucceed: '订阅恢复成功',
+      viewSubscriptionDetail: '查看订阅详情',
+    },
+  },
+});

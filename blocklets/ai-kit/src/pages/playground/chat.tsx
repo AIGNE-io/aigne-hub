@@ -11,7 +11,7 @@ import { HighlightOff } from '@mui/icons-material';
 import { Box, Button, Tooltip } from '@mui/material';
 import { ReactNode, useCallback, useRef } from 'react';
 
-import { ImageGenerationSize, imageGenerations, textCompletions } from '../../libs/ai';
+import { ImageGenerationSize, imageGenerationsV2, textCompletionsV2 } from '../../libs/ai';
 
 export default function Chat() {
   const ref = useRef<ConversationRef>(null);
@@ -19,12 +19,12 @@ export default function Chat() {
   const { messages, add, cancel } = useConversation({
     scrollToBottom: (o) => ref.current?.scrollToBottom(o),
     textCompletions: (prompt) =>
-      textCompletions({
+      textCompletionsV2({
         ...(typeof prompt === 'string' ? { prompt } : { messages: prompt }),
         stream: true,
       }),
     imageGenerations: (prompt) =>
-      imageGenerations({ ...prompt, size: prompt.size as ImageGenerationSize, response_format: 'b64_json' }).then(
+      imageGenerationsV2({ ...prompt, size: prompt.size as ImageGenerationSize, response_format: 'b64_json' }).then(
         (res) => res.data.map((i) => ({ url: `data:image/png;base64,${i.b64_json}` }))
       ),
   });

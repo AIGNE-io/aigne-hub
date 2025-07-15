@@ -1,16 +1,248 @@
-import { SubscriptionError, SubscriptionErrorType } from '@blocklet/ai-kit/api';
+import { CreditError, CreditErrorType, SubscriptionError, SubscriptionErrorType } from '@blocklet/ai-kit/api';
 import { appStatus } from '@blocklet/ai-kit/api/call/app';
-import payment, { Subscription } from '@blocklet/payment-js';
+import payment, { Subscription, TMeterEventExpanded } from '@blocklet/payment-js';
+import { getComponentMountPoint } from '@blocklet/sdk';
 import config from '@blocklet/sdk/lib/config';
-import { parseURL } from 'ufo';
+import { joinURL, parseURL } from 'ufo';
 
-import { Config } from './env';
+import { Config, DEFAULT_CREDIT_PRICE_KEY, METER_NAME, METER_UNIT } from './env';
 import logger from './logger';
 
 const PAYMENT_DID = 'z2qaCNvKMv5GjouKdcDWexv6WqtHbpNPQDnAk';
 
 export const isPaymentInstalled = () => !!config.components.find((i) => i.did === PAYMENT_DID);
 
+export const paymentClient = payment;
+export const getPaymentKitPrefix = () => {
+  return joinURL(config.env.appUrl, getComponentMountPoint(PAYMENT_DID));
+};
+export const ensureMeter = async () => {
+  if (!isPaymentInstalled()) return null;
+  try {
+    const meter = await payment.meters.retrieve(METER_NAME);
+    return meter;
+  } catch (error) {
+    logger.info('start to create meter');
+    const meter = await payment.meters.create({
+      name: 'Agent Hub AI Meter',
+      description: 'Agent Hub AI Meter',
+      event_name: METER_NAME,
+      unit: METER_UNIT,
+      aggregation_method: 'sum',
+    });
+    return meter;
+  }
+};
+
+export async function ensureCustomer(userDid: string) {
+  // @ts-ignore
+  const customer = await payment.customers.retrieve(userDid, {
+    create: true,
+  });
+  return customer;
+}
+
+// get user credits
+export async function getUserCredits({ userDid }: { userDid: string }) {
+  if (!isPaymentInstalled()) return { balance: 0, currency: null };
+  const meter = await ensureMeter();
+  if (!meter) {
+    return {
+      balance: 0,
+      currency: null,
+    };
+  }
+  const creditBalance = await payment.creditGrants.summary({
+    customer_id: userDid,
+  });
+
+  return {
+    balance: creditBalance?.[meter.currency_id!]?.remainingAmount ?? '0',
+    currency: meter.paymentCurrency,
+    total: creditBalance?.[meter.currency_id!]?.totalAmount ?? '0',
+    grantCount: creditBalance?.[meter.currency_id!]?.grantCount ?? 0,
+  };
+}
+
+// create meter event
+export async function createMeterEvent({
+  userDid,
+  amount,
+  metadata,
+}: {
+  userDid: string;
+  amount: number;
+  metadata?: Record<string, any>;
+}): Promise<TMeterEventExpanded | undefined> {
+  if (!isPaymentInstalled()) throw new Error('Payment is not installed');
+  const meter = await ensureMeter();
+  if (!meter) throw new Error('Meter is not found');
+  const now = Date.now();
+  const meterEvent = await payment.meterEvents.create({
+    event_name: meter.event_name,
+    timestamp: Math.floor(now / 1000),
+    payload: {
+      customer_id: userDid,
+      value: String(amount),
+    },
+    identifier: `${userDid}-${meter.event_name}-${now}`,
+    metadata,
+  });
+  return meterEvent;
+}
+
+export async function ensureDefaultCreditPrice() {
+  try {
+    const price = await payment.prices.retrieve(DEFAULT_CREDIT_PRICE_KEY);
+    return price;
+  } catch {
+    try {
+      const paymentCurrencies = await payment.paymentCurrencies.list({});
+      if (paymentCurrencies.length === 0) {
+        logger.error('No payment currencies found');
+        return null;
+      }
+      const meter = await ensureMeter();
+      if (!meter) {
+        logger.error('No meter found');
+        return null;
+      }
+      await payment.products.create({
+        name: 'Basic AIC Packs',
+        description: `It is a basic pack of ${METER_UNIT}, you can pay to get more ${METER_UNIT} credits.`,
+        type: 'credit',
+        prices: [
+          {
+            type: 'one_time',
+            unit_amount: '0.001',
+            currency_id: paymentCurrencies[0]!.id,
+            // @ts-ignore
+            currency_options: paymentCurrencies.map((currency) => ({
+              currency_id: currency.id,
+              unit_amount: '0.001',
+            })),
+            lookup_key: DEFAULT_CREDIT_PRICE_KEY,
+            nickname: 'Per Unit Credit For AI Kit',
+            metadata: {
+              credit_config: {
+                priority: 50,
+                valid_duration_value: 0,
+                valid_duration_unit: 'days',
+                currency_id: meter.currency_id,
+                credit_amount: '1000',
+              },
+              meter_id: meter.id,
+            },
+          },
+        ],
+      });
+      const price = await payment.prices.retrieve(DEFAULT_CREDIT_PRICE_KEY);
+      return price;
+    } catch (error) {
+      logger.error('failed to ensure credit price', { error });
+      return null;
+    }
+  }
+}
+
+export async function ensureDefaultCreditPaymentLink() {
+  if (!isPaymentInstalled()) return null;
+  const price = await ensureDefaultCreditPrice();
+  if (!price) {
+    logger.error('failed to ensure default credit price');
+    throw new Error('failed to ensure default credit price');
+  }
+  const paymentLink = await payment.paymentLinks.create({
+    name: price.product.name,
+    line_items: [
+      {
+        price_id: price.id,
+        quantity: 1,
+        adjustable_quantity: {
+          enabled: true,
+          minimum: 1,
+          maximum: 100000000,
+        },
+      },
+    ],
+  });
+
+  return joinURL(getPaymentKitPrefix(), '/checkout/pay', paymentLink.id);
+}
+
+// default credit payment link
+export async function getCreditPaymentLink() {
+  if (!isPaymentInstalled()) return null;
+  if (Config?.creditPaymentLink) return Config.creditPaymentLink;
+  // fallback to default payment link
+  const link = await ensureDefaultCreditPaymentLink();
+  if (!link) {
+    logger.error('failed to ensure default credit payment link');
+    throw new Error('failed to ensure default credit payment link');
+  }
+  return link;
+}
+
+export async function checkUserCreditBalance({ userDid }: { userDid: string }) {
+  const { balance } = await getUserCredits({ userDid });
+  if (balance === '0') {
+    throw new CreditError(CreditErrorType.NOT_ENOUGH);
+  }
+}
+
+export async function getCreditGrants(params: {
+  customer_id: string;
+  page?: number;
+  pageSize?: number;
+  start?: number;
+  end?: number;
+}) {
+  const meter = await ensureMeter();
+  if (!meter) {
+    return {
+      count: 0,
+      list: [],
+    };
+  }
+  let customerId = params.customer_id;
+  if (!params.customer_id.startsWith('cus_')) {
+    const customer = await ensureCustomer(params.customer_id);
+    customerId = customer.id;
+  }
+  return payment.creditGrants.list({
+    ...params,
+    customer_id: customerId,
+    currency_id: meter.currency_id,
+  });
+}
+
+export async function getCreditTransactions(params: {
+  customer_id: string;
+  page?: number;
+  pageSize?: number;
+  start?: number;
+  end?: number;
+}) {
+  const meter = await ensureMeter();
+  if (!meter) {
+    return {
+      count: 0,
+      list: [],
+    };
+  }
+  let customerId = params.customer_id;
+  if (!params.customer_id.startsWith('cus_')) {
+    const customer = await ensureCustomer(params.customer_id);
+    customerId = customer.id;
+  }
+  return payment.creditTransactions.list({
+    ...params,
+    meter_id: meter.id,
+    customer_id: customerId,
+  });
+}
+
+// get active subscription of app
 export async function getActiveSubscriptionOfApp({
   appId,
   description,
@@ -22,7 +254,7 @@ export async function getActiveSubscriptionOfApp({
 }) {
   if (!isPaymentInstalled()) return undefined;
 
-  // @ts-ignore TODO: remove ts-ignore after upgrade @did-pay/client
+  // @ts-ignore TODO: remove ts-ignore after upgrade @userDid-pay/client
   const subscription = (await payment.subscriptions.list({ 'metadata.appId': appId })).list.find(
     (i) =>
       status.includes(i.status) && i.items.some((j) => j.price.product.id === Config.pricing?.subscriptionProductId)

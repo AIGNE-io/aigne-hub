@@ -15,6 +15,8 @@ declare module 'express-history-api-fallback';
 
 declare module 'express-async-errors';
 
+declare module '@blocklet/sdk/service/eventbus';
+
 declare module '@blocklet/logger' {
   function createLogger(name: string): typeof console;
 
@@ -33,6 +35,7 @@ namespace Express {
 
     appClient?: {
       appId: string;
+      userDid: string;
     };
   }
 }

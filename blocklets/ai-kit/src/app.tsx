@@ -1,42 +1,34 @@
+import Center from '@arcblock/ux/lib/Center';
 import { LocaleProvider } from '@arcblock/ux/lib/Locale/context';
+import { ThemeProvider } from '@arcblock/ux/lib/Theme';
 import { ToastProvider } from '@arcblock/ux/lib/Toast';
 import { SubscribeButton } from '@blocklet/ai-kit/components';
 import Footer from '@blocklet/ui-react/lib/Footer';
 import Header from '@blocklet/ui-react/lib/Header';
 import { Global, css } from '@emotion/react';
-import { Box, CssBaseline, ThemeProvider, createTheme } from '@mui/material';
+import { Box, CircularProgress, CssBaseline } from '@mui/material';
 import { ReactNode, Suspense, lazy } from 'react';
 import { Navigate, Route, RouterProvider, createBrowserRouter, createRoutesFromElements } from 'react-router-dom';
 
+import ErrorBoundary from './components/error/error-boundary';
 import NotFoundView from './components/error/not-found';
 import Loading from './components/loading';
+import { TransitionProvider } from './components/loading/progress-bar';
 import { SessionProvider, useIsRole } from './contexts/session';
 import { translations } from './locales';
 import { HomeLazy } from './pages/home';
 import { ChatLazy } from './pages/playground';
 
-const theme = createTheme({
-  typography: {
-    fontSize: 14,
-    allVariants: {
-      textTransform: 'none',
-    },
-  },
-});
+const ConfigPage = lazy(() => import('./pages/config'));
 
 export default function App() {
   const basename = window.blocklet?.prefix || '/';
 
   return (
-    <ThemeProvider theme={theme}>
+    <ThemeProvider>
       <CssBaseline>
         <Global
           styles={css`
-            html,
-            body {
-              font-size: 14px;
-            }
-
             #app {
               min-height: 100vh;
               display: flex;
@@ -54,7 +46,18 @@ export default function App() {
             languages={undefined}>
             <SessionProvider serviceHost={basename}>
               <Suspense fallback={<Loading />}>
-                <AppRoutes basename={basename} />
+                <TransitionProvider>
+                  <ErrorBoundary>
+                    <Suspense
+                      fallback={
+                        <Center>
+                          <CircularProgress />
+                        </Center>
+                      }>
+                      <AppRoutes basename={basename} />
+                    </Suspense>
+                  </ErrorBoundary>
+                </TransitionProvider>
               </Suspense>
             </SessionProvider>
           </LocaleProvider>
@@ -75,7 +78,11 @@ function AppRoutes({ basename }: { basename: string }) {
           <Route index element={<Navigate to="/playground/chat" replace />} />
           <Route path="chat" element={<ChatLazy />} />
         </Route>
-        <Route path="billing/*" element={<BillingRoutes />} />
+        <Route key="config-index" path="/config" element={<ConfigPage />} />
+        <Route key="config-tabs" path="/config/:group" element={<ConfigPage />} />
+        <Route key="config-sub" path="/config/:group/:page" element={<ConfigPage />} />
+        <Route key="config-fallback" path="/config/*" element={<ConfigPage />} />
+        {/* <Route path="billing/*" element={<BillingRoutes />} /> */}
         <Route
           path="*"
           element={
@@ -96,8 +103,6 @@ function AppRoutes({ basename }: { basename: string }) {
 
   return <RouterProvider router={router} />;
 }
-
-const BillingRoutes = lazy(() => import('./pages/billing'));
 
 function Layout({ children }: { children: ReactNode }) {
   return (

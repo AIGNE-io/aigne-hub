@@ -44,7 +44,7 @@ export default function Home() {
                   borderRadius: 80,
                 }}
               />
-              <Typography variant="h4">AI Kit</Typography>
+              <Typography variant="h4">Agent Hub</Typography>
               <Typography
                 variant="h5"
                 component="div"
@@ -61,11 +61,16 @@ export default function Home() {
                   gap: 3,
                 }}>
                 {isAdmin ? (
-                  <Button component={Link} to="/playground" variant="contained">
-                    Playground
-                  </Button>
+                  <Stack direction="row" spacing={2}>
+                    <Button component={Link} to="/config" variant="contained">
+                      Config
+                    </Button>
+                    <Button component={Link} to="/playground" variant="outlined">
+                      Playground
+                    </Button>
+                  </Stack>
                 ) : (
-                  <Button onClick={session.user ? session.switchDid : session.login} variant="contained">
+                  <Button onClick={session?.user ? session?.switchDid : session?.login} variant="contained">
                     Login as Admin to access playground
                   </Button>
                 )}

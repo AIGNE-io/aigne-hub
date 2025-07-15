@@ -1,8 +1,9 @@
 import { wallet } from '@api/libs/auth';
-import { Config, PAYMENT_DID } from '@api/libs/env';
+import { Config } from '@api/libs/env';
 import {
   cancelSubscription,
   getActiveSubscriptionOfApp,
+  getPaymentKitPrefix,
   getSubscriptionDescription,
   recoverSubscription,
 } from '@api/libs/payment';
@@ -14,12 +15,14 @@ import { appRegister } from '@blocklet/ai-kit/api/call/app';
 import AIKitConfig from '@blocklet/ai-kit/api/config';
 import { appIdFromPublicKey, ensureRemoteComponentCall } from '@blocklet/ai-kit/api/utils/auth';
 import { config, getComponentMountPoint } from '@blocklet/sdk';
+import sessionMiddleware from '@blocklet/sdk/lib/middlewares/session';
 import { Router } from 'express';
 import Joi from 'joi';
 import { joinURL, withQuery } from 'ufo';
 
 const router = Router();
 
+const user = sessionMiddleware({ accessKey: true });
 const statusQuerySchema = Joi.object<{ description?: string }>({
   description: Joi.string().empty([null, '']),
 });
@@ -50,18 +53,15 @@ router.get(
 
     const subscriptionDetailUrl =
       subscription &&
-      withQuery(
-        joinURL(config.env.appUrl, getComponentMountPoint(PAYMENT_DID), 'customer/subscription', subscription.id),
-        {
-          '__did-connect__': Buffer.from(
-            JSON.stringify({
-              forceConnected: subscription.customer.did,
-              switchBehavior: 'required',
-            }),
-            'utf8'
-          ).toString('base64url'),
-        }
-      );
+      withQuery(joinURL(getPaymentKitPrefix(), 'customer/subscription', subscription.id), {
+        '__did-connect__': Buffer.from(
+          JSON.stringify({
+            forceConnected: subscription.customer.did,
+            switchBehavior: 'required',
+          }),
+          'utf8'
+        ).toString('base64url'),
+      });
 
     res.json({ id: app.id, subscription, subscriptionDetailUrl });
   }
@@ -112,7 +112,6 @@ router.get(
     res.json({ list: result });
   }
 );
-
 export interface RegisterPayload {
   publicKey: string;
 }
@@ -176,11 +175,11 @@ router.post('/subscription/recover', ensureRemoteComponentCall(App.findPublicKey
   res.json(null);
 });
 
-router.get('/service/status', proxyToAIKit('/api/app/status', { useAIKitService: true }));
+router.get('/service/status', user, proxyToAIKit('/api/app/status', { useAIKitService: true }));
 
-router.get('/service/usage', ensureAdmin, proxyToAIKit('/api/app/usage', { useAIKitService: true }));
+router.get('/service/usage', user, ensureAdmin, proxyToAIKit('/api/app/usage', { useAIKitService: true }));
 
-router.post('/service/register', async (_, res) => {
+router.post('/service/register', user, async (_, res) => {
   const result = await appRegister({ publicKey: wallet.publicKey }, { useAIKitService: true });
   res.json({
     ...result,

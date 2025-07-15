@@ -8,8 +8,19 @@ export const isDevelopment = config.env.mode === 'development';
 
 export const PAYMENT_DID = 'z2qaCNvKMv5GjouKdcDWexv6WqtHbpNPQDnAk';
 
+export const METER_NAME = 'agent-hub-ai-meter';
+
+export const METER_UNIT = 'AIC';
+
+export const DEFAULT_CREDIT_PRICE_KEY = 'DEFAULT_CREDIT_UNIT_PRICE';
+
 type Pricing = {
+  creditPaymentLink: string;
+  creditBasedBillingEnabled: boolean;
   subscriptionPaymentLink: string;
+  newUserCreditGrantEnabled: boolean;
+  newUserCreditGrantAmount: number;
+  creditExpirationDays: number;
   subscriptionProductId: string;
   basePricePerUnit: number;
   onlyEnableModelsInPricing?: boolean;
@@ -27,6 +38,14 @@ export const Config = {
       this._verbose = Joi.boolean().validate(config.env.VERBOSE).value ?? false;
     }
     return this._verbose;
+  },
+
+  _aiKitBaseURL: undefined as string | undefined,
+  get aiKitBaseURL() {
+    if (this._aiKitBaseURL === undefined) {
+      this._aiKitBaseURL = config.env.AI_KIT_BASE_URL;
+    }
+    return this._aiKitBaseURL;
   },
 
   _openaiApiKey: undefined as string[] | undefined,
@@ -68,6 +87,19 @@ export const Config = {
     return this._openRouterApiKey;
   },
 
+  _aiKitApiKey: undefined as string[] | undefined,
+  get aiKitApiKey() {
+    if (this._aiKitApiKey === undefined) {
+      const KEY = config.env.AI_KIT_API_KEY;
+      this._aiKitApiKey = (typeof KEY === 'string' ? KEY : '')
+        .split(',')
+        .map((i: string) => i.trim())
+        .filter(Boolean);
+    }
+
+    return this._aiKitApiKey;
+  },
+
   get openaiBaseURL() {
     const url = config.env.OPENAI_BASE_URL;
     return url && typeof url === 'string' ? url : undefined;
@@ -93,13 +125,61 @@ export const Config = {
     return this._maxRetries;
   },
 
+  _baseCreditBilling: undefined as boolean | undefined,
+  get baseCreditBilling() {
+    if (this._baseCreditBilling === undefined) {
+      this._baseCreditBilling = config.env.preferences.baseCreditBilling ?? false;
+    }
+    return this._baseCreditBilling;
+  },
+
+  _creditPaymentLink: undefined as string | undefined,
+  get creditPaymentLink() {
+    if (this._creditPaymentLink === undefined) {
+      this._creditPaymentLink = config.env.preferences.creditPaymentLink;
+    }
+    return this._creditPaymentLink;
+  },
+
+  _creditBasedBillingEnabled: undefined as boolean | undefined,
+  get creditBasedBillingEnabled() {
+    if (this._creditBasedBillingEnabled === undefined) {
+      this._creditBasedBillingEnabled = config.env.preferences?.creditBasedBillingEnabled ?? false;
+    }
+    return this._creditBasedBillingEnabled;
+  },
+
+  _newUserCreditGrantEnabled: undefined as boolean | undefined,
+  get newUserCreditGrantEnabled() {
+    if (this._newUserCreditGrantEnabled === undefined) {
+      this._newUserCreditGrantEnabled = config.env.preferences.newUserCreditGrantEnabled ?? false;
+    }
+    return this._newUserCreditGrantEnabled;
+  },
+
+  _newUserCreditGrantAmount: undefined as number | undefined,
+  get newUserCreditGrantAmount() {
+    if (this._newUserCreditGrantAmount === undefined) {
+      this._newUserCreditGrantAmount = config.env.preferences.newUserCreditGrantAmount ?? 100;
+    }
+    return this._newUserCreditGrantAmount;
+  },
+
+  _creditExpirationDays: undefined as number | undefined,
+  get creditExpirationDays() {
+    if (this._creditExpirationDays === undefined) {
+      this._creditExpirationDays = config.env.preferences.creditExpirationDays ?? 0;
+    }
+    return this._creditExpirationDays;
+  },
+
   _pricing: undefined as Pricing | undefined | null,
   get pricing() {
     if (this._pricing === undefined) {
       const res = Joi.object<Pricing>({
-        subscriptionPaymentLink: Joi.string().required(),
-        subscriptionProductId: Joi.string().required(),
-        basePricePerUnit: Joi.number().min(0).required(),
+        subscriptionPaymentLink: Joi.string().optional(),
+        subscriptionProductId: Joi.string().optional(),
+        basePricePerUnit: Joi.number().min(0).optional(),
         onlyEnableModelsInPricing: Joi.boolean().empty([null, '']),
         list: Joi.array().items(
           Joi.object({

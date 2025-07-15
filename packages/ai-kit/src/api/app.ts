@@ -57,3 +57,106 @@ export async function appUsedCredits(
 export async function unsubscribe(): Promise<void> {
   return api.post('/api/app/service/unsubscribe');
 }
+
+export async function getCreditPaymentLink(options?: { useAIKitService?: boolean }): Promise<string> {
+  const endpoint = options?.useAIKitService ? '/api/user/service/credit/payment-link' : '/api/user/credit/payment-link';
+  return api.get(endpoint).then((res) => res.data);
+}
+
+// Credit Balance Types
+export interface CreditBalanceResult {
+  balance: string;
+  currency: {
+    id: string;
+    symbol: string;
+    name: string;
+    decimal: number;
+    maximum_precision: number;
+  };
+  total: string;
+  grantCount: number;
+}
+
+// Credit Grants Types
+export interface CreditGrant {
+  id: string;
+  name: string;
+  status: string;
+  remainingCredit: number;
+  scope: string;
+  effectiveDate: string;
+  expirationDate?: string;
+}
+
+export interface CreditGrantsResult {
+  creditGrants: {
+    data: CreditGrant[];
+    pagination: {
+      page: number;
+      pageSize: number;
+      total: number;
+      totalPages: number;
+    };
+  };
+}
+
+// Credit Transactions Types
+export interface CreditTransaction {
+  id: string;
+  quantity: string;
+  credit_amount: string;
+  remaining_balance: string;
+  description: string;
+  created_at: string;
+  creditGrant: {
+    id: string;
+    name: string;
+  };
+  paymentCurrency: {
+    id: string;
+    symbol: string;
+    decimal: number;
+  };
+}
+
+export interface CreditTransactionsResult {
+  count: number;
+  list: CreditTransaction[];
+  paging: {
+    page: number;
+    pageSize: number;
+  };
+}
+
+// Get credit balance
+export async function getCreditBalance(options?: { useAIKitService?: boolean }): Promise<CreditBalanceResult> {
+  const endpoint = options?.useAIKitService ? '/api/user/service/credit/balance' : '/api/user/credit/balance';
+  return api.get(endpoint).then((res) => res.data);
+}
+
+// Get credit grants
+export async function getCreditGrants(
+  params?: {
+    page?: number;
+    pageSize?: number;
+    start?: number;
+    end?: number;
+  },
+  options?: { useAIKitService?: boolean }
+): Promise<CreditGrantsResult> {
+  const endpoint = options?.useAIKitService ? '/api/user/service/credit/grants' : '/api/user/credit/grants';
+  return api.get(endpoint, { params }).then((res) => res.data);
+}
+
+export async function getCreditTransactions(
+  params?: {
+    page?: number;
+    pageSize?: number;
+    start?: number;
+    end?: number;
+  },
+  options?: { useAIKitService?: boolean }
+): Promise<CreditTransactionsResult> {
+  const endpoint = options?.useAIKitService ? '/api/user/service/credit/transactions' : '/api/user/credit/transactions';
+  return api.get(endpoint, { params }).then((res) => res.data);
+}

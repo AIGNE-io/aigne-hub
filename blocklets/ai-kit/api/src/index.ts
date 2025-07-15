@@ -8,17 +8,21 @@ import cors from 'cors';
 import dotenv from 'dotenv-flow';
 import express, { ErrorRequestHandler } from 'express';
 
+import { subscribeEvents } from './events/listen';
 import { Config, isDevelopment } from './libs/env';
 import logger, { accessLogMiddleware } from './libs/logger';
 import { autoUpdateSubscriptionMeta } from './libs/payment';
 import routes from './routes';
 import { initAuthRouter } from './routes/auth';
 import setupHtmlRouter from './routes/html';
+import { initialize } from './store/models';
+import { sequelize } from './store/sequelize';
 
 if (process.env.NODE_ENV === 'development') {
   dotenv.config();
 }
 
+initialize(sequelize);
 const { name, version } = require('../../package.json');
 
 export const app = express();
@@ -94,4 +98,5 @@ export const server = app.listen(port, (err?: any) => {
   logger.info(`> ${name} v${version} ready on ${port}`);
 
   autoUpdateSubscriptionMeta();
+  subscribeEvents();
 });

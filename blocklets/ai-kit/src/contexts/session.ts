@@ -11,5 +11,5 @@ export { SessionProvider, SessionContext, SessionConsumer, withSession };
 
 export function useIsRole(...roles: string[]) {
   const { session } = useSessionContext();
-  return roles.includes(session.user?.role);
+  return roles.includes(session?.user?.role);
 }
