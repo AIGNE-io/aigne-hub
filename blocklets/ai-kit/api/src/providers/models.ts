@@ -82,7 +82,6 @@ function convertToFrameworkMessages(
 }
 
 const providers = {
-  aigneHub: 'aigneHub',
   openai: 'openai',
   anthropic: 'anthropic',
   bedrock: 'bedrock',
@@ -165,7 +164,6 @@ export function availableModels(): {
 
 const currentApiKeyIndex: { [key in AIProvider]?: number } = {};
 const apiKeys: { [key in AIProvider]: () => string[] } = {
-  aigneHub: () => Config.aigneHubAccessKey,
   google: () => Config.geminiApiKey,
   openai: () => Config.openaiApiKey,
   openRouter: () => Config.openRouterApiKey,
@@ -239,8 +237,6 @@ export function loadModel(
     region?: string;
     modelOptions?: ChatModelOptions;
     clientOptions?: OpenAIChatModelOptions['clientOptions'];
-    url?: string;
-    accessKey?: string;
   };
 
   if (m.provider === 'bedrock') {
