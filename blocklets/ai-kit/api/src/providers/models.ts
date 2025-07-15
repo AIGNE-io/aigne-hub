@@ -318,7 +318,6 @@ export const getModel = (
   };
 
   const [provider, model] = providerName && name ? [providerName, name] : [getDefaultProvider(), input.model];
-
   if (!model) throw new Error(`Provider ${provider} model ${input.model} not found`);
 
   const m = loadModel(model, { provider, ...options });
