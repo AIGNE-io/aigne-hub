@@ -15,6 +15,7 @@ import { GeminiChatModel } from '@aigne/gemini';
 import { OllamaChatModel } from '@aigne/ollama';
 import { OpenRouterChatModel } from '@aigne/open-router';
 import { OpenAIChatModel } from '@aigne/openai';
+import type { OpenAIChatModelOptions } from '@aigne/openai';
 import { XAIChatModel } from '@aigne/xai';
 import { SubscriptionError, SubscriptionErrorType } from '@blocklet/ai-kit/api';
 import { ChatCompletionChunk, ChatCompletionInput, ChatCompletionResponse } from '@blocklet/ai-kit/api/types';
@@ -80,12 +81,28 @@ function convertToFrameworkMessages(
   });
 }
 
-type AIProvider = 'openai' | 'anthropic' | 'bedrock' | 'deepseek' | 'google' | 'ollama' | 'openRouter' | 'xai';
+const providers = {
+  aigneHub: 'aigneHub',
+  openai: 'openai',
+  anthropic: 'anthropic',
+  bedrock: 'bedrock',
+  deepseek: 'deepseek',
+  google: 'google',
+  ollama: 'ollama',
+  openRouter: 'openRouter',
+  xai: 'xai',
+} as const;
+
+type AIProvider = keyof typeof providers;
 
 export function availableModels(): {
   name: string;
   provider: AIProvider;
-  create: (options: { model?: string; modelOptions?: ChatModelOptions }) => ChatModel;
+  create: (options: {
+    model?: string;
+    modelOptions?: ChatModelOptions;
+    clientOptions?: OpenAIChatModelOptions['clientOptions'];
+  }) => ChatModel;
 }[] {
   const { httpsProxy } = Config;
   const proxy = ['HTTPS_PROXY', 'https_proxy', 'HTTP_PROXY', 'http_proxy', 'ALL_PROXY', 'all_proxy']
@@ -98,17 +115,17 @@ export function availableModels(): {
   return [
     {
       name: OpenAIChatModel.name,
-      provider: 'openai',
+      provider: providers.openai,
       create: (params) => new OpenAIChatModel({ ...params, clientOptions }),
     },
     {
       name: AnthropicChatModel.name,
-      provider: 'anthropic',
+      provider: providers.anthropic,
       create: (params) => new AnthropicChatModel({ ...params, clientOptions }),
     },
     {
       name: BedrockChatModel.name,
-      provider: 'bedrock',
+      provider: providers.bedrock,
       create: (params) =>
         new BedrockChatModel({
           ...params,
@@ -120,34 +137,40 @@ export function availableModels(): {
     },
     {
       name: DeepSeekChatModel.name,
-      provider: 'deepseek',
+      provider: providers.deepseek,
       create: (params) => new DeepSeekChatModel({ ...params, clientOptions }),
     },
     {
       name: GeminiChatModel.name,
-      provider: 'google',
+      provider: providers.google,
       create: (params) => new GeminiChatModel({ ...params, clientOptions }),
     },
     {
       name: OllamaChatModel.name,
-      provider: 'ollama',
+      provider: providers.ollama,
       create: (params) => new OllamaChatModel({ ...params, clientOptions }),
     },
     {
       name: OpenRouterChatModel.name,
-      provider: 'openRouter',
+      provider: providers.openRouter,
       create: (params) => new OpenRouterChatModel({ ...params, clientOptions }),
     },
     {
       name: XAIChatModel.name,
-      provider: 'xai',
+      provider: providers.xai,
       create: (params) => new XAIChatModel({ ...params, clientOptions }),
+    },
+    {
+      name: AIGNEHubChatModel.name,
+      provider: providers.aigneHub,
+      create: (params) => new AIGNEHubChatModel({ ...params, clientOptions }),
     },
   ];
 }
 
 const currentApiKeyIndex: { [key in AIProvider]?: number } = {};
 const apiKeys: { [key in AIProvider]: () => string[] } = {
+  aigneHub: () => Config.aigneHubAccessKey,
   google: () => Config.geminiApiKey,
   openai: () => Config.openaiApiKey,
   openRouter: () => Config.openRouterApiKey,
@@ -158,7 +181,7 @@ const apiKeys: { [key in AIProvider]: () => string[] } = {
   xai: () => Config.xaiApiKey,
 };
 
-export function getAIApiKey(company: AIProvider) {
+function getAIApiKey(company: AIProvider) {
   currentApiKeyIndex[company] ??= 0;
 
   const index = currentApiKeyIndex[company]!++;
@@ -171,7 +194,7 @@ export function getAIApiKey(company: AIProvider) {
   return { apiKey: key };
 }
 
-export function getBedrockCredentials() {
+function getBedrockConfig() {
   currentApiKeyIndex.bedrock ??= 0;
 
   const index = currentApiKeyIndex.bedrock!++;
@@ -190,22 +213,58 @@ export function getBedrockCredentials() {
   return { accessKeyId, secretAccessKey, region };
 }
 
+function getAigneHubConfig() {
+  currentApiKeyIndex.aigneHub ??= 0;
+
+  const index = currentApiKeyIndex.aigneHub!++;
+  const accessKeys = Config.aigneHubAccessKey;
+
+  const accessKey = accessKeys?.[index % accessKeys.length];
+
+  if (!accessKey) throw new SubscriptionError(SubscriptionErrorType.UNSUBSCRIBED);
+
+  return { accessKey, url: Config.aigneHubBaseURL };
+}
+
 const BASE_URL_CONFIG_MAP = {
   openai: () => Config.openaiBaseURL,
   anthropic: () => Config.anthropicBaseURL,
   ollama: () => Config.ollamaBaseURL,
 } as const;
 
-export function loadModel(model: string, { provider }: { provider?: string } = {}) {
+export function loadModel(
+  model: string,
+  {
+    provider,
+    modelOptions,
+    clientOptions,
+  }: {
+    provider?: string;
+    modelOptions?: ChatModelOptions;
+    clientOptions?: OpenAIChatModelOptions['clientOptions'];
+  } = {}
+) {
   const models = availableModels();
   const m = models.find((m) => provider && m.provider.toLowerCase().includes(provider.toLowerCase()));
 
   if (!m) throw new Error(`Provider ${provider} model ${model} not found, Please check the model name and provider.`);
 
-  let params: { apiKey?: string; baseURL?: string; accessKeyId?: string; secretAccessKey?: string; region?: string };
+  let params: {
+    apiKey?: string;
+    baseURL?: string;
+    accessKeyId?: string;
+    secretAccessKey?: string;
+    region?: string;
+    modelOptions?: ChatModelOptions;
+    clientOptions?: OpenAIChatModelOptions['clientOptions'];
+    url?: string;
+    accessKey?: string;
+  };
 
   if (m.provider === 'bedrock') {
-    params = getBedrockCredentials();
+    params = getBedrockConfig();
+  } else if (m.provider === 'aigneHub') {
+    params = getAigneHubConfig();
   } else {
     params = getAIApiKey(m.provider);
   }
@@ -219,31 +278,50 @@ export function loadModel(model: string, { provider }: { provider?: string } = {
     }
   }
 
+  if (modelOptions) {
+    params.modelOptions = modelOptions;
+  }
+
+  if (clientOptions) {
+    params.clientOptions = clientOptions;
+  }
+
   return m.create({ ...params, model });
 }
 
-export const getModel = (input: ChatCompletionInput & Required<Pick<ChatCompletionInput, 'model'>>) => {
+const parseModelOption = (model: string) => {
+  const { provider, name } = model?.match(/(?<provider>[^:]+)(:(?<name>(\S+)))?/)?.groups ?? {};
+  return { provider, name };
+};
+
+export const getModel = (
+  input: ChatCompletionInput & Required<Pick<ChatCompletionInput, 'model'>>,
+  options?: {
+    modelOptions?: ChatModelOptions;
+    clientOptions?: OpenAIChatModelOptions['clientOptions'];
+  }
+) => {
+  const { provider: providerName, name } = parseModelOption(input.model);
+
   const getDefaultProvider = () => {
     if (input.model.startsWith('gemini')) return 'google';
     if (input.model.startsWith('gpt')) return 'openai';
     if (input.model.startsWith('openRouter')) return 'openRouter';
 
-    if (input.model.split('/').length === 1) {
+    if (!providerName || !name) {
       throw new Error(
-        'The model format is incorrect. Please use {provider}/{model}, for example: openai/gpt-4o or anthropic/claude-3-5-sonnet-20240620'
+        'The model format is incorrect. Please use {provider}:{model}, for example: openai:gpt-4o or anthropic:claude-3-5-sonnet'
       );
     }
 
     return '';
   };
 
-  const modelArray = input.model.split('/');
-  const [provider, model] =
-    modelArray.length > 1 ? [modelArray[0], modelArray.slice(1).join('/')] : [getDefaultProvider(), input.model];
+  const [provider, model] = providerName && name ? [providerName, name] : [getDefaultProvider(), input.model];
 
   if (!model) throw new Error(`Provider ${provider} model ${input.model} not found`);
 
-  const m = loadModel(model, { provider });
+  const m = loadModel(model, { provider, ...options });
   return m;
 };
 
