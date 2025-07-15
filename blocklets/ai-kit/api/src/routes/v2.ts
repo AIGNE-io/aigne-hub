@@ -21,10 +21,7 @@ AIGNEObserver.setExportFn(async (spans) => {
     method: 'POST',
     path: '/api/trace/tree',
     data: spans.map((x) => {
-      return {
-        ...x,
-        componentId: 'z8ia3xzq2tMq8CRHfaXj1BTYJyYnEcHbqP8cJ',
-      };
+      return { ...x, componentId: 'z8ia3xzq2tMq8CRHfaXj1BTYJyYnEcHbqP8cJ' };
     }),
   }).catch((err) => {
     logger.error('Failed to send trace tree to Observability blocklet', err);

@@ -160,11 +160,6 @@ export function availableModels(): {
       provider: providers.xai,
       create: (params) => new XAIChatModel({ ...params, clientOptions }),
     },
-    {
-      name: AIGNEHubChatModel.name,
-      provider: providers.aigneHub,
-      create: (params) => new AIGNEHubChatModel({ ...params, clientOptions }),
-    },
   ];
 }
 

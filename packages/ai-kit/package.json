@@ -101,7 +101,7 @@
     "react": "^18.2.0"
   },
   "dependencies": {
-    "@arcblock/did": "^1.20.15",
+    "@arcblock/did": "^1.20.16",
     "@arcblock/ux": "^3.0.26",
     "@blocklet/logger": "^1.16.46",
     "@blocklet/payment-js": "^1.19.5",
@@ -112,7 +112,7 @@
     "@mui/icons-material": "^7.2.0",
     "@mui/lab": "^7.0.0-beta.14",
     "@mui/material": "^7.2.0",
-    "@ocap/mcrypto": "^1.20.15",
+    "@ocap/mcrypto": "^1.20.16",
     "@types/express": "^4.17.21",
     "ahooks": "^3.8.1",
     "axios": "^1.7.4",
