@@ -29,7 +29,10 @@ AIGNEObserver.setExportFn(async (spans) => {
 });
 
 router.post('/chat', async (req, res) => {
-  const model = getModel(req.body);
+  const model = getModel(req.body, {
+    modelOptions: req.body?.options?.modelOptions,
+    clientOptions: req.body?.options?.clientOptions,
+  });
   const engine = new AIGNE({ model });
   const aigneServer = new AIGNEHTTPServer(engine);
   await aigneServer.invoke(req, res, { userContext: { userId: req.user?.did } });
