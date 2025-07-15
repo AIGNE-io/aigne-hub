@@ -68,18 +68,6 @@ export const Config = {
     return this._openRouterApiKey;
   },
 
-  _aigneHubAccessKey: undefined as string[] | undefined,
-  get aigneHubAccessKey() {
-    if (this._aigneHubAccessKey === undefined) {
-      const KEY = config.env.AIGNE_HUB_ACCESS_KEY;
-      this._aigneHubAccessKey = (typeof KEY === 'string' ? KEY : '')
-        .split(',')
-        .map((i: string) => i.trim())
-        .filter(Boolean);
-    }
-    return this._aigneHubAccessKey;
-  },
-
   _anthropicApiKey: undefined as string[] | undefined,
   get anthropicApiKey() {
     if (this._anthropicApiKey === undefined) {
@@ -180,11 +168,6 @@ export const Config = {
 
   get ollamaBaseURL() {
     const url = config.env.OLLAMA_BASE_URL;
-    return url && typeof url === 'string' ? url : undefined;
-  },
-
-  get aigneHubBaseURL() {
-    const url = config.env.AIGNE_HUB_URL;
     return url && typeof url === 'string' ? url : undefined;
   },
 

@@ -208,19 +208,6 @@ function getBedrockConfig() {
   return { accessKeyId, secretAccessKey, region };
 }
 
-function getAigneHubConfig() {
-  currentApiKeyIndex.aigneHub ??= 0;
-
-  const index = currentApiKeyIndex.aigneHub!++;
-  const accessKeys = Config.aigneHubAccessKey;
-
-  const accessKey = accessKeys?.[index % accessKeys.length];
-
-  if (!accessKey) throw new SubscriptionError(SubscriptionErrorType.UNSUBSCRIBED);
-
-  return { accessKey, url: Config.aigneHubBaseURL };
-}
-
 const BASE_URL_CONFIG_MAP = {
   openai: () => Config.openaiBaseURL,
   anthropic: () => Config.anthropicBaseURL,
@@ -258,8 +245,6 @@ export function loadModel(
 
   if (m.provider === 'bedrock') {
     params = getBedrockConfig();
-  } else if (m.provider === 'aigneHub') {
-    params = getAigneHubConfig();
   } else {
     params = getAIApiKey(m.provider);
   }
