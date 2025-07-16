@@ -27,7 +27,8 @@ export function chatCompletion(
 
 export function checkModelAvailable(model: string) {
   if (Config.pricing?.onlyEnableModelsInPricing) {
-    if (!Config.pricing.list.some((i) => i.model === model)) {
+    const modelName = model.includes(':') ? model.split(':')[1] : model;
+    if (!Config.pricing.list.some((i) => i.model === modelName)) {
       throw new Error(`Unsupported model ${model}`);
     }
   }
