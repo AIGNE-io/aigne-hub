@@ -29,7 +29,9 @@ router.post(
   ensureRemoteComponentCall(App.findPublicKeyById, ensureComponentCall(ensureAdmin)),
   createRetryHandler(async (req, res) => {
     // v1 specific checks
-    await checkSubscription({ appId: req.appClient!.appId });
+    if (req.appClient?.appId) {
+      await checkSubscription({ appId: req.appClient!.appId });
+    }
 
     // Process the completion and get usage data
     const usageData = await processChatCompletion(req, res, 'v1');
@@ -54,7 +56,9 @@ router.post(
   ensureRemoteComponentCall(App.findPublicKeyById, ensureComponentCall(ensureAdmin)),
   createRetryHandler(async (req, res) => {
     // v1 specific checks
-    await checkSubscription({ appId: req.appClient!.appId });
+    if (req.appClient?.appId) {
+      await checkSubscription({ appId: req.appClient!.appId });
+    }
 
     // Process embeddings and get usage data
     const usageData = await processEmbeddings(req, res);
@@ -77,7 +81,9 @@ router.post(
   ensureRemoteComponentCall(App.findPublicKeyById, ensureComponentCall(ensureAdmin)),
   createRetryHandler(async (req, res) => {
     // v1 specific checks
-    await checkSubscription({ appId: req.appClient!.appId });
+    if (req.appClient?.appId) {
+      await checkSubscription({ appId: req.appClient!.appId });
+    }
 
     // Process image generation and get usage data
     const usageData = await processImageGeneration(req, res, 'v1');

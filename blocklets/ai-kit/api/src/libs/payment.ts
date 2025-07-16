@@ -24,8 +24,8 @@ export const ensureMeter = async () => {
   } catch (error) {
     logger.info('start to create meter');
     const meter = await payment.meters.create({
-      name: 'Agent Hub AI Meter',
-      description: 'Agent Hub AI Meter',
+      name: 'AIGNE Hub AI Meter',
+      description: 'AIGNE Hub AI Meter',
       event_name: METER_NAME,
       unit: METER_UNIT,
       aggregation_method: 'sum',

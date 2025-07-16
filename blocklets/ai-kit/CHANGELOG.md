@@ -1,3 +1,7 @@
+## 0.2.1 (2025-7-14)
+
+- feat: update aigne framework models
+
 ## 0.2.0 (2025-7-8)
 
 - feat(deps): major framework upgrades

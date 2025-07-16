@@ -1,4 +1,5 @@
-import { chatCompletion, checkModelAvailable } from '@api/providers';
+import { checkModelAvailable } from '@api/providers';
+import { chatCompletionByFrameworkModel } from '@api/providers/models';
 import {
   ChatCompletionChunk,
   ChatCompletionInput,
@@ -212,7 +213,7 @@ export async function processChatCompletion(
 
   const isEventStream = req.accepts().some((i) => i.startsWith('text/event-stream'));
 
-  const result = chatCompletion(input);
+  const result = await chatCompletionByFrameworkModel(input);
 
   let content = '';
   const toolCalls: NonNullable<ChatCompletionChunk['delta']['toolCalls']> = [];

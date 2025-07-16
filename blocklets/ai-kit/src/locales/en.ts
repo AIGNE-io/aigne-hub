@@ -23,7 +23,7 @@ export default flatten({
   payNow: 'Pay Now',
 
   // AI Kit integrations
-  welcome: 'Welcome to Agent Hub',
+  welcome: 'Welcome to AIGNE Hub',
   welcomeDesc:
     'Get started by configuring AI providers to enable AI services. You can also enable Credits billing to manage user usage quotas.',
 

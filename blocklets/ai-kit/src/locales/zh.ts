@@ -22,7 +22,7 @@ export default flatten({
   payNow: '立即支付',
 
   // AI Kit integrations
-  welcome: '欢迎使用 Agent Hub',
+  welcome: '欢迎使用 AIGNE Hub',
   welcomeDesc: '开始使用前，请先配置 AI 提供商来启用 AI 服务。您也可以启用 Credits 计费功能来管理用户使用额度。',
 
   // AI Provider features

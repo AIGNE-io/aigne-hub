@@ -44,7 +44,7 @@ export default function Home() {
                   borderRadius: 80,
                 }}
               />
-              <Typography variant="h4">Agent Hub</Typography>
+              <Typography variant="h4">AIGNE Hub</Typography>
               <Typography
                 variant="h5"
                 component="div"
