@@ -48,10 +48,6 @@ export default class AiCredential extends Model<InferAttributes<AiCredential>, I
     providerId: {
       type: DataTypes.STRING,
       allowNull: false,
-      references: {
-        model: 'AiProviders',
-        key: 'id',
-      },
     },
     name: {
       type: DataTypes.STRING(100),
@@ -116,14 +112,10 @@ export default class AiCredential extends Model<InferAttributes<AiCredential>, I
   }
 
   // 获取下一个可用的凭证（负载均衡）
-  static async getNextAvailableCredential(
-    providerId: string,
-    credentialType: CredentialType = 'api_key'
-  ): Promise<AiCredential | null> {
+  static async getNextAvailableCredential(providerId: string): Promise<AiCredential | null> {
     return AiCredential.findOne({
       where: {
         providerId,
-        credentialType,
         active: true,
       },
       order: [

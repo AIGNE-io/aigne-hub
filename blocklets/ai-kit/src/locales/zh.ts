@@ -25,6 +25,8 @@ export default flatten({
   welcome: '欢迎使用 AIGNE Hub',
   welcomeDesc: '开始使用前，请先配置 AI 提供商来启用 AI 服务。您也可以启用 Credits 计费功能来管理用户使用额度。',
 
+  aiConfig: 'AI 配置',
+  quickStarts: '快速开始',
   // AI Provider features
   aiProviderSettings: 'AI 提供商设置',
   aiProviderSettingsDesc: '配置和管理您的 AI 服务提供商和 API 凭证',
@@ -37,74 +39,180 @@ export default flatten({
   creditsConfigTitle: '启用 Credits 计费功能',
   creditsConfigDesc: '启用此功能后，用户需要购买 Credits 才能使用 AI 服务。请按照以下步骤进行配置：',
   gotoConfig: '前往配置',
+
+  // Configuration section
+  config: {
+    // AI Providers
+    aiProviders: 'AI 提供商',
+
+    // Model Rates
+    modelRates: {
+      title: '模型费率',
+      description: '配置不同 AI 模型和提供商的定价费率',
+
+      // Actions
+      actions: {
+        add: '添加模型费率',
+        edit: '编辑模型费率',
+        delete: '删除',
+        save: '保存',
+        cancel: '取消',
+      },
+
+      // Fields
+      fields: {
+        modelName: '模型名称',
+        provider: '提供商',
+        type: '类型',
+        inputRate: '输入费率',
+        outputRate: '输出费率',
+        description: '描述',
+        actions: '操作',
+      },
+
+      // Types
+      types: {
+        text: '文本',
+        image: '图像',
+        embedding: '嵌入',
+      },
+
+      // Form
+      form: {
+        modelName: {
+          label: '模型名称',
+          placeholder: '例如：gpt-4o',
+          required: '模型名称是必填项',
+        },
+        modelDisplay: {
+          label: '显示名称',
+          placeholder: '将根据模型名称自动生成',
+          description: '用于界面展示的模型名称（可选）',
+        },
+        rateType: {
+          label: '费率类型',
+          required: '费率类型是必填项',
+          options: {
+            text: '文本生成',
+            image: '图像生成',
+            embedding: '文本嵌入',
+          },
+        },
+        inputRate: {
+          label: '输入费率',
+          placeholder: '0.005',
+          required: '输入费率是必填项',
+        },
+        outputRate: {
+          label: '输出费率',
+          placeholder: '0.015',
+          required: '输出费率是必填项',
+        },
+        providers: {
+          label: '提供商',
+          tooltip: '选择支持此模型的 AI 提供商',
+          required: '请至少选择一个提供商',
+        },
+        description: {
+          label: '描述',
+          placeholder: '关于此模型费率的附加说明...',
+        },
+      },
+
+      // Messages
+      createSuccess: '模型费率创建成功',
+      updateSuccess: '模型费率更新成功',
+      deleteSuccess: '模型费率删除成功',
+      createFailed: '创建模型费率失败',
+      updateFailed: '更新模型费率失败',
+      deleteFailed: '删除模型费率失败',
+      fetchFailed: '获取模型费率失败',
+
+      // Delete dialog
+      deleteDialog: {
+        title: '删除模型费率',
+        message: '确定要删除此模型费率吗？此操作不可撤销。',
+        confirm: '删除',
+        cancel: '取消',
+      },
+    },
+  },
+
+  // Common actions
+  edit: '编辑',
+  delete: '删除',
+  create: '创建',
+  update: '更新',
+  save: '保存',
+  close: '关闭',
+  confirm: '确认',
+  yes: '是',
+  no: '否',
+  loading: '加载中...',
+  noData: '暂无数据',
+  required: '此字段为必填项',
+  optional: '可选',
+
   // AI Providers page
   aiProviders: 'AI 提供商配置',
   aiProvidersDesc: '管理您的 AI 服务提供商和 API 凭证',
   addProvider: '添加提供商',
+  editProvider: '编辑提供商',
   provider: '提供商',
-  endpoint: '端点',
-  credentials: '凭证',
-  status: '状态',
-  enableStatus: '启用状态',
+  providerName: '提供商',
+  providerNameRequired: '请选择提供商',
+  providerInfo: '提供商信息',
+  baseUrl: '基础 URL',
+  region: '区域',
+  regionRequired: '请输入区域',
+  endpointRegion: '端点 / 区域',
   enabled: '已启用',
   disabled: '已禁用',
   connected: '已连接',
   disconnected: '未连接',
+  status: '状态',
+  enableStatus: '启用状态',
   actions: '操作',
-  deleteProvider: '删除 AI 提供商',
-  deleteProviderConfirm: '确定要删除提供商 "{name}" 吗？此操作无法撤销，将删除所有相关凭证。',
-  noProvidersConfigured: '未配置 AI 提供商',
-
-  // Provider form
-  providerInfo: '提供商信息',
-  providerName: '提供商',
-  providerNameRequired: '请选择提供商',
-  displayName: '显示名称',
-  displayNameRequired: '请输入显示名称',
-  baseUrl: '基础URL',
-  region: '区域',
-  regionRequired: '区域是必填项',
-  editProvider: '编辑提供商',
-  create: '创建',
-  update: '更新',
+  configureCredentials: '配置凭证',
 
   // Credentials
+  credentials: '凭证',
+  credentialCount: '个凭证',
+  addCredential: '添加凭证',
+  editCredential: '编辑凭证',
+  deleteCredential: '删除凭证',
+  manageCredentials: '管理凭证',
+  noCredentials: '暂无凭证配置',
   credentialName: '凭证名称',
   credentialNameRequired: '凭证名称是必填项',
   credentialValue: '凭证值',
   credentialValueRequired: '凭证值是必填项',
   credentialType: '凭证类型',
   credentialTypeRequired: '凭证类型是必填项',
-  addCredential: '添加凭证',
-  editCredential: '编辑凭证',
-  manageCredentials: '管理凭证',
-  noCredentials: '暂无凭证',
+  enterCredentialValue: '输入凭证值',
+  apiKey: 'API 密钥',
+  accessKeyPair: '访问密钥对',
+  custom: '自定义',
   accessKeyId: 'Access Key ID',
   secretAccessKey: 'Secret Access Key',
-  enterCredentialValue: '请输入 API Key',
   usageCount: '使用次数',
   lastUsed: '最后使用',
   created: '创建时间',
-  delete: '删除',
-  deleteCredential: '删除凭证',
   deleteCredentialConfirm: '确定要删除凭证',
 
   // Messages
   providerCreated: '提供商创建成功',
   providerUpdated: '提供商更新成功',
-  providerEnabled: '提供商已启用',
-  providerDisabled: '提供商已禁用',
-  fetchProvidersFailed: '获取提供商列表失败',
+  providerEnabled: '提供商启用成功',
+  providerDisabled: '提供商禁用成功',
   createProviderFailed: '创建提供商失败',
   updateProviderFailed: '更新提供商失败',
+  fetchProvidersFailed: '获取提供商失败',
+
   createCredentialFailed: '创建凭证失败',
   updateCredentialFailed: '更新凭证失败',
   deleteCredentialFailed: '删除凭证失败',
-  submitFailed: '提交失败',
 
-  // Table actions
-  edit: '编辑',
-  configureCredentials: '配置凭证',
-  credentialCount: '个凭证',
-  endpointRegion: '端点 / 区域',
+  selectProviders: '选择提供商',
+  submitFailed: '提交失败',
 });

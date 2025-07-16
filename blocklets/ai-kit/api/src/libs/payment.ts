@@ -186,7 +186,13 @@ export async function getCreditPaymentLink() {
 export async function checkUserCreditBalance({ userDid }: { userDid: string }) {
   const { balance } = await getUserCredits({ userDid });
   if (balance === '0') {
-    throw new CreditError(CreditErrorType.NOT_ENOUGH);
+    let link: string | null = null;
+    try {
+      link = await getCreditPaymentLink();
+    } catch (err) {
+      logger.error('failed to get credit payment link', { err });
+    }
+    throw new CreditError(CreditErrorType.NOT_ENOUGH, link ?? '');
   }
 }
 

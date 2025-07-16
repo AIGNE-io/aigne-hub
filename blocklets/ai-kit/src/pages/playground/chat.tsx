@@ -9,102 +9,117 @@ import Dashboard from '@blocklet/ui-react/lib/Dashboard';
 import styled from '@emotion/styled';
 import { HighlightOff } from '@mui/icons-material';
 import { Box, Button, MenuItem, Select, Tooltip } from '@mui/material';
-import { ReactNode, useCallback, useRef, useState } from 'react';
+import { ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 
+import { useSessionContext } from '../../contexts/session';
 import { ImageGenerationSize, imageGenerationsV2, textCompletionsV2 } from '../../libs/ai';
 
-const modelGroups = [
-  {
-    provider: 'OpenAI',
-    models: [
-      { value: 'openai:o4-mini', label: 'o4-mini' },
-      { value: 'openai:o3-mini', label: 'o3-mini' },
-      { value: 'openai:o3', label: 'o3' },
-      { value: 'openai:gpt-4o', label: 'GPT-4o' },
-      { value: 'openai:gpt-4o-mini', label: 'GPT-4o Mini' },
-      { value: 'openai:gpt-4.1', label: 'GPT-4.1' },
-      { value: 'openai:gpt-4-turbo', label: 'GPT-4 Turbo' },
-      { value: 'openai:gpt-4', label: 'GPT-4' },
-      { value: 'openai:gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
-    ],
-  },
-  {
-    provider: 'OpenRouter',
-    models: [
-      { value: 'openrouter:anthropic/claude-3.5-sonnet', label: 'Claude 3.5 Sonnet' },
-      { value: 'openrouter:anthropic/claude-3-opus', label: 'Claude 3 Opus' },
-      { value: 'openrouter:anthropic/claude-3-haiku', label: 'Claude 3 Haiku' },
-      { value: 'openrouter:openai/gpt-4o', label: 'GPT-4o' },
-      { value: 'openrouter:openai/gpt-4.1', label: 'GPT-4.1' },
-      { value: 'openrouter:openai/gpt-4o-mini', label: 'GPT-4o Mini' },
-      { value: 'openrouter:meta-llama/llama-3.1-70b-instruct', label: 'Llama 3.1 70B' },
-      { value: 'openrouter:mistralai/mistral-7b-instruct', label: 'Mistral 7B Instruct' },
-    ],
-  },
-  {
-    provider: 'Anthropic',
-    models: [
-      { value: 'anthropic:claude-opus-4-20250514', label: 'Claude Opus 4' },
-      { value: 'anthropic:claude-sonnet-4-20250514', label: 'Claude Sonnet 4' },
-      { value: 'anthropic:claude-3-7-sonnet-20250219', label: 'Claude 3.7 Sonnet' },
-      { value: 'anthropic:claude-3-5-sonnet-20241022', label: 'Claude 3.5 Sonnet' },
-      { value: 'anthropic:claude-3-5-haiku-20241022', label: 'Claude 3.5 Haiku' },
-    ],
-  },
-  {
-    provider: 'Amazon Bedrock',
-    models: [
-      { value: 'bedrock:anthropic.claude-3-5-sonnet', label: 'Claude 3.5 Sonnet' },
-      { value: 'bedrock:anthropic.claude-3-opus', label: 'Claude 3 Opus' },
-      { value: 'bedrock:anthropic.claude-3-haiku', label: 'Claude 3 Haiku' },
-      { value: 'bedrock:amazon.titan-text-premier-v1:0', label: 'Titan Text Premier v1' },
-      { value: 'bedrock:amazon.titan-text-express-v1', label: 'Titan Text Express v1' },
-      { value: 'bedrock:meta.llama3-70b-instruct-v1:0', label: 'Llama 3 70B Instruct' },
-      { value: 'bedrock:mistral.mistral-7b-instruct-v0:2', label: 'Mistral 7B Instruct' },
-    ],
-  },
-  {
-    provider: 'DeepSeek',
-    models: [{ value: 'deepseek:deepseek-chat', label: 'DeepSeek Chat' }],
-  },
-  {
-    provider: 'Google',
-    models: [
-      { value: 'google:gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
-      { value: 'google:gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
-      { value: 'google:gemini-2.5-flash-lite-preview-06-17', label: 'Gemini 2.5 Flash-Lite' },
-      { value: 'google:gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
-      { value: 'google:gemini-2.0-flash-lite', label: 'Gemini 2.0 Flash-Lite' },
-      { value: 'google:gemini-1.5-pro', label: 'Gemini 1.5 Pro' },
-      { value: 'google:gemini-1.5-flash', label: 'Gemini 1.5 Flash' },
-    ],
-  },
-  {
-    provider: 'Ollama',
-    models: [
-      { value: 'ollama:llama3.1:70b', label: 'LLaMA 3.1 70B' },
-      { value: 'ollama:llama3.1:8b', label: 'LLaMA 3.1 8B' },
-      { value: 'ollama:llama3.2:3b', label: 'LLaMA 3.2 3B' },
-      { value: 'ollama:llama3.2:1b', label: 'LLaMA 3.2 1B' },
-      { value: 'ollama:mistral:7b', label: 'Mistral 7B' },
-      { value: 'ollama:codellama:13b', label: 'Code Llama 13B' },
-      { value: 'ollama:codellama:7b', label: 'Code Llama 7B' },
-    ],
-  },
-  {
-    provider: 'xAI',
-    models: [
-      { value: 'xai:grok-4', label: 'Grok 4' },
-      { value: 'xai:grok-3', label: 'Grok 3' },
-      { value: 'xai:grok-3-mini', label: 'Grok 3 Mini' },
-      { value: 'xai:grok-2', label: 'Grok 2' },
-    ],
-  },
-];
+// 定义数据类型
+interface ModelOption {
+  value: string;
+  label: string;
+}
+
+interface ModelGroup {
+  provider: string;
+  models: ModelOption[];
+}
+
+interface ApiModel {
+  model: string;
+  description?: string;
+  providers: Array<{
+    id: string;
+    name: string;
+    displayName: string;
+  }>;
+}
+
+// 提供商名称映射
+const providerDisplayNames: Record<string, string> = {
+  openai: 'OpenAI',
+  anthropic: 'Anthropic',
+  bedrock: 'Amazon Bedrock',
+  deepseek: 'DeepSeek',
+  google: 'Google',
+  ollama: 'Ollama',
+  openRouter: 'OpenRouter',
+  xai: 'xAI',
+};
+
+// 格式化API数据为前端需要的格式
+function formatModelsData(apiModels: ApiModel[]): ModelGroup[] {
+  const providerMap = new Map<string, ModelOption[]>();
+
+  apiModels.forEach((apiModel) => {
+    apiModel.providers.forEach((provider) => {
+      const providerName = provider.name;
+      const displayName = providerDisplayNames[providerName] || provider.displayName;
+
+      if (!providerMap.has(displayName)) {
+        providerMap.set(displayName, []);
+      }
+
+      const modelValue = `${providerName}:${apiModel.model}`;
+      const modelLabel = apiModel.model;
+
+      // 避免重复添加相同的模型
+      const existingModels = providerMap.get(displayName)!;
+      if (!existingModels.some((m) => m.value === modelValue)) {
+        existingModels.push({
+          value: modelValue,
+          label: modelLabel,
+        });
+      }
+    });
+  });
+
+  // 转换为ModelGroup数组并排序
+  const modelGroups: ModelGroup[] = [];
+  providerMap.forEach((models, provider) => {
+    modelGroups.push({
+      provider,
+      models: models.sort((a, b) => a.label.localeCompare(b.label)),
+    });
+  });
+
+  // 按提供商名称排序
+  return modelGroups.sort((a, b) => a.provider.localeCompare(b.provider));
+}
 
 export default function Chat() {
+  const { api } = useSessionContext();
   const ref = useRef<ConversationRef>(null);
-  const [model, setModel] = useState(modelGroups[0]?.models[0]?.value);
+  const [modelGroups, setModelGroups] = useState<ModelGroup[]>([]);
+  const [model, setModel] = useState<string>('');
+  const [loading, setLoading] = useState(true);
+
+  // 获取模型数据
+  useEffect(() => {
+    const fetchModels = async () => {
+      try {
+        setLoading(true);
+        const response = await api.get('/api/ai-providers/models');
+        const apiModels: ApiModel[] = response.data || [];
+
+        const formattedGroups = formatModelsData(apiModels);
+        setModelGroups(formattedGroups);
+
+        // 设置默认选中的模型
+        if (formattedGroups.length > 0 && formattedGroups[0]!.models && formattedGroups[0]!.models!.length > 0) {
+          setModel(formattedGroups[0]?.models[0]?.value || '');
+        }
+      } catch (error) {
+        console.error('Failed to fetch models:', error);
+        // 如果获取失败，可以设置一个默认的空数组或者显示错误信息
+        setModelGroups([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchModels();
+  }, [api]);
 
   const { messages, add, cancel } = useConversation({
     scrollToBottom: (o) => ref.current?.scrollToBottom(o),
@@ -166,26 +181,36 @@ export default function Chat() {
                 size="small"
                 sx={{ alignSelf: 'stretch', minWidth: 200 }}
                 displayEmpty
+                disabled={loading || modelGroups.length === 0}
                 renderValue={(selected) => {
+                  if (loading) return 'Loading...';
+                  if (modelGroups.length === 0) return 'No models available';
+
                   const selectedModel = modelGroups.flatMap((g) => g.models).find((m) => m.value === selected);
                   return selectedModel?.label || 'Select Model';
                 }}
                 MenuProps={{
                   PaperProps: { sx: { maxHeight: 400 } },
                 }}>
-                {modelGroups.map((group) => [
-                  <MenuItem
-                    key={`header-${group.provider}`}
-                    disabled
-                    sx={{ fontWeight: 'bold', fontSize: 14, opacity: 0.7 }}>
-                    {group.provider}
-                  </MenuItem>,
-                  ...group.models.map((model) => (
-                    <MenuItem key={model.value} value={model.value} sx={{ ml: 1 }}>
-                      {model.label}
-                    </MenuItem>
-                  )),
-                ])}
+                {loading ? (
+                  <MenuItem disabled>Loading models...</MenuItem>
+                ) : modelGroups.length === 0 ? (
+                  <MenuItem disabled>No models available</MenuItem>
+                ) : (
+                  modelGroups.map((group) => [
+                    <MenuItem
+                      key={`header-${group.provider}`}
+                      disabled
+                      sx={{ fontWeight: 'bold', fontSize: 14, opacity: 0.7 }}>
+                      {group.provider}
+                    </MenuItem>,
+                    ...group.models.map((model) => (
+                      <MenuItem key={model.value} value={model.value} sx={{ ml: 1 }}>
+                        {model.label}
+                      </MenuItem>
+                    )),
+                  ])
+                )}
               </Select>
             ),
           }}

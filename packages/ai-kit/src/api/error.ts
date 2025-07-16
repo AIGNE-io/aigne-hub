@@ -29,7 +29,8 @@ export class SubscriptionError extends Error {
 }
 
 const CreditErrors: Record<CreditErrorType, string> = {
-  [CreditErrorType.NOT_ENOUGH]: 'Hello, in order to continue chatting, please first buy some credits.',
+  [CreditErrorType.NOT_ENOUGH]:
+    'Hello, in order to continue chatting, please first buy some credits in the link below.',
   [CreditErrorType.UNKNOWN]: 'An unknown error occurred',
 };
 
@@ -38,8 +39,11 @@ export class CreditError extends Error {
 
   type: CreditErrorType;
 
-  constructor(type: CreditErrorType) {
-    const message = CreditErrors[type] || CreditErrors[CreditErrorType.UNKNOWN];
+  constructor(type: CreditErrorType, link?: string) {
+    let message = CreditErrors[type] || CreditErrors[CreditErrorType.UNKNOWN];
+    if (type === CreditErrorType.NOT_ENOUGH && link) {
+      message += `\n\n${link}`;
+    }
     super(message);
 
     this.timestamp = new Date().toISOString();

@@ -1,5 +1,7 @@
 import { getAIApiKey, getOpenAI } from '@api/libs/ai-provider';
 import { Config } from '@api/libs/env';
+import AiModelRate from '@api/store/models/ai-model-rate';
+import AiProvider from '@api/store/models/ai-provider';
 import { ChatCompletionInput, ChatCompletionResponse } from '@blocklet/ai-kit/api/types';
 import OpenAI from 'openai';
 
@@ -31,5 +33,47 @@ export function checkModelAvailable(model: string) {
     if (!Config.pricing.list.some((i) => i.model === modelName)) {
       throw new Error(`Unsupported model ${model}`);
     }
+  }
+}
+
+export async function checkModelRateAvailable(model: string, providerName?: string) {
+  let modelName = model;
+  let provider = providerName;
+  if (model.includes(':')) {
+    const [p, m] = model.split(':');
+    provider = p;
+    modelName = m || modelName;
+  }
+  const callback = (err: Error) => {
+    try {
+      checkModelAvailable(model);
+    } catch {
+      throw err;
+    }
+  };
+  let providerId;
+  if (provider) {
+    const providerRecord = await AiProvider.findOne({
+      where: {
+        name: provider,
+        enabled: true,
+      },
+    });
+    if (!providerRecord) {
+      callback(new Error(`Provider ${providerName} not found`));
+    }
+    providerId = providerRecord?.id;
+  }
+  const modelRateWhere: any = {
+    model: modelName,
+  };
+  if (providerId) {
+    modelRateWhere.providerId = providerId;
+  }
+  const modelRates = await AiModelRate.findAll({
+    where: modelRateWhere,
+  });
+  if (modelRates.length === 0) {
+    callback(new Error(`Unsupported model ${modelName}${providerName ? ` for provider ${providerName}` : ''}`));
   }
 }

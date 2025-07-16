@@ -39,7 +39,7 @@
     "@aigne/ollama": "^0.6.3",
     "@aigne/open-router": "^0.6.3",
     "@aigne/openai": "^0.9.0",
-    "@aigne/transport": "^0.9.5",
+    "@aigne/transport": "^0.10.0",
     "@aigne/xai": "^0.6.4",
     "@arcblock/did": "^1.20.16",
     "@arcblock/did-auth": "^1.20.16",

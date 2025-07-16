@@ -1,10 +1,12 @@
 import AiCredential from './ai-credential';
+import AiModelRate from './ai-model-rate';
 import AiProvider from './ai-provider';
 import App from './app';
 import Usage from './usage';
 
 const models = {
   AiCredential,
+  AiModelRate,
   AiProvider,
   App,
   Usage,

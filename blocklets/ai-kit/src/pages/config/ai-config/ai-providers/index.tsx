@@ -8,7 +8,7 @@ import { Add as AddIcon } from '@mui/icons-material';
 import { Box, Button, Stack, Typography } from '@mui/material';
 import { useEffect, useState } from 'react';
 
-import { useSessionContext } from '../../../contexts/session';
+import { useSessionContext } from '../../../../contexts/session';
 import CredentialDialog, { Credential } from './credential-dialog';
 import ProviderForm, { ProviderFormData } from './provider-form';
 

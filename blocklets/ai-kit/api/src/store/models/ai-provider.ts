@@ -87,9 +87,16 @@ export default class AiProvider extends Model<InferAttributes<AiProvider>, Infer
 
   // 关联方法
   static associate(models: any) {
+    // Existing associations
     AiProvider.hasMany(models.AiCredential, {
       foreignKey: 'providerId',
       as: 'credentials',
+    });
+
+    // New association for model rates
+    AiProvider.hasMany(models.AiModelRate, {
+      foreignKey: 'providerId',
+      as: 'modelRates',
     });
   }
 

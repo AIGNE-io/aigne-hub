@@ -17,6 +17,8 @@ import { OpenRouterChatModel } from '@aigne/open-router';
 import { OpenAIChatModel } from '@aigne/openai';
 import type { OpenAIChatModelOptions } from '@aigne/openai';
 import { XAIChatModel } from '@aigne/xai';
+import AiCredential from '@api/store/models/ai-credential';
+import AiProvider from '@api/store/models/ai-provider';
 import { SubscriptionError, SubscriptionErrorType } from '@blocklet/ai-kit/api';
 import { ChatCompletionChunk, ChatCompletionInput, ChatCompletionResponse } from '@blocklet/ai-kit/api/types';
 import { NodeHttpHandler, streamCollector } from '@smithy/node-http-handler';
@@ -212,7 +214,7 @@ const BASE_URL_CONFIG_MAP = {
   ollama: () => Config.ollamaBaseURL,
 } as const;
 
-export function loadModel(
+export async function loadModel(
   model: string,
   {
     provider,
@@ -229,7 +231,7 @@ export function loadModel(
 
   if (!m) throw new Error(`Provider ${provider} model ${model} not found, Please check the model name and provider.`);
 
-  let params: {
+  const params: {
     apiKey?: string;
     baseURL?: string;
     accessKeyId?: string;
@@ -237,22 +239,7 @@ export function loadModel(
     region?: string;
     modelOptions?: ChatModelOptions;
     clientOptions?: OpenAIChatModelOptions['clientOptions'];
-  };
-
-  if (m.provider === 'bedrock') {
-    params = getBedrockConfig();
-  } else {
-    params = getAIApiKey(m.provider);
-  }
-
-  const baseURLGetter = BASE_URL_CONFIG_MAP[m.provider as keyof typeof BASE_URL_CONFIG_MAP];
-  if (baseURLGetter) {
-    const baseURL = baseURLGetter();
-
-    if (baseURL) {
-      params.baseURL = baseURL;
-    }
-  }
+  } = await getProviderCredentials(m.provider);
 
   if (modelOptions) {
     params.modelOptions = modelOptions;
@@ -265,12 +252,12 @@ export function loadModel(
   return m.create({ ...params, model });
 }
 
-const parseModelOption = (model: string) => {
+export const parseModelOption = (model: string) => {
   const { provider, name } = model?.match(/(?<provider>[^:]+)(:(?<name>(\S+)))?/)?.groups ?? {};
   return { provider, name };
 };
 
-export const getModel = (
+export const getModel = async (
   input: ChatCompletionInput & Required<Pick<ChatCompletionInput, 'model'>>,
   options?: {
     modelOptions?: ChatModelOptions;
@@ -296,14 +283,71 @@ export const getModel = (
   const [provider, model] = providerName && name ? [providerName, name] : [getDefaultProvider(), input.model];
   if (!model) throw new Error(`Provider ${provider} model ${input.model} not found`);
 
-  const m = loadModel(model, { provider, ...options });
+  const m = await loadModel(model, { provider, ...options });
   return m;
 };
 
+export async function getProviderCredentials(provider: string) {
+  const callback = (err: Error) => {
+    try {
+      let params: {
+        apiKey?: string;
+        baseURL?: string;
+        accessKeyId?: string;
+        secretAccessKey?: string;
+        region?: string;
+      };
+      if (provider === 'bedrock') {
+        params = getBedrockConfig();
+      } else {
+        params = getAIApiKey(provider as AIProvider);
+      }
+      const baseURLGetter = BASE_URL_CONFIG_MAP[provider as keyof typeof BASE_URL_CONFIG_MAP];
+      if (baseURLGetter) {
+        const baseURL = baseURLGetter();
+        if (baseURL) {
+          params.baseURL = baseURL;
+        }
+      }
+      return params;
+    } catch {
+      throw err;
+    }
+  };
+
+  const providerRecord = await AiProvider.findOne({
+    where: { name: provider, enabled: true },
+  });
+  if (!providerRecord) {
+    callback(new Error(`Provider ${provider} not found`));
+  }
+
+  const credentials = await AiCredential.findAll({
+    where: { providerId: providerRecord!.id, active: true },
+  });
+
+  if (credentials.length === 0) {
+    callback(new Error(`No credentials found for provider ${provider}`));
+  }
+
+  const credential = await AiCredential.getNextAvailableCredential(providerRecord!.id);
+
+  if (!credential) {
+    callback(new Error(`No active credentials found for provider ${provider}`));
+  }
+  const value = AiCredential.decryptCredentialValue(credential!.credentialValue);
+  return {
+    apiKey: value.api_key,
+    baseURL: providerRecord?.baseUrl,
+    accessKeyId: value.access_key_id,
+    secretAccessKey: value.secret_access_key,
+    region: providerRecord?.region,
+  };
+}
 export async function chatCompletionByFrameworkModel(
   input: ChatCompletionInput & Required<Pick<ChatCompletionInput, 'model'>>
 ): Promise<AsyncGenerator<ChatCompletionResponse>> {
-  const model = getModel(input);
+  const model = await getModel(input);
 
   const response = await model.invoke(
     {

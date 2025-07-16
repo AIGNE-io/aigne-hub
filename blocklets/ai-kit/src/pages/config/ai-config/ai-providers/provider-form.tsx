@@ -22,7 +22,7 @@ import {
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 
-import Collapse from '../../../components/collapse';
+import Collapse from '../../../../components/collapse';
 
 export interface CredentialValue {
   access_key_id?: string;
@@ -55,7 +55,7 @@ const PROVIDER_OPTIONS = [
   { value: 'google', label: 'Google' },
   { value: 'ollama', label: 'Ollama' },
   { value: 'openRouter', label: 'OpenRouter' },
-  { value: 'xai', label: 'X.AI' },
+  { value: 'xai', label: 'xAI' },
 ];
 
 interface Props {

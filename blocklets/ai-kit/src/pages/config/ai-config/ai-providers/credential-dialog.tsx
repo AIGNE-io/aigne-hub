@@ -4,7 +4,7 @@ import { Add as AddIcon, Delete as DeleteIcon, Edit as EditIcon } from '@mui/ico
 import { Alert, Box, Button, Chip, Collapse, Fade, IconButton, Slide, Stack, Typography } from '@mui/material';
 import { useState } from 'react';
 
-import { useSessionContext } from '../../../contexts/session';
+import { useSessionContext } from '../../../../contexts/session';
 import CredentialForm, { CredentialFormData } from './credential-form';
 
 // Date formatting utility

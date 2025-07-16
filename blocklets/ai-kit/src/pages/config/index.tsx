@@ -10,7 +10,7 @@ import { useSessionContext } from '../../contexts/session';
 
 const pages = {
   overview: React.lazy(() => import('./overview')),
-  'ai-providers': React.lazy(() => import('./ai-providers')),
+  'ai-config': React.lazy(() => import('./ai-config')),
 };
 
 function Integrations() {
@@ -29,7 +29,7 @@ function Integrations() {
   const TabComponent = pages[group] || pages.overview;
   const tabs = [
     { label: t('quickStarts'), value: 'overview' },
-    { label: t('aiProviders'), value: 'ai-providers' },
+    { label: t('aiConfig'), value: 'ai-config' },
   ];
 
   return (

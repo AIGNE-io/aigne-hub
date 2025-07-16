@@ -1,4 +1,4 @@
-import { checkModelAvailable } from '@api/providers';
+import { checkModelRateAvailable } from '@api/providers';
 import { chatCompletionByFrameworkModel } from '@api/providers/models';
 import {
   ChatCompletionChunk,
@@ -204,7 +204,7 @@ export async function processChatCompletion(
     messages: typeof body.prompt === 'string' ? [{ role: 'user' as const, content: body.prompt }] : body.messages,
   };
 
-  checkModelAvailable(input.model);
+  await checkModelRateAvailable(input.model);
 
   if (Config.verbose) logger.info(`AI Kit ${version} completions input:`, body);
 
@@ -305,7 +305,7 @@ export async function processEmbeddings(
 ): Promise<{ promptTokens: number; model: string } | null> {
   const input = await embeddingsRequestSchema.validateAsync(req.body, { stripUnknown: true });
 
-  checkModelAvailable(input.model);
+  await checkModelRateAvailable(input.model);
 
   const openai = getOpenAI();
 
@@ -334,7 +334,7 @@ export async function processImageGeneration(
     { stripUnknown: true }
   );
 
-  checkModelAvailable(input.model);
+  await checkModelRateAvailable(input.model);
 
   if (Config.verbose) logger.info(`AI Kit ${version} image generations input:`, input);
 

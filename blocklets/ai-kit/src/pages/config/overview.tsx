@@ -10,7 +10,7 @@ const basicFeatures = [
     title: 'aiProviderSettings',
     description: 'aiProviderSettingsDesc',
     icon: <SmartToyOutlined sx={{ fontSize: 32, color: (theme) => theme.palette.grey[400] }} />,
-    path: '/config/ai-providers',
+    path: '/config/ai-config/providers',
   },
   {
     title: 'enableCredits',

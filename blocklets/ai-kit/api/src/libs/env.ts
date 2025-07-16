@@ -8,6 +8,9 @@ export const isDevelopment = config.env.mode === 'development';
 
 export const PAYMENT_DID = 'z2qaCNvKMv5GjouKdcDWexv6WqtHbpNPQDnAk';
 
+export const OBSERVABILITY_DID = 'z2qa2GCqPJkufzqF98D8o7PWHrRRSHpYkNhEh';
+export const AIGNE_HUB_DID = 'z8ia3xzq2tMq8CRHfaXj1BTYJyYnEcHbqP8cJ';
+
 export const METER_NAME = 'agent-hub-ai-meter';
 
 export const METER_UNIT = 'AIC';
