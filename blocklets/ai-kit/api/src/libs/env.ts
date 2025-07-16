@@ -17,6 +17,12 @@ export const METER_UNIT = 'AIC';
 
 export const DEFAULT_CREDIT_PRICE_KEY = 'DEFAULT_CREDIT_UNIT_PRICE';
 
+export const MODEL_RATE_TYPE = {
+  Text: 'text',
+  Image: 'image',
+  Embedding: 'embedding',
+};
+
 type Pricing = {
   creditPaymentLink: string;
   creditBasedBillingEnabled: boolean;
@@ -312,7 +318,7 @@ export const Config = {
   },
 
   get usageReportThrottleTime() {
-    return 600e3;
+    return 10e3;
   },
 
   get dataDir() {

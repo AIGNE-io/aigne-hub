@@ -29,6 +29,8 @@ AIGNEObserver.setExportFn(async (spans) => {
     return;
   }
 
+  logger.info('Sending trace tree to Observability blocklet', { spans });
+
   await call({
     name: OBSERVABILITY_DID,
     method: 'POST',
@@ -100,7 +102,7 @@ router.post(
             type: 'chatCompletion',
             promptTokens: (usageData.usage?.inputTokens as number) || 0,
             completionTokens: (usageData.usage?.outputTokens as number) || 0,
-            model: usageData.model as string,
+            model: req.body?.model as string,
             modelParams: req.body?.options?.modelOptions,
             userDid: userDid!,
           });

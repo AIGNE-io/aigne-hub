@@ -1,7 +1,7 @@
 {
   "name": "@blocklet/ai-kit",
   "version": "0.2.2",
-  "description": "The react.js component library for AI Kit",
+  "description": "The react.js component library for AIGNE Hub",
   "publishConfig": {
     "access": "public"
   },

@@ -58,7 +58,7 @@ const createCredentialSchema = Joi.object({
 const createModelRateSchema = Joi.object({
   model: Joi.string().min(1).max(100).required(),
   modelDisplay: Joi.string().min(1).max(100).allow('').optional(),
-  type: Joi.string().valid('text', 'image', 'embedding').required(),
+  type: Joi.string().valid('chatCompletion', 'imageGeneration', 'embedding').required(),
   description: Joi.string().allow('').optional(),
   inputRate: Joi.number().min(0).required(),
   outputRate: Joi.number().min(0).required(),
@@ -504,7 +504,7 @@ router.post('/model-rates', ensureAdmin, async (req, res) => {
     const batchCreateSchema = Joi.object({
       model: Joi.string().min(1).max(100).required(),
       modelDisplay: Joi.string().min(1).max(100).allow('').optional(),
-      type: Joi.string().valid('text', 'image', 'embedding').required(),
+      type: Joi.string().valid('chatCompletion', 'imageGeneration', 'embedding').required(),
       description: Joi.string().allow('').optional(),
       inputRate: Joi.number().min(0).required(),
       outputRate: Joi.number().min(0).required(),
@@ -599,7 +599,12 @@ router.post('/model-rates', ensureAdmin, async (req, res) => {
 // get all models with rates and provider info
 router.get('/models', user, async (req, res) => {
   try {
+    const where: any = {};
+    if (req.query.type) {
+      where.type = req.query.type;
+    }
     const modelRates = await AiModelRate.findAll({
+      where,
       include: [
         {
           model: AiProvider,

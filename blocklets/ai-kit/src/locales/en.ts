@@ -6,7 +6,7 @@ export default flatten({
   aiProviderSubscription: 'Subscribe to AI Service',
   aiProviderLocalAIKit: 'Local AIKit component',
   selectMonth: 'Select Month',
-  subscribeAITip: 'Subscribe to AI Kit now to unlock the power of AI!',
+  subscribeAITip: 'Subscribe to AIGNE Hub now to unlock the power of AI!',
   unsubscribe: 'Unsubscribe',
   unsubscribeTip: 'After unsubscribing, you will no longer be able to continue using the AI services we provide!',
   cancel: 'Cancel',
@@ -22,7 +22,7 @@ export default flatten({
     'Your subscription is overdue. Please make a payment promptly to restore your subscription service.',
   payNow: 'Pay Now',
 
-  // AI Kit integrations
+  // AIGNE Hub integrations
   welcome: 'Welcome to AIGNE Hub',
   welcomeDesc:
     'Get started by configuring AI providers to enable AI services. You can also enable Credits billing to manage user usage quotas.',
@@ -77,8 +77,8 @@ export default flatten({
 
       // Types
       types: {
-        text: 'Text',
-        image: 'Image',
+        chatCompletion: 'Text',
+        imageGeneration: 'Image',
         embedding: 'Embedding',
       },
 
@@ -98,8 +98,8 @@ export default flatten({
           label: 'Rate Type',
           required: 'Rate type is required',
           options: {
-            text: 'Text Generation',
-            image: 'Image Generation',
+            chatCompletion: 'Text Generation',
+            imageGeneration: 'Image Generation',
             embedding: 'Text Embedding',
           },
         },

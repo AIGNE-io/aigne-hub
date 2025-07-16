@@ -110,9 +110,9 @@ export default function AIModelRates() {
 
   const getRateTypeColor = (type: string) => {
     switch (type) {
-      case 'text':
+      case 'chatCompletion':
         return 'primary';
-      case 'image':
+      case 'imageGeneration':
         return 'secondary';
       case 'embedding':
         return 'success';
@@ -123,10 +123,10 @@ export default function AIModelRates() {
 
   const getRateTypeText = (type: string) => {
     switch (type) {
-      case 'text':
-        return t('config.modelRates.types.text');
-      case 'image':
-        return t('config.modelRates.types.image');
+      case 'chatCompletion':
+        return t('config.modelRates.types.chatCompletion');
+      case 'imageGeneration':
+        return t('config.modelRates.types.imageGeneration');
       case 'embedding':
         return t('config.modelRates.types.embedding');
       default:

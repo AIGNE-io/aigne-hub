@@ -2,7 +2,7 @@ import Center from '@arcblock/ux/lib/Center';
 import { LocaleProvider } from '@arcblock/ux/lib/Locale/context';
 import { ThemeProvider } from '@arcblock/ux/lib/Theme';
 import { ToastProvider } from '@arcblock/ux/lib/Toast';
-import { SubscribeButton } from '@blocklet/ai-kit/components';
+import { CreditButton } from '@blocklet/ai-kit/components';
 import Footer from '@blocklet/ui-react/lib/Footer';
 import Header from '@blocklet/ui-react/lib/Header';
 import { Global, css } from '@emotion/react';
@@ -110,7 +110,7 @@ function Layout({ children }: { children: ReactNode }) {
       <Header
         // @ts-ignore
         maxWidth={null}
-        addons={(exists: ReactNode[]) => [<SubscribeButton />, ...exists]}
+        addons={(exists: ReactNode[]) => [<CreditButton />, ...exists]}
       />
 
       {children}

@@ -78,6 +78,9 @@ export async function createMeterEvent({
   const meter = await ensureMeter();
   if (!meter) throw new Error('Meter is not found');
   const now = Date.now();
+  if (Number(amount) === 0) {
+    return undefined;
+  }
   const meterEvent = await payment.meterEvents.create({
     event_name: meter.event_name,
     timestamp: Math.floor(now / 1000),
@@ -122,7 +125,7 @@ export async function ensureDefaultCreditPrice() {
               unit_amount: '0.001',
             })),
             lookup_key: DEFAULT_CREDIT_PRICE_KEY,
-            nickname: 'Per Unit Credit For AI Kit',
+            nickname: 'Per Unit Credit For AIGNE Hub',
             metadata: {
               credit_config: {
                 priority: 50,

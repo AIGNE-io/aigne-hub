@@ -335,6 +335,7 @@ export async function getProviderCredentials(provider: string) {
   if (!credential) {
     callback(new Error(`No active credentials found for provider ${provider}`));
   }
+  await credential!.updateUsage();
   const value = AiCredential.decryptCredentialValue(credential!.credentialValue);
   return {
     apiKey: value.api_key,

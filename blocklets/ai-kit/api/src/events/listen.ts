@@ -48,12 +48,24 @@ async function handleUserAdded(user: any) {
   }
 }
 
+// async function handleBlockletStarted(app: any) {
+//   const { componentDids = [] } = app;
+//   if (componentDids.includes(PAYMENT_DID) && Config.creditBasedBillingEnabled) {
+//     await ensureMeter();
+//   }
+// }
+
 export function subscribeEvents() {
   eventBus.subscribe((event: any) => {
-    if (event.type === 'user.added') {
+    if (event.type === 'blocklet.user.added') {
       logger.info('user.added', event.id);
-      const user = event.data;
+      const user = event.data.object;
       handleUserAdded(user);
     }
+    // if (event.type === 'blocklet.started') {
+    //   logger.info('blocklet.started', event.id);
+    //   const app = event.data;
+    //   handleBlockletStarted(app);
+    // }
   });
 }

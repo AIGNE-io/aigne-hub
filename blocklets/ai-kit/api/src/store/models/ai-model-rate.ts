@@ -7,7 +7,7 @@ const idGenerator = new Worker();
 
 const nextId = () => idGenerator.nextId().toString();
 
-export type RateType = 'text' | 'image' | 'embedding';
+export type RateType = 'chatCompletion' | 'embedding' | 'imageGeneration';
 
 export default class AiModelRate extends Model<InferAttributes<AiModelRate>, InferCreationAttributes<AiModelRate>> {
   declare id: CreationOptional<string>;

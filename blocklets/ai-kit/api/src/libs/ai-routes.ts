@@ -206,7 +206,7 @@ export async function processChatCompletion(
 
   await checkModelRateAvailable(input.model);
 
-  if (Config.verbose) logger.info(`AI Kit ${version} completions input:`, body);
+  if (Config.verbose) logger.info(`AIGNE Hub ${version} completions input:`, body);
 
   res.setHeader('X-Accel-Buffering', 'no');
   res.setHeader('Cache-Control', 'no-cache');
@@ -275,7 +275,7 @@ export async function processChatCompletion(
 
   res.end();
 
-  if (Config.verbose) logger.info(`AI Kit ${version} completions output:`, { content, toolCalls });
+  if (Config.verbose) logger.info(`AIGNE Hub ${version} completions output:`, { content, toolCalls });
 
   if (!usage) {
     // TODO: 更精确的 token 计算，暂时简单地 stringify 之后按照 gpt3/4 的 token 算法计算，尤其 function call 的计算偏差较大，需要改进
@@ -336,7 +336,7 @@ export async function processImageGeneration(
 
   await checkModelRateAvailable(input.model);
 
-  if (Config.verbose) logger.info(`AI Kit ${version} image generations input:`, input);
+  if (Config.verbose) logger.info(`AIGNE Hub ${version} image generations input:`, input);
 
   const openai = getOpenAI();
   let response: ImagesResponse;

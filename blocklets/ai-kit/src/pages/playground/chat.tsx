@@ -1,10 +1,4 @@
-import {
-  Conversation,
-  ConversationRef,
-  MessageItem,
-  SubscribeButton,
-  useConversation,
-} from '@blocklet/ai-kit/components';
+import { Conversation, ConversationRef, CreditButton, MessageItem, useConversation } from '@blocklet/ai-kit/components';
 import Dashboard from '@blocklet/ui-react/lib/Dashboard';
 import styled from '@emotion/styled';
 import { HighlightOff } from '@mui/icons-material';
@@ -99,7 +93,7 @@ export default function Chat() {
     const fetchModels = async () => {
       try {
         setLoading(true);
-        const response = await api.get('/api/ai-providers/models');
+        const response = await api.get('/api/ai-providers/models?type=chatCompletion');
         const apiModels: ApiModel[] = response.data || [];
 
         const formattedGroups = formatModelsData(apiModels);
@@ -148,7 +142,7 @@ export default function Chat() {
             </Tooltip>
           ),
         ],
-        [<SubscribeButton shouldOpenInNewTab showUseAIServiceButton key="subscribe" />],
+        [<CreditButton shouldOpenInNewTab key="buy" />],
       ];
     },
     [cancel]
@@ -159,7 +153,7 @@ export default function Chat() {
       <Dashboard
         footerProps={{ className: 'dashboard-footer' }}
         // @ts-ignore
-        headerAddons={(exists: ReactNode[]) => [<SubscribeButton />, ...exists]}
+        headerAddons={(exists: ReactNode[]) => [<CreditButton />, ...exists]}
         // FIXME: remove following undefined props after issue https://github.com/ArcBlock/ux/issues/1136 solved
         meta={undefined}
         fallbackUrl={undefined}

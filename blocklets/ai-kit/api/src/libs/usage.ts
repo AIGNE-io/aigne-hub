@@ -1,3 +1,5 @@
+import AiModelRate from '@api/store/models/ai-model-rate';
+import AiProvider from '@api/store/models/ai-provider';
 import Usage from '@api/store/models/usage';
 import payment from '@blocklet/payment-js';
 import BigNumber from 'bignumber.js';
@@ -53,6 +55,51 @@ export async function createAndReportUsage({
   }
 }
 
+async function getModelRates(model: string) {
+  const callback = (err: Error) => {
+    if (Config.pricing?.list) {
+      return Config.pricing?.list;
+    }
+    throw err;
+  };
+  let providerName;
+  let modelName;
+  if (model.includes(':')) {
+    const [p, m] = model.split(':');
+    providerName = p;
+    modelName = m || model;
+  }
+  const where: { model?: string; providerId?: string } = {};
+  if (modelName) {
+    where.model = modelName;
+  }
+  if (providerName) {
+    const provider = await AiProvider.findOne({
+      where: {
+        name: providerName,
+      },
+    });
+    if (!provider) {
+      callback(new Error(`Provider ${providerName} not found`));
+    }
+    where.providerId = provider!.id;
+  }
+  const modelRates = await AiModelRate.findAll({
+    where,
+  });
+  if (modelRates.length === 0) {
+    callback(new Error(`Unsupported model ${modelName}${providerName ? ` for provider ${providerName}` : ''}`));
+  }
+  return modelRates;
+}
+
+async function getPrice(type: Usage['type'], model: string) {
+  const modelRates = await getModelRates(model);
+  const modelName = model.includes(':') ? model.split(':')[1] : model;
+  const price = modelRates.find((i) => i.type === type && i.model === modelName);
+  return price;
+}
+
 // v2 version with userDid support for proper credit tracking
 export async function createAndReportUsageV2({
   type,
@@ -70,10 +117,8 @@ export async function createAndReportUsageV2({
   try {
     let usedCredits: number | undefined;
 
-    const { pricing } = Config;
-    const price = Config.pricing?.list.find((i) => i.type === type && i.model === model);
-
-    if (pricing && price) {
+    const price = await getPrice(type, model);
+    if (price) {
       if (type === 'imageGeneration') {
         usedCredits = new BigNumber(numberOfImageGeneration).multipliedBy(price.outputRate).toNumber();
       } else {
@@ -186,6 +231,7 @@ async function reportUsageV2({ appId, userDid }: { appId: string; userDid: strin
 
         await end.update({ usageReportStatus: 'counted' });
 
+        logger.info('create meter event', { quantity });
         await createMeterEvent({
           userDid,
           amount: quantity || 0,

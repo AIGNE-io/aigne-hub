@@ -54,8 +54,12 @@ function CreditButton({
     } finally {
       setSubmitting(false);
     }
-  }, [shouldOpenInNewTab, t]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shouldOpenInNewTab]);
 
+  if (!window.blocklet?.preferences?.creditBasedBillingEnabled) {
+    return null;
+  }
   return (
     <LoadingButton
       onClick={buyCredits}

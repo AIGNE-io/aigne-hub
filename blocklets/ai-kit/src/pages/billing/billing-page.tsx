@@ -4,7 +4,6 @@ import { useSessionContext } from '@app/contexts/session';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import RelativeTime from '@arcblock/ux/lib/RelativeTime';
 import Toast from '@arcblock/ux/lib/Toast';
-import { CreditTabs } from '@blocklet/ai-kit/components';
 import withLocaleProvider from '@blocklet/ai-kit/utils/withLocaleProvider';
 import {
   AccessAlarmRounded,
@@ -68,9 +67,6 @@ function BillingPage() {
 
           {app && <UseAIKitServiceSwitch />}
         </Stack>
-
-        {/* Credit Tabs with Service Configuration */}
-        <CreditTabs useAIKitService={!!app?.config?.useAIKitService} />
       </Stack>
     </Container>
   );
@@ -245,7 +241,7 @@ export default withLocaleProvider(BillingPage, {
       creditManagementDescription: 'Manage your credits and view usage statistics',
       aiProvider: 'AI Provider',
       aiProviderSubscription: 'Subscription Service',
-      aiProviderLocalAIKit: 'Local AI Kit',
+      aiProviderLocalAIKit: 'Local AIGNE Hub',
       unsubscribe: 'Unsubscribe',
       unsubscribeTip: 'Confirm to unsubscribe AI service',
       cancelled: 'Cancelled',
@@ -260,7 +256,7 @@ export default withLocaleProvider(BillingPage, {
       creditManagementDescription: '管理您的积分并查看使用统计',
       aiProvider: 'AI 提供商',
       aiProviderSubscription: '订阅服务',
-      aiProviderLocalAIKit: '本地 AI Kit',
+      aiProviderLocalAIKit: '本地 AIGNE Hub',
       unsubscribe: '取消订阅',
       unsubscribeTip: '确认取消订阅 AI 服务',
       cancelled: '已取消',

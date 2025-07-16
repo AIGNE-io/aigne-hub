@@ -1,5 +1,5 @@
 import { useIsRole, useSessionContext } from '@app/contexts/session';
-import { SubscribeButton } from '@blocklet/ai-kit/components';
+import { CreditButton } from '@blocklet/ai-kit/components';
 import Footer from '@blocklet/ui-react/lib/Footer';
 import Header from '@blocklet/ui-react/lib/Header';
 import { Box, Button, Stack, Typography } from '@mui/material';
@@ -15,7 +15,7 @@ export default function Home() {
       <Header
         // @ts-ignore
         maxWidth={null}
-        addons={(exists: ReactNode[]) => [<SubscribeButton />, ...exists]}
+        addons={(exists: ReactNode[]) => [<CreditButton />, ...exists]}
       />
       <Box
         sx={{

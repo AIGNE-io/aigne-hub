@@ -1,6 +1,6 @@
-# AI Kit
+# AIGNE Hub
 
-AI Kit is a blocklet that brings AI capabilities to other blocklets. With AI Kit, developers can easily incorporate AI into their projects and create powerful applications.
+AIGNE Hub is a blocklet that brings AI capabilities to other blocklets. With AIGNE Hub, developers can easily incorporate AI into their projects and create powerful applications.
 
 ## Features
 
@@ -13,21 +13,21 @@ AI Kit is a blocklet that brings AI capabilities to other blocklets. With AI Kit
 - You need to purchase a Blocklet Server first (if you don't already have one)
 - Follow the installation wizard to install blocklet on your Blocklet Server
 - Start the installed blocklet in the Blocklet Server console
-- Set `OPENAI_API_KEY` in **Blocklets -> AI Kit -> Components -> AI Kit -> Settings -> Environment** and restart blocklet
+- Set `OPENAI_API_KEY` in **Blocklets -> AIGNE Hub -> Components -> AIGNE Hub -> Settings -> Environment** and restart blocklet
   ![setting-api-key](docs/setting-api-key.jpg)
 - Access the public address of the blocklet, you can open playground from apps menu
 
 ## Integrate into your blocklet
 
-- Add AI Kit as a component into your blocklet
-- Set `OPENAI_API_KEY` in `AI Kit` component settings and restart your blocklet
-- Call AI Kit's api
+- Add AIGNE Hub as a component into your blocklet
+- Set `OPENAI_API_KEY` in `AIGNE Hub` component settings and restart your blocklet
+- Call AIGNE Hub's api
 
-## AI Kit api references
+## AIGNE Hub api references
 
 ### status
 
-Get AI Kit status, it would return `available: true` if it is available.
+Get AIGNE Hub status, it would return `available: true` if it is available.
 
 ```ts
 const res = await Component.call({

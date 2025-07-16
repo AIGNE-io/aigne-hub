@@ -1,6 +1,6 @@
-# AI Kit
+# AIGNE Hub
 
-AI Kit 是一个能够快速集成 AI 的 blocklet。使用 AI Kit，开发者能够轻松的将 AI 功能集成到他们的项目中，并创造强大的应用。
+AIGNE Hub 是一个能够快速集成 AI 的 blocklet。使用 AIGNE Hub，开发者能够轻松的将 AI 功能集成到他们的项目中，并创造强大的应用。
 
 ## 特点
 
@@ -13,21 +13,21 @@ AI Kit 是一个能够快速集成 AI 的 blocklet。使用 AI Kit，开发者�
 - 你需要首先购买一个 blocklet 服务器（如果你还没有的话）
 - 按照安装向导在 blocklet 服务器上安装 blocklet
 - 在 blocklet 服务器控制台启动已安装的 blocklet
-- 在 **Blocklets -> AI Kit -> Components -> AI Kit -> Settings -> Environment** 设置 `OPENAI_API_KEY` 并重启 blocklet
+- 在 **Blocklets -> AIGNE Hub -> Components -> AIGNE Hub -> Settings -> Environment** 设置 `OPENAI_API_KEY` 并重启 blocklet
   ![setting-api-key](docs/setting-api-key.jpg)
-- 访问 AI Kit 的公网地址，你可以应用菜单中打开 Playground
+- 访问 AIGNE Hub 的公网地址，你可以应用菜单中打开 Playground
 
 ## 集成到你的 blocklet
 
-- 将 AI Kit 作为 component 添加到你的 blocklet 中
-- 在 `AI Kit` 组件设置中设置 `OPENAI_API_KEY`，并重启你的 blocklet
-- 调用 AI Kit 的 api
+- 将 AIGNE Hub 作为 component 添加到你的 blocklet 中
+- 在 `AIGNE Hub` 组件设置中设置 `OPENAI_API_KEY`，并重启你的 blocklet
+- 调用 AIGNE Hub 的 api
 
-## AI Kit 接口
+## AIGNE Hub 接口
 
 ### status
 
-获取 AI Kit 状态
+获取 AIGNE Hub 状态
 
 ```ts
 const res = await Component.call({
