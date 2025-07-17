@@ -37,7 +37,7 @@ const providerDisplayNames: Record<string, string> = {
   deepseek: 'DeepSeek',
   google: 'Google',
   ollama: 'Ollama',
-  openRouter: 'OpenRouter',
+  openrouter: 'OpenRouter',
   xai: 'xAI',
 };
 
@@ -48,13 +48,13 @@ function formatModelsData(apiModels: ApiModel[]): ModelGroup[] {
   apiModels.forEach((apiModel) => {
     apiModel.providers.forEach((provider) => {
       const providerName = provider.name;
-      const displayName = providerDisplayNames[providerName] || provider.displayName;
+      const displayName = providerDisplayNames[providerName.toLowerCase()] || provider.displayName;
 
       if (!providerMap.has(displayName)) {
         providerMap.set(displayName, []);
       }
 
-      const modelValue = `${providerName}:${apiModel.model}`;
+      const modelValue = `${providerName}/${apiModel.model}`;
       const modelLabel = apiModel.model;
 
       // 避免重复添加相同的模型

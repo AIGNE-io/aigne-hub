@@ -6,6 +6,7 @@ import BigNumber from 'bignumber.js';
 import { DebouncedFunc, throttle } from 'lodash';
 import { Op } from 'sequelize';
 
+import { getModelNameWithProvider } from './ai-provider';
 import { wallet } from './auth';
 import { Config } from './env';
 import logger from './logger';
@@ -65,13 +66,7 @@ async function getModelRates(model: string) {
     }
     throw err;
   };
-  let providerName;
-  let modelName;
-  if (model.includes(':')) {
-    const [p, m] = model.split(':');
-    providerName = p;
-    modelName = m || model;
-  }
+  const { providerName, modelName } = getModelNameWithProvider(model);
   const where: { model?: string; providerId?: string } = {};
   if (modelName) {
     where.model = modelName;
@@ -101,7 +96,7 @@ async function getPrice(type: Usage['type'], model: string) {
     throw new Error('Model is required');
   }
   const modelRates = await getModelRates(model);
-  const modelName = model.includes(':') ? model.split(':')[1] : model;
+  const { modelName } = getModelNameWithProvider(model);
   const price = modelRates.find((i) => i.type === type && i.model === modelName);
   return price;
 }

@@ -39,11 +39,16 @@ export default flatten({
 
   // Credits configuration
   enableCredits: 'Enable Credits Billing',
+  configCredits: 'Configure Credits Billing',
   enableCreditsDesc: 'Configure credit-based billing model to manage user usage quotas',
   creditsConfigTitle: 'Enable Credits Billing Feature',
   creditsConfigDesc:
     'After enabling this feature, users need to purchase Credits to use AI services. Please follow these steps to configure:',
   gotoConfig: 'Go to Configuration',
+  installPaymentKit: 'Step 1: Install Payment Kit',
+  updatePreferences: 'Step 2: Update AIGNE Hub Preferences',
+  installPaymentKitDesc:
+    'Search and install the Payment Kit component from Blocklet Store. This is a prerequisite for enabling Credits billing. With Payment Kit, you can manage multiple payment methods and related configurations, providing users with a convenient top-up experience.',
 
   // Configuration section
   config: {

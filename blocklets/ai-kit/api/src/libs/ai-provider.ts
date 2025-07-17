@@ -38,3 +38,21 @@ export function getAIApiKey(company: AIProvider) {
 
   return apiKey;
 }
+
+export function getModelNameWithProvider(model: string, defaultProviderName: string = '') {
+  if (!model) {
+    throw new Error('Model is required');
+  }
+  if (model.includes('/')) {
+    const modelArray = model.split('/');
+    const [providerName, name] = [modelArray[0], modelArray.slice(1).join('/')];
+    return {
+      providerName: providerName?.toLowerCase() || defaultProviderName,
+      modelName: name,
+    };
+  }
+  return {
+    modelName: model,
+    providerName: defaultProviderName,
+  };
+}

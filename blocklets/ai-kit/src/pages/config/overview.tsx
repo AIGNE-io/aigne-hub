@@ -19,12 +19,12 @@ const basicFeatures = [
     path: '/.well-known/service/admin/overview/components',
     external: true,
     showDialog: true,
+    credit: true,
   },
   {
     title: 'usageAnalytics',
     description: 'usageAnalyticsDesc',
     icon: <AnalyticsOutlined sx={{ fontSize: 32, color: (theme) => theme.palette.grey[400] }} />,
-    path: '/billing',
   },
 ];
 
@@ -112,7 +112,9 @@ export default function Overview() {
                   sx={{
                     mt: 1.5,
                   }}>
-                  {t(item.title)}
+                  {item.credit && window.blocklet?.preferences?.creditBasedBillingEnabled
+                    ? t('configCredits')
+                    : t(item.title)}
                 </Typography>
               </Box>
               <Typography
@@ -141,23 +143,49 @@ export default function Overview() {
             </Button>
           </Stack>
         }
-        title={t('creditsConfigTitle')}>
+        title={window.blocklet?.preferences?.creditBasedBillingEnabled ? t('configCredits') : t('enableCredits')}>
         <Box sx={{ mb: 2 }}>
           <Typography variant="body1" sx={{ mb: 2 }}>
             {t('creditsConfigDesc')}
           </Typography>
           <Box
-            component="img"
-            src="/credit-config/step.png"
-            alt="Credits configuration steps"
             sx={{
-              width: '100%',
-              height: 'auto',
+              mb: 3,
+              p: 2,
+              bgcolor: 'background.paper',
               borderRadius: 1,
               border: '1px solid',
               borderColor: 'divider',
-            }}
-          />
+            }}>
+            <Typography variant="h6" sx={{ mb: 1, color: 'primary.main' }}>
+              {t('installPaymentKit')}
+            </Typography>
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+              {t('installPaymentKitDesc')}
+            </Typography>
+          </Box>
+          <Box
+            sx={{
+              mb: 3,
+              p: 2,
+              bgcolor: 'background.paper',
+              borderRadius: 1,
+              border: '1px solid',
+              borderColor: 'divider',
+            }}>
+            <Typography variant="h6" sx={{ mb: 1, color: 'primary.main' }}>
+              {t('updatePreferences')}
+            </Typography>
+            <Box
+              component="img"
+              src="/credit-config/step.png"
+              alt="Credits configuration steps"
+              sx={{
+                width: '100%',
+                height: 'auto',
+              }}
+            />
+          </Box>
         </Box>
       </Dialog>
     </Box>

@@ -57,7 +57,7 @@ const PROVIDER_OPTIONS = [
   { value: 'deepseek', label: 'DeepSeek', baseUrl: 'https://api.deepseek.com/v1' },
   { value: 'google', label: 'Google', baseUrl: 'https://generativelanguage.googleapis.com/v1beta/' },
   { value: 'ollama', label: 'Ollama', baseUrl: 'http://localhost:11434/api' },
-  { value: 'openRouter', label: 'OpenRouter', baseUrl: 'https://openrouter.ai/api/v1' },
+  { value: 'openrouter', label: 'OpenRouter', baseUrl: 'https://openrouter.ai/api/v1' },
   { value: 'xai', label: 'xAI', baseUrl: 'https://api.x.ai/v1' },
 ];
 

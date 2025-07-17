@@ -2,6 +2,7 @@ import { CreationOptional, DataTypes, InferAttributes, InferCreationAttributes, 
 import { Worker } from 'snowflake-uuid';
 
 import { sequelize } from '../sequelize';
+import AiCredential from './ai-credential';
 
 const idGenerator = new Worker();
 
@@ -14,7 +15,7 @@ export type AIProviderType =
   | 'deepseek'
   | 'google'
   | 'ollama'
-  | 'openRouter'
+  | 'openrouter'
   | 'xai';
 
 export default class AiProvider extends Model<InferAttributes<AiProvider>, InferCreationAttributes<AiProvider>> {
@@ -101,31 +102,22 @@ export default class AiProvider extends Model<InferAttributes<AiProvider>, Infer
   }
 
   // 获取启用的提供商
-  static async getEnabledProviders(): Promise<AiProvider[]> {
+  static async getEnabledProviders(typeFilter?: string): Promise<AiProvider[]> {
+    const where: any = { enabled: true };
+    if (typeFilter) {
+      where.type = typeFilter;
+    }
     return AiProvider.findAll({
-      where: { enabled: true },
+      where,
       include: [
         {
-          association: 'credentials',
+          model: AiCredential,
+          as: 'credentials',
           where: { active: true },
           required: false,
         },
       ],
       order: [['displayName', 'ASC']],
-    });
-  }
-
-  // 根据名称获取提供商
-  static async getByName(name: AIProviderType): Promise<AiProvider | null> {
-    return AiProvider.findOne({
-      where: { name },
-      include: [
-        {
-          association: 'credentials',
-          where: { active: true },
-          required: false,
-        },
-      ],
     });
   }
 }

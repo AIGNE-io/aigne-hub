@@ -1,3 +1,5 @@
+import { getModelNameWithProvider } from '@api/libs/ai-provider';
+import { Config } from '@api/libs/env';
 import logger from '@api/libs/logger';
 import { ensureAdmin } from '@api/libs/security';
 import AiCredential, { CredentialValue } from '@api/store/models/ai-credential';
@@ -13,10 +15,76 @@ const router = Router();
 
 const user = sessionMiddleware({ accessKey: true });
 
+// 默认模型映射配置 - 使用对象存储提高查找效率
+const defaultModelMap = {
+  openai: [
+    { value: 'o4-mini', label: 'o4-mini' },
+    { value: 'o3-mini', label: 'o3-mini' },
+    { value: 'o3', label: 'o3' },
+    { value: 'gpt-4o', label: 'GPT-4o' },
+    { value: 'gpt-4o-mini', label: 'GPT-4o Mini' },
+    { value: 'gpt-4.1', label: 'GPT-4.1' },
+    { value: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
+    { value: 'gpt-4', label: 'GPT-4' },
+    { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
+  ],
+  openrouter: [
+    { value: 'anthropic/claude-3.5-sonnet', label: 'Claude 3.5 Sonnet' },
+    { value: 'anthropic/claude-3-opus', label: 'Claude 3 Opus' },
+    { value: 'anthropic/claude-3-haiku', label: 'Claude 3 Haiku' },
+    { value: 'openai/gpt-4o', label: 'GPT-4o' },
+    { value: 'openai/gpt-4.1', label: 'GPT-4.1' },
+    { value: 'openai/gpt-4o-mini', label: 'GPT-4o Mini' },
+    { value: 'meta-llama/llama-3.1-70b-instruct', label: 'Llama 3.1 70B' },
+    { value: 'mistralai/mistral-7b-instruct', label: 'Mistral 7B Instruct' },
+  ],
+  anthropic: [
+    { value: 'claude-opus-4-20250514', label: 'Claude Opus 4' },
+    { value: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4' },
+    { value: 'claude-3-7-sonnet-20250219', label: 'Claude 3.7 Sonnet' },
+    { value: 'claude-3-5-sonnet-20241022', label: 'Claude 3.5 Sonnet' },
+    { value: 'claude-3-5-haiku-20241022', label: 'Claude 3.5 Haiku' },
+  ],
+  bedrock: [
+    { value: 'anthropic.claude-3-5-sonnet', label: 'Claude 3.5 Sonnet' },
+    { value: 'anthropic.claude-3-opus', label: 'Claude 3 Opus' },
+    { value: 'anthropic.claude-3-haiku', label: 'Claude 3 Haiku' },
+    { value: 'amazon.titan-text-premier-v1:0', label: 'Titan Text Premier v1' },
+    { value: 'amazon.titan-text-express-v1', label: 'Titan Text Express v1' },
+    { value: 'meta.llama3-70b-instruct-v1:0', label: 'Llama 3 70B Instruct' },
+    { value: 'mistral.mistral-7b-instruct-v0:2', label: 'Mistral 7B Instruct' },
+  ],
+  deepseek: [{ value: 'deepseek-chat', label: 'DeepSeek Chat' }],
+  google: [
+    { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
+    { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
+    { value: 'gemini-2.5-flash-lite-preview-06-17', label: 'Gemini 2.5 Flash-Lite' },
+    { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
+    { value: 'gemini-2.0-flash-lite', label: 'Gemini 2.0 Flash-Lite' },
+    { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro' },
+    { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash' },
+  ],
+  ollama: [
+    { value: 'llama3.1:70b', label: 'LLaMA 3.1 70B' },
+    { value: 'llama3.1:8b', label: 'LLaMA 3.1 8B' },
+    { value: 'llama3.2:3b', label: 'LLaMA 3.2 3B' },
+    { value: 'llama3.2:1b', label: 'LLaMA 3.2 1B' },
+    { value: 'mistral:7b', label: 'Mistral 7B' },
+    { value: 'codellama:13b', label: 'Code Llama 13B' },
+    { value: 'codellama:7b', label: 'Code Llama 7B' },
+  ],
+  xai: [
+    { value: 'grok-4', label: 'Grok 4' },
+    { value: 'grok-3', label: 'Grok 3' },
+    { value: 'grok-3-mini', label: 'Grok 3 Mini' },
+    { value: 'grok-2', label: 'Grok 2' },
+  ],
+};
+
 // 验证schemas
 const createProviderSchema = Joi.object({
   name: Joi.string()
-    .valid('openai', 'anthropic', 'bedrock', 'deepseek', 'google', 'ollama', 'openRouter', 'xai')
+    .valid('openai', 'anthropic', 'bedrock', 'deepseek', 'google', 'ollama', 'openrouter', 'xai')
     .required(),
   displayName: Joi.string().min(1).max(100).required(),
   baseUrl: Joi.string().uri().optional(),
@@ -30,7 +98,7 @@ const createProviderSchema = Joi.object({
 });
 
 const updateProviderSchema = Joi.object({
-  name: Joi.string().valid('openai', 'anthropic', 'bedrock', 'deepseek', 'google', 'ollama', 'openRouter', 'xai'),
+  name: Joi.string().valid('openai', 'anthropic', 'bedrock', 'deepseek', 'google', 'ollama', 'openrouter', 'xai'),
   baseUrl: Joi.string().uri().optional(),
   region: Joi.when('name', {
     is: 'bedrock',
@@ -596,6 +664,102 @@ router.post('/model-rates', ensureAdmin, async (req, res) => {
   }
 });
 
+/**
+ * 获取配置中启用的提供商对应的默认模型
+ */
+async function getDefaultModelsFromProviders(typeFilter?: string) {
+  try {
+    const enabledProviders = await AiProvider.getEnabledProviders();
+
+    if (enabledProviders.length === 0) {
+      return [];
+    }
+
+    const models: any[] = [];
+
+    if (Config.pricing?.onlyEnableModelsInPricing && Config.pricing.list) {
+      Config.pricing.list.forEach((pricingModel) => {
+        if (typeFilter && pricingModel.type !== typeFilter) {
+          return;
+        }
+
+        const { providerName, modelName } = getModelNameWithProvider(pricingModel.model, 'openai');
+
+        const provider = enabledProviders.find((p) => p.name === providerName.toLowerCase());
+
+        if (!provider) {
+          return;
+        }
+
+        if (provider) {
+          models.push({
+            model: modelName,
+            modelDisplay: pricingModel.model,
+            description: 'Model from pricing configuration',
+            rates: [
+              {
+                id: `pricing-${provider.id}-${modelName}`,
+                type: pricingModel.type,
+                inputRate: pricingModel.inputRate,
+                outputRate: pricingModel.outputRate,
+                provider,
+                description: 'Model from pricing configuration',
+              },
+            ],
+            providers: [
+              {
+                name: provider.name,
+                id: provider.id,
+                displayName: provider.displayName,
+              },
+            ],
+          });
+        }
+      });
+    } else {
+      enabledProviders.forEach((provider) => {
+        const providerJson = provider.toJSON();
+        const providerModels = defaultModelMap[providerJson.name];
+        if (providerModels) {
+          providerModels.forEach((model: { value: string; label: string }) => {
+            if (typeFilter && typeFilter !== 'chatCompletion') {
+              return;
+            }
+
+            models.push({
+              model: model.value,
+              modelDisplay: model.label,
+              description: `Default model from ${providerJson.displayName}`,
+              rates: [
+                {
+                  id: `default-${provider.id}-${model.value}`,
+                  type: 'chatCompletion',
+                  inputRate: 0,
+                  outputRate: 0,
+                  provider: providerJson,
+                  description: `Default model from ${providerJson.displayName}`,
+                },
+              ],
+              providers: [
+                {
+                  name: providerJson.name,
+                  id: providerJson.id,
+                  displayName: providerJson.displayName,
+                },
+              ],
+            });
+          });
+        }
+      });
+    }
+
+    return models;
+  } catch (error) {
+    logger.error('Failed to get default models from providers:', error);
+    return [];
+  }
+}
+
 // get all models with rates and provider info
 router.get('/models', user, async (req, res) => {
   try {
@@ -620,6 +784,11 @@ router.get('/models', user, async (req, res) => {
         ['type', 'ASC'],
       ],
     });
+
+    if (!Config.creditBasedBillingEnabled && modelRates.length === 0) {
+      const defaultModels = await getDefaultModelsFromProviders(req.query.type as string);
+      return res.json(defaultModels);
+    }
 
     // Group by model name
     const modelsMap = new Map();

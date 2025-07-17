@@ -1,4 +1,4 @@
-import { getAIApiKey, getOpenAI } from '@api/libs/ai-provider';
+import { getAIApiKey, getModelNameWithProvider, getOpenAI } from '@api/libs/ai-provider';
 import { Config } from '@api/libs/env';
 import AiModelRate from '@api/store/models/ai-model-rate';
 import AiProvider from '@api/store/models/ai-provider';
@@ -32,7 +32,7 @@ export function checkModelAvailable(model: string) {
     throw new Error('Model is required');
   }
   if (Config.pricing?.onlyEnableModelsInPricing) {
-    const modelName = model.includes(':') ? model.split(':')[1] : model;
+    const { modelName } = getModelNameWithProvider(model);
     if (!Config.pricing.list.some((i) => i.model === modelName)) {
       throw new Error(`Unsupported model ${model}`);
     }
@@ -40,13 +40,7 @@ export function checkModelAvailable(model: string) {
 }
 
 export async function checkModelRateAvailable(model: string, providerName?: string) {
-  let modelName = model;
-  let provider = providerName;
-  if (model.includes(':')) {
-    const [p, m] = model.split(':');
-    provider = p;
-    modelName = m || modelName;
-  }
+  const { providerName: provider, modelName } = getModelNameWithProvider(model);
   const callback = (err: Error) => {
     try {
       checkModelAvailable(model);

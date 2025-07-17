@@ -60,7 +60,7 @@ router.get('/credit/grants', user, async (req, res) => {
 
     return res.json(creditGrants);
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ message: error.message });
   }
 });
 
@@ -85,7 +85,7 @@ router.get('/credit/transactions', user, async (req, res) => {
 
     return res.json(creditTransactions);
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ message: error.message });
   }
 });
 
@@ -100,7 +100,7 @@ router.get('/credit/balance', user, async (req, res) => {
     const creditBalance = await getUserCredits({ userDid });
     return res.json(creditBalance);
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ message: error.message });
   }
 });
 
@@ -109,7 +109,7 @@ router.get('/credit/payment-link', user, async (_, res) => {
     const creditPaymentLink = await getCreditPaymentLink();
     res.json(creditPaymentLink);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ message: error.message });
   }
 });
 

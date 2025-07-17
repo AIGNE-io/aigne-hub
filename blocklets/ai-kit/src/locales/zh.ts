@@ -35,6 +35,7 @@ export default flatten({
   userManagement: '用户管理',
   userManagementDesc: '管理用户对 AI 服务的访问权限',
   enableCredits: '启用 Credits 计费',
+  configCredits: '配置 Credits 计费',
   enableCreditsDesc: '配置 Credits 计费模型以管理用户使用配额',
   creditsConfigTitle: '启用 Credits 计费功能',
   creditsConfigDesc: '启用此功能后，用户需要购买 Credits 才能使用 AI 服务。请按照以下步骤进行配置：',
@@ -216,4 +217,8 @@ export default flatten({
 
   selectProviders: '选择提供商',
   submitFailed: '提交失败',
+  installPaymentKit: '步骤 1：安装 Payment Kit',
+  updatePreferences: '步骤 2：更新 AIGNE Hub 偏好设置',
+  installPaymentKitDesc:
+    '在 Blocklet Store 中搜索并安装 Payment Kit 组件，这是启用 Credits 计费功能的前提条件。通过 Payment Kit，您可以管理多种支付方式和相关配置，为用户提供便捷的充值体验。',
 });

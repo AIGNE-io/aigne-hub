@@ -17,6 +17,7 @@ import { OpenRouterChatModel } from '@aigne/open-router';
 import { OpenAIChatModel } from '@aigne/openai';
 import type { OpenAIChatModelOptions } from '@aigne/openai';
 import { XAIChatModel } from '@aigne/xai';
+import { getModelNameWithProvider } from '@api/libs/ai-provider';
 import AiCredential from '@api/store/models/ai-credential';
 import AiProvider from '@api/store/models/ai-provider';
 import { SubscriptionError, SubscriptionErrorType } from '@blocklet/ai-kit/api';
@@ -90,7 +91,7 @@ const providers = {
   deepseek: 'deepseek',
   google: 'google',
   ollama: 'ollama',
-  openRouter: 'openRouter',
+  openrouter: 'openrouter',
   xai: 'xai',
 } as const;
 
@@ -153,7 +154,7 @@ export function availableModels(): {
     },
     {
       name: OpenRouterChatModel.name,
-      provider: providers.openRouter,
+      provider: providers.openrouter,
       create: (params) => new OpenRouterChatModel({ ...params, clientOptions }),
     },
     {
@@ -168,7 +169,7 @@ const currentApiKeyIndex: { [key in AIProvider]?: number } = {};
 const apiKeys: { [key in AIProvider]: () => string[] } = {
   google: () => Config.geminiApiKey,
   openai: () => Config.openaiApiKey,
-  openRouter: () => Config.openRouterApiKey,
+  openrouter: () => Config.openRouterApiKey,
   anthropic: () => Config.anthropicApiKey,
   deepseek: () => Config.deepseekApiKey,
   bedrock: () => Config.awsAccessKeyId,
@@ -252,11 +253,6 @@ export async function loadModel(
   return m.create({ ...params, model });
 }
 
-export const parseModelOption = (model: string) => {
-  const { provider, name } = model?.match(/(?<provider>[^:]+)(:(?<name>(\S+)))?/)?.groups ?? {};
-  return { provider, name };
-};
-
 export const getModel = async (
   input: ChatCompletionInput & Required<Pick<ChatCompletionInput, 'model'>>,
   options?: {
@@ -264,12 +260,12 @@ export const getModel = async (
     clientOptions?: OpenAIChatModelOptions['clientOptions'];
   }
 ) => {
-  const { provider: providerName, name } = parseModelOption(input.model);
+  const { providerName, modelName: name } = getModelNameWithProvider(input.model);
 
   const getDefaultProvider = () => {
-    if (input.model.startsWith('gemini')) return 'google';
-    if (input.model.startsWith('gpt')) return 'openai';
-    if (input.model.startsWith('openRouter')) return 'openRouter';
+    if (input.model.toLowerCase().startsWith('gemini')) return 'google';
+    if (input.model.toLowerCase().startsWith('gpt')) return 'openai';
+    if (input.model.toLowerCase().startsWith('openrouter')) return 'openrouter';
 
     if (!providerName || !name) {
       throw new Error(
