@@ -1,4 +1,5 @@
 import Center from '@arcblock/ux/lib/Center';
+import { ErrorFallback } from '@arcblock/ux/lib/ErrorBoundary';
 import { LocaleProvider } from '@arcblock/ux/lib/Locale/context';
 import { ThemeProvider } from '@arcblock/ux/lib/Theme';
 import { ToastProvider } from '@arcblock/ux/lib/Toast';
@@ -8,9 +9,9 @@ import Header from '@blocklet/ui-react/lib/Header';
 import { Global, css } from '@emotion/react';
 import { Box, CircularProgress, CssBaseline } from '@mui/material';
 import { ReactNode, Suspense, lazy } from 'react';
+import { ErrorBoundary } from 'react-error-boundary';
 import { Navigate, Route, RouterProvider, createBrowserRouter, createRoutesFromElements } from 'react-router-dom';
 
-import ErrorBoundary from './components/error/error-boundary';
 import NotFoundView from './components/error/not-found';
 import Loading from './components/loading';
 import { TransitionProvider } from './components/loading/progress-bar';
@@ -47,7 +48,7 @@ export default function App() {
             <SessionProvider serviceHost={basename}>
               <Suspense fallback={<Loading />}>
                 <TransitionProvider>
-                  <ErrorBoundary>
+                  <ErrorBoundary onReset={window.location.reload} FallbackComponent={ErrorFallback}>
                     <Suspense
                       fallback={
                         <Center>
