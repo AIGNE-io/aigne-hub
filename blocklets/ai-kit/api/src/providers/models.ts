@@ -282,7 +282,7 @@ export const getModel = (
 
     if (!providerName || !name) {
       throw new Error(
-        'The model format is incorrect. Please use {provider}:{model}, for example: openai:gpt-4o or anthropic:claude-3-5-sonnet'
+        'The model format is incorrect. Please use {provider}/{model}, for example: openai/gpt-4o or anthropic/claude-3-5-sonnet'
       );
     }
 
