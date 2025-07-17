@@ -28,6 +28,9 @@ export function chatCompletion(
 }
 
 export function checkModelAvailable(model: string) {
+  if (!model) {
+    throw new Error('Model is required');
+  }
   if (Config.pricing?.onlyEnableModelsInPricing) {
     const modelName = model.includes(':') ? model.split(':')[1] : model;
     if (!Config.pricing.list.some((i) => i.model === modelName)) {
@@ -75,6 +78,9 @@ export async function checkModelRateAvailable(model: string, providerName?: stri
     where: modelRateWhere,
   });
   if (modelRates.length === 0) {
+    if (!Config.creditBasedBillingEnabled && !Config.pricing?.onlyEnableModelsInPricing) {
+      return;
+    }
     callback(new Error(`Unsupported model ${modelName}${providerName ? ` for provider ${providerName}` : ''}`));
   }
 }

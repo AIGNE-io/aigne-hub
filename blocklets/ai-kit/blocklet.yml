@@ -16,7 +16,7 @@ repository:
   url: git+https://github.com/blocklet/ai-kit.git
 specVersion: 1.2.8
 version: 0.2.3
-logo: screenshots/a9793769824431ba7220c198694a8baa.png
+logo: screenshots/logo.jpg
 files:
   - dist
   - screenshots
@@ -53,20 +53,6 @@ scripts:
   preStart: node api/hooks/pre-start.js
   dev: npm run start
 environments:
-  - name: OPENAI_API_KEY
-    description: Your OpenAI apiKey separate with commas.
-    required: false
-    default: ''
-    secure: true
-    shared: false
-  - name: OPENAI_BASE_URL
-    description: >-
-      Override the default base URL for the API, e.g.,
-      "https://api.example.com/v2/".
-    required: false
-    default: ''
-    secure: false
-    shared: false
   - name: VERBOSE
     description: Logging input and output of AI
     required: false
@@ -75,32 +61,6 @@ environments:
     shared: false
   - name: HTTPS_PROXY
     description: Use the API behind a proxy
-    required: false
-    default: ''
-    secure: false
-    shared: false
-  - name: GEMINI_API_KEY
-    description: Your Gemini apiKey separate with commas.
-    required: false
-    default: ''
-    secure: true
-    shared: false
-  - name: OPEN_ROUTER_API_KEY
-    description: Your OpenRouter apiKey separate with commas.
-    required: false
-    default: ''
-    secure: true
-    shared: false
-  - name: AI_KIT_API_KEY
-    description: Your AIGNE Hub apiKey separate with commas.
-    required: false
-    default: ''
-    secure: true
-    shared: false
-  - name: AI_KIT_BASE_URL
-    description: >-
-      Override the default base URL for the API, e.g.,
-      "https://api.example.com/v2/".
     required: false
     default: ''
     secure: false

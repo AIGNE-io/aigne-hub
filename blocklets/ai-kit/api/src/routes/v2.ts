@@ -70,7 +70,6 @@ router.post('/:type(chat)?/completions', compression(), user, async (req, res) =
   }
 });
 
-// v2 Chat Completions endpoint
 router.post(
   '/chat',
   user,
@@ -84,19 +83,17 @@ router.post(
       await checkUserCreditBalance({ userDid });
     }
 
+    await checkModelRateAvailable(req.body.model);
     const model = await getModel(req.body, {
       modelOptions: req.body?.options?.modelOptions,
     });
 
-    await checkModelRateAvailable(req.body.model);
     const engine = new AIGNE({ model });
     const aigneServer = new AIGNEHTTPServer(engine);
     await aigneServer.invoke(req, res, {
       userContext: { userId: req.user?.did },
       // @ts-ignore
-      callback: async (
-        usageData: Record<string, unknown> & { usage: { inputTokens: number; outputTokens: number }; model: string }
-      ) => {
+      callback: async (usageData: { usage: { inputTokens: number; outputTokens: number } }) => {
         if (usageData && Config.creditBasedBillingEnabled) {
           await createAndReportUsageV2({
             type: 'chatCompletion',

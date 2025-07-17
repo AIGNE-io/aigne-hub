@@ -34,7 +34,7 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
     defaultValues: {
       modelName: rate?.model || '',
       modelDisplay: rate?.modelDisplay || '',
-      rateType: rate?.type || 'text',
+      rateType: rate?.type || 'chatCompletion',
       inputRate: rate?.inputRate || 0,
       outputRate: rate?.outputRate || 0,
       description: rate?.description || '',

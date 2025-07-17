@@ -100,7 +100,7 @@
                     {
                       "property": "value",
                       "type": "boolean",
-                      "source": "p72faa2emzb.doc1z1uo846.y0qp94ywi4q.creditBasedBillingEnabled",
+                      "source": "p72faa2emzb.doc1z1uo846.creditBasedBillingEnabled",
                       "name": "creditBasedBillingEnabled"
                     }
                   ],
@@ -283,7 +283,7 @@
                 },
                 "x-decorator-props": {},
                 "name": "basePricePerUnit",
-                "description": "For example: 0.001 ABT / 1K tokens",
+                "description": "For example: 0.0025 ABT / 1K tokens",
                 "required": false,
                 "x-designable-id": "ijh86lq5v1o",
                 "x-index": 4

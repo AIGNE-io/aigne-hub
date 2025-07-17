@@ -1,7 +1,8 @@
-import { Toast } from '@arcblock/ux';
+import { formatError } from '@app/libs/util';
 import Dialog from '@arcblock/ux/lib/Dialog';
 /* eslint-disable react/no-unstable-nested-components */
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
+import Toast from '@arcblock/ux/lib/Toast';
 import { Switch, Table } from '@blocklet/ai-kit/components';
 import styled from '@emotion/styled';
 import { Add as AddIcon } from '@mui/icons-material';
@@ -41,7 +42,7 @@ export default function AIProviders() {
       const response = await api.get('/api/ai-providers');
       setProviders(response.data || []);
     } catch (error: any) {
-      Toast.error(error.message || t('fetchProvidersFailed'));
+      Toast.error(formatError(error) || t('fetchProvidersFailed'));
     } finally {
       setLoading(false);
     }
@@ -62,7 +63,7 @@ export default function AIProviders() {
         }
       }
     } catch (error: any) {
-      Toast.error(error.message || t('fetchProvidersFailed'));
+      Toast.error(formatError(error) || t('fetchProvidersFailed'));
     } finally {
       setLoading(false);
     }
@@ -122,7 +123,7 @@ export default function AIProviders() {
       setShowForm(false);
       setEditingProvider(null);
     } catch (error: any) {
-      Toast.error(error.message || t('createProviderFailed'));
+      Toast.error(formatError(error) || t('createProviderFailed'));
     }
   };
 
@@ -143,7 +144,7 @@ export default function AIProviders() {
       setShowForm(false);
       Toast.success(t('providerUpdated'));
     } catch (error: any) {
-      Toast.error(error.message || t('updateProviderFailed'));
+      Toast.error(formatError(error) || t('updateProviderFailed'));
     }
   };
 
@@ -157,7 +158,7 @@ export default function AIProviders() {
       await fetchProviders();
       Toast.success(provider.enabled ? t('providerDisabled') : t('providerEnabled'));
     } catch (error: any) {
-      Toast.error(error.message || t('updateProviderFailed'));
+      Toast.error(formatError(error) || t('updateProviderFailed'));
     }
   };
 
@@ -313,7 +314,13 @@ export default function AIProviders() {
     <Box>
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
         <Typography variant="body1">{t('aiProvidersDesc')}</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => setShowForm(true)}>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => {
+            setShowForm(true);
+            setEditingProvider(null);
+          }}>
           {t('addProvider')}
         </Button>
       </Stack>
@@ -339,6 +346,7 @@ export default function AIProviders() {
         open={showForm}
         onClose={() => setShowForm(false)}
         fullWidth
+        maxWidth="sm"
         title={editingProvider ? t('editProvider') : t('addProvider')}>
         <ProviderForm
           provider={editingProvider}

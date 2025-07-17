@@ -49,14 +49,6 @@ export const Config = {
     return this._verbose;
   },
 
-  _aiKitBaseURL: undefined as string | undefined,
-  get aiKitBaseURL() {
-    if (this._aiKitBaseURL === undefined) {
-      this._aiKitBaseURL = config.env.AI_KIT_BASE_URL;
-    }
-    return this._aiKitBaseURL;
-  },
-
   _openaiApiKey: undefined as string[] | undefined,
   get openaiApiKey() {
     if (this._openaiApiKey === undefined) {
@@ -182,19 +174,6 @@ export const Config = {
         .filter(Boolean);
     }
     return this._xaiApiKey;
-  },
-
-  _aiKitApiKey: undefined as string[] | undefined,
-  get aiKitApiKey() {
-    if (this._aiKitApiKey === undefined) {
-      const KEY = config.env.AI_KIT_API_KEY;
-      this._aiKitApiKey = (typeof KEY === 'string' ? KEY : '')
-        .split(',')
-        .map((i: string) => i.trim())
-        .filter(Boolean);
-    }
-
-    return this._aiKitApiKey;
   },
 
   get openaiBaseURL() {

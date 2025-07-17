@@ -1,7 +1,8 @@
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
+import { FormLabel } from '@blocklet/ai-kit/components';
 import {
   Add as AddIcon,
-  Delete as DeleteIcon,
+  DeleteOutlineOutlined,
   Visibility as VisibilityIcon,
   VisibilityOff as VisibilityOffIcon,
 } from '@mui/icons-material';
@@ -12,17 +13,19 @@ import {
   FormHelperText,
   IconButton,
   InputAdornment,
-  InputLabel,
+  Link,
   MenuItem,
   Paper,
   Select,
   Stack,
   TextField,
+  Typography,
 } from '@mui/material';
 import { useState } from 'react';
-import { Controller, useForm } from 'react-hook-form';
+import { FormProvider, useForm } from 'react-hook-form';
 
 import Collapse from '../../../../components/collapse';
+import FormInput from '../../../../components/form-input';
 
 export interface CredentialValue {
   access_key_id?: string;
@@ -48,14 +51,14 @@ export interface ProviderFormData {
 }
 
 const PROVIDER_OPTIONS = [
-  { value: 'openai', label: 'OpenAI' },
-  { value: 'anthropic', label: 'Anthropic' },
-  { value: 'bedrock', label: 'AWS Bedrock' },
-  { value: 'deepseek', label: 'DeepSeek' },
-  { value: 'google', label: 'Google' },
-  { value: 'ollama', label: 'Ollama' },
-  { value: 'openRouter', label: 'OpenRouter' },
-  { value: 'xai', label: 'xAI' },
+  { value: 'openai', label: 'OpenAI', baseUrl: 'https://api.openai.com/v1' },
+  { value: 'anthropic', label: 'Anthropic', baseUrl: 'https://api.anthropic.com/v1' },
+  { value: 'bedrock', label: 'AWS Bedrock', region: 'us-east-1' },
+  { value: 'deepseek', label: 'DeepSeek', baseUrl: 'https://api.deepseek.com/v1' },
+  { value: 'google', label: 'Google', baseUrl: 'https://generativelanguage.googleapis.com/v1beta/' },
+  { value: 'ollama', label: 'Ollama', baseUrl: 'http://localhost:11434/api' },
+  { value: 'openRouter', label: 'OpenRouter', baseUrl: 'https://openrouter.ai/api/v1' },
+  { value: 'xai', label: 'xAI', baseUrl: 'https://api.x.ai/v1' },
 ];
 
 interface Props {
@@ -83,13 +86,7 @@ export default function ProviderForm({ provider = null, onSubmit, onCancel }: Pr
   const [showPasswordMap, setShowPasswordMap] = useState<Record<string, boolean>>({});
   const [expandedSection, setExpandedSection] = useState<'provider' | 'credentials'>('provider');
 
-  const {
-    control,
-    handleSubmit,
-    watch,
-    setValue,
-    formState: { errors },
-  } = useForm<ProviderFormData>({
+  const methods = useForm<ProviderFormData>({
     defaultValues: {
       name: provider?.name || '',
       displayName: provider?.displayName || '',
@@ -100,6 +97,7 @@ export default function ProviderForm({ provider = null, onSubmit, onCancel }: Pr
     },
   });
 
+  const { handleSubmit, watch, setValue } = methods;
   const watchedName = watch('name');
 
   // 当选择provider时，自动设置displayName
@@ -107,6 +105,8 @@ export default function ProviderForm({ provider = null, onSubmit, onCancel }: Pr
     const selectedProvider = PROVIDER_OPTIONS.find((option) => option.value === value);
     if (selectedProvider && !provider) {
       setValue('displayName', selectedProvider.label);
+      setValue('baseUrl', selectedProvider.baseUrl);
+      setValue('region', selectedProvider.region);
     }
 
     // 如果是bedrock，设置默认凭证类型为access_key_pair
@@ -163,193 +163,202 @@ export default function ProviderForm({ provider = null, onSubmit, onCancel }: Pr
       const value = credential.value as CredentialValue;
       return (
         <Stack spacing={2}>
-          <TextField
-            label={t('accessKeyId')}
-            value={value.access_key_id || ''}
-            onChange={(e) => updateCredential(index, 'value', { ...value, access_key_id: e.target.value })}
-            placeholder="AKIAIOSFODNN7EXAMPLE"
-            fullWidth
-          />
-          <TextField
-            label={t('secretAccessKey')}
-            value={value.secret_access_key || ''}
-            onChange={(e) => updateCredential(index, 'value', { ...value, secret_access_key: e.target.value })}
-            type={showPasswordMap[`${index}-secret_access_key`] ? 'text' : 'password'}
-            placeholder="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
-            slotProps={{
-              input: {
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton onClick={() => togglePasswordVisibility(index, 'secret_access_key')}>
-                      {showPasswordMap[`${index}-secret_access_key`] ? <VisibilityOffIcon /> : <VisibilityIcon />}
-                    </IconButton>
-                  </InputAdornment>
-                ),
-              },
-            }}
-            fullWidth
-          />
+          <Box>
+            <FormLabel>{t('accessKeyId')}</FormLabel>
+            <TextField
+              value={value.access_key_id || ''}
+              onChange={(e) => updateCredential(index, 'value', { ...value, access_key_id: e.target.value })}
+              placeholder="AKIAIOSFODNN7EXAMPLE"
+              fullWidth
+              size="small"
+            />
+          </Box>
+          <Box>
+            <FormLabel>{t('secretAccessKey')}</FormLabel>
+            <TextField
+              value={value.secret_access_key || ''}
+              onChange={(e) => updateCredential(index, 'value', { ...value, secret_access_key: e.target.value })}
+              type={showPasswordMap[`${index}-secret_access_key`] ? 'text' : 'password'}
+              placeholder="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+              slotProps={{
+                input: {
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton onClick={() => togglePasswordVisibility(index, 'secret_access_key')}>
+                        {showPasswordMap[`${index}-secret_access_key`] ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                },
+              }}
+              fullWidth
+              size="small"
+            />
+          </Box>
         </Stack>
       );
     }
 
     return (
-      <TextField
-        label={t('credentialValue')}
-        value={credential.value as string}
-        onChange={(e) => updateCredential(index, 'value', e.target.value)}
-        type={showPasswordMap[`${index}-value`] ? 'text' : 'password'}
-        placeholder={credential.credentialType === 'api_key' ? 'sk-...' : t('enterCredentialValue')}
-        slotProps={{
-          input: {
-            endAdornment: (
-              <InputAdornment position="end">
-                <IconButton onClick={() => togglePasswordVisibility(index, 'value')}>
-                  {showPasswordMap[`${index}-value`] ? <VisibilityOffIcon /> : <VisibilityIcon />}
-                </IconButton>
-              </InputAdornment>
-            ),
-          },
-        }}
-        fullWidth
-      />
+      <Box>
+        <FormLabel>{t('credentialValue')}</FormLabel>
+        <TextField
+          value={credential.value as string}
+          onChange={(e) => updateCredential(index, 'value', e.target.value)}
+          type={showPasswordMap[`${index}-value`] ? 'text' : 'password'}
+          placeholder={credential.credentialType === 'api_key' ? 'sk-...' : t('enterCredentialValue')}
+          slotProps={{
+            input: {
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton onClick={() => togglePasswordVisibility(index, 'value')}>
+                    {showPasswordMap[`${index}-value`] ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                  </IconButton>
+                </InputAdornment>
+              ),
+            },
+          }}
+          fullWidth
+          size="small"
+        />
+      </Box>
     );
   };
 
   return (
-    <Box>
-      <Stack spacing={3}>
-        <Collapse
-          expanded={expandedSection === 'provider'}
-          value="provider"
-          onChange={(_, expanded) => {
-            if (expanded) {
-              setExpandedSection('provider');
-            }
-          }}
-          card
-          trigger={t('providerInfo')}>
-          <Paper elevation={0}>
-            <Stack spacing={2}>
-              <Controller
-                name="name"
-                control={control}
-                disabled={!!provider}
-                rules={{ required: t('providerNameRequired') }}
-                render={({ field }) => (
-                  <FormControl fullWidth error={!!errors.name}>
-                    <InputLabel>{t('providerName')}</InputLabel>
-                    <Select
-                      {...field}
-                      label={t('providerName')}
-                      onChange={(e) => {
-                        field.onChange(e);
-                        handleProviderNameChange(e.target.value as string);
-                      }}>
-                      {PROVIDER_OPTIONS.map((option) => (
-                        <MenuItem key={option.value} value={option.value}>
-                          {option.label}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                    {errors.name && <FormHelperText>{errors.name.message}</FormHelperText>}
-                  </FormControl>
-                )}
-              />
-
-              {/* 非bedrock时显示baseUrl */}
-              {watchedName !== 'bedrock' && (
-                <Controller
-                  name="baseUrl"
-                  control={control}
-                  render={({ field }) => (
-                    <TextField
-                      {...field}
-                      label={t('baseUrl')}
-                      error={!!errors.baseUrl}
-                      helperText={errors.baseUrl?.message}
-                      fullWidth
-                    />
-                  )}
-                />
-              )}
-
-              {watchedName === 'bedrock' && (
-                <Controller
-                  name="region"
-                  control={control}
-                  rules={{ required: t('regionRequired') }}
-                  render={({ field }) => (
-                    <TextField
-                      {...field}
-                      label={t('region')}
-                      error={!!errors.region}
-                      helperText={errors.region?.message}
-                      placeholder="us-east-1"
-                      fullWidth
-                    />
-                  )}
-                />
-              )}
-            </Stack>
-          </Paper>
-        </Collapse>
-
-        {/* 只在添加模式下显示凭证部分 */}
-        {!provider && (
+    <FormProvider {...methods}>
+      <Box>
+        <Stack spacing={3}>
           <Collapse
-            expanded={expandedSection === 'credentials'}
-            value="credentials"
+            expanded={expandedSection === 'provider'}
+            value="provider"
             onChange={(_, expanded) => {
               if (expanded) {
-                setExpandedSection('credentials');
+                setExpandedSection('provider');
               }
             }}
             card
-            trigger={
-              expandedSection === 'credentials' ? t('credentials') : `${t('credentials')} (${credentials.length})`
-            }>
-            <Stack spacing={2} sx={{ px: 2 }}>
-              {credentials.map((credential, index) => (
-                // eslint-disable-next-line react/no-array-index-key
-                <Collapse key={index} value={`credential-${index}`} trigger={credential.name} expanded>
-                  <Stack spacing={2} sx={{ p: 2 }}>
-                    <Stack direction="row" spacing={2} alignItems="center">
-                      <TextField
-                        label={t('credentialName')}
-                        value={credential.name}
-                        onChange={(e) => updateCredential(index, 'name', e.target.value)}
+            trigger={t('providerInfo')}>
+            <Paper elevation={0}>
+              <Stack spacing={2}>
+                <FormInput
+                  name="name"
+                  type="custom"
+                  label={t('providerName')}
+                  required
+                  rules={{ required: t('providerNameRequired') }}
+                  render={({ field, error, hasError }) => (
+                    <FormControl fullWidth error={hasError}>
+                      <Select
+                        {...field}
                         size="small"
-                        sx={{ flex: 1 }}
-                      />
-                      <IconButton onClick={() => removeCredential(index)} color="error" size="small">
-                        <DeleteIcon />
-                      </IconButton>
-                    </Stack>
+                        disabled={!!provider}
+                        onChange={(e) => {
+                          field.onChange(e);
+                          handleProviderNameChange(e.target.value as string);
+                        }}>
+                        {PROVIDER_OPTIONS.map((option) => (
+                          <MenuItem key={option.value} value={option.value}>
+                            {option.label}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                      {hasError && <FormHelperText>{error}</FormHelperText>}
+                    </FormControl>
+                  )}
+                />
 
-                    {renderCredentialFields(credential, index)}
+                {/* 非bedrock时显示baseUrl */}
+                {watchedName !== 'bedrock' && <FormInput name="baseUrl" label={t('baseUrl')} required />}
+
+                {watchedName === 'bedrock' && (
+                  <Stack spacing={1}>
+                    <FormInput
+                      name="region"
+                      label={t('region')}
+                      placeholder="us-east-1"
+                      required
+                      rules={{ required: t('regionRequired') }}
+                    />
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{
+                        a: {
+                          textDecoration: 'none',
+                        },
+                      }}>
+                      <Link href="https://docs.aws.amazon.com/general/latest/gr/bedrock.html" target="_blank">
+                        {t('awsRegionDesc')}
+                      </Link>
+                    </Typography>
                   </Stack>
-                </Collapse>
-              ))}
-
-              <Button
-                variant="outlined"
-                startIcon={<AddIcon />}
-                onClick={addCredential}
-                sx={{ alignSelf: 'flex-start' }}>
-                {t('addCredential')}
-              </Button>
-            </Stack>
+                )}
+              </Stack>
+            </Paper>
           </Collapse>
-        )}
 
-        <Stack direction="row" spacing={2} justifyContent="flex-end">
-          <Button onClick={onCancel}>{t('cancel')}</Button>
-          <Button variant="contained" onClick={handleSubmit(handleFormSubmit)}>
-            {provider ? t('update') : t('create')}
-          </Button>
+          {/* 只在添加模式下显示凭证部分 */}
+          {!provider && (
+            <Collapse
+              expanded={expandedSection === 'credentials'}
+              value="credentials"
+              onChange={(_, expanded) => {
+                if (expanded) {
+                  setExpandedSection('credentials');
+                }
+              }}
+              card
+              trigger={
+                expandedSection === 'credentials' ? t('credentials') : `${t('credentials')} (${credentials.length})`
+              }>
+              <Stack spacing={2} sx={{ px: 2 }}>
+                {credentials.map((credential, index) => (
+                  // eslint-disable-next-line react/no-array-index-key
+                  <Collapse
+                    key={index}
+                    value={`credential-${index}`}
+                    trigger={credential.name}
+                    expanded
+                    addons={
+                      <IconButton onClick={() => removeCredential(index)} color="error" size="small">
+                        <DeleteOutlineOutlined />
+                      </IconButton>
+                    }>
+                    <Stack spacing={2} sx={{ borderTop: '1px solid', borderColor: 'divider', pt: 2, px: 2 }}>
+                      <Box>
+                        <FormLabel>{t('credentialName')}</FormLabel>
+                        <TextField
+                          value={credential.name}
+                          onChange={(e) => updateCredential(index, 'name', e.target.value)}
+                          size="small"
+                          fullWidth
+                        />
+                      </Box>
+                      {renderCredentialFields(credential, index)}
+                    </Stack>
+                  </Collapse>
+                ))}
+
+                <Button
+                  variant="outlined"
+                  startIcon={<AddIcon />}
+                  onClick={addCredential}
+                  sx={{ alignSelf: 'flex-start' }}>
+                  {t('addCredential')}
+                </Button>
+              </Stack>
+            </Collapse>
+          )}
+
+          <Stack direction="row" spacing={2} justifyContent="flex-end">
+            <Button onClick={onCancel}>{t('cancel')}</Button>
+            <Button variant="contained" onClick={handleSubmit(handleFormSubmit)}>
+              {provider ? t('update') : t('create')}
+            </Button>
+          </Stack>
         </Stack>
-      </Stack>
-    </Box>
+      </Box>
+    </FormProvider>
   );
 }

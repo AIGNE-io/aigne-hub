@@ -1,5 +1,7 @@
+import { formatError } from '@app/libs/util';
 import Dialog from '@arcblock/ux/lib/Dialog';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
+import Toast from '@arcblock/ux/lib/Toast';
 import { Add as AddIcon, Delete as DeleteIcon, Edit as EditIcon } from '@mui/icons-material';
 import { Alert, Box, Button, Chip, Collapse, Fade, IconButton, Slide, Stack, Typography } from '@mui/material';
 import { useState } from 'react';
@@ -46,7 +48,7 @@ export default function CredentialDialog({ provider, onClose, onCredentialChange
       onCredentialChange();
       setShowForm(false);
     } catch (error: any) {
-      throw new Error(error.message || t('createCredentialFailed'));
+      Toast.error(formatError(error) || t('createCredentialFailed'));
     }
   };
 
@@ -57,7 +59,7 @@ export default function CredentialDialog({ provider, onClose, onCredentialChange
       onCredentialChange();
       setEditingCredential(null);
     } catch (error: any) {
-      throw new Error(error.message || t('updateCredentialFailed'));
+      Toast.error(formatError(error) || t('updateCredentialFailed'));
     }
   };
 
@@ -74,7 +76,7 @@ export default function CredentialDialog({ provider, onClose, onCredentialChange
       }, 300);
     } catch (error: any) {
       setDeletingCredentialId(null);
-      throw new Error(error.message || t('deleteCredentialFailed'));
+      Toast.error(formatError(error) || t('deleteCredentialFailed'));
     }
   };
 
@@ -201,11 +203,6 @@ export default function CredentialDialog({ provider, onClose, onCredentialChange
                               <Box>
                                 <strong>{t('usageCount')}:</strong> {credential.usageCount}
                               </Box>
-                              {credential.lastUsedAt && (
-                                <Box>
-                                  <strong>{t('lastUsed')}:</strong> {formatDate(credential.lastUsedAt)}
-                                </Box>
-                              )}
                               <Box>
                                 <strong>{t('created')}:</strong> {formatDate(credential.createdAt)}
                               </Box>

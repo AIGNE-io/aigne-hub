@@ -56,6 +56,9 @@ export async function createAndReportUsage({
 }
 
 async function getModelRates(model: string) {
+  if (!model) {
+    throw new Error('Model is required');
+  }
   const callback = (err: Error) => {
     if (Config.pricing?.list) {
       return Config.pricing?.list;
@@ -94,6 +97,9 @@ async function getModelRates(model: string) {
 }
 
 async function getPrice(type: Usage['type'], model: string) {
+  if (!model) {
+    throw new Error('Model is required');
+  }
   const modelRates = await getModelRates(model);
   const modelName = model.includes(':') ? model.split(':')[1] : model;
   const price = modelRates.find((i) => i.type === type && i.model === modelName);

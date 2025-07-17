@@ -117,12 +117,12 @@ export async function ensureDefaultCreditPrice() {
         prices: [
           {
             type: 'one_time',
-            unit_amount: '0.001',
+            unit_amount: '0.0025',
             currency_id: paymentCurrencies[0]!.id,
             // @ts-ignore
             currency_options: paymentCurrencies.map((currency) => ({
               currency_id: currency.id,
-              unit_amount: '0.001',
+              unit_amount: '0.0025',
             })),
             lookup_key: DEFAULT_CREDIT_PRICE_KEY,
             nickname: 'Per Unit Credit For AIGNE Hub',
@@ -263,7 +263,7 @@ export async function getActiveSubscriptionOfApp({
 }) {
   if (!isPaymentInstalled()) return undefined;
 
-  // @ts-ignore TODO: remove ts-ignore after upgrade @userDid-pay/client
+  // @ts-ignore TODO: remove ts-ignore after upgrade @did-pay/client
   const subscription = (await payment.subscriptions.list({ 'metadata.appId': appId })).list.find(
     (i) =>
       status.includes(i.status) && i.items.some((j) => j.price.product.id === Config.pricing?.subscriptionProductId)

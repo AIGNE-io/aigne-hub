@@ -1,7 +1,7 @@
-/* eslint-disable react/no-unstable-nested-components */
-import { Toast } from '@arcblock/ux';
 import Dialog from '@arcblock/ux/lib/Dialog';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
+/* eslint-disable react/no-unstable-nested-components */
+import Toast from '@arcblock/ux/lib/Toast';
 import { Table } from '@blocklet/ai-kit/components';
 import styled from '@emotion/styled';
 import { Add as AddIcon } from '@mui/icons-material';
@@ -254,7 +254,13 @@ export default function AIModelRates() {
     <Box>
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
         <Typography variant="body1">{t('config.modelRates.description')}</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => setShowForm(true)}>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => {
+            setShowForm(true);
+            setEditingRate(null);
+          }}>
           {t('config.modelRates.actions.add')}
         </Button>
       </Stack>

@@ -1,5 +1,5 @@
-import { Toast } from '@arcblock/ux';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
+import Toast from '@arcblock/ux/lib/Toast';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import {
   Box,
@@ -8,14 +8,14 @@ import {
   FormHelperText,
   IconButton,
   InputAdornment,
-  InputLabel,
   MenuItem,
   Select,
   Stack,
-  TextField,
 } from '@mui/material';
 import { useState } from 'react';
-import { Controller, useForm } from 'react-hook-form';
+import { FormProvider, useForm } from 'react-hook-form';
+
+import FormInput from '../../../../components/form-input';
 
 export interface CredentialValue {
   access_key_id?: string;
@@ -64,12 +64,7 @@ export default function CredentialForm({
     return initialData.credentialType || 'api_key';
   };
 
-  const {
-    control,
-    handleSubmit,
-    watch,
-    formState: { errors },
-  } = useForm<CredentialFormData>({
+  const methods = useForm<CredentialFormData>({
     defaultValues: {
       name: initialData.name || 'Credential 1',
       value: initialData.value || (provider?.name === 'bedrock' ? { access_key_id: '', secret_access_key: '' } : ''),
@@ -77,6 +72,7 @@ export default function CredentialForm({
     },
   });
 
+  const { handleSubmit, watch } = methods;
   const credentialType = watch('credentialType');
 
   const handleFormSubmit = async (data: CredentialFormData) => {
@@ -98,44 +94,32 @@ export default function CredentialForm({
     if (credentialType === 'access_key_pair') {
       return (
         <Stack spacing={2}>
-          <Controller
-            name="value"
-            control={control}
+          <FormInput
+            name="value.access_key_id"
+            label={t('accessKeyId')}
+            placeholder="AKIAIOSFODNN7EXAMPLE"
+            required
             rules={{ required: t('credentialValueRequired') }}
-            render={({ field }) => {
-              const value = (field.value as CredentialValue) || {};
-              return (
-                <Stack spacing={2}>
-                  <TextField
-                    label={t('accessKeyId')}
-                    value={value.access_key_id || ''}
-                    onChange={(e) => field.onChange({ ...value, access_key_id: e.target.value })}
-                    placeholder="AKIAIOSFODNN7EXAMPLE"
-                    error={!!errors.value}
-                    fullWidth
-                  />
-                  <TextField
-                    label={t('secretAccessKey')}
-                    value={value.secret_access_key || ''}
-                    onChange={(e) => field.onChange({ ...value, secret_access_key: e.target.value })}
-                    type={showPassword.secret_access_key ? 'text' : 'password'}
-                    placeholder="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
-                    slotProps={{
-                      input: {
-                        endAdornment: (
-                          <InputAdornment position="end">
-                            <IconButton onClick={() => togglePasswordVisibility('secret_access_key')}>
-                              {showPassword.secret_access_key ? <VisibilityOff /> : <Visibility />}
-                            </IconButton>
-                          </InputAdornment>
-                        ),
-                      },
-                    }}
-                    error={!!errors.value}
-                    fullWidth
-                  />
-                </Stack>
-              );
+          />
+          <FormInput
+            name="value.secret_access_key"
+            label={t('secretAccessKey')}
+            placeholder="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+            required
+            rules={{ required: t('credentialValueRequired') }}
+            slotProps={{
+              htmlInput: {
+                type: showPassword.secret_access_key ? 'text' : 'password',
+              },
+              input: {
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton onClick={() => togglePasswordVisibility('secret_access_key')}>
+                      {showPassword.secret_access_key ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              },
             }}
           />
         </Stack>
@@ -143,92 +127,75 @@ export default function CredentialForm({
     }
 
     return (
-      <Controller
+      <FormInput
         name="value"
-        control={control}
+        label={t('credentialValue')}
+        placeholder={credentialType === 'api_key' ? 'sk-...' : t('enterCredentialValue')}
+        required
         rules={{ required: t('credentialValueRequired') }}
-        render={({ field }) => (
-          <TextField
-            {...field}
-            label={t('credentialValue')}
-            type={showPassword.value ? 'text' : 'password'}
-            placeholder={credentialType === 'api_key' ? 'sk-...' : t('enterCredentialValue')}
-            slotProps={{
-              input: {
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton onClick={() => togglePasswordVisibility('value')}>
-                      {showPassword.value ? <VisibilityOff /> : <Visibility />}
-                    </IconButton>
-                  </InputAdornment>
-                ),
-              },
-            }}
-            error={!!errors.value}
-            helperText={errors.value?.message}
-            fullWidth
-          />
-        )}
+        slotProps={{
+          htmlInput: {
+            type: showPassword.value ? 'text' : 'password',
+          },
+          input: {
+            endAdornment: (
+              <InputAdornment position="end">
+                <IconButton onClick={() => togglePasswordVisibility('value')}>
+                  {showPassword.value ? <VisibilityOff /> : <Visibility />}
+                </IconButton>
+              </InputAdornment>
+            ),
+          },
+        }}
       />
     );
   };
 
-  const formContent = (
-    <>
-      <Controller
-        name="name"
-        control={control}
-        rules={{ required: t('credentialNameRequired') }}
-        render={({ field }) => (
-          <TextField
-            {...field}
-            label={t('credentialName')}
-            error={!!errors.name}
-            helperText={errors.name?.message}
-            fullWidth
-          />
-        )}
-      />
-
-      {!provider && (
-        <Controller
-          name="credentialType"
-          control={control}
-          rules={{ required: t('credentialTypeRequired') }}
-          render={({ field }) => (
-            <FormControl fullWidth error={!!errors.credentialType}>
-              <InputLabel>{t('credentialType')}</InputLabel>
-              <Select {...field} label={t('credentialType')}>
-                {CREDENTIAL_TYPE_OPTIONS.map((option) => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
-                  </MenuItem>
-                ))}
-              </Select>
-              {errors.credentialType && <FormHelperText>{errors.credentialType.message}</FormHelperText>}
-            </FormControl>
-          )}
-        />
-      )}
-
-      {renderValueFields()}
-
-      <Stack direction="row" spacing={2} justifyContent="flex-end">
-        <Button onClick={onCancel} disabled={loading}>
-          {t('cancel')}
-        </Button>
-        <Button type="submit" variant="contained" disabled={loading}>
-          {isEdit ? t('update') : t('create')}
-        </Button>
-      </Stack>
-    </>
-  );
-
   return (
-    <Box component="form" onSubmit={handleSubmit(handleFormSubmit)}>
-      <Stack spacing={3} sx={{ py: 1 }}>
-        {formContent}
-      </Stack>
-    </Box>
+    <FormProvider {...methods}>
+      <Box component="form" onSubmit={handleSubmit(handleFormSubmit)}>
+        <Stack spacing={3} sx={{ py: 1 }}>
+          <FormInput
+            name="name"
+            label={t('credentialName')}
+            required
+            rules={{ required: t('credentialNameRequired') }}
+          />
+
+          {!provider && (
+            <FormInput
+              name="credentialType"
+              type="custom"
+              label={t('credentialType')}
+              required
+              rules={{ required: t('credentialTypeRequired') }}
+              render={({ field, error, hasError }) => (
+                <FormControl fullWidth error={hasError}>
+                  <Select {...field} size="small">
+                    {CREDENTIAL_TYPE_OPTIONS.map((option) => (
+                      <MenuItem key={option.value} value={option.value}>
+                        {option.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  {hasError && <FormHelperText>{error}</FormHelperText>}
+                </FormControl>
+              )}
+            />
+          )}
+
+          {renderValueFields()}
+
+          <Stack direction="row" spacing={2} justifyContent="flex-end">
+            <Button onClick={onCancel} disabled={loading}>
+              {t('cancel')}
+            </Button>
+            <Button type="submit" variant="contained" disabled={loading}>
+              {isEdit ? t('update') : t('create')}
+            </Button>
+          </Stack>
+        </Stack>
+      </Box>
+    </FormProvider>
   );
 }
