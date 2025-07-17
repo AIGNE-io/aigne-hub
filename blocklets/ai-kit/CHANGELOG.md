@@ -1,3 +1,7 @@
+## 0.2.4 (2025-7-17)
+
+- fix: format model name
+
 ## 0.2.3 (2025-7-16)
 
 - fix: bundle code not working
