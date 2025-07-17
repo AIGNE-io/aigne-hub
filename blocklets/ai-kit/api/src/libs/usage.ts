@@ -80,7 +80,7 @@ async function getModelRates(model: string) {
       },
     });
     if (!provider) {
-      callback(new Error(`Provider ${providerName} not found`));
+      return callback(new Error(`Provider ${providerName} not found`));
     }
     where.providerId = provider!.id;
   }
@@ -88,7 +88,7 @@ async function getModelRates(model: string) {
     where,
   });
   if (modelRates.length === 0) {
-    callback(new Error(`Unsupported model ${modelName}${providerName ? ` for provider ${providerName}` : ''}`));
+    return callback(new Error(`Unsupported model ${modelName}${providerName ? ` for provider ${providerName}` : ''}`));
   }
   return modelRates;
 }

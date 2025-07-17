@@ -1,3 +1,7 @@
+## 0.2.3 (2025-7-16)
+
+- fix: bundle code not working
+
 ## 0.2.2 (2025-7-15)
 
 - chore: update package to latest

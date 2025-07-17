@@ -22,227 +22,187 @@
             "x-designable-id": "doc1z1uo846",
             "x-index": 0,
             "properties": {
-              "hs2dim7lk6l": {
-                "type": "void",
-                "x-component": "Card",
-                "x-component-props": {
-                  "title": "Basic",
-                  "style": {
-                    "margin": "0px 0px 0px 0px"
+              "MAX_RETRIES": {
+                "type": "number",
+                "title": "MAX RETRIES",
+                "x-decorator": "FormItem",
+                "x-component": "NumberPicker",
+                "x-validator": [
+                  {
+                    "triggerType": "onInput",
+                    "min": 0
                   }
-                },
-                "x-designable-id": "hs2dim7lk6l",
-                "x-index": 0,
-                "properties": {
-                  "MAX_RETRIES": {
-                    "type": "number",
-                    "title": "MAX RETRIES",
-                    "x-decorator": "FormItem",
-                    "x-component": "NumberPicker",
-                    "x-validator": [
-                      {
-                        "triggerType": "onInput",
-                        "min": 0
-                      }
-                    ],
-                    "x-component-props": {},
-                    "x-decorator-props": {},
-                    "name": "MAX_RETRIES",
-                    "default": 3,
-                    "required": true,
-                    "x-designable-id": "7m9oi0lw0c6",
-                    "x-index": 0
-                  }
-                }
+                ],
+                "x-component-props": {},
+                "x-decorator-props": {},
+                "name": "MAX_RETRIES",
+                "default": 3,
+                "required": true,
+                "x-designable-id": "7m9oi0lw0c6",
+                "x-index": 0
               },
-              "y0qp94ywi4q": {
-                "type": "void",
-                "x-component": "Card",
-                "x-component-props": {
-                  "title": "Credit Settings",
-                  "style": {
-                    "margin": "16px 0px 0px 0px"
+              "creditBasedBillingEnabled": {
+                "type": "boolean",
+                "title": "Enable Credit Billing",
+                "x-decorator": "FormItem",
+                "x-component": "Switch",
+                "x-validator": [],
+                "x-component-props": {},
+                "x-decorator-props": {},
+                "name": "creditBasedBillingEnabled",
+                "default": false,
+                "description": "Users must purchase Credits to access AI services when enabled",
+                "required": false,
+                "x-designable-id": "870n0z9d7gj",
+                "x-index": 1
+              },
+              "creditPaymentLink": {
+                "type": "string",
+                "title": "Credit Payment Link",
+                "x-decorator": "FormItem",
+                "x-component": "Input",
+                "x-validator": [],
+                "x-component-props": {},
+                "x-decorator-props": {},
+                "name": "creditPaymentLink",
+                "description": "Custom payment link for credit purchases",
+                "x-reactions": {
+                  "dependencies": [
+                    {
+                      "property": "value",
+                      "type": "boolean",
+                      "source": "p72faa2emzb.doc1z1uo846.creditBasedBillingEnabled",
+                      "name": "creditBasedBillingEnabled"
+                    }
+                  ],
+                  "fulfill": {
+                    "state": {
+                      "visible": "{{$deps.creditBasedBillingEnabled}}"
+                    }
                   }
                 },
-                "x-designable-id": "y0qp94ywi4q",
-                "x-index": 1,
-                "properties": {
-                  "creditBasedBillingEnabled": {
-                    "type": "boolean",
-                    "title": "Enable Credit Billing",
-                    "x-decorator": "FormItem",
-                    "x-component": "Switch",
-                    "x-validator": [],
-                    "x-component-props": {},
-                    "x-decorator-props": {},
-                    "name": "creditBasedBillingEnabled",
-                    "default": false,
-                    "description": "Users must purchase Credits to access AI services when enabled",
-                    "required": false,
-                    "x-designable-id": "870n0z9d7gj",
-                    "x-index": 0
-                  },
-                  "creditPaymentLink": {
-                    "type": "string",
-                    "title": "Credit Payment Link",
-                    "x-decorator": "FormItem",
-                    "x-component": "Input",
-                    "x-validator": [],
-                    "x-component-props": {},
-                    "x-decorator-props": {},
-                    "name": "creditPaymentLink",
-                    "description": "Custom payment link for credit purchases",
-                    "x-reactions": {
-                      "dependencies": [
-                        {
-                          "property": "value",
-                          "type": "boolean",
-                          "source": "p72faa2emzb.doc1z1uo846.y0qp94ywi4q.creditBasedBillingEnabled",
-                          "name": "creditBasedBillingEnabled"
-                        }
-                      ],
-                      "fulfill": {
-                        "state": {
-                          "visible": "{{$deps.creditBasedBillingEnabled}}"
-                        }
-                      }
-                    },
-                    "required": false,
-                    "x-designable-id": "36uj2hjx6cg",
-                    "x-index": 1
-                  },
-                  "newUserCreditGrantEnabled": {
-                    "type": "boolean",
-                    "title": "Grant Credits to New Users",
-                    "x-decorator": "FormItem",
-                    "x-component": "Radio.Group",
-                    "enum": [
-                      {
-                        "children": [],
-                        "label": "true",
-                        "value": true
-                      },
-                      {
-                        "children": [],
-                        "label": "false",
-                        "value": false
-                      }
-                    ],
-                    "x-validator": [],
-                    "x-component-props": {},
-                    "x-decorator-props": {},
-                    "name": "newUserCreditGrantEnabled",
-                    "description": "Automatically grant Credits to new users upon registration",
-                    "x-reactions": {
-                      "dependencies": [
-                        {
-                          "property": "value",
-                          "type": "boolean",
-                          "source": "p72faa2emzb.doc1z1uo846.y0qp94ywi4q.creditBasedBillingEnabled",
-                          "name": "creditBasedBillingEnabled"
-                        }
-                      ],
-                      "fulfill": {
-                        "state": {
-                          "visible": "{{$deps.creditBasedBillingEnabled}}"
-                        }
-                      }
-                    },
-                    "default": true,
-                    "x-designable-id": "v5sibktrus1",
-                    "x-index": 2
-                  },
-                  "newUserCreditGrantAmount": {
-                    "type": "number",
-                    "title": "Grant Amount",
-                    "x-decorator": "FormItem",
-                    "x-component": "NumberPicker",
-                    "x-validator": [],
-                    "x-component-props": {
-                      "max": 100000000
-                    },
-                    "x-decorator-props": {},
-                    "name": "newUserCreditGrantAmount",
-                    "description": "Number of Credits granted to new users (e.g., 100, 500)",
-                    "default": "100",
-                    "x-reactions": {
-                      "dependencies": [
-                        {
-                          "property": "value",
-                          "type": "boolean",
-                          "source": "p72faa2emzb.doc1z1uo846.y0qp94ywi4q.newUserCreditGrantEnabled",
-                          "name": "newUserCreditGrantEnabled"
-                        },
-                        {
-                          "property": "value",
-                          "type": "boolean",
-                          "source": "p72faa2emzb.doc1z1uo846.y0qp94ywi4q.creditBasedBillingEnabled",
-                          "name": "creditBasedBillingEnabled"
-                        }
-                      ],
-                      "fulfill": {
-                        "state": {
-                          "visible": "{{$deps.newUserCreditGrantEnabled === true && $deps.creditBasedBillingEnabled === true}}"
-                        }
-                      }
-                    },
-                    "x-designable-id": "coghf002tcn",
-                    "x-index": 3
-                  },
-                  "creditExpirationDays": {
-                    "type": "number",
-                    "title": "Expiration Days",
-                    "x-decorator": "FormItem",
-                    "x-component": "NumberPicker",
-                    "x-validator": [],
-                    "x-component-props": {
-                      "style": {
-                        "width": "50%",
-                        "display": "block",
-                        "flexWrap": "nowrap",
-                        "flexDirection": "row",
-                        "alignContent": "center"
-                      },
-                      "stringMode": false,
-                      "min": 0,
-                      "max": 365
-                    },
-                    "x-decorator-props": {
-                      "addonAfter": "",
-                      "addonBefore": "",
-                      "wrapperWidth": "auto",
-                      "fullness": false,
-                      "inset": false,
-                      "wrapperCol": null
-                    },
-                    "name": "creditExpirationDays",
-                    "description": "Credit expiration days (0 = never expire, 1 = 1 day, 30 = 30 days)",
-                    "default": "0",
-                    "x-reactions": {
-                      "dependencies": [
-                        {
-                          "property": "value",
-                          "type": "boolean",
-                          "source": "p72faa2emzb.doc1z1uo846.y0qp94ywi4q.newUserCreditGrantEnabled",
-                          "name": "newUserCreditGrantEnabled"
-                        },
-                        {
-                          "property": "value",
-                          "type": "boolean",
-                          "source": "p72faa2emzb.doc1z1uo846.y0qp94ywi4q.creditBasedBillingEnabled",
-                          "name": "creditBasedBillingEnabled"
-                        }
-                      ],
-                      "fulfill": {
-                        "state": {
-                          "visible": "{{$deps.newUserCreditGrantEnabled === true && $deps.creditBasedBillingEnabled === true}}"
-                        }
-                      }
-                    },
-                    "x-designable-id": "28c5d040bkv",
-                    "x-index": 4
+                "required": false,
+                "x-designable-id": "36uj2hjx6cg",
+                "x-index": 2
+              },
+              "newUserCreditGrantEnabled": {
+                "type": "boolean",
+                "title": "Grant Credits to New Users",
+                "x-decorator": "FormItem",
+                "x-component": "Switch",
+                "x-validator": [],
+                "x-component-props": {},
+                "x-decorator-props": {},
+                "name": "newUserCreditGrantEnabled",
+                "description": "Automatically grant Credits to new users upon registration",
+                "x-reactions": {
+                  "dependencies": [
+                    {
+                      "property": "value",
+                      "type": "boolean",
+                      "source": "p72faa2emzb.doc1z1uo846.y0qp94ywi4q.creditBasedBillingEnabled",
+                      "name": "creditBasedBillingEnabled"
+                    }
+                  ],
+                  "fulfill": {
+                    "state": {
+                      "visible": "{{$deps.creditBasedBillingEnabled}}"
+                    }
                   }
-                }
+                },
+                "default": true,
+                "x-designable-id": "2s5o9h6xxum",
+                "x-index": 3
+              },
+              "newUserCreditGrantAmount": {
+                "type": "number",
+                "title": "Grant Amount",
+                "x-decorator": "FormItem",
+                "x-component": "NumberPicker",
+                "x-validator": [],
+                "x-component-props": {
+                  "max": 100000000
+                },
+                "x-decorator-props": {},
+                "name": "newUserCreditGrantAmount",
+                "description": "Number of Credits granted to new users (e.g., 100, 500)",
+                "default": "100",
+                "x-reactions": {
+                  "dependencies": [
+                    {
+                      "property": "value",
+                      "type": "boolean",
+                      "source": "p72faa2emzb.doc1z1uo846.newUserCreditGrantEnabled",
+                      "name": "newUserCreditGrantEnabled"
+                    },
+                    {
+                      "property": "value",
+                      "type": "boolean",
+                      "source": "p72faa2emzb.doc1z1uo846.creditBasedBillingEnabled",
+                      "name": "creditBasedBillingEnabled"
+                    }
+                  ],
+                  "fulfill": {
+                    "state": {
+                      "visible": "{{$deps.newUserCreditGrantEnabled === true && $deps.creditBasedBillingEnabled === true}}"
+                    }
+                  }
+                },
+                "x-designable-id": "coghf002tcn",
+                "x-index": 4
+              },
+              "creditExpirationDays": {
+                "type": "number",
+                "title": "Expiration Days",
+                "x-decorator": "FormItem",
+                "x-component": "NumberPicker",
+                "x-validator": [],
+                "x-component-props": {
+                  "style": {
+                    "width": "50%",
+                    "display": "block",
+                    "flexWrap": "nowrap",
+                    "flexDirection": "row",
+                    "alignContent": "center"
+                  },
+                  "stringMode": false,
+                  "min": 0,
+                  "max": 365
+                },
+                "x-decorator-props": {
+                  "addonAfter": "",
+                  "addonBefore": "",
+                  "wrapperWidth": "auto",
+                  "fullness": false,
+                  "inset": false,
+                  "wrapperCol": null
+                },
+                "name": "creditExpirationDays",
+                "description": "Credit expiration days (0 = never expire, 1 = 1 day, 30 = 30 days)",
+                "default": "0",
+                "x-reactions": {
+                  "dependencies": [
+                    {
+                      "property": "value",
+                      "type": "boolean",
+                      "source": "p72faa2emzb.doc1z1uo846.newUserCreditGrantEnabled",
+                      "name": "newUserCreditGrantEnabled"
+                    },
+                    {
+                      "property": "value",
+                      "type": "boolean",
+                      "source": "p72faa2emzb.doc1z1uo846.creditBasedBillingEnabled",
+                      "name": "creditBasedBillingEnabled"
+                    }
+                  ],
+                  "fulfill": {
+                    "state": {
+                      "visible": "{{$deps.newUserCreditGrantEnabled === true && $deps.creditBasedBillingEnabled === true}}"
+                    }
+                  }
+                },
+                "x-designable-id": "28c5d040bkv",
+                "x-index": 5
               }
             }
           },
@@ -255,6 +215,22 @@
             "x-designable-id": "n7sdfnu0s0x",
             "x-index": 1,
             "properties": {
+              "3spur4wou0q": {
+                "type": "string",
+                "x-component": "Text",
+                "x-component-props": {
+                  "content": "The configuration for this Pricing module will no longer be supported in subsequent versions. \nPlease promptly go to AIGNE Hub Config - AI Config to perform the relevant configurations.",
+                  "mode": "p",
+                  "style": {
+                    "opacity": 0.54,
+                    "backgroundColor": "rgba(255,255,255,1)",
+                    "display": "inline-block"
+                  }
+                },
+                "x-pattern": "readOnly",
+                "x-designable-id": "3spur4wou0q",
+                "x-index": 0
+              },
               "calcTokenUsage": {
                 "type": "boolean",
                 "title": "Calc Token Usage",
@@ -266,7 +242,7 @@
                 "name": "calcTokenUsage",
                 "default": true,
                 "x-designable-id": "f05q0lvyn1h",
-                "x-index": 0
+                "x-index": 1
               },
               "subscriptionProductId": {
                 "type": "string",
@@ -279,7 +255,7 @@
                 "name": "subscriptionProductId",
                 "required": false,
                 "x-designable-id": "1eq6nkg38ki",
-                "x-index": 1
+                "x-index": 2
               },
               "subscriptionPaymentLink": {
                 "type": "string",
@@ -292,7 +268,7 @@
                 "name": "subscriptionPaymentLink",
                 "required": false,
                 "x-designable-id": "3dqkovwroo9",
-                "x-index": 2
+                "x-index": 3
               },
               "basePricePerUnit": {
                 "type": "number",
@@ -310,7 +286,7 @@
                 "description": "For example: 0.001 ABT / 1K tokens",
                 "required": false,
                 "x-designable-id": "ijh86lq5v1o",
-                "x-index": 3
+                "x-index": 4
               },
               "onlyEnableModelsInPricing": {
                 "type": "boolean",
@@ -322,18 +298,32 @@
                 "x-decorator-props": {},
                 "name": "onlyEnableModelsInPricing",
                 "x-designable-id": "p3sc4q9xj5g",
-                "x-index": 4
+                "x-index": 5
               },
               "pricingList": {
                 "type": "array",
                 "x-decorator": "FormItem",
                 "x-component": "ArrayTable",
                 "x-validator": [],
-                "x-component-props": {},
-                "x-decorator-props": {},
+                "x-component-props": {
+                  "style": {
+                    "display": "block",
+                    "margin": "0px 0px 0px 0px",
+                    "width": "100em"
+                  }
+                },
+                "x-decorator-props": {
+                  "wrapperAlign": "left",
+                  "style": {
+                    "display": "block",
+                    "flexDirection": "row",
+                    "alignContent": "center",
+                    "justifyContent": "center"
+                  }
+                },
                 "name": "pricingList",
                 "x-designable-id": "cgn7sn6ubro",
-                "x-index": 5,
+                "x-index": 6,
                 "items": {
                   "type": "object",
                   "x-designable-id": "63alcwzxuwe",
@@ -497,6 +487,6 @@
         }
       }
     },
-    "x-designable-id": "ixhajrv2da8"
+    "x-designable-id": "liyq05juxq5"
   }
 }

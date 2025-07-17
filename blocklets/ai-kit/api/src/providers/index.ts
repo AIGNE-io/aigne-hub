@@ -61,6 +61,7 @@ export async function checkModelRateAvailable(model: string, providerName?: stri
     });
     if (!providerRecord) {
       callback(new Error(`Provider ${providerName} not found`));
+      return;
     }
     providerId = providerRecord?.id;
   }

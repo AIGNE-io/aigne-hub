@@ -319,21 +319,21 @@ export async function getProviderCredentials(provider: string) {
     where: { name: provider, enabled: true },
   });
   if (!providerRecord) {
-    callback(new Error(`Provider ${provider} not found`));
+    return callback(new Error(`Provider ${provider} not found`));
   }
 
   const credentials = await AiCredential.findAll({
-    where: { providerId: providerRecord!.id, active: true },
+    where: { providerId: providerRecord.id, active: true },
   });
 
   if (credentials.length === 0) {
-    callback(new Error(`No credentials found for provider ${provider}`));
+    return callback(new Error(`No credentials found for provider ${provider}`));
   }
 
   const credential = await AiCredential.getNextAvailableCredential(providerRecord!.id);
 
   if (!credential) {
-    callback(new Error(`No active credentials found for provider ${provider}`));
+    return callback(new Error(`No active credentials found for provider ${provider}`));
   }
   await credential!.updateUsage();
   const value = AiCredential.decryptCredentialValue(credential!.credentialValue);

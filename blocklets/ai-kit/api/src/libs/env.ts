@@ -318,7 +318,7 @@ export const Config = {
   },
 
   get usageReportThrottleTime() {
-    return 10e3;
+    return process.env.USAGE_REPORT_THROTTLE_TIME ? parseInt(process.env.USAGE_REPORT_THROTTLE_TIME, 10) : 600e3;
   },
 
   get dataDir() {
