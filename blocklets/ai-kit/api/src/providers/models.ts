@@ -265,11 +265,6 @@ export function loadModel(
   return m.create({ ...params, model });
 }
 
-const parseModelOption = (model: string) => {
-  const { provider, name } = model?.match(/(?<provider>[^:]+)(:(?<name>(\S+)))?/)?.groups ?? {};
-  return { provider, name };
-};
-
 export const getModel = (
   input: ChatCompletionInput & Required<Pick<ChatCompletionInput, 'model'>>,
   options?: {
@@ -277,7 +272,8 @@ export const getModel = (
     clientOptions?: OpenAIChatModelOptions['clientOptions'];
   }
 ) => {
-  const { provider: providerName, name } = parseModelOption(input.model);
+  const modelArray = input.model.split('/');
+  const [providerName, name] = [modelArray[0], modelArray.slice(1).join('/')];
 
   const getDefaultProvider = () => {
     if (input.model.startsWith('gemini')) return 'google';
