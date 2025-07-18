@@ -1,3 +1,7 @@
+## 0.2.5 (2025-7-18)
+
+feat: support multi-provider ai integration and credit-based billing system
+
 ## 0.2.4 (2025-7-17)
 
 - fix: format model name
