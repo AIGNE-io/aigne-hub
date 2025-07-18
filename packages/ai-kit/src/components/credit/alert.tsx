@@ -5,7 +5,12 @@ import { CreditErrorType } from '../../api/error';
 import withLocaleProvider from '../../utils/withLocaleProvider';
 import CreditButton from './button';
 
-function CreditErrorAlert({ error, ...props }: { error: any } & AlertProps) {
+interface CreditError {
+  type: CreditErrorType;
+  message: string;
+}
+
+function CreditErrorAlert({ error, ...props }: { error: CreditError } & AlertProps) {
   const { t } = useLocaleContext();
 
   const isCreditError = error?.type === CreditErrorType.NOT_ENOUGH;

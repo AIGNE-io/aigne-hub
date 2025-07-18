@@ -94,7 +94,7 @@ export function ensureRemoteComponentCall(
       const sig = req.get('x-component-sig');
       const appId = req.get('x-app-id');
       const timestamp = req.get('x-timestamp');
-      const userDid = req.get('x-app-user-did'); // 获取用户 DID
+      const userDid = req.get('x-app-user-did'); // Get user did
 
       if (!sig || !appId || !timestamp) {
         throw new Error('Missing required headers x-component-sig/x-app-id/x-timestamp');

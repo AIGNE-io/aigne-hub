@@ -67,13 +67,17 @@ interface Props {
   onCancel: () => void;
 }
 
+function isValidCredentialType(value: any): value is 'api_key' | 'access_key_pair' | 'custom' {
+  return ['api_key', 'access_key_pair', 'custom'].includes(value);
+}
+
 export default function ProviderForm({ provider = null, onSubmit, onCancel }: Props) {
   const { t } = useLocaleContext();
   const [credentials, setCredentials] = useState<CredentialData[]>(
     provider?.credentials?.map((cred: any) => ({
       name: cred.name || `Credential ${Math.random().toString(36).substr(2, 9)}`,
       value: cred.credentialValue || {},
-      credentialType: (cred.credentialType || 'api_key') as 'api_key' | 'access_key_pair' | 'custom',
+      credentialType: isValidCredentialType(cred.credentialType) ? cred.credentialType : 'api_key',
     })) || [
       // 添加提供商时默认有一个凭证
       {
