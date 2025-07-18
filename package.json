@@ -19,7 +19,7 @@
     "build:libs": "pnpm -F @blocklet/ai-kit build",
     "clean": "pnpm -r run clean",
     "bump-version": "zx scripts/bump-version.mjs",
-    "update:deps": "npx -y taze latest -r -w -n '/blocklet|abtnode|arcblock|ocap/' && pnpm install && pnpm dedupe",
+    "update:deps": "npx -y taze latest -r -w -n '/blocklet|abtnode|arcblock|ocap|aigne/' && pnpm install && pnpm dedupe",
     "postinstall": "npx simple-git-hooks"
   },
   "simple-git-hooks": {

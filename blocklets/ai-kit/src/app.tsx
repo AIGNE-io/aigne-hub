@@ -37,18 +37,17 @@ export default function App() {
             }
           `}
         />
-
-        <ToastProvider>
-          <LocaleProvider
-            translations={translations}
-            fallbackLocale="en"
-            locale={undefined}
-            onLoadingTranslation={undefined}
-            languages={undefined}>
-            <SessionProvider serviceHost={basename}>
-              <Suspense fallback={<Loading />}>
-                <TransitionProvider>
-                  <ErrorBoundary onReset={window.location.reload} FallbackComponent={ErrorFallback}>
+        <ErrorBoundary onReset={window.location.reload} FallbackComponent={ErrorFallback}>
+          <Suspense fallback={<Loading />}>
+            <ToastProvider>
+              <LocaleProvider
+                translations={translations}
+                fallbackLocale="en"
+                locale={undefined}
+                onLoadingTranslation={undefined}
+                languages={undefined}>
+                <SessionProvider serviceHost={basename}>
+                  <TransitionProvider>
                     <Suspense
                       fallback={
                         <Center>
@@ -57,12 +56,12 @@ export default function App() {
                       }>
                       <AppRoutes basename={basename} />
                     </Suspense>
-                  </ErrorBoundary>
-                </TransitionProvider>
-              </Suspense>
-            </SessionProvider>
-          </LocaleProvider>
-        </ToastProvider>
+                  </TransitionProvider>
+                </SessionProvider>
+              </LocaleProvider>
+            </ToastProvider>
+          </Suspense>
+        </ErrorBoundary>
       </CssBaseline>
     </ThemeProvider>
   );
