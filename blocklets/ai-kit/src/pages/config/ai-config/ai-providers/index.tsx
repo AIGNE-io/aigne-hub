@@ -111,7 +111,7 @@ export default function AIProviders() {
           if (credentialValue) {
             api.post(`/api/ai-providers/${providerId}/credentials`, {
               name: credential.name,
-              value: credentialValue,
+              _value: credentialValue,
               credentialType: credential.credentialType,
             });
           }
@@ -174,7 +174,7 @@ export default function AIProviders() {
       name: 'provider',
       label: t('provider'),
       options: {
-        customBodyRender: (value: any, tableMeta: any) => {
+        customBodyRender: (_value: any, tableMeta: any) => {
           const provider = providers[tableMeta.rowIndex];
           if (!provider) return null;
 
@@ -187,7 +187,7 @@ export default function AIProviders() {
       label: t('endpointRegion'),
       width: 280,
       options: {
-        customBodyRender: (value: any, tableMeta: any) => {
+        customBodyRender: (_value: any, tableMeta: any) => {
           const provider = providers[tableMeta.rowIndex];
           if (!provider) return null;
 
@@ -217,7 +217,7 @@ export default function AIProviders() {
       name: 'credentials',
       label: t('credentials'),
       options: {
-        customBodyRender: (value: any, tableMeta: any) => {
+        customBodyRender: (_value: any, tableMeta: any) => {
           const provider = providers[tableMeta.rowIndex];
           if (!provider) return null;
 
@@ -245,7 +245,7 @@ export default function AIProviders() {
       name: 'status',
       label: t('status'),
       options: {
-        customBodyRender: (value: any, tableMeta: any) => {
+        customBodyRender: (_value: any, tableMeta: any) => {
           const provider = providers[tableMeta.rowIndex];
           if (!provider) return null;
 
@@ -275,7 +275,7 @@ export default function AIProviders() {
       name: 'enabled',
       label: t('enableStatus'),
       options: {
-        customBodyRender: (value: any, tableMeta: any) => {
+        customBodyRender: (_value: any, tableMeta: any) => {
           const provider = providers[tableMeta.rowIndex];
           if (!provider) return null;
 
@@ -291,7 +291,7 @@ export default function AIProviders() {
       name: 'actions',
       label: t('actions'),
       options: {
-        customBodyRender: (value: any, tableMeta: any) => {
+        customBodyRender: (_value: any, tableMeta: any) => {
           const provider = providers[tableMeta.rowIndex];
           if (!provider) return null;
 

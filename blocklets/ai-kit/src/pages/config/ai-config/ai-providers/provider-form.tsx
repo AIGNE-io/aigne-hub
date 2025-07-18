@@ -314,9 +314,9 @@ export default function ProviderForm({ provider = null, onSubmit, onCancel }: Pr
               }>
               <Stack spacing={2} sx={{ px: 2 }}>
                 {credentials.map((credential, index) => (
-                  // eslint-disable-next-line react/no-array-index-key
                   <Collapse
-                    key={index}
+                    // eslint-disable-next-line react/no-array-index-key
+                    key={`${credential.name}-${index}`}
                     value={`credential-${index}`}
                     trigger={credential.name}
                     expanded

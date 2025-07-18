@@ -140,7 +140,7 @@ export default function AIModelRates() {
       name: 'modelDisplay',
       label: t('config.modelRates.fields.modelName'),
       options: {
-        customBodyRender: (value: any, tableMeta: any) => {
+        customBodyRender: (_value: any, tableMeta: any) => {
           const rate = modelRates[tableMeta.rowIndex];
           if (!rate) return null;
 
@@ -156,7 +156,7 @@ export default function AIModelRates() {
       name: 'provider',
       label: t('config.modelRates.fields.provider'),
       options: {
-        customBodyRender: (value: any, tableMeta: any) => {
+        customBodyRender: (_value: any, tableMeta: any) => {
           const rate = modelRates[tableMeta.rowIndex];
           if (!rate) return null;
 
@@ -168,7 +168,7 @@ export default function AIModelRates() {
       name: 'type',
       label: t('config.modelRates.fields.type'),
       options: {
-        customBodyRender: (value: any, tableMeta: any) => {
+        customBodyRender: (_value: any, tableMeta: any) => {
           const rate = modelRates[tableMeta.rowIndex];
           if (!rate) return null;
 
@@ -187,7 +187,7 @@ export default function AIModelRates() {
       name: 'inputRate',
       label: t('config.modelRates.fields.inputRate'),
       options: {
-        customBodyRender: (value: any, tableMeta: any) => {
+        customBodyRender: (_value: any, tableMeta: any) => {
           const rate = modelRates[tableMeta.rowIndex];
           if (!rate) return null;
 
@@ -199,7 +199,7 @@ export default function AIModelRates() {
       name: 'outputRate',
       label: t('config.modelRates.fields.outputRate'),
       options: {
-        customBodyRender: (value: any, tableMeta: any) => {
+        customBodyRender: (_value: any, tableMeta: any) => {
           const rate = modelRates[tableMeta.rowIndex];
           if (!rate) return null;
 
@@ -211,7 +211,7 @@ export default function AIModelRates() {
       name: 'description',
       label: t('config.modelRates.fields.description'),
       options: {
-        customBodyRender: (value: any, tableMeta: any) => {
+        customBodyRender: (_value: any, tableMeta: any) => {
           const rate = modelRates[tableMeta.rowIndex];
           if (!rate) return null;
 
@@ -227,7 +227,7 @@ export default function AIModelRates() {
       name: 'actions',
       label: t('config.modelRates.fields.actions'),
       options: {
-        customBodyRender: (value: any, tableMeta: any) => {
+        customBodyRender: (_value: any, tableMeta: any) => {
           const rate = modelRates[tableMeta.rowIndex];
           if (!rate) return null;
 
