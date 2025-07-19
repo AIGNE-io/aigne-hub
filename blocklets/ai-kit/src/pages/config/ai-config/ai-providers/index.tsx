@@ -1,4 +1,4 @@
-import { formatError } from '@app/libs/util';
+import { formatError, getPrefix } from '@app/libs/util';
 import Dialog from '@arcblock/ux/lib/Dialog';
 /* eslint-disable react/no-unstable-nested-components */
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
@@ -6,8 +6,9 @@ import Toast from '@arcblock/ux/lib/Toast';
 import { Switch, Table } from '@blocklet/ai-kit/components';
 import styled from '@emotion/styled';
 import { Add as AddIcon } from '@mui/icons-material';
-import { Box, Button, Stack, Typography } from '@mui/material';
+import { Avatar, Box, Button, Stack, Typography } from '@mui/material';
 import { useEffect, useState } from 'react';
+import { joinURL } from 'ufo';
 
 import { useSessionContext } from '../../../../contexts/session';
 import CredentialDialog, { Credential } from './credential-dialog';
@@ -178,7 +179,16 @@ export default function AIProviders() {
           const provider = providers[tableMeta.rowIndex];
           if (!provider) return null;
 
-          return provider.displayName;
+          return (
+            <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+              <Avatar
+                src={joinURL(getPrefix(), `/logo/${provider.name}.png`)}
+                sx={{ width: 24, height: 24 }}
+                alt={provider.displayName}
+              />
+              <Typography variant="body2">{provider.displayName}</Typography>
+            </Stack>
+          );
         },
       },
     },
@@ -204,7 +214,11 @@ export default function AIProviders() {
                 </Typography>
               )}
               {provider.region && (
-                <Typography variant="caption" color="text.secondary">
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: 'text.secondary',
+                  }}>
                   Region: {provider.region}
                 </Typography>
               )}
@@ -224,7 +238,11 @@ export default function AIProviders() {
           const credentialCount = provider.credentials?.length || 0;
           if (credentialCount === 0) {
             return (
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                variant="body2"
+                sx={{
+                  color: 'text.secondary',
+                }}>
                 0 {t('credentialCount')}
               </Typography>
             );
@@ -251,7 +269,12 @@ export default function AIProviders() {
 
           const isConnected = provider.enabled && (provider.credentials?.length || 0) > 0;
           return (
-            <Stack direction="row" spacing={1} alignItems="center">
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{
+                alignItems: 'center',
+              }}>
               <Box
                 sx={{
                   display: 'flex',
@@ -312,7 +335,15 @@ export default function AIProviders() {
 
   return (
     <Box>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+      <Stack
+        direction="row"
+        sx={{
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          mb: 2,
+          gap: 2,
+          flexWrap: 'wrap',
+        }}>
         <Typography variant="body1">{t('aiProvidersDesc')}</Typography>
         <Button
           variant="contained"
@@ -324,7 +355,6 @@ export default function AIProviders() {
           {t('addProvider')}
         </Button>
       </Stack>
-
       <Root>
         <Table
           data={providers}
@@ -340,7 +370,6 @@ export default function AIProviders() {
           loading={loading}
         />
       </Root>
-
       {/* Add/Edit Provider Dialog */}
       <Dialog
         open={showForm}
@@ -357,7 +386,6 @@ export default function AIProviders() {
           }}
         />
       </Dialog>
-
       {/* Credentials Management Dialog */}
       {credentialsProvider && (
         <CredentialDialog

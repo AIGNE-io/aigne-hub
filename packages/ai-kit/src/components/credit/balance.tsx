@@ -42,7 +42,13 @@ function CreditBalance({ balance = undefined, currency = undefined, useAIKitServ
     return (
       <Card>
         <CardContent>
-          <Box display="flex" justifyContent="center" alignItems="center" minHeight="120px">
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              minHeight: '120px',
+            }}>
             <CircularProgress size={32} />
           </Box>
         </CardContent>
@@ -54,7 +60,12 @@ function CreditBalance({ balance = undefined, currency = undefined, useAIKitServ
     return (
       <Card>
         <CardContent>
-          <Typography color="error" textAlign="center" variant="body2">
+          <Typography
+            color="error"
+            variant="body2"
+            sx={{
+              textAlign: 'center',
+            }}>
             {error}
           </Typography>
         </CardContent>
@@ -76,7 +87,12 @@ function CreditBalance({ balance = undefined, currency = undefined, useAIKitServ
       }}>
       <CardContent sx={{ position: 'relative', zIndex: 1 }}>
         <Stack spacing={2}>
-          <Stack direction="row" alignItems="center" spacing={1}>
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{
+              alignItems: 'center',
+            }}>
             <AccountBalanceWalletRounded sx={{ fontSize: 28 }} />
             <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
               {t('creditBalance')}
@@ -97,7 +113,6 @@ function CreditBalance({ balance = undefined, currency = undefined, useAIKitServ
           </Typography>
         </Stack>
       </CardContent>
-
       {/* Background decoration */}
       <Box
         sx={{

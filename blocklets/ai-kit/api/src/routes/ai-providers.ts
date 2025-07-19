@@ -577,6 +577,10 @@ router.post('/model-rates', ensureAdmin, async (req, res) => {
       inputRate: Joi.number().min(0).required(),
       outputRate: Joi.number().min(0).required(),
       providers: Joi.array().items(Joi.string()).min(1).required(),
+      unitCosts: Joi.object({
+        input: Joi.number().min(0).required(),
+        output: Joi.number().min(0).required(),
+      }).optional(),
     });
 
     const { error, value } = batchCreateSchema.validate(req.body);
@@ -643,6 +647,7 @@ router.post('/model-rates', ensureAdmin, async (req, res) => {
           outputRate: value.outputRate,
           modelDisplay,
           description: value.description,
+          unitCosts: value.unitCosts ?? {},
         });
 
         return modelRate.toJSON();
@@ -853,6 +858,7 @@ router.get('/model-rates', user, async (req, res) => {
         attributes: ['id', 'name', 'displayName', 'baseUrl', 'region', 'enabled'],
       },
     ],
+    order: [['createdAt', 'DESC']],
   });
   return res.json(modelRates);
 });

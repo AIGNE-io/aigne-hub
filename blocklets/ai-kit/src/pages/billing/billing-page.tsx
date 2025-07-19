@@ -41,7 +41,12 @@ function BillingPage() {
     return (
       <Container maxWidth="lg" sx={{ py: 4 }}>
         <Stack spacing={3}>
-          <Stack direction="row" justifyContent="space-between" alignItems="center">
+          <Stack
+            direction="row"
+            sx={{
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}>
             <Box sx={{ width: 200, height: 32 }} />
             <Box sx={{ width: 150, height: 36 }} />
           </Stack>
@@ -55,12 +60,18 @@ function BillingPage() {
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Stack spacing={4}>
         {/* Header with AI Provider Switch */}
-        <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={2}>
+        <Stack
+          direction="row"
+          spacing={2}
+          sx={{
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+          }}>
           <Box>
             <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 0.5 }}>
               {t('creditManagement')}
             </Typography>
-            <Typography variant="body1" color="text.secondary">
+            <Typography variant="body1" sx={{ color: 'text.secondary' }}>
               {t('creditManagementDescription')}
             </Typography>
           </Box>

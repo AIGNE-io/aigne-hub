@@ -8,7 +8,6 @@ import { ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { useSessionContext } from '../../contexts/session';
 import { ImageGenerationSize, imageGenerationsV2, textCompletionsV2 } from '../../libs/ai';
 
-// 定义数据类型
 interface ModelOption {
   value: string;
   label: string;
@@ -29,7 +28,7 @@ interface ApiModel {
   }>;
 }
 
-// 提供商名称映射
+// Provider name mapping
 const providerDisplayNames: Record<string, string> = {
   openai: 'OpenAI',
   anthropic: 'Anthropic',
@@ -41,7 +40,7 @@ const providerDisplayNames: Record<string, string> = {
   xai: 'xAI',
 };
 
-// 格式化API数据为前端需要的格式
+// Format API data to frontend needed format
 function formatModelsData(apiModels: ApiModel[]): ModelGroup[] {
   const providerMap = new Map<string, ModelOption[]>();
 
@@ -57,7 +56,7 @@ function formatModelsData(apiModels: ApiModel[]): ModelGroup[] {
       const modelValue = `${providerName}/${apiModel.model}`;
       const modelLabel = apiModel.model;
 
-      // 避免重复添加相同的模型
+      // Avoid adding duplicate models
       const existingModels = providerMap.get(displayName)!;
       if (!existingModels.some((m) => m.value === modelValue)) {
         existingModels.push({
@@ -68,7 +67,7 @@ function formatModelsData(apiModels: ApiModel[]): ModelGroup[] {
     });
   });
 
-  // 转换为ModelGroup数组并排序
+  // Convert to ModelGroup array and sort
   const modelGroups: ModelGroup[] = [];
   providerMap.forEach((models, provider) => {
     modelGroups.push({
@@ -77,7 +76,7 @@ function formatModelsData(apiModels: ApiModel[]): ModelGroup[] {
     });
   });
 
-  // 按提供商名称排序
+  // Sort by provider name
   return modelGroups.sort((a, b) => a.provider.localeCompare(b.provider));
 }
 
@@ -99,13 +98,13 @@ export default function Chat() {
         const formattedGroups = formatModelsData(apiModels);
         setModelGroups(formattedGroups);
 
-        // 设置默认选中的模型
+        // Set default selected model
         if (formattedGroups.length > 0 && formattedGroups[0]!.models && formattedGroups[0]!.models!.length > 0) {
           setModel(formattedGroups[0]?.models[0]?.value || '');
         }
       } catch (error) {
         console.error('Failed to fetch models:', error);
-        // 如果获取失败，可以设置一个默认的空数组或者显示错误信息
+        // If fetching fails, you can set a default empty array or display error information
         setModelGroups([]);
       } finally {
         setLoading(false);

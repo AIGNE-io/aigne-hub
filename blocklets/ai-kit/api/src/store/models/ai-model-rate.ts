@@ -30,6 +30,11 @@ export default class AiModelRate extends Model<InferAttributes<AiModelRate>, Inf
 
   declare updatedAt: CreationOptional<Date>;
 
+  declare unitCosts?: {
+    input: number;
+    output: number;
+  };
+
   public static readonly GENESIS_ATTRIBUTES = {
     id: {
       type: DataTypes.STRING,
@@ -56,6 +61,10 @@ export default class AiModelRate extends Model<InferAttributes<AiModelRate>, Inf
     type: {
       type: DataTypes.ENUM('text', 'image', 'embedding'),
       allowNull: false,
+    },
+    unitCosts: {
+      type: DataTypes.JSON,
+      allowNull: true,
     },
     inputRate: {
       type: DataTypes.DECIMAL(10, 4),

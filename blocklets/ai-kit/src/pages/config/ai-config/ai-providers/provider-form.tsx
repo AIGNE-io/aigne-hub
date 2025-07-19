@@ -1,3 +1,4 @@
+import { getPrefix } from '@app/libs/util';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import { FormLabel } from '@blocklet/ai-kit/components';
 import {
@@ -7,6 +8,7 @@ import {
   VisibilityOff as VisibilityOffIcon,
 } from '@mui/icons-material';
 import {
+  Avatar,
   Box,
   Button,
   FormControl,
@@ -23,6 +25,7 @@ import {
 } from '@mui/material';
 import { useState } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
+import { joinURL } from 'ufo';
 
 import Collapse from '../../../../components/collapse';
 import FormInput from '../../../../components/form-input';
@@ -79,7 +82,7 @@ export default function ProviderForm({ provider = null, onSubmit, onCancel }: Pr
       value: cred.credentialValue || {},
       credentialType: isValidCredentialType(cred.credentialType) ? cred.credentialType : 'api_key',
     })) || [
-      // 添加提供商时默认有一个凭证
+      // When adding a provider, there is a default credential
       {
         name: 'Credential 1',
         value: '',
@@ -263,7 +266,14 @@ export default function ProviderForm({ provider = null, onSubmit, onCancel }: Pr
                         }}>
                         {PROVIDER_OPTIONS.map((option) => (
                           <MenuItem key={option.value} value={option.value}>
-                            {option.label}
+                            <Stack direction="row" spacing={1}>
+                              <Avatar
+                                src={joinURL(getPrefix(), `/logo/${option.value}.png`)}
+                                sx={{ width: 24, height: 24 }}
+                                alt={option.label}
+                              />
+                              <Typography variant="body2">{option.label}</Typography>
+                            </Stack>
                           </MenuItem>
                         ))}
                       </Select>
@@ -286,8 +296,9 @@ export default function ProviderForm({ provider = null, onSubmit, onCancel }: Pr
                     />
                     <Typography
                       variant="caption"
-                      color="text.secondary"
                       sx={{
+                        color: 'text.secondary',
+
                         a: {
                           textDecoration: 'none',
                         },
@@ -355,7 +366,12 @@ export default function ProviderForm({ provider = null, onSubmit, onCancel }: Pr
             </Collapse>
           )}
 
-          <Stack direction="row" spacing={2} justifyContent="flex-end">
+          <Stack
+            direction="row"
+            spacing={2}
+            sx={{
+              justifyContent: 'flex-end',
+            }}>
             <Button onClick={onCancel}>{t('cancel')}</Button>
             <Button variant="contained" onClick={handleSubmit(handleFormSubmit)}>
               {provider ? t('update') : t('create')}

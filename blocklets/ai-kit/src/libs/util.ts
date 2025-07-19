@@ -1,3 +1,5 @@
+import { joinURL } from 'ufo';
+
 export const formatError = (err: any) => {
   if (!err) {
     return 'Unknown error';
@@ -27,4 +29,20 @@ export const formatError = (err: any) => {
   }
 
   return err.message;
+};
+
+const AIGNE_HUB_DID = 'z8ia3xzq2tMq8CRHfaXj1BTYJyYnEcHbqP8cJ';
+export const getPrefix = (): string => {
+  const prefix = window.blocklet?.prefix || '/';
+  const baseUrl = window.location?.origin; // required when use payment feature cross origin
+  const componentId = (window.blocklet?.componentId || '').split('/').pop();
+  if (componentId === AIGNE_HUB_DID) {
+    return joinURL(baseUrl, prefix);
+  }
+  const component = (window.blocklet?.componentMountPoints || []).find((x: any) => x?.did === AIGNE_HUB_DID);
+  if (component) {
+    return joinURL(baseUrl, component.mountPoint);
+  }
+
+  return joinURL(baseUrl, prefix);
 };

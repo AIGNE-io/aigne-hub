@@ -1,16 +1,28 @@
+import { CreditRateFormula } from '@app/components/credit-rate-farmula';
+import { getPrefix } from '@app/libs/util';
 import Dialog from '@arcblock/ux/lib/Dialog';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 /* eslint-disable react/no-unstable-nested-components */
 import Toast from '@arcblock/ux/lib/Toast';
 import { Table } from '@blocklet/ai-kit/components';
 import styled from '@emotion/styled';
-import { Add as AddIcon } from '@mui/icons-material';
-import { Box, Button, Chip, Stack, Typography } from '@mui/material';
+import { Add as AddIcon, InfoOutlined } from '@mui/icons-material';
+import { Avatar, Box, Button, Chip, Stack, Tooltip, Typography } from '@mui/material';
 import { useEffect, useState } from 'react';
+import { joinURL } from 'ufo';
 
 import { useSessionContext } from '../../../../contexts/session';
 import ModelRateForm from './model-rate-form';
 import { ModelRate, ModelRateFormData } from './types';
+
+// 格式化小数字，使用科学计数法
+const formatSmallNumber = (num: number) => {
+  if (num === 0) return '0';
+  if (Math.abs(num) >= 0.001) {
+    return num.toFixed(8).replace(/\.?0+$/, '');
+  }
+  return num.toExponential(2);
+};
 
 export default function AIModelRates() {
   const { t } = useLocaleContext();
@@ -21,6 +33,10 @@ export default function AIModelRates() {
   const [editingRate, setEditingRate] = useState<ModelRate | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [rateToDelete, setRateToDelete] = useState<ModelRate | null>(null);
+
+  // 从 blocklet preferences 获取配置
+  const baseCreditPrice = window.blocklet?.preferences?.baseCreditPrice || 0.00000025;
+  const targetProfitMargin = window.blocklet?.preferences?.targetProfitMargin || 2;
 
   // 获取所有模型费率
   const fetchModelRates = async () => {
@@ -51,6 +67,7 @@ export default function AIModelRates() {
         outputRate: data.outputRate,
         description: data.description,
         providers: data.providers,
+        unitCosts: data.unitCosts,
       });
 
       Toast.success(t('config.modelRates.createSuccess'));
@@ -145,7 +162,11 @@ export default function AIModelRates() {
           if (!rate) return null;
 
           return (
-            <Typography variant="body2" fontWeight="medium">
+            <Typography
+              variant="body2"
+              sx={{
+                fontWeight: 'medium',
+              }}>
               {rate.modelDisplay || rate.model}
             </Typography>
           );
@@ -160,14 +181,34 @@ export default function AIModelRates() {
           const rate = modelRates[tableMeta.rowIndex];
           if (!rate) return null;
 
-          return <Typography variant="body2">{rate.provider.displayName}</Typography>;
+          return (
+            <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+              <Avatar
+                src={joinURL(getPrefix(), `/logo/${rate.provider.name}.png`)}
+                sx={{ width: 24, height: 24 }}
+                alt={rate.provider.displayName}
+              />
+              <Typography variant="body2">{rate.provider.displayName}</Typography>
+            </Stack>
+          );
         },
       },
     },
     {
       name: 'type',
       label: t('config.modelRates.fields.type'),
+
       options: {
+        customHeaderRender: () => {
+          return (
+            <Typography variant="body2">
+              {t('config.modelRates.fields.type')}
+              <Tooltip title={t('config.modelRates.fields.type.tooltip')}>
+                <InfoOutlined sx={{ fontSize: 16, color: 'text.secondary', cursor: 'help' }} />
+              </Tooltip>
+            </Typography>
+          );
+        },
         customBodyRender: (_value: any, tableMeta: any) => {
           const rate = modelRates[tableMeta.rowIndex];
           if (!rate) return null;
@@ -187,11 +228,66 @@ export default function AIModelRates() {
       name: 'inputRate',
       label: t('config.modelRates.fields.inputRate'),
       options: {
+        customHeadLabelRender: () => {
+          return (
+            <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              {t('config.modelRates.fields.inputRate')}
+              <Tooltip title={t('config.modelRates.configInfo.inputTokenConsumption')}>
+                <InfoOutlined sx={{ fontSize: 16, color: 'text.secondary', cursor: 'help' }} />
+              </Tooltip>
+            </Typography>
+          );
+        },
         customBodyRender: (_value: any, tableMeta: any) => {
           const rate = modelRates[tableMeta.rowIndex];
           if (!rate) return null;
 
-          return <Typography variant="body2">{rate.inputRate}</Typography>;
+          const actualInputCost = Number(rate.unitCosts?.input || 0);
+          const profitRate =
+            actualInputCost > 0 ? ((rate.inputRate * baseCreditPrice - actualInputCost) / actualInputCost) * 100 : 0;
+
+          return (
+            <Tooltip
+              title={
+                <Stack>
+                  <Typography variant="caption">
+                    <strong>{t('config.modelRates.configInfo.creditCost')}</strong>${rate.inputRate * baseCreditPrice}
+                  </Typography>
+                  <Typography variant="caption">
+                    <strong>{t('config.modelRates.configInfo.actualCost')}</strong>${actualInputCost}
+                  </Typography>
+                  <Typography variant="caption">
+                    <strong>{t('config.modelRates.configInfo.profitRate')}</strong>
+                    {profitRate.toFixed(2)}%
+                  </Typography>
+                </Stack>
+              }
+              slotProps={{
+                tooltip: {
+                  sx: {
+                    bgcolor: 'background.paper',
+                    color: 'text.primary',
+                    boxShadow: 2,
+                    border: '1px solid',
+                    borderColor: 'divider',
+                  },
+                },
+              }}
+              placement="bottom">
+              <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                <Typography variant="body2">{rate.inputRate}</Typography>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: profitRate >= 0 ? 'success.main' : 'error.main',
+                    display: 'block',
+                  }}>
+                  {profitRate >= 0 ? '+' : ''}
+                  {profitRate === 0 ? '0' : parseFloat(profitRate.toFixed(2))}%
+                </Typography>
+              </Stack>
+            </Tooltip>
+          );
         },
       },
     },
@@ -199,11 +295,69 @@ export default function AIModelRates() {
       name: 'outputRate',
       label: t('config.modelRates.fields.outputRate'),
       options: {
+        customHeadLabelRender: () => {
+          return (
+            <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              {t('config.modelRates.fields.outputRate')}
+              <Tooltip title={t('config.modelRates.configInfo.outputTokenConsumption')}>
+                <InfoOutlined sx={{ fontSize: 16, color: 'text.secondary', cursor: 'help' }} />
+              </Tooltip>
+            </Typography>
+          );
+        },
         customBodyRender: (_value: any, tableMeta: any) => {
           const rate = modelRates[tableMeta.rowIndex];
           if (!rate) return null;
 
-          return <Typography variant="body2">{rate.outputRate}</Typography>;
+          const actualOutputCost = Number(rate.unitCosts?.output || 0);
+          const profitRate =
+            actualOutputCost > 0
+              ? ((rate.outputRate * baseCreditPrice - actualOutputCost) / actualOutputCost) * 100
+              : 0;
+          return (
+            <Tooltip
+              title={
+                <Stack>
+                  <Typography variant="caption">
+                    <strong>{t('config.modelRates.configInfo.creditCost')}</strong>$
+                    {formatSmallNumber(rate.outputRate * baseCreditPrice)}
+                  </Typography>
+                  <Typography variant="caption">
+                    <strong>{t('config.modelRates.configInfo.actualCost')}</strong>$
+                    {formatSmallNumber(actualOutputCost)}
+                  </Typography>
+                  <Typography variant="caption">
+                    <strong>{t('config.modelRates.configInfo.profitRate')}</strong>
+                    {profitRate.toFixed(2)}%
+                  </Typography>
+                </Stack>
+              }
+              placement="bottom"
+              slotProps={{
+                tooltip: {
+                  sx: {
+                    bgcolor: 'background.paper',
+                    color: 'text.primary',
+                    boxShadow: 2,
+                    border: '1px solid',
+                    borderColor: 'divider',
+                  },
+                },
+              }}>
+              <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                <Typography variant="body2">{rate.outputRate}</Typography>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: profitRate >= 0 ? 'success.main' : 'error.main',
+                    display: 'block',
+                  }}>
+                  {profitRate >= 0 ? '+' : ''}
+                  {parseFloat(profitRate.toFixed(2))}%
+                </Typography>
+              </Stack>
+            </Tooltip>
+          );
         },
       },
     },
@@ -216,7 +370,13 @@ export default function AIModelRates() {
           if (!rate) return null;
 
           return (
-            <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 200 }} noWrap>
+            <Typography
+              variant="body2"
+              noWrap
+              sx={{
+                color: 'text.secondary',
+                maxWidth: 200,
+              }}>
               {rate.description || '-'}
             </Typography>
           );
@@ -252,7 +412,94 @@ export default function AIModelRates() {
 
   return (
     <Box>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
+      {/* Configuration Info */}
+      <Box
+        sx={{
+          mb: 3,
+          p: 2,
+          bgcolor: 'background.paper',
+          borderRadius: 1,
+          border: '1px solid',
+          borderColor: 'divider',
+          boxShadow: 1,
+        }}>
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={{ xs: 2, sm: 0 }}
+          sx={{
+            alignItems: { xs: 'flex-start', sm: 'center' },
+            justifyContent: 'space-between',
+          }}>
+          <Box sx={{ flex: 1 }}>
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{
+                alignItems: 'center',
+                flexWrap: 'wrap',
+              }}>
+              <Typography variant="body1" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                {t('config.modelRates.configInfo.title')}
+              </Typography>
+              <Tooltip
+                title={<CreditRateFormula />}
+                arrow
+                placement="right"
+                slotProps={{
+                  tooltip: {
+                    sx: {
+                      bgcolor: 'background.paper',
+                      color: 'text.primary',
+                      boxShadow: 2,
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      width: 'fit-content',
+                      minWidth: { xs: 'auto', sm: 400 },
+                    },
+                  },
+                }}>
+                <InfoOutlined
+                  sx={{
+                    fontSize: 16,
+                    color: 'text.secondary',
+                    cursor: 'help',
+                    '&:hover': {
+                      color: 'primary.main',
+                    },
+                  }}
+                />
+              </Tooltip>
+            </Stack>
+            <Typography
+              variant="body2"
+              sx={{
+                color: 'text.secondary',
+              }}>
+              1 AIC = ${baseCreditPrice} • {t('config.modelRates.configInfo.profitMargin')}
+              {targetProfitMargin}%
+            </Typography>
+          </Box>
+          <Button
+            size="small"
+            variant="outlined"
+            sx={{
+              textTransform: 'none',
+              fontWeight: 500,
+            }}
+            onClick={() => window.open('/.well-known/service/admin/overview/components', '_blank')}>
+            {t('config.modelRates.configInfo.settingsLink')}
+          </Button>
+        </Stack>
+      </Box>
+      <Stack
+        direction="row"
+        sx={{
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          mb: 3,
+          flexWrap: 'wrap',
+          gap: 2,
+        }}>
         <Typography variant="body1">{t('config.modelRates.description')}</Typography>
         <Button
           variant="contained"
@@ -278,7 +525,6 @@ export default function AIModelRates() {
           loading={loading}
         />
       </Root>
-
       {/* Add/Edit Model Rate Dialog */}
       <Dialog
         open={showForm}
@@ -295,7 +541,6 @@ export default function AIModelRates() {
           }}
         />
       </Dialog>
-
       {/* Delete Confirmation Dialog */}
       <Dialog
         open={deleteDialogOpen}
@@ -308,7 +553,12 @@ export default function AIModelRates() {
           },
         }}
         actions={
-          <Stack direction="row" spacing={2} justifyContent="flex-end">
+          <Stack
+            direction="row"
+            spacing={2}
+            sx={{
+              justifyContent: 'flex-end',
+            }}>
             <Button onClick={() => setDeleteDialogOpen(false)}>{t('config.modelRates.deleteDialog.cancel')}</Button>
             <Button variant="contained" color="error" onClick={handleDeleteRate}>
               {t('config.modelRates.deleteDialog.confirm')}

@@ -186,7 +186,12 @@ export default function CredentialForm({
 
           {renderValueFields()}
 
-          <Stack direction="row" spacing={2} justifyContent="flex-end">
+          <Stack
+            direction="row"
+            spacing={2}
+            sx={{
+              justifyContent: 'flex-end',
+            }}>
             <Button onClick={onCancel} disabled={loading}>
               {t('cancel')}
             </Button>

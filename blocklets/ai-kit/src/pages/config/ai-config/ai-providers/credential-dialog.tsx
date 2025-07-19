@@ -139,7 +139,12 @@ export default function CredentialDialog({ provider, onClose, onCredentialChange
         title={`${t('manageCredentials')} - ${provider.displayName}`}
         maxWidth="sm">
         <Stack spacing={3}>
-          <Stack direction="row" justifyContent="space-between" alignItems="center">
+          <Stack
+            direction="row"
+            sx={{
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}>
             <Typography variant="body1">
               {t('credentials')} ({provider.credentials?.length || 0})
             </Typography>
@@ -172,8 +177,18 @@ export default function CredentialDialog({ provider, onClose, onCredentialChange
                         }}>
                         <Box sx={{ position: 'relative' }}>
                           <Box sx={{ flex: 1 }}>
-                            <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 1 }}>
-                              <Typography variant="subtitle1" fontWeight="medium">
+                            <Stack
+                              direction="row"
+                              spacing={2}
+                              sx={{
+                                alignItems: 'center',
+                                mb: 1,
+                              }}>
+                              <Typography
+                                variant="subtitle1"
+                                sx={{
+                                  fontWeight: 'medium',
+                                }}>
                                 {credential.name}
                               </Typography>
                               <Chip
@@ -184,7 +199,12 @@ export default function CredentialDialog({ provider, onClose, onCredentialChange
                               />
                             </Stack>
 
-                            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                            <Typography
+                              variant="body2"
+                              sx={{
+                                color: 'text.secondary',
+                                mb: 1,
+                              }}>
                               {getCredentialDisplayValue(credential)}
                             </Typography>
 
@@ -246,7 +266,6 @@ export default function CredentialDialog({ provider, onClose, onCredentialChange
           )}
         </Stack>
       </Dialog>
-
       {/* 删除确认对话框 */}
       <Dialog
         open={!!deleteCredential}
