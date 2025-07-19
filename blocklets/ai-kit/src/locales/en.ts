@@ -169,7 +169,7 @@ export default flatten({
         estimatedProfitRate: 'Estimated Profit Rate',
         inputCost: 'Input Cost',
         outputCost: 'Output Cost',
-        perToken: '/ Token',
+        perToken: ' / Token',
         explanation: {
           title: 'Pricing Explanation',
           creditExplain: 'AIC is the billing unit used for AI services',

@@ -160,7 +160,7 @@ export default flatten({
         estimatedProfitRate: '预估收益率',
         inputCost: '输入成本',
         outputCost: '输出成本',
-        perToken: '/ Token',
+        perToken: ' / Token',
         explanation: {
           title: '定价说明',
           creditExplain: 'AIC 是 AI 服务的计费单位',
