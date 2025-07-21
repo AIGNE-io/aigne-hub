@@ -1,7 +1,6 @@
 ## 0.2.7 (2025-7-21)
 
 - feat: enhance AIGNE Hub with multi-provider support, credit billing, and updated documentation
-- fix: downgrade express to 4.x (#303)
 
 ## 0.2.6 (2025-7-21)
 
