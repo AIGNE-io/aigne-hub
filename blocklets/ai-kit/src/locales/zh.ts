@@ -265,7 +265,7 @@ export default flatten({
   // Home page
   homeSubtitle: '为 blocklets 提供的去中心化 AI 接入解决方案',
   creditBillingInfo: 'AIGNE Hub 已启用基于 Credit 的计费功能，您可以选择充值或前往账单管理自己的 Credits 额度。',
-  loginToAccess: '登录使用',
+  loginToAccess: '登录',
   configuration: '配置管理',
   playground: '沙盒环境',
   integration: '集成示例',
