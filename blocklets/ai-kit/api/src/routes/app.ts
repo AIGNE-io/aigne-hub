@@ -10,10 +10,10 @@ import {
 import { ensureAdmin, ensureComponentCall } from '@api/libs/security';
 import App from '@api/store/models/app';
 import Usage from '@api/store/models/usage';
-import { proxyToAIKit } from '@blocklet/ai-kit/api/call';
-import { appRegister } from '@blocklet/ai-kit/api/call/app';
-import AIKitConfig from '@blocklet/ai-kit/api/config';
-import { appIdFromPublicKey, ensureRemoteComponentCall } from '@blocklet/ai-kit/api/utils/auth';
+import { proxyToAIKit } from '@blocklet/aigne-hub/api/call';
+import { appRegister } from '@blocklet/aigne-hub/api/call/app';
+import AIKitConfig from '@blocklet/aigne-hub/api/config';
+import { appIdFromPublicKey, ensureRemoteComponentCall } from '@blocklet/aigne-hub/api/utils/auth';
 import { config, getComponentMountPoint } from '@blocklet/sdk';
 import sessionMiddleware from '@blocklet/sdk/lib/middlewares/session';
 import { Router } from 'express';

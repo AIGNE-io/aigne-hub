@@ -121,7 +121,7 @@ importers:
       '@arcblock/ux':
         specifier: ^3.0.27
         version: 3.0.27(9056c196e48a4aa9583cc93a8ef17d94)
-      '@blocklet/ai-kit':
+      '@blocklet/aigne-hub':
         specifier: workspace:^
         version: link:../../packages/ai-kit
       '@blocklet/constant':

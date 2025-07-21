@@ -1,5 +1,5 @@
 import { getCreditGrants, getCreditPaymentLink, getCreditTransactions, getUserCredits } from '@api/libs/payment';
-import { proxyToAIKit } from '@blocklet/ai-kit/api/call';
+import { proxyToAIKit } from '@blocklet/aigne-hub/api/call';
 import sessionMiddleware from '@blocklet/sdk/lib/middlewares/session';
 import { Router } from 'express';
 import Joi from 'joi';

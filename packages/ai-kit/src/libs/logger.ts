@@ -1,5 +1,5 @@
 import createLogger from '@blocklet/logger';
 
-const logger = createLogger('ai-kit:sdk');
+const logger = createLogger('aigne-hub:sdk');
 
 export default logger;

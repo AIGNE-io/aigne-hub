@@ -16,7 +16,7 @@
     "bundle": "pnpm build:libs && pnpm -F ai-kit bundle",
     "lint": "pnpm -r run lint",
     "build": "pnpm build:libs && pnpm -F ai-kit build",
-    "build:libs": "pnpm -F @blocklet/ai-kit build",
+    "build:libs": "pnpm -F @blocklet/aigne-hub build",
     "clean": "pnpm -r run clean",
     "bump-version": "zx scripts/bump-version.mjs",
     "update:deps": "npx -y taze latest -r -w -n '/blocklet|abtnode|arcblock|ocap|aigne/' && pnpm install && pnpm dedupe",

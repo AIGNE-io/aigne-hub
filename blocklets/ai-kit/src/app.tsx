@@ -3,7 +3,7 @@ import { ErrorFallback } from '@arcblock/ux/lib/ErrorBoundary';
 import { LocaleProvider } from '@arcblock/ux/lib/Locale/context';
 import { ThemeProvider } from '@arcblock/ux/lib/Theme';
 import { ToastProvider } from '@arcblock/ux/lib/Toast';
-import { CreditButton } from '@blocklet/ai-kit/components';
+import { CreditButton } from '@blocklet/aigne-hub/components';
 import Footer from '@blocklet/ui-react/lib/Footer';
 import Header from '@blocklet/ui-react/lib/Header';
 import { Global, css } from '@emotion/react';

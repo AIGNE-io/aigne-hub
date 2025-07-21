@@ -9,7 +9,7 @@ import {
   ImageGenerationInput,
   isChatCompletionChunk,
   isChatCompletionUsage,
-} from '@blocklet/ai-kit/api/types';
+} from '@blocklet/aigne-hub/api/types';
 import { get_encoding } from '@dqbd/tiktoken';
 import { Request, Response } from 'express';
 import Joi from 'joi';

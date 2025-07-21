@@ -2,7 +2,7 @@ import { getAIApiKey, getModelNameWithProvider, getOpenAI } from '@api/libs/ai-p
 import { Config } from '@api/libs/env';
 import AiModelRate from '@api/store/models/ai-model-rate';
 import AiProvider from '@api/store/models/ai-provider';
-import { ChatCompletionInput, ChatCompletionResponse } from '@blocklet/ai-kit/api/types';
+import { ChatCompletionInput, ChatCompletionResponse } from '@blocklet/aigne-hub/api/types';
 import OpenAI from 'openai';
 
 import { geminiChatCompletion } from './gemini';

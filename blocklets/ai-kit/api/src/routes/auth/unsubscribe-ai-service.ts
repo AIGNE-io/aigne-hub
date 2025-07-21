@@ -1,6 +1,6 @@
 import { passportsAllowUnsubscribeAIService, wallet } from '@api/libs/auth';
 import logger from '@api/libs/logger';
-import { cancelSubscription, recoverSubscription } from '@blocklet/ai-kit/api/call/app';
+import { cancelSubscription, recoverSubscription } from '@blocklet/aigne-hub/api/call/app';
 
 export default {
   cancelSubscription: {

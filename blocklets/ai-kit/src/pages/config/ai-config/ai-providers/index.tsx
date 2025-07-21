@@ -3,7 +3,7 @@ import Dialog from '@arcblock/ux/lib/Dialog';
 /* eslint-disable react/no-unstable-nested-components */
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import Toast from '@arcblock/ux/lib/Toast';
-import { Switch, Table } from '@blocklet/ai-kit/components';
+import { Switch, Table } from '@blocklet/aigne-hub/components';
 import styled from '@emotion/styled';
 import { Add as AddIcon } from '@mui/icons-material';
 import { Avatar, Box, Button, Stack, Typography } from '@mui/material';

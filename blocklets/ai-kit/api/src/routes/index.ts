@@ -1,5 +1,5 @@
-import { proxyToAIKit } from '@blocklet/ai-kit/api/call';
-import AIKitConfig from '@blocklet/ai-kit/api/config';
+import { proxyToAIKit } from '@blocklet/aigne-hub/api/call';
+import AIKitConfig from '@blocklet/aigne-hub/api/config';
 import { Router } from 'express';
 
 import aiProviders from './ai-providers';

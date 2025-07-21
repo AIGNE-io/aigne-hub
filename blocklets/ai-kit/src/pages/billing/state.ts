@@ -1,4 +1,4 @@
-import { AIKitServiceConfig, AppStatusResult, appStatus, setAppConfig, unsubscribe } from '@blocklet/ai-kit/api';
+import { AIKitServiceConfig, AppStatusResult, appStatus, setAppConfig, unsubscribe } from '@blocklet/aigne-hub/api';
 import { TSubscriptionExpanded } from '@blocklet/payment-js';
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';

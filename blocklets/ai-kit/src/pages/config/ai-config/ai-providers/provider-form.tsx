@@ -1,6 +1,6 @@
 import { getPrefix } from '@app/libs/util';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
-import { FormLabel } from '@blocklet/ai-kit/components';
+import { FormLabel } from '@blocklet/aigne-hub/components';
 import {
   Add as AddIcon,
   DeleteOutlineOutlined,

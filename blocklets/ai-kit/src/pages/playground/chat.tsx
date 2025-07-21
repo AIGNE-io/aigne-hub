@@ -1,4 +1,10 @@
-import { Conversation, ConversationRef, CreditButton, MessageItem, useConversation } from '@blocklet/ai-kit/components';
+import {
+  Conversation,
+  ConversationRef,
+  CreditButton,
+  MessageItem,
+  useConversation,
+} from '@blocklet/aigne-hub/components';
 import Dashboard from '@blocklet/ui-react/lib/Dashboard';
 import styled from '@emotion/styled';
 import { HighlightOff } from '@mui/icons-material';

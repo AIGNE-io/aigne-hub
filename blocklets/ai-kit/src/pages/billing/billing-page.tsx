@@ -4,7 +4,7 @@ import { useSessionContext } from '@app/contexts/session';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import RelativeTime from '@arcblock/ux/lib/RelativeTime';
 import Toast from '@arcblock/ux/lib/Toast';
-import withLocaleProvider from '@blocklet/ai-kit/utils/withLocaleProvider';
+import withLocaleProvider from '@blocklet/aigne-hub/utils/withLocaleProvider';
 import {
   AccessAlarmRounded,
   CheckCircleOutlineRounded,

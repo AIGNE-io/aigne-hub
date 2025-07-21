@@ -1,4 +1,4 @@
-import { FormLabel } from '@blocklet/ai-kit/components';
+import { FormLabel } from '@blocklet/aigne-hub/components';
 import { Box, InputAdornment, TextField, Typography } from '@mui/material';
 import type { TextFieldProps } from '@mui/material';
 import get from 'lodash/get';

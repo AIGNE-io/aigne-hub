@@ -7,7 +7,7 @@ import {
 import { checkSubscription } from '@api/libs/payment';
 import { createAndReportUsage } from '@api/libs/usage';
 import App from '@api/store/models/app';
-import { ensureRemoteComponentCall } from '@blocklet/ai-kit/api/utils/auth';
+import { ensureRemoteComponentCall } from '@blocklet/aigne-hub/api/utils/auth';
 import compression from 'compression';
 import { Router } from 'express';
 

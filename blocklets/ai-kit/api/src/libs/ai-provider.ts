@@ -1,5 +1,5 @@
 import { getProviderCredentials } from '@api/providers/models';
-import { SubscriptionError, SubscriptionErrorType } from '@blocklet/ai-kit/api';
+import { SubscriptionError, SubscriptionErrorType } from '@blocklet/aigne-hub/api';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import { OpenAI } from 'openai';
 

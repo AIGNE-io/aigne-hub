@@ -2,7 +2,7 @@ import 'express-async-errors';
 
 import path from 'path';
 
-import { SubscriptionError } from '@blocklet/ai-kit/api';
+import { SubscriptionError } from '@blocklet/aigne-hub/api';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import dotenv from 'dotenv-flow';

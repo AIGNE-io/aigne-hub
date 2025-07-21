@@ -1,4 +1,4 @@
-import { ChatCompletionChunk, ChatCompletionInput, ChatCompletionResponse } from '@blocklet/ai-kit/api/types';
+import { ChatCompletionChunk, ChatCompletionInput, ChatCompletionResponse } from '@blocklet/aigne-hub/api/types';
 import {
   FunctionCallingMode,
   FunctionDeclarationSchema,

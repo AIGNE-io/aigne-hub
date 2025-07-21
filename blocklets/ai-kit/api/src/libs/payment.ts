@@ -1,5 +1,5 @@
-import { CreditError, CreditErrorType, SubscriptionError, SubscriptionErrorType } from '@blocklet/ai-kit/api';
-import { appStatus } from '@blocklet/ai-kit/api/call/app';
+import { CreditError, CreditErrorType, SubscriptionError, SubscriptionErrorType } from '@blocklet/aigne-hub/api';
+import { appStatus } from '@blocklet/aigne-hub/api/call/app';
 import payment, { Subscription, TMeterEventExpanded } from '@blocklet/payment-js';
 import { getComponentMountPoint } from '@blocklet/sdk';
 import config from '@blocklet/sdk/lib/config';
