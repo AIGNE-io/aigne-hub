@@ -1,3 +1,7 @@
+## 0.2.6 (2025-7-21)
+
+- fix: downgrade express to 4.x
+
 ## 0.2.5 (2025-7-18)
 
 feat: support multi-provider ai integration and credit-based billing system
