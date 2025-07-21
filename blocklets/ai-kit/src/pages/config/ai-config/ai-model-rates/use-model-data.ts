@@ -113,7 +113,7 @@ export const filterModelsByProviders = (models: ModelOption[], availableProvider
   return models.filter((model) => availableProviderNames.has(model.provider));
 };
 
-export const searchModels = (models: ModelOption[], query: string, limit: number = 50): ModelOption[] => {
+export const searchModels = (models: ModelOption[], query: string, limit: number = 100): ModelOption[] => {
   if (!query.trim()) {
     return models.slice(0, limit);
   }

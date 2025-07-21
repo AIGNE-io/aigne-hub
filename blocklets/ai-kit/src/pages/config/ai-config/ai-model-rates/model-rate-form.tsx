@@ -364,7 +364,7 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
                     onChange={(_, newValue) => {
                       setSelectedProviders(newValue.map((provider) => provider.id));
                     }}
-                    renderTags={(value, getTagProps) =>
+                    renderValue={(value, getTagProps) =>
                       value.map((option, index) => (
                         <Chip
                           variant="outlined"
@@ -497,7 +497,6 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
                   <FormInput
                     name="inputRate"
                     label={t('config.modelRates.fields.inputRate')}
-                    placeholder="0.005"
                     description={t('config.modelRates.configInfo.inputTokenConsumption')}
                     required
                     rules={{
@@ -555,7 +554,6 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
                   <FormInput
                     name="outputRate"
                     label={t('config.modelRates.fields.outputRate')}
-                    placeholder="0.015"
                     required
                     description={t('config.modelRates.configInfo.outputTokenConsumption')}
                     rules={{

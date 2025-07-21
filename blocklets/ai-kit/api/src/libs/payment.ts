@@ -111,7 +111,7 @@ export async function ensureDefaultCreditPrice() {
         return null;
       }
       await payment.products.create({
-        name: 'Basic AIC Packs',
+        name: 'Basic AIGNE Hub Credit Packs',
         description: `It is a basic pack of ${METER_UNIT}, you can pay to get more ${METER_UNIT} credits.`,
         type: 'credit',
         prices: [

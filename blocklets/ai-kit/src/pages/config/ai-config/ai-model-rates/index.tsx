@@ -15,13 +15,15 @@ import { useSessionContext } from '../../../../contexts/session';
 import ModelRateForm from './model-rate-form';
 import { ModelRate, ModelRateFormData } from './types';
 
-// 格式化小数字，使用科学计数法
+// 格式化小数字，统一使用科学计数法
 const formatSmallNumber = (num: number) => {
   if (num === 0) return '0';
-  if (Math.abs(num) >= 0.001) {
-    return num.toFixed(8).replace(/\.?0+$/, '');
-  }
-  return num.toExponential(2);
+
+  // 统一使用科学计数法，最多保留2位，末尾0不展示
+  let formatted = num.toExponential(2);
+  // 去掉末尾的0和可能多余的小数点
+  formatted = formatted.replace(/\.?0+e/, 'e');
+  return formatted;
 };
 
 export default function AIModelRates() {
@@ -251,14 +253,15 @@ export default function AIModelRates() {
               title={
                 <Stack>
                   <Typography variant="caption">
-                    <strong>{t('config.modelRates.configInfo.creditCost')}</strong>${rate.inputRate * baseCreditPrice}
+                    <strong>{t('config.modelRates.configInfo.creditCost')}</strong>$
+                    {formatSmallNumber(rate.inputRate * baseCreditPrice)}
                   </Typography>
                   <Typography variant="caption">
-                    <strong>{t('config.modelRates.configInfo.actualCost')}</strong>${actualInputCost}
+                    <strong>{t('config.modelRates.configInfo.actualCost')}</strong>${formatSmallNumber(actualInputCost)}
                   </Typography>
                   <Typography variant="caption">
                     <strong>{t('config.modelRates.configInfo.profitRate')}</strong>
-                    {profitRate.toFixed(2)}%
+                    {parseFloat(profitRate.toFixed(2))}%
                   </Typography>
                 </Stack>
               }
@@ -328,7 +331,7 @@ export default function AIModelRates() {
                   </Typography>
                   <Typography variant="caption">
                     <strong>{t('config.modelRates.configInfo.profitRate')}</strong>
-                    {profitRate.toFixed(2)}%
+                    {parseFloat(profitRate.toFixed(2))}%
                   </Typography>
                 </Stack>
               }
@@ -475,7 +478,7 @@ export default function AIModelRates() {
               sx={{
                 color: 'text.secondary',
               }}>
-              1 AIC = ${baseCreditPrice} • {t('config.modelRates.configInfo.profitMargin')}
+              1 AHC = ${formatSmallNumber(Number(baseCreditPrice))} • {t('config.modelRates.configInfo.profitMargin')}
               {targetProfitMargin}%
             </Typography>
           </Box>

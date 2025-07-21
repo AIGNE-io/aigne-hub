@@ -1,3 +1,4 @@
+import { getObservabilityUrl } from '@app/libs/env';
 import Dialog from '@arcblock/ux/lib/Dialog';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import { AnalyticsOutlined, CreditCard, SmartToyOutlined } from '@mui/icons-material';
@@ -5,40 +6,40 @@ import { Box, Button, Grid, Stack, Typography } from '@mui/material';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const basicFeatures = [
-  {
-    title: 'aiProviderSettings',
-    description: 'aiProviderSettingsDesc',
-    icon: <SmartToyOutlined sx={{ fontSize: 32, color: (theme) => theme.palette.grey[400] }} />,
-    path: '/config/ai-config/providers',
-  },
-  {
-    title: 'enableCredits',
-    description: 'enableCreditsDesc',
-    icon: <CreditCard sx={{ fontSize: 32, color: (theme) => theme.palette.grey[400] }} />,
-    path: '/.well-known/service/admin/overview/components',
-    external: true,
-    showDialog: true,
-    credit: true,
-  },
-  {
-    title: 'usageAnalytics',
-    description: 'usageAnalyticsDesc',
-    icon: <AnalyticsOutlined sx={{ fontSize: 32, color: (theme) => theme.palette.grey[400] }} />,
-  },
-];
-
 export default function Overview() {
   const { t } = useLocaleContext();
   const navigate = useNavigate();
   const [creditsDialogOpen, setCreditsDialogOpen] = useState(false);
-
+  const basicFeatures = [
+    {
+      title: 'aiProviderSettings',
+      description: 'aiProviderSettingsDesc',
+      icon: <SmartToyOutlined sx={{ fontSize: 32, color: (theme) => theme.palette.grey[400] }} />,
+      path: '/config/ai-config/providers',
+    },
+    {
+      title: 'enableCredits',
+      description: 'enableCreditsDesc',
+      icon: <CreditCard sx={{ fontSize: 32, color: (theme) => theme.palette.grey[400] }} />,
+      path: '/.well-known/service/admin/overview/components',
+      external: true,
+      showDialog: true,
+      credit: true,
+    },
+    {
+      title: 'usageAnalytics',
+      description: 'usageAnalyticsDesc',
+      icon: <AnalyticsOutlined sx={{ fontSize: 32, color: (theme) => theme.palette.grey[400] }} />,
+      path: getObservabilityUrl(),
+      external: true,
+    },
+  ];
   const handleClick = (item: any) => {
     if (item.showDialog) {
       setCreditsDialogOpen(true);
     } else if (item.external) {
       window.open(item.path, '_blank');
-    } else {
+    } else if (item.path) {
       navigate(item.path);
     }
   };

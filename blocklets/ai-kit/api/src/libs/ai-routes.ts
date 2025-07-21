@@ -17,7 +17,7 @@ import omit from 'lodash/omit';
 import pick from 'lodash/pick';
 import { ImageEditParams, ImageGenerateParams, ImagesResponse } from 'openai/resources/images';
 
-import { getOpenAI } from './ai-provider';
+import { getOpenAIV2 } from './ai-provider';
 import { Config } from './env';
 import { processImageUrl } from './image';
 import logger from './logger';
@@ -307,7 +307,7 @@ export async function processEmbeddings(
 
   await checkModelRateAvailable(input.model);
 
-  const openai = getOpenAI();
+  const openai = await getOpenAIV2();
 
   const { data, usage } = await openai.embeddings.create(input);
 
@@ -338,7 +338,7 @@ export async function processImageGeneration(
 
   if (Config.verbose) logger.info(`AIGNE Hub ${version} image generations input:`, input);
 
-  const openai = getOpenAI();
+  const openai = await getOpenAIV2();
   let response: ImagesResponse;
 
   const isImageValid = (image: string | string[] | undefined): image is string[] => {

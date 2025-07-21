@@ -1,3 +1,4 @@
+import { getProviderCredentials } from '@api/providers/models';
 import { SubscriptionError, SubscriptionErrorType } from '@blocklet/ai-kit/api';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import { OpenAI } from 'openai';
@@ -14,6 +15,19 @@ export function getOpenAI() {
     baseURL: openaiBaseURL || null,
     apiKey: getAIApiKey('openai'),
     httpAgent: httpsProxy ? new HttpsProxyAgent(httpsProxy) : undefined,
+  });
+}
+
+export async function getOpenAIV2() {
+  const params: {
+    apiKey?: string;
+    baseURL?: string;
+  } = await getProviderCredentials('openai');
+
+  return new OpenAI({
+    baseURL: params.baseURL || null,
+    apiKey: params.apiKey,
+    httpAgent: Config.httpsProxy ? new HttpsProxyAgent(Config.httpsProxy) : undefined,
   });
 }
 

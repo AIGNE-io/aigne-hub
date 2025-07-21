@@ -4,8 +4,15 @@ AIGNE Hub is a blocklet that brings AI capabilities to other blocklets. With AIG
 
 ## Features
 
-- Easy to use interface for integrating AI into applications
-- Supports popular AI providers such as OpenAI
+- **Multi-AI Provider Support**: OpenAI, Anthropic, Amazon Bedrock, DeepSeek, Google, Ollama, OpenRouter, xAI
+- **OAuth Integration**: Secure OAuth-based access for calling AI capabilities
+- **Credit Billing System**: Integrated with Payment Kit for credit-based billing and usage tracking
+- **Provider Credential Management**: Support for API Key, Access Key Pair
+- **Model Rate Configuration**: Flexible pricing for Chat, Image Generation, and Embedding models
+- **Built-in Playground**: Real-time AI model testing and experimentation
+- **AIGNE Framework Integration**: Support for AIGNE CLI to call models through AIGNE Hub locally
+- **Usage Analytics**: Monitor AI service usage, costs, and performance metrics via Observability component
+- **Auto Credit Grant**: Automatic credit allocation for new users on first login
 
 ## Install and Run
 
@@ -13,55 +20,62 @@ AIGNE Hub is a blocklet that brings AI capabilities to other blocklets. With AIG
 - You need to purchase a Blocklet Server first (if you don't already have one)
 - Follow the installation wizard to install blocklet on your Blocklet Server
 - Start the installed blocklet in the Blocklet Server console
-- Set `OPENAI_API_KEY` in **Blocklets -> AIGNE Hub -> Components -> AIGNE Hub -> Settings -> Environment** and restart blocklet
-  ![setting-api-key](docs/setting-api-key.jpg)
+- Configure AI providers in **Config → AI Config → AI Providers**
 - Access the public address of the blocklet, you can open playground from apps menu
 
-## Integrate into your blocklet
+## Credit Billing Configuration (Optional)
 
-- Add AIGNE Hub as a component into your blocklet
-- Set `OPENAI_API_KEY` in `AIGNE Hub` component settings and restart your blocklet
-- Call AIGNE Hub's api
+To enable credit-based billing and usage management:
 
-## AIGNE Hub api references
+1. **Install Payment Kit Component**
 
-### status
+2. **Enable Credit Billing in AIGNE Hub**
+   - Go to **Blocklets → AIGNE Hub → Preferences**
+   - Enable "Credit Based Billing" option
+   - Configure base credit price and target profit margin (optional)
+   - Set new user credit grant amount (optional)
 
-Get AIGNE Hub status, it would return `available: true` if it is available.
+3. **Configure Model Rates**
+   - Access AIGNE Hub → Config → AI Config → Model Rates
+   - Set pricing for different model types and providers
+   - Configure input/output token rates
+
+4. **View Usage and Billing**
+   - Credit consumption history is available in Payment Kit billing interface
+   - Users receive purchase prompts when credits are insufficient
+
+### OAuth Integration
+
+AIGNE Hub supports OAuth-based integration for secure AI capability access.
+
+### Chat Completions (Recommended)
 
 ```ts
-const res = await Component.call({
-  name: 'ai-kit',
-  path: '/api/v1/sdk/status',
-  data: {}
-})
+// Using AIGNE Framework with AIGNE Hub
+import { AIGNEHubChatModel } from "@aigne/aigne-hub";
 
-res // { available: boolean }
+const model = new AIGNEHubChatModel({
+  url: "https://your-aigne-hub-url/api/v2/chat",
+  accessKey: "your-oauth-access-key", 
+  model: "openai/gpt-3.5-turbo",
+});
+
+const result = await model.invoke({
+  messages: [{ role: "user", content: "Hello, AIGNE Hub!" }],
+});
+
+console.log(result);
 ```
 
-### completions
+## Credit Billing
 
-Autocomplete given text by AI.
+AIGNE Hub integrates with Payment Kit to provide flexible credit-based billing:
 
-```ts
-const res = await Component.call({
-  name: 'ai-kit',
-  path: '/api/v1/sdk/completions',
-  data: {
-	prompt: 'Say hi'
-  }
-})
-
-res // { choices: { text: string }[] }
-```
-
-## How to get api key of OpenAI
-
-1. Create an OpenAI Account at <https://openai.com/api>
-
-2. Request an API Key
-
-   Once you have logged in to your OpenAI account, you will need to request an API key. To do this, click on the “My Account” tab at the top of the page. On the “My Account” page, you will see a link to “Request an API Key”. Click this link and you will be taken to a page where you can request an API key.
+- **Automatic Credit Grant**: New users receive initial credits upon first login
+- **Usage Tracking**: All AI API calls consume credits based on configured rates
+- **Payment Integration**: Users can purchase additional credits when needed
+- **Billing History**: View detailed credit transactions in Payment Kit interface
+- **Model-specific Rates**: Different pricing for various AI models and capabilities
 
 ## Support
 
