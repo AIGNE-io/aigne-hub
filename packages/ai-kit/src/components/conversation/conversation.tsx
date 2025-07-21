@@ -123,7 +123,7 @@ export default function Conversation({
             sx={{
               height: 16,
               pointerEvents: 'none',
-              background: 'linear-gradient(transparent, white)',
+              background: (theme) => `linear-gradient(transparent, ${theme.palette.background.paper})`,
             }}
           />
           <Box
