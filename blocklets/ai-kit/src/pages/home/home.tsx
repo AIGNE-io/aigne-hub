@@ -82,7 +82,14 @@ const result = await model.invoke({
               </Typography>
 
               {/* Action Buttons */}
-              <Stack direction="row" spacing={2} justifyContent="center">
+              <Stack
+                direction="row"
+                sx={{
+                  display: 'flex',
+                  flexDirection: { xs: 'column', sm: 'row' },
+                  justifyContent: { xs: 'center', sm: 'flex-start' },
+                  gap: 2,
+                }}>
                 {isAdmin ? (
                   <>
                     <Button component={Link} to="/config" variant="contained">
@@ -122,7 +129,6 @@ const result = await model.invoke({
           )}
         </Box>
       </Box>
-
       {/* Code Modal */}
       <Dialog
         open={showCodeModal}
@@ -130,7 +136,12 @@ const result = await model.invoke({
         maxWidth="md"
         fullWidth
         title={
-          <Stack direction="row" spacing={1} alignItems="center">
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{
+              alignItems: 'center',
+            }}>
             <Code color="primary" />
             <span>{t('quickIntegration')}</span>
           </Stack>
@@ -164,7 +175,6 @@ const result = await model.invoke({
           <code>{codeExample}</code>
         </Box>
       </Dialog>
-
       <Footer meta={undefined} theme={undefined} />
     </>
   );
