@@ -46,6 +46,7 @@ jobs:
           skip-deps: false
           skip-upload: false
           skip-deploy: false
+          skip-release: true
           working-directory: blocklets/core
           bundle-command: pnpm bundle
           store-endpoint: ${{ secrets.STORE_ENDPOINT_TEST }}
