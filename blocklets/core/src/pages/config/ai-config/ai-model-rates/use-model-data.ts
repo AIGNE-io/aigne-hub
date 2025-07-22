@@ -129,8 +129,7 @@ export const searchModels = (models: ModelOption[], query: string, limit: number
 export function useModelData() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const modelOptions = useMemo(() => getModelOptionsFromCache(), []);
+  const [modelOptions, setModelOptions] = useState<ModelOption[]>(() => getModelOptionsFromCache());
 
   const getCachedData = useCallback((): CachedModelData | null => {
     try {
@@ -168,6 +167,7 @@ export function useModelData() {
         version: CACHE_VERSION,
       };
       localStorage.setItem(CACHE_KEY, JSON.stringify(cachedData));
+      setModelOptions(data);
     } catch (error) {
       console.error('Failed to cache model data:', error);
     }
@@ -241,6 +241,7 @@ export function useModelData() {
 
   const clearCache = useCallback(() => {
     localStorage.removeItem(CACHE_KEY);
+    setModelOptions([]);
   }, []);
 
   const cacheStatus = useMemo(() => {

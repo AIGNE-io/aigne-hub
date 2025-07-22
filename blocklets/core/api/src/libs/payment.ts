@@ -52,8 +52,9 @@ export async function getUserCredits({ userDid }: { userDid: string }) {
       currency: null,
     };
   }
+  const customer = await ensureCustomer(userDid);
   const creditBalance = await payment.creditGrants.summary({
-    customer_id: userDid,
+    customer_id: customer.id,
   });
 
   return {
