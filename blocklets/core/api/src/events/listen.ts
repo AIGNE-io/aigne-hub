@@ -1,7 +1,7 @@
 import { Config } from '@api/libs/env';
 import logger from '@api/libs/logger';
 import { ensureCustomer, ensureMeter, paymentClient } from '@api/libs/payment';
-import eventBus from '@blocklet/sdk/service/eventbus';
+import eventBus from '@blocklet/sdk/lib/service/eventbus';
 
 async function handleUserAdded(user: any) {
   if (!Config.creditBasedBillingEnabled || !Config.newUserCreditGrantEnabled) {
