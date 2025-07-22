@@ -1,3 +1,8 @@
+## 0.2.8 (2025-7-22)
+
+- feat(docs): update blocklet documentation with supported AI providers, core capabilities, and troubleshooting sections
+- fix(api): update eventbus import path in listen.ts
+
 ## 0.2.7 (2025-7-21)
 
 - feat: enhance AIGNE Hub with multi-provider support, credit billing, and updated documentation
