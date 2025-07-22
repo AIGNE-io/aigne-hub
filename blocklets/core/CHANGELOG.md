@@ -1,3 +1,8 @@
+## 0.2.10 (2025-7-22)
+
+- feat(api): support /api/ai-providers/chat/models to get available models
+- feat(api): add audio transcription and speech endpoints with OpenAI proxy
+
 ## 0.2.9 (2025-7-22)
 
 - fix(api): update customer ID retrieval in getUserCredits function
