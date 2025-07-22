@@ -53,6 +53,14 @@ export async function getUserCredits({ userDid }: { userDid: string }) {
     };
   }
   const customer = await ensureCustomer(userDid);
+  if (!customer) {
+    return {
+      balance: 0,
+      currency: meter.paymentCurrency,
+      total: 0,
+      grantCount: 0,
+    };
+  }
   const creditBalance = await payment.creditGrants.summary({
     customer_id: customer.id,
   });
