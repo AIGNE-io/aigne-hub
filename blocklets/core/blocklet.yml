@@ -35,6 +35,7 @@ interfaces:
         config:
           ignoreUrls:
             - /api/meilisearch/embeddings
+            - /api/ai-providers/models
     proxyBehavior: service
 community: https://community.arcblock.io
 documentation: https://developer.blocklet.io

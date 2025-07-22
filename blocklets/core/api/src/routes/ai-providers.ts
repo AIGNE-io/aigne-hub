@@ -1,6 +1,7 @@
 import { getModelNameWithProvider } from '@api/libs/ai-provider';
 import { Config } from '@api/libs/env';
 import logger from '@api/libs/logger';
+import modelRegistry from '@api/libs/model-registry';
 import { ensureAdmin } from '@api/libs/security';
 import AiCredential, { CredentialValue } from '@api/store/models/ai-credential';
 import AiModelRate from '@api/store/models/ai-model-rate';
@@ -14,72 +15,6 @@ import { Op } from 'sequelize';
 const router = Router();
 
 const user = sessionMiddleware({ accessKey: true });
-
-// 默认模型映射配置 - 使用对象存储提高查找效率
-const defaultModelMap = {
-  openai: [
-    { value: 'o4-mini', label: 'o4-mini' },
-    { value: 'o3-mini', label: 'o3-mini' },
-    { value: 'o3', label: 'o3' },
-    { value: 'gpt-4o', label: 'GPT-4o' },
-    { value: 'gpt-4o-mini', label: 'GPT-4o Mini' },
-    { value: 'gpt-4.1', label: 'GPT-4.1' },
-    { value: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
-    { value: 'gpt-4', label: 'GPT-4' },
-    { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
-  ],
-  openrouter: [
-    { value: 'anthropic/claude-3.5-sonnet', label: 'Claude 3.5 Sonnet' },
-    { value: 'anthropic/claude-3-opus', label: 'Claude 3 Opus' },
-    { value: 'anthropic/claude-3-haiku', label: 'Claude 3 Haiku' },
-    { value: 'openai/gpt-4o', label: 'GPT-4o' },
-    { value: 'openai/gpt-4.1', label: 'GPT-4.1' },
-    { value: 'openai/gpt-4o-mini', label: 'GPT-4o Mini' },
-    { value: 'meta-llama/llama-3.1-70b-instruct', label: 'Llama 3.1 70B' },
-    { value: 'mistralai/mistral-7b-instruct', label: 'Mistral 7B Instruct' },
-  ],
-  anthropic: [
-    { value: 'claude-opus-4-20250514', label: 'Claude Opus 4' },
-    { value: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4' },
-    { value: 'claude-3-7-sonnet-20250219', label: 'Claude 3.7 Sonnet' },
-    { value: 'claude-3-5-sonnet-20241022', label: 'Claude 3.5 Sonnet' },
-    { value: 'claude-3-5-haiku-20241022', label: 'Claude 3.5 Haiku' },
-  ],
-  bedrock: [
-    { value: 'anthropic.claude-3-5-sonnet', label: 'Claude 3.5 Sonnet' },
-    { value: 'anthropic.claude-3-opus', label: 'Claude 3 Opus' },
-    { value: 'anthropic.claude-3-haiku', label: 'Claude 3 Haiku' },
-    { value: 'amazon.titan-text-premier-v1:0', label: 'Titan Text Premier v1' },
-    { value: 'amazon.titan-text-express-v1', label: 'Titan Text Express v1' },
-    { value: 'meta.llama3-70b-instruct-v1:0', label: 'Llama 3 70B Instruct' },
-    { value: 'mistral.mistral-7b-instruct-v0:2', label: 'Mistral 7B Instruct' },
-  ],
-  deepseek: [{ value: 'deepseek-chat', label: 'DeepSeek Chat' }],
-  google: [
-    { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
-    { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
-    { value: 'gemini-2.5-flash-lite-preview-06-17', label: 'Gemini 2.5 Flash-Lite' },
-    { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
-    { value: 'gemini-2.0-flash-lite', label: 'Gemini 2.0 Flash-Lite' },
-    { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro' },
-    { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash' },
-  ],
-  ollama: [
-    { value: 'llama3.1:70b', label: 'LLaMA 3.1 70B' },
-    { value: 'llama3.1:8b', label: 'LLaMA 3.1 8B' },
-    { value: 'llama3.2:3b', label: 'LLaMA 3.2 3B' },
-    { value: 'llama3.2:1b', label: 'LLaMA 3.2 1B' },
-    { value: 'mistral:7b', label: 'Mistral 7B' },
-    { value: 'codellama:13b', label: 'Code Llama 13B' },
-    { value: 'codellama:7b', label: 'Code Llama 7B' },
-  ],
-  xai: [
-    { value: 'grok-4', label: 'Grok 4' },
-    { value: 'grok-3', label: 'Grok 3' },
-    { value: 'grok-3-mini', label: 'Grok 3 Mini' },
-    { value: 'grok-2', label: 'Grok 2' },
-  ],
-};
 
 // 验证schemas
 const createProviderSchema = Joi.object({
@@ -696,53 +631,54 @@ async function getDefaultModelsFromProviders(typeFilter?: string) {
           return;
         }
 
-        if (provider) {
-          models.push({
-            model: modelName,
-            modelDisplay: pricingModel.model,
-            description: 'Model from pricing configuration',
-            rates: [
-              {
-                id: `pricing-${provider.id}-${modelName}`,
-                type: pricingModel.type,
-                inputRate: pricingModel.inputRate,
-                outputRate: pricingModel.outputRate,
-                provider,
-                description: 'Model from pricing configuration',
-              },
-            ],
-            providers: [
-              {
-                name: provider.name,
-                id: provider.id,
-                displayName: provider.displayName,
-              },
-            ],
-          });
-        }
+        models.push({
+          model: modelName,
+          modelDisplay: pricingModel.model,
+          description: 'Model from pricing configuration',
+          rates: [
+            {
+              id: `pricing-${provider.id}-${modelName}`,
+              type: pricingModel.type,
+              inputRate: pricingModel.inputRate,
+              outputRate: pricingModel.outputRate,
+              provider,
+              description: 'Model from pricing configuration',
+            },
+          ],
+          providers: [
+            {
+              name: provider.name,
+              id: provider.id,
+              displayName: provider.displayName,
+            },
+          ],
+        });
       });
     } else {
-      enabledProviders.forEach((provider) => {
-        const providerJson = provider.toJSON();
-        const providerModels = defaultModelMap[providerJson.name];
-        if (providerModels) {
-          providerModels.forEach((model: { value: string; label: string }) => {
-            if (typeFilter && typeFilter !== 'chatCompletion') {
+      // Use model registry to get models from LiteLLM
+      try {
+        const allModelsMap = await modelRegistry.getAllModels();
+        enabledProviders.forEach((provider) => {
+          const providerJson = provider.toJSON();
+          const providerModels = allModelsMap[providerJson.name] || [];
+
+          providerModels.forEach((modelOption) => {
+            // Filter by type if specified
+            if (typeFilter && typeFilter !== modelOption.mode) {
               return;
             }
-
             models.push({
-              model: model.value,
-              modelDisplay: model.label,
-              description: `Default model from ${providerJson.displayName}`,
+              model: modelOption.name,
+              modelDisplay: modelOption.displayName,
+              description: `Model from ${providerJson.displayName} via LiteLLM`,
               rates: [
                 {
-                  id: `default-${provider.id}-${model.value}`,
-                  type: 'chatCompletion',
+                  id: `litellm-${provider.id}-${modelOption.name}`,
+                  type: modelOption.mode,
                   inputRate: 0,
                   outputRate: 0,
                   provider: providerJson,
-                  description: `Default model from ${providerJson.displayName}`,
+                  description: `Model from ${providerJson.displayName} via LiteLLM`,
                 },
               ],
               providers: [
@@ -754,8 +690,10 @@ async function getDefaultModelsFromProviders(typeFilter?: string) {
               ],
             });
           });
-        }
-      });
+        });
+      } catch (error) {
+        logger.error('Failed to fetch models from registry, falling back to empty list:', error);
+      }
     }
 
     return models;
@@ -765,8 +703,7 @@ async function getDefaultModelsFromProviders(typeFilter?: string) {
   }
 }
 
-// get all models with rates and provider info
-router.get('/models', user, async (req, res) => {
+router.get('/chat/models', user, async (req, res) => {
   try {
     const where: any = {};
     if (req.query.type) {
@@ -790,7 +727,7 @@ router.get('/models', user, async (req, res) => {
       ],
     });
 
-    if (!Config.creditBasedBillingEnabled && modelRates.length === 0) {
+    if (!Config.creditBasedBillingEnabled) {
       const defaultModels = await getDefaultModelsFromProviders(req.query.type as string);
       return res.json(defaultModels);
     }
@@ -861,6 +798,100 @@ router.get('/model-rates', user, async (req, res) => {
     order: [['createdAt', 'DESC']],
   });
   return res.json(modelRates);
+});
+
+// get available models in LiteLLM format (public endpoint)
+router.get('/models', async (req, res) => {
+  try {
+    const where: any = {};
+    if (req.query.type) {
+      where.type = req.query.type;
+    }
+
+    const modelRates = await AiModelRate.findAll({
+      where,
+      include: [
+        {
+          model: AiProvider,
+          as: 'provider',
+          where: {
+            enabled: true,
+          },
+          attributes: ['id', 'name', 'displayName'],
+        },
+      ],
+      order: [
+        ['model', 'ASC'],
+        ['type', 'ASC'],
+      ],
+    });
+
+    const result: Record<string, any> = {};
+
+    // type mapping
+    const typeMap = {
+      chatCompletion: 'chat',
+      imageGeneration: 'image_generation',
+      embedding: 'embedding',
+    };
+
+    modelRates.forEach((rate) => {
+      const rateJson = rate.toJSON() as any;
+      const providerName = rateJson.provider.name;
+      const modelName = rateJson.model;
+      const key = `${providerName}/${modelName}`;
+
+      result[key] = {
+        mode: typeMap[rateJson.type as keyof typeof typeMap] || 'chat',
+        litellm_provider: providerName,
+        input_credits_per_token: rateJson.inputRate || 0,
+        output_credits_per_token: rateJson.outputRate || 0,
+      };
+    });
+
+    // If no configured rates and credit billing is disabled, return default models
+    if (!Config.creditBasedBillingEnabled) {
+      try {
+        const allModelsMap = await modelRegistry.getAllModels();
+        const enabledProviders = await AiProvider.getEnabledProviders();
+
+        enabledProviders.forEach((provider) => {
+          const providerJson = provider.toJSON();
+          const providerModels = allModelsMap[providerJson.name] || [];
+
+          providerModels.forEach((modelOption) => {
+            // Filter by type if specified
+            const typeFilterMap: Record<string, string> = {
+              chatCompletion: 'chatCompletion',
+              imageGeneration: 'imageGeneration',
+              embedding: 'embedding',
+            };
+
+            if (req.query.type && typeFilterMap[req.query.type as string] !== modelOption.mode) {
+              return;
+            }
+
+            const key = `${providerJson.name}/${modelOption.name}`;
+            result[key] = {
+              mode: typeMap[modelOption.mode as keyof typeof typeMap] || 'chat',
+              litellm_provider: providerJson.name,
+              input_credits_per_token: 0,
+              output_credits_per_token: 0,
+            };
+          });
+        });
+      } catch (error) {
+        logger.error('Failed to fetch models from registry:', error);
+      }
+    }
+
+    return res.json(result);
+  } catch (error) {
+    logger.error('Failed to get available models:', error);
+    return res.status(500).json({
+      error: 'Failed to get available models',
+    });
+  }
 });
 
 export default router;

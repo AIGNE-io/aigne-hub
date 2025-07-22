@@ -98,7 +98,8 @@ export default function Chat() {
     const fetchModels = async () => {
       try {
         setLoading(true);
-        const response = await api.get('/api/ai-providers/models?type=chatCompletion');
+        const response = await api.get('/api/ai-providers/chat/models?type=chatCompletion');
+
         const apiModels: ApiModel[] = response.data || [];
 
         const formattedGroups = formatModelsData(apiModels);
