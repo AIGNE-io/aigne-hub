@@ -1,3 +1,7 @@
+## 0.2.9 (2025-7-22)
+
+- chore(workflow): add skip-release option to main.yml
+
 ## 0.2.8 (2025-7-22)
 
 - feat(docs): update blocklet documentation with supported AI providers, core capabilities, and troubleshooting sections
