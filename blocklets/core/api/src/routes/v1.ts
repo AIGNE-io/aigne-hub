@@ -1,3 +1,4 @@
+import { getOpenAIV2 } from '@api/libs/ai-provider';
 import {
   createRetryHandler,
   processChatCompletion,
@@ -10,6 +11,7 @@ import App from '@api/store/models/app';
 import { ensureRemoteComponentCall } from '@blocklet/aigne-hub/api/utils/auth';
 import compression from 'compression';
 import { Router } from 'express';
+import proxy from 'express-http-proxy';
 
 import { Config } from '../libs/env';
 import { ensureAdmin, ensureComponentCall } from '../libs/security';
@@ -98,6 +100,41 @@ router.post(
         appId: req.appClient!.appId,
       });
     }
+  })
+);
+
+router.post(
+  '/audio/transcriptions',
+  ensureRemoteComponentCall(App.findPublicKeyById, ensureComponentCall(ensureAdmin)),
+  proxy('api.openai.com', {
+    https: true,
+    limit: '10mb',
+    proxyReqPathResolver() {
+      return '/v1/audio/transcriptions';
+    },
+    parseReqBody: false,
+    async proxyReqOptDecorator(proxyReqOpts) {
+      const { apiKey } = await getOpenAIV2();
+      proxyReqOpts.headers!.Authorization = `Bearer ${apiKey}`;
+      return proxyReqOpts;
+    },
+  })
+);
+
+router.post(
+  '/audio/speech',
+  ensureRemoteComponentCall(App.findPublicKeyById, ensureComponentCall(ensureAdmin)),
+  proxy('api.openai.com', {
+    https: true,
+    limit: '10mb',
+    proxyReqPathResolver() {
+      return '/v1/audio/speech';
+    },
+    async proxyReqOptDecorator(proxyReqOpts) {
+      const { apiKey } = await getOpenAIV2();
+      proxyReqOpts.headers!.Authorization = `Bearer ${apiKey}`;
+      return proxyReqOpts;
+    },
   })
 );
 

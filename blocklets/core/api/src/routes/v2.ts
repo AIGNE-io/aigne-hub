@@ -1,6 +1,7 @@
 import { AIGNE } from '@aigne/core';
 import { AIGNEObserver } from '@aigne/observability-api';
 import { AIGNEHTTPServer } from '@aigne/transport/http-server/index';
+import { getModelNameWithProvider, getOpenAIV2 } from '@api/libs/ai-provider';
 import {
   createRetryHandler,
   processChatCompletion,
@@ -12,10 +13,14 @@ import logger from '@api/libs/logger';
 import { checkUserCreditBalance } from '@api/libs/payment';
 import { createAndReportUsageV2 } from '@api/libs/usage';
 import { checkModelRateAvailable } from '@api/providers';
+import AiCredential from '@api/store/models/ai-credential';
+import AiModelRate from '@api/store/models/ai-model-rate';
+import AiProvider from '@api/store/models/ai-provider';
 import { call, getComponentMountPoint } from '@blocklet/sdk/lib/component';
 import sessionMiddleware from '@blocklet/sdk/lib/middlewares/session';
 import compression from 'compression';
 import { Router } from 'express';
+import proxy from 'express-http-proxy';
 
 import { getModel } from '../providers/models';
 
@@ -44,6 +49,47 @@ AIGNEObserver.setExportFn(async (spans) => {
   }).catch((err) => {
     logger.error('Failed to send trace tree to Observability blocklet', err);
   });
+});
+
+router.get('/status', user, async (req, res) => {
+  const userDid = req.user?.did;
+  if (userDid && Config.creditBasedBillingEnabled) {
+    try {
+      await checkUserCreditBalance({ userDid });
+    } catch (err) {
+      return res.json({ available: false, error: err.message });
+    }
+  }
+  const where: any = {
+    enabled: true,
+  };
+  let modelName = '';
+  if (req.query.model) {
+    const { modelName: modelNameQuery, providerName } = getModelNameWithProvider(req.query.model as string);
+    where.name = providerName;
+    modelName = modelNameQuery;
+  }
+  const providers = await AiProvider.findAll({
+    where,
+    include: [
+      {
+        model: AiCredential,
+        as: 'credentials',
+        where: { active: true },
+        required: false,
+      },
+    ],
+  });
+  if (providers.length === 0) {
+    return res.json({ available: false });
+  }
+  if (modelName && Config.creditBasedBillingEnabled) {
+    const modelRate = await AiModelRate.findOne({ where: { model: modelName } });
+    if (!modelRate) {
+      return res.json({ available: false, error: 'Model rate not available' });
+    }
+  }
+  return res.json({ available: true });
 });
 
 router.post('/:type(chat)?/completions', compression(), user, async (req, res) => {
@@ -164,4 +210,40 @@ router.post(
   })
 );
 
+// TODO: Need to add credit based billing
+router.post(
+  '/audio/transcriptions',
+  user,
+  proxy('api.openai.com', {
+    https: true,
+    limit: '10mb',
+    proxyReqPathResolver() {
+      return '/v2/audio/transcriptions';
+    },
+    parseReqBody: false,
+    async proxyReqOptDecorator(proxyReqOpts) {
+      const { apiKey } = await getOpenAIV2();
+      proxyReqOpts.headers!.Authorization = `Bearer ${apiKey}`;
+      return proxyReqOpts;
+    },
+  })
+);
+
+// TODO: Need to add credit based billing
+router.post(
+  '/audio/speech',
+  user,
+  proxy('api.openai.com', {
+    https: true,
+    limit: '10mb',
+    proxyReqPathResolver() {
+      return '/v2/audio/speech';
+    },
+    async proxyReqOptDecorator(proxyReqOpts) {
+      const { apiKey } = await getOpenAIV2();
+      proxyReqOpts.headers!.Authorization = `Bearer ${apiKey}`;
+      return proxyReqOpts;
+    },
+  })
+);
 export default router;
