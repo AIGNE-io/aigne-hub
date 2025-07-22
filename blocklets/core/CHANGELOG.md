@@ -1,3 +1,7 @@
+## 0.2.9 (2025-7-22)
+
+- fix(api): update customer ID retrieval in getUserCredits function
+
 ## 0.2.8 (2025-7-22)
 
 - feat(docs): update blocklet documentation with supported AI providers, core capabilities, and troubleshooting sections
