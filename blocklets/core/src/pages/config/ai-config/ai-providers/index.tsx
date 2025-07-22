@@ -112,7 +112,7 @@ export default function AIProviders() {
           if (credentialValue) {
             api.post(`/api/ai-providers/${providerId}/credentials`, {
               name: credential.name,
-              _value: credentialValue,
+              value: credentialValue,
               credentialType: credential.credentialType,
             });
           }

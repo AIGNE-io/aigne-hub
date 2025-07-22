@@ -13,7 +13,7 @@ author:
   url: https://github.com/blocklet
 repository:
   type: git
-  url: git+https://github.com/blocklet/ai-kit.git
+  url: git+https://github.com/AIGNE-io/aigne-hub.git
 specVersion: 1.2.8
 version: 0.2.7
 logo: screenshots/logo.jpg
@@ -77,7 +77,7 @@ screenshots:
 components:
   - name: z2qa2GCqPJkufzqF98D8o7PWHrRRSHpYkNhEh
     title: Observability
-    mountPoint: /z2qa2GCqPJkufzqF98D8o7PWHrRRSHpYkNhEh
+    mountPoint: /observability
     source:
       store: https://store.blocklet.dev
       name: z2qa2GCqPJkufzqF98D8o7PWHrRRSHpYkNhEh

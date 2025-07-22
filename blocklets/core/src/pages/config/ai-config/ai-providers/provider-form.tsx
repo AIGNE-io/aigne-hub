@@ -246,7 +246,7 @@ export default function ProviderForm({ provider = null, onSubmit, onCancel }: Pr
             }}
             card
             trigger={t('providerInfo')}>
-            <Paper elevation={0}>
+            <Paper elevation={0} sx={{ boxShadow: 'none' }}>
               <Stack spacing={2}>
                 <FormInput
                   name="name"
@@ -266,7 +266,7 @@ export default function ProviderForm({ provider = null, onSubmit, onCancel }: Pr
                         }}>
                         {PROVIDER_OPTIONS.map((option) => (
                           <MenuItem key={option.value} value={option.value}>
-                            <Stack direction="row" spacing={1}>
+                            <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                               <Avatar
                                 src={joinURL(getPrefix(), `/logo/${option.value}.png`)}
                                 sx={{ width: 24, height: 24 }}

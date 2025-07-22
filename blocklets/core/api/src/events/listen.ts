@@ -1,7 +1,7 @@
 import { Config } from '@api/libs/env';
 import logger from '@api/libs/logger';
 import { ensureCustomer, ensureMeter, paymentClient } from '@api/libs/payment';
-import eventBus from '@blocklet/sdk/lib/service/eventbus';
+import { subscribe } from '@blocklet/sdk/lib/service/eventbus';
 
 async function handleUserAdded(user: any) {
   if (!Config.creditBasedBillingEnabled || !Config.newUserCreditGrantEnabled) {
@@ -49,7 +49,7 @@ async function handleUserAdded(user: any) {
 }
 
 export function subscribeEvents() {
-  eventBus.subscribe((event: any) => {
+  subscribe((event: any) => {
     if (event.type === 'blocklet.user.added') {
       logger.info('user.added', event.id);
       const user = event.data.object;

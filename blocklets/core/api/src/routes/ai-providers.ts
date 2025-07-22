@@ -91,7 +91,7 @@ const createProviderSchema = Joi.object({
   region: Joi.when('name', {
     is: 'bedrock',
     then: Joi.string().max(50).required(),
-    otherwise: Joi.string().max(50).allow('').optional(),
+    otherwise: Joi.string().max(50).allow('', null).optional(),
   }),
   enabled: Joi.boolean().default(true),
   config: Joi.object().optional(),
@@ -103,7 +103,7 @@ const updateProviderSchema = Joi.object({
   region: Joi.when('name', {
     is: 'bedrock',
     then: Joi.string().max(50).required(),
-    otherwise: Joi.string().max(50).allow('').optional(),
+    otherwise: Joi.string().max(50).default('').allow('', null).optional(),
   }),
   enabled: Joi.boolean(),
 });

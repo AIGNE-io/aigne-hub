@@ -2,6 +2,17 @@
 
 AIGNE Hub 是一个能够快速集成 AI 的 blocklet。使用 AIGNE Hub，开发者能够轻松的将 AI 功能集成到他们的项目中，并创造强大的应用。
 
+## 支持的 AI 提供商
+
+- **openai** - OpenAI GPT 模型、DALL-E、嵌入
+- **anthropic** - Anthropic Claude 模型
+- **bedrock** - Amazon Bedrock 托管模型
+- **deepseek** - DeepSeek 模型
+- **google** - Google Gemini 模型
+- **ollama** - 本地模型部署
+- **openrouter** - 多提供商访问
+- **xai** - xAI Grok 模型
+
 ## 特点
 
 - **多 AI 提供商支持**：OpenAI、Anthropic、Amazon Bedrock、DeepSeek、Google、Ollama、OpenRouter、xAI
@@ -14,14 +25,22 @@ AIGNE Hub 是一个能够快速集成 AI 的 blocklet。使用 AIGNE Hub，开�
 - **使用分析**：通过 Observability 组件监控 AI 服务使用情况、成本和性能指标
 - **自动信用授予**：新用户首次登录时自动分配初始信用额度
 
+## 核心能力
+
+- **聊天对话**：支持流式输出的对话式 AI 和文本生成
+- **图像生成**：AI 驱动的图像创建和编辑（DALL-E、Midjourney 风格）
+- **嵌入**：用于语义搜索和 RAG 应用的向量表示
+- **内置 Playground**：带对话历史的实时模型测试
+- **RESTful APIs**：OpenAI 兼容端点，便于迁移
+
 ## 安装和运行
 
 - 点击 Launch 按钮
-- 你需要首先购买一个 blocklet 服务器（如果你还没有的话）
-- 按照安装向导在 blocklet 服务器上安装 blocklet
-- 在 blocklet 服务器控制台启动已安装的 blocklet
-- 在 **Blocklets -> AIGNE Hub ->  设置 → AI 配置 → AI 提供商** 中配置 AI 提供商
-- 访问 AIGNE Hub 的公网地址，你可以从应用菜单中打开 Playground
+- 你需要首先购买一个 Blocklet Server（如果你还没有的话）
+- 按照安装向导在 Blocklet Server 上安装 blocklet
+- 在 Blocklet Server 控制台启动已安装的 blocklet
+- 在 **Blocklets -> AIGNE Hub -> 设置 → AI 配置 → 提供商** 中配置 AI 提供商
+- 访问 blocklet 的公网地址，你可以从应用菜单中打开 playground
 
 ## 信用计费配置（可选）
 
@@ -42,9 +61,17 @@ AIGNE Hub 是一个能够快速集成 AI 的 blocklet。使用 AIGNE Hub，开�
 
 4. **查看使用情况和账单**
    - 在 Payment Kit 账单界面中可查看信用消费历史
-   - 用户在信用不足时会收到需购买提示
+   - 用户在信用不足时会收到购买提示
 
-### OAuth 集成
+## 安全与管理
+
+- **加密存储**：API 密钥使用 AES-256 加密存储
+- **访问控制**：针对不同用户类型的基于角色的权限管理
+- **使用配额**：为每个用户或应用设置限制
+- **审计日志**：完整的请求和响应日志记录
+- **IP 限制**：为 API 访问设置 IP 白名单/黑名单
+
+## OAuth 集成
 
 AIGNE Hub 支持基于 OAuth 的集成，提供安全的 AI 能力访问。
 
@@ -67,6 +94,28 @@ const result = await model.invoke({
 console.log(result);
 ```
 
+## API 端点
+
+### 聊天对话
+```
+POST /api/v2/chat
+Content-Type: application/json
+Authorization: Bearer your-access-token
+```
+
+### 图像生成
+```
+POST /api/v2/images/generate
+Content-Type: application/json
+Authorization: Bearer your-access-token
+```
+
+### 嵌入
+```
+POST /api/v2/embeddings
+Content-Type: application/json
+Authorization: Bearer your-access-token
+```
 
 ## 信用计费
 
@@ -77,6 +126,21 @@ AIGNE Hub 与 Payment Kit 集成，提供灵活的基于信用的计费：
 - **支付集成**：用户在需要时可以购买额外信用
 - **账单历史**：在 Payment Kit 界面中查看详细的信用交易记录
 - **模型特定费率**：为各种 AI 模型和功能设置不同的价格
+
+## 故障排除
+
+### 常见问题
+
+- **API 密钥无效**：在设置 → AI 提供商中验证您的提供商凭证
+- **信用不足**：在账单部分检查信用余额
+- **模型不可用**：确保您的提供商支持所选模型
+- **速率限制**：检查提供商速率限制，必要时升级
+
+### 性能优化
+
+- **响应缓存**：为重复请求启用缓存
+- **负载均衡**：为同一提供商配置多个 API 密钥
+- **监控**：使用内置分析跟踪性能指标
 
 ## 支持
 
