@@ -184,9 +184,8 @@ export default class AiCredential extends Model<InferAttributes<AiCredential>, I
 
     const start = value.substring(0, 4);
     const end = value.substring(value.length - 4);
-    const maskLength = Math.max(4, value.length - 8);
 
-    return `${start}${'*'.repeat(maskLength)}${end}`;
+    return `${start}${'*'.repeat(Math.min(16, value.length - 8))}${end}`;
   }
 
   // 生成凭证的掩码显示
