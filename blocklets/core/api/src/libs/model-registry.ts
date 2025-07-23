@@ -44,7 +44,7 @@ const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 const CACHE_VERSION = '1.0.0';
 const LITELLM_API_URL = 'https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json';
 
-const SUPPORTED_PROVIDERS = new Set([
+export const SUPPORTED_PROVIDERS = new Set([
   'openai',
   'anthropic',
   'bedrock',

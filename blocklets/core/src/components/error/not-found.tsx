@@ -8,7 +8,7 @@ export default function NotFoundView() {
         my: 10,
         alignItems: 'center',
       }}>
-      <Alert severity="error">Not Found</Alert>
+      <Alert severity="error">This router is not found, please check the URL.</Alert>
     </Stack>
   );
 }

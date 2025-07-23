@@ -276,7 +276,13 @@ export const getModel = async (
     return '';
   };
 
-  const [provider, model] = providerName && name ? [providerName, name] : [getDefaultProvider(), input.model];
+  let provider = providerName;
+  let model = name;
+  if (!provider) {
+    provider = getDefaultProvider();
+    model = input.model;
+  }
+
   if (!model) throw new Error(`Provider ${provider} model ${input.model} not found`);
 
   const m = await loadModel(model, { provider, ...options });

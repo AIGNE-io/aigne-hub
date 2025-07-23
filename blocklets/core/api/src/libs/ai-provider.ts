@@ -4,6 +4,8 @@ import { HttpsProxyAgent } from 'https-proxy-agent';
 import { OpenAI } from 'openai';
 
 import { Config } from './env';
+import logger from './logger';
+import { SUPPORTED_PROVIDERS } from './model-registry';
 
 export function getOpenAI() {
   const { httpsProxy, openaiBaseURL } = Config;
@@ -60,6 +62,13 @@ export function getModelNameWithProvider(model: string, defaultProviderName: str
   if (model.includes('/')) {
     const modelArray = model.split('/');
     const [providerName, name] = [modelArray[0], modelArray.slice(1).join('/')];
+    if (providerName && !SUPPORTED_PROVIDERS.has(providerName?.toLowerCase() || '')) {
+      logger.info(`${providerName} is not supported, use default provider ${defaultProviderName}`);
+      return {
+        providerName: defaultProviderName,
+        modelName: model,
+      };
+    }
     return {
       providerName: providerName?.toLowerCase() || defaultProviderName,
       modelName: name,

@@ -3,7 +3,7 @@ import { Box, Typography } from '@mui/material';
 
 export function CreditRateFormula() {
   const { t } = useLocaleContext();
-  const baseCreditPrice = window.blocklet?.preferences?.baseCreditPrice || 0.00000025;
+  const baseCreditPrice = window.blocklet?.preferences?.baseCreditPrice || 0.0000025;
   const targetProfitMargin = window.blocklet?.preferences?.targetProfitMargin || 2;
 
   return (
@@ -53,7 +53,7 @@ export function CreditRateFormula() {
                 px: 1,
               }}>
               <Box component="span" sx={{ fontWeight: 500 }}>
-                {t('config.modelRates.configInfo.creditPrice')}
+                {t('config.modelRates.configInfo.modelTokenCost')}
               </Box>
               <Box component="span" sx={{ mx: 1, fontSize: '1.1rem' }}>
                 ×
@@ -75,7 +75,7 @@ export function CreditRateFormula() {
                 display: 'block',
               }}>
               <Box component="span" sx={{ fontWeight: 500 }}>
-                {t('config.modelRates.configInfo.modelTokenCost')}
+                {t('config.modelRates.configInfo.creditPrice')}
               </Box>
             </Box>
           </Box>

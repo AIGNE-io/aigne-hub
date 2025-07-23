@@ -42,7 +42,7 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
 
   // 从 blocklet preferences 获取配置
   const baseCreditPrice = window.blocklet?.preferences?.baseCreditPrice || 0.00000025;
-  const targetProfitMargin = window.blocklet?.preferences?.targetProfitMargin || 2;
+  const targetProfitMargin = window.blocklet?.preferences?.targetProfitMargin || 0;
 
   const { modelOptions: allModelOptions, loading: modelDataLoading, fetchModelData } = useModelData();
 
@@ -263,13 +263,7 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
                                 alt={option.provider}
                               />
                               <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                                {option.provider}
-                                {option.inputCost && option.outputCost && (
-                                  <>
-                                    {' '}
-                                    • Input: ${option.inputCost} / Output: ${option.outputCost}
-                                  </>
-                                )}
+                                {option.provider} • Input: ${option.inputCost ?? 0} / Output: ${option.outputCost ?? 0}
                               </Typography>
                             </Stack>
                           )}
@@ -506,7 +500,7 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
                     slotProps={{
                       htmlInput: {
                         type: 'number',
-                        step: 0.001,
+                        step: 0.1,
                         min: 0,
                       },
                     }}
@@ -517,7 +511,7 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
                     }}
                   />
 
-                  {selectedModelOption?.inputCost && (
+                  {selectedModelOption?.inputCost ? (
                     <Box
                       sx={{
                         mt: 1,
@@ -547,7 +541,7 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
                         </Typography>
                       )}
                     </Box>
-                  )}
+                  ) : null}
                 </Box>
 
                 <Box sx={{ flex: 1 }}>
@@ -573,8 +567,7 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
                       },
                     }}
                   />
-
-                  {selectedModelOption?.outputCost && (
+                  {selectedModelOption?.outputCost ? (
                     <Box
                       sx={{
                         mt: 1,
@@ -588,6 +581,7 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
                         {t('config.modelRates.configInfo.currentModelCost')}: ${selectedModelOption.outputCost}
                         {t('config.modelRates.configInfo.perToken')}
                       </Typography>
+
                       {outputRate > 0 && (
                         <Typography
                           variant="caption"
@@ -604,7 +598,7 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
                         </Typography>
                       )}
                     </Box>
-                  )}
+                  ) : null}
                 </Box>
               </Stack>
             </Box>
