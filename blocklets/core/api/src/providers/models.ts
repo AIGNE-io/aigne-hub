@@ -3,6 +3,7 @@ import type { Agent } from 'node:https';
 import { AnthropicChatModel } from '@aigne/anthropic';
 import { BedrockChatModel } from '@aigne/bedrock';
 import {
+  AIGNE,
   AgentResponseStream,
   ChatModel,
   ChatModelOptions,
@@ -348,11 +349,14 @@ export async function getProviderCredentials(provider: string) {
   };
 }
 export async function chatCompletionByFrameworkModel(
-  input: ChatCompletionInput & Required<Pick<ChatCompletionInput, 'model'>>
+  input: ChatCompletionInput & Required<Pick<ChatCompletionInput, 'model'>>,
+  userId?: string
 ): Promise<AsyncGenerator<ChatCompletionResponse>> {
   const model = await getModel(input);
+  const engine = new AIGNE();
 
-  const response = await model.invoke(
+  const response = await engine.invoke(
+    model,
     {
       messages: convertToFrameworkMessages(input.messages),
       responseFormat: input.responseFormat?.type === 'json_schema' ? input.responseFormat : { type: 'text' },
@@ -360,7 +364,7 @@ export async function chatCompletionByFrameworkModel(
       tools: input.tools,
       modelOptions: pick(input, ['temperature', 'topP', 'presencePenalty', 'frequencyPenalty', 'maxTokens']),
     },
-    { streaming: true }
+    { streaming: true, userContext: { userId } }
   );
 
   return adaptStreamToOldFormat(response);

@@ -213,7 +213,7 @@ export async function processChatCompletion(
 
   const isEventStream = req.accepts().some((i) => i.startsWith('text/event-stream'));
 
-  const result = await chatCompletionByFrameworkModel(input);
+  const result = await chatCompletionByFrameworkModel(input, req.user?.did);
 
   let content = '';
   const toolCalls: NonNullable<ChatCompletionChunk['delta']['toolCalls']> = [];

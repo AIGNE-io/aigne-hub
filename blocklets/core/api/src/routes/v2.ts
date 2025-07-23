@@ -1,5 +1,4 @@
 import { AIGNE } from '@aigne/core';
-import { AIGNEObserver } from '@aigne/observability-api';
 import { AIGNEHTTPServer } from '@aigne/transport/http-server/index';
 import { getModelNameWithProvider, getOpenAIV2 } from '@api/libs/ai-provider';
 import {
@@ -8,15 +7,13 @@ import {
   processEmbeddings,
   processImageGeneration,
 } from '@api/libs/ai-routes';
-import { AIGNE_HUB_DID, Config, OBSERVABILITY_DID } from '@api/libs/env';
-import logger from '@api/libs/logger';
+import { Config } from '@api/libs/env';
 import { checkUserCreditBalance } from '@api/libs/payment';
 import { createAndReportUsageV2 } from '@api/libs/usage';
 import { checkModelRateAvailable } from '@api/providers';
 import AiCredential from '@api/store/models/ai-credential';
 import AiModelRate from '@api/store/models/ai-model-rate';
 import AiProvider from '@api/store/models/ai-provider';
-import { call, getComponentMountPoint } from '@blocklet/sdk/lib/component';
 import sessionMiddleware from '@blocklet/sdk/lib/middlewares/session';
 import compression from 'compression';
 import { Router } from 'express';
@@ -27,29 +24,6 @@ import { getModel } from '../providers/models';
 const router = Router();
 
 const user = sessionMiddleware({ accessKey: true });
-
-AIGNEObserver.setExportFn(async (spans) => {
-  if (!getComponentMountPoint(OBSERVABILITY_DID)) {
-    logger.warn('Please install the Observability blocklet to enable tracing agents');
-    return;
-  }
-
-  logger.info('Sending trace tree to Observability blocklet', { spans });
-
-  await call({
-    name: OBSERVABILITY_DID,
-    method: 'POST',
-    path: '/api/trace/tree',
-    data: (spans || []).map((x: any) => {
-      return {
-        ...x,
-        componentId: AIGNE_HUB_DID,
-      };
-    }),
-  }).catch((err) => {
-    logger.error('Failed to send trace tree to Observability blocklet', err);
-  });
-});
 
 router.get('/status', user, async (req, res) => {
   const userDid = req.user?.did;
