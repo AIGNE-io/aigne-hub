@@ -2,7 +2,7 @@ import 'express-async-errors';
 
 import path from 'path';
 
-import { SubscriptionError } from '@blocklet/aigne-hub/api';
+import { CreditError, StatusCodeError, SubscriptionError } from '@blocklet/aigne-hub/api';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import dotenv from 'dotenv-flow';
@@ -62,7 +62,7 @@ app.use(<ErrorRequestHandler>((error, req, res, _next) => {
   let errorData = null;
   const isEventStream = req.accepts().some((i) => i.startsWith('text/event-stream'));
 
-  if (error instanceof SubscriptionError) {
+  if (error instanceof SubscriptionError || error instanceof CreditError) {
     errorData = {
       message: error.message,
       timestamp: error.timestamp,
@@ -75,7 +75,11 @@ app.use(<ErrorRequestHandler>((error, req, res, _next) => {
   }
 
   if (!res.headersSent) {
-    res.status(isEventStream ? 200 : 500);
+    let statusCode = 500;
+    if (error instanceof StatusCodeError) {
+      statusCode = error?.statusCode || 500;
+    }
+    res.status(isEventStream ? 200 : statusCode);
     res.contentType(isEventStream ? 'text/event-stream' : 'json');
     res.flushHeaders();
   }

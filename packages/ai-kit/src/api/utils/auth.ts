@@ -9,6 +9,8 @@ import type { WalletObject } from '@ocap/wallet';
 import type { NextFunction, Request, Response } from 'express';
 import stringify from 'json-stable-stringify';
 
+import { StatusCodeError } from '../error';
+
 const TOKEN_EXPIRES_IN_SECONDS = 60 * 10;
 
 export const wallet: WalletObject = getWallet();
@@ -58,7 +60,9 @@ export function verifyRemoteComponentCall({
   userDid?: string;
   expiresIn?: number;
 }) {
-  if (Math.abs(Date.now() / 1000 - timestamp) > expiresIn) throw new Error('signature expired');
+  if (Math.abs(Date.now() / 1000 - timestamp) > expiresIn) {
+    throw new StatusCodeError(401, 'signature expired');
+  }
 
   return signer.verify(hashData({ appId, timestamp, data, userDid }), sig, pk);
 }
@@ -94,14 +98,16 @@ export function ensureRemoteComponentCall(
       const sig = req.get('x-component-sig');
       const appId = req.get('x-app-id');
       const timestamp = req.get('x-timestamp');
-      const userDid = req.get('x-app-user-did'); // Get user did
+      const userDid = req.get('x-app-user-did');
 
       if (!sig || !appId || !timestamp) {
-        throw new Error('Missing required headers x-component-sig/x-app-id/x-timestamp');
+        throw new StatusCodeError(400, 'Missing required headers x-component-sig/x-app-id/x-timestamp');
       }
 
       const pk = await getPublicKey(appId);
-      if (appIdFromPublicKey(pk) !== appId) throw new Error('appId and public key not match');
+      if (appIdFromPublicKey(pk) !== appId) {
+        throw new StatusCodeError(401, 'appId and public key not match');
+      }
 
       if (
         !verifyRemoteComponentCall({
@@ -113,7 +119,7 @@ export function ensureRemoteComponentCall(
           userDid,
         })
       ) {
-        throw new Error('Validate signature error');
+        throw new StatusCodeError(401, 'Validate signature error');
       }
 
       req.appClient = {

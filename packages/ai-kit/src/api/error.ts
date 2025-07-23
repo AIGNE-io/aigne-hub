@@ -50,3 +50,12 @@ export class CreditError extends Error {
     this.type = type;
   }
 }
+
+export class StatusCodeError extends Error {
+  statusCode: number;
+
+  constructor(statusCode: number, message: string) {
+    super(message);
+    this.statusCode = statusCode;
+  }
+}
