@@ -500,7 +500,7 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
                     slotProps={{
                       htmlInput: {
                         type: 'number',
-                        step: 0.1,
+                        step: 0.001,
                         min: 0,
                       },
                     }}
