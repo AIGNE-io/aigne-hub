@@ -15,14 +15,12 @@ import { appRegister } from '@blocklet/aigne-hub/api/call/app';
 import AIKitConfig from '@blocklet/aigne-hub/api/config';
 import { appIdFromPublicKey, ensureRemoteComponentCall } from '@blocklet/aigne-hub/api/utils/auth';
 import { config, getComponentMountPoint } from '@blocklet/sdk';
-import sessionMiddleware from '@blocklet/sdk/lib/middlewares/session';
 import { Router } from 'express';
 import Joi from 'joi';
 import { joinURL, withQuery } from 'ufo';
 
 const router = Router();
 
-const user = sessionMiddleware({ accessKey: true });
 const statusQuerySchema = Joi.object<{ description?: string }>({
   description: Joi.string().empty([null, '']),
 });
@@ -175,11 +173,11 @@ router.post('/subscription/recover', ensureRemoteComponentCall(App.findPublicKey
   res.json(null);
 });
 
-router.get('/service/status', user, proxyToAIKit('/api/app/status', { useAIKitService: true }));
+router.get('/service/status', proxyToAIKit('/api/app/status', { useAIKitService: true }));
 
-router.get('/service/usage', user, ensureAdmin, proxyToAIKit('/api/app/usage', { useAIKitService: true }));
+router.get('/service/usage', ensureAdmin, proxyToAIKit('/api/app/usage', { useAIKitService: true }));
 
-router.post('/service/register', user, async (_, res) => {
+router.post('/service/register', async (_, res) => {
   const result = await appRegister({ publicKey: wallet.publicKey }, { useAIKitService: true });
   res.json({
     ...result,

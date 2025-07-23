@@ -32,7 +32,7 @@ router.post(
   createRetryHandler(async (req, res) => {
     // v1 specific checks
     if (req.appClient?.appId) {
-      await checkSubscription({ appId: req.appClient!.appId });
+      await checkSubscription({ appId: req.appClient?.appId });
     }
 
     // Process the completion and get usage data
@@ -46,7 +46,7 @@ router.post(
         completionTokens: usageData.completionTokens,
         model: usageData.model,
         modelParams: usageData.modelParams,
-        appId: req.appClient!.appId,
+        appId: req.appClient?.appId,
       });
     }
   })
@@ -59,7 +59,7 @@ router.post(
   createRetryHandler(async (req, res) => {
     // v1 specific checks
     if (req.appClient?.appId) {
-      await checkSubscription({ appId: req.appClient!.appId });
+      await checkSubscription({ appId: req.appClient?.appId });
     }
 
     // Process embeddings and get usage data
@@ -71,7 +71,7 @@ router.post(
         type: 'embedding',
         promptTokens: usageData.promptTokens,
         model: usageData.model,
-        appId: req.appClient!.appId,
+        appId: req.appClient?.appId,
       });
     }
   })
@@ -84,7 +84,7 @@ router.post(
   createRetryHandler(async (req, res) => {
     // v1 specific checks
     if (req.appClient?.appId) {
-      await checkSubscription({ appId: req.appClient!.appId });
+      await checkSubscription({ appId: req.appClient?.appId });
     }
 
     // Process image generation and get usage data
@@ -97,7 +97,7 @@ router.post(
         model: usageData.model,
         modelParams: usageData.modelParams,
         numberOfImageGeneration: usageData.numberOfImageGeneration,
-        appId: req.appClient!.appId,
+        appId: req.appClient?.appId,
       });
     }
   })
