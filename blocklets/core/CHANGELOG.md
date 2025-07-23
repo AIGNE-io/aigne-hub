@@ -1,3 +1,10 @@
+## 0.2.12 (2025-7-23)
+
+- refactor(api): simplify key assignment in credential mapping for improved readability
+- feat(api): add CreditError and StatusCodeError for improved error handling
+- feat(api): improve AI model configuration by adding support for default provider fallback and enhancing error handling
+- feat(api): enhance model retrieval by filtering enabled AI providers
+
 ## 0.2.11 (2025-7-23)
 
 - refactor(api): remove session middleware from service routes
