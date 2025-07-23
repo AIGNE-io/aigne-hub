@@ -808,6 +808,11 @@ router.get('/models', async (req, res) => {
       where.type = req.query.type;
     }
 
+    const providers = await AiProvider.getEnabledProviders();
+    if (providers.length === 0) {
+      return res.json({});
+    }
+
     const modelRates = await AiModelRate.findAll({
       where,
       include: [
@@ -815,7 +820,9 @@ router.get('/models', async (req, res) => {
           model: AiProvider,
           as: 'provider',
           where: {
-            enabled: true,
+            id: {
+              [Op.in]: providers.map((p) => p.id),
+            },
           },
           attributes: ['id', 'name', 'displayName'],
         },

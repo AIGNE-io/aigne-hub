@@ -107,7 +107,7 @@ export default class AiProvider extends Model<InferAttributes<AiProvider>, Infer
     if (typeFilter) {
       where.type = typeFilter;
     }
-    return AiProvider.findAll({
+    const providers = await AiProvider.findAll({
       where,
       include: [
         {
@@ -119,6 +119,11 @@ export default class AiProvider extends Model<InferAttributes<AiProvider>, Infer
       ],
       order: [['displayName', 'ASC']],
     });
+    if (!providers) {
+      return [];
+    }
+    // @ts-ignore
+    return providers.filter((provider) => provider.credentials?.length > 0);
   }
 }
 
