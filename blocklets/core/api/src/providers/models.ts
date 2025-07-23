@@ -350,7 +350,7 @@ export async function getProviderCredentials(provider: string) {
 }
 export async function chatCompletionByFrameworkModel(
   input: ChatCompletionInput & Required<Pick<ChatCompletionInput, 'model'>>,
-  userId?: string
+  userDid?: string
 ): Promise<AsyncGenerator<ChatCompletionResponse>> {
   const model = await getModel(input);
   const engine = new AIGNE();
@@ -364,7 +364,7 @@ export async function chatCompletionByFrameworkModel(
       tools: input.tools,
       modelOptions: pick(input, ['temperature', 'topP', 'presencePenalty', 'frequencyPenalty', 'maxTokens']),
     },
-    { streaming: true, userContext: { userId } }
+    { streaming: true, userContext: { userId: userDid } }
   );
 
   return adaptStreamToOldFormat(response);
