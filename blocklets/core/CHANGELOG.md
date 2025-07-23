@@ -1,3 +1,7 @@
+## 0.2.13 (2025-7-23)
+
+- chore: support trace span from playground
+
 ## 0.2.12 (2025-7-23)
 
 - refactor(api): simplify key assignment in credential mapping for improved readability
