@@ -1,3 +1,7 @@
+## 0.2.11 (2025-7-23)
+
+- refactor(api): remove session middleware from service routes
+
 ## 0.2.10 (2025-7-22)
 
 - feat(api): support /api/ai-providers/chat/models to get available models
