@@ -331,7 +331,7 @@ export default function ProviderForm({ provider = null, onSubmit, onCancel }: Pr
                 {credentials.map((credential, index) => (
                   <Collapse
                     // eslint-disable-next-line react/no-array-index-key
-                    key={`${credential.name}-${index}`}
+                    key={`${index}`}
                     value={`credential-${index}`}
                     trigger={credential.name}
                     expanded
