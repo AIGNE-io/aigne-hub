@@ -91,16 +91,16 @@ export function CreditRateFormula() {
             • <strong>R</strong> = {t('config.modelRates.configInfo.tokenConsumption')}
           </Typography>
           <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-            • <strong>{t('config.modelRates.configInfo.creditPrice')}</strong>：
-            {t('config.modelRates.configInfo.creditPriceDesc')}
+            • <strong>{t('config.modelRates.configInfo.modelTokenCost')}</strong>：
+            {t('config.modelRates.configInfo.modelCostDesc')}
           </Typography>
           <Typography variant="caption" sx={{ color: 'text.secondary' }}>
             • <strong>{t('config.modelRates.configInfo.targetProfitMargin')}</strong>：
             {t('config.modelRates.configInfo.profitMarginDesc')}
           </Typography>
           <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-            • <strong>{t('config.modelRates.configInfo.modelTokenCost')}</strong>：
-            {t('config.modelRates.configInfo.modelCostDesc')}
+            • <strong>{t('config.modelRates.configInfo.creditPrice')}</strong>：
+            {t('config.modelRates.configInfo.creditPriceDesc')}
           </Typography>
         </Box>
         <Typography variant="caption" sx={{ color: 'text.secondary', mt: 1, display: 'block' }}>

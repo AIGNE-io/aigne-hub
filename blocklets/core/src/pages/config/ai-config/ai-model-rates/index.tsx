@@ -457,7 +457,7 @@ export default function AIModelRates() {
                       border: '1px solid',
                       borderColor: 'divider',
                       width: 'fit-content',
-                      minWidth: { xs: 'auto', sm: 400 },
+                      minWidth: { xs: 'auto', sm: 500 },
                     },
                   },
                 }}>
