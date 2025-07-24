@@ -179,13 +179,20 @@ export async function ensureDefaultCreditPaymentLink() {
     ],
   });
 
-  return joinURL(getPaymentKitPrefix(), '/checkout/pay', paymentLink.id);
+  const link = joinURL('/checkout/pay', paymentLink.id);
+  Config.creditPaymentLink = link;
+  return link;
 }
 
 // default credit payment link
 export async function getCreditPaymentLink() {
   if (!isPaymentInstalled()) return null;
-  if (Config?.creditPaymentLink) return Config.creditPaymentLink;
+  if (Config?.creditPaymentLink) {
+    if (Config.creditPaymentLink.startsWith('/')) {
+      return joinURL(getPaymentKitPrefix(), Config.creditPaymentLink);
+    }
+    return Config.creditPaymentLink;
+  }
   // fallback to default payment link
   const link = await ensureDefaultCreditPaymentLink();
   if (!link) {

@@ -226,6 +226,10 @@ export const Config = {
     }
     return this._creditPaymentLink;
   },
+  set creditPaymentLink(value: string | undefined) {
+    config.env.preferences.creditPaymentLink = value;
+    this._creditPaymentLink = value;
+  },
 
   _creditBasedBillingEnabled: undefined as boolean | undefined,
   get creditBasedBillingEnabled() {
