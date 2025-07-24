@@ -16,7 +16,7 @@ repository:
   url: git+https://github.com/AIGNE-io/aigne-hub.git
 specVersion: 1.2.8
 version: 0.2.13
-logo: screenshots/logo.jpg
+logo: screenshots/logo.png
 files:
   - dist
   - screenshots
