@@ -14,6 +14,7 @@ import { checkModelRateAvailable } from '@api/providers';
 import AiCredential from '@api/store/models/ai-credential';
 import AiModelRate from '@api/store/models/ai-model-rate';
 import AiProvider from '@api/store/models/ai-provider';
+import { CustomError } from '@blocklet/error';
 import sessionMiddleware from '@blocklet/sdk/lib/middlewares/session';
 import compression from 'compression';
 import { Router } from 'express';
@@ -69,7 +70,7 @@ router.get('/status', user, async (req, res) => {
 router.post('/:type(chat)?/completions', compression(), user, async (req, res) => {
   const userDid = req.user?.did;
   if (!userDid) {
-    throw new Error('User not authenticated');
+    throw new CustomError(401, 'User not authenticated');
   }
   if (userDid && Config.creditBasedBillingEnabled) {
     await checkUserCreditBalance({ userDid });
@@ -97,7 +98,7 @@ router.post(
     // v2 specific checks
     const userDid = req.user?.did;
     if (!userDid) {
-      throw new Error('User not authenticated');
+      throw new CustomError(401, 'User not authenticated');
     }
     if (userDid && Config.creditBasedBillingEnabled) {
       await checkUserCreditBalance({ userDid });

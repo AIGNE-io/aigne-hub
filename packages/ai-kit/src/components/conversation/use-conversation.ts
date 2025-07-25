@@ -119,8 +119,7 @@ export default function useConversation({
             if (item) item.error = error;
           })
         );
-
-        throw error;
+        return null;
       } finally {
         setMessages((v) =>
           produce(v, (draft) => {

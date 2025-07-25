@@ -1,5 +1,6 @@
 import { getProviderCredentials } from '@api/providers/models';
 import { SubscriptionError, SubscriptionErrorType } from '@blocklet/aigne-hub/api';
+import { CustomError } from '@blocklet/error';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import { OpenAI } from 'openai';
 
@@ -57,7 +58,7 @@ export function getAIApiKey(company: AIProvider) {
 
 export function getModelNameWithProvider(model: string, defaultProviderName: string = '') {
   if (!model) {
-    throw new Error('Model is required');
+    throw new CustomError(400, 'Model is required');
   }
   if (model.includes('/')) {
     const modelArray = model.split('/');

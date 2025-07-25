@@ -1,3 +1,4 @@
+import { getPrefix } from '@app/libs/util';
 import {
   Conversation,
   ConversationRef,
@@ -8,8 +9,9 @@ import {
 import Dashboard from '@blocklet/ui-react/lib/Dashboard';
 import styled from '@emotion/styled';
 import { HighlightOff } from '@mui/icons-material';
-import { Box, Button, MenuItem, Select, Tooltip } from '@mui/material';
+import { Avatar, Box, Button, MenuItem, Select, Tooltip } from '@mui/material';
 import { ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import { joinURL } from 'ufo';
 
 import { useSessionContext } from '../../contexts/session';
 import { ImageGenerationSize, imageGenerationsV2, textCompletionsV2 } from '../../libs/ai';
@@ -21,6 +23,7 @@ interface ModelOption {
 
 interface ModelGroup {
   provider: string;
+  displayName: string;
   models: ModelOption[];
 }
 
@@ -56,14 +59,14 @@ function formatModelsData(apiModels: ApiModel[]): ModelGroup[] {
       const displayName = providerDisplayNames[providerName.toLowerCase()] || provider.displayName;
 
       if (!providerMap.has(displayName)) {
-        providerMap.set(displayName, []);
+        providerMap.set(providerName, []);
       }
 
       const modelValue = `${providerName}/${apiModel.model}`;
       const modelLabel = apiModel.model;
 
       // Avoid adding duplicate models
-      const existingModels = providerMap.get(displayName)!;
+      const existingModels = providerMap.get(providerName)!;
       if (!existingModels.some((m) => m.value === modelValue)) {
         existingModels.push({
           value: modelValue,
@@ -78,6 +81,7 @@ function formatModelsData(apiModels: ApiModel[]): ModelGroup[] {
   providerMap.forEach((models, provider) => {
     modelGroups.push({
       provider,
+      displayName: providerDisplayNames[provider] || provider,
       models: models.sort((a, b) => a.label.localeCompare(b.label)),
     });
   });
@@ -169,7 +173,7 @@ export default function Chat() {
         showDomainWarningDialog={undefined}>
         <Conversation
           ref={ref}
-          sx={{ maxWidth: 800, mx: 'auto', width: '100%', height: '100%' }}
+          sx={{ maxWidth: 1000, mx: 'auto', width: '100%', height: '100%' }}
           messages={messages}
           onSubmit={(prompt) => add(prompt)}
           customActions={customActions}
@@ -179,7 +183,7 @@ export default function Chat() {
                 value={model}
                 onChange={(e) => setModel(e.target.value)}
                 size="small"
-                sx={{ alignSelf: 'stretch', minWidth: 200 }}
+                sx={{ alignSelf: 'stretch', minWidth: 280 }}
                 displayEmpty
                 disabled={loading || modelGroups.length === 0}
                 renderValue={(selected) => {
@@ -201,8 +205,22 @@ export default function Chat() {
                     <MenuItem
                       key={`header-${group.provider}`}
                       disabled
-                      sx={{ fontWeight: 'bold', fontSize: 14, opacity: 0.7 }}>
-                      {group.provider}
+                      sx={{
+                        fontSize: 14,
+                        display: 'flex',
+                        alignItems: 'center',
+                        color: 'text.secondary',
+                        gap: 1,
+                        '&.Mui-disabled': {
+                          opacity: 1,
+                        },
+                      }}>
+                      <Avatar
+                        src={joinURL(getPrefix(), `/logo/${group.provider}.png`)}
+                        sx={{ width: 24, height: 24 }}
+                        alt={group.provider}
+                      />
+                      {group.displayName}
                     </MenuItem>,
                     ...group.models.map((model) => (
                       <MenuItem key={model.value} value={model.value} sx={{ ml: 1 }}>

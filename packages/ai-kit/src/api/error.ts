@@ -39,15 +39,21 @@ export class CreditError extends Error {
 
   type: CreditErrorType;
 
-  constructor(type: CreditErrorType, link?: string) {
+  statusCode: number;
+
+  link?: string;
+
+  constructor(statusCode: number, type: CreditErrorType, link?: string) {
     let message = CreditErrors[type] || CreditErrors[CreditErrorType.UNKNOWN];
     if (type === CreditErrorType.NOT_ENOUGH && link) {
-      message += `\n\n${link}`;
+      message += `\n${link}`;
     }
     super(message);
 
     this.timestamp = new Date().toISOString();
     this.type = type;
+    this.statusCode = statusCode || 500;
+    this.link = link;
   }
 }
 

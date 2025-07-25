@@ -2,7 +2,9 @@ import 'express-async-errors';
 
 import path from 'path';
 
-import { CreditError, StatusCodeError, SubscriptionError } from '@blocklet/aigne-hub/api';
+import { CreditError, SubscriptionError } from '@blocklet/aigne-hub/api';
+// eslint-disable-next-line import/no-extraneous-dependencies
+import { CustomError, formatError, getStatusFromError } from '@blocklet/error';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import dotenv from 'dotenv-flow';
@@ -11,7 +13,7 @@ import express, { ErrorRequestHandler } from 'express';
 import { subscribeEvents } from './events/listen';
 import { Config, isDevelopment } from './libs/env';
 import logger, { accessLogMiddleware } from './libs/logger';
-import { autoUpdateSubscriptionMeta } from './libs/payment';
+import { autoUpdateSubscriptionMeta, ensureMeter } from './libs/payment';
 import routes from './routes';
 import { initAuthRouter } from './routes/auth';
 import setupHtmlRouter from './routes/html';
@@ -57,7 +59,7 @@ if (!isDevelopment) {
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 app.use(<ErrorRequestHandler>((error, req, res, _next) => {
-  logger.error('handle route error', { error });
+  logger.error('handle route error', { error, type: error?.type });
 
   let errorData = null;
   const isEventStream = req.accepts().some((i) => i.startsWith('text/event-stream'));
@@ -67,7 +69,11 @@ app.use(<ErrorRequestHandler>((error, req, res, _next) => {
       message: error.message,
       timestamp: error.timestamp,
       type: error.type,
+      // @ts-ignore
+      link: error?.link,
     };
+  } else if (error instanceof CustomError) {
+    errorData = formatError(error);
   } else {
     errorData = {
       message: error.message,
@@ -75,9 +81,9 @@ app.use(<ErrorRequestHandler>((error, req, res, _next) => {
   }
 
   if (!res.headersSent) {
-    let statusCode = 500;
-    if (error instanceof StatusCodeError) {
-      statusCode = error?.statusCode || 500;
+    let statusCode = error?.statusCode || 500;
+    if (error instanceof CustomError) {
+      statusCode = getStatusFromError(error);
     }
     res.status(isEventStream ? 200 : statusCode);
     res.contentType(isEventStream ? 'text/event-stream' : 'json');
@@ -103,4 +109,7 @@ export const server = app.listen(port, (err?: any) => {
 
   autoUpdateSubscriptionMeta();
   subscribeEvents();
+  if (Config.creditBasedBillingEnabled) {
+    ensureMeter();
+  }
 });

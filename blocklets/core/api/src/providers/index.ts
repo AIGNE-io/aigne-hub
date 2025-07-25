@@ -3,6 +3,7 @@ import { Config } from '@api/libs/env';
 import AiModelRate from '@api/store/models/ai-model-rate';
 import AiProvider from '@api/store/models/ai-provider';
 import { ChatCompletionInput, ChatCompletionResponse } from '@blocklet/aigne-hub/api/types';
+import { CustomError } from '@blocklet/error';
 import OpenAI from 'openai';
 
 import { geminiChatCompletion } from './gemini';
@@ -21,7 +22,7 @@ export function chatCompletion(
             new OpenAI({ baseURL: 'https://openrouter.ai/api/v1', apiKey: getAIApiKey('openRouter') })
           )
         : (() => {
-            throw new Error(`Unsupported model ${input.model}`);
+            throw new CustomError(400, `Unsupported model ${input.model}`);
           })();
 
   return result;
@@ -29,12 +30,12 @@ export function chatCompletion(
 
 export function checkModelAvailable(model: string) {
   if (!model) {
-    throw new Error('Model is required');
+    throw new CustomError(400, 'Model is required');
   }
   if (Config.pricing?.onlyEnableModelsInPricing) {
     const { modelName } = getModelNameWithProvider(model);
     if (!Config.pricing.list.some((i) => i.model === modelName)) {
-      throw new Error(`Unsupported model ${model}`);
+      throw new CustomError(400, `Unsupported model ${model}`);
     }
   }
 }

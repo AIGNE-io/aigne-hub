@@ -127,6 +127,9 @@ importers:
       '@blocklet/constant':
         specifier: ^1.16.46
         version: 1.16.46
+      '@blocklet/error':
+        specifier: 0.2.5
+        version: 0.2.5
       '@blocklet/js-sdk':
         specifier: ^1.16.46
         version: 1.16.46

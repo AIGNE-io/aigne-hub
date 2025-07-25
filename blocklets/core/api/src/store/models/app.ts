@@ -1,3 +1,4 @@
+import { CustomError } from '@blocklet/error';
 import { CreationOptional, DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequelize';
 
 import { sequelize } from '../sequelize';
@@ -12,8 +13,8 @@ export default class App extends Model<InferAttributes<App>, InferCreationAttrib
   declare publicKey?: string;
 
   static async findPublicKeyById(appId: string) {
-    return App.findByPk(appId, { rejectOnEmpty: new Error('App not found') }).then((app) => {
-      if (!app.publicKey) throw new Error('Public key not set for this app');
+    return App.findByPk(appId, { rejectOnEmpty: new CustomError(404, 'App not found') }).then((app) => {
+      if (!app.publicKey) throw new CustomError(400, 'Public key not set for this app');
       return app.publicKey;
     });
   }

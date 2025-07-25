@@ -1,6 +1,7 @@
 import AiModelRate from '@api/store/models/ai-model-rate';
 import AiProvider from '@api/store/models/ai-provider';
 import Usage from '@api/store/models/usage';
+import { CustomError } from '@blocklet/error';
 import payment from '@blocklet/payment-js';
 import BigNumber from 'bignumber.js';
 import { DebouncedFunc, throttle } from 'lodash';
@@ -10,7 +11,7 @@ import { getModelNameWithProvider } from './ai-provider';
 import { wallet } from './auth';
 import { Config } from './env';
 import logger from './logger';
-import { createMeterEvent, getActiveSubscriptionOfApp, isPaymentInstalled } from './payment';
+import { createMeterEvent, getActiveSubscriptionOfApp, isPaymentRunning } from './payment';
 
 export async function createAndReportUsage({
   type,
@@ -58,7 +59,7 @@ export async function createAndReportUsage({
 
 async function getModelRates(model: string) {
   if (!model) {
-    throw new Error('Model is required');
+    throw new CustomError(400, 'Model is required');
   }
   const callback = (err: Error) => {
     if (Config.pricing?.list) {
@@ -93,7 +94,7 @@ async function getModelRates(model: string) {
 
 async function getPrice(type: Usage['type'], model: string) {
   if (!model) {
-    throw new Error('Model is required');
+    throw new CustomError(400, 'Model is required');
   }
   const modelRates = await getModelRates(model);
   const { modelName } = getModelNameWithProvider(model);
@@ -153,10 +154,10 @@ async function reportUsage({ appId }: { appId: string }) {
   tasks[appId] ??= throttle(
     async ({ appId }: { appId: string }) => {
       try {
-        if (!isPaymentInstalled()) return;
+        if (!isPaymentRunning()) return;
 
         const { pricing } = Config;
-        if (!pricing) throw new Error('Missing required preference `pricing`');
+        if (!pricing) throw new CustomError(400, 'Missing required preference `pricing`');
 
         const start = await Usage.findOne({
           where: { appId, usageReportStatus: { [Op.not]: null } },
@@ -176,11 +177,11 @@ async function reportUsage({ appId }: { appId: string }) {
         });
 
         const subscription = await getActiveSubscriptionOfApp({ appId });
-        if (!subscription) throw new Error('Subscription not active');
+        if (!subscription) throw new CustomError(400, 'Subscription not active');
 
         const subscriptionItem = subscription.items.find((i) => i.price.product_id === pricing.subscriptionProductId);
         if (!subscriptionItem)
-          throw new Error(`Subscription item of product ${pricing.subscriptionProductId} not found`);
+          throw new CustomError(404, `Subscription item of product ${pricing.subscriptionProductId} not found`);
 
         await end.update({ usageReportStatus: 'counted' });
 
@@ -208,10 +209,10 @@ async function reportUsageV2({ appId, userDid }: { appId: string; userDid: strin
   tasksV2[taskKey] ??= throttle(
     async ({ appId, userDid }: { appId: string; userDid: string }) => {
       try {
-        if (!isPaymentInstalled()) return;
+        if (!isPaymentRunning()) return;
 
         const { pricing } = Config;
-        if (!pricing) throw new Error('Missing required preference `pricing`');
+        if (!pricing) throw new CustomError(400, 'Missing required preference `pricing`');
 
         const start = await Usage.findOne({
           where: { appId, userDid, usageReportStatus: { [Op.not]: null } },

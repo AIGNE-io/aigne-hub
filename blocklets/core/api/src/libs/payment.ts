@@ -1,27 +1,34 @@
 import { CreditError, CreditErrorType, SubscriptionError, SubscriptionErrorType } from '@blocklet/aigne-hub/api';
 import { appStatus } from '@blocklet/aigne-hub/api/call/app';
+import { BlockletStatus } from '@blocklet/constant';
+import { CustomError } from '@blocklet/error';
 import payment, { Subscription, TMeterEventExpanded } from '@blocklet/payment-js';
 import { getComponentMountPoint } from '@blocklet/sdk';
 import config from '@blocklet/sdk/lib/config';
 import { joinURL, parseURL } from 'ufo';
 
-import { Config, DEFAULT_CREDIT_PRICE_KEY, METER_NAME, METER_UNIT } from './env';
+import { Config, DEFAULT_CREDIT_PAYMENT_LINK_KEY, DEFAULT_CREDIT_PRICE_KEY, METER_NAME, METER_UNIT } from './env';
 import logger from './logger';
 
 const PAYMENT_DID = 'z2qaCNvKMv5GjouKdcDWexv6WqtHbpNPQDnAk';
 
-export const isPaymentInstalled = () => !!config.components.find((i) => i.did === PAYMENT_DID);
+export const isPaymentRunning = () =>
+  !!config.components.find((i) => i.did === PAYMENT_DID && i.status === BlockletStatus.running);
 
 export const paymentClient = payment;
 export const getPaymentKitPrefix = () => {
   return joinURL(config.env.appUrl, getComponentMountPoint(PAYMENT_DID));
 };
 export const ensureMeter = async () => {
-  if (!isPaymentInstalled()) return null;
+  if (!isPaymentRunning()) return null;
   try {
     const meter = await payment.meters.retrieve(METER_NAME);
     return meter;
   } catch (error) {
+    if (error instanceof Error && error.message.includes('is not running')) {
+      return null;
+    }
+    logger.error('failed to retrieve meter', { error });
     logger.info('start to create meter');
     const meter = await payment.meters.create({
       name: 'AIGNE Hub AI Meter',
@@ -44,7 +51,7 @@ export async function ensureCustomer(userDid: string) {
 
 // get user credits
 export async function getUserCredits({ userDid }: { userDid: string }) {
-  if (!isPaymentInstalled()) return { balance: 0, currency: null };
+  if (!isPaymentRunning()) return { balance: 0, currency: null };
   const meter = await ensureMeter();
   if (!meter) {
     return {
@@ -83,9 +90,9 @@ export async function createMeterEvent({
   amount: number;
   metadata?: Record<string, any>;
 }): Promise<TMeterEventExpanded | undefined> {
-  if (!isPaymentInstalled()) throw new Error('Payment is not installed');
+  if (!isPaymentRunning()) throw new CustomError(502, 'Payment Kit is not running');
   const meter = await ensureMeter();
-  if (!meter) throw new Error('Meter is not found');
+  if (!meter) throw new CustomError(404, 'Meter is not found');
   const now = Date.now();
   if (Number(amount) === 0) {
     return undefined;
@@ -158,35 +165,45 @@ export async function ensureDefaultCreditPrice() {
 }
 
 export async function ensureDefaultCreditPaymentLink() {
-  if (!isPaymentInstalled()) return null;
+  if (!isPaymentRunning()) return null;
   const price = await ensureDefaultCreditPrice();
   if (!price) {
     logger.error('failed to ensure default credit price');
-    throw new Error('failed to ensure default credit price');
+    throw new CustomError(404, 'Default credit price not found');
   }
-  const paymentLink = await payment.paymentLinks.create({
-    name: price.product.name,
-    line_items: [
-      {
-        price_id: price.id,
-        quantity: 1,
-        adjustable_quantity: {
-          enabled: true,
-          minimum: 1,
-          maximum: 100000000,
+  try {
+    const existingPaymentLink = await payment.paymentLinks.retrieve(DEFAULT_CREDIT_PAYMENT_LINK_KEY);
+    if (!existingPaymentLink) {
+      throw new CustomError(404, 'Default credit payment link not found');
+    }
+    return joinURL(getPaymentKitPrefix(), 'checkout/pay', existingPaymentLink.id);
+  } catch (error) {
+    logger.error('failed to retrieve default credit payment link, create a new one', { error });
+    const paymentLink = await payment.paymentLinks.create({
+      name: price.product.name,
+      // @ts-ignore
+      lookup_key: DEFAULT_CREDIT_PAYMENT_LINK_KEY,
+      line_items: [
+        {
+          price_id: price.id,
+          quantity: 1,
+          adjustable_quantity: {
+            enabled: true,
+            minimum: 1,
+            maximum: 100000000,
+          },
         },
-      },
-    ],
-  });
-
-  const link = joinURL('/checkout/pay', paymentLink.id);
-  Config.creditPaymentLink = link;
-  return link;
+      ],
+    });
+    const link = joinURL('/checkout/pay', paymentLink.id);
+    Config.creditPaymentLink = link;
+    return joinURL(getPaymentKitPrefix(), link);
+  }
 }
 
 // default credit payment link
 export async function getCreditPaymentLink() {
-  if (!isPaymentInstalled()) return null;
+  if (!isPaymentRunning()) return null;
   if (Config?.creditPaymentLink) {
     if (Config.creditPaymentLink.startsWith('/')) {
       return joinURL(getPaymentKitPrefix(), Config.creditPaymentLink);
@@ -197,7 +214,7 @@ export async function getCreditPaymentLink() {
   const link = await ensureDefaultCreditPaymentLink();
   if (!link) {
     logger.error('failed to ensure default credit payment link');
-    throw new Error('failed to ensure default credit payment link');
+    throw new CustomError(404, 'Credit payment link not found');
   }
   return link;
 }
@@ -211,7 +228,7 @@ export async function checkUserCreditBalance({ userDid }: { userDid: string }) {
     } catch (err) {
       logger.error('failed to get credit payment link', { err });
     }
-    throw new CreditError(CreditErrorType.NOT_ENOUGH, link ?? '');
+    throw new CreditError(402, CreditErrorType.NOT_ENOUGH, link ?? '');
   }
 }
 
@@ -277,7 +294,7 @@ export async function getActiveSubscriptionOfApp({
   description?: string;
   status?: Subscription['status'][];
 }) {
-  if (!isPaymentInstalled()) return undefined;
+  if (!isPaymentRunning()) return undefined;
 
   // @ts-ignore TODO: remove ts-ignore after upgrade @did-pay/client
   const subscription = (await payment.subscriptions.list({ 'metadata.appId': appId })).list.find(

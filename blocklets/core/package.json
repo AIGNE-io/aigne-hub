@@ -34,6 +34,7 @@
     "@aigne/bedrock": "^0.8.3",
     "@aigne/core": "^1.37.0",
     "@aigne/deepseek": "^0.7.3",
+    "@blocklet/error": "0.2.5",
     "@aigne/gemini": "^0.8.3",
     "@aigne/observability-api": "^0.8.0",
     "@aigne/ollama": "^0.7.3",

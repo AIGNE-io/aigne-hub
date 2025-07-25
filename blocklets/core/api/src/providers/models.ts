@@ -23,6 +23,7 @@ import AiCredential from '@api/store/models/ai-credential';
 import AiProvider from '@api/store/models/ai-provider';
 import { SubscriptionError, SubscriptionErrorType } from '@blocklet/aigne-hub/api';
 import { ChatCompletionChunk, ChatCompletionInput, ChatCompletionResponse } from '@blocklet/aigne-hub/api/types';
+import { CustomError } from '@blocklet/error';
 import { NodeHttpHandler, streamCollector } from '@smithy/node-http-handler';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import { pick } from 'lodash';
@@ -231,7 +232,11 @@ export async function loadModel(
   const models = availableModels();
   const m = models.find((m) => provider && m.provider.toLowerCase().includes(provider.toLowerCase()));
 
-  if (!m) throw new Error(`Provider ${provider} model ${model} not found, Please check the model name and provider.`);
+  if (!m)
+    throw new CustomError(
+      404,
+      `Provider ${provider} model ${model} not found, Please check the model name and provider.`
+    );
 
   const params: {
     apiKey?: string;
@@ -269,7 +274,8 @@ export const getModel = async (
     if (input.model.toLowerCase().startsWith('openrouter')) return 'openrouter';
 
     if (!providerName || !name) {
-      throw new Error(
+      throw new CustomError(
+        400,
         'The model format is incorrect. Please use {provider}/{model}, for example: openai/gpt-4o or anthropic/claude-3-5-sonnet'
       );
     }
@@ -284,7 +290,7 @@ export const getModel = async (
     model = input.model;
   }
 
-  if (!model) throw new Error(`Provider ${provider} model ${input.model} not found`);
+  if (!model) throw new CustomError(404, `Provider ${provider} model ${input.model} not found`);
 
   const m = await loadModel(model, { provider, ...options });
   return m;

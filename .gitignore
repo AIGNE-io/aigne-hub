@@ -35,3 +35,4 @@ lerna-debug.log*
 *.tsbuildinfo
 .idea
 node-compile-cache
+.cursor
