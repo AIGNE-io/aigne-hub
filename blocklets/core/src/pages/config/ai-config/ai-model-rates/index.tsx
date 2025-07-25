@@ -1,5 +1,5 @@
 import { CreditRateFormula } from '@app/components/credit-rate-farmula';
-import { getPrefix } from '@app/libs/util';
+import { formatMillionTokenCost, getPrefix } from '@app/libs/util';
 import Dialog from '@arcblock/ux/lib/Dialog';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 /* eslint-disable react/no-unstable-nested-components */
@@ -14,17 +14,6 @@ import { joinURL } from 'ufo';
 import { useSessionContext } from '../../../../contexts/session';
 import ModelRateForm from './model-rate-form';
 import { ModelRate, ModelRateFormData } from './types';
-
-// 格式化小数字，统一使用科学计数法
-const formatSmallNumber = (num: number) => {
-  if (num === 0) return '0';
-
-  // 统一使用科学计数法，最多保留2位，末尾0不展示
-  let formatted = num.toExponential(2);
-  // 去掉末尾的0和可能多余的小数点
-  formatted = formatted.replace(/\.?0+e/, 'e');
-  return formatted;
-};
 
 export default function AIModelRates() {
   const { t } = useLocaleContext();
@@ -254,10 +243,11 @@ export default function AIModelRates() {
                 <Stack>
                   <Typography variant="caption">
                     <strong>{t('config.modelRates.configInfo.creditCost')}</strong>$
-                    {formatSmallNumber(rate.inputRate * baseCreditPrice)}
+                    {formatMillionTokenCost(rate.inputRate * baseCreditPrice)} / 1M
                   </Typography>
                   <Typography variant="caption">
-                    <strong>{t('config.modelRates.configInfo.actualCost')}</strong>${formatSmallNumber(actualInputCost)}
+                    <strong>{t('config.modelRates.configInfo.actualCost')}</strong>$
+                    {formatMillionTokenCost(actualInputCost)} / 1M
                   </Typography>
                   <Typography variant="caption">
                     <strong>{t('config.modelRates.configInfo.profitRate')}</strong>
@@ -323,11 +313,11 @@ export default function AIModelRates() {
                 <Stack>
                   <Typography variant="caption">
                     <strong>{t('config.modelRates.configInfo.creditCost')}</strong>$
-                    {formatSmallNumber(rate.outputRate * baseCreditPrice)}
+                    {formatMillionTokenCost(rate.outputRate * baseCreditPrice)} / 1M
                   </Typography>
                   <Typography variant="caption">
                     <strong>{t('config.modelRates.configInfo.actualCost')}</strong>$
-                    {formatSmallNumber(actualOutputCost)}
+                    {formatMillionTokenCost(actualOutputCost)} / 1M
                   </Typography>
                   <Typography variant="caption">
                     <strong>{t('config.modelRates.configInfo.profitRate')}</strong>
@@ -478,7 +468,7 @@ export default function AIModelRates() {
               sx={{
                 color: 'text.secondary',
               }}>
-              1 AHC = ${formatSmallNumber(Number(baseCreditPrice))} • {t('config.modelRates.configInfo.profitMargin')}
+              AHC Price: ${Number(baseCreditPrice) * 1000000} / 1M • {t('config.modelRates.configInfo.profitMargin')}
               {targetProfitMargin}%
             </Typography>
           </Box>

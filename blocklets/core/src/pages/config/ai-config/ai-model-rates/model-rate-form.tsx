@@ -1,6 +1,7 @@
-import { getPrefix } from '@app/libs/util';
+import { formatMillionTokenCost, getPrefix, parseMillionTokenCost } from '@app/libs/util';
 /* eslint-disable react-hooks/exhaustive-deps */
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
+import { FormLabel } from '@blocklet/aigne-hub/components';
 import { InfoOutlined } from '@mui/icons-material';
 import {
   Autocomplete,
@@ -10,6 +11,8 @@ import {
   Chip,
   FormControl,
   FormHelperText,
+  InputAdornment,
+  Menu,
   MenuItem,
   Select,
   Stack,
@@ -17,7 +20,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ChangeEvent, FocusEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { Link } from 'react-router-dom';
 import { joinURL } from 'ufo';
@@ -33,14 +36,92 @@ interface Props {
   onCancel: () => void;
 }
 
+function TokenCostInput({
+  label,
+  costValue = 0,
+  onCostChange,
+}: {
+  label: string;
+  costValue: number;
+  onCostChange: (value: number) => void;
+}) {
+  const [value, setValue] = useState<number | string>(costValue || 0);
+
+  const handleBlur = (e: FocusEvent<HTMLInputElement>) => {
+    onCostChange(parseMillionTokenCost(e.target.value));
+  };
+
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setValue(e.target.value);
+  };
+
+  useEffect(() => {
+    setValue(formatMillionTokenCost(costValue));
+  }, [costValue]);
+
+  return (
+    <Box>
+      <FormLabel>{label}</FormLabel>
+      <TextField
+        value={value}
+        onBlur={handleBlur}
+        onChange={handleChange}
+        size="small"
+        slotProps={{
+          htmlInput: { type: 'number', step: 0.01, min: 0 },
+          input: {
+            endAdornment: <InputAdornment position="end"> / 1M Tokens</InputAdornment>,
+            startAdornment: <InputAdornment position="start">$</InputAdornment>,
+          },
+        }}
+      />
+    </Box>
+  );
+}
+
+const pricingLinks = {
+  openai: {
+    name: 'OpenAI',
+    url: 'https://platform.openai.com/docs/pricing',
+  },
+  anthropic: {
+    name: 'Anthropic',
+    url: 'https://docs.anthropic.com/en/docs/about-claude/pricing',
+  },
+  xai: {
+    name: 'xAI',
+    url: 'https://docs.x.ai/docs/models',
+  },
+  bedrock: {
+    name: 'AWS Bedrock',
+    url: 'https://aws.amazon.com/bedrock/pricing/',
+  },
+  deepseek: {
+    name: 'DeepSeek',
+    url: 'https://api-docs.deepseek.com/quick_start/pricing',
+  },
+  google: {
+    name: 'Google AI',
+    url: 'https://ai.google.dev/pricing',
+  },
+  openrouter: {
+    name: 'OpenRouter',
+    url: 'https://openrouter.ai/models',
+  },
+  ollama: {
+    name: 'Ollama',
+    url: 'https://ollama.ai/library',
+  },
+};
+
 export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props) {
   const { t } = useLocaleContext();
   const { api } = useSessionContext();
   const [providers, setProviders] = useState<Provider[]>([]);
   const [selectedProviders, setSelectedProviders] = useState<string[]>([]);
   const [modelInputValue, setModelInputValue] = useState('');
+  const [pricingMenuAnchor, setPricingMenuAnchor] = useState<null | HTMLElement>(null);
 
-  // 从 blocklet preferences 获取配置
   const baseCreditPrice = window.blocklet?.preferences?.baseCreditPrice || 0.00000025;
   const targetProfitMargin = window.blocklet?.preferences?.targetProfitMargin || 0;
 
@@ -94,14 +175,10 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
 
   const { handleSubmit, watch, setValue } = methods;
   const modelDisplay = watch('modelDisplay');
-  const selectedModel = watch('modelName');
   const inputRate = watch('inputRate');
   const outputRate = watch('outputRate');
-
-  // 获取当前选中模型的成本信息
-  const selectedModelOption = useMemo(() => {
-    return availableModelOptions.find((option) => option.name === selectedModel);
-  }, [availableModelOptions, selectedModel]);
+  const unitCostsInput = watch('unitCosts.input');
+  const unitCostsOutput = watch('unitCosts.output');
 
   // 计算预估收益率
   const calculateProfitRate = useCallback(
@@ -113,17 +190,12 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
   );
 
   // 自动计算费率的函数
-  const autoCalculateRates = useCallback(() => {
-    // 从当前选择的模型中查找成本信息
-    const modelOption = availableModelOptions.find((option) => option.name === selectedModel);
-    if (modelOption && modelOption.inputCost !== undefined && modelOption.outputCost !== undefined) {
-      const calculatedInputRate = (modelOption.inputCost * (1 + targetProfitMargin / 100)) / baseCreditPrice;
-      const calculatedOutputRate = (modelOption.outputCost * (1 + targetProfitMargin / 100)) / baseCreditPrice;
-
-      setValue('inputRate', Number(calculatedInputRate.toFixed(6)));
-      setValue('outputRate', Number(calculatedOutputRate.toFixed(6)));
-    }
-  }, [selectedModel, availableModelOptions, targetProfitMargin, baseCreditPrice, setValue]);
+  const autoCalculateRates = () => {
+    const calculatedInputRate = (unitCostsInput * (1 + targetProfitMargin / 100)) / baseCreditPrice;
+    const calculatedOutputRate = (unitCostsOutput * (1 + targetProfitMargin / 100)) / baseCreditPrice;
+    setValue('inputRate', Number(calculatedInputRate.toFixed(6)));
+    setValue('outputRate', Number(calculatedOutputRate.toFixed(6)));
+  };
 
   // 获取提供商列表
   const fetchProviders = async () => {
@@ -154,7 +226,7 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
       setModelInputValue(value);
 
       // 自动生成显示名称
-      if (value && !modelDisplay) {
+      if (value) {
         const displayName = value.split('/').pop();
         if (displayName) {
           const formattedName = displayName.replace(/-/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
@@ -164,9 +236,14 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
     } else if (value && typeof value === 'object') {
       // 用户选择的模型选项
       setValue('modelName', value.name);
-      setValue('modelDisplay', value.displayName);
+      if (value.provider === 'custom' && value.displayName) {
+        const formattedName = value.displayName.replace(/-/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+        setValue('modelDisplay', formattedName);
+      } else {
+        setValue('modelDisplay', value.displayName);
+      }
       setModelInputValue(value.name);
-      setValue('rateType', value.mode as any);
+      setValue('rateType', (value.mode as any) || 'chatCompletion');
       setValue('unitCosts', {
         input: value.inputCost || 0,
         output: value.outputCost || 0,
@@ -216,10 +293,17 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
     if (!rate && selectedProviders.length === 0) {
       return;
     }
-    onSubmit({
+
+    const formData = {
       ...data,
       providers: rate ? [rate.provider.id] : selectedProviders,
-    });
+      unitCosts: {
+        input: data.unitCosts?.input || 0,
+        output: data.unitCosts?.output || 0,
+      },
+    };
+
+    onSubmit(formData);
   };
 
   return (
@@ -263,7 +347,8 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
                                 alt={option.provider}
                               />
                               <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                                {option.provider} • Input: ${option.inputCost ?? 0} / Output: ${option.outputCost ?? 0}
+                                {option.provider} • Input: ${formatMillionTokenCost(option.inputCost ?? 0)} / 1M Output:{' '}
+                                ${formatMillionTokenCost(option.outputCost ?? 0)} / 1M
                               </Typography>
                             </Stack>
                           )}
@@ -400,11 +485,85 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
               />
             )}
 
+            <Box
+              sx={{
+                p: 3,
+                borderRadius: 2,
+                border: '1px solid',
+                borderColor: 'divider',
+                boxShadow: 1,
+              }}>
+              <Stack
+                direction="row"
+                spacing={1}
+                sx={{ alignItems: 'center', mb: 0.5, justifyContent: 'space-between' }}>
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                  {t('config.modelRates.configInfo.customModelCost')}
+                </Typography>
+                <Button
+                  size="small"
+                  variant="text"
+                  onClick={(e) => setPricingMenuAnchor(e.currentTarget)}
+                  sx={{ color: 'primary.main' }}>
+                  {t('config.modelRates.configInfo.viewPricing')}
+                </Button>
+                <Menu
+                  anchorEl={pricingMenuAnchor}
+                  open={Boolean(pricingMenuAnchor)}
+                  onClose={() => setPricingMenuAnchor(null)}>
+                  <Box>
+                    {Object.entries(pricingLinks).map(([key, link]) => (
+                      <MenuItem
+                        key={key}
+                        component="a"
+                        href={link.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={() => setPricingMenuAnchor(null)}
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 1,
+                          borderRadius: 1,
+                          minWidth: 200,
+                          '&:hover': {
+                            backgroundColor: 'action.hover',
+                          },
+                        }}>
+                        <Avatar
+                          src={joinURL(getPrefix(), `/logo/${key}.png`)}
+                          sx={{ width: 24, height: 24 }}
+                          alt={link.name}
+                        />
+                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                          {link.name}
+                        </Typography>
+                      </MenuItem>
+                    ))}
+                  </Box>
+                </Menu>
+              </Stack>
+              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                {t('config.modelRates.configInfo.customModelCostDesc')}
+              </Typography>
+              <Stack direction="row" spacing={3} sx={{ mt: 2 }}>
+                <TokenCostInput
+                  costValue={unitCostsInput}
+                  label={t('config.modelRates.fields.inputRate')}
+                  onCostChange={(value) => setValue('unitCosts.input', value)}
+                />
+                <TokenCostInput
+                  costValue={unitCostsOutput}
+                  label={t('config.modelRates.fields.outputRate')}
+                  onCostChange={(value) => setValue('unitCosts.output', value)}
+                />
+              </Stack>
+            </Box>
+
             {/* Credit Rates 配置框 */}
             <Box
               sx={{
                 p: 3,
-                bgcolor: 'background.paper',
                 borderRadius: 2,
                 border: '1px solid',
                 borderColor: 'divider',
@@ -426,8 +585,7 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
                           <strong>{t('config.modelRates.configInfo.title')}</strong>
                         </Typography>
                         <Typography variant="body2" sx={{ mb: 1 }}>
-                          {t('config.modelRates.configInfo.creditValue')}
-                          {baseCreditPrice}
+                          {t('config.modelRates.configInfo.creditValue')}${formatMillionTokenCost(baseCreditPrice)} / 1M
                         </Typography>
                         <Typography variant="body2" sx={{ mb: 1 }}>
                           {t('config.modelRates.configInfo.profitMargin')}
@@ -471,9 +629,6 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
                   size="small"
                   variant="outlined"
                   onClick={autoCalculateRates}
-                  disabled={
-                    !selectedModel || !availableModelOptions.find((option) => option.name === selectedModel)?.inputCost
-                  }
                   sx={{
                     minWidth: 'auto',
                     px: 2,
@@ -511,37 +666,19 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
                     }}
                   />
 
-                  {selectedModelOption?.inputCost ? (
-                    <Box
+                  {inputRate > 0 && (
+                    <Typography
+                      variant="caption"
                       sx={{
+                        color: calculateProfitRate(inputRate, unitCostsInput) >= 0 ? 'success.main' : 'error.main',
+                        display: 'block',
+                        fontWeight: 500,
                         mt: 1,
-                        p: 1,
-                        bgcolor: 'background.default',
-                        borderRadius: 1,
-                        border: '1px solid',
-                        borderColor: 'divider',
                       }}>
-                      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
-                        {t('config.modelRates.configInfo.currentModelCost')}: ${selectedModelOption.inputCost}
-                        {t('config.modelRates.configInfo.perToken')}
-                      </Typography>
-                      {inputRate > 0 && (
-                        <Typography
-                          variant="caption"
-                          sx={{
-                            color:
-                              calculateProfitRate(inputRate, selectedModelOption.inputCost) >= 0
-                                ? 'success.main'
-                                : 'error.main',
-                            display: 'block',
-                            fontWeight: 500,
-                          }}>
-                          {t('config.modelRates.configInfo.estimatedProfitRate')}:{' '}
-                          {calculateProfitRate(inputRate, selectedModelOption.inputCost).toFixed(1)}%
-                        </Typography>
-                      )}
-                    </Box>
-                  ) : null}
+                      {t('config.modelRates.configInfo.estimatedProfitRate')}:{' '}
+                      {calculateProfitRate(inputRate, unitCostsInput).toFixed(1)}%
+                    </Typography>
+                  )}
                 </Box>
 
                 <Box sx={{ flex: 1 }}>
@@ -567,38 +704,19 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
                       },
                     }}
                   />
-                  {selectedModelOption?.outputCost ? (
-                    <Box
+                  {outputRate > 0 && (
+                    <Typography
+                      variant="caption"
                       sx={{
+                        color: calculateProfitRate(outputRate, unitCostsOutput) >= 0 ? 'success.main' : 'error.main',
+                        display: 'block',
+                        fontWeight: 500,
                         mt: 1,
-                        p: 1,
-                        bgcolor: 'background.default',
-                        borderRadius: 1,
-                        border: '1px solid',
-                        borderColor: 'divider',
                       }}>
-                      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
-                        {t('config.modelRates.configInfo.currentModelCost')}: ${selectedModelOption.outputCost}
-                        {t('config.modelRates.configInfo.perToken')}
-                      </Typography>
-
-                      {outputRate > 0 && (
-                        <Typography
-                          variant="caption"
-                          sx={{
-                            color:
-                              calculateProfitRate(outputRate, selectedModelOption.outputCost) >= 0
-                                ? 'success.main'
-                                : 'error.main',
-                            display: 'block',
-                            fontWeight: 500,
-                          }}>
-                          {t('config.modelRates.configInfo.estimatedProfitRate')}:{' '}
-                          {calculateProfitRate(outputRate, selectedModelOption.outputCost).toFixed(1)}%
-                        </Typography>
-                      )}
-                    </Box>
-                  ) : null}
+                      {t('config.modelRates.configInfo.estimatedProfitRate')}:{' '}
+                      {calculateProfitRate(outputRate, unitCostsOutput).toFixed(1)}%
+                    </Typography>
+                  )}
                 </Box>
               </Stack>
             </Box>

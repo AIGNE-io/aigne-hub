@@ -46,3 +46,13 @@ export const getPrefix = (): string => {
 
   return joinURL(baseUrl, prefix);
 };
+
+export const formatMillionTokenCost = (cost: number, precision = 2) => {
+  const num = Number(cost * 1000000);
+  return parseFloat(num.toFixed(precision));
+};
+
+export const parseMillionTokenCost = (cost: number | string) => {
+  const num = Number(cost);
+  return Number.isNaN(num) ? 0 : num / 1000000;
+};

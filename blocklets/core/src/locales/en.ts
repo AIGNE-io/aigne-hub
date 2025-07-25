@@ -141,7 +141,7 @@ export default flatten({
       // Configuration info
       configInfo: {
         title: 'Model Rate Preferences',
-        creditValue: '1 AHC = $',
+        creditValue: 'AHC Price: $',
         profitMargin: 'Target Profit Margin: ',
         formula: 'Pricing Formula',
         adjustSettings: 'To adjust base price and profit margin, go to',
@@ -159,7 +159,7 @@ export default flatten({
         formulaExample: 'Example',
         pricingFormula: 'Pricing Calculation Formula',
         tokenConsumption: 'AHC Consumption per Token',
-        creditPriceDesc: 'Price of 1 AHC',
+        creditPriceDesc: 'Price of 1M AHC',
         profitMarginDesc: 'Percentage added on top of cost',
         modelCostDesc: 'Actual cost per token charged by AI providers',
         aicRateConfig: 'AHC Rate Configuration',
@@ -177,6 +177,11 @@ export default flatten({
             'Auto-calculate AHC consumption per token based on actual model cost and target profit margin',
           profitExplain: 'The system adds target profit margin to the model cost to determine final pricing',
         },
+        customModelCost: 'Model Cost',
+        customModelCostDesc: 'Input and output costs will be used to calculate AHC consumption per token',
+        viewPricing: 'View Pricing',
+        pricingTooltip: 'Click to view official pricing information',
+        pricingMenuTitle: 'View Model Pricing Information',
       },
 
       // Delete dialog

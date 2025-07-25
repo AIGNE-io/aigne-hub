@@ -132,7 +132,7 @@ export default flatten({
       // Configuration info
       configInfo: {
         title: '模型费率偏好配置',
-        creditValue: '1 AHC = $',
+        creditValue: 'AHC 价格：',
         profitMargin: '目标利润率：',
         formula: '定价公式',
         adjustSettings: '如需调整基准价格和利润率，请前往',
@@ -167,6 +167,11 @@ export default flatten({
           formulaExplain: '根据模型实际成本和目标利润率自动计算每 Token 消耗的 AHC 数量',
           profitExplain: '系统会在模型成本基础上加上目标利润率来确定最终价格',
         },
+        customModelCost: '模型成本',
+        customModelCostDesc: '输入和输出成本将用于计算每 Token 消耗的 AHC 数量',
+        viewPricing: '查看定价',
+        pricingTooltip: '点击查看官方定价信息',
+        pricingMenuTitle: '查看各模型定价信息',
       },
 
       // Delete dialog
