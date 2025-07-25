@@ -1,4 +1,4 @@
-## 0.2.15 (2025-7-25)
+## 0.2.14 (2025-7-25)
 
 - chore: update dependencies
 - feat(core): add pricing links menu and improve model cost input UI
