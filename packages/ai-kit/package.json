@@ -102,9 +102,9 @@
   },
   "dependencies": {
     "@arcblock/did": "^1.21.0",
-    "@arcblock/ux": "^3.0.27",
+    "@arcblock/ux": "^3.0.33",
     "@blocklet/logger": "^1.16.46",
-    "@blocklet/payment-js": "^1.19.5",
+    "@blocklet/payment-js": "^1.19.6",
     "@blocklet/sdk": "^1.16.46",
     "@emotion/css": "^11.13.5",
     "@emotion/react": "^11.14.0",
