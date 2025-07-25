@@ -1,3 +1,12 @@
+## 0.2.15 (2025-7-25)
+
+- chore: update dependencies
+- feat(core): add pricing links menu and improve model cost input UI
+- feat(core): add lock mechanism and prevent duplicate credit grant processing
+- feat(api): add CustomError handling 
+- fix(core): improve credit payment link handling and fix getter/setter grouping
+- chore: update logo
+
 ## 0.2.13 (2025-7-23)
 
 - chore: support trace span from playground
