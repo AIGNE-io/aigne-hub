@@ -10,10 +10,10 @@ import cors from 'cors';
 import dotenv from 'dotenv-flow';
 import express, { ErrorRequestHandler } from 'express';
 
-import { subscribeEvents } from './events/listen';
 import { Config, isDevelopment } from './libs/env';
 import logger, { accessLogMiddleware } from './libs/logger';
 import { autoUpdateSubscriptionMeta, ensureMeter } from './libs/payment';
+import { subscribeEvents } from './listeners/listen';
 import routes from './routes';
 import { initAuthRouter } from './routes/auth';
 import setupHtmlRouter from './routes/html';
