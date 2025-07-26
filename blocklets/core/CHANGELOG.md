@@ -1,3 +1,7 @@
+## 0.2.15 (2025-7-26)
+
+- feat(api): move event subscription logic to separate listener module
+
 ## 0.2.14 (2025-7-25)
 
 - chore: update dependencies
