@@ -1,5 +1,7 @@
 import { CreditRateFormula } from '@app/components/credit-rate-farmula';
-import { formatMillionTokenCost, getPrefix } from '@app/libs/util';
+import UnitDisplay from '@app/components/unit-display';
+import { formatError, formatMillionTokenCost, getPrefix, multiply } from '@app/libs/util';
+import { getDurableData } from '@arcblock/ux/lib/Datatable';
 import Dialog from '@arcblock/ux/lib/Dialog';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 /* eslint-disable react/no-unstable-nested-components */
@@ -8,18 +10,19 @@ import { Table } from '@blocklet/aigne-hub/components';
 import styled from '@emotion/styled';
 import { Add as AddIcon, InfoOutlined } from '@mui/icons-material';
 import { Avatar, Box, Button, Chip, Stack, Tooltip, Typography } from '@mui/material';
-import { useEffect, useState } from 'react';
+import { useLocalStorageState, useRequest } from 'ahooks';
+import BigNumber from 'bignumber.js';
+import { useState } from 'react';
 import { joinURL } from 'ufo';
 
 import { useSessionContext } from '../../../../contexts/session';
 import ModelRateForm from './model-rate-form';
-import { ModelRate, ModelRateFormData } from './types';
+import { ModelRate, ModelRateFormData, ModelRatesQuery } from './types';
 
 export default function AIModelRates() {
+  const listKey = 'ai-model-rates';
   const { t } = useLocaleContext();
   const { api } = useSessionContext();
-  const [modelRates, setModelRates] = useState<ModelRate[]>([]);
-  const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingRate, setEditingRate] = useState<ModelRate | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -29,23 +32,38 @@ export default function AIModelRates() {
   const baseCreditPrice = window.blocklet?.preferences?.baseCreditPrice || 0.0000025;
   const targetProfitMargin = window.blocklet?.preferences?.targetProfitMargin || 0;
 
-  // 获取所有模型费率
-  const fetchModelRates = async () => {
-    setLoading(true);
-    try {
-      const response = await api.get('/api/ai-providers/model-rates');
-      setModelRates(response.data || []);
-    } catch (error: any) {
-      Toast.error(error.message || t('config.modelRates.fetchFailed'));
-    } finally {
-      setLoading(false);
-    }
+  const persisted = getDurableData(listKey);
+  const [search, setSearch] = useLocalStorageState<ModelRatesQuery>(listKey, {
+    defaultValue: {
+      pageSize: persisted.rowsPerPage || 10,
+      page: persisted.page ? persisted.page + 1 : 1,
+      q: '',
+      providerId: persisted.providerId || '',
+    },
+  });
+
+  const fetchData = (params: ModelRatesQuery = {}): Promise<any> => {
+    const search = new URLSearchParams();
+    Object.keys(params).forEach((key) => {
+      const v = params[key as keyof ModelRatesQuery];
+      if (v !== undefined && v !== '') {
+        search.set(key, String(v));
+      }
+    });
+    return api.get(`/api/ai-providers/model-rates?${search.toString()}`).then((res: any) => res.data);
   };
 
-  useEffect(() => {
-    fetchModelRates();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const {
+    data = { list: [], count: 0, paging: { page: 1, pageSize: 20 } },
+    loading,
+    refresh,
+  } = useRequest(() => fetchData(search), {
+    refreshDeps: [search],
+    onError: (error: any) => {
+      Toast.error(formatError(error));
+    },
+  });
+  const modelRates = data?.list || [];
 
   // 创建模型费率
   const handleCreateModelRate = async (data: ModelRateFormData) => {
@@ -62,8 +80,7 @@ export default function AIModelRates() {
       });
 
       Toast.success(t('config.modelRates.createSuccess'));
-
-      await fetchModelRates();
+      refresh();
       setShowForm(false);
       setEditingRate(null);
     } catch (error: any) {
@@ -83,7 +100,7 @@ export default function AIModelRates() {
         outputRate: data.outputRate,
         description: data.description,
       });
-      await fetchModelRates();
+      refresh();
       setEditingRate(null);
       setShowForm(false);
       Toast.success(t('config.modelRates.updateSuccess'));
@@ -97,7 +114,7 @@ export default function AIModelRates() {
     if (!rateToDelete) return;
     try {
       await api.delete(`/api/ai-providers/${rateToDelete.provider.id}/model-rates/${rateToDelete.id}`);
-      await fetchModelRates();
+      refresh();
       Toast.success(t('config.modelRates.deleteSuccess'));
       setDeleteDialogOpen(false);
       setRateToDelete(null);
@@ -234,8 +251,16 @@ export default function AIModelRates() {
           if (!rate) return null;
 
           const actualInputCost = Number(rate.unitCosts?.input || 0);
+
           const profitRate =
-            actualInputCost > 0 ? ((rate.inputRate * baseCreditPrice - actualInputCost) / actualInputCost) * 100 : 0;
+            actualInputCost > 0
+              ? new BigNumber(rate.inputRate)
+                  .multipliedBy(baseCreditPrice)
+                  .minus(actualInputCost)
+                  .dividedBy(actualInputCost)
+                  .multipliedBy(100)
+                  .toNumber()
+              : 0;
 
           return (
             <Tooltip
@@ -243,11 +268,11 @@ export default function AIModelRates() {
                 <Stack>
                   <Typography variant="caption">
                     <strong>{t('config.modelRates.configInfo.creditCost')}</strong>$
-                    {formatMillionTokenCost(rate.inputRate * baseCreditPrice)} / 1M
+                    {formatMillionTokenCost(multiply(rate.inputRate, baseCreditPrice))} / 1M Tokens
                   </Typography>
                   <Typography variant="caption">
                     <strong>{t('config.modelRates.configInfo.actualCost')}</strong>$
-                    {formatMillionTokenCost(actualInputCost)} / 1M
+                    {formatMillionTokenCost(actualInputCost)} / 1M Tokens
                   </Typography>
                   <Typography variant="caption">
                     <strong>{t('config.modelRates.configInfo.profitRate')}</strong>
@@ -305,7 +330,12 @@ export default function AIModelRates() {
           const actualOutputCost = Number(rate.unitCosts?.output || 0);
           const profitRate =
             actualOutputCost > 0
-              ? ((rate.outputRate * baseCreditPrice - actualOutputCost) / actualOutputCost) * 100
+              ? new BigNumber(rate.outputRate)
+                  .multipliedBy(baseCreditPrice)
+                  .minus(actualOutputCost)
+                  .dividedBy(actualOutputCost)
+                  .multipliedBy(100)
+                  .toNumber()
               : 0;
           return (
             <Tooltip
@@ -313,11 +343,11 @@ export default function AIModelRates() {
                 <Stack>
                   <Typography variant="caption">
                     <strong>{t('config.modelRates.configInfo.creditCost')}</strong>$
-                    {formatMillionTokenCost(rate.outputRate * baseCreditPrice)} / 1M
+                    {formatMillionTokenCost(multiply(rate.outputRate, baseCreditPrice))} / 1M Tokens
                   </Typography>
                   <Typography variant="caption">
                     <strong>{t('config.modelRates.configInfo.actualCost')}</strong>$
-                    {formatMillionTokenCost(actualOutputCost)} / 1M
+                    {formatMillionTokenCost(actualOutputCost)} / 1M Tokens
                   </Typography>
                   <Typography variant="caption">
                     <strong>{t('config.modelRates.configInfo.profitRate')}</strong>
@@ -468,8 +498,12 @@ export default function AIModelRates() {
               sx={{
                 color: 'text.secondary',
               }}>
-              AHC Price: ${Number(baseCreditPrice) * 1000000} / 1M • {t('config.modelRates.configInfo.profitMargin')}
-              {targetProfitMargin}%
+              <Typography component="span">AHC Price: $</Typography>
+              <UnitDisplay value={formatMillionTokenCost(baseCreditPrice)} type="credit" />
+              <Typography component="span" sx={{ ml: 1 }}>
+                • {t('config.modelRates.configInfo.profitMargin')}
+                {targetProfitMargin}%
+              </Typography>
             </Typography>
           </Box>
           <Button
@@ -506,13 +540,38 @@ export default function AIModelRates() {
       </Stack>
       <Root>
         <Table
+          hasSearch
+          durable={`__${listKey}__`}
+          durableKeys={['searchText']}
           data={modelRates}
           columns={columns}
           toolbar={false}
           options={{
-            elevation: 0,
-            rowsPerPage: 10,
-            rowsPerPageOptions: [10, 25, 50, 100],
+            count: data?.count || 0,
+            page: (search?.page || 1) - 1,
+            rowsPerPage: search?.pageSize || 10,
+            onSearchChange: (text: string) => {
+              if (text) {
+                setSearch((x) => ({
+                  ...x!,
+                  q: text,
+                  page: 1,
+                }));
+              } else {
+                setSearch((x) => ({
+                  ...x!,
+                  page: 1,
+                  q: '',
+                }));
+              }
+            },
+          }}
+          onChange={({ page, rowsPerPage }: { page: number; rowsPerPage: number }) => {
+            if (search?.pageSize !== rowsPerPage) {
+              setSearch((x) => ({ ...x!, pageSize: rowsPerPage, page: 1 }));
+            } else if (search?.page !== page + 1) {
+              setSearch((x) => ({ ...x!, page: page + 1 }));
+            }
           }}
           mobileTDFlexDirection="row"
           loading={loading}

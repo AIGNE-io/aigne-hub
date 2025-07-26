@@ -172,6 +172,19 @@ export default flatten({
         viewPricing: '查看定价',
         pricingTooltip: '点击查看官方定价信息',
         pricingMenuTitle: '查看各模型定价信息',
+        unitTooltip: {
+          credit: '1M 表示每百万 AHC',
+          token: '1M 表示每百万 Token',
+        },
+        search: {
+          placeholder: '搜索模型名称、显示名称或描述',
+        },
+        sort: {
+          createdAt: '创建时间',
+        },
+        pagination: {
+          showing: '显示第 {from}-{to} 条，共 {total} 条',
+        },
       },
 
       // Delete dialog

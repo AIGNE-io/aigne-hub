@@ -1,3 +1,4 @@
+import UnitDisplay from '@app/components/unit-display';
 import { formatMillionTokenCost, getPrefix, parseMillionTokenCost } from '@app/libs/util';
 /* eslint-disable react-hooks/exhaustive-deps */
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
@@ -20,6 +21,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
+import BigNumber from 'bignumber.js';
 import { ChangeEvent, FocusEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { Link } from 'react-router-dom';
@@ -70,7 +72,11 @@ function TokenCostInput({
         slotProps={{
           htmlInput: { type: 'number', step: 0.01, min: 0 },
           input: {
-            endAdornment: <InputAdornment position="end"> / 1M Tokens</InputAdornment>,
+            endAdornment: (
+              <InputAdornment position="end">
+                <UnitDisplay value="" type="token" addon="Tokens" />
+              </InputAdornment>
+            ),
             startAdornment: <InputAdornment position="start">$</InputAdornment>,
           },
         }}
@@ -184,15 +190,26 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
   const calculateProfitRate = useCallback(
     (rate: number, actualCost: number) => {
       if (!actualCost || actualCost <= 0) return 0;
-      return ((rate * baseCreditPrice - actualCost) / actualCost) * 100;
+      return new BigNumber(rate)
+        .multipliedBy(baseCreditPrice)
+        .minus(actualCost)
+        .dividedBy(actualCost)
+        .multipliedBy(100)
+        .toNumber();
     },
     [baseCreditPrice]
   );
 
   // 自动计算费率的函数
   const autoCalculateRates = () => {
-    const calculatedInputRate = (unitCostsInput * (1 + targetProfitMargin / 100)) / baseCreditPrice;
-    const calculatedOutputRate = (unitCostsOutput * (1 + targetProfitMargin / 100)) / baseCreditPrice;
+    const calculatedInputRate = new BigNumber(unitCostsInput)
+      .multipliedBy(1 + targetProfitMargin / 100)
+      .dividedBy(baseCreditPrice)
+      .toNumber();
+    const calculatedOutputRate = new BigNumber(unitCostsOutput)
+      .multipliedBy(1 + targetProfitMargin / 100)
+      .dividedBy(baseCreditPrice)
+      .toNumber();
     setValue('inputRate', Number(calculatedInputRate.toFixed(6)));
     setValue('outputRate', Number(calculatedOutputRate.toFixed(6)));
   };
@@ -254,13 +271,19 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
       }
 
       if (value.inputCost !== undefined) {
-        const calculatedInputRate = (value.inputCost * (1 + targetProfitMargin / 100)) / baseCreditPrice;
+        const calculatedInputRate = new BigNumber(value.inputCost)
+          .multipliedBy(1 + targetProfitMargin / 100)
+          .dividedBy(baseCreditPrice)
+          .toNumber();
         setValue('inputRate', Number(calculatedInputRate.toFixed(6)));
       } else {
         setValue('inputRate', 0);
       }
       if (value.outputCost !== undefined) {
-        const calculatedOutputRate = (value.outputCost * (1 + targetProfitMargin / 100)) / baseCreditPrice;
+        const calculatedOutputRate = new BigNumber(value.outputCost)
+          .multipliedBy(1 + targetProfitMargin / 100)
+          .dividedBy(baseCreditPrice)
+          .toNumber();
         setValue('outputRate', Number(calculatedOutputRate.toFixed(6)));
       } else {
         setValue('outputRate', 0);
@@ -447,7 +470,20 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
                       value.map((option, index) => (
                         <Chip
                           variant="outlined"
-                          label={option.displayName}
+                          label={
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <Avatar
+                                src={joinURL(getPrefix(), `/logo/${option.name}.png`)}
+                                sx={{ width: 24, height: 24 }}
+                                alt={option.displayName}
+                              />
+                              <Typography variant="body2">{option.displayName}</Typography>
+                            </Box>
+                          }
+                          sx={{
+                            borderColor: 'divider',
+                            backgroundColor: 'grey.100',
+                          }}
                           {...getTagProps({ index })}
                           key={option.id}
                         />
@@ -546,7 +582,7 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
               <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                 {t('config.modelRates.configInfo.customModelCostDesc')}
               </Typography>
-              <Stack direction="row" spacing={3} sx={{ mt: 2 }}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3} sx={{ mt: 2 }}>
                 <TokenCostInput
                   costValue={unitCostsInput}
                   label={t('config.modelRates.fields.inputRate')}

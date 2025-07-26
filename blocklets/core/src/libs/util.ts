@@ -1,3 +1,4 @@
+import BigNumber from 'bignumber.js';
 import { joinURL } from 'ufo';
 
 export const formatError = (err: any) => {
@@ -47,12 +48,22 @@ export const getPrefix = (): string => {
   return joinURL(baseUrl, prefix);
 };
 
+export const multiply = (a: number, b: number) => {
+  const bn = new BigNumber(a).multipliedBy(b);
+  return bn.toNumber();
+};
+
+export const divide = (a: number, b: number) => {
+  const bn = new BigNumber(a).dividedBy(b);
+  return bn.toNumber();
+};
+
 export const formatMillionTokenCost = (cost: number, precision = 2) => {
-  const num = Number(cost * 1000000);
-  return parseFloat(num.toFixed(precision));
+  const bn = new BigNumber(cost).multipliedBy(1000000);
+  return parseFloat(bn.toFixed(precision));
 };
 
 export const parseMillionTokenCost = (cost: number | string) => {
-  const num = Number(cost);
-  return Number.isNaN(num) ? 0 : num / 1000000;
+  const bn = new BigNumber(cost);
+  return bn.isNaN() ? 0 : bn.dividedBy(1000000).toNumber();
 };

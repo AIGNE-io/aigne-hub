@@ -1,11 +1,20 @@
+import { blocklet } from '@api/libs/auth';
 import { Config } from '@api/libs/env';
 import { getLock } from '@api/libs/lock';
 import logger from '@api/libs/logger';
 import { ensureCustomer, ensureMeter, getUserCredits, paymentClient } from '@api/libs/payment';
 import { subscribe } from '@blocklet/sdk/lib/service/eventbus';
+import { merge } from 'lodash';
 
-const processedUser = new Set<string>();
-
+async function markUserGranted(user: any) {
+  const preSaveData = merge({}, user?.extra || {}, {
+    AICreditGranted: true,
+  });
+  await blocklet.updateUserExtra({
+    did: user.did,
+    extra: JSON.stringify(preSaveData),
+  });
+}
 async function checkNewUserCreditGrant(user: any, currencyId: string) {
   const { balance } = await getUserCredits({ userDid: user.did });
 
@@ -34,7 +43,8 @@ async function handleUserAdded(user: any) {
     return;
   }
   const userCreditProcessKey = `user-credit-process-${user.did}`;
-  if (processedUser.has(userCreditProcessKey)) {
+
+  if (user.extra?.AICreditGranted) {
     logger.info('user credit process already processed, skip', { userDid: user.did });
     return;
   }
@@ -59,8 +69,7 @@ async function handleUserAdded(user: any) {
 
     const isNewUserCreditGrant = await checkNewUserCreditGrant(user, meter.currency_id!);
     if (!isNewUserCreditGrant) {
-      processedUser.add(userCreditProcessKey);
-      logger.info('user credit process already processed, skip', { userDid: user.did });
+      await markUserGranted(user);
       return;
     }
 
@@ -82,7 +91,7 @@ async function handleUserAdded(user: any) {
       amount: creditAmount,
       expiresAt,
     });
-    processedUser.add(userCreditProcessKey);
+    await markUserGranted(user);
   } catch (error) {
     logger.error('failed to create new user bonus credit', error);
   } finally {
@@ -95,20 +104,15 @@ const handleUserUpdated = async (user: any) => {
     return;
   }
 
-  const userUpdateKey = `user-credit-process-${user.did}`;
-  if (processedUser.has(userUpdateKey)) {
+  if (user.extra?.AICreditGranted) {
+    logger.info('user credit process already processed, skip', { userDid: user.did });
     return;
   }
 
-  const lock = getLock(`credit-${user.did}`);
+  const lock = getLock(`user-credit-process-${user.did}`);
   await lock.acquire();
 
   try {
-    if (processedUser.has(userUpdateKey)) {
-      logger.info('user credit process already processed, skip', { userDid: user.did });
-      return;
-    }
-
     const customer = await ensureCustomer(user.did);
     if (!customer) {
       logger.error('failed to ensure customer');
@@ -129,8 +133,7 @@ const handleUserUpdated = async (user: any) => {
 
     const isNewUserCreditGrant = await checkNewUserCreditGrant(user, meter.currency_id!);
     if (!isNewUserCreditGrant) {
-      processedUser.add(userUpdateKey);
-      logger.info('user credit process already processed, skip', { userDid: user.did });
+      await markUserGranted(user);
       return;
     }
 
@@ -147,8 +150,7 @@ const handleUserUpdated = async (user: any) => {
       category: 'promotional',
     });
 
-    // 标记为已处理
-    processedUser.add(userUpdateKey);
+    await markUserGranted(user);
 
     logger.info('first-time reward for existing users created', {
       customerId: customer.id,

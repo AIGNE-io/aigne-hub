@@ -3,6 +3,7 @@ import { Config } from '@api/libs/env';
 import logger from '@api/libs/logger';
 import modelRegistry from '@api/libs/model-registry';
 import { ensureAdmin } from '@api/libs/security';
+import { createListParamSchema, getWhereFromKvQuery } from '@api/libs/validate';
 import AiCredential, { CredentialValue } from '@api/store/models/ai-credential';
 import AiModelRate from '@api/store/models/ai-model-rate';
 import AiProvider from '@api/store/models/ai-provider';
@@ -72,6 +73,12 @@ const updateModelRateSchema = Joi.object({
   outputRate: Joi.number().min(0).optional(),
   modelDisplay: Joi.string().min(1).max(100).allow('').optional(),
   description: Joi.string().allow('').optional(),
+});
+
+const modelRatesListSchema = createListParamSchema<{
+  providerId?: string;
+}>({
+  providerId: Joi.string().empty(''),
 });
 
 // get providers
@@ -780,24 +787,39 @@ router.get('/chat/models', user, async (req, res) => {
 });
 
 router.get('/model-rates', user, async (req, res) => {
-  const where: any = {};
-  if (req.query.providerId) {
-    where.providerId = {
-      [Op.in]: Array.isArray(req.query.providerId) ? req.query.providerId : (req.query.providerId as string).split(','),
-    };
-  }
-  const modelRates = await AiModelRate.findAll({
-    where,
-    include: [
-      {
-        model: AiProvider,
-        as: 'provider',
-        attributes: ['id', 'name', 'displayName', 'baseUrl', 'region', 'enabled'],
+  try {
+    const { page, pageSize, ...query } = await modelRatesListSchema.validateAsync(req.query, { stripUnknown: true });
+    const where = getWhereFromKvQuery(query.q);
+    if (query.providerId) {
+      where.providerId = {
+        [Op.in]: Array.isArray(query.providerId) ? query.providerId : query.providerId.split(','),
+      };
+    }
+    const { rows: modelRates, count } = await AiModelRate.findAndCountAll({
+      where,
+      include: [
+        {
+          model: AiProvider,
+          as: 'provider',
+          attributes: ['id', 'name', 'displayName', 'baseUrl', 'region', 'enabled'],
+        },
+      ],
+      order: [['createdAt', query.o === 'asc' ? 'ASC' : 'DESC']],
+      offset: (page - 1) * pageSize,
+      limit: pageSize,
+    });
+    return res.json({
+      count,
+      list: modelRates,
+      paging: {
+        page,
+        pageSize,
       },
-    ],
-    order: [['createdAt', 'DESC']],
-  });
-  return res.json(modelRates);
+    });
+  } catch (error) {
+    logger.error('Failed to fetch model rates:', error);
+    return res.status(400).json({ error: error.message });
+  }
 });
 
 // get available models in LiteLLM format (public endpoint)

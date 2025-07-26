@@ -141,7 +141,7 @@ export default flatten({
       // Configuration info
       configInfo: {
         title: 'Model Rate Preferences',
-        creditValue: 'AHC Price: $',
+        creditValue: 'AHC Price: ',
         profitMargin: 'Target Profit Margin: ',
         formula: 'Pricing Formula',
         adjustSettings: 'To adjust base price and profit margin, go to',
@@ -182,6 +182,19 @@ export default flatten({
         viewPricing: 'View Pricing',
         pricingTooltip: 'Click to view official pricing information',
         pricingMenuTitle: 'View Model Pricing Information',
+        unitTooltip: {
+          credit: '1M = 1,000,000 AHC (per million AHC)',
+          token: '1M = 1,000,000 tokens (per million tokens)',
+        },
+        search: {
+          placeholder: 'Search model name, display name or description',
+        },
+        sort: {
+          createdAt: 'Created At',
+        },
+        pagination: {
+          showing: 'Showing {from}-{to} of {total}',
+        },
       },
 
       // Delete dialog

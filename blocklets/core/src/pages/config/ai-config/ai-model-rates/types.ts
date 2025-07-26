@@ -28,6 +28,24 @@ export interface ModelRate {
   };
 }
 
+export interface ModelRatesResponse {
+  data: ModelRate[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export interface ModelRatesQuery {
+  page?: number;
+  pageSize?: number;
+  providerId?: string;
+  q?: string;
+  o?: 'asc' | 'desc';
+}
+
 export interface ModelWithRates {
   model: string;
   modelDisplay?: string;

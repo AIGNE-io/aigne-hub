@@ -1,11 +1,11 @@
-const { EventEmitter } = require('events');
+import { EventEmitter } from 'events';
 
 export class Lock {
   name: string;
 
   locked: boolean;
 
-  events: typeof EventEmitter;
+  events: EventEmitter;
 
   constructor(name: string) {
     this.name = name;
