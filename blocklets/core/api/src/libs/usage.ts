@@ -4,7 +4,8 @@ import Usage from '@api/store/models/usage';
 import { CustomError } from '@blocklet/error';
 import payment from '@blocklet/payment-js';
 import BigNumber from 'bignumber.js';
-import { DebouncedFunc, throttle } from 'lodash';
+import type { DebouncedFunc } from 'lodash';
+import throttle from 'lodash/throttle';
 import { Op } from 'sequelize';
 
 import { getModelNameWithProvider } from './ai-provider';

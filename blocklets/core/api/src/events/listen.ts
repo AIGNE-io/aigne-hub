@@ -4,7 +4,7 @@ import { getLock } from '@api/libs/lock';
 import logger from '@api/libs/logger';
 import { ensureCustomer, ensureMeter, getUserCredits, paymentClient } from '@api/libs/payment';
 import { subscribe } from '@blocklet/sdk/lib/service/eventbus';
-import { merge } from 'lodash';
+import merge from 'lodash/merge';
 
 async function markUserGranted(user: any) {
   const preSaveData = merge({}, user?.extra || {}, {

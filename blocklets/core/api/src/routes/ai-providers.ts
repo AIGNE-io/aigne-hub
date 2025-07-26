@@ -10,7 +10,7 @@ import AiProvider from '@api/store/models/ai-provider';
 import sessionMiddleware from '@blocklet/sdk/lib/middlewares/session';
 import { Router } from 'express';
 import Joi from 'joi';
-import { pick } from 'lodash';
+import pick from 'lodash/pick';
 import { Op } from 'sequelize';
 
 const router = Router();

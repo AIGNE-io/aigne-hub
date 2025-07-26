@@ -4,7 +4,8 @@ import https from 'https';
 import { getComponentWebEndpoint } from '@blocklet/sdk/lib/component';
 import { getSignData } from '@blocklet/sdk/lib/util/verify-sign';
 import { NextFunction, Request, Response } from 'express';
-import { isNil, pick } from 'lodash';
+import isNil from 'lodash/isNil';
+import pick from 'lodash/pick';
 import { joinURL, parseURL, stringifyParsedURL, withQuery } from 'ufo';
 
 import { AI_KIT_BASE_URL } from '../constants';
