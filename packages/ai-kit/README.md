@@ -1,12 +1,12 @@
-# AI-Kit Lib
+# AIGNE Hub Lib
 
-AI-Kit common UX component
+AIGNE Hub common UX component
 
 ## Usage
 
 ```jsx
 import React from 'react';
-import { HelloWorld } from '@blocklet/ai-kit';
+import { HelloWorld } from '@blocklet/aigne-hub';
 
 function App() {
   return <HelloWorld />;
@@ -17,10 +17,10 @@ function App() {
 
 ```
 
-# develop with @blocklet/ai-kit and storybook
+# develop with @blocklet/aigne-hub and storybook
 npm run dev
 
-# only develop with @blocklet/ai-kit
+# only develop with @blocklet/aigne-hub
 npm run watch
 
 # only develop with storybook

@@ -1,5 +1,5 @@
 import { Send } from '@mui/icons-material';
-import { Box, BoxProps, IconButton, Input, InputAdornment, InputProps, SxProps } from '@mui/material';
+import { Box, BoxProps, IconButton, Input, InputAdornment, SxProps } from '@mui/material';
 import { useHistoryTravel } from 'ahooks';
 import { ReactNode, useState } from 'react';
 
@@ -7,7 +7,7 @@ export interface PromptProps extends Omit<BoxProps<'form'>, 'onSubmit' | 'sx'> {
   onSubmit: (prompt: string) => any;
   startAdornment?: ReactNode;
   endAdornment?: ReactNode;
-  InputProps?: Partial<InputProps>;
+  slotProps?: any;
   sx?: SxProps;
 }
 
@@ -15,7 +15,7 @@ export default function Prompt({
   startAdornment = undefined,
   endAdornment = undefined,
   onSubmit,
-  InputProps = {},
+  slotProps = {},
   sx = {},
   ...props
 }: PromptProps) {
@@ -76,7 +76,7 @@ export default function Prompt({
             </IconButton>
           </InputAdornment>
         }
-        {...InputProps}
+        {...slotProps}
       />
 
       {endAdornment}

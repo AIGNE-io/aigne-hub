@@ -1,0 +1,111 @@
+name: ai-kit
+title: AIGNE Hub
+description: The decentralized AI access solution for blocklets
+keywords:
+  - ai
+  - openai
+group: dapp
+did: z8ia3xzq2tMq8CRHfaXj1BTYJyYnEcHbqP8cJ
+main: api/dist/index.js
+author:
+  name: arcblock
+  email: blocklet@arcblock.io
+  url: https://github.com/blocklet
+repository:
+  type: git
+  url: git+https://github.com/AIGNE-io/aigne-hub.git
+specVersion: 1.2.8
+version: 0.2.15
+logo: screenshots/logo.png
+files:
+  - dist
+  - screenshots
+  - docs
+  - api/dist/store/migrations/*.js
+  - api/hooks/pre-start.js
+interfaces:
+  - type: web
+    name: publicUrl
+    path: /
+    prefix: '*'
+    port: BLOCKLET_PORT
+    protocol: http
+    services:
+      - name: auth
+        config:
+          ignoreUrls:
+            - /api/meilisearch/embeddings
+            - /api/ai-providers/models
+    proxyBehavior: service
+community: https://community.arcblock.io
+documentation: https://developer.blocklet.io
+homepage: https://store.blocklet.dev
+license: ''
+payment:
+  price: []
+  share: []
+timeout:
+  start: 60
+requirements:
+  server: '>=1.16.0'
+  os: '*'
+  cpu: '*'
+scripts:
+  preStart: node api/hooks/pre-start.js
+  dev: npm run start
+environments:
+  - name: VERBOSE
+    description: Logging input and output of AI
+    required: false
+    default: 'false'
+    secure: false
+    shared: false
+  - name: HTTPS_PROXY
+    description: Use the API behind a proxy
+    required: false
+    default: ''
+    secure: false
+    shared: false
+capabilities:
+  clusterMode: false
+  component: true
+  navigation: true
+screenshots:
+  - cea4aa43c8391a4a0cca41510e94afab.png
+  - 9064dd710ed0c9a70336f95b06401a80.png
+  - e65fed5c0e30232b3b8b67bd73213aa3.png
+  - f9077225977f7721bef132538831f400.png
+components:
+  - name: z2qa2GCqPJkufzqF98D8o7PWHrRRSHpYkNhEh
+    title: Observability
+    mountPoint: /observability
+    source:
+      store: https://store.blocklet.dev
+      name: z2qa2GCqPJkufzqF98D8o7PWHrRRSHpYkNhEh
+      version: latest
+navigation:
+  - id: settings
+    title:
+      en: Config
+      zh: 设置
+    icon: ion:settings-outline
+    link: /config
+    section:
+      - dashboard
+      - sessionManager
+    role:
+      - admin
+      - owner
+  - id: playground
+    title:
+      en: Playground
+      zh: 沙盒
+    icon: carbon:run
+    link: /playground
+    section:
+      - sessionManager
+      - dashboard
+    role:
+      - admin
+      - owner
+egress: true

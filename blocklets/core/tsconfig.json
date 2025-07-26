@@ -1,0 +1,19 @@
+{
+  "extends": "../../tsconfig",
+  "ts-node": {
+    "files": true,
+    "require": ["tsconfig-paths/register"],
+    "compilerOptions": {
+      "module": "CommonJS"
+    }
+  },
+  "compilerOptions": {
+    "baseUrl": "./",
+    "paths": {
+      "@app/*": ["./src/*"],
+      "@api/*": ["./api/src/*"],
+      "@blocklet/aigne-hub": ["../../packages/ai-kit/src"],
+      "@blocklet/aigne-hub/*": ["../../packages/ai-kit/src/*"]
+    }
+  }
+}

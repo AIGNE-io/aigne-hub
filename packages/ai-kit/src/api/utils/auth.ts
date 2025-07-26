@@ -9,6 +9,8 @@ import type { WalletObject } from '@ocap/wallet';
 import type { NextFunction, Request, Response } from 'express';
 import stringify from 'json-stable-stringify';
 
+import { StatusCodeError } from '../error';
+
 const TOKEN_EXPIRES_IN_SECONDS = 60 * 10;
 
 export const wallet: WalletObject = getWallet();
@@ -19,9 +21,19 @@ export const ensureAdmin = auth({ roles: ADMIN_ROLES });
 
 const signer = getSigner(DidType('default').pk!);
 
-function hashData({ appId, timestamp, data }: { appId: string; timestamp: number; data: object }) {
+function hashData({
+  appId,
+  timestamp,
+  data,
+  userDid,
+}: {
+  appId: string;
+  timestamp: number;
+  data: object;
+  userDid?: string;
+}) {
   const hasher = getHasher(DidType('default').hash!);
-  return hasher(stringify({ appId, timestamp, data: data || {} }), 1);
+  return hasher(stringify({ appId, timestamp, data: data || {}, userDid }), 1);
 }
 
 export function appIdFromPublicKey(publicKey: BytesType) {
@@ -37,6 +49,7 @@ export function verifyRemoteComponentCall({
   data,
   sig,
   pk,
+  userDid,
   expiresIn = TOKEN_EXPIRES_IN_SECONDS,
 }: {
   appId: string;
@@ -44,27 +57,35 @@ export function verifyRemoteComponentCall({
   data: object;
   sig: string;
   pk: BytesType;
+  userDid?: string;
   expiresIn?: number;
 }) {
-  if (Math.abs(Date.now() / 1000 - timestamp) > expiresIn) throw new Error('signature expired');
+  if (Math.abs(Date.now() / 1000 - timestamp) > expiresIn) {
+    throw new StatusCodeError(401, 'signature expired');
+  }
 
-  return signer.verify(hashData({ appId, timestamp, data }), sig, pk);
+  return signer.verify(hashData({ appId, timestamp, data, userDid }), sig, pk);
 }
 
-export function signRemoteComponentCall({ data }: { data: object }) {
+export function signRemoteComponentCall({ data, userDid }: { data: object; userDid?: string }) {
   const appId = wallet.address;
   const timestamp = Math.round(Date.now() / 1000);
 
-  return { appId, timestamp, sig: signer.sign(hashData({ appId, timestamp, data }), wallet.secretKey) };
+  return {
+    appId,
+    timestamp,
+    userDid,
+    sig: signer.sign(hashData({ appId, timestamp, data, userDid }), wallet.secretKey),
+  };
 }
 
-export function getRemoteComponentCallHeaders(data: object) {
-  const { appId, timestamp, sig } = signRemoteComponentCall({ data });
-
+export function getRemoteComponentCallHeaders(data: object, userDid?: string) {
+  const { appId, timestamp, sig } = signRemoteComponentCall({ data, userDid });
   return {
     'x-app-id': appId,
     'x-timestamp': timestamp.toString(),
     'x-component-sig': sig,
+    'x-app-user-did': userDid || '',
   };
 }
 
@@ -77,13 +98,16 @@ export function ensureRemoteComponentCall(
       const sig = req.get('x-component-sig');
       const appId = req.get('x-app-id');
       const timestamp = req.get('x-timestamp');
+      const userDid = req.get('x-app-user-did');
 
       if (!sig || !appId || !timestamp) {
-        throw new Error('Missing required headers x-component-sig/x-app-id/x-timestamp');
+        throw new StatusCodeError(400, 'Missing required headers x-component-sig/x-app-id/x-timestamp');
       }
 
       const pk = await getPublicKey(appId);
-      if (appIdFromPublicKey(pk) !== appId) throw new Error('appId and public key not match');
+      if (appIdFromPublicKey(pk) !== appId) {
+        throw new StatusCodeError(401, 'appId and public key not match');
+      }
 
       if (
         !verifyRemoteComponentCall({
@@ -92,13 +116,15 @@ export function ensureRemoteComponentCall(
           timestamp: parseInt(timestamp, 10),
           data: req.body,
           pk,
+          userDid,
         })
       ) {
-        throw new Error('Validate signature error');
+        throw new StatusCodeError(401, 'Validate signature error');
       }
 
       req.appClient = {
         appId,
+        userDid,
       };
     } catch (error) {
       if (!fallback) throw error;

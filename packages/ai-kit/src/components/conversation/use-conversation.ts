@@ -25,7 +25,7 @@ export default function useConversation({
   ) => Promise<{ url: string }[]>;
 }) {
   const [messages, setMessages] = useState<MessageItem[]>(() => [
-    { id: nextId(), response: 'Hi, I am AI Kit! How can I assist you today?' },
+    { id: nextId(), response: 'Hi, I am AIGNE Hub! How can I assist you today?' },
   ]);
 
   const add = useCallback(
@@ -119,8 +119,7 @@ export default function useConversation({
             if (item) item.error = error;
           })
         );
-
-        throw error;
+        return null;
       } finally {
         setMessages((v) =>
           produce(v, (draft) => {

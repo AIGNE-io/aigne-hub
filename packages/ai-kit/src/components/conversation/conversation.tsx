@@ -3,8 +3,8 @@ import isNil from 'lodash/isNil';
 import { ChatCompletionMessageParam } from 'openai/resources/index';
 import { ReactNode, RefObject, useCallback, useEffect, useImperativeHandle, useRef } from 'react';
 
+import CreditErrorAlert from '../credit/alert';
 import ImagePreview from '../image-preview';
-import SubscribeErrorAlert from '../subscribe/alert';
 import Message from './message';
 import Prompt, { PromptProps } from './prompt';
 
@@ -95,7 +95,8 @@ export default function Conversation({
                       />
                     )}
                     {msg.error ? (
-                      <SubscribeErrorAlert error={msg.error} />
+                      // @ts-ignore
+                      <CreditErrorAlert error={msg.error} />
                     ) : (
                       msg.loading &&
                       !msg.response && (
@@ -123,7 +124,7 @@ export default function Conversation({
             sx={{
               height: 16,
               pointerEvents: 'none',
-              background: 'linear-gradient(transparent, white)',
+              background: (theme) => `linear-gradient(transparent, ${theme.palette.background.paper})`,
             }}
           />
           <Box
