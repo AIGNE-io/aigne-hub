@@ -5,8 +5,9 @@ import { CustomError } from '@blocklet/error';
 import payment, { Subscription, TMeterEventExpanded } from '@blocklet/payment-js';
 import { getComponentMountPoint } from '@blocklet/sdk';
 import config from '@blocklet/sdk/lib/config';
-import { joinURL, parseURL } from 'ufo';
+import { joinURL, parseURL, withQuery } from 'ufo';
 
+import { getConnectQueryParam } from './auth';
 import { Config, DEFAULT_CREDIT_PAYMENT_LINK_KEY, DEFAULT_CREDIT_PRICE_KEY, METER_NAME, METER_UNIT } from './env';
 import logger from './logger';
 
@@ -51,32 +52,40 @@ export async function ensureCustomer(userDid: string) {
 
 // get user credits
 export async function getUserCredits({ userDid }: { userDid: string }) {
-  if (!isPaymentRunning()) return { balance: 0, currency: null };
+  if (!isPaymentRunning()) return { balance: '0', currency: null, total: '0', grantCount: 0, pendingCredit: '0' };
   const meter = await ensureMeter();
   if (!meter) {
     return {
-      balance: 0,
+      balance: '0',
       currency: null,
+      total: '0',
+      grantCount: 0,
+      pendingCredit: '0',
     };
   }
   const customer = await ensureCustomer(userDid);
   if (!customer) {
     return {
-      balance: 0,
+      balance: '0',
       currency: meter.paymentCurrency,
-      total: 0,
+      total: '0',
       grantCount: 0,
+      pendingCredit: '0',
     };
   }
   const creditBalance = await payment.creditGrants.summary({
     customer_id: customer.id,
   });
 
+  const pendingCredit = await payment.meterEvents.pendingAmount({
+    customer_id: customer.id,
+  });
   return {
     balance: creditBalance?.[meter.currency_id!]?.remainingAmount ?? '0',
     currency: meter.paymentCurrency,
     total: creditBalance?.[meter.currency_id!]?.totalAmount ?? '0',
     grantCount: creditBalance?.[meter.currency_id!]?.grantCount ?? 0,
+    pendingCredit: pendingCredit?.[meter.currency_id!] ?? '0',
   };
 }
 
@@ -360,4 +369,13 @@ export function autoUpdateSubscriptionMeta() {
       updateDescription();
     }
   });
+}
+
+export function getUserProfileLink(userDid: string) {
+  return joinURL(
+    getPaymentKitPrefix(),
+    withQuery('/customer', {
+      ...getConnectQueryParam({ userDid }),
+    })
+  );
 }

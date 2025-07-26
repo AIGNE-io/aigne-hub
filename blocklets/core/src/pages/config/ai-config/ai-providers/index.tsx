@@ -91,32 +91,37 @@ export default function AIProviders() {
 
       // 创建凭证
       if (data.credentials && data.credentials.length > 0) {
-        for (const credential of data.credentials) {
-          let credentialValue: any;
+        const credentialPromises = data.credentials
+          .map((credential) => {
+            let credentialValue: any;
 
-          if (credential.credentialType === 'access_key_pair') {
-            credentialValue = credential.value;
-          } else if (typeof credential.value === 'string') {
-            const stringValue = credential.value as string;
-            if (stringValue.trim()) {
-              credentialValue = stringValue.trim();
+            if (credential.credentialType === 'access_key_pair') {
+              credentialValue = credential.value;
+            } else if (typeof credential.value === 'string') {
+              const stringValue = credential.value as string;
+              if (stringValue.trim()) {
+                credentialValue = stringValue.trim();
+              }
+            } else if (
+              typeof credential.value === 'object' &&
+              credential.value &&
+              Object.keys(credential.value).length > 0
+            ) {
+              credentialValue = credential.value;
             }
-          } else if (
-            typeof credential.value === 'object' &&
-            credential.value &&
-            Object.keys(credential.value).length > 0
-          ) {
-            credentialValue = credential.value;
-          }
 
-          if (credentialValue) {
-            api.post(`/api/ai-providers/${providerId}/credentials`, {
-              name: credential.name,
-              value: credentialValue,
-              credentialType: credential.credentialType,
-            });
-          }
-        }
+            if (credentialValue) {
+              return api.post(`/api/ai-providers/${providerId}/credentials`, {
+                name: credential.name,
+                value: credentialValue,
+                credentialType: credential.credentialType,
+              });
+            }
+            return null;
+          })
+          .filter(Boolean);
+
+        await Promise.all(credentialPromises);
       }
 
       await fetchProviders();

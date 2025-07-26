@@ -14,5 +14,6 @@ export { default as CreditBalance } from './credit/balance';
 export { default as CreditErrorAlert } from './credit/alert';
 export { default as Switch } from './switch-button';
 export { default as Table } from './table';
+export { default as UserCreditCard } from './user-credit-card';
 
 export { default as FormLabel } from './form-label';

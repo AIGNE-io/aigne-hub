@@ -1,8 +1,22 @@
-import { getCreditGrants, getCreditPaymentLink, getCreditTransactions, getUserCredits } from '@api/libs/payment';
+import { blocklet, getConnectQueryParam } from '@api/libs/auth';
+import { Config } from '@api/libs/env';
+import {
+  ensureMeter,
+  getCreditGrants,
+  getCreditPaymentLink,
+  getCreditTransactions,
+  getUserCredits,
+  getUserProfileLink,
+  isPaymentRunning,
+} from '@api/libs/payment';
 import { proxyToAIKit } from '@blocklet/aigne-hub/api/call';
+import config from '@blocklet/sdk/lib/config';
 import sessionMiddleware from '@blocklet/sdk/lib/middlewares/session';
+import { fromUnitToToken } from '@ocap/util';
 import { Router } from 'express';
 import Joi from 'joi';
+import { pick } from 'lodash';
+import { joinURL, withQuery } from 'ufo';
 
 const router = Router();
 
@@ -127,5 +141,56 @@ router.get(
   user,
   proxyToAIKit('/api/user/credit/payment-link', { useAIKitService: true })
 );
+
+router.get('/info', user, async (req, res) => {
+  if (!req.user?.did) {
+    return res.status(401).json({ error: 'User not authenticated' });
+  }
+
+  const { user } = await blocklet.getUser(req.user?.did);
+  if (!user) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+
+  user.avatar = user.avatar?.startsWith('/') ? joinURL(config.env.appUrl, user.avatar) : user.avatar;
+
+  const userInfo = pick(user, ['did', 'fullName', 'email', 'avatar']);
+
+  if (Config.creditBasedBillingEnabled) {
+    if (!isPaymentRunning()) {
+      return res.status(502).json({ error: 'Payment kit is not Running' });
+    }
+    const meter = await ensureMeter();
+    if (!meter) {
+      return res.status(404).json({ error: 'Meter not found' });
+    }
+
+    const creditBalance = await getUserCredits({ userDid: req.user?.did });
+    const paymentLink = await getCreditPaymentLink();
+    const decimal = meter.paymentCurrency?.decimal || 0;
+    return res.json({
+      user: userInfo,
+      creditBalance: {
+        balance: fromUnitToToken(creditBalance.balance, decimal),
+        total: fromUnitToToken(creditBalance.total, decimal),
+        grantCount: creditBalance.grantCount,
+        pendingCredit: fromUnitToToken(creditBalance.pendingCredit, decimal),
+      },
+      paymentLink: withQuery(paymentLink || '', {
+        ...getConnectQueryParam({ userDid: req.user?.did }),
+      }),
+      currency: meter.paymentCurrency,
+      enableCredit: true,
+      profileLink: getUserProfileLink(req.user?.did),
+    });
+  }
+  return res.json({
+    user: userInfo,
+    creditBalance: null,
+    paymentLink: null,
+    enableCredit: false,
+    profileLink: getUserProfileLink(req.user?.did),
+  });
+});
 
 export default router;

@@ -46,6 +46,16 @@
       "types": "./lib/types/components/*.d.ts",
       "import": "./lib/esm/components/*.js",
       "require": "./lib/cjs/components/*.js"
+    },
+    "./utils": {
+      "types": "./lib/types/utils/index.d.ts",
+      "import": "./lib/esm/utils/index.js",
+      "require": "./lib/cjs/utils/index.js"
+    },
+    "./utils/*": {
+      "types": "./lib/types/utils/*.d.ts",
+      "import": "./lib/esm/utils/*.js",
+      "require": "./lib/cjs/utils/*.js"
     }
   },
   "typesVersions": {
@@ -104,7 +114,7 @@
     "@arcblock/did": "^1.21.0",
     "@arcblock/ux": "^3.0.33",
     "@blocklet/logger": "^1.16.46",
-    "@blocklet/payment-js": "^1.19.6",
+    "@blocklet/payment-js": "^1.19.8",
     "@blocklet/sdk": "^1.16.46",
     "@emotion/css": "^11.13.5",
     "@emotion/react": "^11.14.0",
@@ -127,6 +137,7 @@
     "json-stable-stringify": "^1.1.1",
     "lodash": "^4.17.21",
     "nanoid": "^5.0.7",
+    "numbro": "^2.5.0",
     "openai": "^4.56.0",
     "react-markdown": "^9.0.1",
     "react-photo-view": "^1.2.6",
