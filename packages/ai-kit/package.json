@@ -1,6 +1,6 @@
 {
   "name": "@blocklet/aigne-hub",
-  "version": "0.2.14",
+  "version": "0.2.15",
   "description": "The react.js component library for AIGNE Hub",
   "publishConfig": {
     "access": "public"

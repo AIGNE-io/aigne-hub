@@ -1,3 +1,7 @@
+## 0.2.15 (2025-7-27)
+
+- feat(core): add user info API and UserCreditCard component
+
 ## 0.2.14 (2025-7-25)
 
 - chore: update dependencies
