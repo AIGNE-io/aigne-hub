@@ -1,3 +1,8 @@
+## 0.2.17 (2025-7-28)
+
+- fix(ui): adjust tooltip placement and responsive styles for credit rate formula
+- refactor(pkg): simplify API calls and improve type organization
+
 ## 0.2.16 (2025-7-28)
 
 - feat(core): add user info API and UserCreditCard component
