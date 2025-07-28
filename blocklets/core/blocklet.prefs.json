@@ -1,0 +1,607 @@
+{
+  "form": {
+    "labelCol": 6,
+    "wrapperCol": 12
+  },
+  "schema": {
+    "type": "object",
+    "properties": {
+      "p72faa2emzb": {
+        "type": "void",
+        "x-component": "FormTab",
+        "x-component-props": {},
+        "x-designable-id": "p72faa2emzb",
+        "x-index": 0,
+        "properties": {
+          "doc1z1uo846": {
+            "type": "void",
+            "x-component": "FormTab.TabPane",
+            "x-component-props": {
+              "tab": "Settings"
+            },
+            "x-designable-id": "doc1z1uo846",
+            "x-index": 0,
+            "properties": {
+              "rfnqchxbwb4": {
+                "type": "void",
+                "x-component": "FormCollapse",
+                "x-component-props": {
+                  "ghost": false,
+                  "bordered": false
+                },
+                "x-designable-id": "rfnqchxbwb4",
+                "x-index": 0,
+                "properties": {
+                  "d4bm9ro1vnh": {
+                    "type": "void",
+                    "x-component": "FormCollapse.CollapsePanel",
+                    "x-component-props": {
+                      "header": "Credit Billing Settings"
+                    },
+                    "x-designable-id": "d4bm9ro1vnh",
+                    "x-index": 0,
+                    "properties": {
+                      "creditBasedBillingEnabled": {
+                        "type": "boolean",
+                        "title": "Enable Credit Billing",
+                        "x-decorator": "FormItem",
+                        "x-component": "Switch",
+                        "x-validator": [],
+                        "x-component-props": {},
+                        "x-decorator-props": {},
+                        "name": "creditBasedBillingEnabled",
+                        "default": false,
+                        "description": "Users must purchase Credits to access AI services when enabled",
+                        "required": false,
+                        "x-designable-id": "870n0z9d7gj",
+                        "x-index": 0
+                      },
+                      "creditPaymentLink": {
+                        "type": "string",
+                        "title": "Credit Payment Link",
+                        "x-decorator": "FormItem",
+                        "x-component": "Input",
+                        "x-validator": [],
+                        "x-component-props": {},
+                        "x-decorator-props": {},
+                        "name": "creditPaymentLink",
+                        "description": "Custom payment link for credit purchases",
+                        "x-reactions": {
+                          "dependencies": [
+                            {
+                              "property": "value",
+                              "type": "boolean",
+                              "source": "p72faa2emzb.doc1z1uo846.rfnqchxbwb4.d4bm9ro1vnh.creditBasedBillingEnabled",
+                              "name": "creditBasedBillingEnabled"
+                            }
+                          ],
+                          "fulfill": {
+                            "state": {
+                              "visible": "{{$deps.creditBasedBillingEnabled}}"
+                            }
+                          }
+                        },
+                        "required": false,
+                        "x-designable-id": "36uj2hjx6cg",
+                        "x-index": 1
+                      },
+                      "newUserCreditGrantEnabled": {
+                        "type": "boolean",
+                        "title": "Grant Credits to New Users",
+                        "x-decorator": "FormItem",
+                        "x-component": "Switch",
+                        "x-validator": [],
+                        "x-component-props": {},
+                        "x-decorator-props": {},
+                        "name": "newUserCreditGrantEnabled",
+                        "description": "Automatically grant Credits to new users upon registration",
+                        "x-reactions": {
+                          "dependencies": [
+                            {
+                              "property": "value",
+                              "type": "boolean",
+                              "source": "p72faa2emzb.doc1z1uo846.rfnqchxbwb4.d4bm9ro1vnh.creditBasedBillingEnabled",
+                              "name": "creditBasedBillingEnabled"
+                            }
+                          ],
+                          "fulfill": {
+                            "state": {
+                              "visible": "{{$deps.creditBasedBillingEnabled}}"
+                            }
+                          }
+                        },
+                        "default": true,
+                        "x-designable-id": "2s5o9h6xxum",
+                        "x-index": 2
+                      },
+                      "newUserCreditGrantAmount": {
+                        "type": "number",
+                        "title": "Grant Amount",
+                        "x-decorator": "FormItem",
+                        "x-component": "NumberPicker",
+                        "x-validator": [],
+                        "x-component-props": {
+                          "max": 100000000
+                        },
+                        "x-decorator-props": {},
+                        "name": "newUserCreditGrantAmount",
+                        "description": "Number of Credits granted to new users (e.g., 100, 500)",
+                        "default": "100",
+                        "x-reactions": {
+                          "dependencies": [
+                            {
+                              "property": "value",
+                              "type": "boolean",
+                              "source": "p72faa2emzb.doc1z1uo846.rfnqchxbwb4.d4bm9ro1vnh.newUserCreditGrantEnabled",
+                              "name": "newUserCreditGrantEnabled"
+                            },
+                            {
+                              "property": "value",
+                              "type": "boolean",
+                              "source": "p72faa2emzb.doc1z1uo846.rfnqchxbwb4.d4bm9ro1vnh.creditBasedBillingEnabled",
+                              "name": "creditBasedBillingEnabled"
+                            }
+                          ],
+                          "fulfill": {
+                            "state": {
+                              "visible": "{{$deps.newUserCreditGrantEnabled === true && $deps.creditBasedBillingEnabled === true}}"
+                            }
+                          }
+                        },
+                        "x-designable-id": "coghf002tcn",
+                        "x-index": 3
+                      },
+                      "creditExpirationDays": {
+                        "type": "number",
+                        "title": "Expiration Days",
+                        "x-decorator": "FormItem",
+                        "x-component": "NumberPicker",
+                        "x-validator": [],
+                        "x-component-props": {
+                          "style": {
+                            "width": "50%",
+                            "display": "block",
+                            "flexWrap": "nowrap",
+                            "flexDirection": "row",
+                            "alignContent": "center"
+                          },
+                          "stringMode": false,
+                          "min": 0,
+                          "max": 365
+                        },
+                        "x-decorator-props": {
+                          "addonAfter": "",
+                          "addonBefore": "",
+                          "wrapperWidth": "auto",
+                          "fullness": false,
+                          "inset": false,
+                          "wrapperCol": null
+                        },
+                        "name": "creditExpirationDays",
+                        "description": "Credit expiration days (0 = never expire, 1 = 1 day, 30 = 30 days)",
+                        "default": "0",
+                        "x-reactions": {
+                          "dependencies": [
+                            {
+                              "property": "value",
+                              "type": "boolean",
+                              "source": "p72faa2emzb.doc1z1uo846.rfnqchxbwb4.d4bm9ro1vnh.newUserCreditGrantEnabled",
+                              "name": "newUserCreditGrantEnabled"
+                            },
+                            {
+                              "property": "value",
+                              "type": "boolean",
+                              "source": "p72faa2emzb.doc1z1uo846.rfnqchxbwb4.d4bm9ro1vnh.creditBasedBillingEnabled",
+                              "name": "creditBasedBillingEnabled"
+                            }
+                          ],
+                          "fulfill": {
+                            "state": {
+                              "visible": "{{$deps.newUserCreditGrantEnabled === true && $deps.creditBasedBillingEnabled === true}}"
+                            }
+                          }
+                        },
+                        "x-designable-id": "28c5d040bkv",
+                        "x-index": 4
+                      }
+                    }
+                  }
+                }
+              },
+              "thosupmsgla": {
+                "type": "void",
+                "x-component": "FormCollapse",
+                "x-component-props": {
+                  "style": {
+                    "margin": "8px 0px 0px 0px"
+                  },
+                  "ghost": true,
+                  "bordered": false
+                },
+                "x-designable-id": "thosupmsgla",
+                "x-index": 1,
+                "properties": {
+                  "q5xpu8g3ptd": {
+                    "type": "void",
+                    "x-component": "FormCollapse.CollapsePanel",
+                    "x-component-props": {
+                      "header": "Model Rates Settings "
+                    },
+                    "x-designable-id": "q5xpu8g3ptd",
+                    "x-index": 0,
+                    "properties": {
+                      "baseCreditPrice": {
+                        "type": "number",
+                        "title": "Cost Per Credit",
+                        "x-decorator": "FormItem",
+                        "x-component": "NumberPicker",
+                        "x-validator": [],
+                        "x-component-props": {
+                          "style": {
+                            "width": "inherit",
+                            "display": "block"
+                          }
+                        },
+                        "x-decorator-props": {
+                          "tooltip": "Used exclusively for calculating model rates. If you have a custom payment link, ensure this value matches your external credit pricing.",
+                          "addonAfter": "💲",
+                          "addonBefore": "Per 1 AHC ="
+                        },
+                        "description": "AHC (AIGNE Hub Credits) is the unit for AI calls. Enter cost per Credit (e.g., 1e-3 = 0.001)",
+                        "name": "baseCreditPrice",
+                        "x-designable-id": "79hmyquqn8p",
+                        "x-index": 0,
+                        "default": "0.00000025"
+                      },
+                      "targetProfitMargin": {
+                        "type": "number",
+                        "title": "Target Profit Margin",
+                        "x-decorator": "FormItem",
+                        "x-component": "NumberPicker",
+                        "x-validator": [],
+                        "x-component-props": {},
+                        "x-decorator-props": {
+                          "addonAfter": "%"
+                        },
+                        "name": "targetProfitMargin",
+                        "description": "Used to compute model pricing, e.g. 2 for 2% profit",
+                        "x-designable-id": "yvfksuj58ei",
+                        "x-index": 1,
+                        "default": 2
+                      }
+                    }
+                  }
+                }
+              },
+              "4y906v0wdpt": {
+                "type": "void",
+                "x-component": "FormCollapse",
+                "x-component-props": {
+                  "style": {
+                    "margin": "8px 0px 0px 0px"
+                  },
+                  "collapsible": "header",
+                  "ghost": false,
+                  "bordered": false
+                },
+                "x-designable-id": "4y906v0wdpt",
+                "x-index": 2,
+                "properties": {
+                  "hp63pfovl7s": {
+                    "type": "void",
+                    "x-component": "FormCollapse.CollapsePanel",
+                    "x-component-props": {
+                      "header": "Advanced Settings "
+                    },
+                    "x-designable-id": "hp63pfovl7s",
+                    "x-index": 0,
+                    "properties": {
+                      "MAX_RETRIES": {
+                        "type": "number",
+                        "title": "MAX RETRIES",
+                        "x-decorator": "FormItem",
+                        "x-component": "NumberPicker",
+                        "x-validator": [
+                          {
+                            "triggerType": "onInput",
+                            "min": 0
+                          }
+                        ],
+                        "x-component-props": {},
+                        "x-decorator-props": {},
+                        "name": "MAX_RETRIES",
+                        "default": 3,
+                        "required": true,
+                        "x-designable-id": "7m9oi0lw0c6",
+                        "x-index": 0
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "n7sdfnu0s0x": {
+            "type": "void",
+            "x-component": "FormTab.TabPane",
+            "x-component-props": {
+              "tab": "Pricing"
+            },
+            "x-designable-id": "n7sdfnu0s0x",
+            "x-index": 1,
+            "properties": {
+              "3spur4wou0q": {
+                "type": "string",
+                "x-component": "Text",
+                "x-component-props": {
+                  "content": "The configuration for this Pricing module will no longer be supported in subsequent versions. \nPlease promptly go to AIGNE Hub Config - AI Config to perform the relevant configurations.",
+                  "mode": "p",
+                  "style": {
+                    "opacity": 0.54,
+                    "backgroundColor": "rgba(255,255,255,1)",
+                    "display": "inline-block"
+                  }
+                },
+                "x-pattern": "readOnly",
+                "x-designable-id": "3spur4wou0q",
+                "x-index": 0
+              },
+              "calcTokenUsage": {
+                "type": "boolean",
+                "title": "Calc Token Usage",
+                "x-decorator": "FormItem",
+                "x-component": "Switch",
+                "x-validator": [],
+                "x-component-props": {},
+                "x-decorator-props": {},
+                "name": "calcTokenUsage",
+                "default": true,
+                "x-designable-id": "f05q0lvyn1h",
+                "x-index": 1
+              },
+              "subscriptionProductId": {
+                "type": "string",
+                "title": "Product Id",
+                "x-decorator": "FormItem",
+                "x-component": "Input",
+                "x-validator": [],
+                "x-component-props": {},
+                "x-decorator-props": {},
+                "name": "subscriptionProductId",
+                "required": false,
+                "x-designable-id": "1eq6nkg38ki",
+                "x-index": 2
+              },
+              "subscriptionPaymentLink": {
+                "type": "string",
+                "title": "Payment Link",
+                "x-decorator": "FormItem",
+                "x-component": "Input",
+                "x-validator": [],
+                "x-component-props": {},
+                "x-decorator-props": {},
+                "name": "subscriptionPaymentLink",
+                "required": false,
+                "x-designable-id": "3dqkovwroo9",
+                "x-index": 3
+              },
+              "basePricePerUnit": {
+                "type": "number",
+                "title": "Base Price",
+                "x-decorator": "FormItem",
+                "x-component": "NumberPicker",
+                "x-validator": [],
+                "x-component-props": {
+                  "max": null,
+                  "min": 0,
+                  "step": 0.1
+                },
+                "x-decorator-props": {},
+                "name": "basePricePerUnit",
+                "description": "For example: 0.0025 ABT / 1K tokens",
+                "required": false,
+                "x-designable-id": "ijh86lq5v1o",
+                "x-index": 4
+              },
+              "onlyEnableModelsInPricing": {
+                "type": "boolean",
+                "title": "Only enable models in the list",
+                "x-decorator": "FormItem",
+                "x-component": "Switch",
+                "x-validator": [],
+                "x-component-props": {},
+                "x-decorator-props": {},
+                "name": "onlyEnableModelsInPricing",
+                "x-designable-id": "p3sc4q9xj5g",
+                "x-index": 5
+              },
+              "pricingList": {
+                "type": "array",
+                "x-decorator": "FormItem",
+                "x-component": "ArrayTable",
+                "x-validator": [],
+                "x-component-props": {
+                  "style": {
+                    "display": "block",
+                    "margin": "0px 0px 0px 0px",
+                    "width": "100em"
+                  }
+                },
+                "x-decorator-props": {
+                  "wrapperAlign": "left",
+                  "style": {
+                    "display": "block",
+                    "flexDirection": "row",
+                    "alignContent": "center",
+                    "justifyContent": "center"
+                  }
+                },
+                "name": "pricingList",
+                "x-designable-id": "cgn7sn6ubro",
+                "x-index": 6,
+                "items": {
+                  "type": "object",
+                  "x-designable-id": "63alcwzxuwe",
+                  "properties": {
+                    "u2rd8vlinya": {
+                      "type": "void",
+                      "x-component": "ArrayTable.Column",
+                      "x-component-props": {
+                        "title": "Type"
+                      },
+                      "x-designable-id": "u2rd8vlinya",
+                      "x-index": 0,
+                      "properties": {
+                        "type": {
+                          "x-decorator": "FormItem",
+                          "x-component": "Select",
+                          "x-validator": [],
+                          "x-component-props": {},
+                          "x-decorator-props": {},
+                          "name": "type",
+                          "enum": [
+                            {
+                              "children": [],
+                              "label": "ChatCompletion",
+                              "value": "chatCompletion"
+                            },
+                            {
+                              "children": [],
+                              "label": "Embedding",
+                              "value": "embedding"
+                            },
+                            {
+                              "children": [],
+                              "label": "ImageGeneration",
+                              "value": "imageGeneration"
+                            }
+                          ],
+                          "default": "chatCompletion",
+                          "x-designable-id": "cxl7ehhd1d8",
+                          "x-index": 0
+                        }
+                      }
+                    },
+                    "model": {
+                      "type": "void",
+                      "x-component": "ArrayTable.Column",
+                      "x-component-props": {
+                        "title": "Model"
+                      },
+                      "name": "model",
+                      "x-designable-id": "kvop5axdoe4",
+                      "x-index": 1,
+                      "properties": {
+                        "model": {
+                          "type": "string",
+                          "x-decorator": "FormItem",
+                          "x-component": "Input",
+                          "x-validator": [],
+                          "x-component-props": {},
+                          "x-decorator-props": {},
+                          "name": "model",
+                          "x-designable-id": "cafy8ij3edj",
+                          "x-index": 0,
+                          "required": true
+                        }
+                      }
+                    },
+                    "inputRate": {
+                      "type": "void",
+                      "x-component": "ArrayTable.Column",
+                      "x-component-props": {
+                        "title": "Input Rate"
+                      },
+                      "name": "inputRate",
+                      "x-designable-id": "uckf9fpo60h",
+                      "x-index": 2,
+                      "properties": {
+                        "inputRate": {
+                          "type": "number",
+                          "x-decorator": "FormItem",
+                          "x-component": "NumberPicker",
+                          "x-validator": [],
+                          "x-component-props": {},
+                          "x-decorator-props": {},
+                          "name": "inputRate",
+                          "x-designable-id": "8bo1k18od0x",
+                          "x-index": 0,
+                          "required": true
+                        }
+                      }
+                    },
+                    "outputRate": {
+                      "type": "void",
+                      "x-component": "ArrayTable.Column",
+                      "x-component-props": {
+                        "title": "Output Rate"
+                      },
+                      "name": "outputRate",
+                      "x-designable-id": "dev5n19xoaj",
+                      "x-index": 3,
+                      "properties": {
+                        "outputRate": {
+                          "type": "number",
+                          "x-decorator": "FormItem",
+                          "x-component": "NumberPicker",
+                          "x-validator": [],
+                          "x-component-props": {},
+                          "x-decorator-props": {},
+                          "name": "outputRate",
+                          "x-designable-id": "lifk8ihve0t",
+                          "x-index": 0,
+                          "required": true
+                        }
+                      }
+                    },
+                    "actions": {
+                      "type": "void",
+                      "x-component": "ArrayTable.Column",
+                      "x-component-props": {
+                        "title": "Actions"
+                      },
+                      "name": "actions",
+                      "x-designable-id": "c395sp7n417",
+                      "x-index": 4,
+                      "properties": {
+                        "1x3od1n04ag": {
+                          "type": "void",
+                          "x-component": "ArrayTable.Remove",
+                          "x-designable-id": "1x3od1n04ag",
+                          "x-index": 0
+                        },
+                        "f4dumh78veu": {
+                          "type": "void",
+                          "x-component": "ArrayTable.MoveDown",
+                          "x-designable-id": "f4dumh78veu",
+                          "x-index": 1
+                        },
+                        "2auqqr0hikr": {
+                          "type": "void",
+                          "x-component": "ArrayTable.MoveUp",
+                          "x-designable-id": "2auqqr0hikr",
+                          "x-index": 2
+                        }
+                      }
+                    }
+                  }
+                },
+                "properties": {
+                  "zehy6wuoomj": {
+                    "type": "void",
+                    "title": "Add",
+                    "x-component": "ArrayTable.Addition",
+                    "x-component-props": {},
+                    "x-designable-id": "zehy6wuoomj",
+                    "x-index": 0
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "x-designable-id": "nfh0hwwcasv"
+  }
+}

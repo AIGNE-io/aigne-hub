@@ -41,7 +41,7 @@ jobs:
           skip-release: true
           skip-upload: false
           skip-deploy: true
-          working-directory: blocklets/ai-kit
+          working-directory: blocklets/core
           bundle-command: pnpm bundle
           store-endpoint: ${{ secrets.STORE_ENDPOINT_PROD }}
           store-access-token: ${{ secrets.STORE_ACCESS_TOKEN_PROD }}

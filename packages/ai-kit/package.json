@@ -1,7 +1,7 @@
 {
-  "name": "@blocklet/ai-kit",
-  "version": "0.2.0",
-  "description": "The react.js component library for AI Kit",
+  "name": "@blocklet/aigne-hub",
+  "version": "0.2.16",
+  "description": "The react.js component library for AIGNE Hub",
   "publishConfig": {
     "access": "public"
   },
@@ -46,6 +46,16 @@
       "types": "./lib/types/components/*.d.ts",
       "import": "./lib/esm/components/*.js",
       "require": "./lib/cjs/components/*.js"
+    },
+    "./utils": {
+      "types": "./lib/types/utils/index.d.ts",
+      "import": "./lib/esm/utils/index.js",
+      "require": "./lib/cjs/utils/index.js"
+    },
+    "./utils/*": {
+      "types": "./lib/types/utils/*.d.ts",
+      "import": "./lib/esm/utils/*.js",
+      "require": "./lib/cjs/utils/*.js"
     }
   },
   "typesVersions": {
@@ -101,23 +111,26 @@
     "react": "^18.2.0"
   },
   "dependencies": {
-    "@arcblock/did": "^1.20.15",
-    "@arcblock/ux": "^3.0.22",
-    "@blocklet/logger": "^1.16.45",
-    "@blocklet/payment-js": "^1.19.2",
-    "@blocklet/sdk": "^1.16.45",
+    "@arcblock/did": "^1.21.0",
+    "@arcblock/ux": "^3.0.33",
+    "@blocklet/error": "0.2.5",
+    "@blocklet/logger": "^1.16.46",
+    "@blocklet/payment-js": "^1.19.8",
+    "@blocklet/sdk": "^1.16.46",
     "@emotion/css": "^11.13.5",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@mui/icons-material": "^7.2.0",
     "@mui/lab": "^7.0.0-beta.14",
     "@mui/material": "^7.2.0",
-    "@ocap/mcrypto": "^1.20.15",
-    "@types/express": "^4.17.21",
+    "@mui/system": "^7.2.0",
+    "@ocap/mcrypto": "^1.21.0",
+    "@ocap/util": "^1.21.0",
+    "@types/express": "^5.0.3",
     "ahooks": "^3.8.1",
     "axios": "^1.7.4",
     "eventsource-parser": "^2.0.1",
-    "express": "^4.19.2",
+    "express": "^5.1.0",
     "file-saver": "^2.0.5",
     "form-data": "^4.0.0",
     "immer": "^10.1.1",
@@ -125,6 +138,7 @@
     "json-stable-stringify": "^1.1.1",
     "lodash": "^4.17.21",
     "nanoid": "^5.0.7",
+    "numbro": "^2.5.0",
     "openai": "^4.56.0",
     "react-markdown": "^9.0.1",
     "react-photo-view": "^1.2.6",
@@ -142,7 +156,7 @@
     "@storybook/addon-vitest": "9.0.15",
     "@storybook/react": "9.0.15",
     "@storybook/react-vite": "9.0.15",
-    "@types/express": "^4.17.21",
+    "@types/express": "^5.0.3",
     "@types/file-saver": "^2.0.7",
     "@types/json-stable-stringify": "^1.0.36",
     "@types/react": "^18.3.3",
