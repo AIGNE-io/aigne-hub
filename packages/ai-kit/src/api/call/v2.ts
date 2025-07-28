@@ -1,9 +1,8 @@
 import type { IncomingMessage } from 'http';
 import { ReadableStream, TextDecoderStream } from 'stream/web';
 
-import { call } from '@blocklet/sdk/lib/component';
-import { AxiosResponse } from 'axios';
-import stringify from 'json-stable-stringify';
+import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
+import { joinURL } from 'ufo';
 
 import { SubscriptionError, SubscriptionErrorType } from '../error';
 import {
@@ -16,41 +15,120 @@ import {
   ImageGenerationResponse,
   isChatCompletionError,
 } from '../types';
-import { getRemoteComponentCallHeaders } from '../utils/auth';
+import { UserInfoResult } from '../types/user';
 import { EventSourceParserStream, readableToWeb } from '../utils/event-stream';
-import { aiKitApi, catchAndRethrowUpstreamError } from './api';
+import { getRemoteBaseUrl } from '../utils/util';
+import { catchAndRethrowUpstreamError } from './api';
+
+interface RemoteApiOptions {
+  responseType?: 'stream';
+  timeout?: number;
+}
+
+interface RemoteApiConfig {
+  endpoint: string;
+  method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+  additionalHeaders?: Record<string, string>;
+  isStreamEndpoint?: boolean;
+}
+
+// 缓存配置
+interface CacheItem<T> {
+  data: T;
+  timestamp: number;
+}
+
+let cachedUrl: CacheItem<string> | null = null;
+
+const CACHE_TTL = 30 * 60 * 1000; // 30分钟
+
+function isCacheExpired(cacheItem: CacheItem<any> | null): boolean {
+  if (!cacheItem) return true;
+  return Date.now() - cacheItem.timestamp > CACHE_TTL;
+}
+
+function getConfig() {
+  const baseUrl = process.env.BLOCKLET_AIGNE_API_URL;
+  const credentials = JSON.parse(process.env.BLOCKLET_AIGNE_API_CREDENTIAL || '{}');
+  const accessKey = credentials?.apiKey;
+
+  if (!baseUrl || !accessKey) {
+    throw new Error('Please connect to AIGNE Hub First, baseUrl or accessKey not found');
+  }
+
+  return { baseUrl, accessKey };
+}
+
+async function getCachedUrl(url: string) {
+  if (url !== cachedUrl?.data) {
+    cachedUrl = null;
+  }
+
+  if (isCacheExpired(cachedUrl)) {
+    const { baseUrl } = getConfig();
+    const url = await getRemoteBaseUrl(baseUrl);
+    cachedUrl = {
+      data: url,
+      timestamp: Date.now(),
+    };
+  }
+  return cachedUrl!.data;
+}
+
+export async function callRemoteApi<T = any>(
+  input: any,
+  config: RemoteApiConfig,
+  options: RemoteApiOptions = {}
+): Promise<AxiosResponse<T, any>> {
+  const { accessKey, baseUrl } = getConfig();
+  const url = await getCachedUrl(baseUrl);
+
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${accessKey}`,
+    ...config.additionalHeaders,
+  };
+
+  if (config.isStreamEndpoint) {
+    headers.Accept = 'text/event-stream';
+    headers['Content-Type'] = 'application/json';
+  }
+
+  const method = config.method || 'POST';
+  const requestConfig: AxiosRequestConfig = {
+    method,
+    url: joinURL(url, config.endpoint),
+    headers,
+    timeout: options?.timeout,
+  };
+
+  if (method === 'GET') {
+    requestConfig.params = input;
+  } else {
+    requestConfig.data = input;
+  }
+
+  return catchAndRethrowUpstreamError(axios.request(requestConfig));
+}
 
 export async function chatCompletionsV2(
   input: ChatCompletionInput,
-  options?: { useAIKitService?: boolean; responseType?: undefined }
+  options?: { responseType?: undefined; timeout?: number }
 ): Promise<ReadableStream<Exclude<ChatCompletionResponse, ChatCompletionError>>>;
 export async function chatCompletionsV2(
   input: ChatCompletionInput,
-  options: { useAIKitService?: boolean; responseType: 'stream' }
+  options: { responseType: 'stream'; timeout?: number }
 ): Promise<AxiosResponse<IncomingMessage, any>>;
 export async function chatCompletionsV2(
   input: ChatCompletionInput,
-  { useAIKitService, ...options }: { useAIKitService?: boolean; responseType?: 'stream'; userDid?: string } = {}
+  options: { responseType?: 'stream'; timeout?: number } = {}
 ): Promise<ReadableStream<Exclude<ChatCompletionResponse, ChatCompletionError>> | AxiosResponse<IncomingMessage, any>> {
-  const response = catchAndRethrowUpstreamError(
-    useAIKitService
-      ? aiKitApi<IncomingMessage>('/api/v2/chat/completions', {
-          responseType: 'stream',
-          method: 'POST',
-          data: stringify(input),
-          headers: {
-            ...getRemoteComponentCallHeaders(input, options.userDid),
-            Accept: 'text/event-stream',
-            'Content-Type': 'application/json',
-          },
-        })
-      : call({
-          name: 'ai-kit',
-          path: 'api/v2/chat/completions',
-          data: input,
-          responseType: 'stream',
-          headers: { Accept: 'text/event-stream' },
-        })
+  const response = await callRemoteApi<IncomingMessage>(
+    input,
+    {
+      endpoint: 'api/v2/chat/completions',
+      isStreamEndpoint: true,
+    },
+    options
   );
 
   if (options?.responseType === 'stream') return response;
@@ -58,7 +136,7 @@ export async function chatCompletionsV2(
   return new ReadableStream<Exclude<ChatCompletionResponse, ChatCompletionError>>({
     async start(controller) {
       try {
-        const stream = readableToWeb((await response).data)
+        const stream = readableToWeb(response.data)
           .pipeThrough(new TextDecoderStream())
           .pipeThrough(new EventSourceParserStream<ChatCompletionResponse>());
 
@@ -87,33 +165,22 @@ export async function chatCompletionsV2(
 
 export async function imageGenerationsV2(
   input: ImageGenerationInput,
-  options?: { useAIKitService?: boolean; responseType?: undefined; timeout?: number }
+  options?: { responseType?: undefined; timeout?: number }
 ): Promise<ImageGenerationResponse>;
 export async function imageGenerationsV2(
   input: ImageGenerationInput,
-  options: { useAIKitService?: boolean; responseType: 'stream'; timeout?: number }
+  options: { responseType: 'stream'; timeout?: number }
 ): Promise<AxiosResponse<IncomingMessage, any>>;
 export async function imageGenerationsV2(
   input: ImageGenerationInput,
-  {
-    useAIKitService,
-    ...options
-  }: { useAIKitService?: boolean; responseType?: 'stream'; timeout?: number; userDid?: string } = {}
+  options: { responseType?: 'stream'; timeout?: number } = {}
 ): Promise<ImageGenerationResponse | AxiosResponse<IncomingMessage, any>> {
-  const response = await catchAndRethrowUpstreamError(
-    useAIKitService
-      ? aiKitApi.post('/api/v2/image/generations', input, {
-          responseType: options.responseType,
-          headers: { ...getRemoteComponentCallHeaders(input, options.userDid) },
-        })
-      : // @ts-ignore
-        call({
-          name: 'ai-kit',
-          path: '/api/v2/image/generations',
-          data: input,
-          responseType: options?.responseType!,
-          timeout: options?.timeout,
-        })
+  const response = await callRemoteApi(
+    input,
+    {
+      endpoint: 'api/v2/image/generations',
+    },
+    options
   );
 
   if (options?.responseType === 'stream') return response;
@@ -123,31 +190,39 @@ export async function imageGenerationsV2(
 
 export async function embeddingsV2(
   input: EmbeddingInput,
-  options?: { useAIKitService?: boolean; responseType?: undefined }
+  options?: { responseType?: undefined; timeout?: number }
 ): Promise<EmbeddingResponse>;
 export async function embeddingsV2(
   input: EmbeddingInput,
-  options: { useAIKitService?: boolean; responseType: 'stream' }
+  options: { responseType: 'stream'; timeout?: number }
 ): Promise<AxiosResponse<IncomingMessage, any>>;
 export async function embeddingsV2(
   input: EmbeddingInput,
-  { useAIKitService, ...options }: { useAIKitService?: boolean; responseType?: 'stream'; userDid?: string } = {}
+  options: { responseType?: 'stream'; timeout?: number } = {}
 ): Promise<EmbeddingResponse | AxiosResponse<IncomingMessage, any>> {
-  const response = await catchAndRethrowUpstreamError(
-    useAIKitService
-      ? aiKitApi.post('/api/v2/embeddings', input, {
-          responseType: options.responseType,
-          headers: { ...getRemoteComponentCallHeaders(input, options.userDid) },
-        })
-      : call({
-          name: 'ai-kit',
-          path: '/api/v2/embeddings',
-          data: input,
-          responseType: options?.responseType!,
-        })
+  const response = await callRemoteApi(
+    input,
+    {
+      endpoint: 'api/v2/embeddings',
+    },
+    options
   );
 
-  if (options?.responseType === 'stream') return response;
+  if (options?.responseType === 'stream') {
+    return response as AxiosResponse<IncomingMessage, any>;
+  }
 
+  return response.data;
+}
+
+export async function getUserCreditInfo(): Promise<UserInfoResult>;
+export async function getUserCreditInfo(): Promise<UserInfoResult> {
+  const response = await callRemoteApi(
+    {},
+    {
+      endpoint: 'api/user/info',
+      method: 'GET',
+    }
+  );
   return response.data;
 }

@@ -5,7 +5,7 @@ const AIGNE_HUB_DID = 'z8ia3xzq2tMq8CRHfaXj1BTYJyYnEcHbqP8cJ';
 
 export const getRemoteBaseUrl = async (url: string): Promise<string> => {
   const tmp = new URL(url);
-  if (tmp.origin === window.location.origin) {
+  if (typeof window !== 'undefined' && tmp.origin === window.location.origin) {
     return getPrefix();
   }
   const scriptUrl = joinURL(tmp.origin, '__blocklet__.js?type=json');
@@ -19,6 +19,9 @@ export const getRemoteBaseUrl = async (url: string): Promise<string> => {
 };
 
 export const getPrefix = (): string => {
+  if (typeof window === 'undefined') {
+    return '';
+  }
   const prefix = window.blocklet?.prefix || '/';
   const baseUrl = window.location?.origin; // required when use payment feature cross origin
   const componentId = (window.blocklet?.componentId || '').split('/').pop();

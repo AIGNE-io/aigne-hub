@@ -56,9 +56,7 @@ function formatModelsData(apiModels: ApiModel[]): ModelGroup[] {
   apiModels.forEach((apiModel) => {
     apiModel.providers.forEach((provider) => {
       const providerName = provider.name;
-      const displayName = providerDisplayNames[providerName.toLowerCase()] || provider.displayName;
-
-      if (!providerMap.has(displayName)) {
+      if (!providerMap.has(providerName)) {
         providerMap.set(providerName, []);
       }
 
