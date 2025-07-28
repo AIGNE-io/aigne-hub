@@ -59,8 +59,6 @@ if (!isDevelopment) {
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 app.use(<ErrorRequestHandler>((error, req, res, _next) => {
-  logger.error('handle route error', { error, type: error?.type });
-
   let errorData = null;
   const isEventStream = req.accepts().some((i) => i.startsWith('text/event-stream'));
 

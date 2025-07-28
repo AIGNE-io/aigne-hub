@@ -65,7 +65,10 @@ function UserCreditCard({
   }
 
   return (
-    <Stack sx={{ p: 2, border: '1px solid #e0e0e0', borderRadius: 2, width: '100%' }} spacing={2}>
+    <Stack
+      sx={{ p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 2, width: '100%' }}
+      spacing={2}
+      className="user-credit-card">
       <Stack direction="row" justifyContent="space-between" alignItems="center">
         <Typography variant="body2" color="text.secondary">
           {t('username')}
@@ -105,8 +108,6 @@ function UserCreditCard({
               </Typography>
             </Stack>
           )}
-
-          {/* 第四行：按钮 */}
           <Stack direction="row" spacing={1.5} sx={{ mt: 1 }}>
             {userInfoData?.paymentLink && (
               <Button
