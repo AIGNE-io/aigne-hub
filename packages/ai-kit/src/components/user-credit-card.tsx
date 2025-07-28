@@ -1,11 +1,11 @@
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import Toast from '@arcblock/ux/lib/Toast';
 import UserCard from '@arcblock/ux/lib/UserCard';
+import { formatError } from '@blocklet/error';
 import { Alert, Box, Button, CircularProgress, Link, Stack, Typography } from '@mui/material';
 import { useRequest } from 'ahooks';
 
 import { UserInfoResult, getUserInfo } from '../api/user';
-import { formatError } from '../api/utils/util';
 import { formatNumber } from '../utils/util';
 import withLocaleProvider from '../utils/withLocaleProvider';
 

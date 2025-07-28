@@ -1,7 +1,7 @@
-import { formatError } from '@app/libs/util';
 import Dialog from '@arcblock/ux/lib/Dialog';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import Toast from '@arcblock/ux/lib/Toast';
+import { formatError } from '@blocklet/error';
 import { Add as AddIcon, Delete as DeleteIcon, Edit as EditIcon } from '@mui/icons-material';
 import { Alert, Box, Button, Chip, Collapse, Fade, IconButton, Slide, Stack, Typography } from '@mui/material';
 import { useState } from 'react';

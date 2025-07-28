@@ -1,4 +1,5 @@
 import { User } from '@arcblock/ux/lib/type';
+import { formatError } from '@blocklet/error';
 import type { TPaymentCurrency } from '@blocklet/payment-js';
 import axios from 'axios';
 import { joinURL } from 'ufo';
@@ -43,6 +44,7 @@ export async function getUserInfo({
     }
   } catch (err) {
     console.warn('Failed to parse baseUrl:', err);
+    throw new Error(`Failed to parse baseUrl: ${formatError(err)}`);
   }
 
   return axios

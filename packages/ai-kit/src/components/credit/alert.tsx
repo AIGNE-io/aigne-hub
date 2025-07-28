@@ -1,4 +1,5 @@
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
+import { formatError } from '@blocklet/error';
 import { Alert, AlertProps, Stack } from '@mui/material';
 
 import { CreditErrorType } from '../../api/error';
@@ -18,7 +19,7 @@ function CreditErrorAlert({ error, ...props }: { error: CreditError } & AlertPro
   if (!isCreditError) {
     return (
       <Alert severity="error" {...props}>
-        {error?.message || t('unknownError')}
+        {formatError(error) || t('unknownError')}
       </Alert>
     );
   }

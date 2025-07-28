@@ -398,6 +398,9 @@ importers:
       '@arcblock/ux':
         specifier: ^3.0.33
         version: 3.0.33(9056c196e48a4aa9583cc93a8ef17d94)
+      '@blocklet/error':
+        specifier: 0.2.5
+        version: 0.2.5
       '@blocklet/logger':
         specifier: ^1.16.46
         version: 1.16.46

@@ -1,9 +1,10 @@
-import { formatError, getPrefix } from '@app/libs/util';
+import { getPrefix } from '@app/libs/util';
 import Dialog from '@arcblock/ux/lib/Dialog';
 /* eslint-disable react/no-unstable-nested-components */
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import Toast from '@arcblock/ux/lib/Toast';
 import { Switch, Table } from '@blocklet/aigne-hub/components';
+import { formatError } from '@blocklet/error';
 import styled from '@emotion/styled';
 import { Add as AddIcon } from '@mui/icons-material';
 import { Avatar, Box, Button, Stack, Typography } from '@mui/material';
