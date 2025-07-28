@@ -10,7 +10,7 @@ import { Table } from '@blocklet/aigne-hub/components';
 import { formatError } from '@blocklet/error';
 import styled from '@emotion/styled';
 import { Add as AddIcon, InfoOutlined } from '@mui/icons-material';
-import { Avatar, Box, Button, Chip, Stack, Tooltip, Typography } from '@mui/material';
+import { Avatar, Box, Button, Chip, Stack, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
 import { useLocalStorageState, useRequest } from 'ahooks';
 import BigNumber from 'bignumber.js';
 import { useState } from 'react';
@@ -24,6 +24,8 @@ export default function AIModelRates() {
   const listKey = 'ai-model-rates';
   const { t } = useLocaleContext();
   const { api } = useSessionContext();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [showForm, setShowForm] = useState(false);
   const [editingRate, setEditingRate] = useState<ModelRate | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -468,7 +470,7 @@ export default function AIModelRates() {
               <Tooltip
                 title={<CreditRateFormula />}
                 arrow
-                placement="right"
+                placement={isMobile ? 'bottom' : 'right'}
                 slotProps={{
                   tooltip: {
                     sx: {
@@ -477,8 +479,11 @@ export default function AIModelRates() {
                       boxShadow: 2,
                       border: '1px solid',
                       borderColor: 'divider',
-                      width: 'fit-content',
-                      minWidth: { xs: 'auto', sm: 500 },
+                      width: 'auto',
+                      maxWidth: {
+                        xs: '100%',
+                        md: 'none',
+                      },
                     },
                   },
                 }}>

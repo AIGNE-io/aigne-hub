@@ -21,7 +21,10 @@ export function CreditRateFormula() {
           borderRadius: 1,
           border: '1px dashed',
           borderColor: 'primary.main',
-          whiteSpace: 'nowrap',
+          whiteSpace: {
+            xs: 'normal',
+            md: 'nowrap',
+          },
         }}>
         <Typography
           variant="body1"
