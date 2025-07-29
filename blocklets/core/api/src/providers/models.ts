@@ -181,6 +181,13 @@ const apiKeys: { [key in AIProvider]: () => string[] } = {
   xai: () => Config.xaiApiKey,
 };
 
+const aiConfigProviderUrl = async () => {
+  const url = await getRemoteBaseUrl(process.env?.BLOCKLET_AIGNE_API_URL || '').catch(
+    () => process.env?.BLOCKLET_AIGNE_API_URL
+  );
+  return joinURL(url || '', 'config/ai-config/providers');
+};
+
 async function getAIApiKey(company: AIProvider) {
   currentApiKeyIndex[company] ??= 0;
 
@@ -190,10 +197,8 @@ async function getAIApiKey(company: AIProvider) {
   const key = keys?.[index % keys.length];
 
   if (!key) {
-    const url = await getRemoteBaseUrl(process.env?.BLOCKLET_AIGNE_API_URL || '').catch(
-      () => process.env?.BLOCKLET_AIGNE_API_URL
-    );
-    throw new ConfigError(ConfigErrorType.MISSING_API_KEY, joinURL(url || '', 'config/ai-config/providers'));
+    const configUrl = await aiConfigProviderUrl();
+    throw new ConfigError(ConfigErrorType.MISSING_API_KEY, configUrl);
   }
 
   return { apiKey: key };
@@ -212,10 +217,8 @@ async function getBedrockConfig() {
   const region = regions?.[index % regions.length];
 
   if (!accessKeyId || !secretAccessKey || !region) {
-    const url = await getRemoteBaseUrl(process.env?.BLOCKLET_AIGNE_API_URL || '').catch(
-      () => process.env?.BLOCKLET_AIGNE_API_URL
-    );
-    throw new ConfigError(ConfigErrorType.MISSING_API_KEY, joinURL(url || '', 'config/ai-config/providers'));
+    const configUrl = await aiConfigProviderUrl();
+    throw new ConfigError(ConfigErrorType.MISSING_API_KEY, configUrl);
   }
 
   return { accessKeyId, secretAccessKey, region };
