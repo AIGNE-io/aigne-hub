@@ -99,6 +99,7 @@ export async function callRemoteApi<T = any>(
     url: joinURL(url, config.endpoint),
     headers,
     timeout: options?.timeout,
+    responseType: options?.responseType,
   };
 
   if (method === 'GET') {
@@ -122,21 +123,18 @@ export async function chatCompletionsV2(
   input: ChatCompletionInput,
   options: { responseType?: 'stream'; timeout?: number } = {}
 ): Promise<ReadableStream<Exclude<ChatCompletionResponse, ChatCompletionError>> | AxiosResponse<IncomingMessage, any>> {
-  const response = await callRemoteApi<IncomingMessage>(
-    input,
-    {
-      endpoint: 'api/v2/chat/completions',
-      isStreamEndpoint: true,
-    },
-    options
-  );
+  const params = {
+    endpoint: 'api/v2/chat/completions',
+    isStreamEndpoint: true,
+  };
+  const response = await callRemoteApi<IncomingMessage>(input, params, { ...options, responseType: 'stream' });
 
   if (options?.responseType === 'stream') return response;
 
   return new ReadableStream<Exclude<ChatCompletionResponse, ChatCompletionError>>({
     async start(controller) {
       try {
-        const stream = readableToWeb(response.data)
+        const stream = readableToWeb((await response).data)
           .pipeThrough(new TextDecoderStream())
           .pipeThrough(new EventSourceParserStream<ChatCompletionResponse>());
 
@@ -175,13 +173,7 @@ export async function imageGenerationsV2(
   input: ImageGenerationInput,
   options: { responseType?: 'stream'; timeout?: number } = {}
 ): Promise<ImageGenerationResponse | AxiosResponse<IncomingMessage, any>> {
-  const response = await callRemoteApi(
-    input,
-    {
-      endpoint: 'api/v2/image/generations',
-    },
-    options
-  );
+  const response = await callRemoteApi(input, { endpoint: 'api/v2/image/generations' }, options);
 
   if (options?.responseType === 'stream') return response;
 
@@ -200,13 +192,7 @@ export async function embeddingsV2(
   input: EmbeddingInput,
   options: { responseType?: 'stream'; timeout?: number } = {}
 ): Promise<EmbeddingResponse | AxiosResponse<IncomingMessage, any>> {
-  const response = await callRemoteApi(
-    input,
-    {
-      endpoint: 'api/v2/embeddings',
-    },
-    options
-  );
+  const response = await callRemoteApi(input, { endpoint: 'api/v2/embeddings' }, options);
 
   if (options?.responseType === 'stream') {
     return response as AxiosResponse<IncomingMessage, any>;
@@ -217,12 +203,6 @@ export async function embeddingsV2(
 
 export async function getUserCreditInfo(): Promise<UserInfoResult>;
 export async function getUserCreditInfo(): Promise<UserInfoResult> {
-  const response = await callRemoteApi(
-    {},
-    {
-      endpoint: 'api/user/info',
-      method: 'GET',
-    }
-  );
+  const response = await callRemoteApi({}, { endpoint: 'api/user/info', method: 'GET' });
   return response.data;
 }
