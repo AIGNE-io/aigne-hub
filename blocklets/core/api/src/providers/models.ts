@@ -185,7 +185,8 @@ const aiConfigProviderUrl = async () => {
   const url = await getRemoteBaseUrl(process.env?.BLOCKLET_AIGNE_API_URL || '').catch(
     () => process.env?.BLOCKLET_AIGNE_API_URL
   );
-  return joinURL(url || '', 'config/ai-config/providers');
+  const errorMessage = `Please config provider in ${joinURL(url || '', 'config/ai-config/providers')}`;
+  return errorMessage;
 };
 
 async function getAIApiKey(company: AIProvider) {
@@ -337,10 +338,7 @@ export async function getProviderCredentials(provider: string) {
     }
   };
 
-  const url = await getRemoteBaseUrl(process.env?.BLOCKLET_AIGNE_API_URL || '').catch(
-    () => process.env?.BLOCKLET_AIGNE_API_URL
-  );
-  const errorMessage = `Please config provider ${provider} in ${joinURL(url || '', 'config/ai-config/providers')}`;
+  const errorMessage = await aiConfigProviderUrl();
 
   const providerRecord = await AiProvider.findOne({
     where: { name: provider, enabled: true },
