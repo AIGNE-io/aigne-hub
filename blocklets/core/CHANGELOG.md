@@ -1,3 +1,7 @@
+## 0.2.18 (2025-7-29)
+
+- fix: incorrect response type in chat completions (stream mode)
+
 ## 0.2.17 (2025-7-28)
 
 - fix(ui): adjust tooltip placement and responsive styles for credit rate formula
