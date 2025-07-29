@@ -1,3 +1,7 @@
+## 0.2.19 (2025-7-29)
+
+- chore: format AIGNE Hub config error message
+
 ## 0.2.18 (2025-7-29)
 
 - fix: incorrect response type in chat completions (stream mode)
