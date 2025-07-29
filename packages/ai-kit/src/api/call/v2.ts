@@ -4,7 +4,7 @@ import { ReadableStream, TextDecoderStream } from 'stream/web';
 import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
 import { joinURL } from 'ufo';
 
-import { SubscriptionError, SubscriptionErrorType } from '../error';
+import { ConfigError, ConfigErrorType } from '../error';
 import {
   ChatCompletionError,
   ChatCompletionInput,
@@ -53,7 +53,10 @@ function getConfig() {
   const accessKey = credentials?.apiKey;
 
   if (!baseUrl || !accessKey) {
-    throw new Error('Please connect to AIGNE Hub First, baseUrl or accessKey not found');
+    throw new ConfigError(
+      ConfigErrorType.MISSING_DASHBOARD_CONFIG,
+      joinURL(new URL(process.env?.BLOCKLET_APP_URL || '').origin, '.well-known/service/admin/aigne')
+    );
   }
 
   return { baseUrl, accessKey };
@@ -141,8 +144,8 @@ export async function chatCompletionsV2(
         for await (const chunk of stream) {
           if (isChatCompletionError(chunk)) {
             if (chunk.error.type) {
-              const error = new Error(chunk.error.message) as SubscriptionError;
-              error.type = chunk.error.type as SubscriptionErrorType;
+              const error = new Error(chunk.error.message) as ConfigError;
+              error.type = chunk.error.type as ConfigErrorType;
               error.timestamp = chunk.error.timestamp!;
               controller.error(error);
             } else {

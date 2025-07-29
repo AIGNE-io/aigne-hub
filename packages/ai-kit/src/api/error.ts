@@ -1,10 +1,6 @@
+// Subscription 为v1版本订阅错误, 新版本将废弃，保留是为了兼容
 export enum SubscriptionErrorType {
   UNSUBSCRIBED = 'UNSUBSCRIBED',
-  UNKNOWN = 'UNKNOWN',
-}
-
-export enum CreditErrorType {
-  NOT_ENOUGH = 'NOT_ENOUGH',
   UNKNOWN = 'UNKNOWN',
 }
 
@@ -26,6 +22,46 @@ export class SubscriptionError extends Error {
     this.timestamp = new Date().toISOString();
     this.type = type;
   }
+}
+
+// ConfigError 为v2版本配置错误, 用于v1版本订阅错误
+export enum ConfigErrorType {
+  UNKNOWN = 'UNKNOWN',
+  MISSING_API_KEY = 'MISSING_API_KEY',
+  MISSING_DASHBOARD_CONFIG = 'MISSING_DASHBOARD_CONFIG',
+}
+
+const ConfigErrors: Record<ConfigErrorType, string> = {
+  [ConfigErrorType.UNKNOWN]: 'An unknown error occurred',
+  [ConfigErrorType.MISSING_API_KEY]:
+    'Hello, in order to continue chatting, please first configure the API key in the dashboard.',
+  [ConfigErrorType.MISSING_DASHBOARD_CONFIG]:
+    'Unable to connect to AIGNE Hub: missing baseUrl or accessKey.\n If you are an administrator, please configure them in the dashboard.\n If you are not an administrator, please contact your system admin for assistance.',
+};
+
+export class ConfigError extends Error {
+  timestamp: string;
+
+  type: ConfigErrorType;
+
+  link?: string;
+
+  constructor(type: ConfigErrorType, link?: string) {
+    let message = ConfigErrors[type] || ConfigErrors[ConfigErrorType.UNKNOWN];
+    if (link) {
+      message += `\n${link}`;
+    }
+    super(message);
+
+    this.timestamp = new Date().toISOString();
+    this.type = type;
+    this.link = link;
+  }
+}
+
+export enum CreditErrorType {
+  NOT_ENOUGH = 'NOT_ENOUGH',
+  UNKNOWN = 'UNKNOWN',
 }
 
 const CreditErrors: Record<CreditErrorType, string> = {
