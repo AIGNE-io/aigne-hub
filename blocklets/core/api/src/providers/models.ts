@@ -181,7 +181,7 @@ const apiKeys: { [key in AIProvider]: () => string[] } = {
   xai: () => Config.xaiApiKey,
 };
 
-const aiConfigProviderUrl = async () => {
+const aigneHubConfigProviderUrl = async () => {
   const url = await getRemoteBaseUrl(process.env?.BLOCKLET_AIGNE_API_URL || '').catch(
     () => process.env?.BLOCKLET_AIGNE_API_URL
   );
@@ -198,7 +198,7 @@ async function getAIApiKey(company: AIProvider) {
   const key = keys?.[index % keys.length];
 
   if (!key) {
-    const configUrl = await aiConfigProviderUrl();
+    const configUrl = await aigneHubConfigProviderUrl();
     throw new ConfigError(ConfigErrorType.MISSING_API_KEY, configUrl);
   }
 
@@ -218,7 +218,7 @@ async function getBedrockConfig() {
   const region = regions?.[index % regions.length];
 
   if (!accessKeyId || !secretAccessKey || !region) {
-    const configUrl = await aiConfigProviderUrl();
+    const configUrl = await aigneHubConfigProviderUrl();
     throw new ConfigError(ConfigErrorType.MISSING_API_KEY, configUrl);
   }
 
@@ -338,7 +338,7 @@ export async function getProviderCredentials(provider: string) {
     }
   };
 
-  const errorMessage = await aiConfigProviderUrl();
+  const errorMessage = await aigneHubConfigProviderUrl();
 
   const providerRecord = await AiProvider.findOne({
     where: { name: provider, enabled: true },
