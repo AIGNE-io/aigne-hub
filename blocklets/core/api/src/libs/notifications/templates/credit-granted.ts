@@ -2,7 +2,7 @@ import { fromUnitToToken } from '@ocap/util';
 
 import logger from '../../logger';
 import { ensureCustomer, ensureMeter, paymentClient } from '../../payment';
-import { getCustomerIndexUrl, getUserLocale } from '../shared';
+import { formatTime, getCustomerIndexUrl, getUserLocale } from '../shared';
 import {
   BaseNotificationTemplate,
   BaseNotificationTemplateContext,
@@ -23,25 +23,21 @@ export interface CreditGrantedNotificationTemplateContext extends BaseNotificati
   isWelcomeCredit: boolean;
 }
 
-// 多语言翻译函数
 function translate(key: string, locale: string, params?: Record<string, any>): string {
   const translations = {
     en: {
-      // 欢迎授信文案
       'notification.creditGranted.welcomeTitle': 'Welcome to AIGNE Hub! Your AI credits are ready',
       'notification.creditGranted.welcomeBody':
         'Your AIGNE Hub account has been activated with {grantedAmount} in credits. Use them to access our AI services until {expiresAt}. Start exploring now!',
       'notification.creditGranted.welcomeBodyNoExpire':
         'Your AIGNE Hub account has been activated with {grantedAmount} in credits. Use them to access our AI services anytime.',
 
-      // 普通授信文案
       'notification.creditGranted.title': 'Your AIGNE Hub account has been credited',
       'notification.creditGranted.body':
         'Your AIGNE Hub account has received {grantedAmount} in credits. Use them to call AI services until {expiresAt}.',
       'notification.creditGranted.bodyNoExpire':
         'Your AIGNE Hub account has received {grantedAmount} in credits. Use them to call AI services anytime.',
 
-      // 通用字段
       'notification.creditGranted.grantedCredit': 'Credit Amount',
       'notification.creditGranted.validUntil': 'Valid until',
       'notification.creditGranted.neverExpires': 'No expiration',
@@ -81,17 +77,6 @@ function translate(key: string, locale: string, params?: Record<string, any>): s
   }
 
   return text;
-}
-
-// 格式化时间函数
-function formatTime(date: Date, locale: string): string {
-  return date.toLocaleString(locale, {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
 }
 
 async function isWelcomeCredit(creditGrant: any, userDid: string): Promise<boolean> {
@@ -174,7 +159,7 @@ export class CreditGrantedNotificationTemplate extends BaseNotificationTemplate<
     const currencySymbol = paymentCurrency.symbol;
 
     const neverExpires = !creditGrant.expires_at;
-    const expiresAt = creditGrant.expires_at ? formatTime(new Date(creditGrant.expires_at * 1000), locale) : undefined;
+    const expiresAt = creditGrant.expires_at ? formatTime(new Date(creditGrant.expires_at * 1000)) : undefined;
 
     // 判断是否为欢迎授信
     const isWelcomeCreditFlag = await isWelcomeCredit(creditGrant, userDid);
