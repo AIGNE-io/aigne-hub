@@ -76,6 +76,13 @@
       "components/*": [
         "./lib/types/components/*.d.ts",
         "./lib/types/components/*/index.d.ts"
+      ],
+      "utils": [
+        "./lib/types/utils/index.d.ts"
+      ],
+      "utils/*": [
+        "./lib/types/utils/*.d.ts",
+        "./lib/types/utils/index.d.ts"
       ]
     }
   },
