@@ -1,3 +1,8 @@
+## 0.2.21 (2025-7-30)
+
+- feat(api): integrate payment client to ensure meter starts correctly
+- feat(core): add credit activation notifications and rename AHC to AIGNE Hub Credits
+
 ## 0.2.20 (2025-7-30)
 
 - fix: createTextCompletionApi doesn’t work in non-stream mode
