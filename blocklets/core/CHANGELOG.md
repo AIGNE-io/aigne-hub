@@ -1,3 +1,7 @@
+## 0.2.22 (2025-7-30)
+
+- fix(api): format granted amount in credit granted notification template
+
 ## 0.2.21 (2025-7-30)
 
 - feat(api): integrate payment client to ensure meter starts correctly
