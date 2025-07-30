@@ -1,3 +1,7 @@
+## 0.2.20 (2025-7-30)
+
+- fix: createTextCompletionApi doesn’t work in non-stream mode
+
 ## 0.2.19 (2025-7-29)
 
 - chore: format AIGNE Hub config error message
