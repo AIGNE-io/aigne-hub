@@ -5,10 +5,18 @@ import { CustomError } from '@blocklet/error';
 import payment, { Subscription, TMeterEventExpanded } from '@blocklet/payment-js';
 import { getComponentMountPoint } from '@blocklet/sdk';
 import config from '@blocklet/sdk/lib/config';
+import difference from 'lodash/difference';
 import { joinURL, parseURL, withQuery } from 'ufo';
 
 import { getConnectQueryParam } from './auth';
-import { Config, DEFAULT_CREDIT_PAYMENT_LINK_KEY, DEFAULT_CREDIT_PRICE_KEY, METER_NAME, METER_UNIT } from './env';
+import {
+  AIGNE_HUB_DID,
+  Config,
+  DEFAULT_CREDIT_PAYMENT_LINK_KEY,
+  DEFAULT_CREDIT_PRICE_KEY,
+  METER_NAME,
+  METER_UNIT,
+} from './env';
 import logger from './logger';
 
 const PAYMENT_DID = 'z2qaCNvKMv5GjouKdcDWexv6WqtHbpNPQDnAk';
@@ -20,10 +28,54 @@ export const paymentClient = payment;
 export const getPaymentKitPrefix = () => {
   return joinURL(config.env.appUrl, getComponentMountPoint(PAYMENT_DID));
 };
+
+const selfNotificationEvents = ['customer.credit_grant.granted'];
+const ensureNotificationSettings = async () => {
+  const settings = await payment.settings.retrieve(AIGNE_HUB_DID);
+  if (settings && difference(settings.settings.include_events, selfNotificationEvents).length > 0) {
+    await payment.settings.update(settings.id, {
+      settings: {
+        ...settings.settings,
+        include_events: selfNotificationEvents,
+      },
+    });
+    logger.info('update notification settings for AIGNE Hub', { settings });
+  }
+  if (!settings) {
+    const setting = await payment.settings.create({
+      type: 'notification',
+      mountLocation: AIGNE_HUB_DID,
+      description: 'AIGNE Hub Notification Settings',
+      settings: {
+        self_handle: true,
+        include_events: ['customer.credit_grant.granted'],
+      },
+    });
+    logger.info('create notification settings for AIGNE Hub', { setting });
+    return setting;
+  }
+  return settings;
+};
+
 export const ensureMeter = async () => {
   if (!isPaymentRunning()) return null;
   try {
     const meter = await payment.meters.retrieve(METER_NAME);
+    const settings = await ensureNotificationSettings();
+    if (meter && meter.unit !== METER_UNIT) {
+      const updates: any = {
+        unit: METER_UNIT,
+      };
+      if (!meter.metadata?.setting_id) {
+        updates.metadata = {
+          ...meter.metadata,
+          setting_id: settings.id,
+        };
+      }
+      await payment.meters.update(meter.id, updates);
+      logger.info('update meter unit to AIGNE Hub Credits', { meterId: meter.id });
+      await updateMeterCurrency(meter.currency_id!);
+    }
     return meter;
   } catch (error) {
     if (error instanceof Error && error.message.includes('is not running')) {
@@ -31,16 +83,39 @@ export const ensureMeter = async () => {
     }
     logger.error('failed to retrieve meter', { error });
     logger.info('start to create meter');
+    const settings = await ensureNotificationSettings();
     const meter = await payment.meters.create({
       name: 'AIGNE Hub AI Meter',
       description: 'AIGNE Hub AI Meter',
       event_name: METER_NAME,
       unit: METER_UNIT,
       aggregation_method: 'sum',
+      metadata: {
+        setting_id: settings.id,
+      },
     });
     return meter;
   }
 };
+
+export async function updateMeterCurrency(currencyId: string) {
+  try {
+    if (!currencyId) {
+      return;
+    }
+    const currency = await payment.paymentCurrencies.retrieve(currencyId);
+    if (!currency) {
+      throw new CustomError(404, 'Currency not found');
+    }
+    await payment.paymentCurrencies.update(currencyId, {
+      symbol: METER_UNIT,
+      name: METER_UNIT,
+    });
+    logger.info('update currency symbol to AIGNE Hub Credits', { currencyId });
+  } catch (error) {
+    logger.error('failed to retrieve currency', { error });
+  }
+}
 
 export async function ensureCustomer(userDid: string) {
   // @ts-ignore

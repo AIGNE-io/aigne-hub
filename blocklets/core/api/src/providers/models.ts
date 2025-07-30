@@ -83,7 +83,7 @@ function convertToFrameworkMessages(
 
       default:
         // @ts-ignore
-        throw new Error(`Unknown message role: ${message.role}`);
+        throw new CustomError(400, `Unknown message role: ${message.role}`);
     }
   });
 }
@@ -344,7 +344,7 @@ export async function getProviderCredentials(provider: string) {
     where: { name: provider, enabled: true },
   });
   if (!providerRecord) {
-    return callback(new Error(`Provider ${provider} not found, ${errorMessage}`));
+    return callback(new CustomError(404, `Provider ${provider} not found, ${errorMessage}`));
   }
 
   const credentials = await AiCredential.findAll({
@@ -352,13 +352,13 @@ export async function getProviderCredentials(provider: string) {
   });
 
   if (credentials.length === 0) {
-    return callback(new Error(`No credentials found for provider ${provider}, ${errorMessage}`));
+    return callback(new CustomError(404, `No credentials found for provider ${provider}, ${errorMessage}`));
   }
 
   const credential = await AiCredential.getNextAvailableCredential(providerRecord!.id);
 
   if (!credential) {
-    return callback(new Error(`No active credentials found for provider ${provider}, ${errorMessage}`));
+    return callback(new CustomError(404, `No active credentials found for provider ${provider}, ${errorMessage}`));
   }
 
   await credential.updateUsage();

@@ -58,7 +58,7 @@ export async function checkModelRateAvailable(model: string, providerName?: stri
       },
     });
     if (!providerRecord) {
-      callback(new Error(`Provider ${providerName} not found`));
+      callback(new CustomError(404, `Provider ${providerName} not found`));
       return;
     }
     providerId = providerRecord?.id;
@@ -76,6 +76,8 @@ export async function checkModelRateAvailable(model: string, providerName?: stri
     if (!Config.creditBasedBillingEnabled && !Config.pricing?.onlyEnableModelsInPricing) {
       return;
     }
-    callback(new Error(`Unsupported model ${modelName}${providerName ? ` for provider ${providerName}` : ''}`));
+    callback(
+      new CustomError(400, `Unsupported model ${modelName}${providerName ? ` for provider ${providerName}` : ''}`)
+    );
   }
 }

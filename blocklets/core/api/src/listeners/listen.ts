@@ -2,6 +2,7 @@ import { blocklet } from '@api/libs/auth';
 import { Config } from '@api/libs/env';
 import { getLock } from '@api/libs/lock';
 import logger from '@api/libs/logger';
+import { handleCreditGranted } from '@api/libs/notifications';
 import { ensureCustomer, ensureMeter, getUserCredits, paymentClient } from '@api/libs/payment';
 import { subscribe } from '@blocklet/sdk/lib/service/eventbus';
 import merge from 'lodash/merge';
@@ -84,6 +85,9 @@ async function handleUserAdded(user: any) {
       name: 'New user bonus credit',
       expires_at: expiresAt,
       category: 'promotional',
+      metadata: {
+        welcomeCredit: true,
+      },
     });
     logger.info('new user bonus credit created', {
       customerId: customer.id,
@@ -148,6 +152,9 @@ const handleUserUpdated = async (user: any) => {
       name: 'First-time reward for existing users',
       expires_at: expiresAt,
       category: 'promotional',
+      metadata: {
+        welcomeCredit: true,
+      },
     });
 
     await markUserGranted(user);
@@ -177,6 +184,11 @@ export function subscribeEvents() {
       logger.info('user.updated', event.id, event.data.object?.did);
       const user = event.data.object;
       handleUserUpdated(user);
+    }
+    if (event.type === 'customer.credit_grant.granted') {
+      logger.info('customer.credit_grant.granted', event.id);
+      const creditGrant = event.data.object;
+      handleCreditGranted(creditGrant, event.data.object.extraParams);
     }
   });
 }

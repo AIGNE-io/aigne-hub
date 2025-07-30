@@ -14,6 +14,7 @@ import { proxyToAIKit } from '@blocklet/aigne-hub/api/call';
 import { appRegister } from '@blocklet/aigne-hub/api/call/app';
 import AIKitConfig from '@blocklet/aigne-hub/api/config';
 import { appIdFromPublicKey, ensureRemoteComponentCall } from '@blocklet/aigne-hub/api/utils/auth';
+import { CustomError } from '@blocklet/error';
 import { config, getComponentMountPoint } from '@blocklet/sdk';
 import { Router } from 'express';
 import Joi from 'joi';
@@ -42,7 +43,7 @@ router.get(
     const { description } = await statusQuerySchema.validateAsync(req.query, { stripUnknown: true });
 
     const { appId } = req.appClient!;
-    const app = await App.findByPk(appId, { rejectOnEmpty: new Error(`App ${appId} not found`) });
+    const app = await App.findByPk(appId, { rejectOnEmpty: new CustomError(404, `App ${appId} not found`) });
     const subscription = await getActiveSubscriptionOfApp({
       appId,
       description,
@@ -119,7 +120,7 @@ const registerBodySchema = Joi.object<RegisterPayload>({
 });
 
 router.post('/register', async (req, res) => {
-  if (!Config.pricing) throw new Error('Missing pricing preference');
+  if (!Config.pricing) throw new CustomError(400, 'Missing pricing preference');
 
   const payload = await registerBodySchema.validateAsync(req.body, { stripUnknown: true });
   const appId = appIdFromPublicKey(payload.publicKey);

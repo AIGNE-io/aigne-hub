@@ -245,9 +245,9 @@
                         "x-decorator-props": {
                           "tooltip": "Used exclusively for calculating model rates. If you have a custom payment link, ensure this value matches your external credit pricing.",
                           "addonAfter": "💲",
-                          "addonBefore": "Per 1 AHC ="
+                          "addonBefore": "Per 1 Credit ="
                         },
-                        "description": "AHC (AIGNE Hub Credits) is the unit for AI calls. Enter cost per Credit (e.g., 1e-3 = 0.001)",
+                        "description": "AIGNE Hub Credits is the unit for AI calls. Enter cost per Credit (e.g., 1e-3 = 0.001)",
                         "name": "baseCreditPrice",
                         "x-designable-id": "79hmyquqn8p",
                         "x-index": 0,

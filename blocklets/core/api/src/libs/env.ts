@@ -13,7 +13,7 @@ export const AIGNE_HUB_DID = 'z8ia3xzq2tMq8CRHfaXj1BTYJyYnEcHbqP8cJ';
 
 export const METER_NAME = 'agent-hub-ai-meter';
 
-export const METER_UNIT = 'AHC';
+export const METER_UNIT = 'AIGNE Hub Credits';
 
 export const DEFAULT_CREDIT_PRICE_KEY = 'DEFAULT_CREDIT_UNIT_PRICE';
 

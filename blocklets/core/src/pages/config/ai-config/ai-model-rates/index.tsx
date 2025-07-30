@@ -268,7 +268,7 @@ export default function AIModelRates() {
           return (
             <Tooltip
               title={
-                <Stack>
+                <Stack spacing={1}>
                   <Typography variant="caption">
                     <strong>{t('config.modelRates.configInfo.creditCost')}</strong>$
                     {formatMillionTokenCost(multiply(rate.inputRate, baseCreditPrice))} / 1M Tokens
@@ -291,6 +291,7 @@ export default function AIModelRates() {
                     boxShadow: 2,
                     border: '1px solid',
                     borderColor: 'divider',
+                    maxWidth: 'none',
                   },
                 },
               }}
@@ -343,7 +344,7 @@ export default function AIModelRates() {
           return (
             <Tooltip
               title={
-                <Stack>
+                <Stack spacing={1}>
                   <Typography variant="caption">
                     <strong>{t('config.modelRates.configInfo.creditCost')}</strong>$
                     {formatMillionTokenCost(multiply(rate.outputRate, baseCreditPrice))} / 1M Tokens
@@ -367,6 +368,7 @@ export default function AIModelRates() {
                     boxShadow: 2,
                     border: '1px solid',
                     borderColor: 'divider',
+                    maxWidth: 'none',
                   },
                 },
               }}>
@@ -504,7 +506,7 @@ export default function AIModelRates() {
               sx={{
                 color: 'text.secondary',
               }}>
-              <Typography component="span">AHC Price: $</Typography>
+              <Typography component="span">{t('config.modelRates.configInfo.creditValue')} $</Typography>
               <UnitDisplay value={formatMillionTokenCost(baseCreditPrice)} type="credit" />
               <Typography component="span" sx={{ ml: 1 }}>
                 • {t('config.modelRates.configInfo.profitMargin')}

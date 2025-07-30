@@ -2,7 +2,7 @@ import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import Toast from '@arcblock/ux/lib/Toast';
 import UserCard from '@arcblock/ux/lib/UserCard';
 import { formatError } from '@blocklet/error';
-import { Alert, Box, Button, CircularProgress, Link, Stack, Typography } from '@mui/material';
+import { Alert, Box, Button, ButtonProps, CircularProgress, Link, Stack, Typography } from '@mui/material';
 import { useRequest } from 'ahooks';
 
 import { UserInfoResult } from '../api/types/user';
@@ -12,25 +12,29 @@ import withLocaleProvider from '../utils/withLocaleProvider';
 
 interface UserCreditCardProps {
   baseUrl: string;
-  accessKey: string;
+  apiKey: string;
   onSuccess?: (userInfo: UserInfoResult) => void;
   onError?: (error: Error) => void;
   mode?: 'default' | 'custom';
   render?: (userInfo: UserInfoResult) => React.ReactNode | null;
+  chargeBtnProps?: ButtonProps;
+  manageBtnProps?: ButtonProps;
 }
 
 function UserCreditCard({
   baseUrl,
-  accessKey,
+  apiKey,
   onSuccess = () => {},
   onError = () => {},
   mode = 'default',
   render = () => null,
+  chargeBtnProps = {},
+  manageBtnProps = {},
 }: UserCreditCardProps) {
   const { t } = useLocaleContext();
 
-  const { data: userInfoData, loading } = useRequest(() => getUserInfo({ baseUrl, accessKey }), {
-    refreshDeps: [baseUrl, accessKey],
+  const { data: userInfoData, loading } = useRequest(() => getUserInfo({ baseUrl, accessKey: apiKey }), {
+    refreshDeps: [baseUrl, apiKey],
     onError: (err) => {
       Toast.error(formatError(err));
       onError?.(err);
@@ -95,7 +99,7 @@ function UserCreditCard({
               {t('creditBalance')}
             </Typography>
             <Typography variant="h6" fontWeight="bold">
-              {formatNumber(userInfoData?.creditBalance?.balance || '0')} {userInfoData.currency?.symbol ?? 'AHC'}
+              {formatNumber(userInfoData?.creditBalance?.balance || '0')}
             </Typography>
           </Stack>
 
@@ -105,33 +109,37 @@ function UserCreditCard({
                 {t('pendingCredit')}
               </Typography>
               <Typography variant="h6" fontWeight="bold" sx={{ color: 'error.main' }}>
-                {formatNumber(userInfoData.creditBalance.pendingCredit)} {userInfoData.currency?.symbol ?? 'AHC'}
+                {formatNumber(userInfoData.creditBalance.pendingCredit)}
               </Typography>
             </Stack>
           )}
-          <Stack direction="row" spacing={1.5} sx={{ mt: 1 }}>
+          <Stack direction="row" spacing={1.5} sx={{ mt: 1 }} className="user-credit-card-actions">
             {userInfoData?.paymentLink && (
               <Button
                 variant="outlined"
+                className="recharge-button"
                 onClick={() => {
                   window.open(userInfoData?.paymentLink || '', '_blank');
                 }}
                 sx={{
                   flex: 1,
-                }}>
+                }}
+                {...chargeBtnProps}>
                 {t('recharge')}
               </Button>
             )}
 
             <Button
               variant="text"
+              className="manage-button"
               onClick={() => {
                 window.open(userInfoData?.profileLink || '', '_blank');
               }}
               sx={{
                 borderColor: 'primary.main',
                 color: 'primary.main',
-              }}>
+              }}
+              {...manageBtnProps}>
               {t('manage')}
             </Button>
           </Stack>
