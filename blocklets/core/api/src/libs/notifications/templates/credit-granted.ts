@@ -1,3 +1,4 @@
+import { formatNumber } from '@blocklet/aigne-hub/utils/util';
 import { fromUnitToToken } from '@ocap/util';
 
 import logger from '../../logger';
@@ -168,7 +169,7 @@ export class CreditGrantedNotificationTemplate extends BaseNotificationTemplate<
       locale,
       userDid,
       currencySymbol,
-      grantedAmount: `${fromUnitToToken(creditGrant.amount.toString(), paymentCurrency.decimal)} ${currencySymbol}`,
+      grantedAmount: `${formatNumber(fromUnitToToken(creditGrant.amount.toString(), paymentCurrency.decimal))} ${currencySymbol}`,
       expiresAt,
       neverExpires,
       isWelcomeCredit: isWelcomeCreditFlag,
