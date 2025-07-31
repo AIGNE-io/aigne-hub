@@ -26,6 +26,7 @@ Whether you're building applications with the AIGNE framework, using AIGNE Studi
 - **⚡ Seamless Integration**: Works out-of-the-box with AIGNE framework applications
 
 ## Supported AI Providers
+  Thank you for checking out this project!
 
 - **OpenAI** - GPT models, DALL-E, Embeddings
 - **Anthropic** - Claude models
