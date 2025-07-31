@@ -1,3 +1,7 @@
+## 0.2.23 (2025-7-31)
+
+- fix: adaptStreamToOldFormat not handling new JSON output structure correctly
+
 ## 0.2.22 (2025-7-30)
 
 - fix(api): format granted amount in credit granted notification template
