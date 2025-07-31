@@ -9,6 +9,7 @@ AIGNE Hub 是一个能够快速集成 AI 的 blocklet。使用 AIGNE Hub，开�
 - **bedrock** - Amazon Bedrock 托管模型
 - **deepseek** - DeepSeek 模型
 - **google** - Google Gemini 模型
+- **gemini** - Google Gemini 模型
 - **ollama** - 本地模型部署
 - **openrouter** - 多提供商访问
 - **xai** - xAI Grok 模型

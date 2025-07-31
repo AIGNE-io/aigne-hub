@@ -9,6 +9,7 @@ AIGNE Hub is a blocklet that brings AI capabilities to other blocklets. With AIG
 - **bedrock** - Amazon Bedrock hosted models
 - **deepseek** - DeepSeek models
 - **google** - Google Gemini models
+- **gemini** - Google Gemini models
 - **ollama** - Local model deployment
 - **openrouter** - Multi-provider access
 - **xai** - xAI Grok models

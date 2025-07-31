@@ -20,7 +20,7 @@ const user = sessionMiddleware({ accessKey: true });
 // 验证schemas
 const createProviderSchema = Joi.object({
   name: Joi.string()
-    .valid('openai', 'anthropic', 'bedrock', 'deepseek', 'google', 'ollama', 'openrouter', 'xai')
+    .valid('openai', 'anthropic', 'bedrock', 'deepseek', 'google', 'gemini', 'ollama', 'openrouter', 'xai')
     .required(),
   displayName: Joi.string().min(1).max(100).required(),
   baseUrl: Joi.string().uri().optional(),
@@ -34,7 +34,17 @@ const createProviderSchema = Joi.object({
 });
 
 const updateProviderSchema = Joi.object({
-  name: Joi.string().valid('openai', 'anthropic', 'bedrock', 'deepseek', 'google', 'ollama', 'openrouter', 'xai'),
+  name: Joi.string().valid(
+    'openai',
+    'anthropic',
+    'bedrock',
+    'deepseek',
+    'google',
+    'gemini',
+    'ollama',
+    'openrouter',
+    'xai'
+  ),
   baseUrl: Joi.string().uri().optional(),
   region: Joi.when('name', {
     is: 'bedrock',

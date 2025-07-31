@@ -14,6 +14,7 @@ export type AIProviderType =
   | 'bedrock'
   | 'deepseek'
   | 'google'
+  | 'gemini'
   | 'ollama'
   | 'openrouter'
   | 'xai';
