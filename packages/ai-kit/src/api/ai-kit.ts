@@ -55,7 +55,11 @@ export const createTextCompletionApi =
           }
           return res.body!;
         })
-      : fetch(path, options)
+      : fetch(path, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(options),
+        })
           .then((res) => res.json())
           .then((data) => ({ text: data.text ?? data.choices?.[0]?.text ?? data.choices?.[0]?.message?.content }))
           .catch(processResponseError);

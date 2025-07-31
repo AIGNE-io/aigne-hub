@@ -1,3 +1,33 @@
+## 0.2.23 (2025-7-31)
+
+- fix: adaptStreamToOldFormat not handling new JSON output structure correctly
+
+## 0.2.22 (2025-7-30)
+
+- fix(api): format granted amount in credit granted notification template
+
+## 0.2.21 (2025-7-30)
+
+- feat(api): integrate payment client to ensure meter starts correctly
+- feat(core): add credit activation notifications and rename AHC to AIGNE Hub Credits
+
+## 0.2.20 (2025-7-30)
+
+- fix: createTextCompletionApi doesn’t work in non-stream mode
+
+## 0.2.19 (2025-7-29)
+
+- chore: format AIGNE Hub config error message
+
+## 0.2.18 (2025-7-29)
+
+- fix: incorrect response type in chat completions (stream mode)
+
+## 0.2.17 (2025-7-28)
+
+- fix(ui): adjust tooltip placement and responsive styles for credit rate formula
+- refactor(pkg): simplify API calls and improve type organization
+
 ## 0.2.16 (2025-7-28)
 
 - feat(core): add user info API and UserCreditCard component

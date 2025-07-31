@@ -10,7 +10,7 @@ import { Table } from '@blocklet/aigne-hub/components';
 import { formatError } from '@blocklet/error';
 import styled from '@emotion/styled';
 import { Add as AddIcon, InfoOutlined } from '@mui/icons-material';
-import { Avatar, Box, Button, Chip, Stack, Tooltip, Typography } from '@mui/material';
+import { Avatar, Box, Button, Chip, Stack, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
 import { useLocalStorageState, useRequest } from 'ahooks';
 import BigNumber from 'bignumber.js';
 import { useState } from 'react';
@@ -24,6 +24,8 @@ export default function AIModelRates() {
   const listKey = 'ai-model-rates';
   const { t } = useLocaleContext();
   const { api } = useSessionContext();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [showForm, setShowForm] = useState(false);
   const [editingRate, setEditingRate] = useState<ModelRate | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -266,7 +268,7 @@ export default function AIModelRates() {
           return (
             <Tooltip
               title={
-                <Stack>
+                <Stack spacing={1}>
                   <Typography variant="caption">
                     <strong>{t('config.modelRates.configInfo.creditCost')}</strong>$
                     {formatMillionTokenCost(multiply(rate.inputRate, baseCreditPrice))} / 1M Tokens
@@ -289,6 +291,7 @@ export default function AIModelRates() {
                     boxShadow: 2,
                     border: '1px solid',
                     borderColor: 'divider',
+                    maxWidth: 'none',
                   },
                 },
               }}
@@ -341,7 +344,7 @@ export default function AIModelRates() {
           return (
             <Tooltip
               title={
-                <Stack>
+                <Stack spacing={1}>
                   <Typography variant="caption">
                     <strong>{t('config.modelRates.configInfo.creditCost')}</strong>$
                     {formatMillionTokenCost(multiply(rate.outputRate, baseCreditPrice))} / 1M Tokens
@@ -365,6 +368,7 @@ export default function AIModelRates() {
                     boxShadow: 2,
                     border: '1px solid',
                     borderColor: 'divider',
+                    maxWidth: 'none',
                   },
                 },
               }}>
@@ -468,7 +472,7 @@ export default function AIModelRates() {
               <Tooltip
                 title={<CreditRateFormula />}
                 arrow
-                placement="right"
+                placement={isMobile ? 'bottom' : 'right'}
                 slotProps={{
                   tooltip: {
                     sx: {
@@ -477,8 +481,11 @@ export default function AIModelRates() {
                       boxShadow: 2,
                       border: '1px solid',
                       borderColor: 'divider',
-                      width: 'fit-content',
-                      minWidth: { xs: 'auto', sm: 500 },
+                      width: 'auto',
+                      maxWidth: {
+                        xs: '100%',
+                        md: 'none',
+                      },
                     },
                   },
                 }}>
@@ -499,7 +506,7 @@ export default function AIModelRates() {
               sx={{
                 color: 'text.secondary',
               }}>
-              <Typography component="span">AHC Price: $</Typography>
+              <Typography component="span">{t('config.modelRates.configInfo.creditValue')} $</Typography>
               <UnitDisplay value={formatMillionTokenCost(baseCreditPrice)} type="credit" />
               <Typography component="span" sx={{ ml: 1 }}>
                 • {t('config.modelRates.configInfo.profitMargin')}

@@ -1,4 +1,5 @@
 import { ChatCompletionChunk, ChatCompletionInput, ChatCompletionResponse } from '@blocklet/aigne-hub/api/types';
+import { CustomError } from '@blocklet/error';
 import {
   FunctionCallingMode,
   FunctionDeclarationSchema,
@@ -173,7 +174,7 @@ function openAISchemaToGeminiSchema(schema: {
     };
   }
 
-  throw new Error(`Unsupported schema type ${schema.type}`);
+  throw new CustomError(400, `Unsupported schema type ${schema.type}`);
 }
 
 function toolConfigFromInputToolChoice(toolChoice?: ChatCompletionInput['toolChoice']): ToolConfig | undefined {

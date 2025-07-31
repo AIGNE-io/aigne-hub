@@ -12,7 +12,7 @@ import express, { ErrorRequestHandler } from 'express';
 
 import { Config, isDevelopment } from './libs/env';
 import logger, { accessLogMiddleware } from './libs/logger';
-import { autoUpdateSubscriptionMeta, ensureMeter } from './libs/payment';
+import { autoUpdateSubscriptionMeta, ensureMeter, paymentClient } from './libs/payment';
 import { subscribeEvents } from './listeners/listen';
 import routes from './routes';
 import { initAuthRouter } from './routes/auth';
@@ -109,6 +109,8 @@ export const server = app.listen(port, (err?: any) => {
   autoUpdateSubscriptionMeta();
   subscribeEvents();
   if (Config.creditBasedBillingEnabled) {
-    ensureMeter();
+    paymentClient.ensureStart(async () => {
+      await ensureMeter();
+    });
   }
 });

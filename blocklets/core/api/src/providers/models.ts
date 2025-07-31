@@ -21,12 +21,14 @@ import { XAIChatModel } from '@aigne/xai';
 import { getModelNameWithProvider } from '@api/libs/ai-provider';
 import AiCredential from '@api/store/models/ai-credential';
 import AiProvider from '@api/store/models/ai-provider';
-import { SubscriptionError, SubscriptionErrorType } from '@blocklet/aigne-hub/api';
+import { ConfigError, ConfigErrorType } from '@blocklet/aigne-hub/api';
 import { ChatCompletionChunk, ChatCompletionInput, ChatCompletionResponse } from '@blocklet/aigne-hub/api/types';
+import { getRemoteBaseUrl } from '@blocklet/aigne-hub/api/utils/util';
 import { CustomError } from '@blocklet/error';
 import { NodeHttpHandler, streamCollector } from '@smithy/node-http-handler';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import { pick } from 'lodash';
+import { joinURL } from 'ufo';
 
 import { Config } from '../libs/env';
 
@@ -81,7 +83,7 @@ function convertToFrameworkMessages(
 
       default:
         // @ts-ignore
-        throw new Error(`Unknown message role: ${message.role}`);
+        throw new CustomError(400, `Unknown message role: ${message.role}`);
     }
   });
 }
@@ -179,7 +181,15 @@ const apiKeys: { [key in AIProvider]: () => string[] } = {
   xai: () => Config.xaiApiKey,
 };
 
-function getAIApiKey(company: AIProvider) {
+const aigneHubConfigProviderUrl = async () => {
+  const url = await getRemoteBaseUrl(process.env?.BLOCKLET_AIGNE_API_URL || '').catch(
+    () => process.env?.BLOCKLET_AIGNE_API_URL
+  );
+  const errorMessage = `Please config provider in ${joinURL(url || '', 'config/ai-config/providers')}`;
+  return errorMessage;
+};
+
+async function getAIApiKey(company: AIProvider) {
   currentApiKeyIndex[company] ??= 0;
 
   const index = currentApiKeyIndex[company]!++;
@@ -187,12 +197,15 @@ function getAIApiKey(company: AIProvider) {
 
   const key = keys?.[index % keys.length];
 
-  if (!key) throw new SubscriptionError(SubscriptionErrorType.UNSUBSCRIBED);
+  if (!key) {
+    const configUrl = await aigneHubConfigProviderUrl();
+    throw new ConfigError(ConfigErrorType.MISSING_API_KEY, configUrl);
+  }
 
   return { apiKey: key };
 }
 
-function getBedrockConfig() {
+async function getBedrockConfig() {
   currentApiKeyIndex.bedrock ??= 0;
 
   const index = currentApiKeyIndex.bedrock!++;
@@ -205,7 +218,8 @@ function getBedrockConfig() {
   const region = regions?.[index % regions.length];
 
   if (!accessKeyId || !secretAccessKey || !region) {
-    throw new SubscriptionError(SubscriptionErrorType.UNSUBSCRIBED);
+    const configUrl = await aigneHubConfigProviderUrl();
+    throw new ConfigError(ConfigErrorType.MISSING_API_KEY, configUrl);
   }
 
   return { accessKeyId, secretAccessKey, region };
@@ -297,7 +311,7 @@ export const getModel = async (
 };
 
 export async function getProviderCredentials(provider: string) {
-  const callback = (err: Error) => {
+  const callback = async (err: Error) => {
     try {
       let params: {
         apiKey?: string;
@@ -307,9 +321,9 @@ export async function getProviderCredentials(provider: string) {
         region?: string;
       };
       if (provider === 'bedrock') {
-        params = getBedrockConfig();
+        params = await getBedrockConfig();
       } else {
-        params = getAIApiKey(provider as AIProvider);
+        params = await getAIApiKey(provider as AIProvider);
       }
       const baseURLGetter = BASE_URL_CONFIG_MAP[provider as keyof typeof BASE_URL_CONFIG_MAP];
       if (baseURLGetter) {
@@ -324,11 +338,13 @@ export async function getProviderCredentials(provider: string) {
     }
   };
 
+  const errorMessage = await aigneHubConfigProviderUrl();
+
   const providerRecord = await AiProvider.findOne({
     where: { name: provider, enabled: true },
   });
   if (!providerRecord) {
-    return callback(new Error(`Provider ${provider} not found`));
+    return callback(new CustomError(404, `Provider ${provider} not found, ${errorMessage}`));
   }
 
   const credentials = await AiCredential.findAll({
@@ -336,14 +352,15 @@ export async function getProviderCredentials(provider: string) {
   });
 
   if (credentials.length === 0) {
-    return callback(new Error(`No credentials found for provider ${provider}`));
+    return callback(new CustomError(404, `No credentials found for provider ${provider}, ${errorMessage}`));
   }
 
   const credential = await AiCredential.getNextAvailableCredential(providerRecord!.id);
 
   if (!credential) {
-    return callback(new Error(`No active credentials found for provider ${provider}`));
+    return callback(new CustomError(404, `No active credentials found for provider ${provider}, ${errorMessage}`));
   }
+
   await credential.updateUsage();
   const value = AiCredential.decryptCredentialValue(credential!.credentialValue);
   return {
@@ -390,6 +407,15 @@ export async function* adaptStreamToOldFormat(
         for (const call of delta.json.toolCalls) {
           toolCalls.push(call);
         }
+      }
+
+      if (delta.json?.json) {
+        yield {
+          delta: {
+            role,
+            content: JSON.stringify(delta.json.json),
+          },
+        };
       }
 
       if (delta.text?.text || delta.json?.toolCalls) {
