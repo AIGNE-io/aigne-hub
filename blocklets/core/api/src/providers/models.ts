@@ -409,6 +409,15 @@ export async function* adaptStreamToOldFormat(
         }
       }
 
+      if (delta.json?.json) {
+        yield {
+          delta: {
+            role,
+            content: JSON.stringify(delta.json.json),
+          },
+        };
+      }
+
       if (delta.text?.text || delta.json?.toolCalls) {
         yield {
           delta: {
