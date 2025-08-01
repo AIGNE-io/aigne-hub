@@ -71,10 +71,11 @@ capabilities:
   component: true
   navigation: true
 screenshots:
-  - cea4aa43c8391a4a0cca41510e94afab.png
-  - 9064dd710ed0c9a70336f95b06401a80.png
-  - e65fed5c0e30232b3b8b67bd73213aa3.png
-  - f9077225977f7721bef132538831f400.png
+  - fc46e9461382f0be7541af17ef13f632.png
+  - 6fff77ec3c1fbefb780b2b79c61a36f7.png
+  - 8014a0b1d561114d9948214c4929d5df.png
+  - d037b6b6b092765ccbfa58706c241622.png
+  - c29f08420df8ea9a199fcb5ffe06febe.png
 components:
   - name: z2qa2GCqPJkufzqF98D8o7PWHrRRSHpYkNhEh
     title: Observability
