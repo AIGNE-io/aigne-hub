@@ -1,148 +1,85 @@
-# AIGNE Hub
+# AIGNE Hub  
+**The Unified Gateway for All LLM Providers**
 
-AIGNE Hub is a blocklet that brings AI capabilities to other blocklets. With AIGNE Hub, developers can easily incorporate AI into their projects and create powerful applications.
+AIGNE Hub connects your applications to today’s leading Large Language Models (LLMs) through one API, one security model, and one intuitive dashboard. Say goodbye to juggling API keys, fragmented billing systems, and inconsistent integrations.
 
-## Supported AI Providers
+Whether you're building a SaaS platform, internal AI tools, or next-gen agents, AIGNE Hub gives you the fastest way to deliver powerful AI experiences—securely and at scale.
 
-- **openai** - OpenAI GPT models, DALL-E, Embeddings
-- **anthropic** - Anthropic Claude models 
-- **bedrock** - Amazon Bedrock hosted models
-- **deepseek** - DeepSeek models
-- **google** - Google Gemini models
-- **gemini** - Google Gemini models
-- **ollama** - Local model deployment
-- **openrouter** - Multi-provider access
-- **xai** - xAI Grok models
+---
 
-## Features
+## ✨ Why AIGNE Hub?
 
-- **Multi-AI Provider Support**: OpenAI, Anthropic, Amazon Bedrock, DeepSeek, Google, Ollama, OpenRouter, xAI
-- **OAuth Integration**: Secure OAuth-based access for calling AI capabilities
-- **Credit Billing System**: Integrated with Payment Kit for credit-based billing and usage tracking
-- **Provider Credential Management**: Support for API Key, Access Key Pair
-- **Model Rate Configuration**: Flexible pricing for Chat, Image Generation, and Embedding models
-- **Built-in Playground**: Real-time AI model testing and experimentation
-- **AIGNE Framework Integration**: Support for AIGNE CLI to call models through AIGNE Hub locally
-- **Usage Analytics**: Monitor AI service usage, costs, and performance metrics via Observability component
-- **Auto Credit Grant**: Automatic credit allocation for new users on first login
+- **One API. All Providers.**  
+  OpenAI, Claude, Gemini, DeepSeek, xAI, Bedrock, and more—connected via a single OpenAI-compatible endpoint.
 
-## Core Capabilities
+- **One Dashboard. Full Visibility.**  
+  Monitor usage, cost, and performance across all models and users in one place.
 
-- **Chat Completions**: Conversational AI and text generation with streaming support
-- **Image Generation**: AI-powered image creation and editing (DALL-E, Midjourney-style)
-- **Embeddings**: Vector representations for semantic search and RAG applications
-- **Built-in Playground**: Real-time model testing with conversation history
-- **RESTful APIs**: OpenAI-compatible endpoints for easy migration
+- **Bring Your Own Keys or Monetize with Credits.**  
+  Self-host with your API keys, or enable built-in credit-based billing powered by [Payment Kit].
 
-## Install and Run
+- **No-Code Playground + Dev-Friendly CLI.**  
+  Explore models visually or run local commands with full access to your connected models.
 
-- Click the Launch button
-- You need to purchase a Blocklet Server first (if you don't already have one)
-- Follow the installation wizard to install blocklet on your Blocklet Server
-- Start the installed blocklet in the Blocklet Server console
-- Configure AI providers in **Blocklets -> AIGNE Hub -> Config → AI Config → AI Providers**
-- Access the public address of the blocklet, you can open playground from apps menu
+- **Security & Permissions Built-In.**  
+  All API credentials are AES-encrypted. Role-based access and audit logging come standard.
 
-## Credit Billing Configuration (Optional)
+---
 
-To enable credit-based billing and usage management:
+## 🧩 Core Capabilities
 
-1. **Install Payment Kit Component**
+- 💬 **Chat Completions** – Streaming or standard chat responses  
+- 🖼️ **Image Generation** – DALL·E and other generative image models  
+- 🧠 **Embeddings** – For semantic search and vector workflows  
+- 🔐 **OAuth-secured APIs** – OpenAI-compatible endpoints  
+- 📊 **Usage Analytics** – Token, cost, and latency metrics  
+- 💳 **Credit Billing (Optional)** – Enable monetization in one click  
 
-2. **Enable Credit Billing in AIGNE Hub**
-   - Go to **Blocklets → AIGNE Hub → Preferences**
-   - Enable "Credit Based Billing" option
-   - Configure base credit price and target profit margin (optional)
-   - Set new user credit grant amount (optional)
+---
 
-3. **Configure Model Rates**
-   - Access AIGNE Hub → Config → AI Config → Model Rates
-   - Set pricing for different model types and providers
-   - Configure input/output token rates
+## 🚀 Get Started in Minutes
 
-4. **View Usage and Billing**
-   - Credit consumption history is available in Payment Kit billing interface
-   - Users receive purchase prompts when credits are insufficient
+**Step 1: Launch AIGNE Hub**  
+Click "Launch" to install AIGNE Hub on your Blocklet Server.
 
-## Security & Management
+**Step 2: Connect Your AI Providers**  
+Go to `Blocklets → AIGNE Hub → Config → AI Providers`  
+Add API credentials for OpenAI, Claude, Gemini, etc.
 
-- **Encrypted Storage**: API keys stored with AES-256 encryption
-- **Access Control**: Role-based permissions for different user types
-- **Usage Quotas**: Set limits per user or application
-- **Audit Logging**: Complete request and response logging
-- **IP Restrictions**: Whitelist/blacklist IP addresses for API access
+**Step 3 (Optional): Enable Billing with Credits**  
+Install the [Payment Kit], then enable credit-based billing in Preferences.  
+Configure pricing per model and grant initial credits to new users.
 
-## OAuth Integration
+**Step 4: Explore and Build**  
+Open the built-in Playground or use the AIGNE CLI to test and integrate.
 
-AIGNE Hub supports OAuth-based integration for secure AI capability access.
+---
 
-### Chat Completions (Recommended)
+## 🔌 Supported Providers
 
-```ts
-// Using AIGNE Framework with AIGNE Hub
-import { AIGNEHubChatModel } from "@aigne/aigne-hub";
+- OpenAI (GPT, DALL·E, Embedding)
+- Anthropic (Claude)
+- Amazon Bedrock (AWS models)
+- Google Gemini (text + image)
+- DeepSeek
+- xAI (Grok series)
+- OpenRouter (multi-model platform)
+- Ollama (local model support)
 
-const model = new AIGNEHubChatModel({
-  url: "https://your-aigne-hub-url/api/v2/chat",
-  accessKey: "your-oauth-access-key", 
-  model: "openai/gpt-3.5-turbo",
-});
+> 🎯 The list continues to grow. New providers are auto-discovered and available for connection as soon as they're supported.
 
-const result = await model.invoke({
-  messages: [{ role: "user", content: "Hello, AIGNE Hub!" }],
-});
+---
 
-console.log(result);
-```
 
-## API Endpoints
+## 🧑‍💻 Developer Toolkit
 
-### Chat Completions
-```
-POST /api/v2/chat
-Content-Type: application/json
-Authorization: Bearer your-access-token
-```
+- [🏠 AIGNE Hub Official Website](https://www.aigne.io/en/aigne-hub)
+- [📘 AIGNE Hub Github Repo](https://github.com/AIGNE-io/aigne-hub)
+- [🧑‍💻  AIGNE CLI Doc](https://www.arcblock.io/docs/aigne-framework/en/aigne-framework-api-aigne-cli-md)
+- [💬 Join the Community](https://community.arcblock.io/discussions/boards/aigne)
 
-### Image Generation
-```
-POST /api/v2/images/generate
-Content-Type: application/json
-Authorization: Bearer your-access-token
-```
+---
 
-### Embeddings
-```
-POST /api/v2/embeddings
-Content-Type: application/json
-Authorization: Bearer your-access-token
-```
+**AIGNE Hub is your all-in-one gateway to the modern AI stack. Launch it today and ship smarter, faster.**
 
-## Credit Billing
 
-AIGNE Hub integrates with Payment Kit to provide flexible credit-based billing:
-
-- **Automatic Credit Grant**: New users receive initial credits upon first login
-- **Usage Tracking**: All AI API calls consume credits based on configured rates
-- **Payment Integration**: Users can purchase additional credits when needed
-- **Billing History**: View detailed credit transactions in Payment Kit interface
-- **Model-specific Rates**: Different pricing for various AI models and capabilities
-
-## Troubleshooting
-
-### Common Issues
-
-- **API Key Invalid**: Verify your provider credentials in Config → AI Providers
-- **Insufficient Credits**: Check credit balance in billing section
-- **Model Not Available**: Ensure the selected model is supported by your provider
-- **Rate Limiting**: Check provider rate limits and upgrade if necessary
-
-### Performance Optimization
-
-- **Response Caching**: Enable caching for repeated requests
-- **Load Balancing**: Configure multiple API keys for the same provider
-- **Monitoring**: Use built-in analytics to track performance metrics
-
-## Support
-
-If you have any questions or need help getting started, please feel free to provide feedback in our [community](https://community.arcblock.io/discussions/boards/aigne). We are happy to help!
