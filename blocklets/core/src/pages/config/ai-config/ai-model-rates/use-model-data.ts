@@ -19,7 +19,6 @@ const SUPPORTED_PROVIDERS = new Set([
   'xai',
 ]);
 
-// filter models with time pattern
 const TEST_PATTERN = /^ft:|^test-|^dev-|^beta-|^alpha-/i;
 
 // supported modes

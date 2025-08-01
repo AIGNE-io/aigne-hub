@@ -92,7 +92,7 @@ const createModelRateSchema = Joi.object({
       style: Joi.array().items(Joi.string()).optional(),
     }).optional(),
   }).optional(),
-}).unknown(true);
+});
 
 const updateModelRateSchema = Joi.object({
   inputRate: Joi.number().min(0).optional(),
@@ -263,7 +263,9 @@ router.delete('/:id', ensureAdmin, async (req, res) => {
 // create credential
 router.post('/:providerId/credentials', ensureAdmin, async (req, res) => {
   try {
-    const { error, value: rawValue } = createCredentialSchema.validate(req.body);
+    const { error, value: rawValue } = createCredentialSchema.validate(req.body, {
+      stripUnknown: true,
+    });
     if (error) {
       return res.status(400).json({
         error: error.details[0]?.message || 'Validation error',
@@ -585,9 +587,11 @@ router.post('/model-rates', ensureAdmin, async (req, res) => {
           style: Joi.array().items(Joi.string()).optional(),
         }).optional(),
       }).optional(),
-    }).unknown(true);
+    });
 
-    const { error, value } = batchCreateSchema.validate(req.body);
+    const { error, value } = batchCreateSchema.validate(req.body, {
+      stripUnknown: true,
+    });
     if (error) {
       return res.status(400).json({
         error: error.details[0]?.message || 'Validation error',

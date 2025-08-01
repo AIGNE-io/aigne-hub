@@ -961,7 +961,6 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
                       </Stack>
                     ) : (
                       <>
-                        {' '}
                         {/* Max Tokens */}
                         <FormInput
                           name="modelMetadata.maxTokens"
