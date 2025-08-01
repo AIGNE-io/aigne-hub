@@ -10,7 +10,7 @@ import { Table } from '@blocklet/aigne-hub/components';
 import { formatError } from '@blocklet/error';
 import styled from '@emotion/styled';
 import { Add as AddIcon, InfoOutlined } from '@mui/icons-material';
-import { Avatar, Box, Button, Chip, Stack, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
+import { Avatar, Box, Button, Chip, Drawer, Stack, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
 import { useLocalStorageState, useRequest } from 'ahooks';
 import BigNumber from 'bignumber.js';
 import { useState } from 'react';
@@ -71,16 +71,7 @@ export default function AIModelRates() {
   // 创建模型费率
   const handleCreateModelRate = async (data: ModelRateFormData) => {
     try {
-      await api.post('/api/ai-providers/model-rates', {
-        model: data.modelName,
-        modelDisplay: data.modelDisplay,
-        type: data.rateType,
-        inputRate: data.inputRate,
-        outputRate: data.outputRate,
-        description: data.description,
-        providers: data.providers,
-        unitCosts: data.unitCosts,
-      });
+      await api.post('/api/ai-providers/model-rates', data);
 
       Toast.success(t('config.modelRates.createSuccess'));
       refresh();
@@ -97,12 +88,7 @@ export default function AIModelRates() {
   const handleUpdateModelRate = async (data: ModelRateFormData) => {
     if (!editingRate) return;
     try {
-      await api.put(`/api/ai-providers/${editingRate.provider.id}/model-rates/${editingRate.id}`, {
-        modelDisplay: data.modelDisplay,
-        inputRate: data.inputRate,
-        outputRate: data.outputRate,
-        description: data.description,
-      });
+      await api.put(`/api/ai-providers/${editingRate.provider.id}/model-rates/${editingRate.id}`, data);
       refresh();
       setEditingRate(null);
       setShowForm(false);
@@ -585,13 +571,22 @@ export default function AIModelRates() {
           loading={loading}
         />
       </Root>
-      {/* Add/Edit Model Rate Dialog */}
-      <Dialog
+      {/* Add/Edit Model Rate Drawer */}
+      <Drawer
         open={showForm}
         onClose={() => setShowForm(false)}
-        fullWidth
-        maxWidth="sm"
-        title={editingRate ? t('config.modelRates.actions.edit') : t('config.modelRates.actions.add')}>
+        anchor="right"
+        slotProps={{
+          paper: {
+            sx: {
+              width: { xs: '100%', sm: '600px', md: '700px' },
+              height: '100%',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
+            },
+          },
+        }}>
         <ModelRateForm
           rate={editingRate}
           onSubmit={editingRate ? handleUpdateModelRate : handleCreateModelRate}
@@ -600,7 +595,7 @@ export default function AIModelRates() {
             setEditingRate(null);
           }}
         />
-      </Dialog>
+      </Drawer>
       {/* Delete Confirmation Dialog */}
       <Dialog
         open={deleteDialogOpen}

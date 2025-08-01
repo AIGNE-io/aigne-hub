@@ -30,6 +30,7 @@ interface ModelOption {
   maxTokens?: number;
   supportsVision?: boolean;
   supportsFunctionCalling?: boolean;
+  supportsToolChoice?: boolean;
 }
 
 interface CachedModelData {
@@ -57,7 +58,6 @@ export const SUPPORTED_PROVIDERS = new Set([
 ]);
 
 // Filter patterns - consistent with frontend
-const TIME_PATTERN = /\d{4}-\d{2}-\d{2}|\d{4}/;
 const TEST_PATTERN = /^ft:|^test-|^dev-|^beta-|^alpha-/i;
 const SUPPORTED_MODES = new Set(['chat', 'image_generation', 'embedding']);
 
@@ -102,9 +102,6 @@ class ModelRegistry {
    */
   private shouldFilterModel(modelName: string, options: any): boolean {
     // Filter models with time pattern
-    if (TIME_PATTERN.test(modelName)) {
-      return true;
-    }
 
     // Filter test models
     if (TEST_PATTERN.test(modelName)) {
@@ -164,6 +161,7 @@ class ModelRegistry {
         maxTokens: options.max_tokens || options.max_input_tokens,
         supportsVision: options.supports_vision,
         supportsFunctionCalling: options.supports_function_calling,
+        supportsToolChoice: options.supports_tool_choice,
       };
 
       providerMap[provider]!.push(modelOption);

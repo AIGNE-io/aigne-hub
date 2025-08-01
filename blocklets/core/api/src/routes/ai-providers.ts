@@ -76,13 +76,45 @@ const createModelRateSchema = Joi.object({
   description: Joi.string().allow('').optional(),
   inputRate: Joi.number().min(0).required(),
   outputRate: Joi.number().min(0).required(),
-});
+  unitCosts: Joi.object({
+    input: Joi.number().min(0).required(),
+    output: Joi.number().min(0).required(),
+  }).optional(),
+  modelMetadata: Joi.object({
+    maxTokens: Joi.number().min(1).allow(null).optional(),
+    features: Joi.array()
+      .items(Joi.string().valid('tools', 'thinking', 'vision'))
+      .optional(),
+    imageGeneration: Joi.object({
+      max: Joi.number().min(1).allow(null).optional(),
+      quality: Joi.array().items(Joi.string()).optional(),
+      size: Joi.array().items(Joi.string()).optional(),
+      style: Joi.array().items(Joi.string()).optional(),
+    }).optional(),
+  }).optional(),
+}).unknown(true);
 
 const updateModelRateSchema = Joi.object({
   inputRate: Joi.number().min(0).optional(),
   outputRate: Joi.number().min(0).optional(),
   modelDisplay: Joi.string().min(1).max(100).allow('').optional(),
   description: Joi.string().allow('').optional(),
+  unitCosts: Joi.object({
+    input: Joi.number().min(0).required(),
+    output: Joi.number().min(0).required(),
+  }).optional(),
+  modelMetadata: Joi.object({
+    maxTokens: Joi.number().min(1).allow(null).optional(),
+    features: Joi.array()
+      .items(Joi.string().valid('tools', 'thinking', 'vision'))
+      .optional(),
+    imageGeneration: Joi.object({
+      max: Joi.number().min(1).allow(null).optional(),
+      quality: Joi.array().items(Joi.string()).optional(),
+      size: Joi.array().items(Joi.string()).optional(),
+      style: Joi.array().items(Joi.string()).optional(),
+    }).optional(),
+  }).optional(),
 });
 
 const modelRatesListSchema = createListParamSchema<{
@@ -405,7 +437,9 @@ router.get('/:providerId/model-rates', user, async (req, res) => {
 // create model rate
 router.post('/:providerId/model-rates', ensureAdmin, async (req, res) => {
   try {
-    const { error, value } = createModelRateSchema.validate(req.body);
+    const { error, value } = createModelRateSchema.validate(req.body, {
+      stripUnknown: true,
+    });
     if (error) {
       return res.status(400).json({
         error: error.details[0]?.message || 'Validation error',
@@ -443,6 +477,8 @@ router.post('/:providerId/model-rates', ensureAdmin, async (req, res) => {
       outputRate: value.outputRate,
       modelDisplay,
       description: value.description,
+      modelMetadata: value.modelMetadata,
+      unitCosts: value.unitCosts,
     });
 
     return res.json(modelRate.toJSON());
@@ -457,7 +493,9 @@ router.post('/:providerId/model-rates', ensureAdmin, async (req, res) => {
 // update model rate
 router.put('/:providerId/model-rates/:rateId', ensureAdmin, async (req, res) => {
   try {
-    const { error, value } = updateModelRateSchema.validate(req.body);
+    const { error, value } = updateModelRateSchema.validate(
+      pick(req.body, ['modelDisplay', 'inputRate', 'outputRate', 'description', 'modelMetadata', 'unitCosts'])
+    );
     if (error) {
       return res.status(400).json({
         error: error.details[0]?.message || 'Validation error',
@@ -533,7 +571,19 @@ router.post('/model-rates', ensureAdmin, async (req, res) => {
         input: Joi.number().min(0).required(),
         output: Joi.number().min(0).required(),
       }).optional(),
-    });
+      modelMetadata: Joi.object({
+        maxTokens: Joi.number().min(1).allow(null).optional(),
+        features: Joi.array()
+          .items(Joi.string().valid('tools', 'thinking', 'vision'))
+          .optional(),
+        imageGeneration: Joi.object({
+          max: Joi.number().min(1).allow(null).optional(),
+          quality: Joi.array().items(Joi.string()).optional(),
+          size: Joi.array().items(Joi.string()).optional(),
+          style: Joi.array().items(Joi.string()).optional(),
+        }).optional(),
+      }).optional(),
+    }).unknown(true);
 
     const { error, value } = batchCreateSchema.validate(req.body);
     if (error) {
@@ -600,6 +650,7 @@ router.post('/model-rates', ensureAdmin, async (req, res) => {
           modelDisplay,
           description: value.description,
           unitCosts: value.unitCosts ?? {},
+          modelMetadata: value.modelMetadata,
         });
 
         return modelRate.toJSON();
@@ -724,7 +775,17 @@ router.get('/chat/models', user, async (req, res) => {
   try {
     const where: any = {};
     if (req.query.type) {
-      where.type = req.query.type;
+      const requestedType = req.query.type as string;
+      const typeFilterMap: Record<string, string> = {
+        chatCompletion: 'chatCompletion',
+        imageGeneration: 'imageGeneration',
+        embedding: 'embedding',
+        chat: 'chatCompletion',
+        image_generation: 'imageGeneration',
+        image: 'imageGeneration',
+      };
+      const mappedType = typeFilterMap[requestedType] || requestedType;
+      where.type = mappedType;
     }
     const modelRates = await AiModelRate.findAll({
       where,
@@ -836,13 +897,77 @@ router.get('/model-rates', user, async (req, res) => {
 router.get('/models', async (req, res) => {
   try {
     const where: any = {};
+    const typeFilterMap: Record<string, string> = {
+      chatCompletion: 'chatCompletion',
+      imageGeneration: 'imageGeneration',
+      embedding: 'embedding',
+      chat: 'chatCompletion',
+      image_generation: 'imageGeneration',
+      image: 'imageGeneration',
+    };
+    // type mapping
+    const typeMap = {
+      chatCompletion: 'chat',
+      imageGeneration: 'image_generation',
+      embedding: 'embedding',
+    };
     if (req.query.type) {
-      where.type = req.query.type;
+      const requestedType = req.query.type as string;
+      const mappedType = typeFilterMap[requestedType] || requestedType;
+      where.type = mappedType;
     }
 
     const providers = await AiProvider.getEnabledProviders();
     if (providers.length === 0) {
-      return res.json({});
+      return res.json([]);
+    }
+
+    // If no configured rates and credit billing is disabled, return default models
+    if (!Config.creditBasedBillingEnabled) {
+      try {
+        const result: any[] = [];
+        const allModelsMap = await modelRegistry.getAllModels();
+        const enabledProviders = await AiProvider.getEnabledProviders();
+
+        enabledProviders.forEach((provider) => {
+          const providerJson = provider.toJSON();
+          const providerModels = allModelsMap[providerJson.name] || [];
+
+          providerModels.forEach((modelOption) => {
+            // Filter by type if specified
+            if (req.query.type && typeFilterMap[req.query.type as string] !== modelOption.mode) {
+              return;
+            }
+
+            const features: ('tools' | 'thinking' | 'vision')[] = [];
+            if (modelOption.supportsVision) {
+              features.push('vision');
+            }
+            if (modelOption.supportsToolChoice) {
+              features.push('tools');
+            }
+            const modelMetadata = {
+              maxTokens: modelOption.maxTokens,
+              features,
+            };
+            result.push({
+              key: `${providerJson.name}/${modelOption.name}`,
+              model: modelOption.name,
+              type: typeMap[modelOption.mode as keyof typeof typeMap] || 'chat',
+              provider: providerJson.name,
+              input_credits_per_token: 0,
+              output_credits_per_token: 0,
+              modelMetadata,
+            });
+          });
+        });
+        return res.json(result);
+      } catch (error) {
+        logger.error('Failed to fetch models from registry:', error);
+        return res.status(500).json({
+          error: 'Failed to fetch models from registry',
+        });
+      }
     }
 
     const modelRates = await AiModelRate.findAll({
@@ -865,64 +990,23 @@ router.get('/models', async (req, res) => {
       ],
     });
 
-    const result: Record<string, any> = {};
-
-    // type mapping
-    const typeMap = {
-      chatCompletion: 'chat',
-      imageGeneration: 'image_generation',
-      embedding: 'embedding',
-    };
+    const result: any[] = [];
 
     modelRates.forEach((rate) => {
       const rateJson = rate.toJSON() as any;
       const providerName = rateJson.provider.name;
       const modelName = rateJson.model;
-      const key = `${providerName}/${modelName}`;
 
-      result[key] = {
-        mode: typeMap[rateJson.type as keyof typeof typeMap] || 'chat',
-        litellm_provider: providerName,
+      result.push({
+        key: `${providerName}/${modelName}`,
+        model: modelName,
+        type: typeMap[rateJson.type as keyof typeof typeMap] || 'chat',
+        provider: providerName,
         input_credits_per_token: rateJson.inputRate || 0,
         output_credits_per_token: rateJson.outputRate || 0,
-      };
+        modelMetadata: rateJson.modelMetadata,
+      });
     });
-
-    // If no configured rates and credit billing is disabled, return default models
-    if (!Config.creditBasedBillingEnabled) {
-      try {
-        const allModelsMap = await modelRegistry.getAllModels();
-        const enabledProviders = await AiProvider.getEnabledProviders();
-
-        enabledProviders.forEach((provider) => {
-          const providerJson = provider.toJSON();
-          const providerModels = allModelsMap[providerJson.name] || [];
-
-          providerModels.forEach((modelOption) => {
-            // Filter by type if specified
-            const typeFilterMap: Record<string, string> = {
-              chatCompletion: 'chatCompletion',
-              imageGeneration: 'imageGeneration',
-              embedding: 'embedding',
-            };
-
-            if (req.query.type && typeFilterMap[req.query.type as string] !== modelOption.mode) {
-              return;
-            }
-
-            const key = `${providerJson.name}/${modelOption.name}`;
-            result[key] = {
-              mode: typeMap[modelOption.mode as keyof typeof typeMap] || 'chat',
-              litellm_provider: providerJson.name,
-              input_credits_per_token: 0,
-              output_credits_per_token: 0,
-            };
-          });
-        });
-      } catch (error) {
-        logger.error('Failed to fetch models from registry:', error);
-      }
-    }
 
     return res.json(result);
   } catch (error) {

@@ -9,6 +9,17 @@ const nextId = () => idGenerator.nextId().toString();
 
 export type RateType = 'chatCompletion' | 'embedding' | 'imageGeneration';
 
+export type ModelMetadata = {
+  maxTokens?: number;
+  features?: ('tools' | 'thinking' | 'vision')[];
+  imageGeneration?: {
+    max?: number;
+    quality?: string[];
+    size?: string[];
+    style?: string[];
+  };
+};
+
 export default class AiModelRate extends Model<InferAttributes<AiModelRate>, InferCreationAttributes<AiModelRate>> {
   declare id: CreationOptional<string>;
 
@@ -34,6 +45,8 @@ export default class AiModelRate extends Model<InferAttributes<AiModelRate>, Inf
     input: number;
     output: number;
   };
+
+  declare modelMetadata?: ModelMetadata;
 
   public static readonly GENESIS_ATTRIBUTES = {
     id: {
@@ -83,6 +96,10 @@ export default class AiModelRate extends Model<InferAttributes<AiModelRate>, Inf
     updatedAt: {
       type: DataTypes.DATE,
       allowNull: false,
+    },
+    modelMetadata: {
+      type: DataTypes.JSON,
+      allowNull: true,
     },
   };
 

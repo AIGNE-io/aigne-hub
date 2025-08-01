@@ -20,7 +20,6 @@ const SUPPORTED_PROVIDERS = new Set([
 ]);
 
 // filter models with time pattern
-const TIME_PATTERN = /\d{4}-\d{2}-\d{2}|\d{4}/;
 const TEST_PATTERN = /^ft:|^test-|^dev-|^beta-|^alpha-/i;
 
 // supported modes
@@ -57,11 +56,6 @@ const processModelName = (modelName: string): { processedName: string; displayNa
 };
 
 const shouldFilterModel = (modelName: string, options: any): boolean => {
-  // filter models with time pattern
-  if (TIME_PATTERN.test(modelName)) {
-    return true;
-  }
-
   // filter test models
   if (TEST_PATTERN.test(modelName)) {
     return true;
@@ -200,6 +194,7 @@ export function useModelData() {
         maxTokens: options.max_tokens || options.max_input_tokens,
         supportsVision: options.supports_vision,
         supportsFunctionCalling: options.supports_function_calling,
+        supportsToolChoice: options.supports_tool_choice,
       });
     });
 

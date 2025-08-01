@@ -3,14 +3,18 @@ import { formatMillionTokenCost, getPrefix, parseMillionTokenCost } from '@app/l
 /* eslint-disable react-hooks/exhaustive-deps */
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import { FormLabel } from '@blocklet/aigne-hub/components';
-import { InfoOutlined } from '@mui/icons-material';
+import { ExpandLess, ExpandMore, InfoOutlined } from '@mui/icons-material';
 import {
   Autocomplete,
   Avatar,
   Box,
   Button,
+  Checkbox,
   Chip,
+  Collapse,
   FormControl,
+  FormControlLabel,
+  FormGroup,
   FormHelperText,
   InputAdornment,
   Menu,
@@ -27,6 +31,8 @@ import { FormProvider, useForm } from 'react-hook-form';
 import { Link } from 'react-router-dom';
 import { joinURL } from 'ufo';
 
+import CustomAutocomplete from '../../../../components/custom-autocomplete';
+import EnterHint from '../../../../components/enter-hint';
 import FormInput from '../../../../components/form-input';
 import { useSessionContext } from '../../../../contexts/session';
 import { ModelOption, ModelRate, ModelRateFormData, Provider } from './types';
@@ -130,7 +136,11 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
   const [providers, setProviders] = useState<Provider[]>([]);
   const [selectedProviders, setSelectedProviders] = useState<string[]>([]);
   const [modelInputValue, setModelInputValue] = useState('');
+  const [qualityInputValue, setQualityInputValue] = useState('');
+  const [sizeInputValue, setSizeInputValue] = useState('');
+  const [styleInputValue, setStyleInputValue] = useState('');
   const [pricingMenuAnchor, setPricingMenuAnchor] = useState<null | HTMLElement>(null);
+  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
 
   const baseCreditPrice = window.blocklet?.preferences?.baseCreditPrice || 0.00000025;
   const targetProfitMargin = window.blocklet?.preferences?.targetProfitMargin || 0;
@@ -169,9 +179,9 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
 
   const methods = useForm<ModelRateFormData>({
     defaultValues: {
-      modelName: rate?.model || '',
+      model: rate?.model || '',
       modelDisplay: rate?.modelDisplay || '',
-      rateType: rate?.type || 'chatCompletion',
+      type: rate?.type || 'chatCompletion',
       inputRate: rate?.inputRate || 0,
       outputRate: rate?.outputRate || 0,
       description: rate?.description || '',
@@ -179,6 +189,16 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
       unitCosts: {
         input: rate?.unitCosts?.input || 0,
         output: rate?.unitCosts?.output || 0,
+      },
+      modelMetadata: {
+        maxTokens: rate?.modelMetadata?.maxTokens,
+        features: rate?.modelMetadata?.features || [],
+        imageGeneration: {
+          max: rate?.modelMetadata?.imageGeneration?.max,
+          quality: rate?.modelMetadata?.imageGeneration?.quality || [],
+          size: rate?.modelMetadata?.imageGeneration?.size || [],
+          style: rate?.modelMetadata?.imageGeneration?.style || [],
+        },
       },
     },
   });
@@ -189,6 +209,7 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
   const outputRate = watch('outputRate');
   const unitCostsInput = watch('unitCosts.input');
   const unitCostsOutput = watch('unitCosts.output');
+  const rateType = watch('type');
 
   // 计算预估收益率
   const calculateProfitRate = useCallback(
@@ -243,7 +264,7 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
   const handleModelChange = (value: string | ModelOption | null) => {
     if (typeof value === 'string') {
       // 用户输入的自定义值
-      setValue('modelName', value);
+      setValue('model', value);
       setModelInputValue(value);
 
       // 自动生成显示名称
@@ -256,7 +277,7 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
       }
     } else if (value && typeof value === 'object') {
       // 用户选择的模型选项
-      setValue('modelName', value.name);
+      setValue('model', value.name);
       if (value.provider === 'custom' && value.displayName) {
         const formattedName = value.displayName.replace(/-/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
         setValue('modelDisplay', formattedName);
@@ -264,7 +285,7 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
         setValue('modelDisplay', value.displayName);
       }
       setModelInputValue(value.name);
-      setValue('rateType', (value.mode as any) || 'chatCompletion');
+      setValue('type', (value.mode as any) || 'chatCompletion');
       setValue('unitCosts', {
         input: value.inputCost || 0,
         output: value.outputCost || 0,
@@ -292,9 +313,21 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
       } else {
         setValue('outputRate', 0);
       }
+      const features: ('tools' | 'thinking' | 'vision')[] = [];
+      if (value.supportsVision) {
+        features.push('vision');
+      }
+      if (value.supportsToolChoice) {
+        features.push('tools');
+      }
+      // 设置 modelMetadata
+      setValue('modelMetadata', {
+        maxTokens: value.maxTokens,
+        features,
+      });
     } else {
       // 清空
-      setValue('modelName', '');
+      setValue('model', '');
       setModelInputValue('');
     }
   };
@@ -303,7 +336,7 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
   const handleInputBlur = () => {
     if (modelInputValue && !searchableModelOptions.find((option) => option.name === modelInputValue)) {
       // 用户输入了自定义模型名称
-      setValue('modelName', modelInputValue);
+      setValue('model', modelInputValue);
 
       // 自动生成显示名称
       if (!modelDisplay) {
@@ -328,464 +361,718 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
         input: data.unitCosts?.input || 0,
         output: data.unitCosts?.output || 0,
       },
+      modelMetadata: {
+        maxTokens: data.modelMetadata?.maxTokens || undefined,
+        features: data.modelMetadata?.features || [],
+        imageGeneration: {
+          max: data.modelMetadata?.imageGeneration?.max || undefined,
+          quality: data.modelMetadata?.imageGeneration?.quality || [],
+          size: data.modelMetadata?.imageGeneration?.size || [],
+          style: data.modelMetadata?.imageGeneration?.style || [],
+        },
+      },
     };
 
     onSubmit(formData);
   };
 
   return (
-    <Box sx={{ p: 1 }}>
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      {/* Drawer Header */}
+      <Box
+        sx={{
+          p: 2,
+          borderBottom: '1px solid',
+          borderColor: 'divider',
+          backgroundColor: 'background.paper',
+          flexShrink: 0,
+        }}>
+        <Typography variant="h6" sx={{ fontWeight: 600 }}>
+          {rate ? t('config.modelRates.actions.edit') : t('config.modelRates.actions.add')}
+        </Typography>
+      </Box>
+
       <FormProvider {...methods}>
-        <form onSubmit={handleSubmit(onFormSubmit)}>
-          <Stack spacing={3}>
-            <Stack spacing={2}>
-              <FormInput
-                name="modelName"
-                type="custom"
-                label={t('config.modelRates.form.modelName.label')}
-                required
-                rules={{ required: t('config.modelRates.form.modelName.required') }}
-                render={({ field, error, hasError }) => (
-                  <Autocomplete
-                    {...field}
-                    freeSolo
-                    loading={modelDataLoading}
-                    disabled={!!rate}
-                    options={optionsWithCustom}
-                    getOptionLabel={(option) => {
-                      if (typeof option === 'string') return option;
-                      return option.name;
-                    }}
-                    renderOption={(props, option) => (
-                      <Box component="li" {...props}>
-                        <Stack sx={{ width: '100%' }}>
-                          <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                            {(option as any).isCustom ? (
-                              <span style={{ color: 'primary.main' }}>✨ {option.name}</span>
-                            ) : (
-                              option.name
+        <form
+          onSubmit={handleSubmit(onFormSubmit)}
+          style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <Box sx={{ flex: 1, overflow: 'auto', p: 2, pb: 6, minHeight: 0 }}>
+            <Stack spacing={3}>
+              <Stack spacing={2}>
+                <FormInput
+                  name="model"
+                  type="custom"
+                  label={t('config.modelRates.form.modelName.label')}
+                  required
+                  rules={{ required: t('config.modelRates.form.modelName.required') }}
+                  render={({ field, error, hasError }) => (
+                    <Autocomplete
+                      {...field}
+                      freeSolo
+                      loading={modelDataLoading}
+                      disabled={!!rate}
+                      options={optionsWithCustom}
+                      getOptionLabel={(option) => {
+                        if (typeof option === 'string') return option;
+                        return option.name;
+                      }}
+                      renderOption={(props, option) => (
+                        <Box component="li" {...props}>
+                          <Stack sx={{ width: '100%' }}>
+                            <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                              {(option as any).isCustom ? (
+                                <Box
+                                  sx={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    width: '100%',
+                                  }}>
+                                  <Typography variant="body1" sx={{ fontWeight: 500, color: 'primary.main' }}>
+                                    ✨ {option.name}
+                                  </Typography>
+                                  <EnterHint />
+                                </Box>
+                              ) : (
+                                option.name
+                              )}
+                            </Typography>
+                            {!(option as any).isCustom && (
+                              <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                                <Avatar
+                                  src={joinURL(getPrefix(), `/logo/${option.provider}.png`)}
+                                  sx={{ width: 24, height: 24 }}
+                                  alt={option.provider}
+                                />
+                                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                                  {option.provider} • Input: ${formatMillionTokenCost(option.inputCost ?? 0)} / 1M
+                                  Output: ${formatMillionTokenCost(option.outputCost ?? 0)} / 1M
+                                </Typography>
+                              </Stack>
                             )}
-                          </Typography>
-                          {!(option as any).isCustom && (
-                            <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                              <Avatar
-                                src={joinURL(getPrefix(), `/logo/${option.provider}.png`)}
-                                sx={{ width: 24, height: 24 }}
-                                alt={option.provider}
-                              />
-                              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                                {option.provider} • Input: ${formatMillionTokenCost(option.inputCost ?? 0)} / 1M Output:{' '}
-                                ${formatMillionTokenCost(option.outputCost ?? 0)} / 1M
-                              </Typography>
-                            </Stack>
-                          )}
-                        </Stack>
-                      </Box>
-                    )}
-                    inputValue={modelInputValue}
-                    onInputChange={(_, newInputValue) => {
-                      setModelInputValue(newInputValue);
-                    }}
-                    onChange={(_, newValue) => {
-                      handleModelChange(newValue);
-                    }}
-                    onBlur={handleInputBlur} // 添加失去焦点处理
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        size="small"
-                        placeholder={t('config.modelRates.form.modelName.placeholder')}
-                        error={hasError}
-                        helperText={hasError ? error : ''} // 移除 model found 的提示
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && modelInputValue) {
-                            // 用户按 Enter 键创建自定义模型
-                            handleModelChange(modelInputValue);
-                          }
-                        }}
-                      />
-                    )}
-                    filterOptions={(options) => {
-                      // 如果没有匹配的选项，显示提示
-                      if (options.length === 0 && modelInputValue) {
-                        return [];
-                      }
-                      return options.slice(0, 50);
-                    }}
-                  />
-                )}
-              />
-
-              <FormInput
-                name="modelDisplay"
-                label={t('config.modelRates.form.modelDisplay.label')}
-                placeholder={t('config.modelRates.form.modelDisplay.placeholder')}
-                tooltip={t('config.modelRates.form.modelDisplay.description')}
-                sx={{ flex: 1 }}
-              />
-            </Stack>
-
-            <Box>
-              <FormInput
-                name="rateType"
-                type="custom"
-                label={t('config.modelRates.form.rateType.label')}
-                required
-                rules={{ required: t('config.modelRates.form.rateType.required') }}
-                render={({ field, error, hasError }) => (
-                  <FormControl error={hasError} disabled={!!rate} fullWidth>
-                    <Select {...field} size="small">
-                      <MenuItem value="chatCompletion">
-                        {t('config.modelRates.form.rateType.options.chatCompletion')}
-                      </MenuItem>
-                      <MenuItem value="imageGeneration">
-                        {t('config.modelRates.form.rateType.options.imageGeneration')}
-                      </MenuItem>
-                      <MenuItem value="embedding">{t('config.modelRates.form.rateType.options.embedding')}</MenuItem>
-                    </Select>
-                    {hasError && <FormHelperText>{error}</FormHelperText>}
-                  </FormControl>
-                )}
-              />
-            </Box>
-
-            {!rate ? (
-              <FormInput
-                name="providers"
-                type="custom"
-                label={t('config.modelRates.form.providers.label')}
-                tooltip={t('config.modelRates.form.providers.tooltip')}
-                required
-                rules={{
-                  validate: () => selectedProviders.length > 0 || t('config.modelRates.form.providers.required'),
-                }}
-                render={({ error, hasError }) => (
-                  <Autocomplete
-                    size="small"
-                    multiple
-                    limitTags={3}
-                    options={providers}
-                    getOptionLabel={(option) => option.displayName}
-                    value={providers.filter((provider) => selectedProviders.includes(provider.id))}
-                    onChange={(_, newValue) => {
-                      setSelectedProviders(newValue.map((provider) => provider.id));
-                    }}
-                    renderValue={(value, getTagProps) =>
-                      value.map((option, index) => (
-                        <Chip
-                          variant="outlined"
-                          label={
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              <Avatar
-                                src={joinURL(getPrefix(), `/logo/${option.name}.png`)}
-                                sx={{ width: 24, height: 24 }}
-                                alt={option.displayName}
-                              />
-                              <Typography variant="body2">{option.displayName}</Typography>
-                            </Box>
-                          }
-                          sx={{
-                            borderColor: 'divider',
-                            backgroundColor: 'grey.100',
+                          </Stack>
+                        </Box>
+                      )}
+                      inputValue={modelInputValue}
+                      onInputChange={(_, newInputValue) => {
+                        setModelInputValue(newInputValue);
+                      }}
+                      onChange={(_, newValue) => {
+                        handleModelChange(newValue);
+                      }}
+                      onBlur={handleInputBlur}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          size="small"
+                          placeholder={t('config.modelRates.form.modelName.placeholder')}
+                          error={hasError}
+                          helperText={hasError ? error : ''}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && modelInputValue) {
+                              handleModelChange(modelInputValue);
+                            }
                           }}
-                          {...getTagProps({ index })}
-                          key={option.id}
                         />
-                      ))
-                    }
-                    renderOption={(props, option) => (
-                      <Box component="li" {...props}>
-                        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                          <Avatar
-                            src={joinURL(getPrefix(), `/logo/${option.name}.png`)}
-                            sx={{ width: 24, height: 24 }}
-                            alt={option.displayName}
+                      )}
+                      filterOptions={(options) => {
+                        // 如果没有匹配的选项，显示提示
+                        if (options.length === 0 && modelInputValue) {
+                          return [];
+                        }
+                        return options.slice(0, 50);
+                      }}
+                    />
+                  )}
+                />
+
+                <FormInput
+                  name="modelDisplay"
+                  label={t('config.modelRates.form.modelDisplay.label')}
+                  placeholder={t('config.modelRates.form.modelDisplay.placeholder')}
+                  tooltip={t('config.modelRates.form.modelDisplay.description')}
+                  sx={{ flex: 1 }}
+                />
+              </Stack>
+
+              <Box>
+                <FormInput
+                  name="type"
+                  type="custom"
+                  label={t('config.modelRates.form.rateType.label')}
+                  required
+                  rules={{ required: t('config.modelRates.form.rateType.required') }}
+                  render={({ field, error, hasError }) => (
+                    <FormControl error={hasError} disabled={!!rate} fullWidth>
+                      <Select {...field} size="small">
+                        <MenuItem value="chatCompletion">
+                          {t('config.modelRates.form.rateType.options.chatCompletion')}
+                        </MenuItem>
+                        <MenuItem value="imageGeneration">
+                          {t('config.modelRates.form.rateType.options.imageGeneration')}
+                        </MenuItem>
+                        <MenuItem value="embedding">{t('config.modelRates.form.rateType.options.embedding')}</MenuItem>
+                      </Select>
+                      {hasError && <FormHelperText>{error}</FormHelperText>}
+                    </FormControl>
+                  )}
+                />
+              </Box>
+
+              {!rate ? (
+                <FormInput
+                  name="providers"
+                  type="custom"
+                  label={t('config.modelRates.form.providers.label')}
+                  tooltip={t('config.modelRates.form.providers.tooltip')}
+                  required
+                  rules={{
+                    validate: () => selectedProviders.length > 0 || t('config.modelRates.form.providers.required'),
+                  }}
+                  render={({ error, hasError }) => (
+                    <Autocomplete
+                      size="small"
+                      multiple
+                      limitTags={3}
+                      options={providers}
+                      getOptionLabel={(option) => option.displayName}
+                      value={providers.filter((provider) => selectedProviders.includes(provider.id))}
+                      onChange={(_, newValue) => {
+                        setSelectedProviders(newValue.map((provider) => provider.id));
+                      }}
+                      renderValue={(value, getTagProps) =>
+                        value.map((option, index) => (
+                          <Chip
+                            variant="outlined"
+                            label={
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Avatar
+                                  src={joinURL(getPrefix(), `/logo/${option.name}.png`)}
+                                  sx={{ width: 24, height: 24 }}
+                                  alt={option.displayName}
+                                />
+                                <Typography variant="body2">{option.displayName}</Typography>
+                              </Box>
+                            }
+                            sx={{
+                              borderColor: 'divider',
+                              backgroundColor: 'grey.100',
+                            }}
+                            {...getTagProps({ index })}
+                            key={option.id}
                           />
-                          <Typography variant="body2">{option.displayName}</Typography>
-                        </Stack>
-                      </Box>
-                    )}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        placeholder={selectedProviders.length === 0 ? t('selectProviders') : ''}
-                        error={hasError}
-                        helperText={hasError ? error : ''}
-                      />
-                    )}
-                  />
-                )}
-              />
-            ) : (
-              <FormInput
-                name="provider"
-                label={t('config.modelRates.fields.provider')}
-                value={rate.provider.displayName}
-                disabled
-              />
-            )}
-
-            <Box
-              sx={{
-                p: 3,
-                borderRadius: 2,
-                border: '1px solid',
-                borderColor: 'divider',
-                boxShadow: 1,
-              }}>
-              <Stack
-                direction="row"
-                spacing={1}
-                sx={{ alignItems: 'center', mb: 0.5, justifyContent: 'space-between' }}>
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {t('config.modelRates.configInfo.customModelCost')}
-                </Typography>
-                <Button
-                  size="small"
-                  variant="text"
-                  onClick={(e) => setPricingMenuAnchor(e.currentTarget)}
-                  sx={{ color: 'primary.main' }}>
-                  {t('config.modelRates.configInfo.viewPricing')}
-                </Button>
-                <Menu
-                  anchorEl={pricingMenuAnchor}
-                  open={Boolean(pricingMenuAnchor)}
-                  onClose={() => setPricingMenuAnchor(null)}>
-                  <Box>
-                    {Object.entries(pricingLinks).map(([key, link]) => (
-                      <MenuItem
-                        key={key}
-                        component="a"
-                        href={link.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={() => setPricingMenuAnchor(null)}
-                        sx={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 1,
-                          borderRadius: 1,
-                          minWidth: 200,
-                          '&:hover': {
-                            backgroundColor: 'action.hover',
-                          },
-                        }}>
-                        <Avatar
-                          src={joinURL(getPrefix(), `/logo/${key}.png`)}
-                          sx={{ width: 24, height: 24 }}
-                          alt={link.name}
+                        ))
+                      }
+                      renderOption={(props, option) => (
+                        <Box component="li" {...props}>
+                          <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                            <Avatar
+                              src={joinURL(getPrefix(), `/logo/${option.name}.png`)}
+                              sx={{ width: 24, height: 24 }}
+                              alt={option.displayName}
+                            />
+                            <Typography variant="body2">{option.displayName}</Typography>
+                          </Stack>
+                        </Box>
+                      )}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          placeholder={selectedProviders.length === 0 ? t('selectProviders') : ''}
+                          error={hasError}
+                          helperText={hasError ? error : ''}
                         />
-                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                          {link.name}
-                        </Typography>
-                      </MenuItem>
-                    ))}
-                  </Box>
-                </Menu>
-              </Stack>
-              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                {t('config.modelRates.configInfo.customModelCostDesc')}
-              </Typography>
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3} sx={{ mt: 2 }}>
-                <TokenCostInput
-                  costValue={unitCostsInput}
-                  label={t('config.modelRates.fields.inputRate')}
-                  onCostChange={(value) => setValue('unitCosts.input', value)}
+                      )}
+                    />
+                  )}
                 />
-                <TokenCostInput
-                  costValue={unitCostsOutput}
-                  label={t('config.modelRates.fields.outputRate')}
-                  onCostChange={(value) => setValue('unitCosts.output', value)}
+              ) : (
+                <FormInput
+                  name="provider"
+                  label={t('config.modelRates.fields.provider')}
+                  value={rate.provider.displayName}
+                  disabled
                 />
-              </Stack>
-            </Box>
+              )}
 
-            {/* Credit Rates 配置框 */}
-            <Box
-              sx={{
-                p: 3,
-                borderRadius: 2,
-                border: '1px solid',
-                borderColor: 'divider',
-                boxShadow: 1,
-              }}>
-              <Stack
-                direction="row"
-                spacing={2}
+              <Box
                 sx={{
-                  alignItems: 'center',
-                  mb: 2,
+                  p: 2.5,
+                  borderRadius: 2,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  boxShadow: 1,
+                  backgroundColor: 'background.paper',
                 }}>
-                <Typography variant="h6" sx={{ flex: 1, fontWeight: 600, cursor: 'help', display: 'flex', gap: 1 }}>
-                  {t('config.modelRates.configInfo.aicRateConfig')}
-                  <Tooltip
-                    title={
-                      <Box>
-                        <Typography variant="body2" sx={{ mb: 1 }}>
-                          <strong>{t('config.modelRates.configInfo.title')}</strong>
-                        </Typography>
-                        <Typography variant="body2" sx={{ mb: 1 }}>
-                          {t('config.modelRates.configInfo.creditValue')}${formatMillionTokenCost(baseCreditPrice)} / 1M
-                        </Typography>
-                        <Typography variant="body2" sx={{ mb: 1 }}>
-                          {t('config.modelRates.configInfo.profitMargin')}
-                          {targetProfitMargin}%
-                        </Typography>
-                        <Typography variant="body2">
-                          {t('config.modelRates.configInfo.adjustSettings')}{' '}
-                          <Button
-                            size="small"
-                            variant="text"
-                            component={Link}
-                            to="/.well-known/service/admin/overview/components"
-                            target="_blank">
-                            {t('config.modelRates.configInfo.settingsLink')}
-                          </Button>
-                        </Typography>
-                      </Box>
-                    }
-                    slotProps={{
-                      tooltip: {
-                        sx: {
-                          bgcolor: 'background.paper',
-                          color: 'text.primary',
-                          boxShadow: 2,
-                          padding: '10px 16px',
-                          maxWidth: 480,
-                          minWidth: 350,
-                          wordBreak: 'break-word',
-                          border: '1px solid',
-                          borderColor: 'divider',
-                          borderRadius: 2,
-                        },
-                      },
-                    }}
-                    placement="right">
-                    <InfoOutlined fontSize="small" sx={{ opacity: 0.7, fontSize: '1rem' }} />
-                  </Tooltip>
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  sx={{ alignItems: 'center', mb: 0.5, justifyContent: 'space-between' }}>
+                  <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                    {t('config.modelRates.configInfo.customModelCost')}
+                  </Typography>
+                  <Button
+                    size="small"
+                    variant="text"
+                    onClick={(e) => setPricingMenuAnchor(e.currentTarget)}
+                    sx={{ color: 'primary.main' }}>
+                    {t('config.modelRates.configInfo.viewPricing')}
+                  </Button>
+                  <Menu
+                    anchorEl={pricingMenuAnchor}
+                    open={Boolean(pricingMenuAnchor)}
+                    onClose={() => setPricingMenuAnchor(null)}>
+                    <Box>
+                      {Object.entries(pricingLinks).map(([key, link]) => (
+                        <MenuItem
+                          key={key}
+                          component="a"
+                          href={link.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={() => setPricingMenuAnchor(null)}
+                          sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 1,
+                            borderRadius: 1,
+                            minWidth: 200,
+                            '&:hover': {
+                              backgroundColor: 'action.hover',
+                            },
+                          }}>
+                          <Avatar
+                            src={joinURL(getPrefix(), `/logo/${key}.png`)}
+                            sx={{ width: 24, height: 24 }}
+                            alt={link.name}
+                          />
+                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                            {link.name}
+                          </Typography>
+                        </MenuItem>
+                      ))}
+                    </Box>
+                  </Menu>
+                </Stack>
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                  {t('config.modelRates.configInfo.customModelCostDesc')}
                 </Typography>
-
-                <Button
-                  size="small"
-                  variant="outlined"
-                  onClick={autoCalculateRates}
-                  sx={{
-                    minWidth: 'auto',
-                    px: 2,
-                    py: 0.5,
-                    fontSize: '0.75rem',
-                    textTransform: 'none',
-                  }}>
-                  {t('config.modelRates.configInfo.autoCalculate')}
-                </Button>
-              </Stack>
-
-              {/* Input 和 Output 框 */}
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3}>
-                <Box sx={{ flex: 1 }}>
-                  <FormInput
-                    name="inputRate"
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mt: 1.5 }}>
+                  <TokenCostInput
+                    costValue={unitCostsInput}
                     label={t('config.modelRates.fields.inputRate')}
-                    description={t('config.modelRates.configInfo.inputTokenConsumption')}
-                    required
-                    rules={{
-                      required: t('config.modelRates.form.inputRate.required'),
-                      min: { value: 0, message: 'Must be >= 0' },
-                    }}
-                    slotProps={{
-                      htmlInput: {
-                        type: 'number',
-                        step: 0.001,
-                        min: 0,
-                      },
-                    }}
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        backgroundColor: 'background.default',
-                      },
-                    }}
+                    onCostChange={(value) => setValue('unitCosts.input', value)}
                   />
-
-                  {inputRate > 0 && (
-                    <Typography
-                      variant="caption"
-                      sx={{
-                        color: calculateProfitRate(inputRate, unitCostsInput) >= 0 ? 'success.main' : 'error.main',
-                        display: 'block',
-                        fontWeight: 500,
-                        mt: 1,
-                      }}>
-                      {t('config.modelRates.configInfo.estimatedProfitRate')}:{' '}
-                      {calculateProfitRate(inputRate, unitCostsInput).toFixed(1)}%
-                    </Typography>
-                  )}
-                </Box>
-
-                <Box sx={{ flex: 1 }}>
-                  <FormInput
-                    name="outputRate"
+                  <TokenCostInput
+                    costValue={unitCostsOutput}
                     label={t('config.modelRates.fields.outputRate')}
-                    required
-                    description={t('config.modelRates.configInfo.outputTokenConsumption')}
-                    rules={{
-                      required: t('config.modelRates.form.outputRate.required'),
-                      min: { value: 0, message: 'Must be >= 0' },
-                    }}
-                    slotProps={{
-                      htmlInput: {
-                        type: 'number',
-                        step: 0.001,
-                        min: 0,
-                      },
-                    }}
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        backgroundColor: 'background.default',
-                      },
-                    }}
+                    onCostChange={(value) => setValue('unitCosts.output', value)}
                   />
-                  {outputRate > 0 && (
-                    <Typography
-                      variant="caption"
+                </Stack>
+              </Box>
+
+              {/* Credit Rates 配置框 */}
+              <Box
+                sx={{
+                  p: 2.5,
+                  borderRadius: 2,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  boxShadow: 1,
+                  backgroundColor: 'background.paper',
+                }}>
+                <Stack
+                  direction={{ xs: 'column', sm: 'row' }}
+                  spacing={2}
+                  sx={{
+                    alignItems: { xs: 'flex-start', sm: 'center' },
+                    justifyContent: { xs: 'space-between', sm: 'space-between' },
+                    mb: 1.5,
+                  }}>
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      flex: { sm: 1 },
+                      fontWeight: 600,
+                      cursor: 'help',
+                      display: 'flex',
+                      gap: 1,
+                      width: { xs: 'auto', sm: 'auto' },
+                    }}>
+                    {t('config.modelRates.configInfo.aicRateConfig')}
+                    <Tooltip
+                      title={
+                        <Box>
+                          <Typography variant="body2" sx={{ mb: 1 }}>
+                            <strong>{t('config.modelRates.configInfo.title')}</strong>
+                          </Typography>
+                          <Typography variant="body2" sx={{ mb: 1 }}>
+                            {t('config.modelRates.configInfo.creditValue')}${formatMillionTokenCost(baseCreditPrice)} /
+                            1M
+                          </Typography>
+                          <Typography variant="body2" sx={{ mb: 1 }}>
+                            {t('config.modelRates.configInfo.profitMargin')}
+                            {targetProfitMargin}%
+                          </Typography>
+                          <Typography variant="body2">
+                            {t('config.modelRates.configInfo.adjustSettings')}{' '}
+                            <Button
+                              size="small"
+                              variant="text"
+                              component={Link}
+                              to="/.well-known/service/admin/overview/components"
+                              target="_blank">
+                              {t('config.modelRates.configInfo.settingsLink')}
+                            </Button>
+                          </Typography>
+                        </Box>
+                      }
+                      slotProps={{
+                        tooltip: {
+                          sx: {
+                            bgcolor: 'background.paper',
+                            color: 'text.primary',
+                            boxShadow: 2,
+                            padding: '10px 16px',
+                            maxWidth: 480,
+                            minWidth: 350,
+                            wordBreak: 'break-word',
+                            border: '1px solid',
+                            borderColor: 'divider',
+                            borderRadius: 2,
+                          },
+                        },
+                      }}
+                      placement="right">
+                      <InfoOutlined fontSize="small" sx={{ opacity: 0.7, fontSize: '1rem' }} />
+                    </Tooltip>
+                  </Typography>
+
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={autoCalculateRates}
+                    sx={{
+                      minWidth: 'auto',
+                      px: 2,
+                      py: 0.5,
+                      fontSize: '0.75rem',
+                      textTransform: 'none',
+                      alignSelf: { xs: 'flex-end', sm: 'auto' },
+                    }}>
+                    {t('config.modelRates.configInfo.autoCalculate')}
+                  </Button>
+                </Stack>
+
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                  <Box sx={{ flex: 1 }}>
+                    <FormInput
+                      name="inputRate"
+                      label={t('config.modelRates.fields.inputRate')}
+                      description={t('config.modelRates.configInfo.inputTokenConsumption')}
+                      required
+                      rules={{
+                        required: t('config.modelRates.form.inputRate.required'),
+                        min: { value: 0, message: 'Must be >= 0' },
+                      }}
+                      slotProps={{
+                        htmlInput: {
+                          type: 'number',
+                          step: 0.001,
+                          min: 0,
+                        },
+                        input: {
+                          endAdornment: <InputAdornment position="end">Credits / Token</InputAdornment>,
+                        },
+                      }}
                       sx={{
-                        color: calculateProfitRate(outputRate, unitCostsOutput) >= 0 ? 'success.main' : 'error.main',
-                        display: 'block',
-                        fontWeight: 500,
-                        mt: 1,
-                      }}>
-                      {t('config.modelRates.configInfo.estimatedProfitRate')}:{' '}
-                      {calculateProfitRate(outputRate, unitCostsOutput).toFixed(1)}%
-                    </Typography>
-                  )}
-                </Box>
-              </Stack>
-            </Box>
+                        '& .MuiOutlinedInput-root': {
+                          backgroundColor: 'background.default',
+                        },
+                      }}
+                    />
 
-            {/* 第五行：描述 */}
-            <FormInput
-              name="description"
-              label={t('config.modelRates.form.description.label')}
-              placeholder={t('config.modelRates.form.description.placeholder')}
-              multiline
-              rows={2}
-            />
+                    {inputRate > 0 && (
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color: calculateProfitRate(inputRate, unitCostsInput) >= 0 ? 'success.main' : 'error.main',
+                          display: 'block',
+                          fontWeight: 500,
+                          mt: 1,
+                        }}>
+                        {t('config.modelRates.configInfo.estimatedProfitRate')}:{' '}
+                        {calculateProfitRate(inputRate, unitCostsInput).toFixed(1)}%
+                      </Typography>
+                    )}
+                  </Box>
 
-            {/* 操作按钮 */}
+                  <Box sx={{ flex: 1 }}>
+                    <FormInput
+                      name="outputRate"
+                      label={t('config.modelRates.fields.outputRate')}
+                      required
+                      description={t('config.modelRates.configInfo.outputTokenConsumption')}
+                      rules={{
+                        required: t('config.modelRates.form.outputRate.required'),
+                        min: { value: 0, message: 'Must be >= 0' },
+                      }}
+                      slotProps={{
+                        htmlInput: {
+                          type: 'number',
+                          step: 0.001,
+                          min: 0,
+                        },
+                        input: {
+                          endAdornment: <InputAdornment position="end">Credits / Token</InputAdornment>,
+                        },
+                      }}
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          backgroundColor: 'background.default',
+                        },
+                      }}
+                    />
+                    {outputRate > 0 && (
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color: calculateProfitRate(outputRate, unitCostsOutput) >= 0 ? 'success.main' : 'error.main',
+                          display: 'block',
+                          fontWeight: 500,
+                          mt: 1,
+                        }}>
+                        {t('config.modelRates.configInfo.estimatedProfitRate')}:{' '}
+                        {calculateProfitRate(outputRate, unitCostsOutput).toFixed(1)}%
+                      </Typography>
+                    )}
+                  </Box>
+                </Stack>
+              </Box>
+
+              <FormInput
+                name="description"
+                label={t('config.modelRates.form.description.label')}
+                placeholder={t('config.modelRates.form.description.placeholder')}
+                multiline
+                rows={2}
+                sx={{ mb: 1 }}
+              />
+
+              {/* 高级选项 */}
+              <Box>
+                <Button
+                  onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
+                  startIcon={showAdvancedOptions ? <ExpandLess /> : <ExpandMore />}
+                  variant="text"
+                  sx={{
+                    mb: 2,
+                    textTransform: 'none',
+                    justifyContent: 'flex-start',
+                    width: 'fit-content',
+                    borderColor: 'divider',
+                    color: 'text.primary',
+                    '&:hover': {
+                      backgroundColor: 'transparent',
+                    },
+                  }}>
+                  {t('config.modelRates.form.advancedOptions') || 'Advanced Options'}
+                </Button>
+
+                <Collapse in={showAdvancedOptions} timeout={300}>
+                  <Stack spacing={2} sx={{ px: 2 }}>
+                    {/* Image Generation Options */}
+                    {rateType === 'imageGeneration' ? (
+                      <Stack spacing={2}>
+                        {/* Max Images */}
+                        <Box>
+                          <FormInput
+                            name="modelMetadata.imageGeneration.max"
+                            label={t('config.modelRates.form.imageGeneration.max.label') || 'Max Images'}
+                            placeholder={
+                              t('config.modelRates.form.imageGeneration.max.placeholder') ||
+                              'Enter max number of images'
+                            }
+                            slotProps={{
+                              htmlInput: {
+                                type: 'number',
+                                min: 1,
+                              },
+                            }}
+                          />
+                        </Box>
+
+                        {/* Quality */}
+                        <CustomAutocomplete
+                          label={t('config.modelRates.form.imageGeneration.quality.label') || 'Quality'}
+                          placeholder={
+                            t('config.modelRates.form.imageGeneration.quality.placeholder') ||
+                            'Enter quality options (press Enter to create custom)'
+                          }
+                          options={['low', 'medium', 'high', 'hd', 'standard', 'auto']}
+                          value={watch('modelMetadata.imageGeneration.quality') || []}
+                          onChange={(newValue) => {
+                            setValue('modelMetadata.imageGeneration.quality', newValue);
+                          }}
+                          inputValue={qualityInputValue}
+                          onInputChange={setQualityInputValue}
+                        />
+
+                        {/* Size */}
+                        <CustomAutocomplete
+                          label={t('config.modelRates.form.imageGeneration.size.label') || 'Size'}
+                          placeholder={
+                            t('config.modelRates.form.imageGeneration.size.placeholder') ||
+                            'Enter size options (press Enter to create custom)'
+                          }
+                          options={[
+                            '256×256',
+                            '512×512',
+                            '1024×1024',
+                            '1024×1792',
+                            '1792×1024',
+                            '1024×1536',
+                            '1536×1024',
+                            'auto',
+                          ]}
+                          value={watch('modelMetadata.imageGeneration.size') || []}
+                          onChange={(newValue) => {
+                            setValue('modelMetadata.imageGeneration.size', newValue);
+                          }}
+                          inputValue={sizeInputValue}
+                          onInputChange={setSizeInputValue}
+                        />
+
+                        {/* Style */}
+                        <CustomAutocomplete
+                          label={t('config.modelRates.form.imageGeneration.style.label') || 'Style'}
+                          placeholder={
+                            t('config.modelRates.form.imageGeneration.style.placeholder') ||
+                            'Enter style options (press Enter to create custom)'
+                          }
+                          options={['vivid', 'natural']}
+                          value={watch('modelMetadata.imageGeneration.style') || []}
+                          onChange={(newValue) => {
+                            setValue('modelMetadata.imageGeneration.style', newValue);
+                          }}
+                          inputValue={styleInputValue}
+                          onInputChange={setStyleInputValue}
+                        />
+                      </Stack>
+                    ) : (
+                      <>
+                        {' '}
+                        {/* Max Tokens */}
+                        <FormInput
+                          name="modelMetadata.maxTokens"
+                          label={t('config.modelRates.form.maxTokens.label') || 'Max Tokens'}
+                          placeholder={t('config.modelRates.form.maxTokens.placeholder') || 'Enter max tokens'}
+                          slotProps={{
+                            htmlInput: {
+                              type: 'number',
+                              min: 1,
+                            },
+                          }}
+                        />
+                        {/* Features */}
+                        <Box>
+                          <FormLabel sx={{ mb: 1, display: 'block' }}>
+                            {t('config.modelRates.form.features.label') || 'Features'}
+                          </FormLabel>
+                          <FormGroup row sx={{ gap: 2 }}>
+                            <FormControlLabel
+                              control={
+                                <Checkbox
+                                  checked={watch('modelMetadata.features')?.includes('tools') || false}
+                                  onChange={(e) => {
+                                    const currentFeatures = watch('modelMetadata.features') || [];
+                                    if (e.target.checked) {
+                                      setValue('modelMetadata.features', [...currentFeatures, 'tools']);
+                                    } else {
+                                      setValue(
+                                        'modelMetadata.features',
+                                        currentFeatures.filter((f) => f !== 'tools')
+                                      );
+                                    }
+                                  }}
+                                />
+                              }
+                              label={t('config.modelRates.form.features.tools') || 'Tools'}
+                            />
+                            <FormControlLabel
+                              control={
+                                <Checkbox
+                                  checked={watch('modelMetadata.features')?.includes('thinking') || false}
+                                  onChange={(e) => {
+                                    const currentFeatures = watch('modelMetadata.features') || [];
+                                    if (e.target.checked) {
+                                      setValue('modelMetadata.features', [...currentFeatures, 'thinking']);
+                                    } else {
+                                      setValue(
+                                        'modelMetadata.features',
+                                        currentFeatures.filter((f) => f !== 'thinking')
+                                      );
+                                    }
+                                  }}
+                                />
+                              }
+                              label={t('config.modelRates.form.features.thinking') || 'Thinking'}
+                            />
+                            <FormControlLabel
+                              control={
+                                <Checkbox
+                                  checked={watch('modelMetadata.features')?.includes('vision') || false}
+                                  onChange={(e) => {
+                                    const currentFeatures = watch('modelMetadata.features') || [];
+                                    if (e.target.checked) {
+                                      setValue('modelMetadata.features', [...currentFeatures, 'vision']);
+                                    } else {
+                                      setValue(
+                                        'modelMetadata.features',
+                                        currentFeatures.filter((f) => f !== 'vision')
+                                      );
+                                    }
+                                  }}
+                                />
+                              }
+                              label={t('config.modelRates.form.features.vision') || 'Vision'}
+                            />
+                          </FormGroup>
+                        </Box>
+                      </>
+                    )}
+                  </Stack>
+                </Collapse>
+              </Box>
+            </Stack>
+          </Box>
+
+          {/* 固定在底部的操作按钮 */}
+          <Box
+            sx={{
+              p: 2,
+              borderTop: '1px solid',
+              borderColor: 'divider',
+              backgroundColor: 'background.paper',
+              flexShrink: 0,
+              position: 'sticky',
+              bottom: 0,
+              zIndex: 10,
+            }}>
             <Stack
               direction="row"
               spacing={2}
               sx={{
                 justifyContent: 'flex-end',
-                mt: 3,
               }}>
-              <Button onClick={onCancel} color="inherit">
+              <Button onClick={onCancel} color="inherit" size="large">
                 {t('config.modelRates.actions.cancel')}
               </Button>
-              <Button type="submit" variant="contained">
+              <Button type="submit" variant="contained" size="large">
                 {rate ? t('config.modelRates.actions.save') : t('config.modelRates.actions.save')}
               </Button>
             </Stack>
-          </Stack>
+          </Box>
         </form>
       </FormProvider>
     </Box>
