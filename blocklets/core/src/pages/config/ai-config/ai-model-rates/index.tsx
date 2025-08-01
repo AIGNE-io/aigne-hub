@@ -9,16 +9,33 @@ import Toast from '@arcblock/ux/lib/Toast';
 import { Table } from '@blocklet/aigne-hub/components';
 import { formatError } from '@blocklet/error';
 import styled from '@emotion/styled';
-import { Add as AddIcon, InfoOutlined } from '@mui/icons-material';
-import { Avatar, Box, Button, Chip, Drawer, Stack, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
-import { useLocalStorageState, useRequest } from 'ahooks';
+import { Add as AddIcon, Clear as ClearIcon, InfoOutlined } from '@mui/icons-material';
+import {
+  Avatar,
+  Box,
+  Button,
+  Chip,
+  Drawer,
+  FormControl,
+  IconButton,
+  InputLabel,
+  MenuItem,
+  Select,
+  Stack,
+  TextField,
+  Tooltip,
+  Typography,
+  useMediaQuery,
+  useTheme,
+} from '@mui/material';
+import { useDebounceEffect, useLocalStorageState, useRequest } from 'ahooks';
 import BigNumber from 'bignumber.js';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { joinURL } from 'ufo';
 
 import { useSessionContext } from '../../../../contexts/session';
 import ModelRateForm from './model-rate-form';
-import { ModelRate, ModelRateFormData, ModelRatesQuery } from './types';
+import { ModelRate, ModelRateFormData, ModelRatesQuery, Provider } from './types';
 
 export default function AIModelRates() {
   const listKey = 'ai-model-rates';
@@ -30,6 +47,8 @@ export default function AIModelRates() {
   const [editingRate, setEditingRate] = useState<ModelRate | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [rateToDelete, setRateToDelete] = useState<ModelRate | null>(null);
+  const [providers, setProviders] = useState<Provider[]>([]);
+  const [modelSearchValue, setModelSearchValue] = useState('');
 
   // 从 blocklet preferences 获取配置
   const baseCreditPrice = window.blocklet?.preferences?.baseCreditPrice || 0.0000025;
@@ -67,6 +86,31 @@ export default function AIModelRates() {
     },
   });
   const modelRates = data?.list || [];
+
+  // 获取 providers 列表
+  useRequest(() => api.get('/api/ai-providers').then((res: any) => res.data), {
+    onSuccess: (data: Provider[]) => {
+      setProviders(data || []);
+    },
+  });
+
+  // 同步 modelSearchValue 与搜索状态
+  useEffect(() => {
+    setModelSearchValue(search?.model || '');
+  }, [search?.model]);
+
+  // 节流 model 搜索
+  useDebounceEffect(
+    () => {
+      setSearch((prev) => ({
+        ...prev!,
+        model: modelSearchValue,
+        page: 1,
+      }));
+    },
+    [modelSearchValue],
+    { wait: 500 }
+  );
 
   // 创建模型费率
   const handleCreateModelRate = async (data: ModelRateFormData) => {
@@ -426,10 +470,18 @@ export default function AIModelRates() {
 
   return (
     <Box>
+      <Typography variant="body1">{t('config.modelRates.description')}</Typography>
       {/* Configuration Info */}
       <Box
         sx={{
-          mb: 3,
+          mb: {
+            xs: 2,
+            sm: 3,
+          },
+          mt: {
+            xs: 2,
+            sm: 3,
+          },
           p: 2,
           bgcolor: 'background.paper',
           borderRadius: 1,
@@ -512,18 +564,116 @@ export default function AIModelRates() {
           </Button>
         </Stack>
       </Box>
-      <Stack
-        direction="row"
+
+      {/* Search Filters */}
+
+      <Box
         sx={{
+          mb: {
+            xs: 2,
+            sm: 3,
+          },
+          mt: {
+            xs: 2,
+            sm: 4,
+          },
+          display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          mb: 3,
-          flexWrap: 'wrap',
-          gap: 2,
+          flexDirection: {
+            xs: 'column',
+            sm: 'row',
+          },
         }}>
-        <Typography variant="body1">{t('config.modelRates.description')}</Typography>
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={2}
+          sx={{
+            alignItems: { xs: 'stretch', sm: 'center' },
+            display: {
+              xs: 'none',
+              sm: 'flex',
+            },
+          }}>
+          <TextField
+            size="small"
+            label={t('config.modelRates.fields.modelName')}
+            placeholder={t('config.modelRates.search.modelPlaceholder') || 'Search by model name...'}
+            value={modelSearchValue}
+            onChange={(e) => setModelSearchValue(e.target.value)}
+            sx={{ minWidth: 200 }}
+          />
+          <FormControl size="small" sx={{ minWidth: 200 }}>
+            <InputLabel>{t('config.modelRates.fields.provider')}</InputLabel>
+            <Select
+              value={search?.providerId || ''}
+              onChange={(e) => {
+                setSearch((prev) => ({
+                  ...prev!,
+                  providerId: e.target.value || '',
+                  page: 1,
+                }));
+              }}
+              label={t('config.modelRates.fields.provider')}
+              renderValue={(selected) => {
+                const selectedProvider = providers.find((p) => p.id === selected);
+                if (!selectedProvider) return null;
+                return (
+                  <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                    <Avatar
+                      src={joinURL(getPrefix(), `/logo/${selectedProvider.name}.png`)}
+                      sx={{ width: 20, height: 20 }}
+                      alt={selectedProvider.displayName}
+                    />
+                    <Typography variant="body2">{selectedProvider.displayName}</Typography>
+                  </Stack>
+                );
+              }}
+              endAdornment={
+                search?.providerId ? (
+                  <IconButton
+                    size="small"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSearch((prev) => ({
+                        ...prev!,
+                        providerId: '',
+                        page: 1,
+                      }));
+                    }}
+                    sx={{
+                      mr: 2,
+                      backgroundColor: (theme) => theme.palette.grey[100],
+                      color: 'text.secondary',
+
+                      '&:hover': {
+                        color: 'text.primary',
+                      },
+                    }}>
+                    <ClearIcon fontSize="small" sx={{ fontSize: '0.8em' }} />
+                  </IconButton>
+                ) : null
+              }>
+              {providers.map((provider) => (
+                <MenuItem key={provider.id} value={provider.id}>
+                  <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                    <Avatar
+                      src={joinURL(getPrefix(), `/logo/${provider.name}.png`)}
+                      sx={{ width: 20, height: 20 }}
+                      alt={provider.displayName}
+                    />
+                    <Typography variant="body2">{provider.displayName}</Typography>
+                  </Stack>
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Stack>
         <Button
           variant="contained"
+          sx={{
+            alignSelf: { xs: 'flex-end', sm: 'auto' },
+          }}
           startIcon={<AddIcon />}
           onClick={() => {
             setShowForm(true);
@@ -531,7 +681,7 @@ export default function AIModelRates() {
           }}>
           {t('config.modelRates.actions.add')}
         </Button>
-      </Stack>
+      </Box>
       <Root>
         <Table
           hasSearch

@@ -54,6 +54,7 @@ export interface ModelRatesQuery {
   page?: number;
   pageSize?: number;
   providerId?: string;
+  model?: string;
   q?: string;
   o?: 'asc' | 'desc';
 }

@@ -169,6 +169,11 @@ export default flatten({
       deleteFailed: 'Failed to delete model rate',
       fetchFailed: 'Failed to fetch model rates',
 
+      // Search
+      search: {
+        modelPlaceholder: 'Search by model name',
+      },
+
       // Configuration info
       configInfo: {
         title: 'Model Rate Preferences',

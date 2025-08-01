@@ -160,6 +160,11 @@ export default flatten({
       deleteFailed: '删除模型费率失败',
       fetchFailed: '获取模型费率失败',
 
+      // Search
+      search: {
+        modelPlaceholder: '按模型名称搜索',
+      },
+
       // Configuration info
       configInfo: {
         title: '模型费率偏好配置',

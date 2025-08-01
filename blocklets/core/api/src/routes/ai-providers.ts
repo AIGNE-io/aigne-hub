@@ -119,8 +119,10 @@ const updateModelRateSchema = Joi.object({
 
 const modelRatesListSchema = createListParamSchema<{
   providerId?: string;
+  model?: string;
 }>({
   providerId: Joi.string().empty(''),
+  model: Joi.string().empty(''),
 });
 
 // get providers
@@ -864,6 +866,11 @@ router.get('/model-rates', user, async (req, res) => {
     if (query.providerId) {
       where.providerId = {
         [Op.in]: Array.isArray(query.providerId) ? query.providerId : query.providerId.split(','),
+      };
+    }
+    if (query.model) {
+      where.model = {
+        [Op.like]: `%${query.model}%`,
       };
     }
     const { rows: modelRates, count } = await AiModelRate.findAndCountAll({
