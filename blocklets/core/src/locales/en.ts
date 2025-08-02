@@ -21,6 +21,7 @@ export default flatten({
   subscriptionPastDueTip:
     'Your subscription is overdue. Please make a payment promptly to restore your subscription service.',
   payNow: 'Pay Now',
+  enterHint: 'Enter to create',
 
   // AIGNE Hub integrations
   welcome: 'Welcome to AIGNE Hub',
@@ -127,6 +128,36 @@ export default flatten({
           label: 'Description',
           placeholder: 'Additional notes about this model rate...',
         },
+        advancedOptions: 'Advanced Options',
+        maxTokens: {
+          label: 'Max Tokens',
+          placeholder: 'Enter max tokens',
+        },
+        features: {
+          label: 'Features',
+          tools: 'Tools',
+          thinking: 'Thinking',
+          vision: 'Vision',
+        },
+        imageGeneration: {
+          title: 'Image Generation Options',
+          max: {
+            label: 'Single Generation Images',
+            placeholder: 'Enter single generation images',
+          },
+          quality: {
+            label: 'Quality',
+            placeholder: 'Enter quality options',
+          },
+          size: {
+            label: 'Size',
+            placeholder: 'Enter size options',
+          },
+          style: {
+            label: 'Style',
+            placeholder: 'Enter style options',
+          },
+        },
       },
 
       // Messages
@@ -137,6 +168,11 @@ export default flatten({
       updateFailed: 'Failed to update model rate',
       deleteFailed: 'Failed to delete model rate',
       fetchFailed: 'Failed to fetch model rates',
+
+      // Search
+      search: {
+        modelPlaceholder: 'Search by model name',
+      },
 
       // Configuration info
       configInfo: {

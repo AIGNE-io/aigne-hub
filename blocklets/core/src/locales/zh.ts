@@ -20,6 +20,7 @@ export default flatten({
   viewSubscriptionDetail: '查看订阅详情',
   subscriptionPastDueTip: '您的订阅已欠费，请及时支付欠款以恢复订阅服务。',
   payNow: '立即支付',
+  enterHint: '回车创建',
 
   // AIGNE Hub integrations
   welcome: '欢迎使用 AIGNE Hub',
@@ -118,6 +119,36 @@ export default flatten({
           label: '描述',
           placeholder: '关于此模型费率的附加说明...',
         },
+        advancedOptions: '高级选项',
+        maxTokens: {
+          label: '最大 Token 数',
+          placeholder: '输入最大 token 数量',
+        },
+        features: {
+          label: '功能特性',
+          tools: '工具调用',
+          thinking: '推理',
+          vision: '视觉',
+        },
+        imageGeneration: {
+          title: '图像生成选项',
+          max: {
+            label: '单次生成图片数量',
+            placeholder: '输入单次生成图片数量',
+          },
+          quality: {
+            label: '图像质量',
+            placeholder: '输入质量选项',
+          },
+          size: {
+            label: '图像尺寸',
+            placeholder: '输入尺寸选项',
+          },
+          style: {
+            label: '图像风格',
+            placeholder: '输入风格选项',
+          },
+        },
       },
 
       // Messages
@@ -128,6 +159,11 @@ export default flatten({
       updateFailed: '更新模型费率失败',
       deleteFailed: '删除模型费率失败',
       fetchFailed: '获取模型费率失败',
+
+      // Search
+      search: {
+        modelPlaceholder: '按模型名称搜索',
+      },
 
       // Configuration info
       configInfo: {

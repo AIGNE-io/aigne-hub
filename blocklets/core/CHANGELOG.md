@@ -1,3 +1,12 @@
+## 0.3.0 (2025-8-1)
+
+- feat(api): add model search functionality and update localization for model rates
+- feat(api): enhance model rate schema with metadata support
+
+## 0.2.24 (2025-7-31)
+
+- chore: support gemini model
+
 ## 0.2.23 (2025-7-31)
 
 - fix: adaptStreamToOldFormat not handling new JSON output structure correctly

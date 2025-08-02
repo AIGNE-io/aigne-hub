@@ -59,5 +59,6 @@ router.use('/payment', payment);
 router.use('/meilisearch', meilisearch);
 router.use('/user', user);
 router.use('/ai-providers', aiProviders);
+router.use('/ai', aiProviders);
 
 export default router;

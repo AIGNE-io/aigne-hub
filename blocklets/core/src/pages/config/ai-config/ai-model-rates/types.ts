@@ -10,6 +10,17 @@ export interface Provider {
   updatedAt: string;
 }
 
+export interface ModelMetadata {
+  maxTokens?: number;
+  features?: ('tools' | 'thinking' | 'vision')[];
+  imageGeneration?: {
+    max?: number;
+    quality?: string[];
+    size?: string[];
+    style?: string[];
+  };
+}
+
 export interface ModelRate {
   id: string;
   providerId: string;
@@ -26,6 +37,7 @@ export interface ModelRate {
     input: number;
     output: number;
   };
+  modelMetadata?: ModelMetadata;
 }
 
 export interface ModelRatesResponse {
@@ -42,6 +54,7 @@ export interface ModelRatesQuery {
   page?: number;
   pageSize?: number;
   providerId?: string;
+  model?: string;
   q?: string;
   o?: 'asc' | 'desc';
 }
@@ -55,9 +68,9 @@ export interface ModelWithRates {
 }
 
 export interface ModelRateFormData {
-  modelName: string;
+  model: string;
   modelDisplay?: string;
-  rateType: 'chatCompletion' | 'imageGeneration' | 'embedding';
+  type: 'chatCompletion' | 'imageGeneration' | 'embedding';
   inputRate: number;
   outputRate: number;
   description?: string;
@@ -66,6 +79,7 @@ export interface ModelRateFormData {
     input: number;
     output: number;
   };
+  modelMetadata?: ModelMetadata;
 }
 
 // LiteLLM 模型数据类型
@@ -80,6 +94,7 @@ export interface LiteLLMModelOptions {
   supports_function_calling?: boolean;
   supports_parallel_function_calling?: boolean;
   supports_vision?: boolean;
+  supports_tool_choice?: boolean;
   source?: string;
 }
 
@@ -105,5 +120,6 @@ export interface ModelOption {
   maxTokens?: number;
   supportsVision?: boolean;
   supportsFunctionCalling?: boolean;
+  supportsToolChoice?: boolean;
   mode: string;
 }
