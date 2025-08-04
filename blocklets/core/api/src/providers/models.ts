@@ -431,8 +431,8 @@ export async function* adaptStreamToOldFormat(
             role,
             content: delta.text?.text,
             toolCalls:
-              toolCalls.length > 0
-                ? [...toolCalls].map((call) => ({
+              Array.isArray(toolCalls) && toolCalls.length > 0
+                ? toolCalls.map((call) => ({
                     ...call,
                     function: {
                       name: call.function?.name,
