@@ -1,3 +1,7 @@
+## 0.3.1 (2025-8-4)
+
+- chore: update community links and descriptions in documentation
+
 ## 0.3.0 (2025-8-1)
 
 - feat(api): add model search functionality and update localization for model rates
