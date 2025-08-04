@@ -1,3 +1,7 @@
+## 0.3.2 (2025-8-4)
+
+- fix: correct image size format in model rate form options
+
 ## 0.3.1 (2025-8-4)
 
 - chore: update community links and descriptions in documentation
