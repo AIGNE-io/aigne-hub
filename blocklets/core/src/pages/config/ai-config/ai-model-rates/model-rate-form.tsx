@@ -926,13 +926,13 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
                             'Enter size options (press Enter to create custom)'
                           }
                           options={[
-                            '256×256',
-                            '512×512',
-                            '1024×1024',
-                            '1024×1792',
-                            '1792×1024',
-                            '1024×1536',
-                            '1536×1024',
+                            '256x256',
+                            '512x512',
+                            '1024x1024',
+                            '1024x1792',
+                            '1792x1024',
+                            '1024x1536',
+                            '1536x1024',
                             'auto',
                           ]}
                           value={watch('modelMetadata.imageGeneration.size') || []}
