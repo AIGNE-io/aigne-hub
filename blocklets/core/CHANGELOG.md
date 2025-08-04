@@ -1,3 +1,7 @@
+## 0.3.3 (2025-8-4)
+
+- fix: ensure toolCalls function only accepts string arguments
+
 ## 0.3.2 (2025-8-4)
 
 - fix: correct image size format in model rate form options
