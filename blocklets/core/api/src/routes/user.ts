@@ -10,6 +10,7 @@ import {
   isPaymentRunning,
 } from '@api/libs/payment';
 import { proxyToAIKit } from '@blocklet/aigne-hub/api/call';
+import { CustomError } from '@blocklet/error';
 import config from '@blocklet/sdk/lib/config';
 import sessionMiddleware from '@blocklet/sdk/lib/middlewares/session';
 import { fromUnitToToken } from '@ocap/util';
@@ -80,9 +81,15 @@ router.get('/credit/grants', user, async (req, res) => {
 
 router.get('/credit/transactions', user, async (req, res) => {
   try {
-    const { page, pageSize, start, end } = await creditTransactionsSchema.validateAsync(req.query, {
+    const {
+      error,
+      value: { page, pageSize, start, end },
+    } = creditTransactionsSchema.validate(req.query, {
       stripUnknown: true,
     });
+    if (error) {
+      throw new CustomError(400, error.message);
+    }
     const userDid = req.user?.did;
 
     if (!userDid) {
