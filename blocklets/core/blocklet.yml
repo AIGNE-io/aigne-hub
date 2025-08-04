@@ -48,7 +48,7 @@ interfaces:
     proxyBehavior: service
 community: https://community.arcblock.io/discussions/boards/aigne
 documentation: https://github.com/AIGNE-io/aigne-hub
-homepage: https://www.aigne.io/en/hub
+homepage: https://www.aigne.io/hub
 license: ''
 payment:
   price: []
