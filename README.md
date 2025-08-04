@@ -145,8 +145,8 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for deta
 ## Support & Community
 
 - **Documentation**: [AIGNE Hub Docs](https://www.arcblock.io/docs)
-- **Community**: [ArcBlock Community](https://community.arcblock.io)
-- **Issues**: [GitHub Issues](https://github.com/blocklet/aigne-hub/issues)
+- **Community**: [ArcBlock Community](https://community.arcblock.io/discussions/boards/aigne)
+- **Issues**: [GitHub Issues](https://github.com/AIGNE-io/aigne-hub/issues)
 
 ## License
 

@@ -1,9 +1,18 @@
 name: ai-kit
 title: AIGNE Hub
-description: The decentralized AI access solution for blocklets
+description: The tools and integrations you need to build production-grade AI agents
 keywords:
   - ai
+  - aigne
+  - aigne-hub
   - openai
+  - anthropic
+  - gemini
+  - amazon
+  - deepseek
+  - xai
+  - openrouter
+  - ollama
 group: dapp
 did: z8ia3xzq2tMq8CRHfaXj1BTYJyYnEcHbqP8cJ
 main: api/dist/index.js
@@ -37,9 +46,9 @@ interfaces:
             - /api/meilisearch/embeddings
             - /api/ai-providers/models
     proxyBehavior: service
-community: https://community.arcblock.io
-documentation: https://developer.blocklet.io
-homepage: https://store.blocklet.dev
+community: https://community.arcblock.io/discussions/boards/aigne
+documentation: https://github.com/AIGNE-io/aigne-hub
+homepage: https://www.aigne.io/en/hub
 license: ''
 payment:
   price: []
