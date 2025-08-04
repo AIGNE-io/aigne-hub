@@ -430,7 +430,19 @@ export async function* adaptStreamToOldFormat(
           delta: {
             role,
             content: delta.text?.text,
-            toolCalls: toolCalls.length > 0 ? [...toolCalls] : [],
+            toolCalls:
+              toolCalls.length > 0
+                ? [...toolCalls].map((call) => ({
+                    ...call,
+                    function: {
+                      name: call.function?.name,
+                      arguments:
+                        call.function?.arguments && typeof call.function.arguments === 'object'
+                          ? JSON.stringify(call.function.arguments)
+                          : call.function?.arguments,
+                    },
+                  }))
+                : [],
           },
         };
       }
