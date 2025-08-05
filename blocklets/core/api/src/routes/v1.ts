@@ -5,6 +5,7 @@ import {
   processEmbeddings,
   processImageGeneration,
 } from '@api/libs/ai-routes';
+import logger from '@api/libs/logger';
 import { checkSubscription } from '@api/libs/payment';
 import { createAndReportUsage } from '@api/libs/usage';
 import App from '@api/store/models/app';
@@ -36,19 +37,28 @@ router.post(
     }
 
     // Process the completion and get usage data
-    const usageData = await processChatCompletion(req, res, 'v1');
+    await processChatCompletion(req, res, 'v1', {
+      onEnd: async (data) => {
+        if (data?.output) {
+          const usageData = data.output;
+          const usage = await createAndReportUsage({
+            type: 'chatCompletion',
+            promptTokens: (usageData.usage?.inputTokens as number) || 0,
+            completionTokens: (usageData.usage?.outputTokens as number) || 0,
+            model: req.body?.model as string,
+            modelParams: req.body?.options?.modelOptions,
+          }).catch((err) => {
+            logger.error('Create token usage v2 error', { error: err });
+          });
 
-    // Report usage with v1 specific parameters
-    if (usageData) {
-      await createAndReportUsage({
-        type: 'chatCompletion',
-        promptTokens: usageData.promptTokens,
-        completionTokens: usageData.completionTokens,
-        model: usageData.model,
-        modelParams: usageData.modelParams,
-        appId: req.appClient?.appId,
-      });
-    }
+          if (data.output.usage && usage) {
+            data.output.usage = { ...data.output.usage, aigneHubCredits: usage };
+          }
+        }
+
+        return data;
+      },
+    });
   })
 );
 

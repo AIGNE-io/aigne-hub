@@ -53,8 +53,11 @@ export async function createAndReportUsage({
     });
 
     await reportUsage({ appId });
+
+    return usedCredits;
   } catch (error) {
     logger.error('Create token usage error', { error });
+    return undefined;
   }
 }
 

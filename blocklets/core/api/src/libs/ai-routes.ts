@@ -1,3 +1,4 @@
+import { ChatModelOutput } from '@aigne/core';
 import { checkModelRateAvailable } from '@api/providers';
 import { chatCompletionByFrameworkModel } from '@api/providers/models';
 import {
@@ -196,7 +197,10 @@ export const createRetryHandler = (callback: (req: Request, res: Response) => Pr
 export async function processChatCompletion(
   req: Request,
   res: Response,
-  version: 'v1' | 'v2' = 'v1'
+  version: 'v1' | 'v2' = 'v1',
+  options?: {
+    onEnd?: (data?: { output?: ChatModelOutput }) => Promise<{ output?: ChatModelOutput } | undefined>;
+  }
 ): Promise<{ promptTokens: number; completionTokens: number; model: string; modelParams: any } | null> {
   const { error, value: body } = completionsRequestSchema.validate(req.body, { stripUnknown: true });
   if (error) {
@@ -217,7 +221,7 @@ export async function processChatCompletion(
 
   const isEventStream = req.accepts().some((i) => i.startsWith('text/event-stream'));
 
-  const result = await chatCompletionByFrameworkModel(input, req.user?.did);
+  const result = await chatCompletionByFrameworkModel(input, req.user?.did, options);
 
   let content = '';
   const toolCalls: NonNullable<ChatCompletionChunk['delta']['toolCalls']> = [];
