@@ -122,18 +122,26 @@ router.post(
     const aigneServer = new AIGNEHTTPServer(engine);
     await aigneServer.invoke(req, res, {
       userContext: { userId: req.user?.did },
-      // @ts-ignore
-      callback: async (usageData: { usage: { inputTokens: number; outputTokens: number } }) => {
-        if (usageData && Config.creditBasedBillingEnabled) {
-          await createAndReportUsageV2({
-            type: 'chatCompletion',
-            promptTokens: (usageData.usage?.inputTokens as number) || 0,
-            completionTokens: (usageData.usage?.outputTokens as number) || 0,
-            model: req.body?.model as string,
-            modelParams: req.body?.options?.modelOptions,
-            userDid: userDid!,
-          });
-        }
+      hooks: {
+        onEnd: async (data) => {
+          const usageData = data.output;
+          if (usageData && Config.creditBasedBillingEnabled) {
+            const usage = await createAndReportUsageV2({
+              type: 'chatCompletion',
+              promptTokens: (usageData.usage?.inputTokens as number) || 0,
+              completionTokens: (usageData.usage?.outputTokens as number) || 0,
+              model: req.body?.model as string,
+              modelParams: req.body?.options?.modelOptions,
+              userDid: userDid!,
+            });
+
+            if (data.output.usage && usage) {
+              data.output.usage = { ...data.output.usage, aigneHubCredits: usage };
+            }
+          }
+
+          return data;
+        },
       },
     });
   })
