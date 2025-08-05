@@ -1,10 +1,12 @@
 import { getObservabilityUrl } from '@app/libs/env';
+import { getPrefix } from '@app/libs/util';
 import Dialog from '@arcblock/ux/lib/Dialog';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import { AnalyticsOutlined, CreditCard, SmartToyOutlined } from '@mui/icons-material';
 import { Box, Button, Grid, Stack, Typography } from '@mui/material';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { joinURL } from 'ufo';
 
 export default function Overview() {
   const { t } = useLocaleContext();
@@ -179,7 +181,7 @@ export default function Overview() {
             </Typography>
             <Box
               component="img"
-              src="/credit-config/step.png"
+              src={joinURL(getPrefix(), '/credit-config/step.png')}
               alt="Credits configuration steps"
               sx={{
                 width: '100%',
