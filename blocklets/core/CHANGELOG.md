@@ -1,3 +1,7 @@
+## 0.3.6 (2025-8-6)
+
+- fix: remove Gemini model from supported model list and config
+
 ## 0.3.5 (2025-8-6)
 
 - chore: update package deps
