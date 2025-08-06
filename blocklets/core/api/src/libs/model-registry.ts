@@ -51,7 +51,6 @@ export const SUPPORTED_PROVIDERS = new Set([
   'bedrock',
   'deepseek',
   'google',
-  'gemini',
   'ollama',
   'openrouter',
   'xai',

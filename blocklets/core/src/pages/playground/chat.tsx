@@ -44,7 +44,6 @@ const providerDisplayNames: Record<string, string> = {
   bedrock: 'Amazon Bedrock',
   deepseek: 'DeepSeek',
   google: 'Google',
-  gemini: 'Gemini',
   ollama: 'Ollama',
   openrouter: 'OpenRouter',
   xai: 'xAI',

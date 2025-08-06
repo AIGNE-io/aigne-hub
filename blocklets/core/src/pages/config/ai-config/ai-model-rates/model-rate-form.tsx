@@ -116,10 +116,6 @@ const pricingLinks = {
     name: 'Google AI',
     url: 'https://ai.google.dev/pricing',
   },
-  gemini: {
-    name: 'Gemini',
-    url: 'https://ai.google.dev/pricing',
-  },
   openrouter: {
     name: 'OpenRouter',
     url: 'https://openrouter.ai/models',

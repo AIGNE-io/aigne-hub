@@ -94,7 +94,6 @@ const providers = {
   bedrock: 'bedrock',
   deepseek: 'deepseek',
   google: 'google',
-  gemini: 'gemini',
   ollama: 'ollama',
   openrouter: 'openrouter',
   xai: 'xai',
@@ -149,11 +148,6 @@ function availableModels(): {
     },
     {
       name: GeminiChatModel.name,
-      provider: providers.gemini,
-      create: (params) => new GeminiChatModel({ ...params, clientOptions }),
-    },
-    {
-      name: GeminiChatModel.name,
       provider: providers.google,
       create: (params) => new GeminiChatModel({ ...params, clientOptions }),
     },
@@ -177,7 +171,6 @@ function availableModels(): {
 
 const currentApiKeyIndex: { [key in AIProvider]?: number } = {};
 const apiKeys: { [key in AIProvider]: () => string[] } = {
-  gemini: () => Config.geminiApiKey,
   google: () => Config.geminiApiKey,
   openai: () => Config.openaiApiKey,
   openrouter: () => Config.openRouterApiKey,
