@@ -82,7 +82,7 @@ export class CreditError extends Error {
   constructor(statusCode: number, type: CreditErrorType, link?: string) {
     let message = CreditErrors[type] || CreditErrors[CreditErrorType.UNKNOWN];
     if (type === CreditErrorType.NOT_ENOUGH && link) {
-      message += `\n${link}`;
+      message += ` ${link}`;
     }
     super(message);
 
