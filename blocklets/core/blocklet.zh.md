@@ -74,7 +74,7 @@ AIGNE Hub 通过统一的 API、安全模型和直观的管理界面，将您的
 
 ## 🧑‍💻 开发者资源
 
-- [🏠 AIGNE Hub 官网](https://www.aigne.io/en/aigne-hub)  
+- [🏠 AIGNE Hub 官网](https://www.aigne.io/hub)  
 - [📘 GitHub 仓库](https://github.com/AIGNE-io/aigne-hub)  
 - [🧑‍💻 AIGNE CLI 文档](https://www.arcblock.io/docs/aigne-framework/en/aigne-framework-api-aigne-cli-md)  
 - [💬 官方社区](https://community.arcblock.io/discussions/boards/aigne)  

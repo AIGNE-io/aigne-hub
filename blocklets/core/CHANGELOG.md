@@ -1,3 +1,27 @@
+## 0.3.6 (2025-8-6)
+
+- fix: remove Gemini model from supported model list and config
+
+## 0.3.5 (2025-8-6)
+
+- chore: update package deps
+
+## 0.3.4 (2025-8-5)
+
+- feat: allow inserting agent-hub credits manually
+
+## 0.3.3 (2025-8-4)
+
+- fix: ensure toolCalls function only accepts string arguments
+
+## 0.3.2 (2025-8-4)
+
+- fix: correct image size format in model rate form options
+
+## 0.3.1 (2025-8-4)
+
+- chore: update community links and descriptions in documentation
+
 ## 0.3.0 (2025-8-1)
 
 - feat(api): add model search functionality and update localization for model rates

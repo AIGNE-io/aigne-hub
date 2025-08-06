@@ -94,7 +94,6 @@ const providers = {
   bedrock: 'bedrock',
   deepseek: 'deepseek',
   google: 'google',
-  gemini: 'gemini',
   ollama: 'ollama',
   openrouter: 'openrouter',
   xai: 'xai',
@@ -149,11 +148,6 @@ function availableModels(): {
     },
     {
       name: GeminiChatModel.name,
-      provider: providers.gemini,
-      create: (params) => new GeminiChatModel({ ...params, clientOptions }),
-    },
-    {
-      name: GeminiChatModel.name,
       provider: providers.google,
       create: (params) => new GeminiChatModel({ ...params, clientOptions }),
     },
@@ -177,7 +171,6 @@ function availableModels(): {
 
 const currentApiKeyIndex: { [key in AIProvider]?: number } = {};
 const apiKeys: { [key in AIProvider]: () => string[] } = {
-  gemini: () => Config.geminiApiKey,
   google: () => Config.geminiApiKey,
   openai: () => Config.openaiApiKey,
   openrouter: () => Config.openRouterApiKey,
@@ -380,7 +373,10 @@ export async function getProviderCredentials(provider: string) {
 }
 export async function chatCompletionByFrameworkModel(
   input: ChatCompletionInput & Required<Pick<ChatCompletionInput, 'model'>>,
-  userDid?: string
+  userDid?: string,
+  options?: {
+    onEnd?: (data?: { output?: ChatModelOutput }) => Promise<{ output?: ChatModelOutput } | undefined>;
+  }
 ): Promise<AsyncGenerator<ChatCompletionResponse>> {
   const model = await getModel(input);
   const engine = new AIGNE();
@@ -394,7 +390,7 @@ export async function chatCompletionByFrameworkModel(
       tools: input.tools,
       modelOptions: pick(input, ['temperature', 'topP', 'presencePenalty', 'frequencyPenalty', 'maxTokens']),
     },
-    { streaming: true, userContext: { userId: userDid } }
+    { streaming: true, userContext: { userId: userDid }, hooks: { onEnd: options?.onEnd } }
   );
 
   return adaptStreamToOldFormat(response);
@@ -430,7 +426,19 @@ export async function* adaptStreamToOldFormat(
           delta: {
             role,
             content: delta.text?.text,
-            toolCalls: toolCalls.length > 0 ? [...toolCalls] : [],
+            toolCalls:
+              Array.isArray(toolCalls) && toolCalls.length > 0
+                ? toolCalls.map((call) => ({
+                    ...call,
+                    function: {
+                      name: call.function?.name,
+                      arguments:
+                        call.function?.arguments && typeof call.function.arguments === 'object'
+                          ? JSON.stringify(call.function.arguments)
+                          : call.function?.arguments,
+                    },
+                  }))
+                : [],
           },
         };
       }

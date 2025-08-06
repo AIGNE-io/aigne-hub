@@ -1,3 +1,4 @@
+import { ChatModelOutput } from '@aigne/core';
 import { checkModelRateAvailable } from '@api/providers';
 import { chatCompletionByFrameworkModel } from '@api/providers/models';
 import {
@@ -10,6 +11,7 @@ import {
   isChatCompletionChunk,
   isChatCompletionUsage,
 } from '@blocklet/aigne-hub/api/types';
+import { CustomError } from '@blocklet/error';
 import { get_encoding } from '@dqbd/tiktoken';
 import { Request, Response } from 'express';
 import Joi from 'joi';
@@ -195,9 +197,15 @@ export const createRetryHandler = (callback: (req: Request, res: Response) => Pr
 export async function processChatCompletion(
   req: Request,
   res: Response,
-  version: 'v1' | 'v2' = 'v1'
+  version: 'v1' | 'v2' = 'v1',
+  options?: {
+    onEnd?: (data?: { output?: ChatModelOutput }) => Promise<{ output?: ChatModelOutput } | undefined>;
+  }
 ): Promise<{ promptTokens: number; completionTokens: number; model: string; modelParams: any } | null> {
-  const body = await completionsRequestSchema.validateAsync(req.body, { stripUnknown: true });
+  const { error, value: body } = completionsRequestSchema.validate(req.body, { stripUnknown: true });
+  if (error) {
+    throw new CustomError(400, error.message);
+  }
 
   const input = {
     ...body,
@@ -213,7 +221,7 @@ export async function processChatCompletion(
 
   const isEventStream = req.accepts().some((i) => i.startsWith('text/event-stream'));
 
-  const result = await chatCompletionByFrameworkModel(input, req.user?.did);
+  const result = await chatCompletionByFrameworkModel(input, req.user?.did, options);
 
   let content = '';
   const toolCalls: NonNullable<ChatCompletionChunk['delta']['toolCalls']> = [];
@@ -303,7 +311,10 @@ export async function processEmbeddings(
   req: Request,
   res: Response
 ): Promise<{ promptTokens: number; model: string } | null> {
-  const input = await embeddingsRequestSchema.validateAsync(req.body, { stripUnknown: true });
+  const { error, value: input } = embeddingsRequestSchema.validate(req.body, { stripUnknown: true });
+  if (error) {
+    throw new CustomError(400, error.message);
+  }
 
   await checkModelRateAvailable(input.model);
 
@@ -325,7 +336,7 @@ export async function processImageGeneration(
   res: Response,
   version: 'v1' | 'v2' = 'v1'
 ): Promise<{ model: string; modelParams: any; numberOfImageGeneration: number } | null> {
-  const input = await imageGenerationRequestSchema.validateAsync(
+  const { error, value: input } = imageGenerationRequestSchema.validate(
     {
       ...req.body,
       // Deprecated: 兼容 response_format 字段，一段时间以后删除
@@ -333,6 +344,10 @@ export async function processImageGeneration(
     },
     { stripUnknown: true }
   );
+
+  if (error) {
+    throw new CustomError(400, error.message);
+  }
 
   await checkModelRateAvailable(input.model);
 

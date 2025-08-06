@@ -8,6 +8,7 @@ import {
   processImageGeneration,
 } from '@api/libs/ai-routes';
 import { Config } from '@api/libs/env';
+import logger from '@api/libs/logger';
 import { checkUserCreditBalance, isPaymentRunning } from '@api/libs/payment';
 import { createAndReportUsageV2 } from '@api/libs/usage';
 import { checkModelRateAvailable } from '@api/providers';
@@ -82,19 +83,31 @@ router.post('/:type(chat)?/completions', compression(), user, async (req, res) =
     await checkUserCreditBalance({ userDid });
   }
   // Process the completion and get usage data
-  const usageData = await processChatCompletion(req, res, 'v2');
+  await processChatCompletion(req, res, 'v2', {
+    onEnd: async (data) => {
+      if (data?.output && Config.creditBasedBillingEnabled) {
+        const usageData = data.output;
 
-  if (usageData && Config.creditBasedBillingEnabled) {
-    await createAndReportUsageV2({
-      type: 'chatCompletion',
-      promptTokens: usageData.promptTokens,
-      completionTokens: usageData.completionTokens,
-      model: usageData.model,
-      modelParams: usageData.modelParams,
-      appId: req.body?.appId,
-      userDid: userDid!,
-    });
-  }
+        const usage = await createAndReportUsageV2({
+          type: 'chatCompletion',
+          promptTokens: (usageData.usage?.inputTokens as number) || 0,
+          completionTokens: (usageData.usage?.outputTokens as number) || 0,
+          model: req.body?.model as string,
+          modelParams: req.body?.options?.modelOptions,
+          appId: req.body?.appId,
+          userDid: userDid!,
+        }).catch((err) => {
+          logger.error('Create token usage v2 error', { error: err });
+        });
+
+        if (data.output.usage && usage) {
+          data.output.usage = { ...data.output.usage, aigneHubCredits: usage };
+        }
+      }
+
+      return data;
+    },
+  });
 });
 
 router.post(
@@ -122,18 +135,28 @@ router.post(
     const aigneServer = new AIGNEHTTPServer(engine);
     await aigneServer.invoke(req, res, {
       userContext: { userId: req.user?.did },
-      // @ts-ignore
-      callback: async (usageData: { usage: { inputTokens: number; outputTokens: number } }) => {
-        if (usageData && Config.creditBasedBillingEnabled) {
-          await createAndReportUsageV2({
-            type: 'chatCompletion',
-            promptTokens: (usageData.usage?.inputTokens as number) || 0,
-            completionTokens: (usageData.usage?.outputTokens as number) || 0,
-            model: req.body?.model as string,
-            modelParams: req.body?.options?.modelOptions,
-            userDid: userDid!,
-          });
-        }
+      hooks: {
+        onEnd: async (data) => {
+          const usageData = data.output;
+          if (usageData && Config.creditBasedBillingEnabled) {
+            const usage = await createAndReportUsageV2({
+              type: 'chatCompletion',
+              promptTokens: (usageData.usage?.inputTokens as number) || 0,
+              completionTokens: (usageData.usage?.outputTokens as number) || 0,
+              model: req.body?.model as string,
+              modelParams: req.body?.options?.modelOptions,
+              userDid: userDid!,
+            }).catch((err) => {
+              logger.error('Create token usage v2 error', { error: err });
+            });
+
+            if (data.output.usage && usage) {
+              data.output.usage = { ...data.output.usage, aigneHubCredits: usage };
+            }
+          }
+
+          return data;
+        },
       },
     });
   })

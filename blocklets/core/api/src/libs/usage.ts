@@ -53,8 +53,11 @@ export async function createAndReportUsage({
     });
 
     await reportUsage({ appId });
+
+    return usedCredits;
   } catch (error) {
     logger.error('Create token usage error', { error });
+    return undefined;
   }
 }
 
@@ -118,7 +121,7 @@ export async function createAndReportUsageV2({
 }: Required<Pick<Usage, 'type' | 'model'>> &
   Partial<Pick<Usage, 'modelParams' | 'promptTokens' | 'completionTokens' | 'appId' | 'numberOfImageGeneration'>> & {
     userDid: string;
-  }) {
+  }): Promise<number | undefined> {
   try {
     let usedCredits: number | undefined;
 
@@ -146,8 +149,10 @@ export async function createAndReportUsageV2({
     });
 
     await reportUsageV2({ appId, userDid });
+    return usedCredits;
   } catch (error) {
     logger.error('Create token usage v2 error', { error });
+    return undefined;
   }
 }
 

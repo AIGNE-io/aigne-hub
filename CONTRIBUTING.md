@@ -162,8 +162,8 @@ DEBUG=aigne:* pnpm dev
 
 ## Getting Help
 
-- **Issues**: [GitHub Issues](https://github.com/blocklet/ai-kit/issues)
-- **Community**: [ArcBlock Community](https://community.arcblock.io)
+- **Issues**: [GitHub Issues](https://github.com/AIGNE-io/aigne-hub/issues)
+- **Community**: [ArcBlock Community](https://community.arcblock.io/discussions/boards/aigne)
 - **Email**: blocklet@arcblock.io
 
 ## License

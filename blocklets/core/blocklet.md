@@ -73,7 +73,7 @@ Open the built-in Playground or use the AIGNE CLI to test and integrate.
 
 ## 🧑‍💻 Developer Toolkit
 
-- [🏠 AIGNE Hub Official Website](https://www.aigne.io/en/aigne-hub)
+- [🏠 AIGNE Hub Official Website](https://www.aigne.io/hub)
 - [📘 AIGNE Hub Github Repo](https://github.com/AIGNE-io/aigne-hub)
 - [🧑‍💻  AIGNE CLI Doc](https://www.arcblock.io/docs/aigne-framework/en/aigne-framework-api-aigne-cli-md)
 - [💬 Join the Community](https://community.arcblock.io/discussions/boards/aigne)

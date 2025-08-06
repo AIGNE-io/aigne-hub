@@ -5,6 +5,7 @@ import { CustomError } from '@blocklet/error';
 import payment, { Subscription, TMeterEventExpanded } from '@blocklet/payment-js';
 import { getComponentMountPoint } from '@blocklet/sdk';
 import config from '@blocklet/sdk/lib/config';
+import { toBN } from '@ocap/util';
 import difference from 'lodash/difference';
 import { joinURL, parseURL, withQuery } from 'ufo';
 
@@ -305,13 +306,14 @@ export async function getCreditPaymentLink() {
 
 export async function checkUserCreditBalance({ userDid }: { userDid: string }) {
   const { balance } = await getUserCredits({ userDid });
-  if (balance === '0') {
+  if (balance && toBN(balance).lte(toBN(0))) {
     let link: string | null = null;
     try {
       link = await getCreditPaymentLink();
     } catch (err) {
       logger.error('failed to get credit payment link', { err });
     }
+
     throw new CreditError(402, CreditErrorType.NOT_ENOUGH, link ?? '');
   }
 }
