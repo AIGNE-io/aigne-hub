@@ -1,3 +1,7 @@
+## 0.3.5 (2025-8-6)
+
+- chore: update package deps
+
 ## 0.3.4 (2025-8-5)
 
 - feat: allow inserting agent-hub credits manually
