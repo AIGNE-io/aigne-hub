@@ -381,8 +381,6 @@ export async function chatCompletionByFrameworkModel(
   const model = await getModel(input);
   const engine = new AIGNE();
 
-  console.log(convertToFrameworkMessages(input.messages));
-
   const response = await engine.invoke(
     model,
     {
