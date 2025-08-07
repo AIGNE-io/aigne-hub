@@ -64,7 +64,7 @@ function convertToFrameworkMessages(
         return {
           role: 'agent' as const,
           content: message.content,
-          toolCalls: (message.toolCalls || [])?.map((call) => ({
+          toolCalls: message.toolCalls?.map((call) => ({
             id: call.id,
             type: 'function' as const,
             function: {
@@ -380,6 +380,8 @@ export async function chatCompletionByFrameworkModel(
 ): Promise<AsyncGenerator<ChatCompletionResponse>> {
   const model = await getModel(input);
   const engine = new AIGNE();
+
+  console.log(convertToFrameworkMessages(input.messages));
 
   const response = await engine.invoke(
     model,
