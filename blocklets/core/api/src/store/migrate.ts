@@ -45,6 +45,24 @@ export async function safeApplyColumnChanges(context: QueryInterface, changes: C
   }
 }
 
+const indexExists = async (table: string, indexName: string, queryInterface: QueryInterface) => {
+  const indexes = await queryInterface.showIndex(table);
+  return indexes && Array.isArray(indexes) && indexes.some((index: { name: string }) => index.name === indexName);
+};
+
+export async function createIndexIfNotExists(
+  queryInterface: QueryInterface,
+  table: string,
+  columns: string[],
+  indexName: string
+): Promise<void> {
+  if (await indexExists(table, indexName, queryInterface)) {
+    console.info(`Index ${indexName} already exists on ${table}, skipping...`);
+    return;
+  }
+  await queryInterface.addIndex(table, columns, { name: indexName });
+}
+
 export default async function migrate() {
   await umzug.up();
 }

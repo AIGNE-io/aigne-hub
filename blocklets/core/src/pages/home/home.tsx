@@ -6,7 +6,7 @@ import Toast from '@arcblock/ux/lib/Toast';
 import { CreditButton } from '@blocklet/aigne-hub/components';
 import Footer from '@blocklet/ui-react/lib/Footer';
 import Header from '@blocklet/ui-react/lib/Header';
-import { AccountBalanceWallet, Code, ContentCopy } from '@mui/icons-material';
+import { AccountBalanceWallet, Assessment, Code, ContentCopy } from '@mui/icons-material';
 import { Box, Button, IconButton, Stack, Typography } from '@mui/material';
 import { ReactNode, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -103,6 +103,9 @@ const result = await model.invoke({
                   isCreditBillingEnabled ? (
                     <>
                       <CreditButton variant="contained" />
+                      <Button component={Link} to="/credit-board" variant="outlined" startIcon={<Assessment />}>
+                        {t('creditUsage')}
+                      </Button>
                       <Button
                         variant="outlined"
                         startIcon={<AccountBalanceWallet />}

@@ -30,6 +30,7 @@
     ]
   },
   "dependencies": {
+    "@abtnode/cron": "^1.16.46",
     "@aigne/anthropic": "^0.10.9",
     "@aigne/bedrock": "^0.8.13",
     "@aigne/core": "^1.45.0",
@@ -92,6 +93,7 @@
     "mustache": "^4.2.0",
     "nanoid": "^5.0.7",
     "openai": "^4.96.0",
+    "p-all": "^5.0.0",
     "raw-body": "^3.0.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",

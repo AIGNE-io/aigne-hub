@@ -83,13 +83,13 @@ const Wrapped = styled(Datatable)`
   }
   table.MuiTable-root {
     outline: 1px solid;
-    outline-color: ${({ theme }) => theme.palette.grey[100]};
+    outline-color: ${({ theme }) => theme.palette.divider};
     border-radius: ${({ theme }) => `${2 * (theme.shape.borderRadius as number)}px`};
     overflow: hidden;
   }
   [class*='MUIDataTable-responsiveBase'] {
     outline: 1px solid;
-    outline-color: ${({ theme }) => theme.palette.grey[100]};
+    outline-color: ${({ theme }) => theme.palette.divider};
     border-radius: ${({ theme }) => `${2 * (theme.shape.borderRadius as number)}px`};
   }
 

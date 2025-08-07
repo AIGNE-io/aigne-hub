@@ -9,6 +9,7 @@ import {
   getUserProfileLink,
   isPaymentRunning,
 } from '@api/libs/payment';
+import ModelCall from '@api/store/models/model-call';
 import { proxyToAIKit } from '@blocklet/aigne-hub/api/call';
 import { CustomError } from '@blocklet/error';
 import config from '@blocklet/sdk/lib/config';
@@ -54,6 +55,38 @@ const creditTransactionsSchema = Joi.object<CreditTransactionsQuery>({
   pageSize: Joi.number().integer().min(1).max(100).empty([null, '']),
   start: Joi.number().integer().min(0).empty([null, '']),
   end: Joi.number().integer().min(0).empty([null, '']),
+});
+
+export interface ModelCallsQuery {
+  page?: number;
+  pageSize?: number;
+  startTime?: string;
+  endTime?: string;
+  search?: string;
+  status?: 'success' | 'failed' | 'all';
+  model?: string;
+  providerId?: string;
+}
+
+const modelCallsSchema = Joi.object<ModelCallsQuery>({
+  page: Joi.number().integer().min(1).empty([null, '']),
+  pageSize: Joi.number().integer().min(1).max(100).empty([null, '']),
+  startTime: Joi.date().iso().empty([null, '']),
+  endTime: Joi.date().iso().empty([null, '']),
+  search: Joi.string().max(100).empty([null, '']),
+  status: Joi.string().valid('success', 'failed', 'all').empty([null, '']),
+  model: Joi.string().max(100).empty([null, '']),
+  providerId: Joi.string().max(100).empty([null, '']),
+});
+
+export interface UsageStatsQuery {
+  startTime?: string;
+  endTime?: string;
+}
+
+const usageStatsSchema = Joi.object<UsageStatsQuery>({
+  startTime: Joi.date().iso().empty([null, '']),
+  endTime: Joi.date().iso().empty([null, '']),
 });
 
 router.get('/credit/grants', user, async (req, res) => {
@@ -198,6 +231,193 @@ router.get('/info', user, async (req, res) => {
     enableCredit: false,
     profileLink: getUserProfileLink(req.user?.did),
   });
+});
+
+router.get('/model-calls', user, async (req, res) => {
+  try {
+    const {
+      page = 1,
+      pageSize = 50,
+      startTime,
+      endTime,
+      search,
+      status,
+      model,
+      providerId,
+    } = await modelCallsSchema.validateAsync(req.query, {
+      stripUnknown: true,
+    });
+    const userDid = req.user?.did;
+
+    if (!userDid) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+
+    const offset = (page - 1) * pageSize;
+    const calls = await ModelCall.getCallsByDateRange({
+      userDid,
+      startTime: startTime ? new Date(startTime) : undefined,
+      endTime: endTime ? new Date(endTime) : undefined,
+      limit: pageSize,
+      offset,
+      search,
+      status,
+      model,
+      providerId,
+    });
+
+    return res.json({
+      data: calls,
+      pagination: {
+        page,
+        pageSize,
+        total: calls.length,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+});
+
+router.get('/model-calls/export', user, async (req, res) => {
+  try {
+    const { startTime, endTime, search, status, model, providerId } = await modelCallsSchema.validateAsync(req.query, {
+      stripUnknown: true,
+    });
+    const userDid = req.user?.did;
+
+    if (!userDid) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+
+    const calls = await ModelCall.getCallsByDateRange({
+      userDid,
+      startTime: startTime ? new Date(startTime) : undefined,
+      endTime: endTime ? new Date(endTime) : undefined,
+      limit: 10000, // 导出时获取更多数据
+      offset: 0,
+      search,
+      status,
+      model,
+      providerId,
+    });
+
+    // 转换为CSV格式
+    const csvData = calls.map((call) => ({
+      timestamp: call.createdAt,
+      requestId: call.id,
+      model: call.model,
+      provider: call.providerId,
+      type: call.type,
+      status: call.status,
+      inputTokens: call.usageMetrics?.inputTokens || 0,
+      outputTokens: call.usageMetrics?.outputTokens || 0,
+      totalUsage: call.totalUsage,
+      credits: call.credits,
+      duration: call.duration,
+      errorReason: call.errorReason,
+      appDid: call.appDid,
+    }));
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="model-calls-${new Date().toISOString().split('T')[0]}.csv"`
+    );
+
+    // 生成CSV内容
+    const csvHeaders =
+      'Timestamp,Request ID,Model,Provider,Type,Status,Input Tokens,Output Tokens,Total Usage,Credits,Duration,Error Reason,App DID\n';
+    const csvRows = csvData
+      .map(
+        (row) =>
+          `${row.timestamp},${row.requestId},${row.model},${row.provider},${row.type},${row.status},${row.inputTokens},${row.outputTokens},${row.totalUsage},${row.credits},${row.duration},${row.errorReason || ''},${row.appDid || ''}`
+      )
+      .join('\n');
+
+    return res.send(csvHeaders + csvRows);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+});
+
+router.get('/usage-stats', user, async (req, res) => {
+  try {
+    const { startTime, endTime } = await usageStatsSchema.validateAsync(req.query, {
+      stripUnknown: true,
+    });
+    const userDid = req.user?.did;
+
+    if (!userDid) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+
+    const [usageStats, totalCredits, dailyStats, modelStats] = await Promise.all([
+      ModelCall.getUsageStatsByDateRange({
+        userDid,
+        startTime: startTime ? new Date(startTime) : undefined,
+        endTime: endTime ? new Date(endTime) : undefined,
+      }),
+      ModelCall.getTotalCreditsByDateRange({
+        userDid,
+        startTime: startTime ? new Date(startTime) : undefined,
+        endTime: endTime ? new Date(endTime) : undefined,
+      }),
+      ModelCall.getDailyUsageStats({
+        userDid,
+        startTime: startTime ? new Date(startTime) : undefined,
+        endTime: endTime ? new Date(endTime) : undefined,
+      }),
+      ModelCall.getModelUsageStats({
+        userDid,
+        startTime: startTime ? new Date(startTime) : undefined,
+        endTime: endTime ? new Date(endTime) : undefined,
+        limit: 10,
+      }),
+    ]);
+
+    return res.json({
+      summary: {
+        byType: usageStats.byType,
+        totalCalls: usageStats.totalCalls,
+        totalCredits,
+      },
+      dailyStats,
+      modelStats,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+});
+
+router.get('/weekly-comparison', user, async (req, res) => {
+  try {
+    const userDid = req.user?.did;
+
+    if (!userDid) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+
+    const comparison = await ModelCall.getWeeklyComparison(userDid);
+    return res.json(comparison);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+});
+
+router.get('/monthly-comparison', user, async (req, res) => {
+  try {
+    const userDid = req.user?.did;
+
+    if (!userDid) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+
+    const comparison = await ModelCall.getMonthlyComparison(userDid);
+    return res.json(comparison);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
 });
 
 export default router;

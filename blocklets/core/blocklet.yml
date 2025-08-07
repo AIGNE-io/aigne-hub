@@ -118,4 +118,18 @@ navigation:
     role:
       - admin
       - owner
+  - id: creditUsage
+    title:
+      en: Credit Usage
+      zh: 额度分析
+    icon: ion:receipt-outline
+    link: /credit-usage
+    section:
+      - userCenter
+      - sessionManager
+    role:
+      - owner
+      - admin
+      - member
+      - guest
 egress: true

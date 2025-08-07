@@ -25,6 +25,8 @@ export const MODEL_RATE_TYPE = {
   Embedding: 'embedding',
 };
 
+export const dailyCallCacheCronTime: string = '0 1 0 * * *'; // 默认每天一次，计算前一天的
+
 type Pricing = {
   creditPaymentLink: string;
   creditBasedBillingEnabled: boolean;
