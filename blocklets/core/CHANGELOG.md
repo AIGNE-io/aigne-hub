@@ -1,3 +1,7 @@
+## 0.3.7 (2025-8-7)
+
+- fix: ensure assistant role handled correctly in convertToFrameworkMessages
+
 ## 0.3.6 (2025-8-6)
 
 - fix: remove Gemini model from supported model list and config
