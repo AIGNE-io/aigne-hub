@@ -19,6 +19,7 @@ import { OpenAIChatModel } from '@aigne/openai';
 import type { OpenAIChatModelOptions } from '@aigne/openai';
 import { XAIChatModel } from '@aigne/xai';
 import { getModelNameWithProvider } from '@api/libs/ai-provider';
+import logger from '@api/libs/logger';
 import AiCredential from '@api/store/models/ai-credential';
 import AiProvider from '@api/store/models/ai-provider';
 import { ConfigError, ConfigErrorType } from '@blocklet/aigne-hub/api';
@@ -237,10 +238,12 @@ export async function loadModel(
     provider,
     modelOptions,
     clientOptions,
+    req,
   }: {
     provider?: string;
     modelOptions?: ChatModelOptions;
     clientOptions?: OpenAIChatModelOptions['clientOptions'];
+    req?: any; // Express Request with modelCallContext
   } = {}
 ) {
   const models = availableModels();
@@ -260,7 +263,10 @@ export async function loadModel(
     region?: string;
     modelOptions?: ChatModelOptions;
     clientOptions?: OpenAIChatModelOptions['clientOptions'];
-  } = await getProviderCredentials(m.provider);
+  } = await getProviderCredentials(m.provider, {
+    modelCallContext: req?.modelCallContext,
+    model,
+  });
 
   if (modelOptions) {
     params.modelOptions = modelOptions;
@@ -273,21 +279,15 @@ export async function loadModel(
   return m.create({ ...params, model });
 }
 
-export const getModel = async (
-  input: ChatCompletionInput & Required<Pick<ChatCompletionInput, 'model'>>,
-  options?: {
-    modelOptions?: ChatModelOptions;
-    clientOptions?: OpenAIChatModelOptions['clientOptions'];
-  }
-) => {
-  const { providerName, modelName: name } = getModelNameWithProvider(input.model);
+export async function getModelAndProviderId(model: string) {
+  let { providerName, modelName } = getModelNameWithProvider(model);
 
   const getDefaultProvider = () => {
-    if (input.model.toLowerCase().startsWith('gemini')) return 'google';
-    if (input.model.toLowerCase().startsWith('gpt')) return 'openai';
-    if (input.model.toLowerCase().startsWith('openrouter')) return 'openrouter';
+    if (model.toLowerCase().startsWith('gemini')) return 'google';
+    if (model.toLowerCase().startsWith('gpt')) return 'openai';
+    if (model.toLowerCase().startsWith('openrouter')) return 'openrouter';
 
-    if (!providerName || !name) {
+    if (!providerName || !modelName) {
       throw new CustomError(
         400,
         'The model format is incorrect. Please use {provider}/{model}, for example: openai/gpt-4o or anthropic/claude-3-5-sonnet'
@@ -297,20 +297,41 @@ export const getModel = async (
     return '';
   };
 
-  let provider = providerName;
-  let model = name;
-  if (!provider) {
-    provider = getDefaultProvider();
-    model = input.model;
+  if (!providerName) {
+    providerName = getDefaultProvider();
+    modelName = model;
   }
 
-  if (!model) throw new CustomError(404, `Provider ${provider} model ${input.model} not found`);
+  const provider = await AiProvider.findOne({ where: { name: providerName } });
+  return { providerId: provider?.id, modelName, providerName };
+}
 
+export const getModel = async (
+  input: ChatCompletionInput & Required<Pick<ChatCompletionInput, 'model'>>,
+  options?: {
+    modelOptions?: ChatModelOptions;
+    clientOptions?: OpenAIChatModelOptions['clientOptions'];
+    req?: any;
+  }
+) => {
+  const { modelName: model, providerName: provider } = await getModelAndProviderId(input.model);
   const m = await loadModel(model, { provider, ...options });
   return m;
 };
 
-export async function getProviderCredentials(provider: string) {
+export async function getProviderCredentials(
+  provider: string,
+  options?: {
+    modelCallContext?: any; // ModelCallContext from middleware
+    model?: string; // Actual model name to record
+  }
+): Promise<{
+  apiKey?: string;
+  baseURL?: string;
+  accessKeyId?: string;
+  secretAccessKey?: string;
+  region?: string;
+}> {
   const callback = async (err: Error) => {
     try {
       let params: {
@@ -363,6 +384,17 @@ export async function getProviderCredentials(provider: string) {
 
   await credential.updateUsage();
   const value = AiCredential.decryptCredentialValue(credential!.credentialValue);
+
+  // Update ModelCall context if provided
+  if (options?.modelCallContext) {
+    try {
+      await options.modelCallContext.updateCredentials(providerRecord.id, credential.id, options.model);
+    } catch (error) {
+      // Log but don't fail the credential retrieval
+      logger.error('Failed to update ModelCall context in getProviderCredentials', { error });
+    }
+  }
+
   return {
     apiKey: value.api_key,
     baseURL: providerRecord?.baseUrl,
@@ -376,9 +408,10 @@ export async function chatCompletionByFrameworkModel(
   userDid?: string,
   options?: {
     onEnd?: (data?: { output?: ChatModelOutput }) => Promise<{ output?: ChatModelOutput } | undefined>;
+    req?: any;
   }
 ): Promise<AsyncGenerator<ChatCompletionResponse>> {
-  const model = await getModel(input);
+  const model = await getModel(input, { req: options?.req });
   const engine = new AIGNE();
 
   const response = await engine.invoke(

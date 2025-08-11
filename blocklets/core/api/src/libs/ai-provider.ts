@@ -21,11 +21,12 @@ export function getOpenAI() {
   });
 }
 
-export async function getOpenAIV2() {
-  const params: {
-    apiKey?: string;
-    baseURL?: string;
-  } = await getProviderCredentials('openai');
+export async function getOpenAIV2(req?: any) {
+  const { modelName } = getModelNameWithProvider(req?.body?.model);
+  const params = await getProviderCredentials('openai', {
+    modelCallContext: req?.modelCallContext,
+    model: modelName,
+  });
 
   return new OpenAI({
     baseURL: params.baseURL || null,

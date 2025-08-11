@@ -100,9 +100,9 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
       defaultValue: 0,
     },
     status: {
-      type: DataTypes.ENUM('success', 'failed'),
+      type: DataTypes.ENUM('processing', 'success', 'failed'),
       allowNull: false,
-      defaultValue: 'success',
+      defaultValue: 'processing',
     },
     duration: {
       type: DataTypes.INTEGER,

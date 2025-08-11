@@ -1,9 +1,11 @@
 import AiModelRate from '@api/store/models/ai-model-rate';
 import AiProvider from '@api/store/models/ai-provider';
+import { CallType } from '@api/store/models/types';
 import Usage from '@api/store/models/usage';
 import { CustomError } from '@blocklet/error';
 import payment from '@blocklet/payment-js';
 import BigNumber from 'bignumber.js';
+import { Request } from 'express';
 import type { DebouncedFunc } from 'lodash';
 import throttle from 'lodash/throttle';
 import { Op } from 'sequelize';
@@ -128,11 +130,11 @@ export async function createAndReportUsageV2({
     const price = await getPrice(type, model);
     if (price) {
       if (type === 'imageGeneration') {
-        usedCredits = new BigNumber(numberOfImageGeneration).multipliedBy(price.outputRate).toNumber();
+        usedCredits = new BigNumber(numberOfImageGeneration).multipliedBy(price.outputRate).decimalPlaces(2).toNumber();
       } else {
         const input = new BigNumber(promptTokens).multipliedBy(price.inputRate);
         const output = new BigNumber(completionTokens).multipliedBy(price.outputRate);
-        usedCredits = input.plus(output).toNumber();
+        usedCredits = input.plus(output).decimalPlaces(2).toNumber();
       }
     }
 
@@ -257,4 +259,93 @@ async function reportUsageV2({ appId, userDid }: { appId: string; userDid: strin
   );
 
   tasksV2[taskKey]!({ appId, userDid });
+}
+
+export async function createUsageAndCompleteModelCall({
+  req,
+  type,
+  model,
+  modelParams,
+  promptTokens = 0,
+  completionTokens = 0,
+  numberOfImageGeneration = 0,
+  appId,
+  userDid,
+  additionalMetrics = {},
+  metadata = {},
+}: {
+  req: Request;
+  type: CallType;
+  model: string;
+  modelParams?: any;
+  promptTokens?: number;
+  completionTokens?: number;
+  numberOfImageGeneration?: number;
+  appId?: string;
+  userDid: string;
+  additionalMetrics?: Record<string, any>;
+  metadata?: Record<string, any>;
+}): Promise<number | undefined> {
+  try {
+    // Create Usage record using mapped type
+    const credits = await createAndReportUsageV2({
+      // @ts-ignore
+      type,
+      model,
+      modelParams,
+      promptTokens,
+      completionTokens,
+      numberOfImageGeneration,
+      appId,
+      userDid,
+    });
+
+    // Complete ModelCall record
+    if (req.modelCallContext) {
+      await req.modelCallContext.complete({
+        promptTokens,
+        completionTokens,
+        numberOfImageGeneration,
+        credits: credits || 0,
+        usageMetrics: {
+          inputTokens: promptTokens,
+          outputTokens: completionTokens,
+          totalTokens: promptTokens + completionTokens,
+          numberOfImageGeneration,
+          ...additionalMetrics,
+        },
+        metadata,
+      });
+    }
+
+    return credits;
+  } catch (error) {
+    logger.error('Error in createUsageAndCompleteModelCall', { error });
+
+    // Mark ModelCall as failed
+    if (req.modelCallContext) {
+      await req.modelCallContext.fail(error.message || 'Failed to create usage record', {
+        promptTokens,
+        completionTokens,
+        numberOfImageGeneration,
+        usageMetrics: {
+          inputTokens: promptTokens,
+          outputTokens: completionTokens,
+          numberOfImageGeneration,
+          ...additionalMetrics,
+        },
+        metadata,
+      });
+    }
+
+    throw error;
+  }
+}
+
+export function handleModelCallError(req: Request, error: Error): void {
+  if (req.modelCallContext) {
+    req.modelCallContext.fail(error.message || 'Unknown error', {}).catch((err) => {
+      logger.error('Failed to mark model call as failed', { error: err });
+    });
+  }
 }

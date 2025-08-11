@@ -1,4 +1,4 @@
-export type CallStatus = 'success' | 'failed';
+export type CallStatus = 'processing' | 'success' | 'failed';
 export type CallType =
   | 'chatCompletion'
   | 'embedding'
