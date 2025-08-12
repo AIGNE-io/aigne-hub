@@ -195,9 +195,7 @@ export function ModelUsageStats({
                             },
                           },
                         }}>
-                        <Typography
-                          variant="subtitle1"
-                          sx={{ fontWeight: 'medium', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 'medium' }}>
                           {model.model}
                         </Typography>
                       </Tooltip>
@@ -215,7 +213,7 @@ export function ModelUsageStats({
                     sx={{
                       height: { xs: 4, sm: 6 },
                       borderRadius: 3,
-                      backgroundColor: 'rgba(0, 0, 0, 0.08)',
+                      backgroundColor: 'grey.200',
                       '& .MuiLinearProgress-bar': {
                         backgroundColor: color,
                         borderRadius: 3,
@@ -241,6 +239,7 @@ export function ModelUsageStats({
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
+        backgroundColor: 'background.default',
       }}>
       <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>{content}</CardContent>
     </Card>

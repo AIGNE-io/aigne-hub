@@ -108,7 +108,7 @@ function CreditsBalanceSkeleton() {
 function CreditBoard() {
   const { t } = useLocaleContext();
   const [dateRange, setDateRange] = useState({
-    from: dayjs().subtract(7, 'day').startOf('day').unix(),
+    from: dayjs().subtract(6, 'day').startOf('day').unix(),
     to: dayjs().endOf('day').unix(),
   });
   const [refreshKey, setRefreshKey] = useState(0);
@@ -220,8 +220,10 @@ function CreditBoard() {
               ) : (
                 <UsageSummary
                   totalCredits={usageStats?.summary?.totalCredits}
-                  totalTokens={usageStats?.summary?.byType?.chatCompletion?.totalUsage}
-                  totalRequests={usageStats?.summary?.totalCalls}
+                  totalUsage={usageStats?.summary?.byType?.chatCompletion?.totalUsage}
+                  totalCalls={usageStats?.summary?.totalCalls}
+                  trendComparison={usageStats?.trendComparison}
+                  periodDays={Math.ceil((dateRange.to - dateRange.from) / (24 * 60 * 60))}
                 />
               )}
 

@@ -72,19 +72,19 @@ export function CallHistory({
 
   // Local state for search and pagination
   const [searchTerm, setSearchTerm] = useState('');
-  const [searchValue, setSearchValue] = useState(''); // 用于输入框显示的值
+  const [searchValue, setSearchValue] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'success' | 'failed'>('all');
   const [pagination, setPagination] = useState({
     page: 1,
     pageSize: initialPageSize,
   });
 
-  // 同步 searchValue 与搜索状态
   useEffect(() => {
     setSearchValue(searchTerm);
   }, [searchTerm]);
 
   // 防抖搜索
+
   useDebounceEffect(
     () => {
       setSearchTerm(searchValue);
@@ -106,8 +106,8 @@ export function CallHistory({
       query.endTime = dateRange.to.toString();
     }
 
-    if (searchTerm) {
-      query.search = searchTerm;
+    if (searchTerm.trim()) {
+      query.search = searchTerm.trim();
     }
 
     if (statusFilter !== 'all') {

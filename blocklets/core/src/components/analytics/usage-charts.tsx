@@ -335,7 +335,7 @@ export function UsageCharts({
     border: '1px solid',
     borderColor: 'divider',
     height: '100%',
-    backgroundColor: theme.palette.background.paper,
+    backgroundColor: 'background.default',
   };
 
   const chartTitle = title || (showCredits ? t('analytics.dailyCreditsUsage') : t('analytics.dailyUsage'));

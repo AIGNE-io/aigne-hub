@@ -174,7 +174,6 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
       whereClause.userDid = userDid;
     }
 
-    // 优化：使用 timestamp 进行高效的时间范围查询
     if (startTime || endTime) {
       whereClause.callTime = {};
       if (startTime) whereClause.callTime[Op.gte] = Number(startTime);
@@ -199,7 +198,7 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
 
     const { rows, count } = await ModelCall.findAndCountAll({
       where: whereClause,
-      order: [['callTime', 'DESC']], // 使用 timestamp 排序更高效
+      order: [['callTime', 'DESC']],
       limit,
       offset,
       include: [
@@ -235,7 +234,6 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
       whereClause.userDid = userDid;
     }
 
-    // 使用 timestamp 进行高效查询
     if (startTime || endTime) {
       whereClause.callTime = {};
       if (startTime) whereClause.callTime[Op.gte] = Number(startTime);
@@ -255,9 +253,9 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
       if (!statsByType[type]) {
         statsByType[type] = { totalUsage: 0, totalCalls: 0 };
       }
-      statsByType[type].totalUsage += Number(call.totalUsage || 0);
-      statsByType[type].totalCalls += 1;
-      totalCalls += 1;
+      statsByType[type].totalUsage = new BigNumber(statsByType[type].totalUsage).plus(call.totalUsage || 0).toNumber();
+      statsByType[type].totalCalls = new BigNumber(statsByType[type].totalCalls).plus(1).toNumber();
+      totalCalls = new BigNumber(totalCalls).plus(1).toNumber();
     });
 
     return {
@@ -293,7 +291,6 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
       raw: true,
     })) as any;
 
-    // 使用 BigNumber 确保精确计算
     const totalCredits = new BigNumber(result?.totalCredits || '0');
     return totalCredits.toNumber();
   }
@@ -455,19 +452,6 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
     }));
   }
 
-  static generateDateRange(startDate: Date, endDate: Date): string[] {
-    const dates: string[] = [];
-    const current = new Date(startDate);
-
-    while (current <= endDate) {
-      dates.push(current.toISOString().split('T')[0]!);
-      current.setDate(current.getDate() + 1);
-    }
-
-    return dates;
-  }
-
-  // 兜底的原始查询方法
   static async getModelUsageStatsLegacy({
     userDid,
     startTime,
@@ -543,54 +527,76 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
     });
   }
 
-  // 获取时间段对比数据（使用数据库缓存）
-  static async getTimeComparisonStats({
-    userDid,
-    currentStart,
-    currentEnd,
-    previousStart,
-    previousEnd,
-  }: {
-    userDid: string;
-    currentStart: Date;
-    currentEnd: Date;
-    previousStart: Date;
-    previousEnd: Date;
-  }): Promise<{
+  static async getWeeklyComparison(userDid: string): Promise<{
     current: { totalUsage: number; totalCredits: number; totalCalls: number };
     previous: { totalUsage: number; totalCredits: number; totalCalls: number };
     growth: { usageGrowth: number; creditsGrowth: number; callsGrowth: number };
   }> {
-    // 动态导入避免循环依赖
-    const { default: ModelCallStat } = await import('./model-call-stat');
+    const now = new Date();
+    const currentWeekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
+    const currentWeekEnd = new Date(
+      currentWeekStart.getFullYear(),
+      currentWeekStart.getMonth(),
+      currentWeekStart.getDate() + 6
+    );
 
-    // 生成当前和上一时间段的日期范围
-    const currentDates = ModelCall.generateDateRange(currentStart, currentEnd);
-    const previousDates = ModelCall.generateDateRange(previousStart, previousEnd);
+    const previousWeekStart = new Date(
+      currentWeekStart.getFullYear(),
+      currentWeekStart.getMonth(),
+      currentWeekStart.getDate() - 7
+    );
+    const previousWeekEnd = new Date(
+      previousWeekStart.getFullYear(),
+      previousWeekStart.getMonth(),
+      previousWeekStart.getDate() + 6
+    );
 
-    // 并行获取两个时间段的数据
-    const [currentStatsArray, previousStatsArray] = await Promise.all([
-      Promise.all(currentDates.map((date) => ModelCallStat.getDailyStats(userDid, date))),
-      Promise.all(previousDates.map((date) => ModelCallStat.getDailyStats(userDid, date))),
+    const currentStartTimestamp = Math.floor(currentWeekStart.getTime() / 1000);
+    const currentEndTimestamp = Math.floor(currentWeekEnd.getTime() / 1000);
+    const previousStartTimestamp = Math.floor(previousWeekStart.getTime() / 1000);
+    const previousEndTimestamp = Math.floor(previousWeekEnd.getTime() / 1000);
+
+    const [currentStats, previousStats, currentCredits, previousCredits] = await Promise.all([
+      ModelCall.getUsageStatsByDateRange({
+        userDid,
+        startTime: currentStartTimestamp,
+        endTime: currentEndTimestamp,
+      }),
+      ModelCall.getUsageStatsByDateRange({
+        userDid,
+        startTime: previousStartTimestamp,
+        endTime: previousEndTimestamp,
+      }),
+      ModelCall.getTotalCreditsByDateRange({
+        userDid,
+        startTime: currentStartTimestamp,
+        endTime: currentEndTimestamp,
+      }),
+      ModelCall.getTotalCreditsByDateRange({
+        userDid,
+        startTime: previousStartTimestamp,
+        endTime: previousEndTimestamp,
+      }),
     ]);
 
-    // 聚合当前时间段数据
-    const currentTotals = { totalUsage: 0, totalCredits: 0, totalCalls: 0 };
-    currentStatsArray.forEach((dailyStats) => {
-      currentTotals.totalUsage = new BigNumber(currentTotals.totalUsage).plus(dailyStats.totalUsage).toNumber();
-      currentTotals.totalCredits = new BigNumber(currentTotals.totalCredits).plus(dailyStats.totalCredits).toNumber();
-      currentTotals.totalCalls = new BigNumber(currentTotals.totalCalls).plus(dailyStats.totalCalls).toNumber();
-    });
+    const currentTotals = {
+      totalUsage: Object.values(currentStats.byType).reduce(
+        (sum, type) => new BigNumber(sum).plus(type.totalUsage || 0).toNumber(),
+        0
+      ),
+      totalCredits: currentCredits,
+      totalCalls: currentStats.totalCalls,
+    };
 
-    // 聚合上一时间段数据
-    const previousTotals = { totalUsage: 0, totalCredits: 0, totalCalls: 0 };
-    previousStatsArray.forEach((dailyStats) => {
-      previousTotals.totalUsage = new BigNumber(previousTotals.totalUsage).plus(dailyStats.totalUsage).toNumber();
-      previousTotals.totalCredits = new BigNumber(previousTotals.totalCredits).plus(dailyStats.totalCredits).toNumber();
-      previousTotals.totalCalls = new BigNumber(previousTotals.totalCalls).plus(dailyStats.totalCalls).toNumber();
-    });
+    const previousTotals = {
+      totalUsage: Object.values(previousStats.byType).reduce(
+        (sum, type) => new BigNumber(sum).plus(type.totalUsage || 0).toNumber(),
+        0
+      ),
+      totalCredits: previousCredits,
+      totalCalls: previousStats.totalCalls,
+    };
 
-    // 计算增长率
     const growth = {
       usageGrowth:
         previousTotals.totalUsage > 0
@@ -598,21 +604,27 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
               .minus(previousTotals.totalUsage)
               .div(previousTotals.totalUsage)
               .toNumber()
-          : 0,
+          : currentTotals.totalUsage > 0
+            ? 1
+            : 0,
       creditsGrowth:
         previousTotals.totalCredits > 0
           ? new BigNumber(currentTotals.totalCredits)
               .minus(previousTotals.totalCredits)
               .div(previousTotals.totalCredits)
               .toNumber()
-          : 0,
+          : currentTotals.totalCredits > 0
+            ? 1
+            : 0,
       callsGrowth:
         previousTotals.totalCalls > 0
           ? new BigNumber(currentTotals.totalCalls)
               .minus(previousTotals.totalCalls)
               .div(previousTotals.totalCalls)
               .toNumber()
-          : 0,
+          : currentTotals.totalCalls > 0
+            ? 1
+            : 0,
     };
 
     return {
@@ -622,62 +634,99 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
     };
   }
 
-  // 获取本周vs上周对比
-  static async getWeeklyComparison(userDid: string): Promise<{
-    current: { totalUsage: number; totalCredits: number; totalCalls: number };
-    previous: { totalUsage: number; totalCredits: number; totalCalls: number };
-    growth: { usageGrowth: number; creditsGrowth: number; callsGrowth: number };
-  }> {
-    // 统一使用 UTC 时间避免时区问题
-    const now = new Date();
-    const currentWeekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay()); // 本周开始
-    const currentWeekEnd = new Date(
-      currentWeekStart.getFullYear(),
-      currentWeekStart.getMonth(),
-      currentWeekStart.getDate() + 6
-    ); // 本周结束
-
-    const previousWeekStart = new Date(
-      currentWeekStart.getFullYear(),
-      currentWeekStart.getMonth(),
-      currentWeekStart.getDate() - 7
-    ); // 上周开始
-    const previousWeekEnd = new Date(
-      previousWeekStart.getFullYear(),
-      previousWeekStart.getMonth(),
-      previousWeekStart.getDate() + 6
-    ); // 上周结束
-
-    return ModelCall.getTimeComparisonStats({
-      userDid,
-      currentStart: currentWeekStart,
-      currentEnd: currentWeekEnd,
-      previousStart: previousWeekStart,
-      previousEnd: previousWeekEnd,
-    });
-  }
-
-  // 获取本月vs上月对比
   static async getMonthlyComparison(userDid: string): Promise<{
     current: { totalUsage: number; totalCredits: number; totalCalls: number };
     previous: { totalUsage: number; totalCredits: number; totalCalls: number };
     growth: { usageGrowth: number; creditsGrowth: number; callsGrowth: number };
   }> {
-    // 统一使用 UTC 时间避免时区问题
     const now = new Date();
-    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1); // 本月开始
-    const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0); // 本月结束
+    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
-    const previousMonthStart = new Date(currentMonthStart.getFullYear(), currentMonthStart.getMonth() - 1, 1); // 上月开始
-    const previousMonthEnd = new Date(previousMonthStart.getFullYear(), previousMonthStart.getMonth() + 1, 0); // 上月结束
+    const previousMonthStart = new Date(currentMonthStart.getFullYear(), currentMonthStart.getMonth() - 1, 1);
+    const previousMonthEnd = new Date(previousMonthStart.getFullYear(), previousMonthStart.getMonth() + 1, 0);
 
-    return ModelCall.getTimeComparisonStats({
-      userDid,
-      currentStart: currentMonthStart,
-      currentEnd: currentMonthEnd,
-      previousStart: previousMonthStart,
-      previousEnd: previousMonthEnd,
-    });
+    const currentStartTimestamp = Math.floor(currentMonthStart.getTime() / 1000);
+    const currentEndTimestamp = Math.floor(currentMonthEnd.getTime() / 1000);
+    const previousStartTimestamp = Math.floor(previousMonthStart.getTime() / 1000);
+    const previousEndTimestamp = Math.floor(previousMonthEnd.getTime() / 1000);
+
+    const [currentStats, previousStats, currentCredits, previousCredits] = await Promise.all([
+      ModelCall.getUsageStatsByDateRange({
+        userDid,
+        startTime: currentStartTimestamp,
+        endTime: currentEndTimestamp,
+      }),
+      ModelCall.getUsageStatsByDateRange({
+        userDid,
+        startTime: previousStartTimestamp,
+        endTime: previousEndTimestamp,
+      }),
+      ModelCall.getTotalCreditsByDateRange({
+        userDid,
+        startTime: currentStartTimestamp,
+        endTime: currentEndTimestamp,
+      }),
+      ModelCall.getTotalCreditsByDateRange({
+        userDid,
+        startTime: previousStartTimestamp,
+        endTime: previousEndTimestamp,
+      }),
+    ]);
+
+    const currentTotals = {
+      totalUsage: Object.values(currentStats.byType).reduce(
+        (sum, type) => new BigNumber(sum).plus(type.totalUsage || 0).toNumber(),
+        0
+      ),
+      totalCredits: currentCredits,
+      totalCalls: currentStats.totalCalls,
+    };
+
+    const previousTotals = {
+      totalUsage: Object.values(previousStats.byType).reduce(
+        (sum, type) => new BigNumber(sum).plus(type.totalUsage || 0).toNumber(),
+        0
+      ),
+      totalCredits: previousCredits,
+      totalCalls: previousStats.totalCalls,
+    };
+
+    const growth = {
+      usageGrowth:
+        previousTotals.totalUsage > 0
+          ? new BigNumber(currentTotals.totalUsage)
+              .minus(previousTotals.totalUsage)
+              .div(previousTotals.totalUsage)
+              .toNumber()
+          : currentTotals.totalUsage > 0
+            ? 1
+            : 0,
+      creditsGrowth:
+        previousTotals.totalCredits > 0
+          ? new BigNumber(currentTotals.totalCredits)
+              .minus(previousTotals.totalCredits)
+              .div(previousTotals.totalCredits)
+              .toNumber()
+          : currentTotals.totalCredits > 0
+            ? 1
+            : 0,
+      callsGrowth:
+        previousTotals.totalCalls > 0
+          ? new BigNumber(currentTotals.totalCalls)
+              .minus(previousTotals.totalCalls)
+              .div(previousTotals.totalCalls)
+              .toNumber()
+          : currentTotals.totalCalls > 0
+            ? 1
+            : 0,
+    };
+
+    return {
+      current: currentTotals,
+      previous: previousTotals,
+      growth,
+    };
   }
 
   // Association method

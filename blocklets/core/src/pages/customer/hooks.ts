@@ -44,6 +44,11 @@ export interface UsageStats {
     totalCalls: number;
     successRate: number;
   }>;
+  trendComparison?: {
+    current: { totalUsage: number; totalCredits: number; totalCalls: number };
+    previous: { totalUsage: number; totalCredits: number; totalCalls: number };
+    growth: { usageGrowth: number; creditsGrowth: number; callsGrowth: number };
+  } | null;
 }
 
 export interface ModelCall {

@@ -18,7 +18,7 @@ function init() {
         name: 'cleanup.stale.model.calls',
         time: '*/10 * * * *', // 每10分钟执行一次
         fn: async () => {
-          const cleanedCount = await cleanupStaleProcessingCalls(30); // 30分钟超时
+          const cleanedCount = await cleanupStaleProcessingCalls(30);
           if (cleanedCount > 0) {
             logger.info(`Model call cleanup completed, cleaned ${cleanedCount} stale calls`);
           }

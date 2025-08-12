@@ -14,6 +14,7 @@ export interface DateRangePickerProps {
   onQuickSelect?: (range: { start: Dayjs; end: Dayjs }) => void;
   maxDate?: Dayjs;
   minDate?: Dayjs;
+  maxRangeDays?: number;
   sx?: SxProps;
 }
 
@@ -24,12 +25,52 @@ export function DateRangePicker({
   onEndDateChange,
   onQuickSelect = undefined,
   maxDate = dayjs(),
-  minDate = undefined,
+  minDate = dayjs().subtract(3, 'month').startOf('month'), // Default to 3 months ago
+  maxRangeDays = 31,
   sx = {},
 }: DateRangePickerProps) {
   const { t, locale } = useLocaleContext();
   const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
   const [showCustom, setShowCustom] = useState(false);
+
+  const handleStartDateChange = (date: Dayjs | null) => {
+    if (!date) {
+      onStartDateChange(date);
+      return;
+    }
+
+    // Ensure date is not before minDate
+    const adjustedDate = minDate && date.isBefore(minDate, 'day') ? minDate : date;
+
+    const daysDiff = endDate.diff(adjustedDate, 'day') + 1;
+    if (daysDiff > maxRangeDays) {
+      const newEndDate = adjustedDate.add(maxRangeDays - 1, 'day');
+      onStartDateChange(adjustedDate);
+      onEndDateChange(newEndDate);
+    } else {
+      onStartDateChange(adjustedDate);
+    }
+  };
+
+  const handleEndDateChange = (date: Dayjs | null) => {
+    if (!date) {
+      onEndDateChange(date);
+      return;
+    }
+
+    const daysDiff = date.diff(startDate, 'day') + 1;
+    if (daysDiff > maxRangeDays) {
+      let newStartDate = date.subtract(maxRangeDays - 1, 'day');
+      // Ensure newStartDate is not before minDate
+      if (minDate && newStartDate.isBefore(minDate, 'day')) {
+        newStartDate = minDate;
+      }
+      onEndDateChange(date);
+      onStartDateChange(newStartDate);
+    } else {
+      onEndDateChange(date);
+    }
+  };
 
   const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     setAnchorEl(event.currentTarget);
@@ -37,7 +78,7 @@ export function DateRangePicker({
 
   const handleClose = () => {
     setAnchorEl(null);
-    setShowCustom(false); // Reset custom section when closing
+    setShowCustom(false);
   };
 
   const open = Boolean(anchorEl);
@@ -46,22 +87,22 @@ export function DateRangePicker({
     {
       label: t('last7Days'),
       getValue: () => ({
-        start: dayjs().subtract(7, 'day'),
-        end: dayjs(),
+        start: dayjs().subtract(6, 'day').startOf('day'),
+        end: dayjs().endOf('day'),
       }),
     },
     {
       label: t('last30Days'),
       getValue: () => ({
-        start: dayjs().subtract(30, 'day'),
-        end: dayjs(),
+        start: dayjs().subtract(29, 'day').startOf('day'),
+        end: dayjs().endOf('day'),
       }),
     },
     {
       label: t('thisMonth'),
       getValue: () => ({
         start: dayjs().startOf('month'),
-        end: dayjs().endOf('month'),
+        end: dayjs().endOf('day'),
       }),
     },
     {
@@ -92,9 +133,23 @@ export function DateRangePicker({
   };
 
   const handleQuickSelect = (range: { start: Dayjs; end: Dayjs }) => {
-    onStartDateChange(range.start);
-    onEndDateChange(range.end);
-    onQuickSelect?.(range);
+    // Ensure start date is not before minDate
+    let adjustedStart = range.start;
+    if (minDate && adjustedStart.isBefore(minDate, 'day')) {
+      adjustedStart = minDate;
+    }
+
+    const daysDiff = range.end.diff(adjustedStart, 'day') + 1;
+    if (daysDiff > maxRangeDays) {
+      const adjustedEnd = adjustedStart.add(maxRangeDays - 1, 'day');
+      onStartDateChange(adjustedStart);
+      onEndDateChange(adjustedEnd);
+      onQuickSelect?.({ start: adjustedStart, end: adjustedEnd });
+    } else {
+      onStartDateChange(adjustedStart);
+      onEndDateChange(range.end);
+      onQuickSelect?.({ start: adjustedStart, end: range.end });
+    }
     handleClose();
   };
 
@@ -205,7 +260,6 @@ export function DateRangePicker({
 
           <Divider sx={{ mb: 2 }} />
 
-          {/* Custom Range Toggle */}
           <Button
             variant="text"
             startIcon={showCustom ? <ExpandLess /> : <ExpandMore />}
@@ -223,17 +277,16 @@ export function DateRangePicker({
             {t('customRange')}
           </Button>
 
-          {/* Collapsible Custom Date Range */}
           <Collapse in={showCustom}>
             <Box sx={{ pt: 2 }}>
-              <Stack spacing={2}>
+              <Stack sx={{ gap: 3 }}>
                 <Box sx={{ display: 'flex', gap: 2 }}>
                   <Box sx={{ flex: 1 }}>
                     <FormLabel sx={{ mb: 1, color: 'text.secondary' }}>{t('analytics.startDate')}</FormLabel>
                     <DatePicker
                       value={startDate}
-                      onChange={onStartDateChange}
-                      maxDate={endDate}
+                      onChange={handleStartDateChange}
+                      maxDate={maxDate}
                       minDate={minDate}
                       slotProps={{
                         textField: {
@@ -253,7 +306,7 @@ export function DateRangePicker({
                     <FormLabel sx={{ mb: 1, color: 'text.secondary' }}>{t('analytics.endDate')}</FormLabel>
                     <DatePicker
                       value={endDate}
-                      onChange={onEndDateChange}
+                      onChange={handleEndDateChange}
                       minDate={startDate}
                       maxDate={maxDate}
                       slotProps={{
@@ -270,6 +323,16 @@ export function DateRangePicker({
                     />
                   </Box>
                 </Box>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: 'text.secondary',
+                    fontStyle: 'italic',
+                    textAlign: 'center',
+                    fontSize: '0.75rem',
+                  }}>
+                  {t('dataAvailableFrom')}
+                </Typography>
               </Stack>
             </Box>
           </Collapse>

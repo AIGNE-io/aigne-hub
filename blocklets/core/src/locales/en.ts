@@ -388,7 +388,7 @@ export default flatten({
     ofTotalUsage: 'of total calls',
     callHistory: 'Call History',
     callHistoryDescription: 'Detailed log of all model API calls',
-    searchPlaceholder: 'Search by model or provider...',
+    searchPlaceholder: 'Search by model...',
     allStatus: 'All Status',
     timestamp: 'Timestamp',
     noCallsFound: 'No calls found matching your criteria',
@@ -398,8 +398,13 @@ export default flatten({
     dailyUsageEmpty: 'No usage records',
     refresh: 'Refresh Usage',
     refreshSuccess: 'Refresh successful',
+    fromPreviousDay: 'from previous day',
+    fromPreviousWeek: 'from previous week',
+    fromPreviousMonth: 'from previous month',
+    fromPreviousPeriod: 'from previous period',
   },
 
   quickSelect: 'Quick Select',
   customRange: 'Custom Range',
+  dataAvailableFrom: 'Data available from 3 months ago',
 });

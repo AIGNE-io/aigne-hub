@@ -383,7 +383,7 @@ export default flatten({
     ofTotalUsage: '占总请求数',
     callHistory: '调用历史',
     callHistoryDescription: '所有模型API调用的详细记录',
-    searchPlaceholder: '按模型、提供商搜索...',
+    searchPlaceholder: '按模型搜索...',
     allStatus: '所有状态',
     timestamp: '时间戳',
     noCallsFound: '未找到符合条件的调用记录',
@@ -393,8 +393,13 @@ export default flatten({
     dailyUsageEmpty: '当前时间段内没有使用记录',
     refresh: '刷新数据',
     refreshSuccess: '刷新成功',
+    fromPreviousDay: '与前一天相比',
+    fromPreviousWeek: '与上周相比',
+    fromPreviousMonth: '与上月相比',
+    fromPreviousPeriod: '与上一周期相比',
   },
 
   quickSelect: '快速选择',
   customRange: '自定义范围',
+  dataAvailableFrom: '数据可查询近3个月',
 });

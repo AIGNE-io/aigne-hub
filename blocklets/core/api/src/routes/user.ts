@@ -1,20 +1,23 @@
 import { blocklet, getConnectQueryParam } from '@api/libs/auth';
 import { Config } from '@api/libs/env';
+import logger from '@api/libs/logger';
 import {
   ensureMeter,
   getCreditGrants,
   getCreditPaymentLink,
   getCreditTransactions,
+  getCreditUsageLink,
   getUserCredits,
-  getUserProfileLink,
   isPaymentRunning,
 } from '@api/libs/payment';
 import ModelCall from '@api/store/models/model-call';
+import ModelCallStat from '@api/store/models/model-call-stat';
 import { proxyToAIKit } from '@blocklet/aigne-hub/api/call';
 import { CustomError } from '@blocklet/error';
 import config from '@blocklet/sdk/lib/config';
 import sessionMiddleware from '@blocklet/sdk/lib/middlewares/session';
 import { fromUnitToToken } from '@ocap/util';
+import BigNumber from 'bignumber.js';
 import { Router } from 'express';
 import Joi from 'joi';
 import { pick } from 'lodash';
@@ -23,6 +26,236 @@ import { joinURL, withQuery } from 'ufo';
 const router = Router();
 
 const user = sessionMiddleware({ accessKey: true });
+
+interface TrendComparisonResult {
+  current: { totalUsage: number; totalCredits: number; totalCalls: number };
+  previous: { totalUsage: number; totalCredits: number; totalCalls: number };
+  growth: { usageGrowth: number; creditsGrowth: number; callsGrowth: number };
+}
+
+// Helper function to generate date strings from timestamp range
+function generateDateRangeFromTimestamps(startTime: number, endTime: number): string[] {
+  const dates: string[] = [];
+  const startDate = new Date(startTime * 1000);
+  const endDate = new Date(endTime * 1000);
+
+  // Use local date methods to avoid timezone conversion issues
+  const startYear = startDate.getFullYear();
+  const startMonth = startDate.getMonth();
+  const startDay = startDate.getDate();
+
+  const endYear = endDate.getFullYear();
+  const endMonth = endDate.getMonth();
+  const endDay = endDate.getDate();
+
+  // Create date objects for comparison using local date
+  const currentDate = new Date(startYear, startMonth, startDay);
+  const endDateLocal = new Date(endYear, endMonth, endDay);
+
+  while (currentDate <= endDateLocal) {
+    // Format date as YYYY-MM-DD without timezone conversion
+    const year = currentDate.getFullYear();
+    const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+    const day = String(currentDate.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+
+    dates.push(dateStr);
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+
+  return dates;
+}
+
+// Optimized trend comparison using ModelCallStat
+async function getTrendComparisonOptimized(
+  userDid: string,
+  startTime: number,
+  endTime: number
+): Promise<TrendComparisonResult | null> {
+  const periodDuration = endTime - startTime;
+  const previousEnd = startTime - 1;
+  const previousStart = previousEnd - periodDuration;
+
+  // Generate date ranges using improved method
+  const currentDates = generateDateRangeFromTimestamps(startTime, endTime);
+  const previousDates = generateDateRangeFromTimestamps(previousStart, previousEnd);
+
+  try {
+    // Get daily stats using ModelCallStat (cached/precomputed)
+    const [currentDailyStats, previousDailyStats] = await Promise.all([
+      Promise.all(currentDates.map((date: string) => ModelCallStat.getDailyStats(userDid, date))),
+      Promise.all(previousDates.map((date: string) => ModelCallStat.getDailyStats(userDid, date))),
+    ]);
+
+    // Aggregate current period stats
+    const currentTotals = {
+      totalUsage: 0,
+      totalCredits: 0,
+      totalCalls: 0,
+      byType: {} as { [key: string]: { totalUsage: number; totalCalls: number } },
+    };
+
+    currentDailyStats.forEach((dayStats: any) => {
+      currentTotals.totalUsage = new BigNumber(currentTotals.totalUsage).plus(dayStats.totalUsage).toNumber();
+      currentTotals.totalCredits = new BigNumber(currentTotals.totalCredits).plus(dayStats.totalCredits).toNumber();
+      currentTotals.totalCalls = new BigNumber(currentTotals.totalCalls).plus(dayStats.totalCalls).toNumber();
+
+      Object.entries(dayStats.byType).forEach(([type, typeStats]: [string, any]) => {
+        if (!currentTotals.byType[type]) {
+          currentTotals.byType[type] = { totalUsage: 0, totalCalls: 0 };
+        }
+        currentTotals.byType[type].totalUsage = new BigNumber(currentTotals.byType[type].totalUsage)
+          .plus(typeStats.totalUsage)
+          .toNumber();
+        currentTotals.byType[type].totalCalls = new BigNumber(currentTotals.byType[type].totalCalls)
+          .plus(typeStats.totalCalls)
+          .toNumber();
+      });
+    });
+
+    // Aggregate previous period stats
+    const previousTotals = {
+      totalUsage: 0,
+      totalCredits: 0,
+      totalCalls: 0,
+      byType: {} as { [key: string]: { totalUsage: number; totalCalls: number } },
+    };
+
+    previousDailyStats.forEach((dayStats: any) => {
+      previousTotals.totalUsage = new BigNumber(previousTotals.totalUsage).plus(dayStats.totalUsage).toNumber();
+      previousTotals.totalCredits = new BigNumber(previousTotals.totalCredits).plus(dayStats.totalCredits).toNumber();
+      previousTotals.totalCalls = new BigNumber(previousTotals.totalCalls).plus(dayStats.totalCalls).toNumber();
+
+      Object.entries(dayStats.byType).forEach(([type, typeStats]: [string, any]) => {
+        if (!previousTotals.byType[type]) {
+          previousTotals.byType[type] = { totalUsage: 0, totalCalls: 0 };
+        }
+        previousTotals.byType[type].totalUsage = new BigNumber(previousTotals.byType[type].totalUsage)
+          .plus(typeStats.totalUsage)
+          .toNumber();
+        previousTotals.byType[type].totalCalls = new BigNumber(previousTotals.byType[type].totalCalls)
+          .plus(typeStats.totalCalls)
+          .toNumber();
+      });
+    });
+
+    // Calculate growth rates
+    const growth = {
+      usageGrowth:
+        previousTotals.totalUsage > 0
+          ? new BigNumber(currentTotals.totalUsage)
+              .minus(previousTotals.totalUsage)
+              .div(previousTotals.totalUsage)
+              .toNumber()
+          : currentTotals.totalUsage > 0
+            ? 1
+            : 0,
+      creditsGrowth:
+        previousTotals.totalCredits > 0
+          ? new BigNumber(currentTotals.totalCredits)
+              .minus(previousTotals.totalCredits)
+              .div(previousTotals.totalCredits)
+              .toNumber()
+          : currentTotals.totalCredits > 0
+            ? 1
+            : 0,
+      callsGrowth:
+        previousTotals.totalCalls > 0
+          ? new BigNumber(currentTotals.totalCalls)
+              .minus(previousTotals.totalCalls)
+              .div(previousTotals.totalCalls)
+              .toNumber()
+          : currentTotals.totalCalls > 0
+            ? 1
+            : 0,
+    };
+
+    return {
+      current: currentTotals,
+      previous: previousTotals,
+      growth,
+    };
+  } catch (error) {
+    logger.error('Failed to calculate optimized trend comparison:', error);
+    return null;
+  }
+}
+
+// Optimized usage stats using ModelCallStat
+async function getUsageStatsOptimized(userDid: string, startTime?: number, endTime?: number) {
+  if (!startTime || !endTime) {
+    // Fall back to ModelCall for incomplete date ranges
+    return {
+      usageStats: await ModelCall.getUsageStatsByDateRange({ userDid, startTime, endTime }),
+      totalCredits: await ModelCall.getTotalCreditsByDateRange({ userDid, startTime, endTime }),
+      dailyStats: await ModelCall.getDailyUsageStats({ userDid, startTime, endTime }),
+    };
+  }
+
+  // Generate date range using improved method
+  const dates = generateDateRangeFromTimestamps(startTime, endTime);
+
+  try {
+    // Get daily stats using ModelCallStat (cached/precomputed)
+    const dailyStatsRaw = await Promise.all(dates.map((date: string) => ModelCallStat.getDailyStats(userDid, date)));
+
+    // Aggregate usage stats
+    const usageStats = {
+      byType: {} as { [key: string]: { totalUsage: number; totalCalls: number } },
+      totalCalls: 0,
+    };
+
+    let totalCredits = 0;
+    const dailyStats: Array<{
+      date: string;
+      byType: { [key: string]: { totalUsage: number; totalCalls: number } };
+      totalCredits: number;
+      totalCalls: number;
+    }> = [];
+
+    dailyStatsRaw.forEach((dayStats: any, index: number) => {
+      const date = dates[index]!;
+
+      // Aggregate for usageStats
+      usageStats.totalCalls = new BigNumber(usageStats.totalCalls).plus(dayStats.totalCalls).toNumber();
+      totalCredits = new BigNumber(totalCredits).plus(dayStats.totalCredits).toNumber();
+
+      Object.entries(dayStats.byType).forEach(([type, typeStats]: [string, any]) => {
+        if (!usageStats.byType[type]) {
+          usageStats.byType[type] = { totalUsage: 0, totalCalls: 0 };
+        }
+        usageStats.byType[type].totalUsage = new BigNumber(usageStats.byType[type].totalUsage)
+          .plus(typeStats.totalUsage)
+          .toNumber();
+        usageStats.byType[type].totalCalls = new BigNumber(usageStats.byType[type].totalCalls)
+          .plus(typeStats.totalCalls)
+          .toNumber();
+      });
+
+      // Build dailyStats
+      dailyStats.push({
+        date,
+        byType: dayStats.byType,
+        totalCredits: dayStats.totalCredits,
+        totalCalls: dayStats.totalCalls,
+      });
+    });
+
+    return {
+      usageStats,
+      totalCredits,
+      dailyStats,
+    };
+  } catch (error) {
+    console.warn('Failed to get optimized usage stats, falling back to ModelCall:', error);
+    // Fall back to ModelCall on error
+    return {
+      usageStats: await ModelCall.getUsageStatsByDateRange({ userDid, startTime, endTime }),
+      totalCredits: await ModelCall.getTotalCreditsByDateRange({ userDid, startTime, endTime }),
+      dailyStats: await ModelCall.getDailyUsageStats({ userDid, startTime, endTime }),
+    };
+  }
+}
 
 export interface UsageCreditsQuery {
   startTime: string;
@@ -221,7 +454,7 @@ router.get('/info', user, async (req, res) => {
       }),
       currency: meter.paymentCurrency,
       enableCredit: true,
-      profileLink: getUserProfileLink(req.user?.did),
+      profileLink: getCreditUsageLink(req.user?.did),
     });
   }
   return res.json({
@@ -229,7 +462,7 @@ router.get('/info', user, async (req, res) => {
     creditBalance: null,
     paymentLink: null,
     enableCredit: false,
-    profileLink: getUserProfileLink(req.user?.did),
+    profileLink: getCreditUsageLink(req.user?.did),
   });
 });
 
@@ -352,29 +585,25 @@ router.get('/usage-stats', user, async (req, res) => {
       return res.status(401).json({ error: 'User not authenticated' });
     }
 
-    const [usageStats, totalCredits, dailyStats, modelStats] = await Promise.all([
-      ModelCall.getUsageStatsByDateRange({
-        userDid,
-        startTime: startTime ? Number(startTime) : undefined,
-        endTime: endTime ? Number(endTime) : undefined,
-      }),
-      ModelCall.getTotalCreditsByDateRange({
-        userDid,
-        startTime: startTime ? Number(startTime) : undefined,
-        endTime: endTime ? Number(endTime) : undefined,
-      }),
-      ModelCall.getDailyUsageStats({
-        userDid,
-        startTime: startTime ? Number(startTime) : undefined,
-        endTime: endTime ? Number(endTime) : undefined,
-      }),
-      ModelCall.getModelUsageStats({
-        userDid,
-        startTime: startTime ? Number(startTime) : undefined,
-        endTime: endTime ? Number(endTime) : undefined,
-        limit: 5,
-      }),
-    ]);
+    const startTimeNum = startTime ? Number(startTime) : undefined;
+    const endTimeNum = endTime ? Number(endTime) : undefined;
+
+    // Use optimized version when we have complete date range
+    const { usageStats, totalCredits, dailyStats } = await getUsageStatsOptimized(userDid, startTimeNum, endTimeNum);
+
+    // Get model stats separately (still using ModelCall as it needs complex joins)
+    const modelStats = await ModelCall.getModelUsageStats({
+      userDid,
+      startTime: startTimeNum,
+      endTime: endTimeNum,
+      limit: 5,
+    });
+
+    // Calculate trend comparison if we have both start and end times
+    let trendComparison = null;
+    if (startTimeNum && endTimeNum) {
+      trendComparison = await getTrendComparisonOptimized(userDid, startTimeNum, endTimeNum);
+    }
 
     return res.json({
       summary: {
@@ -384,6 +613,7 @@ router.get('/usage-stats', user, async (req, res) => {
       },
       dailyStats,
       modelStats,
+      trendComparison,
     });
   } catch (error) {
     return res.status(500).json({ message: error.message });

@@ -11,7 +11,7 @@ import {
 } from 'sequelize';
 import { Worker } from 'snowflake-uuid';
 
-import { getCurrentUnixTimestamp, getDateUnixTimestamp, getTodayString } from '../../libs/timestamp';
+import { getDateUnixTimestamp, getTodayString } from '../../libs/timestamp';
 import { sequelize } from '../sequelize';
 import { DailyStats } from './types';
 import { generateCacheKey } from './utils';
@@ -65,21 +65,24 @@ export default class ModelCallStat extends Model<
   };
 
   static async getDailyStats(userDid: string, date: string): Promise<DailyStats> {
-    // 使用 Unix 时间戳，简单高效
     const today = getTodayString();
 
     if (date === today) {
       return ModelCallStat.computeDailyStats(userDid, date);
     }
 
-    // Convert date string to Unix timestamp (start of day UTC)
-    const dateTimestamp = getDateUnixTimestamp(date);
+    // Convert date string to Unix timestamp range (start and end of day UTC)
+    const startOfDay = getDateUnixTimestamp(date);
+    const endOfDay = startOfDay + 24 * 60 * 60 - 2; // 23:59:59 of the same day
 
-    // 1. try to get existing stats
+    // 1. try to get existing stats within the day range
     const existingStat = await ModelCallStat.findOne({
       where: {
         userDid,
-        timestamp: dateTimestamp,
+        timestamp: {
+          [Op.gte]: startOfDay,
+          [Op.lte]: endOfDay,
+        },
       },
     });
 
@@ -90,11 +93,11 @@ export default class ModelCallStat extends Model<
     // 2. compute and save if not found
     const stats = await ModelCallStat.computeDailyStats(userDid, date);
 
-    // 3. create stat record
+    // 3. create stat record with start of day timestamp for consistency
     await ModelCallStat.create({
       id: generateCacheKey(userDid, date),
       userDid,
-      timestamp: dateTimestamp,
+      timestamp: startOfDay,
       stats,
     });
 
@@ -105,7 +108,6 @@ export default class ModelCallStat extends Model<
     const startOfDay = Math.floor(new Date(`${date}T00:00:00.000Z`).getTime() / 1000);
     const endOfDay = Math.floor(new Date(`${date}T23:59:59.999Z`).getTime() / 1000);
 
-    // 查询总计数据
     const totalQuery = `
       SELECT 
         SUM("totalUsage") as "totalUsage",
@@ -118,7 +120,6 @@ export default class ModelCallStat extends Model<
         AND "callTime" <= :endOfDay
     `;
 
-    // 查询按类型分组的数据
     const typeQuery = `
       SELECT 
         "type",
@@ -147,10 +148,8 @@ export default class ModelCallStat extends Model<
 
     const totalResult = totalResults[0] || {};
 
-    // 使用 BigNumber 进行精确计算
     const totalCredits = new BigNumber(totalResult.totalCredits || '0');
 
-    // 构建按类型的统计数据
     const byType: DailyStats['byType'] = {};
     typeResults.forEach((result: any) => {
       const type = result.type as keyof DailyStats['byType'];
@@ -175,41 +174,45 @@ export default class ModelCallStat extends Model<
   }
 
   static async invalidateStats(userDid: string, date: string): Promise<void> {
-    const dateTimestamp = getDateUnixTimestamp(date);
+    const startOfDay = getDateUnixTimestamp(date);
+    const endOfDay = startOfDay + 24 * 60 * 60 - 1; // 23:59:59 of the same day
+
     await ModelCallStat.destroy({
       where: {
         userDid,
-        timestamp: dateTimestamp,
+        timestamp: {
+          [Op.gte]: startOfDay,
+          [Op.lte]: endOfDay,
+        },
       },
     });
-  }
-
-  static async invalidateTodayStats(userDid: string): Promise<void> {
-    const today = getTodayString();
-    await ModelCallStat.invalidateStats(userDid, today);
   }
 
   private static createPrecomputeTasks(userDid: string, dates: string[]) {
     return dates.map((date) => async () => {
       try {
-        const dateTimestamp = getDateUnixTimestamp(date);
+        const startOfDay = getDateUnixTimestamp(date);
+        const endOfDay = startOfDay + 24 * 60 * 60 - 1;
 
-        // 检查是否已存在统计数据
         const existingStat = await ModelCallStat.findOne({
-          where: { userDid, timestamp: dateTimestamp },
+          where: {
+            userDid,
+            timestamp: {
+              [Op.gte]: startOfDay,
+              [Op.lte]: endOfDay,
+            },
+          },
         });
 
         const stats = await ModelCallStat.computeDailyStats(userDid, date);
 
         if (existingStat) {
-          // 更新现有统计
           await existingStat.update({ stats });
         } else {
-          // 创建新统计
           await ModelCallStat.create({
             id: generateCacheKey(userDid, date),
             userDid,
-            timestamp: dateTimestamp,
+            timestamp: startOfDay,
             stats,
           });
         }
@@ -231,73 +234,6 @@ export default class ModelCallStat extends Model<
 
     const tasks = ModelCallStat.createPrecomputeTasks(userDid, dates);
     await pAll(tasks, { concurrency: 3 });
-  }
-
-  static async precomputeForQuery(userDid: string, startTime: Date, endTime: Date): Promise<void> {
-    const dates = ModelCallStat.generateDateRange(startTime, endTime);
-    const tasks = ModelCallStat.createPrecomputeTasks(userDid, dates);
-    await pAll(tasks, { concurrency: 3 });
-  }
-
-  static async scheduledPrecompute(): Promise<void> {
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split('T')[0]!;
-    const yesterdayTimestamp = getDateUnixTimestamp(yesterdayStr);
-
-    const activeUsers = (await sequelize.query(
-      `
-      SELECT DISTINCT "userDid" 
-      FROM "ModelCalls" 
-      WHERE "callTime" >= :sevenDaysAgo
-    `,
-      {
-        type: QueryTypes.SELECT,
-        replacements: {
-          sevenDaysAgo: getCurrentUnixTimestamp() - 7 * 24 * 60 * 60,
-        },
-      }
-    )) as any[];
-
-    const tasks = activeUsers.map((user) => async () => {
-      try {
-        const stats = await ModelCallStat.computeDailyStats(user.userDid, yesterdayStr);
-        await ModelCallStat.create({
-          id: generateCacheKey(user.userDid, yesterdayStr),
-          userDid: user.userDid,
-          timestamp: yesterdayTimestamp,
-          stats,
-        });
-      } catch (error) {
-        console.warn(`Failed to precompute yesterday stats for ${user.userDid}`, error);
-      }
-    });
-
-    await pAll(tasks, { concurrency: 5 });
-  }
-
-  static generateDateRange(startDate: Date, endDate: Date): string[] {
-    const dates: string[] = [];
-    const current = new Date(startDate);
-
-    while (current <= endDate) {
-      dates.push(current.toISOString().split('T')[0]!);
-      current.setDate(current.getDate() + 1);
-    }
-
-    return dates;
-  }
-
-  static async cleanupOldStats(daysToKeep = 90): Promise<void> {
-    const cutoffTimestamp = getCurrentUnixTimestamp() - daysToKeep * 24 * 60 * 60;
-
-    await ModelCallStat.destroy({
-      where: {
-        timestamp: {
-          [Op.lt]: cutoffTimestamp,
-        },
-      },
-    });
   }
 }
 

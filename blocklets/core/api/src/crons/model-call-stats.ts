@@ -14,20 +14,30 @@ export async function getDatesToWarmup(): Promise<string[]> {
   });
 
   const dayInSeconds = 60 * 60 * 24;
-  const now = dayjs().unix() - dayInSeconds;
+  const now = dayjs().unix();
+  const yesterday = now - dayInSeconds;
+
   if (item) {
     const dates: string[] = [];
     let current = item.timestamp + dayInSeconds;
 
-    while (current < now) {
+    // Include all missing dates up to yesterday
+    while (current <= yesterday) {
       dates.push(dayjs(current * 1000).format('YYYY-MM-DD'));
       current += dayInSeconds;
+    }
+
+    // Always include yesterday to ensure it's updated with final data
+    const yesterdayStr = dayjs(yesterday * 1000).format('YYYY-MM-DD');
+    if (!dates.includes(yesterdayStr)) {
+      dates.push(yesterdayStr);
     }
 
     return dates;
   }
 
-  return [dayjs(now * 1000).format('YYYY-MM-DD')];
+  // If no existing stats, start with yesterday
+  return [dayjs(yesterday * 1000).format('YYYY-MM-DD')];
 }
 
 // 创建指定日期的缓存
@@ -63,30 +73,4 @@ export async function createModelCallStats(date?: string) {
       );
     })
   );
-}
-
-export async function scheduledModelCallStatsWarmup() {
-  try {
-    logger.info('Starting scheduled warmup at:', new Date().toISOString());
-
-    await createModelCallStats();
-
-    logger.info('Scheduled warmup completed successfully');
-  } catch (error) {
-    logger.error('Scheduled warmup failed:', error);
-    throw error;
-  }
-}
-
-export async function manualModelCallStatsWarmup(date: string) {
-  try {
-    logger.info('Starting manual warmup for date:', date);
-
-    await createModelCallStats(date);
-
-    logger.info('Manual warmup completed successfully');
-  } catch (error) {
-    logger.error('Manual warmup failed:', error);
-    throw error;
-  }
 }
