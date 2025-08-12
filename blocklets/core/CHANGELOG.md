@@ -1,3 +1,19 @@
+## 0.3.10 (2025-8-9)
+
+- chore: bump deps to latest
+
+## 0.3.9 (2025-8-9)
+
+- chore: bump deps to latest
+
+## 0.3.8 (2025-8-8)
+
+- chore: bump deps to latest
+
+## 0.3.7 (2025-8-7)
+
+- fix: ensure assistant role handled correctly in convertToFrameworkMessages
+
 ## 0.3.6 (2025-8-6)
 
 - fix: remove Gemini model from supported model list and config
@@ -74,7 +90,7 @@
 - chore: update dependencies
 - feat(core): add pricing links menu and improve model cost input UI
 - feat(core): add lock mechanism and prevent duplicate credit grant processing
-- feat(api): add CustomError handling 
+- feat(api): add CustomError handling
 - fix(core): improve credit payment link handling and fix getter/setter grouping
 - chore: update logo
 

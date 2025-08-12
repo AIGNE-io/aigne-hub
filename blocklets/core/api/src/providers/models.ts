@@ -65,7 +65,7 @@ function convertToFrameworkMessages(
         return {
           role: 'agent' as const,
           content: message.content,
-          toolCalls: (message.toolCalls || [])?.map((call) => ({
+          toolCalls: message.toolCalls?.map((call) => ({
             id: call.id,
             type: 'function' as const,
             function: {

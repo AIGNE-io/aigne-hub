@@ -4,4 +4,4 @@ declare global {
 }
 
 declare module '@arcblock/ux/*';
-declare module '@arcblock/did-connect/*';
+declare module '@arcblock/did-connect-react/*';
