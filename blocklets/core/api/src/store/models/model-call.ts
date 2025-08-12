@@ -10,8 +10,9 @@ import {
 } from 'sequelize';
 import { Worker } from 'snowflake-uuid';
 
-import { getCurrentUnixTimestamp, toUnixTimestamp } from '../../libs/timestamp';
+import { getCurrentUnixTimestamp } from '../../libs/timestamp';
 import { sequelize } from '../sequelize';
+import AiProvider from './ai-provider';
 import { CallStatus, CallType, UsageMetrics } from './types';
 
 const idGenerator = new Worker();
@@ -155,15 +156,18 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
     providerId,
   }: {
     userDid?: string;
-    startTime?: Date;
-    endTime?: Date;
+    startTime?: number;
+    endTime?: number;
     limit?: number;
     offset?: number;
     search?: string;
     status?: 'success' | 'failed' | 'all';
     model?: string;
     providerId?: string;
-  }): Promise<ModelCall[]> {
+  }): Promise<{
+    count: number;
+    list: (ModelCall & { provider?: AiProvider })[];
+  }> {
     const whereClause: any = {};
 
     if (userDid) {
@@ -173,8 +177,8 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
     // 优化：使用 timestamp 进行高效的时间范围查询
     if (startTime || endTime) {
       whereClause.callTime = {};
-      if (startTime) whereClause.callTime[Op.gte] = toUnixTimestamp(startTime);
-      if (endTime) whereClause.callTime[Op.lte] = toUnixTimestamp(endTime);
+      if (startTime) whereClause.callTime[Op.gte] = Number(startTime);
+      if (endTime) whereClause.callTime[Op.lte] = Number(endTime);
     }
 
     if (status && status !== 'all') {
@@ -193,12 +197,24 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
       whereClause[Op.or] = [{ model: { [Op.like]: `%${search}%` } }];
     }
 
-    return ModelCall.findAll({
+    const { rows, count } = await ModelCall.findAndCountAll({
       where: whereClause,
       order: [['callTime', 'DESC']], // 使用 timestamp 排序更高效
       limit,
       offset,
+      include: [
+        {
+          model: AiProvider,
+          as: 'provider',
+          attributes: ['id', 'name', 'displayName', 'baseUrl', 'region', 'enabled'],
+          required: false,
+        },
+      ],
     });
+    return {
+      count,
+      list: rows,
+    };
   }
 
   static async getUsageStatsByDateRange({
@@ -207,8 +223,8 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
     endTime,
   }: {
     userDid?: string;
-    startTime?: Date;
-    endTime?: Date;
+    startTime?: number;
+    endTime?: number;
   }): Promise<{
     byType: { [key: string]: { totalUsage: number; totalCalls: number } };
     totalCalls: number;
@@ -222,8 +238,8 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
     // 使用 timestamp 进行高效查询
     if (startTime || endTime) {
       whereClause.callTime = {};
-      if (startTime) whereClause.callTime[Op.gte] = toUnixTimestamp(startTime);
-      if (endTime) whereClause.callTime[Op.lte] = toUnixTimestamp(endTime);
+      if (startTime) whereClause.callTime[Op.gte] = Number(startTime);
+      if (endTime) whereClause.callTime[Op.lte] = Number(endTime);
     }
 
     const calls = await ModelCall.findAll({
@@ -256,8 +272,8 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
     endTime,
   }: {
     userDid?: string;
-    startTime?: Date;
-    endTime?: Date;
+    startTime?: number;
+    endTime?: number;
   }): Promise<number> {
     const whereClause: any = {};
 
@@ -267,8 +283,8 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
 
     if (startTime || endTime) {
       whereClause.callTime = {};
-      if (startTime) whereClause.callTime[Op.gte] = toUnixTimestamp(startTime);
-      if (endTime) whereClause.callTime[Op.lte] = toUnixTimestamp(endTime);
+      if (startTime) whereClause.callTime[Op.gte] = Number(startTime);
+      if (endTime) whereClause.callTime[Op.lte] = Number(endTime);
     }
 
     const result = (await ModelCall.findOne({
@@ -288,8 +304,8 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
     endTime,
   }: {
     userDid?: string;
-    startTime?: Date;
-    endTime?: Date;
+    startTime?: number;
+    endTime?: number;
   }): Promise<
     Array<{
       date: string;
@@ -306,8 +322,8 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
 
     if (startTime || endTime) {
       whereClause.callTime = {};
-      if (startTime) whereClause.callTime[Op.gte] = toUnixTimestamp(startTime);
-      if (endTime) whereClause.callTime[Op.lte] = toUnixTimestamp(endTime);
+      if (startTime) whereClause.callTime[Op.gte] = Number(startTime);
+      if (endTime) whereClause.callTime[Op.lte] = Number(endTime);
     }
 
     const calls = await ModelCall.findAll({
@@ -328,6 +344,7 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
           byType: {},
           totalCredits: 0,
           totalCalls: 0,
+          totalUsage: 0,
         });
       }
 
@@ -336,10 +353,13 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
         dayStats.byType[type] = { totalUsage: 0, totalCalls: 0 };
       }
 
-      dayStats.byType[type].totalUsage += Number(call.totalUsage || 0);
-      dayStats.byType[type].totalCalls += 1;
-      dayStats.totalCredits += Number(call.credits || 0);
-      dayStats.totalCalls += 1;
+      dayStats.byType[type].totalUsage = new BigNumber(dayStats.byType[type].totalUsage)
+        .plus(call.totalUsage || 0)
+        .toNumber();
+      dayStats.byType[type].totalCalls = new BigNumber(dayStats.byType[type].totalCalls).plus(1).toNumber();
+      dayStats.totalCredits = new BigNumber(dayStats.totalCredits).plus(call.credits || 0).toNumber();
+      dayStats.totalCalls = new BigNumber(dayStats.totalCalls).plus(1).toNumber();
+      dayStats.totalUsage = new BigNumber(dayStats.totalUsage).plus(call.totalUsage || 0).toNumber();
     });
 
     return Array.from(dailyStats.values()).sort((a, b) => a.date.localeCompare(b.date));
@@ -352,12 +372,17 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
     limit = 10,
   }: {
     userDid?: string;
-    startTime?: Date;
-    endTime?: Date;
+    startTime?: number;
+    endTime?: number;
     limit?: number;
   }): Promise<
     Array<{
       providerId: string;
+      provider: {
+        id: string;
+        name: string;
+        displayName: string;
+      };
       model: string;
       type: CallType;
       totalUsage: number;
@@ -374,32 +399,34 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
       replacements.userDid = userDid;
     }
 
-    // 优化：使用 timestamp 进行高效的时间范围查询
     if (startTime) {
       whereConditions.push('"callTime" >= :startTime');
-      replacements.startTime = toUnixTimestamp(startTime);
+      replacements.startTime = Number(startTime);
     }
 
     if (endTime) {
       whereConditions.push('"callTime" <= :endTime');
-      replacements.endTime = toUnixTimestamp(endTime);
+      replacements.endTime = Number(endTime);
     }
 
     const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
 
     const query = `
       SELECT 
-        "providerId",
-        "model",
-        "type",
-        SUM("totalUsage") as "totalUsage",
-        SUM("credits") as "totalCredits",
+        mc."providerId",
+        mc."model",
+        mc."type",
+        ap."name" as "providerName",
+        ap."displayName" as "providerDisplayName",
+        SUM(mc."totalUsage") as "totalUsage",
+        SUM(mc."credits") as "totalCredits",
         COUNT(*) as "totalCalls",
-        SUM(CASE WHEN "status" = 'success' THEN 1 ELSE 0 END) as "successCalls"
-      FROM "ModelCalls"
-      ${whereClause}
-      GROUP BY "providerId", "model", "type"
-      ORDER BY SUM("totalUsage") DESC
+        SUM(CASE WHEN mc."status" = 'success' THEN 1 ELSE 0 END) as "successCalls"
+      FROM "ModelCalls" mc
+      LEFT JOIN "AiProviders" ap ON mc."providerId" = ap."id"
+      ${whereClause.replace(/"(\w+)"/g, 'mc."$1"')}
+      GROUP BY mc."providerId", mc."model", mc."type", ap."name", ap."displayName"
+      ORDER BY SUM(mc."totalUsage") DESC
       LIMIT :limit
     `;
 
@@ -410,6 +437,11 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
 
     return results.map((result: any) => ({
       providerId: result.providerId,
+      provider: {
+        id: result.providerId,
+        name: result.providerName,
+        displayName: result.providerDisplayName,
+      },
       model: result.model,
       type: result.type as CallType,
       totalUsage: parseInt(result.totalUsage || '0', 10),
@@ -443,8 +475,8 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
     limit = 10,
   }: {
     userDid?: string;
-    startTime?: Date;
-    endTime?: Date;
+    startTime?: number;
+    endTime?: number;
     limit?: number;
   }): Promise<
     Array<{
@@ -467,12 +499,12 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
 
     if (startTime) {
       whereConditions.push('"callTime" >= :startTime');
-      replacements.startTime = toUnixTimestamp(startTime);
+      replacements.startTime = Number(startTime);
     }
 
     if (endTime) {
       whereConditions.push('"callTime" <= :endTime');
-      replacements.endTime = toUnixTimestamp(endTime);
+      replacements.endTime = Number(endTime);
     }
 
     const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
@@ -545,32 +577,41 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
     // 聚合当前时间段数据
     const currentTotals = { totalUsage: 0, totalCredits: 0, totalCalls: 0 };
     currentStatsArray.forEach((dailyStats) => {
-      currentTotals.totalUsage += dailyStats.totalUsage;
-      currentTotals.totalCredits += dailyStats.totalCredits;
-      currentTotals.totalCalls += dailyStats.totalCalls;
+      currentTotals.totalUsage = new BigNumber(currentTotals.totalUsage).plus(dailyStats.totalUsage).toNumber();
+      currentTotals.totalCredits = new BigNumber(currentTotals.totalCredits).plus(dailyStats.totalCredits).toNumber();
+      currentTotals.totalCalls = new BigNumber(currentTotals.totalCalls).plus(dailyStats.totalCalls).toNumber();
     });
 
     // 聚合上一时间段数据
     const previousTotals = { totalUsage: 0, totalCredits: 0, totalCalls: 0 };
     previousStatsArray.forEach((dailyStats) => {
-      previousTotals.totalUsage += dailyStats.totalUsage;
-      previousTotals.totalCredits += dailyStats.totalCredits;
-      previousTotals.totalCalls += dailyStats.totalCalls;
+      previousTotals.totalUsage = new BigNumber(previousTotals.totalUsage).plus(dailyStats.totalUsage).toNumber();
+      previousTotals.totalCredits = new BigNumber(previousTotals.totalCredits).plus(dailyStats.totalCredits).toNumber();
+      previousTotals.totalCalls = new BigNumber(previousTotals.totalCalls).plus(dailyStats.totalCalls).toNumber();
     });
 
     // 计算增长率
     const growth = {
       usageGrowth:
         previousTotals.totalUsage > 0
-          ? ((currentTotals.totalUsage - previousTotals.totalUsage) / previousTotals.totalUsage) * 100
+          ? new BigNumber(currentTotals.totalUsage)
+              .minus(previousTotals.totalUsage)
+              .div(previousTotals.totalUsage)
+              .toNumber()
           : 0,
       creditsGrowth:
         previousTotals.totalCredits > 0
-          ? ((currentTotals.totalCredits - previousTotals.totalCredits) / previousTotals.totalCredits) * 100
+          ? new BigNumber(currentTotals.totalCredits)
+              .minus(previousTotals.totalCredits)
+              .div(previousTotals.totalCredits)
+              .toNumber()
           : 0,
       callsGrowth:
         previousTotals.totalCalls > 0
-          ? ((currentTotals.totalCalls - previousTotals.totalCalls) / previousTotals.totalCalls) * 100
+          ? new BigNumber(currentTotals.totalCalls)
+              .minus(previousTotals.totalCalls)
+              .div(previousTotals.totalCalls)
+              .toNumber()
           : 0,
     };
 

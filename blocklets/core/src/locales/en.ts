@@ -1,6 +1,7 @@
 import { flatten } from 'flat';
 
 export default flatten({
+  locale: 'en',
   usage: 'Usage',
   aiProvider: 'AI Provider',
   aiProviderSubscription: 'Subscribe to AI Service',
@@ -22,7 +23,8 @@ export default flatten({
     'Your subscription is overdue. Please make a payment promptly to restore your subscription service.',
   payNow: 'Pay Now',
   enterHint: 'Enter to create',
-
+  type: 'Type',
+  model: 'Model',
   // AIGNE Hub integrations
   welcome: 'Welcome to AIGNE Hub',
   welcomeDesc:
@@ -51,6 +53,25 @@ export default flatten({
   installPaymentKitDesc:
     'Search and install the Payment Kit component from Blocklet Store. This is a prerequisite for enabling Credits billing. With Payment Kit, you can manage multiple payment methods and related configurations, providing users with a convenient top-up experience.',
 
+  // Types
+  modelTypes: {
+    chatCompletion: 'Text',
+    completion: 'Text',
+    imageGeneration: 'Image',
+    videoGeneration: 'Video generation',
+    audioGeneration: 'Audio generation',
+    embedding: 'Embedding',
+    transcription: 'Audio transcription',
+    speech: 'Text-to-Speech',
+  },
+
+  // Units
+  modelUnits: {
+    tokens: 'tokens',
+    images: 'images',
+    minutes: 'minutes',
+    characters: 'characters',
+  },
   // Configuration section
   config: {
     // AI Providers
@@ -79,13 +100,6 @@ export default flatten({
         outputRate: 'Output',
         description: 'Description',
         actions: 'Actions',
-      },
-
-      // Types
-      types: {
-        chatCompletion: 'Text',
-        imageGeneration: 'Image',
-        embedding: 'Embedding',
       },
 
       // Form
@@ -333,9 +347,10 @@ export default flatten({
   manageCredits: 'Manage Credits',
   creditUsage: 'Credit Usage',
   images: 'images',
-  credits: 'credits',
+  credits: 'Credits',
+  creditsValue: 'Credits Used',
   tokens: 'tokens',
-  requests: 'requests',
+  requests: 'Requests',
   successRate: 'success rate',
   duration: 'Duration',
   last7Days: 'Last 7 Days',
@@ -362,20 +377,27 @@ export default flatten({
     availableCredits: 'Available AIGNE Hub Credits for model usage',
     addCredits: 'Buy Credits',
     totalCreditsUsed: 'Total Credits Used',
-    totalTokens: 'Total Tokens',
-    totalRequests: 'Total Requests',
-    dailyCreditsUsage: 'Daily Credits Usage',
+    totalUsage: 'Total Model Usage',
+    totalRequests: 'Total Calls',
+    dailyCreditsUsage: 'Daily Credits Trend',
+    dailyUsage: 'Daily Usage Trend',
     tokenUsage: 'Token Usage',
+    modelUsage: 'Model Usage',
     modelUsageStats: 'Model Usage Statistics',
-    modelUsageStatsDescription: 'Your most used models in the selected period',
-    ofTotalUsage: 'of total usage',
+    modelUsageStatsDescription: 'Your most used models in the period',
+    ofTotalUsage: 'of total calls',
     callHistory: 'Call History',
     callHistoryDescription: 'Detailed log of all model API calls',
-    searchPlaceholder: 'Search by model, provider, or request ID...',
+    searchPlaceholder: 'Search by model or provider...',
     allStatus: 'All Status',
     timestamp: 'Timestamp',
     noCallsFound: 'No calls found matching your criteria',
     dailyTokenUsage: 'Daily Token Usage',
+    noLimit: 'Infinity',
+    modelUsageStatsEmpty: 'No model usage records',
+    dailyUsageEmpty: 'No usage records',
+    refresh: 'Refresh Usage',
+    refreshSuccess: 'Refresh successful',
   },
 
   quickSelect: 'Quick Select',

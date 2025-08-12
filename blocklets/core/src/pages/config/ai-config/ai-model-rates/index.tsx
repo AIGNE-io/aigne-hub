@@ -182,11 +182,11 @@ export default function AIModelRates() {
   const getRateTypeText = (type: string) => {
     switch (type) {
       case 'chatCompletion':
-        return t('config.modelRates.types.chatCompletion');
+        return t('modelTypes.chatCompletion');
       case 'imageGeneration':
-        return t('config.modelRates.types.imageGeneration');
+        return t('modelTypes.imageGeneration');
       case 'embedding':
-        return t('config.modelRates.types.embedding');
+        return t('modelTypes.embedding');
       default:
         return type;
     }

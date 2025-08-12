@@ -1,9 +1,28 @@
+import Empty from '@arcblock/ux/lib/Empty';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
-import { Box, Card, CardContent, CardHeader, Grid, Typography } from '@mui/material';
+import { formatNumber } from '@blocklet/aigne-hub/utils/util';
+import { Card, CardContent, CardHeader, useTheme } from '@mui/material';
 import dayjs from 'dayjs';
-import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis } from 'recharts';
 
+export interface UsageByType {
+  [key: string]: {
+    totalUsage: number;
+    totalCalls: number;
+  };
+}
+
+// New data format
 export interface DailyStats {
+  date: string;
+  byType: UsageByType;
+  totalCredits: number;
+  totalCalls: number;
+  totalUsage: number;
+}
+
+// Legacy data format for backward compatibility
+export interface LegacyDailyStats {
   date: string;
   credits: number;
   tokens: number;
@@ -11,140 +30,351 @@ export interface DailyStats {
 }
 
 export interface UsageChartsProps {
-  dailyStats?: DailyStats[];
+  dailyStats?: (DailyStats | LegacyDailyStats)[];
   title?: string;
-  showCredits?: boolean;
-  showTokens?: boolean;
-  showRequests?: boolean;
   height?: number;
-  useCard?: boolean;
+  // Legacy props for backward compatibility
+  showCredits?: boolean;
+  showRequests?: boolean;
+}
+
+function isLegacyFormat(data: DailyStats | LegacyDailyStats): data is LegacyDailyStats {
+  return 'credits' in data && 'tokens' in data && 'requests' in data;
+}
+
+function transformLegacyData(legacyData: LegacyDailyStats[]): DailyStats[] {
+  return legacyData.map((item) => ({
+    date: item.date,
+    totalCredits: item.credits,
+    totalUsage: item.tokens,
+    totalCalls: item.requests,
+    byType: {
+      chatCompletion: {
+        totalUsage: item.tokens,
+        totalCalls: item.requests,
+      },
+    },
+  }));
+}
+
+// Function to get usage unit based on service type
+const getUsageUnit = (type: string, t: any) => {
+  const normalizedType = type.toLowerCase();
+  switch (normalizedType) {
+    case 'chatcompletion':
+    case 'completion':
+    case 'embedding':
+    case 'transcription':
+    case 'speech':
+    case 'audiogeneration':
+      return t('modelUnits.tokens');
+    case 'imagegeneration':
+      return t('modelUnits.images');
+    case 'videogeneration':
+      return t('modelUnits.minutes');
+    default:
+      return t('modelUnits.tokens');
+  }
+};
+
+// Function to get display name for service type
+const getServiceTypeDisplayName = (type: string, t: any) => {
+  const typeKey = `modelTypes.${type}`;
+  try {
+    return t(typeKey);
+  } catch {
+    return type;
+  }
+};
+
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: any[];
+  label?: string;
+  showCredits: boolean;
+  showRequests: boolean;
+  theme: any;
+  t: any;
+}
+
+function CustomTooltip({
+  active = false,
+  payload = [],
+  label = '',
+  showCredits,
+  showRequests,
+  theme,
+  t,
+}: CustomTooltipProps) {
+  if (!active || !payload || !payload.length) {
+    return null;
+  }
+
+  const data = payload[0].payload as DailyStats;
+
+  const formatDateLabel = (label: string) => {
+    return dayjs(label).format('YYYY-MM-DD');
+  };
+
+  const tooltipStyle = {
+    backgroundColor: theme.palette.background.paper,
+    border: `1px solid ${theme.palette.divider}`,
+    borderRadius: '12px',
+    boxShadow: theme.shadows[8],
+    minWidth: '240px',
+    maxWidth: '320px',
+    color: theme.palette.text.primary,
+    padding: 0,
+  };
+
+  return (
+    <div style={tooltipStyle}>
+      {/* Header */}
+      <div
+        style={{
+          padding: '16px 20px 12px 20px',
+          borderBottom: `1px solid ${theme.palette.divider}`,
+          backgroundColor: theme.palette.mode === 'dark' ? theme.palette.grey[100] : theme.palette.grey[50],
+          borderRadius: '12px 12px 0 0',
+        }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            marginBottom: '4px',
+          }}>
+          <span
+            style={{
+              fontSize: '14px',
+              fontWeight: 600,
+              color: theme.palette.text.primary,
+            }}>
+            {formatDateLabel(label!)}
+          </span>
+        </div>
+      </div>
+
+      {/* Main Stats */}
+      <div style={{ padding: '16px 20px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {showCredits ? (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div
+                  style={{
+                    width: '12px',
+                    height: '3px',
+                    borderRadius: '2px',
+                    backgroundColor: theme.palette.primary.main,
+                  }}
+                />
+                <span
+                  style={{
+                    fontSize: '14px',
+                    color: theme.palette.text.primary,
+                    fontWeight: 500,
+                  }}>
+                  {t('analytics.totalCreditsUsed')}
+                </span>
+              </div>
+              <span
+                style={{
+                  fontSize: '14px',
+                  fontWeight: 600,
+                }}>
+                {formatNumber(data.totalCredits)}
+              </span>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div
+                  style={{
+                    width: '12px',
+                    height: '3px',
+                    borderRadius: '2px',
+                    backgroundColor: theme.palette.text.primary,
+                  }}
+                />
+                <span
+                  style={{
+                    fontSize: '14px',
+                    color: theme.palette.text.primary,
+                    fontWeight: 500,
+                  }}>
+                  {t('analytics.totalUsage')}
+                </span>
+              </div>
+              <span
+                style={{
+                  fontSize: '14px',
+                  fontWeight: 600,
+                }}>
+                {formatNumber(data.totalUsage)}
+              </span>
+            </div>
+          )}
+
+          {showRequests && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span
+                style={{
+                  fontSize: '14px',
+                  color: theme.palette.text.primary,
+                  fontWeight: 500,
+                }}>
+                {t('analytics.totalRequests')}
+              </span>
+              <span
+                style={{
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  color: theme.palette.text.secondary,
+                }}>
+                {formatNumber(data.totalCalls)}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Model Details */}
+        {data.byType && Object.keys(data.byType).length > 0 && (
+          <div style={{ marginTop: '16px' }}>
+            <div
+              style={{
+                borderTop: `1px solid ${theme.palette.divider}`,
+                paddingTop: '16px',
+              }}>
+              <div
+                style={{
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  color: theme.palette.text.primary,
+                  marginBottom: '12px',
+                }}>
+                {t('analytics.modelUsageStats')}:
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {Object.entries(data.byType).map(([type, stats]) => {
+                  const unit = getUsageUnit(type, t);
+                  const displayName = getServiceTypeDisplayName(type, t);
+                  return (
+                    <div
+                      key={type}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '6px 12px',
+                        backgroundColor: theme.palette.grey[100],
+                        borderRadius: '6px',
+                      }}>
+                      <span
+                        style={{
+                          fontSize: '12px',
+                          color: theme.palette.text.secondary,
+                          fontWeight: 500,
+                        }}>
+                        {displayName}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: '12px',
+                          color: theme.palette.text.primary,
+                          fontWeight: 600,
+                        }}>
+                        {formatNumber(stats.totalUsage)} {unit}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export function UsageCharts({
   dailyStats = [],
-  title = undefined,
+  title = '',
+  height = 260,
   showCredits = true,
-  showTokens = true,
   showRequests = false,
-  height = 300,
-  useCard = false,
 }: UsageChartsProps) {
-  const { t } = useLocaleContext();
+  const { t, locale } = useLocaleContext();
+  const theme = useTheme();
 
-  const formatDateTick = (tickItem: string) => {
-    return dayjs(tickItem).format('MMM DD');
-  };
+  // Transform legacy data format if needed
+  const normalizedData =
+    dailyStats.length > 0 && dailyStats[0] && isLegacyFormat(dailyStats[0])
+      ? transformLegacyData(dailyStats as LegacyDailyStats[])
+      : (dailyStats as DailyStats[]);
 
-  const formatDateLabel = (label: string) => {
-    return dayjs(label).format('MMM DD, YYYY');
-  };
+  // Process data to ensure proper format
+  const processedData = normalizedData.map((item) => ({
+    ...item,
+    date: dayjs(item.date).format('YYYY-MM-DD'),
+    totalUsage: item.totalUsage || 0,
+    totalCredits: item.totalCredits || 0,
+    totalCalls: item.totalCalls || 0,
+  }));
 
-  const tooltipStyle = {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    border: '1px solid #e0e0e0',
-    borderRadius: '8px',
-    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+  const formatXAxisLabel = (label: string) => {
+    if (locale === 'zh') {
+      return dayjs(label).format('M月D日');
+    }
+    return dayjs(label).format('MMM DD');
   };
 
   const cardStyles = {
     boxShadow: 1,
+    border: '1px solid',
     borderColor: 'divider',
+    height: '100%',
+    backgroundColor: theme.palette.background.paper,
   };
 
-  const renderChart = (chartTitle: string, chartContent: React.ReactNode) => {
-    if (useCard) {
-      return (
-        <Card sx={cardStyles}>
-          <CardHeader title={chartTitle} titleTypographyProps={{ variant: 'h6', fontWeight: 600 }} />
-          <CardContent sx={{ height }}>{chartContent}</CardContent>
-        </Card>
-      );
-    }
+  const chartTitle = title || (showCredits ? t('analytics.dailyCreditsUsage') : t('analytics.dailyUsage'));
 
-    return (
-      <Box>
-        <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
-          {chartTitle}
-        </Typography>
-        <Box sx={{ height }}>{chartContent}</Box>
-      </Box>
-    );
-  };
+  const chartContent = (
+    <ResponsiveContainer width="100%" height="100%">
+      <LineChart data={processedData} margin={{ right: 30, left: 20, top: 10 }}>
+        <Tooltip
+          content={<CustomTooltip showCredits={showCredits} showRequests={showRequests} theme={theme} t={t} />}
+        />
+        <XAxis
+          dataKey="date"
+          tickFormatter={(value) => formatXAxisLabel(value)}
+          axisLine={false}
+          tickLine={false}
+          tick={{ fontSize: 12, fill: theme.palette.text.secondary }}
+          padding={{ left: 10, right: 10 }}
+        />
+        <Line
+          type="monotone"
+          dataKey={showCredits ? 'totalCredits' : 'totalUsage'}
+          stroke={theme.palette.primary.main}
+          strokeWidth={2}
+          dot={false}
+        />
+      </LineChart>
+    </ResponsiveContainer>
+  );
 
   return (
-    <Grid container spacing={3}>
-      {/* Credits Chart */}
-      {showCredits && (
-        <Grid size={{ xs: 12, lg: showTokens || showRequests ? 6 : 12 }}>
-          {renderChart(
-            title ? `${title} - ${t('analytics.dailyCreditsUsage')}` : t('analytics.dailyCreditsUsage'),
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={dailyStats}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="date" tickFormatter={formatDateTick} stroke="#666" fontSize={12} />
-                <YAxis stroke="#666" fontSize={12} />
-                <Tooltip
-                  labelFormatter={formatDateLabel}
-                  contentStyle={tooltipStyle}
-                  formatter={(value: number) => [value.toLocaleString(), t('analytics.credits')]}
-                />
-                <Bar dataKey="credits" fill="#1976d2" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </Grid>
+    <Card sx={cardStyles}>
+      <CardHeader title={chartTitle} />
+      {processedData && processedData.length > 0 ? (
+        <CardContent sx={{ height, px: 0 }}>{chartContent}</CardContent>
+      ) : (
+        <CardContent sx={{ height, px: 0 }}>
+          <Empty>{t('analytics.dailyUsageEmpty')}</Empty>
+        </CardContent>
       )}
-
-      {/* Tokens Chart */}
-      {showTokens && (
-        <Grid size={{ xs: 12, lg: showCredits || showRequests ? 6 : 12 }}>
-          {renderChart(
-            title ? `${title} - ${t('analytics.dailyTokenUsage')}` : t('analytics.dailyTokenUsage'),
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={dailyStats}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="date" tickFormatter={formatDateTick} stroke="#666" fontSize={12} />
-                <YAxis stroke="#666" fontSize={12} />
-                <Tooltip
-                  labelFormatter={formatDateLabel}
-                  contentStyle={tooltipStyle}
-                  formatter={(value: number) => [value.toLocaleString(), t('analytics.tokens')]}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="tokens"
-                  stroke="#2e7d32"
-                  strokeWidth={2}
-                  dot={{ fill: '#2e7d32', strokeWidth: 2, r: 4 }}
-                  activeDot={{ r: 6, fill: '#2e7d32' }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          )}
-        </Grid>
-      )}
-
-      {/* Requests Chart */}
-      {showRequests && (
-        <Grid size={{ xs: 12, lg: showCredits || showTokens ? 6 : 12 }}>
-          {renderChart(
-            title ? `${title} - ${t('analytics.dailyRequests')}` : t('analytics.dailyRequests'),
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={dailyStats}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="date" tickFormatter={formatDateTick} stroke="#666" fontSize={12} />
-                <YAxis stroke="#666" fontSize={12} />
-                <Tooltip
-                  labelFormatter={formatDateLabel}
-                  contentStyle={tooltipStyle}
-                  formatter={(value: number) => [value.toLocaleString(), t('analytics.requests')]}
-                />
-                <Bar dataKey="requests" fill="#ed6c02" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </Grid>
-      )}
-    </Grid>
+    </Card>
   );
 }

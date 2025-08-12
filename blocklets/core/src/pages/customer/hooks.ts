@@ -1,5 +1,5 @@
 import api from '@app/libs/api';
-import { useCallback, useEffect, useState } from 'react';
+import { useRequest } from 'ahooks';
 
 // Types
 export interface CreditBalance {
@@ -32,6 +32,11 @@ export interface UsageStats {
   }>;
   modelStats: Array<{
     providerId: string;
+    provider: {
+      id: string;
+      name: string;
+      displayName: string;
+    };
     model: string;
     type: string;
     totalUsage: number;
@@ -46,6 +51,11 @@ export interface ModelCall {
   createdAt: string;
   model: string;
   providerId: string;
+  provider?: {
+    id: string;
+    name: string;
+    displayName: string;
+  };
   type: string;
   status: 'success' | 'failed';
   totalUsage: number;
@@ -66,62 +76,43 @@ export interface ModelCallsResponse {
 
 // Custom hooks
 export function useCreditBalance() {
-  const [data, setData] = useState<CreditBalance | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchBalance = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await api.get('/api/user/info');
-      setData(response.data);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to fetch credit balance');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchBalance();
-  }, [fetchBalance]);
+  const {
+    data,
+    loading,
+    error,
+    runAsync: refetch,
+  } = useRequest(() => api.get('/api/user/info').then((res) => res.data), {
+    onError: (error) => {
+      console.error('Failed to fetch credit balance:', error);
+    },
+  });
 
   return {
     data,
     loading,
     error,
-    refetch: fetchBalance,
+    refetch,
   };
 }
 
 export function useUsageStats(params: { startTime: string; endTime: string }) {
-  const [data, setData] = useState<UsageStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchStats = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await api.get('/api/user/usage-stats', { params });
-      setData(response.data);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to fetch usage stats');
-    } finally {
-      setLoading(false);
-    }
-  }, [params.startTime, params.endTime]);
-
-  useEffect(() => {
-    fetchStats();
-  }, [fetchStats]);
+  const {
+    data,
+    loading,
+    error,
+    runAsync: refetch,
+  } = useRequest(() => api.get('/api/user/usage-stats', { params }).then((res) => res.data), {
+    refreshDeps: [params.startTime, params.endTime],
+    onError: (error) => {
+      console.error('Failed to fetch usage stats:', error);
+    },
+  });
 
   return {
     data,
     loading,
     error,
-    refetch: fetchStats,
+    refetch,
   };
 }
 
@@ -135,48 +126,37 @@ export function useModelCalls(params: {
   model?: string;
   providerId?: string;
 }) {
-  const [data, setData] = useState<ModelCallsResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchCalls = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await api.get('/api/user/model-calls', { params });
-      setData(response.data);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to fetch model calls');
-    } finally {
-      setLoading(false);
-    }
-  }, [
-    params.page,
-    params.pageSize,
-    params.startTime,
-    params.endTime,
-    params.search,
-    params.status,
-    params.model,
-    params.providerId,
-  ]);
-
-  useEffect(() => {
-    fetchCalls();
-  }, [fetchCalls]);
+  const {
+    data,
+    loading,
+    error,
+    runAsync: refetch,
+  } = useRequest(() => api.get('/api/user/model-calls', { params }).then((res) => res.data), {
+    refreshDeps: [
+      params.page,
+      params.pageSize,
+      params.startTime,
+      params.endTime,
+      params.search,
+      params.status,
+      params.model,
+      params.providerId,
+    ],
+    onError: (error) => {
+      console.error('Failed to fetch model calls:', error);
+    },
+  });
 
   return {
     data,
     loading,
     error,
-    refetch: fetchCalls,
+    refetch,
   };
 }
 
 export function useExportModelCalls() {
-  const [loading, setLoading] = useState(false);
-
-  const exportCalls = useCallback(
+  const { run: exportCalls, loading } = useRequest(
     async (params: {
       startTime: string;
       endTime: string;
@@ -185,30 +165,27 @@ export function useExportModelCalls() {
       model?: string;
       providerId?: string;
     }) => {
-      try {
-        setLoading(true);
-        const response = await api.get('/api/user/model-calls/export', {
-          params,
-          responseType: 'blob',
-        });
+      const response = await api.get('/api/user/model-calls/export', {
+        params,
+        responseType: 'blob',
+      });
 
-        // Create download link
-        const url = window.URL.createObjectURL(new Blob([response.data]));
-        const link = document.createElement('a');
-        link.href = url;
-        link.setAttribute('download', `model-calls-${Date.now()}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        window.URL.revokeObjectURL(url);
-      } catch (err: any) {
-        console.error('Export failed:', err);
-        throw err;
-      } finally {
-        setLoading(false);
-      }
+      // Create download link
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `model-calls-${Date.now()}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
     },
-    []
+    {
+      manual: true,
+      onError: (error) => {
+        console.error('Export failed:', error);
+      },
+    }
   );
 
   return {

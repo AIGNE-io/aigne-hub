@@ -1,5 +1,5 @@
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
-import { Box, Card, CardContent, Grid, Stack, Typography } from '@mui/material';
+import { Box, Card, CardContent, Grid, Typography } from '@mui/material';
 
 export interface UsageSummaryProps {
   totalCredits?: number;
@@ -22,14 +22,19 @@ interface SummaryCardProps {
 
 function SummaryCard({ title, value, trend = undefined }: SummaryCardProps) {
   return (
-    <Card sx={{ height: '100%', boxShadow: 1, borderColor: 'divider' }}>
-      <CardContent sx={{ p: 3 }}>
-        <Stack direction="row" sx={{ mb: 2, alignItems: 'center', gap: 1 }}>
-          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
-            {title}
-          </Typography>
-        </Stack>
-        <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 1 }}>
+    <Card
+      sx={{
+        height: '100%',
+        boxShadow: 1,
+        border: '1px solid',
+        borderColor: 'divider',
+        backgroundColor: 'background.default',
+      }}>
+      <CardContent sx={{ p: 2.5 }}>
+        <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500, mb: 1 }}>
+          {title}
+        </Typography>
+        <Typography variant="h3" sx={{ fontWeight: 'bold', mb: 0.5 }}>
           {value}
         </Typography>
         {trend && (
@@ -72,7 +77,7 @@ export function UsageSummary({
       trend: '+12%',
     },
     {
-      title: t('analytics.totalTokens'),
+      title: t('analytics.totalUsage'),
       value: formatTokens(totalTokens),
       trend: '+8%',
     },
@@ -86,13 +91,13 @@ export function UsageSummary({
   return (
     <Box>
       {title && (
-        <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 3 }}>
+        <Typography variant="h3" sx={{ fontWeight: 'bold', mb: 3 }}>
           {title}
         </Typography>
       )}
-      <Grid container spacing={3}>
-        {metrics.map((metric, index) => (
-          <Grid key={index} size={{ xs: 12, md: 4 }}>
+      <Grid container spacing={2}>
+        {metrics.map((metric) => (
+          <Grid key={metric.title} size={{ xs: 12, sm: 6, md: 4 }}>
             <SummaryCard title={metric.title} value={metric.value} trend={metric.trend} />
           </Grid>
         ))}

@@ -71,8 +71,8 @@ export interface ModelCallsQuery {
 const modelCallsSchema = Joi.object<ModelCallsQuery>({
   page: Joi.number().integer().min(1).empty([null, '']),
   pageSize: Joi.number().integer().min(1).max(100).empty([null, '']),
-  startTime: Joi.date().iso().empty([null, '']),
-  endTime: Joi.date().iso().empty([null, '']),
+  startTime: Joi.string().pattern(/^\d+$/).empty([null, '']),
+  endTime: Joi.string().pattern(/^\d+$/).empty([null, '']),
   search: Joi.string().max(100).empty([null, '']),
   status: Joi.string().valid('success', 'failed', 'all').empty([null, '']),
   model: Joi.string().max(100).empty([null, '']),
@@ -85,8 +85,8 @@ export interface UsageStatsQuery {
 }
 
 const usageStatsSchema = Joi.object<UsageStatsQuery>({
-  startTime: Joi.date().iso().empty([null, '']),
-  endTime: Joi.date().iso().empty([null, '']),
+  startTime: Joi.string().pattern(/^\d+$/).empty([null, '']),
+  endTime: Joi.string().pattern(/^\d+$/).empty([null, '']),
 });
 
 router.get('/credit/grants', user, async (req, res) => {
@@ -256,8 +256,8 @@ router.get('/model-calls', user, async (req, res) => {
     const offset = (page - 1) * pageSize;
     const calls = await ModelCall.getCallsByDateRange({
       userDid,
-      startTime: startTime ? new Date(startTime) : undefined,
-      endTime: endTime ? new Date(endTime) : undefined,
+      startTime: startTime ? parseInt(startTime, 10) : undefined,
+      endTime: endTime ? parseInt(endTime, 10) : undefined,
       limit: pageSize,
       offset,
       search,
@@ -267,11 +267,11 @@ router.get('/model-calls', user, async (req, res) => {
     });
 
     return res.json({
-      data: calls,
-      pagination: {
+      count: calls.count,
+      list: calls.list,
+      paging: {
         page,
         pageSize,
-        total: calls.length,
       },
     });
   } catch (error) {
@@ -290,10 +290,10 @@ router.get('/model-calls/export', user, async (req, res) => {
       return res.status(401).json({ error: 'User not authenticated' });
     }
 
-    const calls = await ModelCall.getCallsByDateRange({
+    const { list: calls } = await ModelCall.getCallsByDateRange({
       userDid,
-      startTime: startTime ? new Date(startTime) : undefined,
-      endTime: endTime ? new Date(endTime) : undefined,
+      startTime: startTime ? Number(startTime) : undefined,
+      endTime: endTime ? Number(endTime) : undefined,
       limit: 10000, // 导出时获取更多数据
       offset: 0,
       search,
@@ -307,7 +307,7 @@ router.get('/model-calls/export', user, async (req, res) => {
       timestamp: call.createdAt,
       requestId: call.id,
       model: call.model,
-      provider: call.providerId,
+      provider: call.provider?.displayName || '-',
       type: call.type,
       status: call.status,
       inputTokens: call.usageMetrics?.inputTokens || 0,
@@ -327,11 +327,11 @@ router.get('/model-calls/export', user, async (req, res) => {
 
     // 生成CSV内容
     const csvHeaders =
-      'Timestamp,Request ID,Model,Provider,Type,Status,Input Tokens,Output Tokens,Total Usage,Credits,Duration,Error Reason,App DID\n';
+      'Timestamp,Request ID,Model,Provider,Type,Status,Input Tokens,Output Tokens,Total Usage,Credits,Duration(ms),App DID\n';
     const csvRows = csvData
       .map(
         (row) =>
-          `${row.timestamp},${row.requestId},${row.model},${row.provider},${row.type},${row.status},${row.inputTokens},${row.outputTokens},${row.totalUsage},${row.credits},${row.duration},${row.errorReason || ''},${row.appDid || ''}`
+          `${row.timestamp},${row.requestId},${row.model},${row.provider},${row.type},${row.status},${row.inputTokens},${row.outputTokens},${row.totalUsage},${row.credits},${row.duration},${row.appDid || ''}`
       )
       .join('\n');
 
@@ -355,24 +355,24 @@ router.get('/usage-stats', user, async (req, res) => {
     const [usageStats, totalCredits, dailyStats, modelStats] = await Promise.all([
       ModelCall.getUsageStatsByDateRange({
         userDid,
-        startTime: startTime ? new Date(startTime) : undefined,
-        endTime: endTime ? new Date(endTime) : undefined,
+        startTime: startTime ? Number(startTime) : undefined,
+        endTime: endTime ? Number(endTime) : undefined,
       }),
       ModelCall.getTotalCreditsByDateRange({
         userDid,
-        startTime: startTime ? new Date(startTime) : undefined,
-        endTime: endTime ? new Date(endTime) : undefined,
+        startTime: startTime ? Number(startTime) : undefined,
+        endTime: endTime ? Number(endTime) : undefined,
       }),
       ModelCall.getDailyUsageStats({
         userDid,
-        startTime: startTime ? new Date(startTime) : undefined,
-        endTime: endTime ? new Date(endTime) : undefined,
+        startTime: startTime ? Number(startTime) : undefined,
+        endTime: endTime ? Number(endTime) : undefined,
       }),
       ModelCall.getModelUsageStats({
         userDid,
-        startTime: startTime ? new Date(startTime) : undefined,
-        endTime: endTime ? new Date(endTime) : undefined,
-        limit: 10,
+        startTime: startTime ? Number(startTime) : undefined,
+        endTime: endTime ? Number(endTime) : undefined,
+        limit: 5,
       }),
     ]);
 

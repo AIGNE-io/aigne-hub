@@ -1,9 +1,17 @@
 /* eslint-disable react/no-unstable-nested-components */
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
+import Toast from '@arcblock/ux/lib/Toast';
 import { Table } from '@blocklet/aigne-hub/components';
-import { Cancel, CheckCircle, Download, Schedule, Search } from '@mui/icons-material';
-import { Box, Button, Chip, CircularProgress, MenuItem, Stack, TextField, Typography } from '@mui/material';
+import { formatNumber } from '@blocklet/aigne-hub/utils/util';
+import { formatError } from '@blocklet/error';
+import styled from '@emotion/styled';
+import { Download, FilterAltOutlined, Search } from '@mui/icons-material';
+import { Box, Button, Chip, CircularProgress, MenuItem, Stack, TextField, Tooltip, Typography } from '@mui/material';
+import { useDebounceEffect, useRequest } from 'ahooks';
 import dayjs from 'dayjs';
+import { useEffect, useState } from 'react';
+
+import { useSessionContext } from '../../contexts/session';
 
 export interface ModelCall {
   id: string;
@@ -20,36 +28,27 @@ export interface ModelCall {
   userDid?: string;
 }
 
+export interface CallHistoryQuery {
+  page?: number;
+  pageSize?: number;
+  startTime?: string;
+  endTime?: string;
+  search?: string;
+  status?: 'all' | 'success' | 'failed';
+}
+
 interface CallHistoryProps {
-  calls?: ModelCall[];
-  loading?: boolean;
-  onExport?: () => void;
-  exportLoading?: boolean;
-  searchTerm?: string;
-  onSearchChange?: (term: string) => void;
-  statusFilter?: 'all' | 'success' | 'failed';
-  onStatusFilterChange?: (status: 'all' | 'success' | 'failed') => void;
   title?: string;
   subtitle?: string;
   showUserColumn?: boolean;
   showAppColumn?: boolean;
-  pagination?: {
-    page: number;
-    pageSize: number;
-    total: number;
-    onPageChange: (page: number) => void;
+  dateRange?: {
+    from: number;
+    to: number;
   };
-}
-
-function getStatusIcon(status: string) {
-  switch (status) {
-    case 'success':
-      return <CheckCircle color="success" fontSize="small" />;
-    case 'failed':
-      return <Cancel color="error" fontSize="small" />;
-    default:
-      return <Schedule color="warning" fontSize="small" />;
-  }
+  initialPageSize?: number;
+  enableExport?: boolean;
+  refreshKey?: number;
 }
 
 function formatDuration(duration?: number) {
@@ -59,26 +58,123 @@ function formatDuration(duration?: number) {
 }
 
 export function CallHistory({
-  calls = [],
-  loading = false,
-  onExport = () => {},
-  exportLoading = false,
-  searchTerm = '',
-  onSearchChange = () => {},
-  statusFilter = 'all',
-  onStatusFilterChange = () => {},
   title = undefined,
   subtitle = undefined,
   showUserColumn = false,
   showAppColumn = false,
-  pagination = {
-    page: 1,
-    pageSize: 10,
-    total: 0,
-    onPageChange: () => {},
-  },
+  dateRange = undefined,
+  initialPageSize = 10,
+  enableExport = true,
+  refreshKey = 0,
 }: CallHistoryProps) {
   const { t } = useLocaleContext();
+  const { api } = useSessionContext();
+
+  // Local state for search and pagination
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchValue, setSearchValue] = useState(''); // 用于输入框显示的值
+  const [statusFilter, setStatusFilter] = useState<'all' | 'success' | 'failed'>('all');
+  const [pagination, setPagination] = useState({
+    page: 1,
+    pageSize: initialPageSize,
+  });
+
+  // 同步 searchValue 与搜索状态
+  useEffect(() => {
+    setSearchValue(searchTerm);
+  }, [searchTerm]);
+
+  // 防抖搜索
+  useDebounceEffect(
+    () => {
+      setSearchTerm(searchValue);
+      setPagination((prev) => ({ ...prev, page: 1 }));
+    },
+    [searchValue],
+    { wait: 500 }
+  );
+
+  // Build query parameters
+  const buildQuery = (): CallHistoryQuery => {
+    const query: CallHistoryQuery = {
+      page: pagination.page,
+      pageSize: pagination.pageSize,
+    };
+
+    if (dateRange) {
+      query.startTime = dateRange.from.toString();
+      query.endTime = dateRange.to.toString();
+    }
+
+    if (searchTerm) {
+      query.search = searchTerm;
+    }
+
+    if (statusFilter !== 'all') {
+      query.status = statusFilter;
+    }
+
+    return query;
+  };
+
+  // Fetch data function
+  const fetchModelCalls = async (queryParams: CallHistoryQuery = {}) => {
+    const response = await api.get('/api/user/model-calls', { params: queryParams });
+    return response.data;
+  };
+
+  // Data fetching with useRequest
+  const { data = { list: [], count: 0 }, loading } = useRequest(() => fetchModelCalls(buildQuery()), {
+    refreshDeps: [pagination, searchTerm, statusFilter, dateRange, refreshKey],
+    onError: (error: any) => {
+      Toast.error(formatError(error));
+    },
+  });
+
+  const modelCalls = data?.list || [];
+  const total = data?.count || 0;
+
+  // Export functionality
+  const { run: handleExport, loading: exportLoading } = useRequest(
+    async () => {
+      const query = buildQuery();
+      // Remove pagination for export (get all data)
+      delete query.page;
+      delete query.pageSize;
+
+      const response = await api.get('/api/user/model-calls/export', {
+        params: query,
+        responseType: 'blob',
+      });
+
+      // Create download link
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `model-calls-${dayjs().format('YYYY-MM-DD')}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      Toast.success(t('exportSuccess'));
+    },
+    {
+      manual: true,
+      onError: (error: any) => {
+        Toast.error(formatError(error));
+      },
+    }
+  );
+
+  // Handle pagination change
+  const handlePageChange = (page: number) => {
+    setPagination((prev) => ({ ...prev, page: page + 1 }));
+  };
+
+  const handlePageSizeChange = (pageSize: number) => {
+    setPagination({ page: 1, pageSize });
+  };
 
   // 构建基础列
   const baseColumns = [
@@ -87,7 +183,7 @@ export function CallHistory({
       label: t('analytics.timestamp'),
       options: {
         customBodyRender: (_value: any, tableMeta: any) => {
-          const call = calls[tableMeta.rowIndex];
+          const call = modelCalls[tableMeta.rowIndex];
           if (!call) return null;
           return (
             <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
@@ -102,18 +198,24 @@ export function CallHistory({
       label: t('model'),
       options: {
         customBodyRender: (_value: any, tableMeta: any) => {
-          const call = calls[tableMeta.rowIndex];
+          const call = modelCalls[tableMeta.rowIndex];
           if (!call) return null;
           return (
             <Box>
-              <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
-                {call.model}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                {call.providerId}
-              </Typography>
+              <Typography variant="body2">{call.model}</Typography>
             </Box>
           );
+        },
+      },
+    },
+    {
+      name: 'providerId',
+      label: t('provider'),
+      options: {
+        customBodyRender: (_value: any, tableMeta: any) => {
+          const call = modelCalls[tableMeta.rowIndex];
+          if (!call) return null;
+          return <Typography variant="body2">{call.provider?.displayName || '-'}</Typography>;
         },
       },
     },
@@ -122,29 +224,56 @@ export function CallHistory({
       label: t('type'),
       options: {
         customBodyRender: (_value: any, tableMeta: any) => {
-          const call = calls[tableMeta.rowIndex];
+          const call = modelCalls[tableMeta.rowIndex];
           if (!call) return null;
-          return (
-            <Chip
-              label={call.type}
-              size="small"
-              variant="outlined"
-              color={call.type === 'imageGeneration' ? 'secondary' : 'default'}
-            />
-          );
+
+          // Get translated type name
+          const typeKey = `modelTypes.${call.type}`;
+          let displayName;
+          try {
+            displayName = t(typeKey);
+          } catch {
+            displayName = call.type;
+          }
+
+          return displayName;
         },
       },
     },
     {
       name: 'usage',
-      label: t('usage'),
+      label: t('analytics.modelUsage'),
       options: {
         customBodyRender: (_value: any, tableMeta: any) => {
-          const call = calls[tableMeta.rowIndex];
+          const call = modelCalls[tableMeta.rowIndex];
           if (!call) return null;
+
+          let unit;
+          switch (call.type) {
+            case 'chatcompletion':
+            case 'completion':
+            case 'embedding':
+            case 'transcription':
+            case 'speech':
+            case 'audiogeneration':
+              unit = t('modelUnits.tokens');
+              break;
+            case 'imagegeneration':
+              unit = t('modelUnits.images');
+              break;
+            case 'videogeneration':
+              unit = t('modelUnits.minutes');
+              break;
+            default:
+              unit = t('modelUnits.tokens');
+          }
+
+          if (!call.totalUsage) {
+            return '-';
+          }
           return (
             <Typography variant="body2">
-              {call.type === 'imageGeneration' ? `${call.totalUsage} ${t('images')}` : call.totalUsage.toLocaleString()}
+              {formatNumber(call.totalUsage)} {unit}
             </Typography>
           );
         },
@@ -152,10 +281,10 @@ export function CallHistory({
     },
     {
       name: 'credits',
-      label: t('credits'),
+      label: t('creditsValue'),
       options: {
         customBodyRender: (_value: any, tableMeta: any) => {
-          const call = calls[tableMeta.rowIndex];
+          const call = modelCalls[tableMeta.rowIndex];
           if (!call) return null;
           return (
             <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
@@ -170,7 +299,7 @@ export function CallHistory({
       label: t('duration'),
       options: {
         customBodyRender: (_value: any, tableMeta: any) => {
-          const call = calls[tableMeta.rowIndex];
+          const call = modelCalls[tableMeta.rowIndex];
           if (!call) return null;
           return (
             <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
@@ -185,24 +314,28 @@ export function CallHistory({
       label: t('status'),
       options: {
         customBodyRender: (_value: any, tableMeta: any) => {
-          const call = calls[tableMeta.rowIndex];
+          const call = modelCalls[tableMeta.rowIndex];
           if (!call) return null;
           return (
             <Box>
               <Stack direction="row" alignItems="center" spacing={1}>
-                {getStatusIcon(call.status)}
                 <Chip
-                  label={call.status}
+                  label={
+                    call.status === 'failed' ? (
+                      <Tooltip title={call.errorReason}>
+                        <Typography component="span" sx={{ fontSize: 'inherit' }}>
+                          {t(call.status)}
+                        </Typography>
+                      </Tooltip>
+                    ) : (
+                      t(call.status)
+                    )
+                  }
                   size="small"
                   color={call.status === 'success' ? 'success' : 'error'}
                   variant="outlined"
                 />
               </Stack>
-              {call.errorReason && (
-                <Typography variant="caption" color="error.main" sx={{ display: 'block', mt: 0.5 }}>
-                  {call.errorReason}
-                </Typography>
-              )}
             </Box>
           );
         },
@@ -218,7 +351,7 @@ export function CallHistory({
       label: t('user'),
       options: {
         customBodyRender: (_value: any, tableMeta: any) => {
-          const call = calls[tableMeta.rowIndex];
+          const call = modelCalls[tableMeta.rowIndex];
           if (!call) return null;
           return (
             <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
@@ -235,7 +368,7 @@ export function CallHistory({
       label: t('application'),
       options: {
         customBodyRender: (_value: any, tableMeta: any) => {
-          const call = calls[tableMeta.rowIndex];
+          const call = modelCalls[tableMeta.rowIndex];
           if (!call) return null;
           return <Typography variant="body2">{call.appDid || '-'}</Typography>;
         },
@@ -245,39 +378,48 @@ export function CallHistory({
 
   return (
     <Stack spacing={3}>
-      {/* 标题区域 */}
-      <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+      <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 1 }}>
         <Stack>
-          <Typography variant="h6">{title || t('analytics.callHistory')}</Typography>
+          <Typography variant="h3">{title || t('analytics.callHistory')}</Typography>
           <Typography variant="body2" color="text.secondary">
             {subtitle || t('analytics.callHistoryDescription')}
           </Typography>
         </Stack>
-        {onExport && (
-          <Button variant="outlined" startIcon={<Download />} onClick={onExport} disabled={exportLoading} size="small">
+        {enableExport && (
+          <Button
+            variant="outlined"
+            startIcon={<Download />}
+            onClick={handleExport}
+            disabled={exportLoading}
+            size="small">
             {exportLoading ? <CircularProgress size={16} /> : t('export')}
           </Button>
         )}
       </Stack>
 
-      {/* 筛选条件 */}
       <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
         <TextField
           placeholder={t('analytics.searchPlaceholder')}
-          value={searchTerm}
-          onChange={(e) => onSearchChange?.(e.target.value)}
-          InputProps={{
-            startAdornment: <Search sx={{ color: 'text.secondary', mr: 1 }} />,
+          value={searchValue}
+          onChange={(e) => setSearchValue(e.target.value)}
+          slotProps={{
+            input: {
+              startAdornment: <Search sx={{ color: 'text.secondary', mr: 1 }} />,
+            },
           }}
           size="small"
           sx={{ flexGrow: 1, maxWidth: 400 }}
         />
         <TextField
           select
-          label={t('status')}
           value={statusFilter}
-          onChange={(e) => onStatusFilterChange?.(e.target.value as any)}
+          onChange={(e) => setStatusFilter(e.target.value as any)}
           size="small"
+          slotProps={{
+            input: {
+              startAdornment: <FilterAltOutlined sx={{ color: 'text.secondary', mr: 0.5 }} fontSize="small" />,
+            },
+          }}
           sx={{ minWidth: 120 }}>
           <MenuItem value="all">{t('analytics.allStatus')}</MenuItem>
           <MenuItem value="success">{t('success')}</MenuItem>
@@ -285,27 +427,42 @@ export function CallHistory({
         </TextField>
       </Stack>
 
-      {/* 表格 */}
-      <Table
-        data={calls}
-        columns={columns}
-        loading={loading}
-        options={{
-          count: pagination.total,
-          page: pagination.page - 1,
-          rowsPerPage: pagination.pageSize,
-          onChangePage: (page: number) => pagination.onPageChange(page + 1),
-          serverSide: true,
-          search: false, // 禁用内置搜索，使用自定义搜索
-          download: false,
-          print: false,
-          viewColumns: false,
-          filter: false,
-          selectableRows: 'none',
-          responsive: 'vertical',
-        }}
-        emptyNodeText={t('analytics.noCallsFound')}
-      />
+      <Root>
+        <Table
+          data={modelCalls}
+          columns={columns}
+          loading={loading}
+          options={{
+            count: total,
+            page: pagination.page - 1,
+            rowsPerPage: pagination.pageSize,
+            onChangePage: handlePageChange,
+            onChangeRowsPerPage: handlePageSizeChange,
+            serverSide: true,
+            search: false, // 禁用内置搜索，使用自定义搜索
+            download: false,
+            print: false,
+            viewColumns: false,
+            filter: false,
+            selectableRows: 'none',
+            responsive: 'vertical',
+          }}
+          emptyNodeText={t('analytics.noCallsFound')}
+          mobileTDFlexDirection="row"
+        />
+      </Root>
     </Stack>
   );
 }
+
+const Root = styled(Stack)`
+  @media (max-width: ${({ theme }: { theme: any }) => theme.breakpoints.values.md}px) {
+    .MuiTable-root > .MuiTableBody-root > .MuiTableRow-root > td.MuiTableCell-root {
+      > div {
+        width: fit-content;
+        flex: inherit;
+        font-size: 14px;
+      }
+    }
+  }
+`;

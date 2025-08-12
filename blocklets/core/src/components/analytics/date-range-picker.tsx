@@ -1,6 +1,7 @@
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
-import { CalendarMonth, KeyboardArrowDown } from '@mui/icons-material';
-import { Box, Button, Popover, Stack, SxProps, Typography } from '@mui/material';
+import { FormLabel } from '@blocklet/aigne-hub/components';
+import { CalendarMonth, ExpandLess, ExpandMore, KeyboardArrowDown } from '@mui/icons-material';
+import { Box, Button, Collapse, Divider, Popover, Stack, SxProps, Typography } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs, { Dayjs } from 'dayjs';
 import { useState } from 'react';
@@ -11,7 +12,6 @@ export interface DateRangePickerProps {
   onStartDateChange: (date: Dayjs | null) => void;
   onEndDateChange: (date: Dayjs | null) => void;
   onQuickSelect?: (range: { start: Dayjs; end: Dayjs }) => void;
-  showQuickRanges?: boolean;
   maxDate?: Dayjs;
   minDate?: Dayjs;
   sx?: SxProps;
@@ -23,13 +23,13 @@ export function DateRangePicker({
   onStartDateChange,
   onEndDateChange,
   onQuickSelect = undefined,
-  showQuickRanges = true,
   maxDate = dayjs(),
   minDate = undefined,
   sx = {},
 }: DateRangePickerProps) {
-  const { t } = useLocaleContext();
+  const { t, locale } = useLocaleContext();
   const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
+  const [showCustom, setShowCustom] = useState(false);
 
   const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     setAnchorEl(event.currentTarget);
@@ -37,6 +37,7 @@ export function DateRangePicker({
 
   const handleClose = () => {
     setAnchorEl(null);
+    setShowCustom(false); // Reset custom section when closing
   };
 
   const open = Boolean(anchorEl);
@@ -74,8 +75,19 @@ export function DateRangePicker({
 
   const formatDateRange = () => {
     if (startDate.isSame(endDate, 'day')) {
+      if (locale === 'zh') {
+        return startDate.format('YYYY年MM月DD日');
+      }
       return startDate.format('MMM DD, YYYY');
     }
+
+    if (locale === 'zh') {
+      if (startDate.isSame(endDate, 'year')) {
+        return `${startDate.format('M月D日')} - ${endDate.format('M月D日, YYYY年')}`;
+      }
+      return `${startDate.format('YYYY年M月D日')} - ${endDate.format('YYYY年M月D日')}`;
+    }
+
     return `${startDate.format('MMM DD')} - ${endDate.format('MMM DD, YYYY')}`;
   };
 
@@ -86,6 +98,16 @@ export function DateRangePicker({
     handleClose();
   };
 
+  // Check if current selection matches any quick range
+  const getActiveQuickRange = () => {
+    return quickRanges.find((range) => {
+      const rangeValue = range.getValue();
+      return startDate.isSame(rangeValue.start, 'day') && endDate.isSame(rangeValue.end, 'day');
+    });
+  };
+
+  const activeQuickRange = getActiveQuickRange();
+
   return (
     <>
       <Button
@@ -95,8 +117,14 @@ export function DateRangePicker({
         onClick={handleClick}
         sx={{
           justifyContent: 'space-between',
-          minWidth: 200,
+          minWidth: 220,
           textTransform: 'none',
+          bgcolor: 'background.paper',
+          borderColor: 'divider',
+          '&:hover': {
+            borderColor: 'primary.main',
+            bgcolor: 'action.hover',
+          },
           ...sx,
         }}>
         {formatDateRange()}
@@ -116,69 +144,136 @@ export function DateRangePicker({
         }}
         slotProps={{
           paper: {
-            sx: { p: 3, minWidth: 400 },
+            sx: {
+              p: 0,
+              minWidth: 320,
+              borderRadius: 3,
+              boxShadow: '0 8px 40px rgba(0,0,0,0.12)',
+              border: '1px solid',
+              borderColor: 'divider',
+            },
           },
         }}>
-        <Stack spacing={3}>
-          {/* Quick Select Buttons */}
-          {showQuickRanges && onQuickSelect && (
-            <Box>
-              <Typography variant="subtitle2" sx={{ mb: 1, color: 'text.secondary' }}>
-                {t('quickSelect')}
-              </Typography>
-              <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
-                {quickRanges.map((range) => (
-                  <Button
-                    key={range.label}
-                    variant="outlined"
-                    size="small"
-                    onClick={() => handleQuickSelect(range.getValue())}
-                    sx={{
-                      whiteSpace: 'nowrap',
-                      minWidth: 'fit-content',
-                    }}>
-                    {range.label}
-                  </Button>
-                ))}
+        <Box sx={{ p: 3 }}>
+          <Typography
+            variant="h6"
+            sx={{
+              mb: 2.5,
+              color: 'text.primary',
+              fontWeight: 600,
+              fontSize: '1rem',
+            }}>
+            {t('quickSelect')}
+          </Typography>
+
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: 1.5,
+              mb: 2.5,
+            }}>
+            {quickRanges.map((range) => {
+              const isActive = activeQuickRange?.label === range.label;
+              return (
+                <Button
+                  key={range.label}
+                  variant={isActive ? 'contained' : 'outlined'}
+                  onClick={() => handleQuickSelect(range.getValue())}
+                  sx={{
+                    py: 1,
+                    textTransform: 'none',
+                    borderRadius: 2,
+                    fontSize: '0.875rem',
+                    fontWeight: isActive ? 600 : 500,
+                    bgcolor: isActive ? 'primary.main' : 'transparent',
+                    borderColor: isActive ? 'primary.main' : 'divider',
+                    color: isActive ? 'primary.contrastText' : 'text.primary',
+                    '&:hover': {
+                      bgcolor: isActive ? 'primary.dark' : 'action.hover',
+                      borderColor: isActive ? 'primary.dark' : 'primary.main',
+                      transform: 'translateY(-1px)',
+                    },
+                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                    boxShadow: isActive ? '0 2px 8px rgba(0,0,0,0.15)' : 'none',
+                  }}>
+                  {range.label}
+                </Button>
+              );
+            })}
+          </Box>
+
+          <Divider sx={{ mb: 2 }} />
+
+          {/* Custom Range Toggle */}
+          <Button
+            variant="text"
+            startIcon={showCustom ? <ExpandLess /> : <ExpandMore />}
+            onClick={() => setShowCustom(!showCustom)}
+            sx={{
+              width: '100%',
+              justifyContent: 'flex-start',
+              textTransform: 'none',
+              py: 1,
+              px: 0,
+              fontWeight: 600,
+              color: 'text.primary',
+              fontSize: '1rem',
+            }}>
+            {t('customRange')}
+          </Button>
+
+          {/* Collapsible Custom Date Range */}
+          <Collapse in={showCustom}>
+            <Box sx={{ pt: 2 }}>
+              <Stack spacing={2}>
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                  <Box sx={{ flex: 1 }}>
+                    <FormLabel sx={{ mb: 1, color: 'text.secondary' }}>{t('analytics.startDate')}</FormLabel>
+                    <DatePicker
+                      value={startDate}
+                      onChange={onStartDateChange}
+                      maxDate={endDate}
+                      minDate={minDate}
+                      slotProps={{
+                        textField: {
+                          size: 'small',
+                          fullWidth: true,
+                          sx: {
+                            '& .MuiOutlinedInput-root': {
+                              borderRadius: 1.5,
+                            },
+                          },
+                        },
+                      }}
+                    />
+                  </Box>
+
+                  <Box sx={{ flex: 1 }}>
+                    <FormLabel sx={{ mb: 1, color: 'text.secondary' }}>{t('analytics.endDate')}</FormLabel>
+                    <DatePicker
+                      value={endDate}
+                      onChange={onEndDateChange}
+                      minDate={startDate}
+                      maxDate={maxDate}
+                      slotProps={{
+                        textField: {
+                          size: 'small',
+                          fullWidth: true,
+                          sx: {
+                            '& .MuiOutlinedInput-root': {
+                              borderRadius: 1.5,
+                            },
+                          },
+                        },
+                      }}
+                    />
+                  </Box>
+                </Box>
               </Stack>
             </Box>
-          )}
-
-          {/* Date Pickers */}
-          <Box>
-            <Typography variant="subtitle2" sx={{ mb: 2, color: 'text.secondary' }}>
-              {t('customRange')}
-            </Typography>
-            <Stack direction="row" spacing={2}>
-              <DatePicker
-                label={t('analytics.startDate')}
-                value={startDate}
-                onChange={onStartDateChange}
-                maxDate={endDate}
-                minDate={minDate}
-                slotProps={{
-                  textField: {
-                    size: 'small',
-                    sx: { minWidth: 140 },
-                  },
-                }}
-              />
-              <DatePicker
-                label={t('analytics.endDate')}
-                value={endDate}
-                onChange={onEndDateChange}
-                minDate={startDate}
-                maxDate={maxDate}
-                slotProps={{
-                  textField: {
-                    size: 'small',
-                    sx: { minWidth: 140 },
-                  },
-                }}
-              />
-            </Stack>
-          </Box>
-        </Stack>
+          </Collapse>
+        </Box>
       </Popover>
     </>
   );
