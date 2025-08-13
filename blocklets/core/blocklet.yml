@@ -87,8 +87,9 @@ screenshots:
   - c29f08420df8ea9a199fcb5ffe06febe.png
 components:
   - name: z2qa2GCqPJkufzqF98D8o7PWHrRRSHpYkNhEh
-    title: Observability
+    title: AIGNE Observability
     mountPoint: /observability
+    required: false
     source:
       store: https://store.blocklet.dev
       name: z2qa2GCqPJkufzqF98D8o7PWHrRRSHpYkNhEh

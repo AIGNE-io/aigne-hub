@@ -65,7 +65,7 @@ export function createModelCallMiddleware(callType: CallType) {
         type: callType,
         model,
         userDid,
-        appDid: req.body?.appId,
+        appDid: req.headers['app-did'] as string,
         requestId: req.headers['x-request-id'] as string,
         usageMetrics,
         metadata: {
