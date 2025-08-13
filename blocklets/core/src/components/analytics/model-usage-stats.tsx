@@ -1,8 +1,9 @@
+import { getPrefix } from '@app/libs/util';
 import Empty from '@arcblock/ux/lib/Empty';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import { formatNumber } from '@blocklet/aigne-hub/utils/util';
-import { AudioFile, Code, Image, Psychology, SmartToy, TextFields } from '@mui/icons-material';
-import { Box, Card, CardContent, LinearProgress, Stack, Tooltip, Typography, useTheme } from '@mui/material';
+import { Avatar, Box, Card, CardContent, LinearProgress, Stack, Tooltip, Typography, useTheme } from '@mui/material';
+import { joinURL } from 'ufo';
 
 export interface ModelStats {
   providerId: string;
@@ -25,25 +26,6 @@ interface ModelUsageStatsProps {
   title?: string;
   subtitle?: string;
   maxItems?: number;
-}
-
-function getModelIcon(type: string, model: string) {
-  if (type === 'imageGeneration' || model.toLowerCase().includes('dall')) {
-    return <Image />;
-  }
-  if (type === 'embedding' || model.toLowerCase().includes('embedding')) {
-    return <TextFields />;
-  }
-  if (type === 'audioTranscription' || model.toLowerCase().includes('whisper')) {
-    return <AudioFile />;
-  }
-  if (model.toLowerCase().includes('code') || model.toLowerCase().includes('codex')) {
-    return <Code />;
-  }
-  if (model.toLowerCase().includes('claude')) {
-    return <Psychology />;
-  }
-  return <SmartToy />;
 }
 
 function getUsageDisplay(model: ModelStats): string {
@@ -77,30 +59,21 @@ export function ModelUsageStats({
   const color = theme.palette.primary.main;
 
   const renderTooltipContent = (model: ModelStats) => {
-    const icon = getModelIcon(model.type, model.model);
     return (
       <Card sx={{ minWidth: 280, border: 'none', boxShadow: 'none' }}>
         <CardContent sx={{ p: 2 }}>
           <Stack
             direction="row"
-            spacing={2}
+            spacing={1}
             sx={{
               alignItems: 'center',
               mb: 2,
             }}>
-            <Box
-              sx={{
-                color,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 32,
-                height: 32,
-                borderRadius: 1,
-                backgroundColor: `${color}15`,
-              }}>
-              {icon}
-            </Box>
+            <Avatar
+              src={joinURL(getPrefix(), `/logo/${model.provider.name}.png`)}
+              sx={{ width: 32, height: 32 }}
+              alt={model.provider.displayName}
+            />
             <Box>
               <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'text.primary' }}>
                 {model.model}
@@ -171,7 +144,6 @@ export function ModelUsageStats({
           sx={{ gap: 1.5 }}>
           {displayStats.map((model) => {
             const percentage = (model.totalCalls / totalCalls) * 100;
-            const icon = getModelIcon(model.type, model.model);
             return (
               <Box>
                 <Stack
@@ -183,23 +155,24 @@ export function ModelUsageStats({
                   }}>
                   <Stack
                     direction="row"
-                    spacing={{ xs: 1.5, sm: 2 }}
+                    spacing={1}
                     sx={{
                       alignItems: 'center',
                     }}>
-                    <Box
+                    <Avatar
+                      src={joinURL(getPrefix(), `/logo/${model.provider.name}.png`)}
                       sx={{
-                        color,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: { xs: 20, sm: 24 },
-                        height: { xs: 20, sm: 24 },
-                        borderRadius: 1,
-                        backgroundColor: `${color}15`,
-                      }}>
-                      {icon}
-                    </Box>
+                        width: {
+                          xs: 20,
+                          sm: 24,
+                        },
+                        height: {
+                          xs: 20,
+                          sm: 24,
+                        },
+                      }}
+                      alt={model.provider.displayName}
+                    />
                     <Box sx={{ flex: 1 }}>
                       <Tooltip
                         key={`${model.providerId}-${model.model}`}

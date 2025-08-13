@@ -88,7 +88,7 @@ export async function callRemoteApi<T = any>(
 
   const headers: Record<string, string> = {
     Authorization: `Bearer ${accessKey}`,
-    'x-aigne-hub-client-did': process.env.BLOCKLET_APP_PID || '',
+    'x-aigne-hub-client-did': process.env.BLOCKLET_APP_PID || input.appId || '',
     ...config.additionalHeaders,
   };
 

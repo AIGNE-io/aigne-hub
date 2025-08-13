@@ -1,3 +1,4 @@
+import { getPrefix } from '@app/libs/util';
 /* eslint-disable react/no-unstable-nested-components */
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import Toast from '@arcblock/ux/lib/Toast';
@@ -6,10 +7,22 @@ import { formatNumber } from '@blocklet/aigne-hub/utils/util';
 import { formatError } from '@blocklet/error';
 import styled from '@emotion/styled';
 import { Download, FilterAltOutlined, Search } from '@mui/icons-material';
-import { Box, Button, Chip, CircularProgress, MenuItem, Stack, TextField, Tooltip, Typography } from '@mui/material';
+import {
+  Avatar,
+  Box,
+  Button,
+  Chip,
+  CircularProgress,
+  MenuItem,
+  Stack,
+  TextField,
+  Tooltip,
+  Typography,
+} from '@mui/material';
 import { useDebounceEffect, useRequest } from 'ahooks';
 import dayjs from 'dayjs';
 import { useEffect, useState } from 'react';
+import { joinURL } from 'ufo';
 
 import { useSessionContext } from '../../contexts/session';
 
@@ -214,8 +227,18 @@ export function CallHistory({
       options: {
         customBodyRender: (_value: any, tableMeta: any) => {
           const call = modelCalls[tableMeta.rowIndex];
-          if (!call) return null;
-          return <Typography variant="body2">{call.provider?.displayName || '-'}</Typography>;
+          if (!call) return '-';
+          if (!call.provider) return '-';
+          return (
+            <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+              <Avatar
+                src={joinURL(getPrefix(), `/logo/${call.provider.name}.png`)}
+                sx={{ width: 24, height: 24 }}
+                alt={call.provider.displayName}
+              />
+              <Typography variant="body2">{call.provider?.displayName}</Typography>
+            </Stack>
+          );
         },
       },
     },

@@ -60,12 +60,17 @@ export function createModelCallMiddleware(callType: CallType) {
         imageStyle: req.body?.style,
       };
     }
+    const appDid = (req.headers['x-aigne-hub-client-did'] as string) || process.env.BLOCKLET_APP_PID || '';
+    req.appClient = {
+      appId: appDid,
+      userDid,
+    };
     try {
       const context = await createModelCallContext({
         type: callType,
         model,
         userDid,
-        appDid: req.headers['x-aigne-hub-client-did'] as string,
+        appDid,
         requestId: req.headers['x-request-id'] as string,
         usageMetrics,
         metadata: {

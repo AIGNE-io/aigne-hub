@@ -28,16 +28,18 @@ export const createTextCompletionApi =
     fetch,
     path,
     timeout,
+    headers = {},
   }: {
     fetch: typeof globalThis.fetch;
     path: string;
     timeout?: number;
+    headers?: Record<string, string>;
   }): TextCompletionFn<P> =>
   async (options) => {
     const promise: Promise<TextCompletions | ReadableStream<Uint8Array>> = options.stream
       ? fetch(path, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...headers },
           body: JSON.stringify(options),
         }).then(async (res) => {
           if (res.status !== 200) {
