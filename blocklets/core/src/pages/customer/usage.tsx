@@ -27,7 +27,7 @@ const useSmartLoading = (loading: boolean, data: any, minLoadingTime = 300) => {
       timer = setTimeout(() => setShowSkeleton(true), 200);
     } else if (!loading && showSkeleton) {
       const elapsed = Date.now() - startTimeRef.current;
-      const minTime = isFirstLoad ? 2000 : minLoadingTime;
+      const minTime = isFirstLoad ? 1000 : minLoadingTime;
       const delay = Math.max(0, minTime - elapsed);
 
       setTimeout(() => {

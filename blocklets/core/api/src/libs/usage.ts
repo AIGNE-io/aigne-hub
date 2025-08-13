@@ -247,6 +247,9 @@ async function reportUsageV2({ appId, userDid }: { appId: string; userDid: strin
         await createMeterEvent({
           userDid,
           amount: quantity || 0,
+          metadata: {
+            appId,
+          },
         });
 
         await end.update({ usageReportStatus: 'reported' });
