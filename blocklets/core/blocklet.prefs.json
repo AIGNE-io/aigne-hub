@@ -251,7 +251,7 @@
                         "name": "baseCreditPrice",
                         "x-designable-id": "79hmyquqn8p",
                         "x-index": 0,
-                        "default": "0.00000025"
+                        "default": "0.0000025"
                       },
                       "targetProfitMargin": {
                         "type": "number",
