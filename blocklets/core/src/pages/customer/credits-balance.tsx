@@ -46,7 +46,12 @@ export function CreditsBalance({ data = undefined as UserInfoResult | undefined 
       }}>
       <CardHeader
         title={
-          <Stack direction="row" alignItems="center" spacing={1}>
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{
+              alignItems: 'center',
+            }}>
             <CreditCard sx={{ fontSize: 20 }} />
             <Typography variant="h6" sx={{ fontWeight: 600 }}>
               {t('analytics.creditsBalance')}

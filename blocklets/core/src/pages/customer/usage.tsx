@@ -78,8 +78,19 @@ function ModelUsageStatsSkeleton() {
         <Skeleton variant="text" width="60%" height={24} />
         <Skeleton variant="text" width="80%" height={16} />
         {[1, 2, 3, 4, 5].map((i) => (
-          <Stack key={i} direction="row" justifyContent="space-between" alignItems="center">
-            <Stack direction="row" spacing={2} alignItems="center">
+          <Stack
+            key={i}
+            direction="row"
+            sx={{
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}>
+            <Stack
+              direction="row"
+              spacing={2}
+              sx={{
+                alignItems: 'center',
+              }}>
               <Skeleton variant="circular" width={24} height={24} />
               <Stack>
                 <Skeleton variant="text" width={120} height={16} />
@@ -158,14 +169,20 @@ function CreditBoard() {
           {/* Header */}
           <Stack
             direction={{ xs: 'column', md: 'row' }}
-            justifyContent="space-between"
-            alignItems={{ xs: 'flex-start', md: 'center' }}
-            spacing={2}>
+            spacing={2}
+            sx={{
+              justifyContent: 'space-between',
+              alignItems: { xs: 'flex-start', md: 'center' },
+            }}>
             <Box>
               <Typography variant="h2" sx={{ fontWeight: 'bold', mb: 0.5, color: 'text.primary' }}>
                 {t('analytics.creditUsage')}
               </Typography>
-              <Typography variant="body1" color="text.secondary">
+              <Typography
+                variant="body1"
+                sx={{
+                  color: 'text.secondary',
+                }}>
                 {t('analytics.creditBoardDescription')}
               </Typography>
             </Box>

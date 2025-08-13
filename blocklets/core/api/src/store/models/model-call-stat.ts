@@ -1,5 +1,4 @@
 import BigNumber from 'bignumber.js';
-import pAll from 'p-all';
 import {
   CreationOptional,
   DataTypes,
@@ -186,54 +185,6 @@ export default class ModelCallStat extends Model<
         },
       },
     });
-  }
-
-  private static createPrecomputeTasks(userDid: string, dates: string[]) {
-    return dates.map((date) => async () => {
-      try {
-        const startOfDay = getDateUnixTimestamp(date);
-        const endOfDay = startOfDay + 24 * 60 * 60 - 1;
-
-        const existingStat = await ModelCallStat.findOne({
-          where: {
-            userDid,
-            timestamp: {
-              [Op.gte]: startOfDay,
-              [Op.lte]: endOfDay,
-            },
-          },
-        });
-
-        const stats = await ModelCallStat.computeDailyStats(userDid, date);
-
-        if (existingStat) {
-          await existingStat.update({ stats });
-        } else {
-          await ModelCallStat.create({
-            id: generateCacheKey(userDid, date),
-            userDid,
-            timestamp: startOfDay,
-            stats,
-          });
-        }
-      } catch (error) {
-        console.warn(`Failed to precompute stats for ${userDid}:${date}`, error);
-      }
-    });
-  }
-
-  static async precomputeStats(userDid: string, days = 30): Promise<void> {
-    const dates: string[] = [];
-    const current = new Date();
-
-    for (let i = 0; i < days; i++) {
-      const date = new Date(current);
-      date.setDate(current.getDate() - i);
-      dates.push(date.toISOString().split('T')[0]!);
-    }
-
-    const tasks = ModelCallStat.createPrecomputeTasks(userDid, dates);
-    await pAll(tasks, { concurrency: 3 });
   }
 }
 

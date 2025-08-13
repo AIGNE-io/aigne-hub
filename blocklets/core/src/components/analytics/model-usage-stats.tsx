@@ -81,7 +81,13 @@ export function ModelUsageStats({
     return (
       <Card sx={{ minWidth: 280, border: 'none', boxShadow: 'none' }}>
         <CardContent sx={{ p: 2 }}>
-          <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 2 }}>
+          <Stack
+            direction="row"
+            spacing={2}
+            sx={{
+              alignItems: 'center',
+              mb: 2,
+            }}>
             <Box
               sx={{
                 color,
@@ -144,7 +150,12 @@ export function ModelUsageStats({
             {title}
           </Typography>
           {subtitle && (
-            <Typography variant="body1" color="text.secondary" sx={{ mb: 1 }}>
+            <Typography
+              variant="body1"
+              sx={{
+                color: 'text.secondary',
+                mb: 1,
+              }}>
               {subtitle}
             </Typography>
           )}
@@ -165,10 +176,17 @@ export function ModelUsageStats({
               <Box>
                 <Stack
                   direction="row"
-                  justifyContent="space-between"
-                  alignItems="center"
-                  sx={{ mb: { xs: 1, sm: 1.5 } }}>
-                  <Stack direction="row" alignItems="center" spacing={{ xs: 1.5, sm: 2 }}>
+                  sx={{
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    mb: { xs: 1, sm: 1.5 },
+                  }}>
+                  <Stack
+                    direction="row"
+                    spacing={{ xs: 1.5, sm: 2 }}
+                    sx={{
+                      alignItems: 'center',
+                    }}>
                     <Box
                       sx={{
                         color,
@@ -205,7 +223,6 @@ export function ModelUsageStats({
                     {percentage.toFixed(0)}%
                   </Typography>
                 </Stack>
-
                 <Box sx={{ mb: { xs: 0.5, sm: 1 } }}>
                   <LinearProgress
                     variant="determinate"

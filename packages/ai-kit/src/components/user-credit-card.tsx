@@ -48,7 +48,12 @@ function UserCreditCard({
     return (
       <Box sx={{ p: 2, textAlign: 'center' }}>
         <CircularProgress size={24} />
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+        <Typography
+          variant="body2"
+          sx={{
+            color: 'text.secondary',
+            mt: 1,
+          }}>
           {t('loadingUserInfo')}
         </Typography>
       </Box>
@@ -74,8 +79,17 @@ function UserCreditCard({
       sx={{ p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 2, width: '100%' }}
       spacing={2}
       className="user-credit-card">
-      <Stack direction="row" justifyContent="space-between" alignItems="center">
-        <Typography variant="body2" color="text.secondary">
+      <Stack
+        direction="row"
+        sx={{
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}>
+        <Typography
+          variant="body2"
+          sx={{
+            color: 'text.secondary',
+          }}>
           {t('username')}
         </Typography>
         <UserCard
@@ -94,21 +108,48 @@ function UserCreditCard({
       </Stack>
       {userInfoData?.enableCredit ? (
         <>
-          <Stack direction="row" justifyContent="space-between" alignItems="center">
-            <Typography variant="body2" color="text.secondary">
+          <Stack
+            direction="row"
+            sx={{
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}>
+            <Typography
+              variant="body2"
+              sx={{
+                color: 'text.secondary',
+              }}>
               {t('creditBalance')}
             </Typography>
-            <Typography variant="h6" fontWeight="bold">
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: 'bold',
+              }}>
               {formatNumber(userInfoData?.creditBalance?.balance || '0')}
             </Typography>
           </Stack>
 
           {userInfoData.creditBalance?.pendingCredit && Number(userInfoData.creditBalance.pendingCredit) > 0 && (
-            <Stack direction="row" justifyContent="space-between" alignItems="center">
-              <Typography variant="body2" color="text.secondary">
+            <Stack
+              direction="row"
+              sx={{
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}>
+              <Typography
+                variant="body2"
+                sx={{
+                  color: 'text.secondary',
+                }}>
                 {t('pendingCredit')}
               </Typography>
-              <Typography variant="h6" fontWeight="bold" sx={{ color: 'error.main' }}>
+              <Typography
+                variant="h6"
+                sx={{
+                  fontWeight: 'bold',
+                  color: 'error.main',
+                }}>
                 {formatNumber(userInfoData.creditBalance.pendingCredit)}
               </Typography>
             </Stack>

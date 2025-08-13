@@ -53,14 +53,24 @@ function SummaryCard({ title, value = '-', trend = undefined, trendDescription =
         backgroundColor: 'background.default',
       }}>
       <CardContent sx={{ p: 2.5 }}>
-        <Typography variant="body2" color="text.primary" sx={{ fontWeight: 600, mb: 1 }}>
+        <Typography
+          variant="body2"
+          sx={{
+            color: 'text.primary',
+            fontWeight: 600,
+            mb: 1,
+          }}>
           {title}
         </Typography>
         <Typography variant="h3" sx={{ fontWeight: 'bold', mb: 0.5 }}>
           {value || '-'}
         </Typography>
         {trend && (
-          <Typography variant="caption" color="text.secondary">
+          <Typography
+            variant="caption"
+            sx={{
+              color: 'text.secondary',
+            }}>
             <Box component="span" sx={{ color: getTrendColor(trend), fontWeight: 500 }}>
               {trend}
             </Box>
@@ -95,7 +105,6 @@ export function UsageSummary({
     return t('analytics.fromPreviousPeriod');
   };
 
-  // 使用自定义指标或默认指标
   const metrics = customMetrics || [
     {
       title: t('analytics.totalCreditsUsed'),

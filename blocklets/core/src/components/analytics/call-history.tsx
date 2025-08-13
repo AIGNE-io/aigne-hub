@@ -318,7 +318,12 @@ export function CallHistory({
           if (!call) return null;
           return (
             <Box>
-              <Stack direction="row" alignItems="center" spacing={1}>
+              <Stack
+                direction="row"
+                spacing={1}
+                sx={{
+                  alignItems: 'center',
+                }}>
                 <Chip
                   label={
                     call.status === 'failed' ? (
@@ -378,10 +383,20 @@ export function CallHistory({
 
   return (
     <Stack spacing={3}>
-      <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 1 }}>
+      <Stack
+        direction="row"
+        sx={{
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          mb: 1,
+        }}>
         <Stack>
           <Typography variant="h3">{title || t('analytics.callHistory')}</Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: 'text.secondary',
+            }}>
             {subtitle || t('analytics.callHistoryDescription')}
           </Typography>
         </Stack>
@@ -396,7 +411,6 @@ export function CallHistory({
           </Button>
         )}
       </Stack>
-
       <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
         <TextField
           placeholder={t('analytics.searchPlaceholder')}
@@ -426,7 +440,6 @@ export function CallHistory({
           <MenuItem value="failed">{t('failed')}</MenuItem>
         </TextField>
       </Stack>
-
       <Root>
         <Table
           data={modelCalls}

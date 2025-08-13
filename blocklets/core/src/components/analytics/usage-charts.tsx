@@ -38,25 +38,6 @@ export interface UsageChartsProps {
   showRequests?: boolean;
 }
 
-function isLegacyFormat(data: DailyStats | LegacyDailyStats): data is LegacyDailyStats {
-  return 'credits' in data && 'tokens' in data && 'requests' in data;
-}
-
-function transformLegacyData(legacyData: LegacyDailyStats[]): DailyStats[] {
-  return legacyData.map((item) => ({
-    date: item.date,
-    totalCredits: item.credits,
-    totalUsage: item.tokens,
-    totalCalls: item.requests,
-    byType: {
-      chatCompletion: {
-        totalUsage: item.tokens,
-        totalCalls: item.requests,
-      },
-    },
-  }));
-}
-
 // Function to get usage unit based on service type
 const getUsageUnit = (type: string, t: any) => {
   const normalizedType = type.toLowerCase();
@@ -308,21 +289,6 @@ export function UsageCharts({
   const { t, locale } = useLocaleContext();
   const theme = useTheme();
 
-  // Transform legacy data format if needed
-  const normalizedData =
-    dailyStats.length > 0 && dailyStats[0] && isLegacyFormat(dailyStats[0])
-      ? transformLegacyData(dailyStats as LegacyDailyStats[])
-      : (dailyStats as DailyStats[]);
-
-  // Process data to ensure proper format
-  const processedData = normalizedData.map((item) => ({
-    ...item,
-    date: dayjs(item.date).format('YYYY-MM-DD'),
-    totalUsage: item.totalUsage || 0,
-    totalCredits: item.totalCredits || 0,
-    totalCalls: item.totalCalls || 0,
-  }));
-
   const formatXAxisLabel = (label: string) => {
     if (locale === 'zh') {
       return dayjs(label).format('M月D日');
@@ -342,7 +308,7 @@ export function UsageCharts({
 
   const chartContent = (
     <ResponsiveContainer width="100%" height="100%">
-      <LineChart data={processedData} margin={{ right: 30, left: 20, top: 10 }}>
+      <LineChart data={dailyStats} margin={{ right: 30, left: 20, top: 10 }}>
         <Tooltip
           content={<CustomTooltip showCredits={showCredits} showRequests={showRequests} theme={theme} t={t} />}
         />
@@ -368,10 +334,23 @@ export function UsageCharts({
   return (
     <Card sx={cardStyles}>
       <CardHeader title={chartTitle} />
-      {processedData && processedData.length > 0 ? (
-        <CardContent sx={{ height, px: 0 }}>{chartContent}</CardContent>
+      {dailyStats && dailyStats.length > 0 ? (
+        <CardContent
+          sx={{
+            height,
+            px: 0,
+            svg: {
+              outline: 'none',
+            },
+          }}>
+          {chartContent}
+        </CardContent>
       ) : (
-        <CardContent sx={{ height, px: 0 }}>
+        <CardContent
+          sx={{
+            height,
+            px: 0,
+          }}>
           <Empty>{t('analytics.dailyUsageEmpty')}</Empty>
         </CardContent>
       )}
