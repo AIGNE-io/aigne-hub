@@ -223,7 +223,7 @@ export async function ensureDefaultCreditPrice() {
             // @ts-ignore
             currency_options: paymentCurrencies.map((currency) => ({
               currency_id: currency.id,
-              unit_amount: '0.0025',
+              unit_amount: '0.5',
             })),
             lookup_key: DEFAULT_CREDIT_PRICE_KEY,
             nickname: 'Per Unit Credit For AIGNE Hub',
@@ -233,7 +233,7 @@ export async function ensureDefaultCreditPrice() {
                 valid_duration_value: 0,
                 valid_duration_unit: 'days',
                 currency_id: meter.currency_id,
-                credit_amount: '1000',
+                credit_amount: '200000',
               },
               meter_id: meter.id,
             },
