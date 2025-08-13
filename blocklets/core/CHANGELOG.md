@@ -1,3 +1,7 @@
+## 0.3.11 (2025-8-13)
+
+- feat(core): add credit usage analytics and management features
+
 ## 0.3.10 (2025-8-9)
 
 - chore: bump deps to latest
