@@ -101,7 +101,7 @@ router.post('/:type(chat)?/completions', compression(), user, chatCallTracker, a
             completionTokens: (usageData.usage?.outputTokens as number) || 0,
             model: req.body?.model as string,
             modelParams: req.body?.options?.modelOptions,
-            appId: req.body?.appId,
+            appId: req.headers['x-aigne-hub-client-did'] as string,
             userDid: userDid!,
             additionalMetrics: {
               totalTokens: (usageData.usage as any)?.totalTokens, // Real usage metric
@@ -173,6 +173,7 @@ router.post(
                 model: req.body?.model as string,
                 modelParams: req.body?.options?.modelOptions,
                 userDid: userDid!,
+                appId: req.headers['x-aigne-hub-client-did'] as string,
                 additionalMetrics: {
                   totalTokens: (usageData.usage as any)?.totalTokens,
                   endpoint: req.path,
@@ -226,6 +227,7 @@ router.post(
           completionTokens: 0, // Embeddings don't have completion tokens
           model: usageData.model,
           userDid: userDid!,
+          appId: req.headers['x-aigne-hub-client-did'] as string,
           additionalMetrics: {
             // No additional usage metrics for embeddings
           },
@@ -269,7 +271,7 @@ router.post(
           model: usageData.model,
           modelParams: usageData.modelParams,
           numberOfImageGeneration: usageData.numberOfImageGeneration,
-          appId: req.appClient?.appId,
+          appId: req.headers['x-aigne-hub-client-did'] as string,
           userDid: userDid!,
           additionalMetrics: {
             imageSize: usageData.modelParams?.size,

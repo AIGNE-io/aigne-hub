@@ -65,7 +65,7 @@ export function createModelCallMiddleware(callType: CallType) {
         type: callType,
         model,
         userDid,
-        appDid: req.headers['app-did'] as string,
+        appDid: req.headers['x-aigne-hub-client-did'] as string,
         requestId: req.headers['x-request-id'] as string,
         usageMetrics,
         metadata: {
