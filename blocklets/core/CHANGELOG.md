@@ -1,3 +1,7 @@
+## 0.3.12 (2025-8-13)
+
+- feat(api): enhance app identification and improve model call tracking
+
 ## 0.3.11 (2025-8-13)
 
 - feat(core): add credit usage analytics and management features
