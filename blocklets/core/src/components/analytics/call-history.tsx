@@ -387,7 +387,7 @@ export function CallHistory({
         direction="row"
         sx={{
           justifyContent: 'space-between',
-          alignItems: 'flex-start',
+          alignItems: 'center',
           mb: 1,
         }}>
         <Stack>
