@@ -13,6 +13,7 @@ import { ErrorBoundary } from 'react-error-boundary';
 import { Navigate, Route, RouterProvider, createBrowserRouter, createRoutesFromElements } from 'react-router-dom';
 
 import NotFoundView from './components/error/not-found';
+import UserLayout from './components/layout/user';
 import Loading from './components/loading';
 import { TransitionProvider } from './components/loading/progress-bar';
 import { SessionProvider, useIsRole } from './contexts/session';
@@ -21,6 +22,7 @@ import { HomeLazy } from './pages/home';
 import { ChatLazy } from './pages/playground';
 
 const ConfigPage = lazy(() => import('./pages/config'));
+const CreditBoardPage = lazy(() => import('./pages/customer/usage'));
 
 export default function App() {
   const basename = window.blocklet?.prefix || '/';
@@ -82,6 +84,15 @@ function AppRoutes({ basename }: { basename: string }) {
         <Route key="config-tabs" path="/config/:group" element={<ConfigPage />} />
         <Route key="config-sub" path="/config/:group/:page" element={<ConfigPage />} />
         <Route key="config-fallback" path="/config/*" element={<ConfigPage />} />
+        <Route
+          key="credit-board"
+          path="/credit-usage"
+          element={
+            <UserLayout>
+              <CreditBoardPage />
+            </UserLayout>
+          }
+        />
         {/* <Route path="billing/*" element={<BillingRoutes />} /> */}
         <Route
           path="*"

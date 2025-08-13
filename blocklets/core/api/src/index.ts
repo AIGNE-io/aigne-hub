@@ -10,6 +10,7 @@ import cors from 'cors';
 import dotenv from 'dotenv-flow';
 import express, { ErrorRequestHandler } from 'express';
 
+import crons from './crons/index';
 import { Config, isDevelopment } from './libs/env';
 import logger, { accessLogMiddleware } from './libs/logger';
 import { autoUpdateSubscriptionMeta, ensureMeter, paymentClient } from './libs/payment';
@@ -108,6 +109,7 @@ export const server = app.listen(port, (err?: any) => {
 
   autoUpdateSubscriptionMeta();
   subscribeEvents();
+  crons.init();
   if (Config.creditBasedBillingEnabled) {
     paymentClient.ensureStart(async () => {
       await ensureMeter();

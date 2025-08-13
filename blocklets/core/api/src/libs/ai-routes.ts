@@ -221,7 +221,10 @@ export async function processChatCompletion(
 
   const isEventStream = req.accepts().some((i) => i.startsWith('text/event-stream'));
 
-  const result = await chatCompletionByFrameworkModel(input, req.user?.did, options);
+  const result = await chatCompletionByFrameworkModel(input, req.user?.did, {
+    ...options,
+    req,
+  });
 
   let content = '';
   const toolCalls: NonNullable<ChatCompletionChunk['delta']['toolCalls']> = [];
@@ -318,7 +321,7 @@ export async function processEmbeddings(
 
   await checkModelRateAvailable(input.model);
 
-  const openai = await getOpenAIV2();
+  const openai = await getOpenAIV2(req);
 
   const { data, usage } = await openai.embeddings.create(input);
 
@@ -353,7 +356,7 @@ export async function processImageGeneration(
 
   if (Config.verbose) logger.info(`AIGNE Hub ${version} image generations input:`, input);
 
-  const openai = await getOpenAIV2();
+  const openai = await getOpenAIV2(req);
   let response: ImagesResponse;
 
   const isImageValid = (image: string | string[] | undefined): image is string[] => {

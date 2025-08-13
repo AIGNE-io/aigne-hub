@@ -21,6 +21,11 @@ export default flatten({
   subscriptionPastDueTip: '您的订阅已欠费，请及时支付欠款以恢复订阅服务。',
   payNow: '立即支付',
   enterHint: '回车创建',
+  type: '类型',
+  model: '模型',
+  success: '成功',
+  failed: '失败',
+  processing: '正在处理...',
 
   // AIGNE Hub integrations
   welcome: '欢迎使用 AIGNE Hub',
@@ -41,6 +46,25 @@ export default flatten({
   creditsConfigTitle: '启用 Credits 计费功能',
   creditsConfigDesc: '启用此功能后，用户需要购买 Credits 才能使用 AI 服务。请按照以下步骤进行配置：',
   gotoConfig: '前往配置',
+  // Types
+  modelTypes: {
+    chatCompletion: '文本',
+    completion: '文本',
+    imageGeneration: '图像',
+    videoGeneration: '视频',
+    audioGeneration: '音频',
+    embedding: '嵌入',
+    transcription: '音频转录',
+    speech: '文本转语音',
+  },
+
+  // Units
+  modelUnits: {
+    tokens: 'tokens',
+    images: '张图片',
+    minutes: '分钟',
+    characters: '字符',
+  },
 
   // Configuration section
   config: {
@@ -70,13 +94,6 @@ export default flatten({
         outputRate: '输出',
         description: '描述',
         actions: '操作',
-      },
-
-      // Types
-      types: {
-        chatCompletion: '文本',
-        imageGeneration: '图像',
-        embedding: '嵌入',
       },
 
       // Form
@@ -324,7 +341,65 @@ export default flatten({
   playground: '沙盒环境',
   integration: '集成示例',
   manageCredits: '管理 Credits',
-  quickIntegration: '快速集成',
-  integrationDesc: '使用 AIGNE Framework 开始集成 AIGNE Hub：',
+  creditUsage: '额度分析',
+  images: '图片',
+  credits: 'Credits',
+  creditsValue: 'Credits 用量',
+  tokens: 'tokens',
+  requests: '请求次数',
+  successRate: '成功率',
+  duration: '时长',
+  last7Days: '最近7天',
+  last30Days: '最近30天',
+  thisMonth: '本月',
+  lastMonth: '上月',
+  dailyRequestsUsage: '每日请求使用',
+  showing: '显示',
+  of: '共',
+  user: '用户',
+  application: '应用',
   codeCopied: '代码已复制到剪贴板！',
+
+  // Analytics & Credit Board
+  analytics: {
+    creditUsage: '额度分析',
+    creditBoardDescription: '监控您的模型使用情况并管理 AIGNE Hub Credits 额度',
+    loadingData: '数据加载中...',
+    startDate: '开始日期',
+    endDate: '结束日期',
+    creditsBalance: 'AIGNE Hub Credits 余额',
+    availableCredits: '可用于模型使用的 AIGNE Hub Credits',
+    addCredits: '购买额度',
+    totalCreditsUsed: 'Credits 总用量',
+    totalUsage: '总使用量',
+    totalTokens: '总Token数',
+    totalRequests: '总请求数',
+    dailyCreditsUsage: '每日 Credits 用量趋势',
+    dailyUsage: '每日使用量趋势',
+    tokenUsage: 'Token使用',
+    modelUsage: '使用量',
+    modelUsageStats: '模型使用统计',
+    modelUsageStatsDescription: '选定时间段内最常用的模型',
+    ofTotalUsage: '占总请求数',
+    callHistory: '调用历史',
+    callHistoryDescription: '所有模型API调用的详细记录',
+    searchPlaceholder: '按模型搜索...',
+    allStatus: '所有状态',
+    timestamp: '时间戳',
+    noCallsFound: '未找到符合条件的调用记录',
+    dailyTokenUsage: '每日Token使用',
+    noLimit: '无限量',
+    modelUsageStatsEmpty: '当前时间段内没有模型使用记录',
+    dailyUsageEmpty: '当前时间段内没有使用记录',
+    refresh: '刷新数据',
+    refreshSuccess: '刷新成功',
+    fromPreviousDay: '与前一天相比',
+    fromPreviousWeek: '与上周相比',
+    fromPreviousMonth: '与上月相比',
+    fromPreviousPeriod: '与上一周期相比',
+  },
+
+  quickSelect: '快速选择',
+  customRange: '自定义范围',
+  dataAvailableFrom: '数据可查询近3个月',
 });

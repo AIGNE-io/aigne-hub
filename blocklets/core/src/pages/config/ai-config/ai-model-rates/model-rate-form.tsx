@@ -138,7 +138,7 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
   const [pricingMenuAnchor, setPricingMenuAnchor] = useState<null | HTMLElement>(null);
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
 
-  const baseCreditPrice = window.blocklet?.preferences?.baseCreditPrice || 0.00000025;
+  const baseCreditPrice = window.blocklet?.preferences?.baseCreditPrice || 0.0000025;
   const targetProfitMargin = window.blocklet?.preferences?.targetProfitMargin || 0;
 
   const { modelOptions: allModelOptions, loading: modelDataLoading, fetchModelData } = useModelData();

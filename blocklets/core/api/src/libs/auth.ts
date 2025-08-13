@@ -1,6 +1,6 @@
 import path from 'path';
 
-import AuthStorage from '@arcblock/did-auth-storage-nedb';
+import AuthStorage from '@arcblock/did-connect-storage-nedb';
 import env from '@blocklet/sdk/lib/env';
 import AuthService from '@blocklet/sdk/lib/service/auth';
 import getWallet from '@blocklet/sdk/lib/wallet';

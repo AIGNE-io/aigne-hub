@@ -2,8 +2,8 @@ import { formatNumber } from '@blocklet/aigne-hub/utils/util';
 import { fromUnitToToken } from '@ocap/util';
 
 import logger from '../../logger';
-import { ensureCustomer, ensureMeter, paymentClient } from '../../payment';
-import { formatTime, getCustomerIndexUrl, getUserLocale } from '../shared';
+import { ensureCustomer, ensureMeter, getCreditUsageLink, paymentClient } from '../../payment';
+import { formatTime, getUserLocale } from '../shared';
 import {
   BaseNotificationTemplate,
   BaseNotificationTemplateContext,
@@ -252,7 +252,7 @@ export class CreditGrantedNotificationTemplate extends BaseNotificationTemplate<
         {
           name: translate('notification.common.viewCreditGrant', locale),
           title: translate('notification.common.viewCreditGrant', locale),
-          link: getCustomerIndexUrl({ locale, userDid }),
+          link: getCreditUsageLink(userDid),
         },
       ],
     };

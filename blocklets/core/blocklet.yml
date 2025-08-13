@@ -24,7 +24,7 @@ repository:
   type: git
   url: git+https://github.com/AIGNE-io/aigne-hub.git
 specVersion: 1.2.8
-version: 0.3.6
+version: 0.3.12
 logo: screenshots/logo.png
 files:
   - dist
@@ -87,8 +87,9 @@ screenshots:
   - c29f08420df8ea9a199fcb5ffe06febe.png
 components:
   - name: z2qa2GCqPJkufzqF98D8o7PWHrRRSHpYkNhEh
-    title: Observability
+    title: AIGNE Observability
     mountPoint: /observability
+    required: false
     source:
       store: https://store.blocklet.dev
       name: z2qa2GCqPJkufzqF98D8o7PWHrRRSHpYkNhEh
@@ -118,4 +119,18 @@ navigation:
     role:
       - admin
       - owner
+  - id: creditUsage
+    title:
+      en: Credit Usage
+      zh: 额度分析
+    icon: ion:receipt-outline
+    link: /credit-usage
+    section:
+      - userCenter
+      - sessionManager
+    role:
+      - owner
+      - admin
+      - member
+      - guest
 egress: true
