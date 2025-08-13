@@ -1,4 +1,5 @@
 import Cron from '@abtnode/cron';
+import { CLEANUP_STALE_MODEL_CALLS_CRON_TIME, MODEL_CALL_STATS_CRON_TIME } from '@api/libs/env';
 
 import logger from '../libs/logger';
 import { cleanupStaleProcessingCalls } from '../middlewares/model-call-tracker';
@@ -10,13 +11,13 @@ function init() {
     jobs: [
       {
         name: 'model.call.stats',
-        time: '0 1 0 * * *', // every day at 1:00 AM
+        time: MODEL_CALL_STATS_CRON_TIME,
         fn: () => createModelCallStats(),
         options: { runOnInit: false },
       },
       {
         name: 'cleanup.stale.model.calls',
-        time: '*/10 * * * *', // 每10分钟执行一次
+        time: CLEANUP_STALE_MODEL_CALLS_CRON_TIME,
         fn: async () => {
           const cleanedCount = await cleanupStaleProcessingCalls(30);
           if (cleanedCount > 0) {

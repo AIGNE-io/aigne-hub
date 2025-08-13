@@ -310,6 +310,9 @@ export async function checkUserCreditBalance({ userDid }: { userDid: string }) {
     let link: string | null = null;
     try {
       link = await getCreditPaymentLink();
+      link = withQuery(link || '', {
+        ...getConnectQueryParam({ userDid }),
+      });
     } catch (err) {
       logger.error('failed to get credit payment link', { err });
     }
