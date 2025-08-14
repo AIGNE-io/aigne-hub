@@ -246,7 +246,7 @@ async function reportUsageV2({ appId, userDid }: { appId: string; userDid: strin
         logger.info('create meter event', { quantity });
         await createMeterEvent({
           userDid,
-          amount: quantity || 0,
+          amount: new BigNumber(quantity).decimalPlaces(2).toNumber(),
           metadata: {
             appId,
           },
