@@ -25,6 +25,60 @@ export default flatten({
   enterHint: 'Enter to create',
   type: 'Type',
   model: 'Model',
+  viewPricing: 'View Model Pricing',
+
+  // Pricing page
+  pricing: {
+    title: 'AIGNE Hub Model Pricing',
+    subtitle:
+      'Transparent pricing, pay-as-you-use. Explore our rich AI model library and find the models that best fit your project',
+    searchPlaceholder: 'Search model names, providers...',
+    filters: {
+      providers: 'Supported Providers',
+      allProviders: 'All Providers',
+      types: 'Model Types',
+      allModels: 'All Models',
+      textGeneration: 'Text Generation',
+      imageGeneration: 'Image Generation',
+      embedding: 'Embedding',
+      audioTranscription: 'Audio Transcription',
+      sortBy: 'Sort By',
+      priceDefault: 'By Price',
+      priceLowToHigh: 'Price: Low to High',
+      priceHighToLow: 'Price: High to Low',
+    },
+    table: {
+      model: 'Model',
+      provider: 'Provider',
+      type: 'Type',
+      inputPrice: 'Input Price',
+      outputPrice: 'Output Price',
+      contextWindow: 'Context',
+      status: 'Status',
+      actions: 'Actions',
+    },
+    status: {
+      available: 'Available',
+      pending: 'Pending',
+    },
+    actions: {
+      copy: 'Copy Model Identifier',
+      docs: 'View API Docs',
+      copied: 'Copied to clipboard',
+    },
+    noData: 'No data available',
+    loading: 'Loading...',
+    descriptions: {
+      gpt4: 'Most powerful GPT-4 model with long context support',
+      gpt35: 'Fast and efficient GPT-3.5 model',
+      claude: "Anthropic's most advanced AI assistant, excels at reasoning",
+      gemini: 'Google multimodal large language model',
+      dalle: 'High-quality AI image generation model',
+      embedding: 'Vector embedding model for semantic search',
+      whisper: 'Speech-to-text recognition model',
+    },
+  },
+
   // AIGNE Hub integrations
   welcome: 'Welcome to AIGNE Hub',
   welcomeDesc:
@@ -378,6 +432,8 @@ export default flatten({
     addCredits: 'Buy Credits',
     totalCreditsUsed: 'Total Credits Used',
     totalUsage: 'Total Model Usage',
+    totalTokens: 'Total Tokens',
+    totalImages: 'Total Images Generated',
     totalRequests: 'Total Calls',
     dailyCreditsUsage: 'Daily Credits Trend',
     dailyUsage: 'Daily Usage Trend',
@@ -385,6 +441,8 @@ export default flatten({
     modelUsage: 'Model Usage',
     modelUsageStats: 'Model Usage Statistics',
     modelUsageStatsDescription: 'Your most used models in the period',
+    modelUsageSummaryDescription:
+      'This value is the combined usage across all models (units may vary by model type). Hover to view detailed usage.',
     ofTotalUsage: 'of total calls',
     callHistory: 'Call History',
     callHistoryDescription: 'Detailed log of all model API calls',

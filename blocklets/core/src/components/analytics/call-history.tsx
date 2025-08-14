@@ -22,6 +22,7 @@ import {
 import { useDebounceEffect, useRequest } from 'ahooks';
 import dayjs from 'dayjs';
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { joinURL } from 'ufo';
 
 import { useSessionContext } from '../../contexts/session';
@@ -404,6 +405,8 @@ export function CallHistory({
     });
   }
 
+  const isCreditBillingEnabled = window.blocklet?.preferences?.creditBasedBillingEnabled;
+
   return (
     <Stack spacing={3}>
       <Stack
@@ -415,13 +418,24 @@ export function CallHistory({
         }}>
         <Stack>
           <Typography variant="h3">{title || t('analytics.callHistory')}</Typography>
-          <Typography
-            variant="body2"
-            sx={{
-              color: 'text.secondary',
-            }}>
-            {subtitle || t('analytics.callHistoryDescription')}
-          </Typography>
+          <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+            <Typography
+              variant="body2"
+              sx={{
+                color: 'text.secondary',
+              }}>
+              {subtitle || t('analytics.callHistoryDescription')}
+            </Typography>
+            {isCreditBillingEnabled && (
+              <Button
+                component={Link}
+                to={`${joinURL(getPrefix(), '/pricing')}`}
+                variant="text"
+                sx={{ p: 0, width: 'fit-content' }}>
+                {t('viewPricing')}
+              </Button>
+            )}
+          </Stack>
         </Stack>
         {enableExport && (
           <Button

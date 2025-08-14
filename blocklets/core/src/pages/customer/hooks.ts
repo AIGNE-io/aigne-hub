@@ -45,8 +45,44 @@ export interface UsageStats {
     successRate: number;
   }>;
   trendComparison?: {
-    current: { totalUsage: number; totalCredits: number; totalCalls: number };
-    previous: { totalUsage: number; totalCredits: number; totalCalls: number };
+    current: {
+      totalUsage: number;
+      totalCredits: number;
+      totalCalls: number;
+      byType: {
+        chatCompletion?: {
+          totalUsage: number;
+          totalCalls: number;
+        };
+        imageGeneration?: {
+          totalUsage: number;
+          totalCalls: number;
+        };
+        embedding?: {
+          totalUsage: number;
+          totalCalls: number;
+        };
+      };
+    };
+    previous: {
+      totalUsage: number;
+      totalCredits: number;
+      totalCalls: number;
+      byType: {
+        chatCompletion?: {
+          totalUsage: number;
+          totalCalls: number;
+        };
+        imageGeneration?: {
+          totalUsage: number;
+          totalCalls: number;
+        };
+        embedding?: {
+          totalUsage: number;
+          totalCalls: number;
+        };
+      };
+    };
     growth: { usageGrowth: number; creditsGrowth: number; callsGrowth: number };
   } | null;
 }

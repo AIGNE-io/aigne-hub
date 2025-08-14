@@ -8,9 +8,11 @@ import AiCredential, { CredentialValue } from '@api/store/models/ai-credential';
 import AiModelRate from '@api/store/models/ai-model-rate';
 import AiProvider from '@api/store/models/ai-provider';
 import sessionMiddleware from '@blocklet/sdk/lib/middlewares/session';
+import BigNumber from 'bignumber.js';
 import { Router } from 'express';
 import Joi from 'joi';
 import pick from 'lodash/pick';
+import pAll from 'p-all';
 import { Op } from 'sequelize';
 
 const router = Router();
@@ -114,6 +116,30 @@ const modelRatesListSchema = createListParamSchema<{
   providerId: Joi.string().empty(''),
   model: Joi.string().empty(''),
 });
+
+const bulkRateUpdateSchema = Joi.object({
+  profitMargin: Joi.number().min(0).required(),
+  creditPrice: Joi.number().min(0).required(),
+});
+
+interface BulkUpdateSummary {
+  id: string;
+  model: string;
+  provider: string;
+  oldInputRate: number;
+  newInputRate: number;
+  oldOutputRate: number;
+  newOutputRate: number;
+}
+
+const calculateRate = (unitCost: number, profitMargin: number, creditPrice: number): number => {
+  return Number(
+    new BigNumber(unitCost)
+      .multipliedBy(1 + profitMargin / 100)
+      .dividedBy(creditPrice)
+      .toFixed(6)
+  );
+};
 
 // get providers
 router.get('/', user, async (req, res) => {
@@ -959,6 +985,8 @@ router.get('/models', async (req, res) => {
               input_credits_per_token: 0,
               output_credits_per_token: 0,
               modelMetadata,
+              status: 'active',
+              providerDisplayName: providerJson.displayName,
             });
           });
         });
@@ -1006,6 +1034,8 @@ router.get('/models', async (req, res) => {
         input_credits_per_token: rateJson.inputRate || 0,
         output_credits_per_token: rateJson.outputRate || 0,
         modelMetadata: rateJson.modelMetadata,
+        status: 'active',
+        providerDisplayName: rateJson.provider.displayName,
       });
     });
 
@@ -1014,6 +1044,91 @@ router.get('/models', async (req, res) => {
     logger.error('Failed to get available models:', error);
     return res.status(500).json({
       error: 'Failed to get available models',
+    });
+  }
+});
+
+router.post('/bulk-rate-update', ensureAdmin, async (req, res) => {
+  try {
+    const { error, value } = bulkRateUpdateSchema.validate(req.body);
+    if (error) {
+      return res.status(400).json({
+        error: error.details[0]?.message || 'Validation error',
+      });
+    }
+
+    const { profitMargin, creditPrice } = value;
+
+    const modelRates = await AiModelRate.findAll({
+      include: [
+        {
+          model: AiProvider,
+          as: 'provider',
+          attributes: ['id', 'name', 'displayName'],
+        },
+      ],
+    });
+
+    if (modelRates.length === 0) {
+      return res.json({
+        message: 'No model rates found to update',
+        updated: 0,
+        skipped: 0,
+        summary: [],
+      });
+    }
+
+    const validRates = modelRates.filter((rate) => {
+      const unitCosts = rate.unitCosts || { input: 0, output: 0 };
+      return unitCosts.input > 0 || unitCosts.output > 0;
+    });
+
+    const updatePromises = validRates.map((modelRate) => async (): Promise<BulkUpdateSummary | null> => {
+      try {
+        const unitCosts = modelRate.unitCosts || { input: 0, output: 0 };
+        const newInputRate = calculateRate(unitCosts.input, profitMargin, creditPrice);
+        const newOutputRate = calculateRate(unitCosts.output, profitMargin, creditPrice);
+
+        const summary: BulkUpdateSummary = {
+          id: modelRate.id,
+          model: modelRate.model,
+          provider: (modelRate as any).provider?.displayName || 'Unknown',
+          oldInputRate: modelRate.inputRate,
+          newInputRate,
+          oldOutputRate: modelRate.outputRate,
+          newOutputRate,
+        };
+
+        await modelRate.update({
+          inputRate: newInputRate,
+          outputRate: newOutputRate,
+        });
+
+        return summary;
+      } catch (updateError) {
+        logger.error(`Failed to update model rate ${modelRate.id}:`, updateError);
+        return null;
+      }
+    });
+
+    const results = await pAll(updatePromises, { concurrency: 10 });
+    const successfulUpdates = results.filter((result): result is BulkUpdateSummary => result !== null);
+
+    const stats = {
+      updated: successfulUpdates.length,
+      skipped: modelRates.length - validRates.length + (results.length - successfulUpdates.length),
+    };
+
+    return res.json({
+      message: `Successfully updated ${stats.updated} model rates`,
+      ...stats,
+      parameters: { profitMargin, creditPrice },
+      summary: successfulUpdates,
+    });
+  } catch (error) {
+    logger.error('Failed to bulk update model rates:', error);
+    return res.status(500).json({
+      error: 'Failed to bulk update model rates',
     });
   }
 });

@@ -1,20 +1,22 @@
 import { useIsRole, useSessionContext } from '@app/contexts/session';
-import { getPaymentUrl } from '@app/libs/env';
+import { getPrefix } from '@app/libs/util';
 import Dialog from '@arcblock/ux/lib/Dialog';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import Toast from '@arcblock/ux/lib/Toast';
 import { CreditButton } from '@blocklet/aigne-hub/components';
 import Footer from '@blocklet/ui-react/lib/Footer';
 import Header from '@blocklet/ui-react/lib/Header';
-import { AccountBalanceWallet, Assessment, Code, ContentCopy } from '@mui/icons-material';
+import { Assessment, AttachMoney, Code, ContentCopy } from '@mui/icons-material';
 import { Box, Button, IconButton, Stack, Typography } from '@mui/material';
 import { ReactNode, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { joinURL } from 'ufo';
 
 export default function Home() {
   const { session } = useSessionContext();
   const { t } = useLocaleContext();
   const isAdmin = useIsRole('owner', 'admin');
+  const navigate = useNavigate();
   const [showCodeModal, setShowCodeModal] = useState(false);
 
   const isCreditBillingEnabled = window.blocklet?.preferences?.creditBasedBillingEnabled;
@@ -103,15 +105,12 @@ const result = await model.invoke({
                   isCreditBillingEnabled ? (
                     <>
                       <CreditButton variant="contained" />
-                      <Button component={Link} to="/credit-board" variant="outlined" startIcon={<Assessment />}>
-                        {t('creditUsage')}
-                      </Button>
                       <Button
+                        component={Link}
+                        to={`${joinURL(getPrefix(), '/credit-usage')}`}
                         variant="outlined"
-                        startIcon={<AccountBalanceWallet />}
-                        href={getPaymentUrl('/customer') || '/.well-known/service/user'}
-                        target="_self">
-                        {t('manageCredits')}
+                        startIcon={<Assessment />}>
+                        {t('creditUsage')}
                       </Button>
                       <Button variant="text" startIcon={<Code />} onClick={() => setShowCodeModal(true)}>
                         {t('integration')}
@@ -128,6 +127,34 @@ const result = await model.invoke({
                   </Button>
                 )}
               </Stack>
+
+              {isCreditBillingEnabled && (
+                <Box
+                  sx={{
+                    borderTop: '1px solid',
+                    borderColor: 'divider',
+                    pt: 2,
+                    mt: 4,
+                    width: '100%',
+                  }}>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 1,
+                      color: 'text.secondary',
+                    }}
+                    onClick={() => {
+                      navigate('/pricing');
+                    }}>
+                    <AttachMoney />
+                    {t('viewPricing')}
+                  </Typography>
+                </Box>
+              )}
             </Stack>
           )}
         </Box>

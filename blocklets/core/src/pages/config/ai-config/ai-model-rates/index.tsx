@@ -240,16 +240,6 @@ export default function AIModelRates() {
       label: t('config.modelRates.fields.type'),
 
       options: {
-        customHeaderRender: () => {
-          return (
-            <Typography variant="body2">
-              {t('config.modelRates.fields.type')}
-              <Tooltip title={t('config.modelRates.fields.type.tooltip')}>
-                <InfoOutlined sx={{ fontSize: 16, color: 'text.secondary', cursor: 'help' }} />
-              </Tooltip>
-            </Typography>
-          );
-        },
         customBodyRender: (_value: any, tableMeta: any) => {
           const rate = modelRates[tableMeta.rowIndex];
           if (!rate) return null;

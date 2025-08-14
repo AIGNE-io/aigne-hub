@@ -23,6 +23,7 @@ import { ChatLazy } from './pages/playground';
 
 const ConfigPage = lazy(() => import('./pages/config'));
 const CreditBoardPage = lazy(() => import('./pages/customer/usage'));
+const PricingPage = lazy(() => import('./pages/pricing'));
 
 export default function App() {
   const basename = window.blocklet?.prefix || '/';
@@ -93,6 +94,7 @@ function AppRoutes({ basename }: { basename: string }) {
             </UserLayout>
           }
         />
+        <Route key="pricing" path="/pricing" element={<PricingPage />} />
         {/* <Route path="billing/*" element={<BillingRoutes />} /> */}
         <Route
           path="*"
