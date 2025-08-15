@@ -61,22 +61,6 @@ export default flatten({
       available: 'Available',
       pending: 'Pending',
     },
-    actions: {
-      copy: 'Copy Model Identifier',
-      docs: 'View API Docs',
-      copied: 'Copied to clipboard',
-    },
-    noData: 'No data available',
-    loading: 'Loading...',
-    descriptions: {
-      gpt4: 'Most powerful GPT-4 model with long context support',
-      gpt35: 'Fast and efficient GPT-3.5 model',
-      claude: "Anthropic's most advanced AI assistant, excels at reasoning",
-      gemini: 'Google multimodal large language model',
-      dalle: 'High-quality AI image generation model',
-      embedding: 'Vector embedding model for semantic search',
-      whisper: 'Speech-to-text recognition model',
-    },
   },
 
   // AIGNE Hub integrations
@@ -289,15 +273,6 @@ export default flatten({
         unitTooltip: {
           credit: '1M = 1,000,000 AIGNE Hub Credits (per million AIGNE Hub Credits)',
           token: '1M = 1,000,000 tokens (per million tokens)',
-        },
-        search: {
-          placeholder: 'Search model name, display name or description',
-        },
-        sort: {
-          createdAt: 'Created At',
-        },
-        pagination: {
-          showing: 'Showing {from}-{to} of {total}',
         },
       },
 

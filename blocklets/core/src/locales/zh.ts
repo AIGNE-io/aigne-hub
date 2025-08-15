@@ -61,22 +61,6 @@ export default flatten({
       available: '可用',
       pending: '暂停中',
     },
-    actions: {
-      copy: '复制模型标识符',
-      docs: '查看API文档',
-      copied: '已复制到剪贴板',
-    },
-    noData: '暂无数据',
-    loading: '加载中...',
-    descriptions: {
-      gpt4: '最强大的GPT-4模型，支持长上下文',
-      gpt35: '快速高效的GPT-3.5模型',
-      claude: 'Anthropic最先进的AI助手，擅长推理',
-      gemini: 'Google多模态大语言模型',
-      dalle: '高质量AI图像生成模型',
-      embedding: '向量嵌入模型，用于语义搜索',
-      whisper: '语音转文字识别模型',
-    },
   },
 
   // AIGNE Hub integrations
@@ -280,15 +264,6 @@ export default flatten({
         unitTooltip: {
           credit: '1M 表示每百万 AIGNE Hub Credits',
           token: '1M 表示每百万 Token',
-        },
-        search: {
-          placeholder: '搜索模型名称、显示名称或描述',
-        },
-        sort: {
-          createdAt: '创建时间',
-        },
-        pagination: {
-          showing: '显示第 {from}-{to} 条，共 {total} 条',
         },
       },
 

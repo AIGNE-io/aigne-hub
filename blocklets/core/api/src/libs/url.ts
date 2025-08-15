@@ -23,7 +23,6 @@ export async function formatToShortUrl(url: string): Promise<string> {
   const apiKey = Config.shortUrlApiKey;
 
   if (!apiKey) {
-    // If no API key is configured, return original URL
     return url;
   }
 
