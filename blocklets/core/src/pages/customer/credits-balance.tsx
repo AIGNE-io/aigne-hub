@@ -17,7 +17,7 @@ export function CreditsBalance({ data = undefined as UserInfoResult | undefined 
   const renderBalance = () => {
     if (!enableCredit) {
       return (
-        <Typography variant="h3" sx={{ fontWeight: 'bold', mb: 1, color: 'text.primary' }}>
+        <Typography variant="h3" sx={{ fontWeight: 'bold', color: 'success.main' }}>
           {t('analytics.noLimit')}
         </Typography>
       );

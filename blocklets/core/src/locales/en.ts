@@ -452,7 +452,7 @@ export default flatten({
     timestamp: 'Timestamp',
     noCallsFound: 'No calls found matching your criteria',
     dailyTokenUsage: 'Daily Token Usage',
-    noLimit: 'Infinity',
+    noLimit: 'No Limit',
     modelUsageStatsEmpty: 'No model usage records',
     dailyUsageEmpty: 'No usage records',
     refresh: 'Refresh Usage',

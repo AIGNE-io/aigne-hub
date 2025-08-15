@@ -444,7 +444,7 @@ export default flatten({
     timestamp: '时间戳',
     noCallsFound: '未找到符合条件的调用记录',
     dailyTokenUsage: '每日Token使用',
-    noLimit: '无限量',
+    noLimit: '不限量',
     modelUsageStatsEmpty: '当前时间段内没有模型使用记录',
     dailyUsageEmpty: '当前时间段内没有使用记录',
     refresh: '刷新数据',

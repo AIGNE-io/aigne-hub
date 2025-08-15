@@ -54,40 +54,6 @@ function generateHourRangeFromTimestamps(startTime: number, endTime: number): nu
   return hours;
 }
 
-// Helper function to generate date strings from timestamp range (backward compatibility)
-// Uses UTC dates to ensure consistency with stored callTime (which is UTC)
-function generateDateRangeFromTimestamps(startTime: number, endTime: number): string[] {
-  const dates: string[] = [];
-  const startDate = new Date(startTime * 1000);
-  const endDate = new Date(endTime * 1000);
-
-  // Use UTC date methods to match how callTime is stored
-  const startYear = startDate.getUTCFullYear();
-  const startMonth = startDate.getUTCMonth();
-  const startDay = startDate.getUTCDate();
-
-  const endYear = endDate.getUTCFullYear();
-  const endMonth = endDate.getUTCMonth();
-  const endDay = endDate.getUTCDate();
-
-  // Create date objects using UTC for consistency
-  const currentDate = new Date(Date.UTC(startYear, startMonth, startDay));
-  const endDateUTC = new Date(Date.UTC(endYear, endMonth, endDay));
-
-  while (currentDate <= endDateUTC) {
-    // Format date as YYYY-MM-DD using UTC methods
-    const year = currentDate.getUTCFullYear();
-    const month = String(currentDate.getUTCMonth() + 1).padStart(2, '0');
-    const day = String(currentDate.getUTCDate()).padStart(2, '0');
-    const dateStr = `${year}-${month}-${day}`;
-
-    dates.push(dateStr);
-    currentDate.setUTCDate(currentDate.getUTCDate() + 1);
-  }
-
-  return dates;
-}
-
 // Optimized trend comparison using hourly ModelCallStat data
 async function getTrendComparisonOptimized(
   userDid: string,
@@ -227,12 +193,14 @@ async function getUsageStatsHourlyOptimized(userDid: string, startTime: number, 
     };
 
     let totalCredits = 0;
+    let totalUsage = 0;
     const dailyStats: Array<{
       date: string;
       timestamp: number;
       byType: { [key: string]: { totalUsage: number; totalCalls: number } };
       totalCredits: number;
       totalCalls: number;
+      totalUsage: number;
     }> = [];
 
     // Group hourly stats by date for dailyStats
@@ -242,6 +210,7 @@ async function getUsageStatsHourlyOptimized(userDid: string, startTime: number, 
         byType: { [key: string]: { totalUsage: number; totalCalls: number } };
         totalCredits: number;
         totalCalls: number;
+        totalUsage: number;
       }
     >();
 
@@ -252,6 +221,7 @@ async function getUsageStatsHourlyOptimized(userDid: string, startTime: number, 
       // Aggregate for overall usageStats
       usageStats.totalCalls = new BigNumber(usageStats.totalCalls).plus(hourStats.totalCalls).toNumber();
       totalCredits = new BigNumber(totalCredits).plus(hourStats.totalCredits).toNumber();
+      totalUsage = new BigNumber(totalUsage).plus(hourStats.totalUsage).toNumber();
 
       Object.entries(hourStats.byType).forEach(([type, typeStats]: [string, any]) => {
         if (!usageStats.byType[type]) {
@@ -271,12 +241,14 @@ async function getUsageStatsHourlyOptimized(userDid: string, startTime: number, 
           byType: {},
           totalCredits: 0,
           totalCalls: 0,
+          totalUsage: 0,
         });
       }
 
       const dayData = dailyStatsMap.get(date)!;
       dayData.totalCalls = new BigNumber(dayData.totalCalls).plus(hourStats.totalCalls).toNumber();
       dayData.totalCredits = new BigNumber(dayData.totalCredits).plus(hourStats.totalCredits).toNumber();
+      dayData.totalUsage = new BigNumber(dayData.totalUsage).plus(hourStats.totalUsage).toNumber();
 
       Object.entries(hourStats.byType).forEach(([type, typeStats]: [string, any]) => {
         if (!dayData.byType[type]) {
@@ -300,6 +272,7 @@ async function getUsageStatsHourlyOptimized(userDid: string, startTime: number, 
         byType: dayData.byType,
         totalCredits: dayData.totalCredits,
         totalCalls: dayData.totalCalls,
+        totalUsage: dayData.totalUsage,
       });
     });
 
@@ -309,91 +282,12 @@ async function getUsageStatsHourlyOptimized(userDid: string, startTime: number, 
     return {
       usageStats,
       totalCredits,
+      totalUsage,
       dailyStats,
     };
   } catch (error) {
-    console.warn('Failed to get hourly optimized usage stats, falling back to legacy method:', error);
-    // Fall back to legacy method
-    return getUsageStatsOptimized(userDid, startTime, endTime);
-  }
-}
-
-// Legacy optimized usage stats using ModelCallStat (backward compatibility)
-async function getUsageStatsOptimized(userDid: string, startTime?: number, endTime?: number) {
-  if (!startTime || !endTime) {
-    // Fall back to ModelCall for incomplete date ranges
-    return {
-      usageStats: await ModelCall.getUsageStatsByDateRange({ userDid, startTime, endTime }),
-      totalCredits: await ModelCall.getTotalCreditsByDateRange({ userDid, startTime, endTime }),
-      dailyStats: await ModelCall.getDailyUsageStats({ userDid, startTime, endTime }),
-    };
-  }
-
-  // Generate date range using improved method
-  const dates = generateDateRangeFromTimestamps(startTime, endTime);
-
-  try {
-    // Get daily stats using ModelCallStat (cached/precomputed)
-    const dailyStatsRaw = await Promise.all(dates.map((date: string) => ModelCallStat.getDailyStats(userDid, date)));
-
-    // Aggregate usage stats
-    const usageStats = {
-      byType: {} as { [key: string]: { totalUsage: number; totalCalls: number } },
-      totalCalls: 0,
-    };
-
-    let totalCredits = 0;
-    const dailyStats: Array<{
-      date: string;
-      timestamp: number;
-      byType: { [key: string]: { totalUsage: number; totalCalls: number } };
-      totalCredits: number;
-      totalCalls: number;
-    }> = [];
-
-    dailyStatsRaw.forEach((dayStats: any, index: number) => {
-      const date = dates[index]!;
-
-      // Aggregate for usageStats
-      usageStats.totalCalls = new BigNumber(usageStats.totalCalls).plus(dayStats.totalCalls).toNumber();
-      totalCredits = new BigNumber(totalCredits).plus(dayStats.totalCredits).toNumber();
-
-      Object.entries(dayStats.byType).forEach(([type, typeStats]: [string, any]) => {
-        if (!usageStats.byType[type]) {
-          usageStats.byType[type] = { totalUsage: 0, totalCalls: 0 };
-        }
-        usageStats.byType[type].totalUsage = new BigNumber(usageStats.byType[type].totalUsage)
-          .plus(typeStats.totalUsage)
-          .toNumber();
-        usageStats.byType[type].totalCalls = new BigNumber(usageStats.byType[type].totalCalls)
-          .plus(typeStats.totalCalls)
-          .toNumber();
-      });
-
-      // Build dailyStats with timestamp for frontend filtering
-      const dayTimestamp = Math.floor(new Date(`${date}T00:00:00.000Z`).getTime() / 1000);
-      dailyStats.push({
-        date,
-        timestamp: dayTimestamp,
-        byType: dayStats.byType,
-        totalCredits: dayStats.totalCredits,
-        totalCalls: dayStats.totalCalls,
-      });
-    });
-
-    return {
-      usageStats,
-      totalCredits,
-      dailyStats,
-    };
-  } catch (error) {
-    console.warn('Failed to get optimized usage stats, falling back to ModelCall:', error);
-    // Fall back to ModelCall on error
-    return {
-      usageStats: await ModelCall.getUsageStatsByDateRange({ userDid, startTime, endTime }),
-      totalCredits: await ModelCall.getTotalCreditsByDateRange({ userDid, startTime, endTime }),
-      dailyStats: await ModelCall.getDailyUsageStats({ userDid, startTime, endTime }),
-    };
+    logger.error('Failed to get hourly optimized usage stats, falling back to legacy method:', error);
+    throw error;
   }
 }
 
@@ -728,11 +622,15 @@ router.get('/usage-stats', user, async (req, res) => {
     const startTimeNum = startTime ? Number(startTime) : undefined;
     const endTimeNum = endTime ? Number(endTime) : undefined;
 
-    // Use hourly optimized version when we have complete date range, fall back to legacy if needed
-    const { usageStats, totalCredits, dailyStats } =
-      startTimeNum && endTimeNum
-        ? await getUsageStatsHourlyOptimized(userDid, startTimeNum, endTimeNum)
-        : await getUsageStatsOptimized(userDid, startTimeNum, endTimeNum);
+    if (!startTimeNum || !endTimeNum) {
+      return res.status(400).json({ error: 'startTime and endTime are required' });
+    }
+
+    const { usageStats, totalCredits, dailyStats, totalUsage } = await getUsageStatsHourlyOptimized(
+      userDid,
+      startTimeNum,
+      endTimeNum
+    );
 
     // Get model stats (optimized query without JOIN)
     const modelStatsResult = await ModelCall.getModelUsageStats({
@@ -742,11 +640,7 @@ router.get('/usage-stats', user, async (req, res) => {
       limit: 5,
     });
 
-    // Calculate trend comparison if we have both start and end times
-    let trendComparison = null;
-    if (startTimeNum && endTimeNum) {
-      trendComparison = await getTrendComparisonOptimized(userDid, startTimeNum, endTimeNum);
-    }
+    const trendComparison = await getTrendComparisonOptimized(userDid, startTimeNum, endTimeNum);
 
     return res.json({
       summary: {
@@ -754,6 +648,7 @@ router.get('/usage-stats', user, async (req, res) => {
         totalCalls: usageStats.totalCalls,
         totalCredits,
         modelCount: modelStatsResult.totalModelCount,
+        totalUsage,
       },
       dailyStats,
       modelStats: modelStatsResult.list,

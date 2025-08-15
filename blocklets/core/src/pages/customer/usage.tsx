@@ -73,10 +73,12 @@ function UsageChartsSkeleton() {
 
 function ModelUsageStatsSkeleton() {
   return (
-    <Card sx={{ p: 3 }}>
-      <Stack spacing={2}>
-        <Skeleton variant="text" width="60%" height={24} />
-        <Skeleton variant="text" width="80%" height={16} />
+    <Card sx={{ p: 3, height: '100%' }}>
+      <Stack spacing={3}>
+        <Stack spacing={1}>
+          <Skeleton variant="text" width="60%" height={24} />
+          <Skeleton variant="text" width="80%" height={16} />
+        </Stack>
         {[1, 2, 3, 4, 5].map((i) => (
           <Stack
             key={i}
@@ -87,14 +89,13 @@ function ModelUsageStatsSkeleton() {
             }}>
             <Stack
               direction="row"
-              spacing={2}
+              spacing={3}
               sx={{
                 alignItems: 'center',
               }}>
               <Skeleton variant="circular" width={24} height={24} />
               <Stack>
-                <Skeleton variant="text" width={120} height={16} />
-                <Skeleton variant="text" width={80} height={14} />
+                <Skeleton variant="text" width={120} height={20} />
               </Stack>
             </Stack>
             <Skeleton variant="text" width={60} height={20} />
@@ -168,6 +169,8 @@ function CreditBoard() {
   const dailyStats = usageStats?.dailyStats?.filter(
     (stat: any) => stat.timestamp >= dateRange.from && stat.timestamp <= dateRange.to
   );
+  const isCreditBillingEnabled = window.blocklet?.preferences?.creditBasedBillingEnabled;
+
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
@@ -253,7 +256,7 @@ function CreditBoard() {
               {showStatsSkeleton ? (
                 <UsageChartsSkeleton />
               ) : (
-                <UsageCharts dailyStats={dailyStats} showCredits showRequests={false} />
+                <UsageCharts dailyStats={dailyStats} showCredits={isCreditBillingEnabled} showRequests={false} />
               )}
             </Stack>
 
