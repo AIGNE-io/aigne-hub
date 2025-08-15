@@ -264,6 +264,11 @@ export async function processChatCompletion(
     }
   } catch (error) {
     logger.error('Run AI error', { error });
+    if (req.modelCallContext) {
+      req.modelCallContext.fail(error.message).catch((err) => {
+        logger.error('Failed to mark incomplete model call as failed', { error: err });
+      });
+    }
     if (isEventStream) {
       emitEventStreamChunk({ error: { message: error.message } });
     } else if (input.stream) {

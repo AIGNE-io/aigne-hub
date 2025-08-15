@@ -84,14 +84,14 @@ router.post('/:type(chat)?/completions', compression(), user, chatCallTracker, a
   if (Config.creditBasedBillingEnabled && !isPaymentRunning()) {
     throw new CustomError(502, 'Payment kit is not Running');
   }
-  if (userDid && Config.creditBasedBillingEnabled) {
-    await checkUserCreditBalance({ userDid });
-  }
 
   try {
+    if (userDid && Config.creditBasedBillingEnabled) {
+      await checkUserCreditBalance({ userDid });
+    }
     await processChatCompletion(req, res, 'v2', {
       onEnd: async (data) => {
-        if (data?.output && Config.creditBasedBillingEnabled) {
+        if (data?.output) {
           const usageData = data.output;
 
           const usage = await createUsageAndCompleteModelCall({
@@ -103,6 +103,7 @@ router.post('/:type(chat)?/completions', compression(), user, chatCallTracker, a
             modelParams: req.body?.options?.modelOptions,
             appId: (req.headers['x-aigne-hub-client-did'] as string) || req.appClient?.appId,
             userDid: userDid!,
+            creditBasedBillingEnabled: Config.creditBasedBillingEnabled,
             additionalMetrics: {
               totalTokens: (usageData.usage as any)?.totalTokens, // Real usage metric
             },
@@ -116,7 +117,7 @@ router.post('/:type(chat)?/completions', compression(), user, chatCallTracker, a
             return undefined;
           });
 
-          if (data.output.usage && usage) {
+          if (data.output.usage && Config.creditBasedBillingEnabled && usage) {
             data.output.usage = {
               ...data.output.usage,
               aigneHubCredits: usage,
@@ -145,11 +146,11 @@ router.post(
     if (Config.creditBasedBillingEnabled && !isPaymentRunning()) {
       throw new CustomError(502, 'Payment kit is not Running');
     }
-    if (userDid && Config.creditBasedBillingEnabled) {
-      await checkUserCreditBalance({ userDid });
-    }
 
     try {
+      if (userDid && Config.creditBasedBillingEnabled) {
+        await checkUserCreditBalance({ userDid });
+      }
       await checkModelRateAvailable(req.body.model);
       const model = await getModel(req.body, {
         modelOptions: req.body?.options?.modelOptions,
@@ -164,7 +165,7 @@ router.post(
         hooks: {
           onEnd: async (data) => {
             const usageData = data.output;
-            if (usageData && Config.creditBasedBillingEnabled) {
+            if (usageData) {
               const usage = await createUsageAndCompleteModelCall({
                 req,
                 type: 'chatCompletion',
@@ -174,6 +175,7 @@ router.post(
                 modelParams: req.body?.options?.modelOptions,
                 userDid: userDid!,
                 appId: (req.headers['x-aigne-hub-client-did'] as string) || req.appClient?.appId,
+                creditBasedBillingEnabled: Config.creditBasedBillingEnabled,
                 additionalMetrics: {
                   totalTokens: (usageData.usage as any)?.totalTokens,
                   endpoint: req.path,
@@ -183,7 +185,7 @@ router.post(
                 return undefined;
               });
 
-              if (data.output.usage && usage) {
+              if (data.output.usage && Config.creditBasedBillingEnabled && usage) {
                 data.output.usage = {
                   ...data.output.usage,
                   aigneHubCredits: usage,
@@ -212,14 +214,14 @@ router.post(
     if (Config.creditBasedBillingEnabled && !isPaymentRunning()) {
       throw new CustomError(502, 'Payment kit is not Running');
     }
-    if (userDid && Config.creditBasedBillingEnabled) {
-      await checkUserCreditBalance({ userDid });
-    }
 
     try {
+      if (userDid && Config.creditBasedBillingEnabled) {
+        await checkUserCreditBalance({ userDid });
+      }
       const usageData = await processEmbeddings(req, res);
 
-      if (usageData && userDid && Config.creditBasedBillingEnabled) {
+      if (usageData && userDid) {
         await createUsageAndCompleteModelCall({
           req,
           type: 'embedding',
@@ -228,6 +230,7 @@ router.post(
           model: usageData.model,
           userDid: userDid!,
           appId: (req.headers['x-aigne-hub-client-did'] as string) || req.appClient?.appId,
+          creditBasedBillingEnabled: Config.creditBasedBillingEnabled,
           additionalMetrics: {
             // No additional usage metrics for embeddings
           },
@@ -257,14 +260,15 @@ router.post(
     if (Config.creditBasedBillingEnabled && !isPaymentRunning()) {
       throw new CustomError(502, 'Payment kit is not Running');
     }
-    if (userDid && Config.creditBasedBillingEnabled) {
-      await checkUserCreditBalance({ userDid });
-    }
 
     try {
+      if (userDid && Config.creditBasedBillingEnabled) {
+        await checkUserCreditBalance({ userDid });
+      }
+
       const usageData = await processImageGeneration(req, res, 'v2');
 
-      if (usageData && userDid && Config.creditBasedBillingEnabled) {
+      if (usageData && userDid) {
         await createUsageAndCompleteModelCall({
           req,
           type: 'imageGeneration',
@@ -273,6 +277,7 @@ router.post(
           numberOfImageGeneration: usageData.numberOfImageGeneration,
           appId: (req.headers['x-aigne-hub-client-did'] as string) || req.appClient?.appId,
           userDid: userDid!,
+          creditBasedBillingEnabled: Config.creditBasedBillingEnabled,
           additionalMetrics: {
             imageSize: usageData.modelParams?.size,
             imageQuality: usageData.modelParams?.quality,
