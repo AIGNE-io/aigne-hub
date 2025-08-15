@@ -591,8 +591,8 @@ router.get('/usage-stats', user, async (req, res) => {
     // Use optimized version when we have complete date range
     const { usageStats, totalCredits, dailyStats } = await getUsageStatsOptimized(userDid, startTimeNum, endTimeNum);
 
-    // Get model stats separately (still using ModelCall as it needs complex joins)
-    const modelStats = await ModelCall.getModelUsageStats({
+    // Get model stats (now includes unique model count)
+    const modelStatsResult = await ModelCall.getModelUsageStats({
       userDid,
       startTime: startTimeNum,
       endTime: endTimeNum,
@@ -610,9 +610,10 @@ router.get('/usage-stats', user, async (req, res) => {
         byType: usageStats.byType,
         totalCalls: usageStats.totalCalls,
         totalCredits,
+        modelCount: modelStatsResult.totalModelCount,
       },
       dailyStats,
-      modelStats,
+      modelStats: modelStatsResult.list,
       trendComparison,
     });
   } catch (error) {

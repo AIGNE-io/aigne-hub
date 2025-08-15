@@ -432,7 +432,8 @@ export default flatten({
     tokenUsage: 'Token使用',
     modelUsage: '使用量',
     modelUsageStats: '模型使用统计',
-    modelUsageStatsDescription: '选定时间段内最常用的模型',
+    modelUsageStatsDescription: '时间段内最常用的模型',
+    modelUsageStatsTotal: '当前周期共有{total}个模型被调用',
     modelUsageSummaryDescription:
       '此数值为所有模型用量的综合统计（不同模型的计量单位可能不同）。将鼠标悬停可以查看详细使用量。',
     ofTotalUsage: '占总请求数',

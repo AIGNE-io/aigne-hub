@@ -257,7 +257,7 @@ function CreditBoard() {
               ) : (
                 <ModelUsageStats
                   modelStats={usageStats?.modelStats}
-                  totalCalls={usageStats?.summary?.totalCalls}
+                  totalModelCount={usageStats?.summary?.modelCount}
                   title={t('analytics.modelUsageStats')}
                   subtitle={t('analytics.modelUsageStatsDescription')}
                 />

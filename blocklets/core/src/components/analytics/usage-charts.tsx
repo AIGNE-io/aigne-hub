@@ -282,7 +282,7 @@ function CustomTooltip({
 export function UsageCharts({
   dailyStats = [],
   title = '',
-  height = 260,
+  height = 220,
   showCredits = true,
   showRequests = false,
 }: UsageChartsProps) {

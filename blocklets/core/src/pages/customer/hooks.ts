@@ -11,6 +11,7 @@ export interface UsageStats {
   summary: {
     totalCredits: number;
     totalCalls: number;
+    modelCount: number;
     byType: {
       chatCompletion?: {
         totalUsage: number;

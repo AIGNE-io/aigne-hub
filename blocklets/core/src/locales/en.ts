@@ -440,7 +440,8 @@ export default flatten({
     tokenUsage: 'Token Usage',
     modelUsage: 'Model Usage',
     modelUsageStats: 'Model Usage Statistics',
-    modelUsageStatsDescription: 'Your most used models in the period',
+    modelUsageStatsDescription: 'Top most used models in the period',
+    modelUsageStatsTotal: 'Total {total} models called in the period',
     modelUsageSummaryDescription:
       'This value is the combined usage across all models (units may vary by model type). Hover to view detailed usage.',
     ofTotalUsage: 'of total calls',

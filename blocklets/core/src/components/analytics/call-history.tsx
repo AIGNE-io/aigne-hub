@@ -20,12 +20,12 @@ import {
   Typography,
 } from '@mui/material';
 import { useDebounceEffect, useRequest } from 'ahooks';
-import dayjs from 'dayjs';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { joinURL } from 'ufo';
 
 import { useSessionContext } from '../../contexts/session';
+import dayjs from '../../libs/dayjs';
 
 export interface ModelCall {
   id: string;

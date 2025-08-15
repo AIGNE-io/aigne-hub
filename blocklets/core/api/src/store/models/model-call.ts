@@ -372,8 +372,8 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
     startTime?: number;
     endTime?: number;
     limit?: number;
-  }): Promise<
-    Array<{
+  }): Promise<{
+    list: Array<{
       providerId: string;
       provider: {
         id: string;
@@ -386,8 +386,9 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
       totalCredits: number;
       totalCalls: number;
       successRate: number;
-    }>
-  > {
+    }>;
+    totalModelCount: number;
+  }> {
     const whereConditions: string[] = [];
     const replacements: any = { limit };
 
@@ -408,7 +409,8 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
 
     const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
 
-    const query = `
+    // 获取top模型列表（按调用次数排序）
+    const topModelsQuery = `
       SELECT 
         mc."providerId",
         mc."model",
@@ -423,16 +425,29 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
       LEFT JOIN "AiProviders" ap ON mc."providerId" = ap."id"
       ${whereClause.replace(/"(\w+)"/g, 'mc."$1"')}
       GROUP BY mc."providerId", mc."model", mc."type", ap."name", ap."displayName"
-      ORDER BY SUM(mc."totalUsage") DESC
+      ORDER BY COUNT(*) DESC
       LIMIT :limit
     `;
 
-    const results = (await sequelize.query(query, {
-      type: QueryTypes.SELECT,
-      replacements,
-    })) as any[];
+    // 获取唯一模型总数
+    const totalCountQuery = `
+      SELECT COUNT(DISTINCT CONCAT(mc."model", '-', mc."type")) as "totalModels"
+      FROM "ModelCalls" mc
+      ${whereClause.replace(/"(\w+)"/g, 'mc."$1"')}
+    `;
 
-    return results.map((result: any) => ({
+    const [topModelsResults, totalCountResults] = await Promise.all([
+      sequelize.query(topModelsQuery, {
+        type: QueryTypes.SELECT,
+        replacements,
+      }),
+      sequelize.query(totalCountQuery, {
+        type: QueryTypes.SELECT,
+        replacements: { ...replacements, limit: undefined }, // 移除limit参数
+      }),
+    ]);
+
+    const list = (topModelsResults as any[]).map((result: any) => ({
       providerId: result.providerId,
       provider: {
         id: result.providerId,
@@ -450,6 +465,13 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
             100
           : 0,
     }));
+
+    const totalModelCount = parseInt(((totalCountResults as any[])[0] as any)?.totalModels || '0', 10);
+
+    return {
+      list,
+      totalModelCount,
+    };
   }
 
   static async getModelUsageStatsLegacy({

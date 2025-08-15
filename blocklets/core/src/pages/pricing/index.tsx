@@ -85,7 +85,7 @@ export default function PricingPage() {
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
 
   const [search, setSearch] = useSetState({
-    pageSize: 10,
+    pageSize: 25,
     page: 1,
     q: '',
     provider: 'all',
