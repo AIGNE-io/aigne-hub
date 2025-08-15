@@ -1,3 +1,12 @@
+## 0.3.13 (2025-8-15)
+
+
+- fix(api): ensure model call completion tracking regardless of billing mode
+- feat(api): implement hourly model call stats tracking with UTC timezone support
+- feat(core): improve model usage statistics display
+- feat(core): add comprehensive model pricing page with filtering and sorting
+- fix(api): round usage amount to two decimal places in meter event reporting
+
 ## 0.3.12 (2025-8-13)
 
 - feat(api): enhance app identification and improve model call tracking
