@@ -19,6 +19,7 @@ import {
   METER_UNIT,
 } from './env';
 import logger from './logger';
+import { formatToShortUrl } from './url';
 
 const PAYMENT_DID = 'z2qaCNvKMv5GjouKdcDWexv6WqtHbpNPQDnAk';
 
@@ -313,6 +314,7 @@ export async function checkUserCreditBalance({ userDid }: { userDid: string }) {
       link = withQuery(link || '', {
         ...getConnectQueryParam({ userDid }),
       });
+      link = await formatToShortUrl(link);
     } catch (err) {
       logger.error('failed to get credit payment link', { err });
     }

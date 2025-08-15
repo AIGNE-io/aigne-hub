@@ -201,6 +201,11 @@ export const Config = {
     return proxy && typeof proxy === 'string' ? proxy : undefined;
   },
 
+  get shortUrlApiKey() {
+    const key = config.env.SHORT_URL_API_KEY;
+    return key && typeof key === 'string' ? key : undefined;
+  },
+
   _maxRetries: undefined as number | undefined,
   get maxRetries() {
     if (this._maxRetries === undefined) {

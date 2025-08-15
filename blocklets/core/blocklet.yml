@@ -75,6 +75,12 @@ environments:
     default: ''
     secure: false
     shared: false
+  - name: SHORT_URL_API_KEY
+    description: Short URL service API Key
+    required: false
+    default: ''
+    secure: true
+    shared: false
 capabilities:
   clusterMode: false
   component: true

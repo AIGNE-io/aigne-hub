@@ -111,7 +111,7 @@ export function ModelUsageStats({
 
                     {/* 模型名 */}
                     <Box sx={{ flex: 1 }}>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 'medium', cursor: 'help' }}>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 'medium' }}>
                         {model.model}
                       </Typography>
                     </Box>

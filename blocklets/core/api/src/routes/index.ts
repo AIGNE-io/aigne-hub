@@ -18,7 +18,6 @@ const router = Router();
 
 AIGNEObserver.setExportFn(async (spans) => {
   if (!getComponentMountPoint(OBSERVABILITY_DID)) {
-    logger.warn('Please install the Observability blocklet to enable tracing agents');
     return;
   }
 

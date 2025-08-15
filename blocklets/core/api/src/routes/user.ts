@@ -11,6 +11,7 @@ import {
   isPaymentRunning,
 } from '@api/libs/payment';
 import { ensureAdmin } from '@api/libs/security';
+import { formatToShortUrl } from '@api/libs/url';
 import ModelCall from '@api/store/models/model-call';
 import ModelCallStat from '@api/store/models/model-call-stat';
 import { proxyToAIKit } from '@blocklet/aigne-hub/api/call';
@@ -428,7 +429,8 @@ router.get('/credit/balance', user, async (req, res) => {
 router.get('/credit/payment-link', user, async (_, res) => {
   try {
     const creditPaymentLink = await getCreditPaymentLink();
-    res.json(creditPaymentLink);
+    const shortUrl = creditPaymentLink ? await formatToShortUrl(creditPaymentLink) : creditPaymentLink;
+    res.json(shortUrl);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -475,6 +477,17 @@ router.get('/info', user, async (req, res) => {
     const creditBalance = await getUserCredits({ userDid: req.user?.did });
     const paymentLink = await getCreditPaymentLink();
     const decimal = meter.paymentCurrency?.decimal || 0;
+
+    const fullPaymentLink = withQuery(paymentLink || '', {
+      ...getConnectQueryParam({ userDid: req.user?.did }),
+    });
+    const profileUrl = getCreditUsageLink(req.user?.did);
+
+    const [shortPaymentLink, shortProfileLink] = await Promise.all([
+      fullPaymentLink ? formatToShortUrl(fullPaymentLink) : null,
+      profileUrl ? formatToShortUrl(profileUrl) : null,
+    ]);
+
     return res.json({
       user: userInfo,
       creditBalance: {
@@ -483,20 +496,22 @@ router.get('/info', user, async (req, res) => {
         grantCount: creditBalance.grantCount,
         pendingCredit: fromUnitToToken(creditBalance.pendingCredit, decimal),
       },
-      paymentLink: withQuery(paymentLink || '', {
-        ...getConnectQueryParam({ userDid: req.user?.did }),
-      }),
+      paymentLink: shortPaymentLink,
       currency: meter.paymentCurrency,
       enableCredit: true,
-      profileLink: getCreditUsageLink(req.user?.did),
+      profileLink: shortProfileLink,
     });
   }
+
+  const profileUrl = getCreditUsageLink(req.user?.did);
+  const shortProfileLink = profileUrl ? await formatToShortUrl(profileUrl) : null;
+
   return res.json({
     user: userInfo,
     creditBalance: null,
     paymentLink: null,
     enableCredit: false,
-    profileLink: getCreditUsageLink(req.user?.did),
+    profileLink: shortProfileLink,
   });
 });
 
