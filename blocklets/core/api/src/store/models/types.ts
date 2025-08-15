@@ -30,9 +30,5 @@ export interface DailyStats {
   totalCalls: number;
   successCalls: number;
 
-  byType: {
-    chatCompletion?: TypeStats;
-    embedding?: TypeStats;
-    imageGeneration?: TypeStats;
-  };
+  byType: Partial<Record<CallType, TypeStats>>;
 }

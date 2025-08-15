@@ -12,18 +12,15 @@ export interface UsageStats {
     totalCredits: number;
     totalCalls: number;
     modelCount: number;
-    byType: {
-      chatCompletion?: {
+    byType: Record<
+      string,
+      {
         totalUsage: number;
         totalCredits: number;
         totalCalls: number;
-      };
-      imageGeneration?: {
-        totalUsage: number;
-        totalCredits: number;
-        totalCalls: number;
-      };
-    };
+        successCalls: number;
+      }
+    >;
   };
   dailyStats: Array<{
     date: string;
@@ -50,39 +47,25 @@ export interface UsageStats {
       totalUsage: number;
       totalCredits: number;
       totalCalls: number;
-      byType: {
-        chatCompletion?: {
+      byType: Record<
+        string,
+        {
           totalUsage: number;
           totalCalls: number;
-        };
-        imageGeneration?: {
-          totalUsage: number;
-          totalCalls: number;
-        };
-        embedding?: {
-          totalUsage: number;
-          totalCalls: number;
-        };
-      };
+        }
+      >;
     };
     previous: {
       totalUsage: number;
       totalCredits: number;
       totalCalls: number;
-      byType: {
-        chatCompletion?: {
+      byType: Record<
+        string,
+        {
           totalUsage: number;
           totalCalls: number;
-        };
-        imageGeneration?: {
-          totalUsage: number;
-          totalCalls: number;
-        };
-        embedding?: {
-          totalUsage: number;
-          totalCalls: number;
-        };
-      };
+        }
+      >;
     };
     growth: { usageGrowth: number; creditsGrowth: number; callsGrowth: number };
   } | null;

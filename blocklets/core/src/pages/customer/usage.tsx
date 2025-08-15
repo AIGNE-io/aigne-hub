@@ -7,9 +7,9 @@ import { RefreshOutlined } from '@mui/icons-material';
 import { Alert, Box, Card, Divider, IconButton, Skeleton, Stack, Tooltip, Typography } from '@mui/material';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import dayjs from 'dayjs';
 import { useEffect, useRef, useState } from 'react';
 
+import dayjs from '../../libs/dayjs';
 import { CreditsBalance } from './credits-balance';
 import { useCreditBalance, useUsageStats } from './hooks';
 
@@ -116,11 +116,14 @@ function CreditsBalanceSkeleton() {
   );
 }
 
+const toUTCTimestamp = (localDayjs: dayjs.Dayjs, isEndOfDay = false) => {
+  return isEndOfDay ? localDayjs.endOf('day').utc().unix() : localDayjs.startOf('day').utc().unix();
+};
 function CreditBoard() {
   const { t } = useLocaleContext();
   const [dateRange, setDateRange] = useState({
-    from: dayjs().subtract(6, 'day').startOf('day').unix(),
-    to: dayjs().endOf('day').unix(),
+    from: toUTCTimestamp(dayjs().subtract(6, 'day')),
+    to: toUTCTimestamp(dayjs(), true),
   });
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -144,8 +147,8 @@ function CreditBoard() {
 
   const handleQuickDateSelect = (range: { start: dayjs.Dayjs; end: dayjs.Dayjs }) => {
     setDateRange({
-      from: range.start.startOf('day').unix(),
-      to: range.end.endOf('day').unix(),
+      from: toUTCTimestamp(range.start),
+      to: toUTCTimestamp(range.end, true),
     });
   };
 
@@ -162,6 +165,9 @@ function CreditBoard() {
     Toast.success(t('analytics.refreshSuccess'));
   };
 
+  const dailyStats = usageStats?.dailyStats?.filter(
+    (stat: any) => stat.timestamp >= dateRange.from && stat.timestamp <= dateRange.to
+  );
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
@@ -188,13 +194,13 @@ function CreditBoard() {
             </Box>
             <Stack direction="row" spacing={1}>
               <DateRangePicker
-                startDate={dayjs.unix(dateRange.from)}
-                endDate={dayjs.unix(dateRange.to)}
+                startDate={dayjs.unix(dateRange.from).local()}
+                endDate={dayjs.unix(dateRange.to).local()}
                 onStartDateChange={(date: dayjs.Dayjs | null) =>
-                  setDateRange((prev) => ({ ...prev, from: (date || dayjs()).startOf('day').unix() }))
+                  setDateRange((prev) => ({ ...prev, from: toUTCTimestamp(date || dayjs()) }))
                 }
                 onEndDateChange={(date: dayjs.Dayjs | null) =>
-                  setDateRange((prev) => ({ ...prev, to: (date || dayjs()).endOf('day').unix() }))
+                  setDateRange((prev) => ({ ...prev, to: toUTCTimestamp(date || dayjs(), true) }))
                 }
                 onQuickSelect={handleQuickDateSelect}
                 sx={{
@@ -237,7 +243,7 @@ function CreditBoard() {
               ) : (
                 <UsageSummary
                   totalCredits={usageStats?.summary?.totalCredits}
-                  totalUsage={usageStats?.summary?.byType?.chatCompletion?.totalUsage}
+                  totalUsage={usageStats?.summary?.totalUsage}
                   totalCalls={usageStats?.summary?.totalCalls}
                   trendComparison={usageStats?.trendComparison}
                   periodDays={Math.ceil((dateRange.to - dateRange.from) / (24 * 60 * 60))}
@@ -247,7 +253,7 @@ function CreditBoard() {
               {showStatsSkeleton ? (
                 <UsageChartsSkeleton />
               ) : (
-                <UsageCharts dailyStats={usageStats?.dailyStats} showCredits showRequests={false} />
+                <UsageCharts dailyStats={dailyStats} showCredits showRequests={false} />
               )}
             </Stack>
 

@@ -2,7 +2,7 @@ import { getPrefix } from '@app/libs/util';
 import Empty from '@arcblock/ux/lib/Empty';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import { formatNumber } from '@blocklet/aigne-hub/utils/util';
-import { Avatar, Box, Card, CardContent, Stack, Tooltip, Typography } from '@mui/material';
+import { Avatar, Box, Card, CardContent, Stack, Typography } from '@mui/material';
 import { joinURL } from 'ufo';
 
 export interface ModelStats {
@@ -28,23 +28,6 @@ interface ModelUsageStatsProps {
   maxItems?: number;
 }
 
-function getUsageDisplay(model: ModelStats): string {
-  switch (model.type.toLowerCase()) {
-    case 'imagegeneration':
-      return `${formatNumber(model.totalUsage)} images`;
-    case 'videogeneration':
-      return `${formatNumber(model.totalUsage)} minutes`;
-    case 'chatcompletion':
-    case 'completion':
-    case 'embedding':
-    case 'transcription':
-    case 'speech':
-    case 'audiogeneration':
-    default:
-      return `${formatNumber(model.totalUsage)} tokens`;
-  }
-}
-
 export function ModelUsageStats({
   modelStats = [],
   totalModelCount = undefined,
@@ -55,63 +38,6 @@ export function ModelUsageStats({
   const { t } = useLocaleContext();
 
   const displayStats = maxItems ? modelStats.slice(0, maxItems) : modelStats;
-
-  const renderTooltipContent = (model: ModelStats) => {
-    return (
-      <Card sx={{ minWidth: 280, border: 'none', boxShadow: 'none' }}>
-        <CardContent sx={{ p: 2 }}>
-          <Stack
-            direction="row"
-            spacing={1}
-            sx={{
-              alignItems: 'center',
-              mb: 2,
-            }}>
-            <Avatar
-              src={joinURL(getPrefix(), `/logo/${model.provider.name}.png`)}
-              sx={{ width: 32, height: 32 }}
-              alt={model.provider.displayName}
-            />
-            <Box>
-              <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'text.primary' }}>
-                {model.model}
-              </Typography>
-              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                {model.provider?.displayName}
-              </Typography>
-            </Box>
-          </Stack>
-
-          <Stack direction="column" spacing={1} sx={{ backgroundColor: 'grey.50', p: 2, borderRadius: 1 }}>
-            <Stack direction="row" spacing={2} sx={{ justifyContent: 'space-between' }}>
-              <Typography variant="body2" sx={{ color: 'text.secondary', mb: 0.5 }}>
-                {t('analytics.totalRequests')}
-              </Typography>
-              <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'text.primary' }}>
-                {formatNumber(model.totalCalls)}
-              </Typography>
-            </Stack>
-            <Stack direction="row" spacing={2} sx={{ justifyContent: 'space-between' }}>
-              <Typography variant="body2" sx={{ color: 'text.secondary', mb: 0.5 }}>
-                {t('analytics.totalCreditsUsed')}
-              </Typography>
-              <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'text.primary' }}>
-                {formatNumber(model.totalCredits)}
-              </Typography>
-            </Stack>
-            <Stack direction="row" spacing={2} sx={{ justifyContent: 'space-between' }}>
-              <Typography variant="body2" sx={{ color: 'text.secondary', mb: 0.5 }}>
-                {t('analytics.totalUsage')}
-              </Typography>
-              <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'text.primary' }}>
-                {getUsageDisplay(model)}
-              </Typography>
-            </Stack>
-          </Stack>
-        </CardContent>
-      </Card>
-    );
-  };
 
   const content = (
     <>
@@ -185,22 +111,9 @@ export function ModelUsageStats({
 
                     {/* 模型名 */}
                     <Box sx={{ flex: 1 }}>
-                      <Tooltip
-                        title={renderTooltipContent(model)}
-                        slotProps={{
-                          tooltip: {
-                            sx: {
-                              maxWidth: 'none',
-                              backgroundColor: 'background.paper',
-                              boxShadow: 2,
-                              p: 0,
-                            },
-                          },
-                        }}>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 'medium', cursor: 'help' }}>
-                          {model.model}
-                        </Typography>
-                      </Tooltip>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 'medium', cursor: 'help' }}>
+                        {model.model}
+                      </Typography>
                     </Box>
                   </Stack>
 

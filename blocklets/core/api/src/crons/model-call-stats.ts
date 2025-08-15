@@ -5,7 +5,7 @@ import ModelCallStat from '@api/store/models/model-call-stat';
 
 import { sequelize } from '../store/sequelize';
 
-export async function getDatesToWarmup(): Promise<string[]> {
+export async function getHoursToWarmup(): Promise<number[]> {
   const item = await ModelCallStat.findOne({
     order: [['timestamp', 'DESC']],
     limit: 1,
@@ -13,36 +13,36 @@ export async function getDatesToWarmup(): Promise<string[]> {
     attributes: ['timestamp'],
   });
 
-  const dayInSeconds = 60 * 60 * 24;
-  const now = dayjs().unix();
-  const yesterday = now - dayInSeconds;
+  const hourInSeconds = 60 * 60;
+  const now = dayjs.utc().unix();
+  const currentHour = Math.floor(now / hourInSeconds) * hourInSeconds;
+  const previousHour = currentHour - hourInSeconds;
 
   if (item) {
-    const dates: string[] = [];
-    let current = item.timestamp + dayInSeconds;
+    const hours: number[] = [];
+    let current = item.timestamp + hourInSeconds;
 
-    // Include all missing dates up to yesterday
-    while (current <= yesterday) {
-      dates.push(dayjs(current * 1000).format('YYYY-MM-DD'));
-      current += dayInSeconds;
+    // Include all missing hours up to the previous hour
+    while (current <= previousHour) {
+      hours.push(current);
+      current += hourInSeconds;
     }
 
-    // Always include yesterday to ensure it's updated with final data
-    const yesterdayStr = dayjs(yesterday * 1000).format('YYYY-MM-DD');
-    if (!dates.includes(yesterdayStr)) {
-      dates.push(yesterdayStr);
+    // Always include previous hour to ensure it's updated with final data
+    if (!hours.includes(previousHour)) {
+      hours.push(previousHour);
     }
 
-    return dates;
+    return hours;
   }
 
-  // If no existing stats, start with yesterday
-  return [dayjs(yesterday * 1000).format('YYYY-MM-DD')];
+  // If no existing stats, start with previous hour
+  return [previousHour];
 }
 
-// 创建指定日期的缓存
-export async function createModelCallStats(date?: string) {
-  const dates = date ? [date] : await getDatesToWarmup();
+// 创建指定小时的缓存统计
+export async function createModelCallStats(hourTimestamp?: number) {
+  const hours = hourTimestamp ? [hourTimestamp] : await getHoursToWarmup();
 
   // 获取所有活跃用户（最近7天有调用的用户）
   const activeUsers = (await sequelize.query(
@@ -60,14 +60,21 @@ export async function createModelCallStats(date?: string) {
   )) as any[];
 
   await Promise.all(
-    dates.map(async (date) => {
+    hours.map(async (hourTimestamp) => {
       await Promise.all(
         activeUsers.map(async (user) => {
           try {
-            await ModelCallStat.getDailyStats(user.userDid, date);
-            logger.info('ModelCallStat processed', { date, userDid: user.userDid });
+            await ModelCallStat.getHourlyStats(user.userDid, hourTimestamp);
+            logger.info('ModelCallStat hourly processed', {
+              hour: new Date(hourTimestamp * 1000).toISOString(),
+              userDid: user.userDid,
+            });
           } catch (error) {
-            logger.warn('Failed to process stats', { date, userDid: user.userDid, error });
+            logger.warn('Failed to process hourly stats', {
+              hour: new Date(hourTimestamp * 1000).toISOString(),
+              userDid: user.userDid,
+              error,
+            });
           }
         })
       );
