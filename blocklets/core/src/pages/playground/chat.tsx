@@ -1,4 +1,5 @@
 import { getPrefix } from '@app/libs/util';
+import { AI_PROVIDER_DISPLAY_NAMES } from '@blocklet/aigne-hub/api';
 import {
   Conversation,
   ConversationRef,
@@ -38,18 +39,7 @@ interface ApiModel {
 }
 
 // Provider name mapping
-const providerDisplayNames: Record<string, string> = {
-  openai: 'OpenAI',
-  anthropic: 'Anthropic',
-  bedrock: 'Amazon Bedrock',
-  deepseek: 'DeepSeek',
-  google: 'Google',
-  ollama: 'Ollama',
-  openrouter: 'OpenRouter',
-  xai: 'xAI',
-  doubao: 'Doubao',
-  poe: 'Poe',
-};
+const providerDisplayNames = AI_PROVIDER_DISPLAY_NAMES;
 
 // Format API data to frontend needed format
 function formatModelsData(apiModels: ApiModel[]): ModelGroup[] {

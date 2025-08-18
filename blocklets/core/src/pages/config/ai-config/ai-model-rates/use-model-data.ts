@@ -1,4 +1,4 @@
-import { isValidAIProvider } from '@api/libs/constants';
+import { isValidAIProvider } from '@blocklet/aigne-hub/api';
 import { useCallback, useMemo, useState } from 'react';
 
 import { CachedModelData, LiteLLMModelData, ModelOption, Provider } from './types';

@@ -2,9 +2,9 @@ import { DataTypes } from 'sequelize';
 
 import { Migration, safeApplyColumnChanges } from '../migrate';
 
-export const up: Migration = async ({ context }) => {
+export const up: Migration = async ({ context: queryInterface }) => {
   // Add timeType column to ModelCallStats table
-  await safeApplyColumnChanges(context, {
+  await safeApplyColumnChanges(queryInterface, {
     ModelCallStats: [
       { name: 'timeType', field: { type: DataTypes.ENUM('day', 'hour'), allowNull: false, defaultValue: 'day' } },
     ],
