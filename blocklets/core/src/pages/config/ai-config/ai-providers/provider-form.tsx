@@ -62,6 +62,8 @@ const PROVIDER_OPTIONS = [
   { value: 'ollama', label: 'Ollama', baseUrl: 'http://localhost:11434/api' },
   { value: 'openrouter', label: 'OpenRouter', baseUrl: 'https://openrouter.ai/api/v1' },
   { value: 'xai', label: 'xAI', baseUrl: 'https://api.x.ai/v1' },
+  { value: 'doubao', label: 'Doubao', baseUrl: 'https://ark.cn-beijing.volces.com/api/v3' },
+  { value: 'poe', label: 'Poe', baseUrl: 'https://api.poe.com/v1' },
 ];
 
 interface Props {

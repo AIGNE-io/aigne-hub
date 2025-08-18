@@ -124,6 +124,14 @@ const pricingLinks = {
     name: 'Ollama',
     url: 'https://ollama.ai/library',
   },
+  doubao: {
+    name: 'Doubao',
+    url: 'https://www.volcengine.com/docs/82379/1544106',
+  },
+  poe: {
+    name: 'Poe',
+    url: 'https://poe.com',
+  },
 };
 
 export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props) {

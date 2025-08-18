@@ -1,4 +1,5 @@
 import { getModelNameWithProvider } from '@api/libs/ai-provider';
+import { AI_PROVIDER_VALUES } from '@api/libs/constants';
 import { Config } from '@api/libs/env';
 import logger from '@api/libs/logger';
 import modelRegistry from '@api/libs/model-registry';
@@ -22,7 +23,7 @@ const user = sessionMiddleware({ accessKey: true });
 // 验证schemas
 const createProviderSchema = Joi.object({
   name: Joi.string()
-    .valid('openai', 'anthropic', 'bedrock', 'deepseek', 'google', 'ollama', 'openrouter', 'xai')
+    .valid(...AI_PROVIDER_VALUES)
     .required(),
   displayName: Joi.string().min(1).max(100).required(),
   baseUrl: Joi.string().uri().optional(),
@@ -36,7 +37,7 @@ const createProviderSchema = Joi.object({
 });
 
 const updateProviderSchema = Joi.object({
-  name: Joi.string().valid('openai', 'anthropic', 'bedrock', 'deepseek', 'google', 'ollama', 'openrouter', 'xai'),
+  name: Joi.string().valid(...AI_PROVIDER_VALUES),
   baseUrl: Joi.string().uri().optional(),
   region: Joi.when('name', {
     is: 'bedrock',

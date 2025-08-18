@@ -47,6 +47,8 @@ const providerDisplayNames: Record<string, string> = {
   ollama: 'Ollama',
   openrouter: 'OpenRouter',
   xai: 'xAI',
+  doubao: 'Doubao',
+  poe: 'Poe',
 };
 
 // Format API data to frontend needed format
