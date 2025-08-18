@@ -1,6 +1,6 @@
 {
   "name": "@blocklet/aigne-hub",
-  "version": "0.3.13",
+  "version": "0.3.14",
   "description": "The react.js component library for AIGNE Hub",
   "publishConfig": {
     "access": "public"
@@ -119,7 +119,7 @@
   },
   "dependencies": {
     "@arcblock/did": "^1.21.3",
-    "@arcblock/ux": "^3.1.19",
+    "@arcblock/ux": "^3.1.21",
     "@blocklet/error": "0.2.5",
     "@blocklet/logger": "^1.16.48",
     "@blocklet/payment-js": "^1.19.18",

@@ -10,7 +10,7 @@ Whether you're building a SaaS platform, internal AI tools, or next-gen agents, 
 ## ✨ Why AIGNE Hub?
 
 - **One API. All Providers.**  
-  OpenAI, Claude, Gemini, DeepSeek, xAI, Bedrock, and more—connected via a single OpenAI-compatible endpoint.
+  OpenAI, Claude, Gemini, DeepSeek, xAI, Bedrock, Doubao, Poe, and more—connected via a single OpenAI-compatible endpoint.
 
 - **One Dashboard. Full Visibility.**  
   Monitor usage, cost, and performance across all models and users in one place.
@@ -65,6 +65,8 @@ Open the built-in Playground or use the AIGNE CLI to test and integrate.
 - xAI (Grok series)
 - OpenRouter (multi-model platform)
 - Ollama (local model support)
+- Doubao (Doubao AI models)
+- Poe (Poe AI platform)
 
 > 🎯 The list continues to grow. New providers are auto-discovered and available for connection as soon as they're supported.
 

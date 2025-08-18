@@ -12,11 +12,13 @@ import {
   isAgentResponseDelta,
 } from '@aigne/core';
 import { DeepSeekChatModel } from '@aigne/deepseek';
+import { DoubaoChatModel } from '@aigne/doubao';
 import { GeminiChatModel } from '@aigne/gemini';
 import { OllamaChatModel } from '@aigne/ollama';
 import { OpenRouterChatModel } from '@aigne/open-router';
 import { OpenAIChatModel } from '@aigne/openai';
 import type { OpenAIChatModelOptions } from '@aigne/openai';
+import { PoeChatModel } from '@aigne/poe';
 import { XAIChatModel } from '@aigne/xai';
 import { getModelNameWithProvider } from '@api/libs/ai-provider';
 import logger from '@api/libs/logger';
@@ -98,6 +100,8 @@ const providers = {
   ollama: 'ollama',
   openrouter: 'openrouter',
   xai: 'xai',
+  doubao: 'doubao',
+  poe: 'poe',
 } as const;
 
 type AIProvider = keyof typeof providers;
@@ -167,6 +171,16 @@ function availableModels(): {
       provider: providers.xai,
       create: (params) => new XAIChatModel({ ...params, clientOptions }),
     },
+    {
+      name: DoubaoChatModel.name,
+      provider: providers.doubao,
+      create: (params) => new DoubaoChatModel({ ...params, clientOptions }),
+    },
+    {
+      name: PoeChatModel.name,
+      provider: providers.poe,
+      create: (params) => new PoeChatModel({ ...params, clientOptions }),
+    },
   ];
 }
 
@@ -180,6 +194,8 @@ const apiKeys: { [key in AIProvider]: () => string[] } = {
   bedrock: () => Config.awsAccessKeyId,
   ollama: () => Config.ollamaApiKey,
   xai: () => Config.xaiApiKey,
+  doubao: () => Config.doubaoApiKey,
+  poe: () => Config.poeApiKey,
 };
 
 const aigneHubConfigProviderUrl = async () => {

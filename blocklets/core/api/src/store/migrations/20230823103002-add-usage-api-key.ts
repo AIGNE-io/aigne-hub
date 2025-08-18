@@ -1,10 +1,10 @@
 import { DataTypes } from 'sequelize';
 
-import type { Migration } from '../migrate';
+import { Migration, safeApplyColumnChanges } from '../migrate';
 
-export const up: Migration = async ({ context: queryInterface }) => {
-  await queryInterface.addColumn('Usages', 'apiKey', {
-    type: DataTypes.STRING,
+export const up: Migration = async ({ context }) => {
+  await safeApplyColumnChanges(context, {
+    Usages: [{ name: 'apiKey', field: { type: DataTypes.STRING } }],
   });
 };
 

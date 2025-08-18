@@ -4,9 +4,9 @@ import { CustomError } from '@blocklet/error';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import { OpenAI } from 'openai';
 
+import { AIProviderType, SUPPORTED_PROVIDERS_SET } from './constants';
 import { Config } from './env';
 import logger from './logger';
-import { SUPPORTED_PROVIDERS } from './model-registry';
 
 export function getOpenAI() {
   const { httpsProxy, openaiBaseURL } = Config;
@@ -64,7 +64,7 @@ export function getModelNameWithProvider(model: string, defaultProviderName: str
   if (model.includes('/')) {
     const modelArray = model.split('/');
     const [providerName, name] = [modelArray[0], modelArray.slice(1).join('/')];
-    if (providerName && !SUPPORTED_PROVIDERS.has(providerName?.toLowerCase() || '')) {
+    if (providerName && !SUPPORTED_PROVIDERS_SET.has(providerName?.toLowerCase() as AIProviderType)) {
       logger.info(`${providerName} is not supported, use default provider ${defaultProviderName}`);
       return {
         providerName: defaultProviderName,

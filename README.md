@@ -35,6 +35,8 @@ Whether you're building applications with the AIGNE framework, using AIGNE Studi
 - **Ollama** - Local model deployment
 - **OpenRouter** - Access to multiple providers
 - **xAI** - Grok models
+- **Doubao** - Doubao AI models
+- **Poe** - Poe AI platform
 - _And more providers being added..._
 
 ## Deployment Scenarios

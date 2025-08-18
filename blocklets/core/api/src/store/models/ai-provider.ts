@@ -1,3 +1,4 @@
+import { AIProviderType } from '@api/libs/constants';
 import { CreationOptional, DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequelize';
 import { Worker } from 'snowflake-uuid';
 
@@ -7,16 +8,6 @@ import AiCredential from './ai-credential';
 const idGenerator = new Worker();
 
 const nextId = () => idGenerator.nextId().toString();
-
-export type AIProviderType =
-  | 'openai'
-  | 'anthropic'
-  | 'bedrock'
-  | 'deepseek'
-  | 'google'
-  | 'ollama'
-  | 'openrouter'
-  | 'xai';
 
 export default class AiProvider extends Model<InferAttributes<AiProvider>, InferCreationAttributes<AiProvider>> {
   declare id: CreationOptional<string>;

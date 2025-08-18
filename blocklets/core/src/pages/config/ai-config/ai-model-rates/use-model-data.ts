@@ -1,3 +1,4 @@
+import { isValidAIProvider } from '@blocklet/aigne-hub/api';
 import { useCallback, useMemo, useState } from 'react';
 
 import { CachedModelData, LiteLLMModelData, ModelOption, Provider } from './types';
@@ -6,17 +7,6 @@ const CACHE_KEY = 'ai-kit-model-data';
 const CACHE_DURATION = 24 * 60 * 60 * 1000;
 const CACHE_VERSION = '1.0.0';
 const LITELLM_API_URL = 'https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json';
-
-const SUPPORTED_PROVIDERS = new Set([
-  'openai',
-  'anthropic',
-  'bedrock',
-  'deepseek',
-  'google',
-  'ollama',
-  'openrouter',
-  'xai',
-]);
 
 const TEST_PATTERN = /^ft:|^test-|^dev-|^beta-|^alpha-/i;
 
@@ -28,7 +18,7 @@ const processModelName = (modelName: string): { processedName: string; displayNa
   let processedName = modelName;
   let displayName = modelName;
 
-  if (parts && parts.length > 1 && SUPPORTED_PROVIDERS.has(parts[0]!)) {
+  if (parts && parts.length > 1 && isValidAIProvider(parts[0]!)) {
     processedName = parts.slice(1).join('/');
     displayName = processedName;
   }
@@ -60,7 +50,7 @@ const shouldFilterModel = (modelName: string, options: any): boolean => {
   }
 
   // filter unsupported providers
-  if (!SUPPORTED_PROVIDERS.has(options.litellm_provider)) {
+  if (!isValidAIProvider(options.litellm_provider)) {
     return true;
   }
 

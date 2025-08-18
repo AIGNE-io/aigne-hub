@@ -181,6 +181,29 @@ export const Config = {
     return this._xaiApiKey;
   },
 
+  _doubaoApiKey: undefined as string[] | undefined,
+  get doubaoApiKey() {
+    if (this._doubaoApiKey === undefined) {
+      const KEY = config.env.DOUBAO_API_KEY;
+      this._doubaoApiKey = (typeof KEY === 'string' ? KEY : '')
+        .split(',')
+        .map((i: string) => i.trim())
+        .filter(Boolean);
+    }
+    return this._doubaoApiKey;
+  },
+
+  _poeApiKey: undefined as string[] | undefined,
+  get poeApiKey() {
+    if (this._poeApiKey === undefined) {
+      const KEY = config.env.POE_API_KEY;
+      this._poeApiKey = (typeof KEY === 'string' ? KEY : '')
+        .split(',')
+        .map((i: string) => i.trim())
+        .filter(Boolean);
+    }
+    return this._poeApiKey;
+  },
   get openaiBaseURL() {
     const url = config.env.OPENAI_BASE_URL;
     return url && typeof url === 'string' ? url : undefined;

@@ -1,3 +1,4 @@
+import { AIProviderType, SUPPORTED_PROVIDERS_SET as SUPPORTED_PROVIDERS } from '@api/libs/constants';
 import axios from 'axios';
 
 import logger from './logger';
@@ -45,17 +46,6 @@ const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 const CACHE_VERSION = '1.0.0';
 const LITELLM_API_URL = 'https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json';
 
-export const SUPPORTED_PROVIDERS = new Set([
-  'openai',
-  'anthropic',
-  'bedrock',
-  'deepseek',
-  'google',
-  'ollama',
-  'openrouter',
-  'xai',
-]);
-
 // Filter patterns - consistent with frontend
 const TEST_PATTERN = /^ft:|^test-|^dev-|^beta-|^alpha-/i;
 const SUPPORTED_MODES = new Set(['chat', 'image_generation', 'embedding']);
@@ -73,7 +63,7 @@ class ModelRegistry {
     let processedName = modelName;
     let displayName = modelName;
 
-    if (parts && parts.length > 1 && SUPPORTED_PROVIDERS.has(parts[0]!)) {
+    if (parts && parts.length > 1 && SUPPORTED_PROVIDERS.has(parts[0]! as AIProviderType)) {
       processedName = parts.slice(1).join('/');
       displayName = processedName;
     }
@@ -144,7 +134,7 @@ class ModelRegistry {
       }
 
       const provider = options.litellm_provider;
-      if (!SUPPORTED_PROVIDERS.has(provider)) {
+      if (!SUPPORTED_PROVIDERS.has(provider as AIProviderType)) {
         return;
       }
 
@@ -244,7 +234,7 @@ class ModelRegistry {
    * Get models by provider
    */
   async getModelsByProvider(provider: string): Promise<ModelOption[]> {
-    if (!SUPPORTED_PROVIDERS.has(provider)) {
+    if (!SUPPORTED_PROVIDERS.has(provider as AIProviderType)) {
       return [];
     }
 
