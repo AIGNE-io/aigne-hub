@@ -1,5 +1,9 @@
-## 0.3.13 (2025-8-15)
+## 0.3.14 (2025-8-18)
 
+- fix(migrations): replace queryInterface with safeApplyColumnChanges for column modifications
+- feat(core): doubao and poe provider support
+
+## 0.3.13 (2025-8-15)
 
 - fix(api): ensure model call completion tracking regardless of billing mode
 - feat(api): implement hourly model call stats tracking with UTC timezone support

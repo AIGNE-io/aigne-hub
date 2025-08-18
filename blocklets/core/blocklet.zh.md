@@ -10,7 +10,7 @@ AIGNE Hub 通过统一的 API、安全模型和直观的管理界面，将您的
 ## ✨ 为什么选择 AIGNE Hub？
 
 - **一个 API，统一接入多个模型**  
-  OpenAI、Claude、Gemini、DeepSeek、xAI、Bedrock 等主流模型一站式接入，兼容 OpenAI 接口规范。
+  OpenAI、Claude、Gemini、DeepSeek、xAI、Bedrock、Doubao、Poe 等主流模型一站式接入，兼容 OpenAI 接口规范。
 
 - **集中式管理与可视化监控**  
   在单一仪表盘中查看模型调用、使用量、延迟与成本等关键指标。
@@ -67,6 +67,8 @@ AIGNE Hub 通过统一的 API、安全模型和直观的管理界面，将您的
 - xAI（Grok 系列模型）
 - OpenRouter（多模型聚合平台）
 - Ollama（本地模型部署）
+- Doubao（豆包大模型）
+- Poe（Poe AI 平台）
 
 > 📈 支持的提供商将持续更新，您可在后台自动发现并启用新模型。
 
