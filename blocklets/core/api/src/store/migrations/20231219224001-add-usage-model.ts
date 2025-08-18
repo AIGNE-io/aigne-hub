@@ -1,15 +1,19 @@
 import { DataTypes } from 'sequelize';
 
-import type { Migration } from '../migrate';
+import { Migration, safeApplyColumnChanges } from '../migrate';
 
-export const up: Migration = async ({ context: queryInterface }) => {
-  await queryInterface.addColumn('Usages', 'model', { type: DataTypes.STRING });
-  await queryInterface.addColumn('Usages', 'modelParams', { type: DataTypes.JSON });
-  await queryInterface.addColumn('Usages', 'appId', { type: DataTypes.STRING });
-  await queryInterface.addColumn('Usages', 'type', { type: DataTypes.STRING });
-  await queryInterface.addColumn('Usages', 'usageReportStatus', { type: DataTypes.STRING });
-  await queryInterface.addColumn('Usages', 'usedCredits', { type: DataTypes.DECIMAL });
-  await queryInterface.addColumn('Usages', 'numberOfImageGeneration', { type: DataTypes.INTEGER });
+export const up: Migration = async ({ context }) => {
+  await safeApplyColumnChanges(context, {
+    Usages: [
+      { name: 'model', field: { type: DataTypes.STRING } },
+      { name: 'modelParams', field: { type: DataTypes.JSON } },
+      { name: 'appId', field: { type: DataTypes.STRING } },
+      { name: 'type', field: { type: DataTypes.STRING } },
+      { name: 'usageReportStatus', field: { type: DataTypes.STRING } },
+      { name: 'usedCredits', field: { type: DataTypes.DECIMAL } },
+      { name: 'numberOfImageGeneration', field: { type: DataTypes.INTEGER } },
+    ],
+  });
 };
 
 export const down: Migration = async ({ context: queryInterface }) => {

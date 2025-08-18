@@ -1,10 +1,10 @@
 import { DataTypes } from 'sequelize';
 
-import type { Migration } from '../migrate';
+import { Migration, safeApplyColumnChanges } from '../migrate';
 
-export const up: Migration = async ({ context: queryInterface }) => {
-  await queryInterface.addColumn('Usages', 'userDid', {
-    type: DataTypes.STRING,
+export const up: Migration = async ({ context }) => {
+  await safeApplyColumnChanges(context, {
+    Usages: [{ name: 'userDid', field: { type: DataTypes.STRING, allowNull: true } }],
   });
 };
 
