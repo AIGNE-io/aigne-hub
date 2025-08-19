@@ -1,3 +1,9 @@
+## 0.3.15 (2025-8-19)
+
+- chore: update dependencies
+- feat(core): add model rates configuration step in credits setup
+- fix(api): update baseUrl validation for bedrock provider in schemas
+
 ## 0.3.14 (2025-8-18)
 
 - fix(migrations): replace queryInterface with safeApplyColumnChanges for column modifications
