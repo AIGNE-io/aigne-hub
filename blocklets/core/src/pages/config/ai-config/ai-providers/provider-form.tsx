@@ -114,8 +114,8 @@ export default function ProviderForm({ provider = null, onSubmit, onCancel }: Pr
     const selectedProvider = PROVIDER_OPTIONS.find((option) => option.value === value);
     if (selectedProvider && !provider) {
       setValue('displayName', selectedProvider.label);
-      setValue('baseUrl', selectedProvider.baseUrl);
-      setValue('region', selectedProvider.region);
+      setValue('baseUrl', selectedProvider.baseUrl || '');
+      setValue('region', selectedProvider.region || '');
     }
 
     // 如果是bedrock，设置默认凭证类型为access_key_pair

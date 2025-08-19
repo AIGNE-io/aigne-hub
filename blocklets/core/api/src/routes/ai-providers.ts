@@ -26,7 +26,11 @@ const createProviderSchema = Joi.object({
     .valid(...AI_PROVIDER_VALUES)
     .required(),
   displayName: Joi.string().min(1).max(100).required(),
-  baseUrl: Joi.string().uri().optional(),
+  baseUrl: Joi.when('name', {
+    is: 'bedrock',
+    then: Joi.string().default('').allow('', null).optional(),
+    otherwise: Joi.string().uri().required(),
+  }),
   region: Joi.when('name', {
     is: 'bedrock',
     then: Joi.string().max(50).required(),
@@ -38,7 +42,11 @@ const createProviderSchema = Joi.object({
 
 const updateProviderSchema = Joi.object({
   name: Joi.string().valid(...AI_PROVIDER_VALUES),
-  baseUrl: Joi.string().uri().optional(),
+  baseUrl: Joi.when('name', {
+    is: 'bedrock',
+    then: Joi.string().default('').allow('', null).optional(),
+    otherwise: Joi.string().uri().required(),
+  }),
   region: Joi.when('name', {
     is: 'bedrock',
     then: Joi.string().max(50).required(),
