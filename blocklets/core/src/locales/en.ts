@@ -80,7 +80,7 @@ export default flatten({
 
   // Credits configuration
   enableCredits: 'Enable Credits Billing',
-  configCredits: 'Configure Credits Billing',
+  configCredits: 'Configure Model Rates',
   enableCreditsDesc: 'Configure credit-based billing model to manage user usage quotas',
   creditsConfigTitle: 'Enable Credits Billing Feature',
   creditsConfigDesc:
@@ -90,6 +90,10 @@ export default flatten({
   updatePreferences: 'Step 2: Update AIGNE Hub Preferences',
   installPaymentKitDesc:
     'Search and install the Payment Kit component from Blocklet Store. This is a prerequisite for enabling Credits billing. With Payment Kit, you can manage multiple payment methods and related configurations, providing users with a convenient top-up experience.',
+
+  configModelRates: 'Step 3: Configure Model Rates',
+  configModelRatesDesc:
+    'You can go to the "AI Config - Model Rates" page to configure the pricing rates for different AI models and providers. You can set different rates for each model and select different providers.',
 
   // Types
   modelTypes: {

@@ -91,7 +91,13 @@ export default function Overview() {
               md: 4,
             }}>
             <Box
-              onClick={() => handleClick(item)}
+              onClick={() => {
+                if (item.credit && window.blocklet?.preferences?.creditBasedBillingEnabled) {
+                  navigate('/config/ai-config/models');
+                  return;
+                }
+                handleClick(item);
+              }}
               sx={{
                 height: '100%',
                 cursor: 'pointer',
@@ -188,6 +194,22 @@ export default function Overview() {
                 height: 'auto',
               }}
             />
+          </Box>
+          <Box
+            sx={{
+              mb: 3,
+              p: 2,
+              bgcolor: 'background.paper',
+              borderRadius: 1,
+              border: '1px solid',
+              borderColor: 'divider',
+            }}>
+            <Typography variant="h6" sx={{ mb: 1, color: 'primary.main' }}>
+              {t('configModelRates')}
+            </Typography>
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+              {t('configModelRatesDesc')}
+            </Typography>
           </Box>
         </Box>
       </Dialog>
