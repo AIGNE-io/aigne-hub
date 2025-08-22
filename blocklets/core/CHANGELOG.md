@@ -1,3 +1,7 @@
+## 0.3.16 (2025-8-22)
+
+- fix(api): display user info of called AIGNE Hub
+
 ## 0.3.15 (2025-8-19)
 
 - chore: update dependencies
