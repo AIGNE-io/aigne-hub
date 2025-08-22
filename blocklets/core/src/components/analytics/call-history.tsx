@@ -193,6 +193,21 @@ export function CallHistory({
   // 构建基础列
   const baseColumns = [
     {
+      name: 'id',
+      label: t('usedBy'),
+      options: {
+        customBodyRender: (_value: any, tableMeta: any) => {
+          const call = modelCalls[tableMeta.rowIndex];
+          if (!call) return null;
+          return (
+            <Typography variant="body2" sx={{ fontFamily: 'monospace', maxWidth: 240, wordBreak: 'break-word' }}>
+              {call.appName || call.appDid}
+            </Typography>
+          );
+        },
+      },
+    },
+    {
       name: 'timestamp',
       label: t('analytics.timestamp'),
       options: {

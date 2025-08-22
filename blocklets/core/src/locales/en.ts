@@ -445,4 +445,5 @@ export default flatten({
   quickSelect: 'Quick Select',
   customRange: 'Custom Range',
   dataAvailableFrom: 'Data available from 3 months ago',
+  usedBy: 'Used By',
 });

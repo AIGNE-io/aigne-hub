@@ -76,6 +76,9 @@ importers:
       '@abtnode/cron':
         specifier: ^1.16.48
         version: 1.16.48
+      '@abtnode/util':
+        specifier: ^1.16.48
+        version: 1.16.48
       '@aigne/anthropic':
         specifier: ^0.11.4
         version: 0.11.4(@libsql/client@0.15.9)(@types/node@22.4.1)(chokidar@3.6.0)(sqlite3@5.1.7)

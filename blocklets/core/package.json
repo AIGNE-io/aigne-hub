@@ -31,6 +31,7 @@
   },
   "dependencies": {
     "@abtnode/cron": "^1.16.48",
+    "@abtnode/util": "^1.16.48",
     "@aigne/anthropic": "^0.11.4",
     "@aigne/bedrock": "^0.9.4",
     "@aigne/core": "^1.51.0",
