@@ -192,7 +192,6 @@ export function CallHistory({
 
   // 构建基础列
   const baseColumns = [
-   
     {
       name: 'timestamp',
       label: t('analytics.timestamp'),
