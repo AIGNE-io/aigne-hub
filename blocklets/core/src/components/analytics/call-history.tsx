@@ -83,7 +83,7 @@ function AppInfo({ appInfo }: { appInfo: { appName: string; appUrl: string; appL
       />
 
       <Box sx={{ color: 'common.white' }}>
-        <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center',justifyContent: 'space-between' }}>
+        <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Box sx={{ color: 'common.white' }}>{appInfo.appName}</Box>
           <IconButton
             size="small"
@@ -92,7 +92,12 @@ function AppInfo({ appInfo }: { appInfo: { appName: string; appUrl: string; appL
             <OpenInNew sx={{ fontSize: 14 }} />
           </IconButton>
         </Typography>
-        <DID sx={{ '.did-address-text, .did-address-text': { color: 'common.white' } }} did={appInfo.appDid} compact size={14} />
+        <DID
+          sx={{ '.did-address-text, .did-address-text': { color: 'common.white' } }}
+          did={appInfo.appDid}
+          compact
+          size={14}
+        />
       </Box>
     </Stack>
   );
