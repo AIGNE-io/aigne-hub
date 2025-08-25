@@ -362,6 +362,14 @@ export function CallHistory({
           const call = modelCalls[tableMeta.rowIndex];
           if (!call) return null;
 
+          if (!call.appDid) {
+            return (
+              <Typography variant="body2" sx={{ fontFamily: 'monospace', maxWidth: 200, wordBreak: 'break-word' }}>
+                -
+              </Typography>
+            );
+          }
+
           const appInfo = call.appInfo?.appName && call.appInfo?.appUrl && call.appInfo?.appLogo;
           return (
             <Tooltip title={appInfo ? <AppInfo appInfo={call.appInfo} /> : undefined}>
