@@ -129,7 +129,7 @@ function CreditBoard() {
   });
   const [refreshKey, setRefreshKey] = useState(0);
   const [searchParams] = useSearchParams();
-  const id = searchParams.get('id');
+  const appDid = searchParams.get('appDid') || searchParams.get('appdid');
 
   // API hooks
   const {
@@ -279,7 +279,7 @@ function CreditBoard() {
 
           <Divider sx={{ my: 2 }} />
 
-          <CallHistory refreshKey={refreshKey} dateRange={dateRange} enableExport appDid={id ?? undefined} />
+          <CallHistory refreshKey={refreshKey} dateRange={dateRange} enableExport appDid={appDid ?? undefined} />
         </Stack>
       </Box>
     </LocalizationProvider>
