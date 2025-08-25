@@ -60,7 +60,7 @@ export function createModelCallMiddleware(callType: CallType) {
         imageStyle: req.body?.style,
       };
     }
-    const appDid = (req.headers['x-aigne-hub-client-did'] as string) || process.env.BLOCKLET_APP_PID || '';
+    const appDid = (req.headers['x-aigne-hub-client-did'] as string) || '';
     req.appClient = {
       appId: appDid,
       userDid,

@@ -101,7 +101,7 @@ router.post('/:type(chat)?/completions', compression(), user, chatCallTracker, a
             completionTokens: (usageData.usage?.outputTokens as number) || 0,
             model: req.body?.model as string,
             modelParams: req.body?.options?.modelOptions,
-            appId: (req.headers['x-aigne-hub-client-did'] as string) || req.appClient?.appId,
+            appId: req.headers['x-aigne-hub-client-did'] as string,
             userDid: userDid!,
             creditBasedBillingEnabled: Config.creditBasedBillingEnabled,
             additionalMetrics: {
@@ -174,7 +174,7 @@ router.post(
                 model: req.body?.model as string,
                 modelParams: req.body?.options?.modelOptions,
                 userDid: userDid!,
-                appId: (req.headers['x-aigne-hub-client-did'] as string) || req.appClient?.appId,
+                appId: req.headers['x-aigne-hub-client-did'] as string,
                 creditBasedBillingEnabled: Config.creditBasedBillingEnabled,
                 additionalMetrics: {
                   totalTokens: (usageData.usage as any)?.totalTokens,
@@ -229,7 +229,7 @@ router.post(
           completionTokens: 0, // Embeddings don't have completion tokens
           model: usageData.model,
           userDid: userDid!,
-          appId: (req.headers['x-aigne-hub-client-did'] as string) || req.appClient?.appId,
+          appId: req.headers['x-aigne-hub-client-did'] as string,
           creditBasedBillingEnabled: Config.creditBasedBillingEnabled,
           additionalMetrics: {
             // No additional usage metrics for embeddings
@@ -275,7 +275,7 @@ router.post(
           model: usageData.model,
           modelParams: usageData.modelParams,
           numberOfImageGeneration: usageData.numberOfImageGeneration,
-          appId: (req.headers['x-aigne-hub-client-did'] as string) || req.appClient?.appId,
+          appId: req.headers['x-aigne-hub-client-did'] as string,
           userDid: userDid!,
           creditBasedBillingEnabled: Config.creditBasedBillingEnabled,
           additionalMetrics: {
