@@ -1,9 +1,6 @@
 ## 0.3.18 (2025-8-25)
 
 - fix: add filtering by pid for call history
-- chore: bump version
-- chore: bump version
-- fix: show detailed popper info on user hover
 
 ## 0.3.17 (2025-8-25)
 
