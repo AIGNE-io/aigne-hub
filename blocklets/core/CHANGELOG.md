@@ -1,3 +1,7 @@
+## 0.3.19 (2025-8-25)
+
+- fix: update caller did name for filtering call history
+
 ## 0.3.18 (2025-8-25)
 
 - fix: add filtering by pid for call history
