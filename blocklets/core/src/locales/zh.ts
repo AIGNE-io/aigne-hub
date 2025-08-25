@@ -418,7 +418,7 @@ export default flatten({
     ofTotalUsage: '占总请求数',
     callHistory: '调用历史',
     callHistoryDescription: '所有模型API调用的详细记录',
-    searchPlaceholder: '按模型搜索...',
+    searchPlaceholder: '按模型或者 appDid 搜索...',
     allStatus: '所有状态',
     timestamp: '时间戳',
     noCallsFound: '未找到符合条件的调用记录',

@@ -426,7 +426,7 @@ export default flatten({
     ofTotalUsage: 'of total calls',
     callHistory: 'Call History',
     callHistoryDescription: 'Detailed log of all model API calls',
-    searchPlaceholder: 'Search by model...',
+    searchPlaceholder: 'Search by model or appDid...',
     allStatus: 'All Status',
     timestamp: 'Timestamp',
     noCallsFound: 'No calls found matching your criteria',
