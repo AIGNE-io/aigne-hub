@@ -66,7 +66,7 @@ interface CallHistoryProps {
   initialPageSize?: number;
   enableExport?: boolean;
   refreshKey?: number;
-  id?: string;
+  appDid?: string;
 }
 
 function formatDuration(duration?: number) {
@@ -114,7 +114,7 @@ export function CallHistory({
   initialPageSize = 10,
   enableExport = true,
   refreshKey = 0,
-  id = undefined,
+  appDid = undefined,
 }: CallHistoryProps) {
   const { t } = useLocaleContext();
   const { api } = useSessionContext();
@@ -148,7 +148,7 @@ export function CallHistory({
     const query: CallHistoryQuery = {
       page: pagination.page,
       pageSize: pagination.pageSize,
-      appDid: id,
+      appDid,
     };
 
     if (dateRange) {

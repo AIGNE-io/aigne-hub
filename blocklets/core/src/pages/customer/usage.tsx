@@ -279,7 +279,7 @@ function CreditBoard() {
 
           <Divider sx={{ my: 2 }} />
 
-          <CallHistory refreshKey={refreshKey} dateRange={dateRange} enableExport id={id ?? undefined} />
+          <CallHistory refreshKey={refreshKey} dateRange={dateRange} enableExport appDid={id ?? undefined} />
         </Stack>
       </Box>
     </LocalizationProvider>
