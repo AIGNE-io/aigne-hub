@@ -406,6 +406,7 @@ export interface ModelCallsQuery {
   status?: 'success' | 'failed' | 'all';
   model?: string;
   providerId?: string;
+  appDid?: string;
 }
 
 const modelCallsSchema = Joi.object<ModelCallsQuery>({
@@ -417,6 +418,7 @@ const modelCallsSchema = Joi.object<ModelCallsQuery>({
   status: Joi.string().valid('success', 'failed', 'all').empty([null, '']),
   model: Joi.string().max(100).empty([null, '']),
   providerId: Joi.string().max(100).empty([null, '']),
+  appDid: Joi.string().optional().empty([null, '']),
 });
 
 export interface UsageStatsQuery {
@@ -598,6 +600,7 @@ router.get('/model-calls', user, async (req, res) => {
       status,
       model,
       providerId,
+      appDid,
     } = await modelCallsSchema.validateAsync(req.query, {
       stripUnknown: true,
     });
@@ -608,6 +611,7 @@ router.get('/model-calls', user, async (req, res) => {
     }
 
     const offset = (page - 1) * pageSize;
+
     const calls = await ModelCall.getCallsByDateRange({
       userDid,
       startTime: startTime ? parseInt(startTime, 10) : undefined,
@@ -618,6 +622,7 @@ router.get('/model-calls', user, async (req, res) => {
       status,
       model,
       providerId,
+      appDid,
     });
 
     const uniqueAppDids = [
@@ -662,9 +667,12 @@ router.get('/model-calls', user, async (req, res) => {
 
 router.get('/model-calls/export', user, async (req, res) => {
   try {
-    const { startTime, endTime, search, status, model, providerId } = await modelCallsSchema.validateAsync(req.query, {
-      stripUnknown: true,
-    });
+    const { startTime, endTime, search, status, model, providerId, appDid } = await modelCallsSchema.validateAsync(
+      req.query,
+      {
+        stripUnknown: true,
+      }
+    );
     const userDid = req.user?.did;
 
     if (!userDid) {
@@ -681,6 +689,7 @@ router.get('/model-calls/export', user, async (req, res) => {
       status,
       model,
       providerId,
+      appDid,
     });
 
     // Convert to CSV format

@@ -8,6 +8,7 @@ import { Alert, Box, Card, Divider, IconButton, Skeleton, Stack, Tooltip, Typogr
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 
 import dayjs from '../../libs/dayjs';
 import { CreditsBalance } from './credits-balance';
@@ -127,6 +128,8 @@ function CreditBoard() {
     to: toUTCTimestamp(dayjs(), true),
   });
   const [refreshKey, setRefreshKey] = useState(0);
+  const [searchParams] = useSearchParams();
+  const id = searchParams.get('id');
 
   // API hooks
   const {
@@ -276,7 +279,7 @@ function CreditBoard() {
 
           <Divider sx={{ my: 2 }} />
 
-          <CallHistory refreshKey={refreshKey} dateRange={dateRange} enableExport />
+          <CallHistory refreshKey={refreshKey} dateRange={dateRange} enableExport id={id ?? undefined} />
         </Stack>
       </Box>
     </LocalizationProvider>
