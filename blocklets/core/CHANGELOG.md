@@ -1,3 +1,7 @@
+## 0.3.20 (2025-8-25)
+
+- fix: remove default addPid header is used when headers are missing
+
 ## 0.3.19 (2025-8-25)
 
 - fix: update caller did name for filtering call history
