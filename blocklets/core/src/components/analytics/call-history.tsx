@@ -1,4 +1,5 @@
 import { getPrefix } from '@app/libs/util';
+import DID from '@arcblock/ux/lib/DID';
 /* eslint-disable react/no-unstable-nested-components */
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import Toast from '@arcblock/ux/lib/Toast';
@@ -6,13 +7,14 @@ import { Table } from '@blocklet/aigne-hub/components';
 import { formatNumber } from '@blocklet/aigne-hub/utils/util';
 import { formatError } from '@blocklet/error';
 import styled from '@emotion/styled';
-import { Download, FilterAltOutlined, Search } from '@mui/icons-material';
+import { Download, FilterAltOutlined, OpenInNew, Search } from '@mui/icons-material';
 import {
   Avatar,
   Box,
   Button,
   Chip,
   CircularProgress,
+  IconButton,
   MenuItem,
   Stack,
   TextField,
@@ -69,6 +71,31 @@ function formatDuration(duration?: number) {
   if (!duration) return '-';
   if (duration < 1000) return `${duration}ms`;
   return `${(duration / 1000).toFixed(1)}s`;
+}
+
+function AppInfo({ appInfo }: { appInfo: { appName: string; appUrl: string; appLogo: string; appDid: string } }) {
+  return (
+    <Stack direction="row" spacing={1} p={1} sx={{ alignItems: 'center' }}>
+      <Avatar
+        src={joinURL(appInfo.appUrl, appInfo.appLogo)}
+        sx={{ width: 40, height: 40, borderRadius: '10px' }}
+        alt={appInfo.appName}
+      />
+
+      <Box sx={{ color: 'common.white' }}>
+        <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center',justifyContent: 'space-between' }}>
+          <Box sx={{ color: 'common.white' }}>{appInfo.appName}</Box>
+          <IconButton
+            size="small"
+            sx={{ color: 'common.white' }}
+            onClick={() => window.open(`${appInfo.appUrl}/.well-known/service/admin/aigne?locale=en`, '_blank')}>
+            <OpenInNew sx={{ fontSize: 14 }} />
+          </IconButton>
+        </Typography>
+        <DID sx={{ '.did-address-text, .did-address-text': { color: 'common.white' } }} did={appInfo.appDid} compact size={14} />
+      </Box>
+    </Stack>
+  );
 }
 
 export function CallHistory({
@@ -325,10 +352,14 @@ export function CallHistory({
         customBodyRender: (_value: any, tableMeta: any) => {
           const call = modelCalls[tableMeta.rowIndex];
           if (!call) return null;
+
+          const appInfo = call.appInfo?.appName && call.appInfo?.appUrl && call.appInfo?.appLogo;
           return (
-            <Typography variant="body2" sx={{ fontFamily: 'monospace', maxWidth: 240, wordBreak: 'break-word' }}>
-              {call.appName || call.appDid}
-            </Typography>
+            <Tooltip title={appInfo ? <AppInfo appInfo={call.appInfo} /> : undefined}>
+              <Typography variant="body2" sx={{ fontFamily: 'monospace', maxWidth: 200, wordBreak: 'break-word' }}>
+                {call.appInfo?.appName || call.appDid}
+              </Typography>
+            </Tooltip>
           );
         },
       },

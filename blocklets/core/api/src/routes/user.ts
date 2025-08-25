@@ -31,6 +31,9 @@ import { joinURL, withQuery } from 'ufo';
 
 interface AppNameCacheItem {
   appName: string;
+  appLogo: string;
+  appDid: string;
+  appUrl: string;
   timestamp: number;
   expiresAt: number;
 }
@@ -46,7 +49,12 @@ const getAppName = async (appDid: string) => {
 
     const cached = appNameCache.get(appDid);
     if (cached && now < cached.expiresAt) {
-      return cached.appName;
+      return {
+        appName: cached.appName,
+        appDid,
+        appLogo: cached.appLogo,
+        appUrl: cached.appUrl,
+      };
     }
 
     if (cached && now >= cached.expiresAt) {
@@ -61,15 +69,32 @@ const getAppName = async (appDid: string) => {
     }
 
     const url = joinURL(`https://${getDidDomainForBlocklet({ did: appDid })}`, '__blocklet__.js?type=json');
-    const { data } = await axios.get(url);
+    const { data } = await axios.get(url, { timeout: 3000 });
     const appName = data?.appName || appDid;
 
-    appNameCache.set(appDid, { appName, timestamp: now, expiresAt: now + CACHE_DURATION });
+    appNameCache.set(appDid, {
+      appName,
+      timestamp: now,
+      expiresAt: now + CACHE_DURATION,
+      appDid,
+      appUrl: data?.appUrl,
+      appLogo: data?.appLogo,
+    });
 
-    return appName;
+    return {
+      appName,
+      appDid,
+      appLogo: data.appLogo,
+      appUrl: data.appUrl,
+    };
   } catch (error) {
     logger.error('Failed to get app name:', error);
-    return appDid;
+    return {
+      appName: appDid,
+      appDid,
+      appLogo: '',
+      appUrl: '',
+    };
   }
 };
 
@@ -599,12 +624,12 @@ router.get('/model-calls', user, async (req, res) => {
       ...new Set(calls.list.filter((call) => call.appDid && isValidDid(call.appDid)).map((call) => call.appDid!)),
     ];
 
-    const appNameMap = new Map<string, string>();
+    const appNameMap = new Map<string, { appName: string; appDid: string; appLogo: string; appUrl: string }>();
     if (uniqueAppDids.length) {
       await Promise.all(
         uniqueAppDids.map(async (appDid) => {
-          const appName = await getAppName(appDid);
-          appNameMap.set(appDid, appName);
+          const data = await getAppName(appDid);
+          appNameMap.set(appDid, data);
         })
       );
     }
@@ -614,14 +639,9 @@ router.get('/model-calls', user, async (req, res) => {
         if (isValidDid(call.appDid)) {
           return {
             ...call.dataValues,
-            appName: appNameMap.get(call.appDid) || call.appDid,
+            appInfo: appNameMap.get(call.appDid),
           };
         }
-
-        return {
-          ...call.dataValues,
-          appName: call.appDid,
-        };
       }
 
       return call.dataValues;
