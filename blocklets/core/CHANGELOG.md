@@ -1,3 +1,7 @@
+## 0.3.21 (2025-8-27)
+
+- feat: integrate framework image agent for image generation
+
 ## 0.3.20 (2025-8-25)
 
 - fix: remove default addPid header is used when headers are missing
