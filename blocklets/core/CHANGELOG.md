@@ -1,3 +1,7 @@
+## 0.3.24 (2025-8-28)
+
+- feat(core): add auto-topup with enhanced credits UI
+
 ## 0.3.23 (2025-8-27)
 
 - chore: return usage for image generation api
