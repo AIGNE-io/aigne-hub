@@ -154,9 +154,7 @@ export const imageGenerationRequestSchema = Joi.object<
   model: Joi.string().empty(['', null]).default('dall-e-2'),
   image: Joi.alternatives().try(Joi.string(), Joi.array().items(Joi.string())),
   prompt: Joi.string().required(),
-  size: Joi.string()
-    .valid('256x256', '512x512', '1024x1024', '1024x1792', '1792x1024', '1536x1024', '1024x1536', 'auto')
-    .empty(['', null]),
+  size: Joi.string().empty(['', null]),
   n: Joi.number().min(1).max(10).empty([null]).default(1),
 });
 
@@ -392,10 +390,11 @@ export async function processImageGeneration({
     };
 
     const params: any = camelize({ ...formatParams(), model: modelName });
+    logger.info('invoke image generation params:', { params });
 
     const result = await model.invoke({
       ...params,
-      responseFormat: params.response_format === 'b64_json' ? 'base64' : 'url',
+      responseFormat: params.responseFormat === 'b64_json' ? 'base64' : 'url',
     });
 
     response = {
