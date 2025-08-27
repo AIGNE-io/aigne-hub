@@ -1,3 +1,7 @@
+## 0.3.23 (2025-8-27)
+
+- chore: return usage for image generation api
+
 ## 0.3.22 (2025-8-27)
 
 - chore: update package to latest
