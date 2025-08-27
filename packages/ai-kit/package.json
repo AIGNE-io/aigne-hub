@@ -1,6 +1,6 @@
 {
   "name": "@blocklet/aigne-hub",
-  "version": "0.3.21",
+  "version": "0.3.22",
   "description": "The react.js component library for AIGNE Hub",
   "publishConfig": {
     "access": "public"
@@ -118,11 +118,11 @@
     "react": "^18.2.0"
   },
   "dependencies": {
-    "@arcblock/did": "^1.22.2",
-    "@arcblock/ux": "^3.1.22",
+    "@arcblock/did": "^1.23.1",
+    "@arcblock/ux": "^3.1.32",
     "@blocklet/error": "0.2.5",
     "@blocklet/logger": "^1.16.48",
-    "@blocklet/payment-js": "^1.19.18",
+    "@blocklet/payment-js": "^1.19.19",
     "@blocklet/sdk": "^1.16.48",
     "@emotion/css": "^11.13.5",
     "@emotion/react": "^11.14.0",
@@ -131,8 +131,8 @@
     "@mui/lab": "^7.0.0-beta.14",
     "@mui/material": "^7.2.0",
     "@mui/system": "^7.2.0",
-    "@ocap/mcrypto": "^1.22.2",
-    "@ocap/util": "^1.22.2",
+    "@ocap/mcrypto": "^1.23.1",
+    "@ocap/util": "^1.23.1",
     "@types/express": "^5.0.3",
     "ahooks": "^3.8.1",
     "axios": "^1.7.4",

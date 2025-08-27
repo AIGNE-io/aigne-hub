@@ -206,13 +206,21 @@ const loadImageModel = async (
 ) => {
   const models = availableImageModels();
   const providerName = (provider || '').toLowerCase() === 'google' ? 'gemini' : provider?.toLowerCase();
-  const m = models.find((m) => providerName && m.name.toLowerCase().includes(providerName.toLowerCase()));
-
-  if (!m)
+  if (!providerName) {
     throw new CustomError(
       404,
       `Provider ${provider} model ${model} not found, Please check the model name and provider.`
     );
+  }
+
+  const m = models.find((m) => providerName && m.name.toLowerCase().includes(providerName.toLowerCase()));
+
+  if (!m) {
+    throw new CustomError(
+      404,
+      `Provider ${provider} model ${model} not found, Please check the model name and provider.`
+    );
+  }
 
   const params: {
     apiKey?: string;
@@ -222,7 +230,7 @@ const loadImageModel = async (
     region?: string;
     modelOptions?: ImageModelOptions;
     clientOptions?: OpenAIImageModelOptions['clientOptions'];
-  } = await getProviderCredentials(provider!, {
+  } = await getProviderCredentials(providerName, {
     modelCallContext: req?.modelCallContext,
     model,
   });

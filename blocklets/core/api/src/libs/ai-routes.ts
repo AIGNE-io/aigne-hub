@@ -333,7 +333,6 @@ export async function processEmbeddings(
 // Core image generation logic - returns usage data for caller to handle
 export async function processImageGeneration({
   req,
-  res,
   version,
   inputBody,
 }: {
@@ -341,7 +340,14 @@ export async function processImageGeneration({
   req: Request;
   res: Response;
   version: 'v1' | 'v2';
-}): Promise<{ model: string; modelParams: any; numberOfImageGeneration: number } | null> {
+}): Promise<{
+  model: string;
+  modelParams: any;
+  numberOfImageGeneration: number;
+  images: { url?: string; b64Json?: string; b64_json?: string }[];
+  data: { url?: string; b64Json?: string; b64_json?: string }[];
+  modelName: string;
+} | null> {
   logger.info('process image generation input body:', { inputBody });
 
   const { error, value: input } = imageGenerationRequestSchema.validate(inputBody, { stripUnknown: true });
@@ -357,8 +363,6 @@ export async function processImageGeneration({
   if (Config.verbose) logger.info(`AIGNE Hub ${version} image generations input:`, input);
 
   let response: ImagesResponse;
-
-  const model = await getImageModel(input, { req });
   const { modelName } = await getModelAndProviderId(input.model);
 
   const isImageValid = (image: string | string[] | undefined): image is string[] => {
@@ -389,6 +393,7 @@ export async function processImageGeneration({
       return input;
     };
 
+    const model = await getImageModel(input, { req });
     const params: any = camelize({ ...formatParams(), model: modelName });
     logger.info('invoke image generation params:', { params });
 
@@ -403,14 +408,12 @@ export async function processImageGeneration({
     };
   }
 
-  res.json({
-    data: response.data?.map((i) => ({ b64_json: i.b64_json, b64Json: i.b64_json, url: i.url })),
-    model: modelName,
-  });
-
   return {
     model: input.model,
     modelParams: pick(input, 'size', 'responseFormat', 'style', 'quality'),
     numberOfImageGeneration: input.n,
+    images: response.data?.map((i) => ({ b64_json: i.b64_json, b64Json: i.b64_json, url: i.url })) || [],
+    data: response.data?.map((i) => ({ b64_json: i.b64_json, b64Json: i.b64_json, url: i.url })) || [],
+    modelName,
   };
 }

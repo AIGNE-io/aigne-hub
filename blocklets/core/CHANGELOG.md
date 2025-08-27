@@ -1,3 +1,7 @@
+## 0.3.22 (2025-8-27)
+
+- chore: update package to latest
+
 ## 0.3.21 (2025-8-27)
 
 - feat: integrate framework image agent for image generation

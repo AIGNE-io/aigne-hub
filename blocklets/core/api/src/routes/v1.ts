@@ -108,9 +108,10 @@ router.post(
       },
     });
 
+    let aigneHubCredits;
     // Report usage with v1 specific parameters
     if (usageData) {
-      await createAndReportUsage({
+      aigneHubCredits = await createAndReportUsage({
         type: 'imageGeneration',
         model: usageData.model,
         modelParams: usageData.modelParams,
@@ -118,6 +119,13 @@ router.post(
         appId: req.appClient?.appId,
       });
     }
+
+    res.json({
+      images: usageData?.images,
+      data: usageData?.data,
+      model: usageData?.modelName,
+      aigneHubCredits: Number(aigneHubCredits),
+    });
   })
 );
 

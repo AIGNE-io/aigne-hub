@@ -231,8 +231,9 @@ router.post(
         },
       });
 
+      let aigneHubCredits;
       if (usageData && userDid) {
-        await createUsageAndCompleteModelCall({
+        aigneHubCredits = await createUsageAndCompleteModelCall({
           req,
           type: 'imageGeneration',
           model: usageData.model,
@@ -252,6 +253,13 @@ router.post(
           },
         });
       }
+
+      res.json({
+        images: usageData?.images,
+        data: usageData?.data,
+        model: usageData?.modelName,
+        aigneHubCredits: Number(aigneHubCredits),
+      });
     } catch (error) {
       handleModelCallError(req, error);
       throw error;
@@ -331,8 +339,9 @@ router.post(
         },
       });
 
+      let aigneHubCredits;
       if (usageData && userDid) {
-        await createUsageAndCompleteModelCall({
+        aigneHubCredits = await createUsageAndCompleteModelCall({
           req,
           type: 'imageGeneration',
           model: usageData.model,
@@ -352,6 +361,13 @@ router.post(
           },
         });
       }
+
+      res.json({
+        images: usageData?.images,
+        data: usageData?.data,
+        model: usageData?.modelName,
+        aigneHubCredits: Number(aigneHubCredits),
+      });
     } catch (error) {
       handleModelCallError(req, error);
       throw error;
