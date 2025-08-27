@@ -18,31 +18,39 @@ import { useCreditBalance, useUsageStats } from './hooks';
 const useSmartLoading = (loading: boolean, data: any, minLoadingTime = 300) => {
   const [showSkeleton, setShowSkeleton] = useState(false);
   const [isFirstLoad, setIsFirstLoad] = useState(true);
+  const [hasInitialized, setHasInitialized] = useState(false);
   const startTimeRef = useRef<number>(0);
 
   useEffect(() => {
     let timer: NodeJS.Timeout | null = null;
 
-    if (loading && !data) {
+    if (isFirstLoad && !hasInitialized && !data) {
       startTimeRef.current = Date.now();
-      timer = setTimeout(() => setShowSkeleton(true), 200);
-    } else if (!loading && showSkeleton) {
+      setShowSkeleton(true);
+      setHasInitialized(true);
+    } else if (loading && !data && !isFirstLoad) {
+      timer = setTimeout(() => {
+        startTimeRef.current = Date.now();
+        setShowSkeleton(true);
+      }, 200);
+    } else if (!loading && data && showSkeleton) {
       const elapsed = Date.now() - startTimeRef.current;
       const minTime = isFirstLoad ? 1000 : minLoadingTime;
       const delay = Math.max(0, minTime - elapsed);
 
-      setTimeout(() => {
+      timer = setTimeout(() => {
         setShowSkeleton(false);
         setIsFirstLoad(false);
       }, delay);
-    } else if (!loading) {
+    } else if (data && !hasInitialized) {
       setIsFirstLoad(false);
+      setHasInitialized(true);
     }
 
     return () => {
       if (timer) clearTimeout(timer);
     };
-  }, [loading, data, minLoadingTime, showSkeleton, isFirstLoad]);
+  }, [loading, data, minLoadingTime, showSkeleton, isFirstLoad, hasInitialized]);
 
   return showSkeleton;
 };
