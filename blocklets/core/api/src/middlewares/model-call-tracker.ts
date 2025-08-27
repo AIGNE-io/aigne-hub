@@ -1,6 +1,6 @@
 import logger from '@api/libs/logger';
 import { getCurrentUnixTimestamp } from '@api/libs/timestamp';
-import { getModelAndProviderId } from '@api/providers/models';
+import { getModelAndProviderId } from '@api/providers/util';
 import ModelCall from '@api/store/models/model-call';
 import { CallType } from '@api/store/models/types';
 import BigNumber from 'bignumber.js';

@@ -1,6 +1,7 @@
-import { ChatModelOutput } from '@aigne/core';
+import { ChatModelOutput, ImageAgent } from '@aigne/core';
 import { checkModelRateAvailable } from '@api/providers';
-import { chatCompletionByFrameworkModel } from '@api/providers/models';
+import { chatCompletionByFrameworkModel, getImageModel } from '@api/providers/models';
+import { getModelAndProviderId } from '@api/providers/util';
 import {
   ChatCompletionChunk,
   ChatCompletionInput,
@@ -15,6 +16,7 @@ import { CustomError } from '@blocklet/error';
 import { get_encoding } from '@dqbd/tiktoken';
 import { Request, Response } from 'express';
 import Joi from 'joi';
+import { camelCase, isPlainObject } from 'lodash';
 import omit from 'lodash/omit';
 import pick from 'lodash/pick';
 import { ImageEditParams, ImageGenerateParams, ImagesResponse } from 'openai/resources/images';
@@ -23,6 +25,18 @@ import { getOpenAIV2 } from './ai-provider';
 import { Config } from './env';
 import { processImageUrl } from './image';
 import logger from './logger';
+
+function camelizeKeys(obj: Record<string, any>): Record<string, any> {
+  if (Array.isArray(obj)) {
+    return obj.map(camelizeKeys);
+  }
+
+  if (isPlainObject(obj)) {
+    return Object.fromEntries(Object.entries(obj).map(([k, v]) => [camelCase(k), camelizeKeys(v)]));
+  }
+
+  return obj;
+}
 
 // Common Joi Schemas
 export const completionsRequestSchema = Joi.object<
@@ -150,20 +164,13 @@ export const embeddingsRequestSchema = Joi.object<EmbeddingInput>({
 export const imageGenerationRequestSchema = Joi.object<
   ImageGenerationInput & Required<Pick<ImageGenerationInput, 'model' | 'n'>>
 >({
-  model: Joi.valid('dall-e-2', 'dall-e-3', 'gpt-image-1').empty(['', null]).default('dall-e-2'),
+  model: Joi.string().empty(['', null]).default('dall-e-2'),
   image: Joi.alternatives().try(Joi.string(), Joi.array().items(Joi.string())),
   prompt: Joi.string().required(),
   size: Joi.string()
     .valid('256x256', '512x512', '1024x1024', '1024x1792', '1792x1024', '1536x1024', '1024x1536', 'auto')
     .empty(['', null]),
   n: Joi.number().min(1).max(10).empty([null]).default(1),
-  quality: Joi.string().valid('standard', 'hd', 'high', 'medium', 'low', 'auto').empty([null]),
-  responseFormat: Joi.string().valid('url', 'b64_json').empty([null]),
-  style: Joi.string().valid('vivid', 'natural').empty([null]),
-  background: Joi.string().valid('transparent', 'opaque', 'auto').empty([null]).default('auto'),
-  outputFormat: Joi.valid('jpeg', 'png', 'webp').empty([null]).default('jpeg'),
-  moderation: Joi.valid('low', 'auto').empty([null]).default('auto'),
-  outputCompression: Joi.number().min(0).max(100).empty([null]).default(100),
 });
 
 // Common retry helper
@@ -339,30 +346,35 @@ export async function processEmbeddings(
 }
 
 // Core image generation logic - returns usage data for caller to handle
-export async function processImageGeneration(
-  req: Request,
-  res: Response,
-  version: 'v1' | 'v2' = 'v1'
-): Promise<{ model: string; modelParams: any; numberOfImageGeneration: number } | null> {
-  const { error, value: input } = imageGenerationRequestSchema.validate(
-    {
-      ...req.body,
-      // Deprecated: 兼容 response_format 字段，一段时间以后删除
-      responseFormat: req.body.response_format || req.body.responseFormat,
-    },
-    { stripUnknown: true }
-  );
+export async function processImageGeneration({
+  req,
+  res,
+  version,
+  inputBody,
+}: {
+  inputBody: ImageGenerationInput & Required<Pick<ImageGenerationInput, 'model' | 'n'>>;
+  req: Request;
+  res: Response;
+  version: 'v1' | 'v2';
+}): Promise<{ model: string; modelParams: any; numberOfImageGeneration: number } | null> {
+  logger.info('process image generation input body:', { inputBody });
+
+  const { error, value: input } = imageGenerationRequestSchema.validate(inputBody, { stripUnknown: true });
 
   if (error) {
     throw new CustomError(400, error.message);
   }
 
+  logger.info('process image generation input:', { input });
+
   await checkModelRateAvailable(input.model);
 
   if (Config.verbose) logger.info(`AIGNE Hub ${version} image generations input:`, input);
 
-  const openai = await getOpenAIV2(req);
   let response: ImagesResponse;
+
+  const model = await getImageModel(input, { req });
+  const { modelName } = await getModelAndProviderId(input.model);
 
   const isImageValid = (image: string | string[] | undefined): image is string[] => {
     if (typeof image === 'string' && image) return true;
@@ -374,6 +386,7 @@ export async function processImageGeneration(
     const images = Array.isArray(input.image) ? input.image : [input.image];
     const uploadableImage = await Promise.all(images.map((i) => processImageUrl(i)));
 
+    const openai = await getOpenAIV2(req);
     response = await openai.images.edit({
       model: input.model,
       prompt: input.prompt,
@@ -384,7 +397,9 @@ export async function processImageGeneration(
     } as ImageEditParams);
   } else {
     const modelParams: Record<string, Partial<ImageGenerateParams>> = {
-      'dall-e-2': { response_format: input.responseFormat },
+      'dall-e-2': {
+        response_format: input.responseFormat,
+      },
       'dall-e-3': {
         response_format: input.responseFormat,
         quality: input.quality,
@@ -400,20 +415,31 @@ export async function processImageGeneration(
     };
 
     const params: Partial<ImageGenerateParams> = {
-      ...omit(input, [
-        'image',
-        'quality',
-        'style',
-        'responseFormat',
-        'background',
-        'outputFormat',
-        'moderation',
-        'outputCompression',
-      ]),
+      ...pick(input, ['prompt', 'image', 'model', 'n', 'responseFormat']),
       ...modelParams[input.model],
+      model: modelName,
     };
 
-    response = await openai.images.generate(params as ImageGenerateParams);
+    const agent = new ImageAgent({
+      model,
+      instructions: input.prompt,
+      modelOptions: omit(input, ['prompt', 'image', 'model', 'n', 'responseFormat']),
+    });
+
+    const responseFormat = params.response_format === 'b64_json' || input.model.includes('google') ? 'base64' : 'url';
+
+    const result = await agent.invoke({
+      ...camelizeKeys(params),
+      responseFormat,
+    });
+
+    response = {
+      data: result.images.map((i: any) => ({
+        b64_json: i.base64,
+        url: i.url,
+      })),
+      created: Date.now(),
+    };
   }
 
   res.json({
@@ -423,6 +449,7 @@ export async function processImageGeneration(
       b64Json: i.b64_json,
       url: i.url,
     })),
+    model: modelName,
   });
 
   return {

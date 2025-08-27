@@ -61,9 +61,11 @@ export function getModelNameWithProvider(model: string, defaultProviderName: str
   if (!model) {
     throw new CustomError(400, 'Model is required');
   }
+
   if (model.includes('/')) {
     const modelArray = model.split('/');
     const [providerName, name] = [modelArray[0], modelArray.slice(1).join('/')];
+
     if (providerName && !SUPPORTED_PROVIDERS_SET.has(providerName?.toLowerCase() as AIProviderType)) {
       logger.info(`${providerName} is not supported, use default provider ${defaultProviderName}`);
       return {
@@ -76,6 +78,7 @@ export function getModelNameWithProvider(model: string, defaultProviderName: str
       modelName: name,
     };
   }
+
   return {
     modelName: model,
     providerName: defaultProviderName,

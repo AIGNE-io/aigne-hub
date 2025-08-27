@@ -13,7 +13,13 @@
       "@app/*": ["./src/*"],
       "@api/*": ["./api/src/*"],
       "@blocklet/aigne-hub": ["../../packages/ai-kit/src"],
-      "@blocklet/aigne-hub/*": ["../../packages/ai-kit/src/*"]
+      "@blocklet/aigne-hub/*": ["../../packages/ai-kit/src/*"],
+      // "@aigne/core": ["../../../aigne-framework/packages/core/src"],
+      // "@aigne/core/*": ["../../../aigne-framework/packages/core/src/*"],
+      // "@aigne/openai": ["../../../aigne-framework/models/openai/src"],
+      // "@aigne/openai/*": ["../../../aigne-framework/models/openai/src/*"],
+      // "@aigne/aigne-hub": ["../../../aigne-framework/models/aigne-hub/src"],
+      // "@aigne/aigne-hub/*": ["../../../aigne-framework/models/aigne-hub/src/*"]
     }
   }
 }

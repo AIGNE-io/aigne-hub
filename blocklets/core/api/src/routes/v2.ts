@@ -204,6 +204,61 @@ router.post(
   })
 );
 
+router.post(
+  '/image',
+  user,
+  imageCallTracker,
+  createRetryHandler(async (req, res) => {
+    const userDid = req.user?.did;
+    if (Config.creditBasedBillingEnabled && !isPaymentRunning()) {
+      throw new CustomError(502, 'Payment kit is not Running');
+    }
+
+    try {
+      if (userDid && Config.creditBasedBillingEnabled) {
+        await checkUserCreditBalance({ userDid });
+      }
+
+      const usageData = await processImageGeneration({
+        req,
+        res,
+        version: 'v2',
+        inputBody: {
+          model: req.body.model,
+          ...req.body.input,
+          ...req.body.options?.modelOptions,
+          responseFormat: req.body.input.response_format || req.body.input.responseFormat,
+        },
+      });
+
+      if (usageData && userDid) {
+        await createUsageAndCompleteModelCall({
+          req,
+          type: 'imageGeneration',
+          model: usageData.model,
+          modelParams: usageData.modelParams,
+          numberOfImageGeneration: usageData.numberOfImageGeneration,
+          appId: req.headers['x-aigne-hub-client-did'] as string,
+          userDid: userDid!,
+          creditBasedBillingEnabled: Config.creditBasedBillingEnabled,
+          additionalMetrics: {
+            imageSize: usageData.modelParams?.size,
+            imageQuality: usageData.modelParams?.quality,
+            imageStyle: usageData.modelParams?.style,
+          },
+          metadata: {
+            endpoint: req.path,
+            numberOfImages: usageData.numberOfImageGeneration,
+          },
+        });
+      }
+    } catch (error) {
+      handleModelCallError(req, error);
+      throw error;
+    }
+  })
+);
+
 // v2 Embeddings endpoint
 router.post(
   '/embeddings',
@@ -266,7 +321,16 @@ router.post(
         await checkUserCreditBalance({ userDid });
       }
 
-      const usageData = await processImageGeneration(req, res, 'v2');
+      const usageData = await processImageGeneration({
+        req,
+        res,
+        version: 'v2',
+        inputBody: {
+          ...req.body,
+          // Deprecated: 兼容 response_format 字段，一段时间以后删除
+          responseFormat: req.body.response_format || req.body.responseFormat,
+        },
+      });
 
       if (usageData && userDid) {
         await createUsageAndCompleteModelCall({
