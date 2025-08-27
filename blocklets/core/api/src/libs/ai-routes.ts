@@ -345,7 +345,6 @@ export async function processImageGeneration({
   modelParams: any;
   numberOfImageGeneration: number;
   images: { url?: string; b64Json?: string; b64_json?: string }[];
-  data: { url?: string; b64Json?: string; b64_json?: string }[];
   modelName: string;
 } | null> {
   logger.info('process image generation input body:', { inputBody });
@@ -412,8 +411,9 @@ export async function processImageGeneration({
     model: input.model,
     modelParams: pick(input, 'size', 'responseFormat', 'style', 'quality'),
     numberOfImageGeneration: input.n,
-    images: response.data?.map((i) => ({ b64_json: i.b64_json, b64Json: i.b64_json, url: i.url })) || [],
-    data: response.data?.map((i) => ({ b64_json: i.b64_json, b64Json: i.b64_json, url: i.url })) || [],
+
+    images:
+      response.data?.map((i) => ({ base64: i.b64_json, b64_json: i.b64_json, b64Json: i.b64_json, url: i.url })) || [],
     modelName,
   };
 }

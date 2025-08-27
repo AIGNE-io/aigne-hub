@@ -122,9 +122,11 @@ router.post(
 
     res.json({
       images: usageData?.images,
-      data: usageData?.data,
+      data: usageData?.images,
       model: usageData?.modelName,
-      aigneHubCredits: Number(aigneHubCredits),
+      usage: {
+        aigneHubCredits: Number(aigneHubCredits),
+      },
     });
   })
 );
