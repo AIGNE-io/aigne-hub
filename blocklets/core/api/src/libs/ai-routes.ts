@@ -414,9 +414,23 @@ export async function processImageGeneration({
       },
     };
 
+    const formatParams = () => {
+      if (modelParams[input.model]) {
+        return modelParams[input.model];
+      }
+
+      if (input.model.includes('google')) {
+        return {
+          response_format: 'b64_json' as const,
+        };
+      }
+
+      return {};
+    };
+
     const params: Partial<ImageGenerateParams> = {
       ...pick(input, ['prompt', 'image', 'model', 'n', 'responseFormat']),
-      ...modelParams[input.model],
+      ...formatParams(),
       model: modelName,
     };
 
@@ -426,29 +440,19 @@ export async function processImageGeneration({
       modelOptions: omit(input, ['prompt', 'image', 'model', 'n', 'responseFormat']),
     });
 
-    const responseFormat = params.response_format === 'b64_json' || input.model.includes('google') ? 'base64' : 'url';
-
     const result = await agent.invoke({
       ...camelizeKeys(params),
-      responseFormat,
+      responseFormat: params.response_format === 'b64_json' ? 'base64' : 'url',
     });
 
     response = {
-      data: result.images.map((i: any) => ({
-        b64_json: i.base64,
-        url: i.url,
-      })),
+      data: result.images.map((i: any) => ({ b64_json: i.base64, url: i.url })),
       created: Date.now(),
     };
   }
 
   res.json({
-    data: response.data?.map((i) => ({
-      // Deprecated: use b64Json instead
-      b64_json: i.b64_json,
-      b64Json: i.b64_json,
-      url: i.url,
-    })),
+    data: response.data?.map((i) => ({ b64_json: i.b64_json, b64Json: i.b64_json, url: i.url })),
     model: modelName,
   });
 
