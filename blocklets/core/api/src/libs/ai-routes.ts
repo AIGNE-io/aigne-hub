@@ -1,4 +1,5 @@
-import { ChatModelOutput, ImageAgent } from '@aigne/core';
+import { ChatModelOutput } from '@aigne/core';
+import { camelize } from '@aigne/core/utils/camelize';
 import { checkModelRateAvailable } from '@api/providers';
 import { chatCompletionByFrameworkModel, getImageModel } from '@api/providers/models';
 import { getModelAndProviderId } from '@api/providers/util';
@@ -16,27 +17,13 @@ import { CustomError } from '@blocklet/error';
 import { get_encoding } from '@dqbd/tiktoken';
 import { Request, Response } from 'express';
 import Joi from 'joi';
-import { camelCase, isPlainObject } from 'lodash';
-import omit from 'lodash/omit';
 import pick from 'lodash/pick';
-import { ImageEditParams, ImageGenerateParams, ImagesResponse } from 'openai/resources/images';
+import { ImageEditParams, ImagesResponse } from 'openai/resources/images';
 
 import { getOpenAIV2 } from './ai-provider';
 import { Config } from './env';
 import { processImageUrl } from './image';
 import logger from './logger';
-
-function camelizeKeys(obj: Record<string, any>): Record<string, any> {
-  if (Array.isArray(obj)) {
-    return obj.map(camelizeKeys);
-  }
-
-  if (isPlainObject(obj)) {
-    return Object.fromEntries(Object.entries(obj).map(([k, v]) => [camelCase(k), camelizeKeys(v)]));
-  }
-
-  return obj;
-}
 
 // Common Joi Schemas
 export const completionsRequestSchema = Joi.object<
@@ -396,52 +383,18 @@ export async function processImageGeneration({
       quality: input.quality,
     } as ImageEditParams);
   } else {
-    const modelParams: Record<string, Partial<ImageGenerateParams>> = {
-      'dall-e-2': {
-        response_format: input.responseFormat,
-      },
-      'dall-e-3': {
-        response_format: input.responseFormat,
-        quality: input.quality,
-        style: input.style,
-      },
-      'gpt-image-1': {
-        quality: input.quality,
-        background: input.background,
-        output_format: input.outputFormat,
-        moderation: input.moderation,
-        output_compression: input.outputCompression,
-      },
-    };
-
     const formatParams = () => {
-      if (modelParams[input.model]) {
-        return modelParams[input.model];
-      }
-
       if (input.model.includes('google')) {
-        return {
-          response_format: 'b64_json' as const,
-        };
+        return { ...input, response_format: 'b64_json' as const };
       }
 
-      return {};
+      return input;
     };
 
-    const params: Partial<ImageGenerateParams> = {
-      ...pick(input, ['prompt', 'image', 'model', 'n', 'responseFormat']),
-      ...formatParams(),
-      model: modelName,
-    };
+    const params: any = camelize({ ...formatParams(), model: modelName });
 
-    const agent = new ImageAgent({
-      model,
-      instructions: input.prompt,
-      modelOptions: omit(input, ['prompt', 'image', 'model', 'n', 'responseFormat']),
-    });
-
-    const result = await agent.invoke({
-      ...camelizeKeys(params),
+    const result = await model.invoke({
+      ...params,
       responseFormat: params.response_format === 'b64_json' ? 'base64' : 'url',
     });
 
