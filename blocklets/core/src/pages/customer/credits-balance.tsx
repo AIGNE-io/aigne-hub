@@ -382,7 +382,17 @@ export function CreditsBalance({ data = undefined as UserInfoResult | undefined 
   };
 
   return (
-    <Stack direction="row" spacing={2}>
+    <Stack
+      sx={{
+        flexDirection: {
+          xs: 'column',
+          md: 'row',
+        },
+        gap: {
+          xs: 2,
+          md: 2,
+        },
+      }}>
       <Card
         sx={{
           boxShadow: 1,
@@ -422,10 +432,23 @@ export function CreditsBalance({ data = undefined as UserInfoResult | undefined 
         </CardContent>
       </Card>
       {currency && (
-        <Box sx={{ flex: 1, minWidth: 600 }}>
+        <Box sx={{ flex: 1 }}>
           <SafeGuard>
             <PaymentProvider session={session} connect={connectApi}>
-              <AutoTopup currencyId={currency.id} />
+              <AutoTopup
+                currencyId={currency.id}
+                sx={{
+                  '.auto-topup-content .MuiCollapse-wrapperInner': {
+                    whiteSpace: 'nowrap',
+                    button: {
+                      display: {
+                        xs: 'none',
+                        md: 'flex',
+                      },
+                    },
+                  },
+                }}
+              />
             </PaymentProvider>
           </SafeGuard>
         </Box>
