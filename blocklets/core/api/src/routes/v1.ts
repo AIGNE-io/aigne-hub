@@ -104,7 +104,6 @@ router.post(
       version: 'v1',
       inputBody: {
         ...req.body,
-        // Deprecated: 兼容 response_format 字段，一段时间以后删除
         responseFormat: req.body.response_format || req.body.responseFormat,
       },
     });
