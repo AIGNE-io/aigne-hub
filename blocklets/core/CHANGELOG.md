@@ -1,3 +1,7 @@
+## 0.3.28 (2025-8-28)
+
+- chore: support ideogram provider
+
 ## 0.3.27 (2025-8-28)
 
 - feat(core): enhance credit payment configuration and update dependencies
