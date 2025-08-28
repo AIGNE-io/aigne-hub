@@ -230,7 +230,7 @@ const loadImageModel = async (
     region?: string;
     modelOptions?: ImageModelOptions;
     clientOptions?: OpenAIImageModelOptions['clientOptions'];
-  } = await getProviderCredentials(providerName, {
+  } = await getProviderCredentials(provider!, {
     modelCallContext: req?.modelCallContext,
     model,
   });
