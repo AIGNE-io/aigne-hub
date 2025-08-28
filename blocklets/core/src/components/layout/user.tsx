@@ -33,7 +33,6 @@ export default function UserLayout(props: any) {
     return (
       <UserCenter
         currentTab={`${window.blocklet.prefix}credit-usage`}
-        userDid={session.user.did}
         hideFooter
         embed={embed === '1'}
         notLoginContent="undefined">

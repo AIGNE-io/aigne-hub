@@ -131,6 +131,7 @@ navigation:
       zh: 额度分析
     icon: ion:receipt-outline
     link: /credit-usage
+    private: true
     section:
       - userCenter
       - sessionManager
