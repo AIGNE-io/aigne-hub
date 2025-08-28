@@ -156,6 +156,7 @@ export const imageGenerationRequestSchema = Joi.object<
   prompt: Joi.string().required(),
   size: Joi.string().empty(['', null]),
   n: Joi.number().min(1).max(10).empty([null]).default(1),
+  responseFormat: Joi.string().empty([null]),
 });
 
 // Common retry helper
@@ -347,7 +348,7 @@ export async function processImageGeneration({
   images: { url?: string; b64Json?: string; b64_json?: string }[];
   modelName: string;
 } | null> {
-  logger.info('process image generation input body:', { inputBody });
+  logger.info('process image generation input body', { inputBody });
 
   const { error, value: input } = imageGenerationRequestSchema.validate(inputBody, { stripUnknown: true });
 
@@ -355,7 +356,7 @@ export async function processImageGeneration({
     throw new CustomError(400, error.message);
   }
 
-  logger.info('process image generation input:', { input });
+  logger.info('process image generation input', { input });
 
   await checkModelRateAvailable(input.model);
 
@@ -394,11 +395,11 @@ export async function processImageGeneration({
 
     const model = await getImageModel(input, { req });
     const params: any = camelize({ ...formatParams(), model: modelName });
-    logger.info('invoke image generation params:', { params });
+    logger.info('invoke image generation params', { params });
 
     const result = await model.invoke({
       ...params,
-      responseFormat: params.responseFormat === 'b64_json' ? 'base64' : 'url',
+      responseFormat: params.responseFormat === 'b64_json' ? 'base64' : params.responseFormat || 'base64',
     });
 
     response = {
