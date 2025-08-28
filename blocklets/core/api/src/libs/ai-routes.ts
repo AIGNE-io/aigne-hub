@@ -1,26 +1,22 @@
-import { ChatModelOutput } from '@aigne/core';
-import { checkModelRateAvailable } from '@api/providers';
-import { chatCompletionByFrameworkModel } from '@api/providers/models';
+import { AIGNE } from '@aigne/core';
+import { AIGNEHTTPServer } from '@aigne/transport/http-server/index';
+import { checkModelStatus, getModelNameWithProvider, getOpenAIV2 } from '@api/libs/ai-provider';
+import { Config } from '@api/libs/env';
+import AiCredential from '@api/store/models/ai-credential';
+import AiProvider from '@api/store/models/ai-provider';
 import {
   ChatCompletionChunk,
   ChatCompletionInput,
   ChatCompletionResponse,
   ChatCompletionUsage,
-  EmbeddingInput,
   ImageGenerationInput,
-  isChatCompletionChunk,
-  isChatCompletionUsage,
 } from '@blocklet/aigne-hub/api/types';
 import { CustomError } from '@blocklet/error';
 import { get_encoding } from '@dqbd/tiktoken';
-import { Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import Joi from 'joi';
 import omit from 'lodash/omit';
-import pick from 'lodash/pick';
-import { ImageEditParams, ImageGenerateParams, ImagesResponse } from 'openai/resources/images';
 
-import { getOpenAIV2 } from './ai-provider';
-import { Config } from './env';
 import { processImageUrl } from './image';
 import logger from './logger';
 
@@ -202,7 +198,7 @@ export async function processChatCompletion(
     onEnd?: (data?: { output?: ChatModelOutput }) => Promise<{ output?: ChatModelOutput } | undefined>;
   }
 ): Promise<{ promptTokens: number; completionTokens: number; model: string; modelParams: any } | null> {
-  const { error, value: body } = completionsRequestSchema.validate(req.body, { stripUnknown: true });
+  const { error, value: body } = completionsRequestSchema.validate({ model: '' }, { stripUnknown: true });
   if (error) {
     throw new CustomError(400, error.message);
   }

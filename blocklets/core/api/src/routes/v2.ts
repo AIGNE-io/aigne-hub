@@ -1,6 +1,6 @@
 import { AIGNE } from '@aigne/core';
 import { AIGNEHTTPServer } from '@aigne/transport/http-server/index';
-import { getModelNameWithProvider, getOpenAIV2 } from '@api/libs/ai-provider';
+import { ensureModalAvailable, getModelNameWithProvider, getOpenAIV2 } from '@api/libs/ai-provider';
 import {
   createRetryHandler,
   processChatCompletion,
@@ -71,7 +71,7 @@ router.get('/status', user, async (req, res) => {
   return res.json({ available: true });
 });
 
-router.post('/:type(chat)?/completions', compression(), user, async (req, res) => {
+router.post('/:type(chat)?/completions', compression(), user, ensureModalAvailable, async (req, res) => {
   const userDid = req.user?.did;
   if (!userDid) {
     throw new CustomError(401, 'User not authenticated');
@@ -113,6 +113,7 @@ router.post('/:type(chat)?/completions', compression(), user, async (req, res) =
 router.post(
   '/chat',
   user,
+  ensureModalAvailable,
   createRetryHandler(async (req, res) => {
     // v2 specific checks
     const userDid = req.user?.did;
@@ -166,6 +167,7 @@ router.post(
 router.post(
   '/embeddings',
   user,
+  ensureModalAvailable,
   createRetryHandler(async (req, res) => {
     // v2 specific checks
     const userDid = req.user?.did;
@@ -196,6 +198,7 @@ router.post(
 router.post(
   '/image/generations',
   user,
+  ensureModalAvailable,
   createRetryHandler(async (req, res) => {
     // v2 specific checks
     const userDid = req.user?.did;

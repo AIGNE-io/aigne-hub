@@ -1,7 +1,13 @@
-import { getModelNameWithProvider } from '@api/libs/ai-provider';
+import { checkModelStatus, getModelNameWithProvider, testCredential } from '@api/libs/ai-provider';
 import { Config } from '@api/libs/env';
 import logger from '@api/libs/logger';
 import modelRegistry from '@api/libs/model-registry';
+import {
+  checkAllModelStatus,
+  checkModelAcrossProviders,
+  checkProviderModelStatus,
+  scheduledModelStatusCheck,
+} from '@api/libs/model-status';
 import { ensureAdmin } from '@api/libs/security';
 import { createListParamSchema, getWhereFromKvQuery } from '@api/libs/validate';
 import AiCredential, { CredentialValue } from '@api/store/models/ai-credential';
@@ -296,6 +302,26 @@ router.post('/:providerId/credentials', ensureAdmin, async (req, res) => {
       usageCount: 0,
     });
 
+    // 自动测试凭证
+    try {
+      const credentialWithProvider = await AiCredential.findByPk(credential.id, {
+        include: [
+          {
+            model: AiProvider,
+            as: 'provider',
+          },
+        ],
+      });
+      if (credentialWithProvider) {
+        const testResult = await testCredential(credentialWithProvider);
+        if (!testResult.available) {
+          logger.warn(`Credential test failed for ${provider.name}:`, testResult.error);
+        }
+      }
+    } catch (testError) {
+      logger.warn(`Credential test error for ${provider.name}:`, testError);
+    }
+
     // 返回时包含显示文本
     const credentialJson = credential.toJSON() as any;
     credentialJson.displayText = credential.getDisplayText();
@@ -356,6 +382,29 @@ router.put('/:providerId/credentials/:credentialId', ensureAdmin, async (req, re
       credentialValue: encryptedCredentialValue,
       credentialType: value.credentialType,
     });
+
+    // 自动测试更新后的凭证
+    try {
+      const credentialWithProvider = await AiCredential.findByPk(credential.id, {
+        include: [
+          {
+            model: AiProvider,
+            as: 'provider',
+          },
+        ],
+      });
+      if (credentialWithProvider) {
+        const testResult = await testCredential(credentialWithProvider);
+        if (!testResult.available) {
+          logger.warn(
+            `Updated credential test failed for ${(credentialWithProvider as any).provider.name}:`,
+            testResult.error
+          );
+        }
+      }
+    } catch (testError) {
+      logger.warn('Updated credential test error:', testError);
+    }
 
     // 返回时包含显示文本
     const credentialJson = credential.toJSON() as any;
@@ -1014,6 +1063,144 @@ router.get('/models', async (req, res) => {
     logger.error('Failed to get available models:', error);
     return res.status(500).json({
       error: 'Failed to get available models',
+    });
+  }
+});
+
+// 检查模型状态接口 - 重构版本
+router.get('/model-status', user, async (req, res) => {
+  try {
+    const { model, providerId } = req.query;
+
+    let results: any[] = [];
+    let summary: any = {};
+
+    if (model) {
+      // 检查特定模型
+      const modelName = model as string;
+      const { modelName: actualModelName } = getModelNameWithProvider(modelName);
+
+      if (providerId) {
+        // 检查指定提供商的特定模型
+        const result = await checkModelStatus(providerId as string, actualModelName);
+        results = result ? [result] : [];
+      } else {
+        // 检查所有提供商的特定模型
+        results = await checkModelAcrossProviders(actualModelName);
+      }
+    } else if (providerId) {
+      // 检查指定提供商的所有模型
+      results = await checkProviderModelStatus(providerId as string);
+    } else {
+      // 检查所有模型
+      const { results: allResults, summary: allSummary } = await checkAllModelStatus();
+      results = allResults;
+      summary = allSummary;
+    }
+
+    // 如果没有 summary，计算一个
+    if (!summary.total) {
+      const availableCount = results.filter((r) => r.available).length;
+      summary = {
+        total: results.length,
+        available: availableCount,
+        unavailable: results.length - availableCount,
+      };
+    }
+
+    return res.json({
+      results,
+      summary,
+    });
+  } catch (error) {
+    logger.error('Failed to check model status:', error);
+    return res.status(500).json({
+      error: 'Failed to check model status',
+    });
+  }
+});
+
+// 手动触发定时任务接口
+router.post('/model-status/schedule', ensureAdmin, async (req, res) => {
+  try {
+    await scheduledModelStatusCheck();
+    return res.json({
+      message: 'Scheduled model status check completed successfully',
+    });
+  } catch (error) {
+    logger.error('Failed to run scheduled model status check:', error);
+    return res.status(500).json({
+      error: 'Failed to run scheduled model status check',
+    });
+  }
+});
+
+// 获取模型状态历史接口
+router.get('/model-status/history', user, async (req, res) => {
+  try {
+    const { page = 1, pageSize = 20 } = req.query;
+    const offset = (Number(page) - 1) * Number(pageSize);
+
+    const modelRates = await AiModelRate.findAndCountAll({
+      include: [
+        {
+          model: AiProvider,
+          as: 'provider',
+          where: { enabled: true },
+        },
+      ],
+      order: [['updatedAt', 'DESC']],
+      offset,
+      limit: Number(pageSize),
+    });
+
+    return res.json({
+      count: modelRates.count,
+      list: modelRates.rows,
+      paging: {
+        page: Number(page),
+        pageSize: Number(pageSize),
+      },
+    });
+  } catch (error) {
+    logger.error('Failed to get model status history:', error);
+    return res.status(500).json({
+      error: 'Failed to get model status history',
+    });
+  }
+});
+
+// 检查凭证状态接口
+router.post('/credentials/:credentialId/test', ensureAdmin, async (req, res) => {
+  try {
+    const credential = await AiCredential.findByPk(req.params.credentialId, {
+      include: [
+        {
+          model: AiProvider,
+          as: 'provider',
+        },
+      ],
+    });
+
+    if (!credential) {
+      return res.status(404).json({
+        error: 'Credential not found',
+      });
+    }
+
+    const testResult = await testCredential(credential);
+
+    return res.json({
+      credentialId: credential.id,
+      provider: (credential as any).provider.name,
+      available: testResult.available,
+      error: testResult.error,
+      responseTime: testResult.responseTime,
+    });
+  } catch (error) {
+    logger.error('Failed to test credential:', error);
+    return res.status(500).json({
+      error: 'Failed to test credential',
     });
   }
 });
