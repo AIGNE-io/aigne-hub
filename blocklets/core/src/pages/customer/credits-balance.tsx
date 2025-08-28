@@ -236,6 +236,8 @@ export function CreditsBalance({ data = undefined as UserInfoResult | undefined 
 
   const overDue = Number(creditBalance?.pendingCredit) > 0;
   const isCreditBillingEnabled = window.blocklet?.preferences?.creditBasedBillingEnabled;
+  const balance = Number(creditBalance?.balance || 0);
+  const total = Number(creditBalance?.total || 0);
 
   const renderBalance = () => {
     if (!isCreditBillingEnabled) {
@@ -246,7 +248,6 @@ export function CreditsBalance({ data = undefined as UserInfoResult | undefined 
       );
     }
 
-    const balance = Number(creditBalance?.balance || 0);
     const isNegative = balance < 0;
 
     if (overDue) {
@@ -274,16 +275,14 @@ export function CreditsBalance({ data = undefined as UserInfoResult | undefined 
     if (!isCreditBillingEnabled) return { status: 'unlimited', color: 'text.secondary' };
     if (overDue) return { status: 'overdue', color: 'error.main' };
 
-    const balance = Number(creditBalance?.balance || 0);
-    if (balance < 1000) return { status: 'critical', color: 'error.main' };
-    if (balance < 5000) return { status: 'low', color: 'warning.main' };
+    const percentage = getRemainingPercentage();
+    if (percentage <= 10) return { status: 'critical', color: 'error.main' };
+    if (percentage <= 30) return { status: 'low', color: 'warning.main' };
     return { status: 'sufficient', color: 'text.secondary' };
   };
 
   const getRemainingPercentage = () => {
-    if (!creditBalance?.total) return 0;
-    const balance = Number(creditBalance.balance || 0);
-    const total = Number(creditBalance.total);
+    if (!total) return 0;
 
     if (Number.isNaN(balance) || Number.isNaN(total) || total <= 0) return 0;
 
@@ -295,8 +294,6 @@ export function CreditsBalance({ data = undefined as UserInfoResult | undefined 
 
   const renderBalanceInfo = () => {
     const { status } = getBalanceStatus();
-    const balance = Number(creditBalance?.balance || 0);
-    const total = Number(creditBalance?.total || 0);
 
     return (
       <Stack spacing={0.5}>
@@ -320,7 +317,6 @@ export function CreditsBalance({ data = undefined as UserInfoResult | undefined 
   const renderActionButtons = () => {
     if (!isCreditBillingEnabled) return null;
 
-    const balance = Number(creditBalance?.balance || 0);
     const isUrgent = balance < 0 || overDue;
 
     return (
