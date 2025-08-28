@@ -1,6 +1,10 @@
-## 0.3.24 (2025-8-28)
+## 0.3.25 (2025-8-28)
 
 - chore: support responseFormat for image generation
+
+## 0.3.24 (2025-8-28)
+
+- feat(core): add auto-topup with enhanced credits UI
 
 ## 0.3.23 (2025-8-27)
 

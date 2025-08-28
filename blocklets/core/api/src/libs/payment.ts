@@ -3,6 +3,7 @@ import { appStatus } from '@blocklet/aigne-hub/api/call/app';
 import { BlockletStatus } from '@blocklet/constant';
 import { CustomError } from '@blocklet/error';
 import payment, { Subscription, TMeterEventExpanded } from '@blocklet/payment-js';
+import type { TPrice } from '@blocklet/payment-types';
 import { getComponentMountPoint, getUrl } from '@blocklet/sdk';
 import config from '@blocklet/sdk/lib/config';
 import { toBN } from '@ocap/util';
@@ -250,6 +251,28 @@ export async function ensureDefaultCreditPrice() {
   }
 }
 
+export async function updateCreditConfig(meterCurrencyId: string, price: TPrice, paymentLinkId: string) {
+  if (!price) {
+    return;
+  }
+  try {
+    const currency = await payment.paymentCurrencies.getRechargeConfig(meterCurrencyId);
+    const rechargeConfig = currency?.recharge_config;
+    if (
+      rechargeConfig &&
+      rechargeConfig.payment_link_id === paymentLinkId &&
+      rechargeConfig.base_price_id === price.id
+    ) {
+      return;
+    }
+    await payment.paymentCurrencies.updateRechargeConfig(meterCurrencyId, {
+      payment_link_id: paymentLinkId,
+      base_price_id: price.id,
+    });
+  } catch (error) {
+    logger.error('failed to update credit config', { error });
+  }
+}
 export async function ensureDefaultCreditPaymentLink() {
   if (!isPaymentRunning()) return null;
   const price = await ensureDefaultCreditPrice();
@@ -262,6 +285,7 @@ export async function ensureDefaultCreditPaymentLink() {
     if (!existingPaymentLink) {
       throw new CustomError(404, 'Default credit payment link not found');
     }
+    await updateCreditConfig(price.metadata.credit_config.currency_id, price, existingPaymentLink.id);
     return joinURL(getPaymentKitPrefix(), 'checkout/pay', existingPaymentLink.id);
   } catch (error) {
     logger.error('failed to retrieve default credit payment link, create a new one', { error });
@@ -283,6 +307,7 @@ export async function ensureDefaultCreditPaymentLink() {
     });
     const link = joinURL('/checkout/pay', paymentLink.id);
     Config.creditPaymentLink = link;
+    await updateCreditConfig(price.metadata.credit_config.currency_id, price, paymentLink.id);
     return joinURL(getPaymentKitPrefix(), link);
   }
 }
