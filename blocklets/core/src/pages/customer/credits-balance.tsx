@@ -288,7 +288,7 @@ export function CreditsBalance({ data = undefined as UserInfoResult | undefined 
 
     if (balance < 0) return 0;
 
-    const percentage = Math.round((balance / total) * 100);
+    const percentage = Math.floor((balance / total) * 100);
     return Math.min(100, Math.max(0, percentage));
   };
 
@@ -431,20 +431,7 @@ export function CreditsBalance({ data = undefined as UserInfoResult | undefined 
         <Box sx={{ flex: 1 }}>
           <SafeGuard>
             <PaymentProvider session={session} connect={connectApi}>
-              <AutoTopup
-                currencyId={currency.id}
-                sx={{
-                  '.auto-topup-content .MuiCollapse-wrapperInner': {
-                    whiteSpace: 'nowrap',
-                    button: {
-                      display: {
-                        xs: 'none',
-                        md: 'flex',
-                      },
-                    },
-                  },
-                }}
-              />
+              <AutoTopup currencyId={currency.id} />
             </PaymentProvider>
           </SafeGuard>
         </Box>
