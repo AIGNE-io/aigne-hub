@@ -1,3 +1,7 @@
+## 0.3.26 (2025-8-28)
+
+- chore: support reviewer github action
+
 ## 0.3.25 (2025-8-28)
 
 - chore: support responseFormat for image generation
