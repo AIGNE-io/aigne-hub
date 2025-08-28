@@ -204,6 +204,16 @@ export const Config = {
     }
     return this._poeApiKey;
   },
+  _ideogramApiKey: undefined as string[] | undefined,
+  get ideogramApiKey() {
+    if (this._ideogramApiKey === undefined) {
+      const KEY = config.env.IDEOGRAM_API_KEY;
+      this._ideogramApiKey = (typeof KEY === 'string' ? KEY : '').split(',');
+    }
+
+    return this._ideogramApiKey;
+  },
+
   get openaiBaseURL() {
     const url = config.env.OPENAI_BASE_URL;
     return url && typeof url === 'string' ? url : undefined;

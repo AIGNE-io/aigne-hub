@@ -2,8 +2,8 @@ import { ConfigError, ConfigErrorType } from '@blocklet/aigne-hub/api';
 import { getRemoteBaseUrl } from '@blocklet/aigne-hub/api/utils/util';
 import { joinURL } from 'ufo';
 
+import { AIProviderType as AIProvider } from '../libs/constants';
 import { Config } from '../libs/env';
-import { AIProvider } from './constants';
 
 const currentApiKeyIndex: { [key in AIProvider]?: number } = {};
 const apiKeys: { [key in AIProvider]: () => string[] } = {
@@ -17,6 +17,7 @@ const apiKeys: { [key in AIProvider]: () => string[] } = {
   xai: () => Config.xaiApiKey,
   doubao: () => Config.doubaoApiKey,
   poe: () => Config.poeApiKey,
+  ideogram: () => Config.ideogramApiKey,
 };
 
 export const aigneHubConfigProviderUrl = async () => {

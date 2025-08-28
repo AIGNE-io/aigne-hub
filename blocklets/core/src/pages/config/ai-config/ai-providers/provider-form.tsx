@@ -64,6 +64,7 @@ const PROVIDER_OPTIONS = [
   { value: 'xai', label: 'xAI', baseUrl: 'https://api.x.ai/v1' },
   { value: 'doubao', label: 'Doubao', baseUrl: 'https://ark.cn-beijing.volces.com/api/v3' },
   { value: 'poe', label: 'Poe', baseUrl: 'https://api.poe.com/v1' },
+  { value: 'ideogram', label: 'Ideogram', baseUrl: 'https://api.ideogram.ai/v1/ideogram-v3/generate' },
 ];
 
 interface Props {

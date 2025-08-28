@@ -13,6 +13,7 @@ export const AI_PROVIDERS = {
   XAI: 'xai',
   DOUBAO: 'doubao',
   POE: 'poe',
+  IDEOGRAM: 'ideogram',
 } as const;
 
 export const AI_PROVIDER_DISPLAY_NAMES: Record<string, string> = {
@@ -26,6 +27,7 @@ export const AI_PROVIDER_DISPLAY_NAMES: Record<string, string> = {
   [AI_PROVIDERS.XAI]: 'xAI',
   [AI_PROVIDERS.DOUBAO]: 'Doubao',
   [AI_PROVIDERS.POE]: 'Poe',
+  [AI_PROVIDERS.IDEOGRAM]: 'Ideogram',
 };
 
 export type AIProviderType = (typeof AI_PROVIDERS)[keyof typeof AI_PROVIDERS];

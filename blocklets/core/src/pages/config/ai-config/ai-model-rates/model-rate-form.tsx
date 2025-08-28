@@ -132,6 +132,10 @@ const pricingLinks = {
     name: 'Poe',
     url: 'https://poe.com',
   },
+  ideogram: {
+    name: 'Ideogram',
+    url: 'https://about.ideogram.ai/api-pricing',
+  },
 };
 
 export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props) {

@@ -8,7 +8,7 @@ import { ChatCompletionInput, ChatCompletionResponse } from '@blocklet/aigne-hub
 import { CustomError } from '@blocklet/error';
 import { pick } from 'lodash';
 
-import { AIProvider } from './constants';
+import { AIProviderType as AIProvider } from '../libs/constants';
 import { BASE_URL_CONFIG_MAP, aigneHubConfigProviderUrl, getAIApiKey, getBedrockConfig } from './keys';
 import { adaptStreamToOldFormat, convertToFrameworkMessages, getModelAndProviderId } from './util';
 

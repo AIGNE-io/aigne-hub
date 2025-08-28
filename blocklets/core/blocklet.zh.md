@@ -69,6 +69,7 @@ AIGNE Hub 通过统一的 API、安全模型和直观的管理界面，将您的
 - Ollama（本地模型部署）
 - Doubao（豆包大模型）
 - Poe（Poe AI 平台）
+- Ideogram (Ideogram AI 平台)
 
 > 📈 支持的提供商将持续更新，您可在后台自动发现并启用新模型。
 
