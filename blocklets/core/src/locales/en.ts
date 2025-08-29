@@ -59,7 +59,8 @@ export default flatten({
     },
     status: {
       available: 'Available',
-      pending: 'Pending',
+      pending: 'Never used',
+      warning: 'Unavailable',
     },
   },
 

@@ -59,7 +59,8 @@ export default flatten({
     },
     status: {
       available: '可用',
-      pending: '暂停中',
+      pending: '未使用',
+      warning: '不可用',
     },
   },
 

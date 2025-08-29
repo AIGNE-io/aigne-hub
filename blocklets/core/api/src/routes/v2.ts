@@ -10,7 +10,8 @@ import {
 import { Config } from '@api/libs/env';
 import logger from '@api/libs/logger';
 import { checkUserCreditBalance, isPaymentRunning } from '@api/libs/payment';
-import { createUsageAndCompleteModelCall, handleModelCallError } from '@api/libs/usage';
+import { withModelStatus } from '@api/libs/status';
+import { createUsageAndCompleteModelCall } from '@api/libs/usage';
 import { createModelCallMiddleware } from '@api/middlewares/model-call-tracker';
 import { checkModelRateAvailable } from '@api/providers';
 import AiCredential from '@api/store/models/ai-credential';
@@ -76,19 +77,24 @@ router.get('/status', user, async (req, res) => {
   return res.json({ available: true });
 });
 
-router.post('/:type(chat)?/completions', compression(), user, chatCallTracker, async (req, res) => {
-  const userDid = req.user?.did;
-  if (!userDid) {
-    throw new CustomError(401, 'User not authenticated');
-  }
-  if (Config.creditBasedBillingEnabled && !isPaymentRunning()) {
-    throw new CustomError(502, 'Payment kit is not Running');
-  }
+router.post(
+  '/:type(chat)?/completions',
+  compression(),
+  user,
+  chatCallTracker,
+  withModelStatus(async (req, res) => {
+    const userDid = req.user?.did;
+    if (!userDid) {
+      throw new CustomError(401, 'User not authenticated');
+    }
+    if (Config.creditBasedBillingEnabled && !isPaymentRunning()) {
+      throw new CustomError(502, 'Payment kit is not Running');
+    }
 
-  try {
     if (userDid && Config.creditBasedBillingEnabled) {
       await checkUserCreditBalance({ userDid });
     }
+
     await processChatCompletion(req, res, 'v2', {
       onEnd: async (data) => {
         if (data?.output) {
@@ -128,31 +134,29 @@ router.post('/:type(chat)?/completions', compression(), user, chatCallTracker, a
         return data;
       },
     });
-  } catch (error) {
-    handleModelCallError(req, error);
-    throw error;
-  }
-});
+  })
+);
 
 router.post(
   '/chat',
   user,
   chatCallTracker,
-  createRetryHandler(async (req, res) => {
-    const userDid = req.user?.did;
-    if (!userDid) {
-      throw new CustomError(401, 'User not authenticated');
-    }
-    if (Config.creditBasedBillingEnabled && !isPaymentRunning()) {
-      throw new CustomError(502, 'Payment kit is not Running');
-    }
+  createRetryHandler(
+    withModelStatus(async (req, res) => {
+      const userDid = req.user?.did;
+      if (!userDid) {
+        throw new CustomError(401, 'User not authenticated');
+      }
+      if (Config.creditBasedBillingEnabled && !isPaymentRunning()) {
+        throw new CustomError(502, 'Payment kit is not Running');
+      }
 
-    try {
       if (userDid && Config.creditBasedBillingEnabled) {
         await checkUserCreditBalance({ userDid });
       }
+
       await checkModelRateAvailable(req.body.model);
-      const model = await getModel(req.body, {
+      const { m: model } = await getModel(req.body, {
         modelOptions: req.body?.options?.modelOptions,
         req, // Pass request for ModelCall context updating
       });
@@ -197,24 +201,21 @@ router.post(
           },
         },
       });
-    } catch (error) {
-      handleModelCallError(req, error);
-      throw error;
-    }
-  })
+    })
+  )
 );
 
 router.post(
   '/image',
   user,
   imageCallTracker,
-  createRetryHandler(async (req, res) => {
-    const userDid = req.user?.did;
-    if (Config.creditBasedBillingEnabled && !isPaymentRunning()) {
-      throw new CustomError(502, 'Payment kit is not Running');
-    }
+  createRetryHandler(
+    withModelStatus(async (req, res) => {
+      const userDid = req.user?.did;
+      if (Config.creditBasedBillingEnabled && !isPaymentRunning()) {
+        throw new CustomError(502, 'Payment kit is not Running');
+      }
 
-    try {
       if (userDid && Config.creditBasedBillingEnabled) {
         await checkUserCreditBalance({ userDid });
       }
@@ -262,11 +263,8 @@ router.post(
           aigneHubCredits: Number(aigneHubCredits),
         },
       });
-    } catch (error) {
-      handleModelCallError(req, error);
-      throw error;
-    }
-  })
+    })
+  )
 );
 
 // v2 Embeddings endpoint
@@ -274,16 +272,17 @@ router.post(
   '/embeddings',
   user,
   embeddingCallTracker,
-  createRetryHandler(async (req, res) => {
-    const userDid = req.user?.did;
-    if (Config.creditBasedBillingEnabled && !isPaymentRunning()) {
-      throw new CustomError(502, 'Payment kit is not Running');
-    }
+  createRetryHandler(
+    withModelStatus(async (req, res) => {
+      const userDid = req.user?.did;
+      if (Config.creditBasedBillingEnabled && !isPaymentRunning()) {
+        throw new CustomError(502, 'Payment kit is not Running');
+      }
 
-    try {
       if (userDid && Config.creditBasedBillingEnabled) {
         await checkUserCreditBalance({ userDid });
       }
+
       const usageData = await processEmbeddings(req, res);
 
       if (usageData && userDid) {
@@ -308,11 +307,8 @@ router.post(
           return undefined;
         });
       }
-    } catch (error) {
-      handleModelCallError(req, error);
-      throw error;
-    }
-  })
+    })
+  )
 );
 
 // v2 Image Generation endpoint
@@ -320,13 +316,13 @@ router.post(
   '/image/generations',
   user,
   imageCallTracker,
-  createRetryHandler(async (req, res) => {
-    const userDid = req.user?.did;
-    if (Config.creditBasedBillingEnabled && !isPaymentRunning()) {
-      throw new CustomError(502, 'Payment kit is not Running');
-    }
+  createRetryHandler(
+    withModelStatus(async (req, res) => {
+      const userDid = req.user?.did;
+      if (Config.creditBasedBillingEnabled && !isPaymentRunning()) {
+        throw new CustomError(502, 'Payment kit is not Running');
+      }
 
-    try {
       if (userDid && Config.creditBasedBillingEnabled) {
         await checkUserCreditBalance({ userDid });
       }
@@ -372,11 +368,8 @@ router.post(
           aigneHubCredits: Number(aigneHubCredits),
         },
       });
-    } catch (error) {
-      handleModelCallError(req, error);
-      throw error;
-    }
-  })
+    })
+  )
 );
 
 // TODO: Need to add credit based billing
@@ -415,4 +408,5 @@ router.post(
     },
   })
 );
+
 export default router;

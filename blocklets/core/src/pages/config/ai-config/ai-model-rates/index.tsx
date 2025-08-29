@@ -1,10 +1,13 @@
+/* eslint-disable react/no-unstable-nested-components */
 import { CreditRateFormula } from '@app/components/credit-rate-farmula';
+import { Status, TestModelButton } from '@app/components/status';
 import UnitDisplay from '@app/components/unit-display';
+import { useSessionContext } from '@app/contexts/session';
 import { formatMillionTokenCost, getPrefix, multiply } from '@app/libs/util';
+import { useSubscription } from '@app/libs/ws';
 import { getDurableData } from '@arcblock/ux/lib/Datatable';
 import Dialog from '@arcblock/ux/lib/Dialog';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
-/* eslint-disable react/no-unstable-nested-components */
 import Toast from '@arcblock/ux/lib/Toast';
 import { Table } from '@blocklet/aigne-hub/components';
 import { formatError } from '@blocklet/error';
@@ -33,14 +36,14 @@ import BigNumber from 'bignumber.js';
 import { useEffect, useState } from 'react';
 import { joinURL } from 'ufo';
 
-import { useSessionContext } from '../../../../contexts/session';
 import ModelRateForm from './model-rate-form';
 import { ModelRate, ModelRateFormData, ModelRatesQuery, Provider } from './types';
 
+const listKey = 'ai-model-rates';
+
 export default function AIModelRates() {
-  const listKey = 'ai-model-rates';
   const { t } = useLocaleContext();
-  const { api } = useSessionContext();
+  const { api, session } = useSessionContext();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [showForm, setShowForm] = useState(false);
@@ -49,8 +52,8 @@ export default function AIModelRates() {
   const [rateToDelete, setRateToDelete] = useState<ModelRate | null>(null);
   const [providers, setProviders] = useState<Provider[]>([]);
   const [modelSearchValue, setModelSearchValue] = useState('');
+  const [statusLoading, setStatusLoading] = useState(false);
 
-  // 从 blocklet preferences 获取配置
   const baseCreditPrice = window.blocklet?.preferences?.baseCreditPrice || 0.0000025;
   const targetProfitMargin = window.blocklet?.preferences?.targetProfitMargin || 0;
 
@@ -79,6 +82,7 @@ export default function AIModelRates() {
     data = { list: [], count: 0, paging: { page: 1, pageSize: 20 } },
     loading,
     refresh,
+    mutate,
   } = useRequest(() => fetchData(search), {
     refreshDeps: [search],
     onError: (error: any) => {
@@ -87,19 +91,16 @@ export default function AIModelRates() {
   });
   const modelRates = data?.list || [];
 
-  // 获取 providers 列表
   useRequest(() => api.get('/api/ai-providers').then((res: any) => res.data), {
     onSuccess: (data: Provider[]) => {
       setProviders(data || []);
     },
   });
 
-  // 同步 modelSearchValue 与搜索状态
   useEffect(() => {
     setModelSearchValue(search?.model || '');
   }, [search?.model]);
 
-  // 节流 model 搜索
   useDebounceEffect(
     () => {
       setSearch((prev) => ({
@@ -112,7 +113,9 @@ export default function AIModelRates() {
     { wait: 500 }
   );
 
-  // 创建模型费率
+  const showTestModelStatus =
+    window.blocklet?.preferences?.creditBasedBillingEnabled && ['admin', 'owner'].includes(session?.user?.role);
+
   const handleCreateModelRate = async (data: ModelRateFormData) => {
     try {
       await api.post('/api/ai-providers/model-rates', data);
@@ -128,7 +131,6 @@ export default function AIModelRates() {
     }
   };
 
-  // 更新模型费率
   const handleUpdateModelRate = async (data: ModelRateFormData) => {
     if (!editingRate) return;
     try {
@@ -142,7 +144,6 @@ export default function AIModelRates() {
     }
   };
 
-  // 删除费率
   const handleDeleteRate = async () => {
     if (!rateToDelete) return;
     try {
@@ -164,6 +165,62 @@ export default function AIModelRates() {
   const handleDeleteClick = (rate: ModelRate) => {
     setRateToDelete(rate);
     setDeleteDialogOpen(true);
+  };
+
+  useSubscription(
+    'model.status.updated',
+    ({ provider, model, available }: { provider: string; model: string; available: boolean }) => {
+      mutate((r: any) => {
+        const data = r.list || [];
+        data.forEach((item: any) => {
+          if (item.provider?.name === provider && item.model === model && item.status) {
+            item.loading = false;
+            item.status.available = available;
+          }
+        });
+
+        return {
+          ...r,
+          data,
+        };
+      });
+    },
+    []
+  );
+
+  const handleTestModel = async (search?: URLSearchParams) => {
+    mutate((r: any) => {
+      (r.list || []).forEach((item: any) => {
+        item.loading = true;
+      });
+      return r;
+    });
+
+    setStatusLoading(true);
+
+    try {
+      const res = await api.get(`/api/ai-providers/test-models?${search?.toString()}`);
+      if (res.data?.error) {
+        mutate((r: any) => {
+          (r.list || []).forEach((item: any) => {
+            item.loading = false;
+          });
+          return r;
+        });
+      }
+    } catch (error) {
+      mutate((r: any) => {
+        (r.list || []).forEach((item: any) => {
+          item.loading = false;
+        });
+        return r;
+      });
+      Toast.error(formatError(error));
+    } finally {
+      setTimeout(() => {
+        setStatusLoading(false);
+      }, 1000);
+    }
   };
 
   const getRateTypeColor = (type: string) => {
@@ -192,7 +249,6 @@ export default function AIModelRates() {
     }
   };
 
-  // 表格列定义
   const columns = [
     {
       name: 'modelDisplay',
@@ -431,6 +487,20 @@ export default function AIModelRates() {
         },
       },
     },
+    showTestModelStatus && {
+      name: 'status',
+      label: t('pricing.table.status'),
+      align: 'center',
+      width: 120,
+      options: {
+        customBodyRender: (_value: any, tableMeta: any) => {
+          const model = modelRates[tableMeta.rowIndex];
+          if (!model) return null;
+
+          return <Status model={model} t={t} />;
+        },
+      },
+    },
     {
       name: 'actions',
       label: t('config.modelRates.fields.actions'),
@@ -456,12 +526,11 @@ export default function AIModelRates() {
         },
       },
     },
-  ];
+  ].filter(Boolean);
 
   return (
     <Box>
       <Typography variant="body1">{t('config.modelRates.description')}</Typography>
-      {/* Configuration Info */}
       <Box
         sx={{
           mb: {
@@ -554,8 +623,6 @@ export default function AIModelRates() {
           </Button>
         </Stack>
       </Box>
-
-      {/* Search Filters */}
 
       <Box
         sx={{
@@ -659,18 +726,38 @@ export default function AIModelRates() {
             </Select>
           </FormControl>
         </Stack>
-        <Button
-          variant="contained"
-          sx={{
-            alignSelf: { xs: 'flex-end', sm: 'auto' },
-          }}
-          startIcon={<AddIcon />}
-          onClick={() => {
-            setShowForm(true);
-            setEditingRate(null);
-          }}>
-          {t('config.modelRates.actions.add')}
-        </Button>
+
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          {showTestModelStatus && (
+            <TestModelButton
+              statusLoading={statusLoading}
+              onClick={() => {
+                const search1 = new URLSearchParams();
+                Object.keys(search).forEach((key) => {
+                  const v = search[key as keyof ModelRatesQuery];
+                  if (v !== undefined && v !== '') {
+                    search1.set(key, String(v));
+                  }
+                });
+
+                handleTestModel(search1);
+              }}
+            />
+          )}
+
+          <Button
+            variant="contained"
+            sx={{
+              alignSelf: { xs: 'flex-end', sm: 'auto' },
+            }}
+            startIcon={<AddIcon />}
+            onClick={() => {
+              setShowForm(true);
+              setEditingRate(null);
+            }}>
+            {t('config.modelRates.actions.add')}
+          </Button>
+        </Box>
       </Box>
       <Root>
         <Table
@@ -711,7 +798,7 @@ export default function AIModelRates() {
           loading={loading}
         />
       </Root>
-      {/* Add/Edit Model Rate Drawer */}
+
       <Drawer
         open={showForm}
         onClose={() => setShowForm(false)}
@@ -736,7 +823,7 @@ export default function AIModelRates() {
           }}
         />
       </Drawer>
-      {/* Delete Confirmation Dialog */}
+
       <Dialog
         open={deleteDialogOpen}
         onClose={() => setDeleteDialogOpen(false)}

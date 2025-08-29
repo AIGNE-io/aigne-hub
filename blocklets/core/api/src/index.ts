@@ -20,6 +20,7 @@ import { initAuthRouter } from './routes/auth';
 import setupHtmlRouter from './routes/html';
 import { initialize } from './store/models';
 import { sequelize } from './store/sequelize';
+import wsServer from './ws';
 
 if (process.env.NODE_ENV === 'development') {
   dotenv.config();
@@ -28,7 +29,7 @@ if (process.env.NODE_ENV === 'development') {
 initialize(sequelize);
 const { name, version } = require('../../package.json');
 
-export const app = express();
+const app = express();
 
 app.set('trust proxy', true);
 app.use(cookieParser());
@@ -103,7 +104,7 @@ app.use(<ErrorRequestHandler>((error, req, res, _next) => {
 
 const port = parseInt(process.env.BLOCKLET_PORT!, 10);
 
-export const server = app.listen(port, (err?: any) => {
+const server = app.listen(port, (err?: any) => {
   if (err) throw err;
   logger.info(`> ${name} v${version} ready on ${port}`);
 
@@ -116,3 +117,7 @@ export const server = app.listen(port, (err?: any) => {
     });
   }
 });
+
+wsServer.attach(server);
+
+export { app, server };

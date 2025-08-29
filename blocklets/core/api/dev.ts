@@ -8,7 +8,9 @@ import { app, server } from './src';
   const vite = await setupClient(app, {
     appType: 'custom',
     server,
-    importMetaHot: import.meta.hot,
+    host: '127.0.0.1',
+    port: Number(5678),
+    // importMetaHot: import.meta.hot,
   });
 
   setupHtmlRouter(app, vite);

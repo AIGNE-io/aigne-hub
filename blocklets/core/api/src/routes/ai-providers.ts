@@ -4,17 +4,75 @@ import { Config } from '@api/libs/env';
 import logger from '@api/libs/logger';
 import modelRegistry from '@api/libs/model-registry';
 import { ensureAdmin } from '@api/libs/security';
+import { checkModelStatus } from '@api/libs/status';
 import { createListParamSchema, getWhereFromKvQuery } from '@api/libs/validate';
 import AiCredential, { CredentialValue } from '@api/store/models/ai-credential';
 import AiModelRate from '@api/store/models/ai-model-rate';
+import AiModelStatus from '@api/store/models/ai-model-status';
 import AiProvider from '@api/store/models/ai-provider';
 import sessionMiddleware from '@blocklet/sdk/lib/middlewares/session';
 import BigNumber from 'bignumber.js';
-import { Router } from 'express';
+import { NextFunction, Request, Response, Router } from 'express';
 import Joi from 'joi';
 import pick from 'lodash/pick';
 import pAll from 'p-all';
 import { Op } from 'sequelize';
+
+import { getQueue } from '../libs/queue';
+
+const testModelsRateLimit = new Map<string, { count: number; startTime: number }>();
+
+const rateLimitMiddleware = (req: Request, res: Response, next: NextFunction): void => {
+  if (req.user?.did) {
+    const now = Date.now();
+    const userLimit = testModelsRateLimit.get(req.user.did);
+
+    if (userLimit) {
+      if (now - userLimit.startTime < 10 * 60 * 1000) {
+        if (userLimit.count >= 5) {
+          const remainingTime = Math.ceil((10 * 60 * 1000 - (now - userLimit.startTime)) / 1000);
+
+          res.status(429).json({
+            error: 'Rate limit exceeded',
+            message: `Too many requests. Please try again in ${remainingTime} seconds.`,
+            retryAfter: remainingTime,
+          });
+          return;
+        }
+
+        userLimit.count++;
+      } else {
+        testModelsRateLimit.set(req.user.did, { count: 1, startTime: now });
+      }
+    } else {
+      testModelsRateLimit.set(req.user.did, { count: 1, startTime: now });
+    }
+  }
+
+  next();
+};
+
+const modelStatusQueue = getQueue({
+  name: 'model-status',
+  options: {
+    concurrency: 5,
+    maxRetries: 0,
+  },
+  onJob: async ({
+    providerId,
+    model,
+    type,
+  }: {
+    providerId: string;
+    model: string;
+    type: 'chat' | 'image_generation' | 'embedding';
+  }) => {
+    logger.info('check model status', providerId, model, type);
+    await checkModelStatus({ providerId, model, type }).catch((error) => {
+      logger.error('check model status error', error);
+    });
+  },
+});
 
 const router = Router();
 
@@ -897,11 +955,13 @@ router.get('/model-rates', user, async (req, res) => {
         [Op.in]: Array.isArray(query.providerId) ? query.providerId : query.providerId.split(','),
       };
     }
+
     if (query.model) {
       where.model = {
         [Op.like]: `%${query.model}%`,
       };
     }
+
     const { rows: modelRates, count } = await AiModelRate.findAndCountAll({
       where,
       include: [
@@ -915,9 +975,17 @@ router.get('/model-rates', user, async (req, res) => {
       offset: (page - 1) * pageSize,
       limit: pageSize,
     });
+
     return res.json({
       count,
-      list: modelRates,
+      list: await Promise.all(
+        modelRates.map(async (rate) => {
+          const modelStatus = await AiModelStatus.findOne({
+            where: { providerId: rate.providerId, model: rate.model },
+          });
+          return { ...rate.toJSON(), status: modelStatus };
+        })
+      ),
       paging: {
         page,
         pageSize,
@@ -929,24 +997,26 @@ router.get('/model-rates', user, async (req, res) => {
   }
 });
 
+const typeFilterMap: Record<string, string> = {
+  chatCompletion: 'chatCompletion',
+  imageGeneration: 'imageGeneration',
+  embedding: 'embedding',
+  chat: 'chatCompletion',
+  image_generation: 'imageGeneration',
+  image: 'imageGeneration',
+};
+
+const typeMap = {
+  chatCompletion: 'chat',
+  imageGeneration: 'image_generation',
+  embedding: 'embedding',
+};
+
 // get available models in LiteLLM format (public endpoint)
 router.get('/models', async (req, res) => {
   try {
     const where: any = {};
-    const typeFilterMap: Record<string, string> = {
-      chatCompletion: 'chatCompletion',
-      imageGeneration: 'imageGeneration',
-      embedding: 'embedding',
-      chat: 'chatCompletion',
-      image_generation: 'imageGeneration',
-      image: 'imageGeneration',
-    };
-    // type mapping
-    const typeMap = {
-      chatCompletion: 'chat',
-      imageGeneration: 'image_generation',
-      embedding: 'embedding',
-    };
+
     if (req.query.type) {
       const requestedType = req.query.type as string;
       const mappedType = typeFilterMap[requestedType] || requestedType;
@@ -1040,6 +1110,7 @@ router.get('/models', async (req, res) => {
         model: modelName,
         type: typeMap[rateJson.type as keyof typeof typeMap] || 'chat',
         provider: providerName,
+        providerId: rateJson.provider.id,
         input_credits_per_token: rateJson.inputRate || 0,
         output_credits_per_token: rateJson.outputRate || 0,
         modelMetadata: rateJson.modelMetadata,
@@ -1048,7 +1119,107 @@ router.get('/models', async (req, res) => {
       });
     });
 
-    return res.json(result);
+    return res.json(
+      await Promise.all(
+        result.map(async (item) => {
+          const modelStatus = await AiModelStatus.findOne({
+            where: { providerId: item.providerId, model: item.model },
+          });
+          return { ...item, status: modelStatus };
+        })
+      )
+    );
+  } catch (error) {
+    logger.error('Failed to get available models:', error);
+    return res.status(500).json({
+      error: 'Failed to get available models',
+    });
+  }
+});
+
+const inputSchema = createListParamSchema({
+  page: Joi.number().integer().min(1).optional(),
+  pageSize: Joi.number().integer().min(10).optional(),
+});
+
+router.get('/test-models', user, rateLimitMiddleware, async (req, res) => {
+  try {
+    const { page, pageSize, providerId, model, type } = req.query || {};
+
+    const where: any = {};
+    const params: any = {};
+
+    const { value } = inputSchema.validate({
+      page: page ? Number(page) : undefined,
+      pageSize: pageSize ? Number(pageSize) : undefined,
+    });
+
+    if (value.page && value.pageSize) {
+      params.offset = (value.page - 1) * value.pageSize;
+      params.limit = value.pageSize;
+    } else if (value.pageSize) {
+      params.limit = value.pageSize;
+    }
+
+    if (providerId) {
+      where.providerId = {
+        [Op.in]: Array.isArray(providerId) ? providerId : String(providerId).split(','),
+      };
+    }
+
+    if (model) {
+      where.model = {
+        [Op.like]: `%${model}%`,
+      };
+    }
+
+    if (type) {
+      const requestedType = req.query.type as string;
+      const mappedType = typeFilterMap[requestedType] || requestedType;
+      where.type = mappedType;
+    }
+
+    const providers = await AiProvider.getEnabledProviders();
+    if (providers.length === 0) {
+      return res.json({
+        error: 'No providers found',
+      });
+    }
+
+    if (!Config.creditBasedBillingEnabled) {
+      return res.json({
+        error: 'No credit billing enabled',
+      });
+    }
+
+    const modelRates = await AiModelRate.findAll({
+      where,
+      include: [
+        {
+          model: AiProvider,
+          as: 'provider',
+          where: { id: { [Op.in]: providers.map((p) => p.id) } },
+          attributes: ['id', 'name'],
+        },
+      ],
+      order: [['createdAt', req.query.o === 'asc' ? 'ASC' : 'DESC']],
+      ...params,
+    });
+
+    modelRates.forEach((rate) => {
+      const rateJson = rate.toJSON() as any;
+      const modelName = rateJson.model;
+
+      modelStatusQueue.push({
+        model: modelName,
+        type: typeMap[rateJson.type as keyof typeof typeMap] || 'chat',
+        providerId: rate.providerId,
+      });
+    });
+
+    return res.json({
+      message: 'syncing models...',
+    });
   } catch (error) {
     logger.error('Failed to get available models:', error);
     return res.status(500).json({

@@ -127,12 +127,7 @@ export default class AiCredential extends Model<InferAttributes<AiCredential>, I
 
   // 批量更新凭证状态
   static async updateCredentialStatus(ids: string[], active: boolean): Promise<number> {
-    const [affectedCount] = await AiCredential.update(
-      { active },
-      {
-        where: { id: ids },
-      }
-    );
+    const [affectedCount] = await AiCredential.update({ active }, { where: { id: ids } });
     return affectedCount;
   }
 

@@ -393,7 +393,7 @@ export async function processImageGeneration({
       return input;
     };
 
-    const model = await getImageModel(input, { req });
+    const { m: model } = await getImageModel(input, { req });
     const params: any = camelize({ ...formatParams(), model: modelName });
     logger.info('invoke image generation params', { params });
 
