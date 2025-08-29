@@ -1,3 +1,7 @@
+## 0.4.0 (2025-8-29)
+
+- fix(ui): simplify wave animation and improve canvas rendering in credits balance
+
 ## 0.3.29 (2025-8-29)
 
 - chore: update package to latest
