@@ -13,7 +13,6 @@ function WaveChart({ percentage }: { percentage: number }) {
   const theme = useTheme();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>();
-  const phaseRef = useRef(0);
 
   const getBorderColor = () => {
     if (percentage === 0) return theme.palette.grey[100];
@@ -42,7 +41,7 @@ function WaveChart({ percentage }: { percentage: number }) {
     canvas.width = canvasSize;
     canvas.height = canvasSize;
 
-    const animate = () => {
+    const animate = (timestamp: number) => {
       ctx.clearRect(0, 0, canvasSize, canvasSize);
 
       ctx.save();
@@ -55,7 +54,8 @@ function WaveChart({ percentage }: { percentage: number }) {
 
         const amplitude = 2;
         const frequency = 0.05;
-        const phase = phaseRef.current;
+
+        const phase = timestamp * 0.002;
         const yOffset = canvasSize - waterHeight;
 
         ctx.save();
@@ -86,7 +86,7 @@ function WaveChart({ percentage }: { percentage: number }) {
         ctx.fillStyle = gradient;
         ctx.fill();
 
-        // 绘制第二层水波 - 浅色叠加效果
+        // 绘制第二层水波 - 浅色叠加效果，使用不同的时间系数
         ctx.beginPath();
         for (let x = 0; x < canvasSize; x++) {
           const y2 = 3 * Math.sin(0.06 * x - phase * 1.2) + (canvasSize - yOffset - 1);
@@ -115,11 +115,10 @@ function WaveChart({ percentage }: { percentage: number }) {
 
       ctx.restore();
 
-      phaseRef.current += 0.025;
       animationRef.current = requestAnimationFrame(animate);
     };
 
-    animate();
+    animate(performance.now());
 
     // eslint-disable-next-line consistent-return
     return () => {
