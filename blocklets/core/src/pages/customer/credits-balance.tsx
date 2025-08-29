@@ -4,83 +4,16 @@ import { UserInfoResult } from '@blocklet/aigne-hub/api/types/user';
 import { formatNumber } from '@blocklet/aigne-hub/utils/util';
 import { AutoTopup, PaymentProvider, SafeGuard } from '@blocklet/payment-react';
 import { Add, CreditCard, Receipt } from '@mui/icons-material';
-import {
-  Box,
-  Button,
-  Card,
-  CardContent,
-  CardHeader,
-  Stack,
-  Typography,
-  alpha,
-  keyframes,
-  useTheme,
-} from '@mui/material';
+import { Box, Button, Card, CardContent, CardHeader, Stack, Typography, alpha, useTheme } from '@mui/material';
+import { useEffect, useRef } from 'react';
 
 import { useSessionContext } from '../../contexts/session';
 
-// 水波动画 - 使用白色圆球左右移动模拟波浪
-const waveMove1 = keyframes`
-  0% {
-    transform: translateX(-10px);
-  }
-  50% {
-    transform: translateX(10px);
-  }
-  100% {
-    transform: translateX(-10px);
-  }
-`;
-
-const waveMove2 = keyframes`
-  0% {
-    transform: translateX(8px);
-  }
-  50% {
-    transform: translateX(-8px);
-  }
-  100% {
-    transform: translateX(8px);
-  }
-`;
-
-const waveMove3 = keyframes`
-  0% {
-    transform: translateX(-6px);
-  }
-  50% {
-    transform: translateX(6px);
-  }
-  100% {
-    transform: translateX(-6px);
-  }
-`;
-
 function WaveChart({ percentage }: { percentage: number }) {
   const theme = useTheme();
-  const fillHeight = percentage;
-
-  const getGradient = () => {
-    if (percentage <= 10) {
-      return `linear-gradient(180deg, 
-        ${alpha(theme.palette.error.light, 0.2)} 0%, 
-        ${alpha(theme.palette.error.light, 0.35)} 30%, 
-        ${alpha(theme.palette.error.main, 0.45)} 70%, 
-        ${alpha(theme.palette.error.main, 0.55)} 100%)`;
-    }
-    if (percentage <= 30) {
-      return `linear-gradient(180deg, 
-        ${alpha(theme.palette.warning.light, 0.2)} 0%, 
-        ${alpha(theme.palette.warning.light, 0.35)} 30%, 
-        ${alpha(theme.palette.warning.main, 0.45)} 70%, 
-        ${alpha(theme.palette.warning.main, 0.55)} 100%)`;
-    }
-    return `linear-gradient(180deg, 
-      ${alpha(theme.palette.success.light, 0.2)} 0%, 
-      ${alpha(theme.palette.success.light, 0.35)} 30%, 
-      ${alpha(theme.palette.success.main, 0.45)} 70%, 
-      ${alpha(theme.palette.success.main, 0.55)} 100%)`;
-  };
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const animationRef = useRef<number>();
+  const phaseRef = useRef(0);
 
   const getBorderColor = () => {
     if (percentage === 0) return theme.palette.grey[100];
@@ -89,119 +22,132 @@ function WaveChart({ percentage }: { percentage: number }) {
     return theme.palette.success.main;
   };
 
-  const getBgColor = () => {
-    if (percentage === 0) return theme.palette.grey[300];
-    if (percentage <= 10) return theme.palette.error.main;
-    if (percentage <= 30) return theme.palette.warning.main;
-    return theme.palette.success.main;
-  };
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-  const getWaveOffset = () => {
-    const waveTop = 80 - fillHeight * 0.8;
-    return waveTop;
-  };
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const getWaveColor = () => {
+      if (percentage === 0) return theme.palette.grey[300];
+      if (percentage <= 10) return theme.palette.error.main;
+      if (percentage <= 30) return theme.palette.warning.main;
+      return theme.palette.success.main;
+    };
+
+    const canvasSize = 80;
+    const radius = canvasSize / 2;
+
+    canvas.width = canvasSize;
+    canvas.height = canvasSize;
+
+    const animate = () => {
+      ctx.clearRect(0, 0, canvasSize, canvasSize);
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(radius, radius, radius - 1, 0, Math.PI * 2);
+      ctx.clip();
+
+      if (percentage > 0) {
+        const waterHeight = (percentage / 100) * canvasSize;
+
+        const amplitude = 2;
+        const frequency = 0.05;
+        const phase = phaseRef.current;
+        const yOffset = canvasSize - waterHeight;
+
+        ctx.save();
+        ctx.translate(0, canvasSize);
+        ctx.scale(1, -1);
+
+        ctx.beginPath();
+        for (let x = 0; x < canvasSize; x++) {
+          const y = amplitude * Math.sin(frequency * x + phase) + (canvasSize - yOffset);
+          if (x === 0) {
+            ctx.moveTo(x, y);
+          } else {
+            ctx.lineTo(x, y);
+          }
+        }
+
+        ctx.lineTo(canvasSize, 0);
+        ctx.lineTo(0, 0);
+        ctx.closePath();
+
+        const gradient = ctx.createLinearGradient(0, canvasSize - waterHeight, 0, canvasSize);
+        const color = getWaveColor();
+        gradient.addColorStop(0, alpha(color, 0.45));
+        gradient.addColorStop(0.3, alpha(color, 0.35));
+        gradient.addColorStop(0.7, alpha(color, 0.25));
+        gradient.addColorStop(1, alpha(color, 0.15));
+
+        ctx.fillStyle = gradient;
+        ctx.fill();
+
+        // 绘制第二层水波 - 浅色叠加效果
+        ctx.beginPath();
+        for (let x = 0; x < canvasSize; x++) {
+          const y2 = 3 * Math.sin(0.06 * x - phase * 1.2) + (canvasSize - yOffset - 1);
+          if (x === 0) {
+            ctx.moveTo(x, y2);
+          } else {
+            ctx.lineTo(x, y2);
+          }
+        }
+
+        ctx.lineTo(canvasSize, 0);
+        ctx.lineTo(0, 0);
+        ctx.closePath();
+
+        const lightGradient = ctx.createLinearGradient(0, canvasSize - waterHeight + 5, 0, canvasSize);
+        lightGradient.addColorStop(0, alpha('#ffffff', 0.4));
+        lightGradient.addColorStop(0.3, alpha('#ffffff', 0.25));
+        lightGradient.addColorStop(0.8, alpha('#ffffff', 0.1));
+        lightGradient.addColorStop(1, alpha('#ffffff', 0.02));
+
+        ctx.fillStyle = lightGradient;
+        ctx.fill();
+
+        ctx.restore();
+      }
+
+      ctx.restore();
+
+      phaseRef.current += 0.025;
+      animationRef.current = requestAnimationFrame(animate);
+    };
+
+    animate();
+
+    // eslint-disable-next-line consistent-return
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, [percentage, theme]);
 
   return (
     <Box
       sx={{
         width: 80,
         height: 80,
-        borderRadius: '50%',
         position: 'relative',
-        overflow: 'hidden',
-        backgroundColor: theme.palette.grey[50],
         border: `1px solid ${getBorderColor()}`,
+        borderRadius: '50%',
         boxShadow: 1,
+        backgroundColor: theme.palette.grey[50],
       }}>
-      {/* 液体背景 */}
-      <Box
-        sx={{
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
+      <canvas
+        ref={canvasRef}
+        style={{
           width: '100%',
-          height: `${fillHeight}%`,
-          background: getGradient(),
+          height: '100%',
+          borderRadius: '50%',
         }}
       />
-
-      {/* 内部反射效果 */}
-      {fillHeight > 20 && (
-        <Box
-          sx={{
-            position: 'absolute',
-            top: '10%',
-            left: '15%',
-            width: '25%',
-            height: '30%',
-            background: `linear-gradient(135deg, ${alpha('#ffffff', 0.4)} 0%, ${alpha('#ffffff', 0.1)} 50%, transparent 100%)`,
-            borderRadius: '50%',
-            filter: 'blur(2px)',
-            opacity: 0.6,
-          }}
-        />
-      )}
-
-      {fillHeight > 5 && (
-        <>
-          {/* 第一个波浪球 - 主要波浪 */}
-          <Box
-            sx={{
-              position: 'absolute',
-              top: `${getWaveOffset()}px`,
-              left: '-40%',
-              width: '180%',
-              height: '60px',
-              backgroundColor: alpha('#ffffff', 0.4),
-              borderRadius: '50%',
-              animation: `${waveMove1} 3s ease-in-out infinite`,
-            }}
-          />
-
-          {/* 第二个波浪球 - 副波浪 */}
-          <Box
-            sx={{
-              position: 'absolute',
-              top: `${getWaveOffset() + 5}px`,
-              left: '-35%',
-              width: '170%',
-              height: '50px',
-              backgroundColor: alpha('#ffffff', 0.3),
-              borderRadius: '50%',
-              animation: `${waveMove2} 2.5s ease-in-out infinite reverse`,
-            }}
-          />
-
-          {/* 第三个波浪球 - 细节波浪 */}
-          <Box
-            sx={{
-              position: 'absolute',
-              top: `${getWaveOffset() - 3}px`,
-              left: '-30%',
-              width: '160%',
-              height: '40px',
-              backgroundColor: alpha('#ffffff', 0.2),
-              borderRadius: '50%',
-              animation: `${waveMove3} 4s ease-in-out infinite`,
-            }}
-          />
-        </>
-      )}
-
-      {fillHeight === 0 && (
-        <Box
-          sx={{
-            position: 'absolute',
-            top: '70%',
-            left: '-40%',
-            width: '180%',
-            height: '60px',
-            backgroundColor: alpha(getBgColor(), 0.3),
-            borderRadius: '50%',
-            animation: `${waveMove1} 4s ease-in-out infinite`,
-          }}
-        />
-      )}
 
       <Box
         sx={{
@@ -210,6 +156,7 @@ function WaveChart({ percentage }: { percentage: number }) {
           left: '50%',
           transform: 'translate(-50%, -50%)',
           zIndex: 10,
+          pointerEvents: 'none',
         }}>
         <Typography
           variant="body2"
@@ -328,7 +275,9 @@ export function CreditsBalance({ data = undefined as UserInfoResult | undefined 
             startIcon={<Add />}
             onClick={() => {
               if (paymentLink) {
-                window.open(paymentLink, '_blank');
+                const url = new URL(paymentLink);
+                url.searchParams.set('redirect', window.location.href);
+                window.open(url.toString(), '_self');
               }
             }}
             sx={{
@@ -361,7 +310,7 @@ export function CreditsBalance({ data = undefined as UserInfoResult | undefined 
             size="small"
             startIcon={<Receipt />}
             onClick={() => {
-              window.open(getPaymentUrl('/customer?creditTab=grants'), '_blank');
+              window.open(getPaymentUrl('/customer?creditTab=grants'), '_self');
             }}
             sx={{
               borderRadius: 2,
