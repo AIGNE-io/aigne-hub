@@ -1,3 +1,7 @@
+## 0.3.29 (2025-8-29)
+
+- chore: update package to latest
+
 ## 0.3.28 (2025-8-28)
 
 - chore: support ideogram provider
