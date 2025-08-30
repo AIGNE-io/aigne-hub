@@ -155,3 +155,5 @@ AIGNE Hub is part of the ArcBlock ecosystem. Please refer to our license terms f
 ---
 
 **Transform your AI development workflow with AIGNE Hub - the central nervous system for all your generative AI needs.**
+This is a test contribution for ArcBlock Campaign #2.
+
