@@ -1,8 +1,5 @@
 /* eslint-disable react/no-unstable-nested-components */
-import { Status, TestModelButton } from '@app/components/status';
-import { useSessionContext } from '@app/contexts/session';
 import { getPrefix } from '@app/libs/util';
-import { useSubscription } from '@app/libs/ws';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import Toast from '@arcblock/ux/lib/Toast';
 import { Table } from '@blocklet/aigne-hub/components';
@@ -39,6 +36,8 @@ import { debounce } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { joinURL } from 'ufo';
 
+import { useSessionContext } from '../../contexts/session';
+
 interface ModelData {
   key: string;
   model: string;
@@ -58,14 +57,6 @@ interface ModelData {
       style?: string[];
     };
   };
-  status?: {
-    available?: boolean;
-    error?: {
-      code?: string;
-      message?: string;
-    };
-  };
-  loading?: boolean;
 }
 
 const SearchRow = styled(Box)`
@@ -86,12 +77,10 @@ const TYPE_MAPPING: Record<string, string> = {
   embedding: 'embedding',
   audio_transcription: 'audioTranscription',
 };
-
 const listKey = 'pricing-models';
-
 export default function PricingPage() {
   const { t } = useLocaleContext();
-  const { api, session } = useSessionContext();
+  const { api } = useSessionContext();
 
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
 
@@ -106,7 +95,6 @@ export default function PricingPage() {
   });
 
   const [searchInput, setSearchInput] = useState(search?.q || '');
-  const [statusLoading, setStatusLoading] = useState(false);
 
   const debouncedSearch = useMemo(
     () =>
@@ -120,11 +108,7 @@ export default function PricingPage() {
     setSearchInput(search?.q || '');
   }, [search?.q]);
 
-  const {
-    data: modelData = [],
-    loading,
-    mutate,
-  } = useRequest(
+  const { data: modelData = [], loading } = useRequest(
     async () => {
       const url = '/api/ai-providers/models';
       const response = await api.get(url);
@@ -136,58 +120,6 @@ export default function PricingPage() {
       },
     }
   );
-
-  useSubscription(
-    'model.status.updated',
-    ({ provider, model, available }: { provider: string; model: string; available: boolean }) => {
-      mutate((r: any) => {
-        r.forEach((item: any) => {
-          if (item.provider === provider && item.model === model && item.status) {
-            item.loading = false;
-            item.status.available = available;
-          }
-        });
-
-        return r;
-      });
-    },
-    []
-  );
-
-  const handleTestModel = async (search?: URLSearchParams) => {
-    mutate((r: any) => {
-      r.forEach((item: any) => {
-        item.loading = true;
-      });
-      return r;
-    });
-
-    setStatusLoading(true);
-
-    try {
-      const res = await api.get(`/api/ai-providers/test-models?${search?.toString()}`);
-      if (res.data?.error) {
-        mutate((r: any) => {
-          r.forEach((item: any) => {
-            item.loading = false;
-          });
-          return r;
-        });
-      }
-    } catch (error) {
-      mutate((r: any) => {
-        r.forEach((item: any) => {
-          item.loading = false;
-        });
-        return r;
-      });
-      Toast.error(formatError(error));
-    } finally {
-      setTimeout(() => {
-        setStatusLoading(false);
-      }, 1000);
-    }
-  };
 
   const filteredData = useMemo(() => {
     let filtered = modelData as ModelData[];
@@ -210,6 +142,7 @@ export default function PricingPage() {
       filtered = filtered.filter((item) => item.type === search.type);
     }
 
+    // Apply sorting
     if (search?.sortField) {
       filtered = [...filtered].sort((a, b) => {
         let valueA = 0;
@@ -244,6 +177,7 @@ export default function PricingPage() {
     return search?.sortDirection === 'asc' ? <ArrowDropDown fontSize="small" /> : <ArrowDropUp fontSize="small" />;
   };
 
+  // Get unique providers
   const availableProviders = useMemo(() => {
     const providerMap: Record<string, string> = {};
     modelData.forEach((item: ModelData) => {
@@ -276,11 +210,14 @@ export default function PricingPage() {
       label: t('modelTypes.embedding'),
       icon: <CropOutlined />,
     },
+    // {
+    //   key: 'audio_transcription',
+    //   label: t('pricing.filters.audioTranscription'),
+    //   icon: <AudioFileOutlined />,
+    // },
   ];
 
-  const showTestModelStatus =
-    window.blocklet?.preferences?.creditBasedBillingEnabled && ['admin', 'owner'].includes(session?.user?.role);
-
+  // Table columns configuration
   const columns = [
     {
       name: 'model',
@@ -290,7 +227,7 @@ export default function PricingPage() {
         customBodyRender: (_value: any, tableMeta: any) => {
           const model = filteredData.list[tableMeta.rowIndex];
           if (!model) return null;
-
+          const isAvailable = model.active !== false;
           if (isMobile) {
             return (
               <Stack direction="column" alignItems="flex-end">
@@ -306,7 +243,6 @@ export default function PricingPage() {
               </Stack>
             );
           }
-
           return (
             <Stack
               direction="row"
@@ -322,6 +258,30 @@ export default function PricingPage() {
               <Stack direction="column" spacing={0.5}>
                 <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                   <Typography variant="subtitle1">{model.model}</Typography>
+                  <Stack
+                    direction="row"
+                    spacing={0.5}
+                    sx={{
+                      alignItems: 'center',
+                      display: isMobile ? 'none' : 'flex',
+                    }}>
+                    <Box
+                      sx={{
+                        width: 6,
+                        height: 6,
+                        bgcolor: isAvailable ? 'success.main' : 'warning.main',
+                        borderRadius: '50%',
+                      }}
+                    />
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        fontWeight: '600',
+                        color: isAvailable ? 'success.main' : 'warning.main',
+                      }}>
+                      {t(`pricing.status.${isAvailable ? 'available' : 'pending'}`)}
+                    </Typography>
+                  </Stack>
                 </Stack>
                 <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                   <Typography variant="caption" sx={{ color: 'text.secondary' }}>
@@ -526,21 +486,7 @@ export default function PricingPage() {
         },
       },
     },
-    showTestModelStatus && {
-      name: 'status',
-      label: t('pricing.table.status'),
-      align: 'center',
-      width: 120,
-      options: {
-        customBodyRender: (_value: any, tableMeta: any) => {
-          const model = filteredData.list[tableMeta.rowIndex];
-          if (!model) return null;
-
-          return <Status model={model} t={t} />;
-        },
-      },
-    },
-  ].filter(Boolean);
+  ];
 
   return (
     <>
@@ -593,6 +539,7 @@ export default function PricingPage() {
               md: 5,
             },
           }}>
+          {/* Search and Filter Row */}
           <SearchRow>
             <TextField
               fullWidth
@@ -652,41 +599,37 @@ export default function PricingPage() {
             </FormControl>
           </SearchRow>
 
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Box
-              sx={{
-                display: 'flex',
-                gap: 1,
-                flexWrap: 'wrap',
-              }}>
-              {typeCategories.map((category) => {
-                const isSelected = (search?.type || 'all') === category.key;
-                return (
-                  <Button
-                    key={category.key}
-                    variant={isSelected ? 'contained' : 'outlined'}
-                    onClick={() => setSearch({ type: category.key, page: 1 })}
-                    sx={{
-                      px: 2,
-                      fontWeight: 600,
-                      color: isSelected ? 'white' : 'text.primary',
-                      borderColor: isSelected ? 'primary.main' : 'divider',
-                      bgcolor: isSelected ? 'primary.main' : 'background.paper',
-                      '&:hover': {
-                        bgcolor: isSelected ? 'primary.main' : 'action.hover',
-                      },
-                    }}
-                    startIcon={category.icon}>
-                    {category.label}
-                  </Button>
-                );
-              })}
-            </Box>
-
-            {showTestModelStatus && <TestModelButton statusLoading={statusLoading} onClick={() => handleTestModel()} />}
+          {/* Type Filter Buttons */}
+          <Box
+            sx={{
+              display: 'flex',
+              gap: 1,
+              flexWrap: 'wrap',
+            }}>
+            {typeCategories.map((category) => {
+              const isSelected = (search?.type || 'all') === category.key;
+              return (
+                <Button
+                  key={category.key}
+                  variant={isSelected ? 'contained' : 'outlined'}
+                  onClick={() => setSearch({ type: category.key, page: 1 })}
+                  sx={{
+                    px: 2,
+                    fontWeight: 600,
+                    color: isSelected ? 'white' : 'text.primary',
+                    borderColor: isSelected ? 'primary.main' : 'divider',
+                    bgcolor: isSelected ? 'primary.main' : 'background.paper',
+                    '&:hover': {
+                      bgcolor: isSelected ? 'primary.main' : 'action.hover',
+                    },
+                  }}
+                  startIcon={category.icon}>
+                  {category.label}
+                </Button>
+              );
+            })}
           </Box>
         </Box>
-
         <Root>
           <Table
             hasSearch={false}
