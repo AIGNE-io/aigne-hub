@@ -164,6 +164,8 @@ export function withModelStatus(handler: (req: Request, res: Response) => Promis
         success: false,
         duration: Date.now() - start,
         error,
+      }).catch((error) => {
+        console.error('Failed to update model status', error);
       });
 
       handleModelCallError(req, error);
@@ -200,6 +202,8 @@ export async function callWithModelStatus(
       success: false,
       duration: Date.now() - start,
       error,
+    }).catch((error) => {
+      console.error('Failed to update model status', error);
     });
 
     throw error;
@@ -207,16 +211,16 @@ export async function callWithModelStatus(
 }
 
 const checkChatModelStatus = async ({ provider, model }: { provider: string; model: string }) => {
-  const { m } = await getModel({ model: `${provider}/${model}` });
+  const { modelInstance } = await getModel({ model: `${provider}/${model}` });
   await callWithModelStatus({ provider, model }, async () => {
-    await m.invoke({ messages: [{ role: 'user', content: 'hi' }] });
+    await modelInstance.invoke({ messages: [{ role: 'user', content: 'hi' }] });
   });
 };
 
 const checkImageModelStatus = async ({ provider, model }: { provider: string; model: string }) => {
-  const { m } = await getImageModel({ model: `${provider}/${model}` });
+  const { modelInstance } = await getImageModel({ model: `${provider}/${model}` });
   await callWithModelStatus({ provider, model }, async () => {
-    await m.invoke({ prompt: 'input number 1', n: 1, model });
+    await modelInstance.invoke({ prompt: 'input number 1', n: 1, model });
   });
 };
 

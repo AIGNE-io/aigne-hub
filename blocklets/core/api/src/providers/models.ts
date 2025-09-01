@@ -105,11 +105,11 @@ export async function chatCompletionByFrameworkModel(
     req?: any;
   }
 ): Promise<AsyncGenerator<ChatCompletionResponse>> {
-  const { m: model } = await getModel(input, { req: options?.req });
+  const { modelInstance } = await getModel(input, { req: options?.req });
   const engine = new AIGNE();
 
   const response = await engine.invoke(
-    model,
+    modelInstance,
     {
       messages: convertToFrameworkMessages(input.messages),
       responseFormat: input.responseFormat?.type === 'json_schema' ? input.responseFormat : { type: 'text' },
@@ -176,7 +176,7 @@ async function loadModel(
   }
 
   return {
-    m: m.create({ ...params, model }),
+    modelInstance: m.create({ ...params, model }),
     credentialId: params.id,
   };
 }
@@ -190,8 +190,8 @@ export const getModel = async (
   }
 ) => {
   const { modelName: model, providerName: provider } = await getModelAndProviderId(input.model);
-  const { m, credentialId } = await loadModel(model, { provider, ...options });
-  return { m, credentialId };
+  const result = await loadModel(model, { provider, ...options });
+  return result;
 };
 
 const loadImageModel = async (
@@ -249,7 +249,7 @@ const loadImageModel = async (
   }
 
   return {
-    m: m.create({ ...params, model }),
+    modelInstance: m.create({ ...params, model }),
     credentialId: params.id,
   };
 };
@@ -263,6 +263,6 @@ export const getImageModel = async (
   }
 ) => {
   const { modelName: model, providerName: provider } = await getModelAndProviderId(input.model);
-  const { m, credentialId } = await loadImageModel(model, { provider, ...options });
-  return { m, credentialId };
+  const result = await loadImageModel(model, { provider, ...options });
+  return result;
 };

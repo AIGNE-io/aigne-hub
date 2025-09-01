@@ -156,7 +156,7 @@ router.post(
       }
 
       await checkModelRateAvailable(req.body.model);
-      const { m: model } = await getModel(req.body, {
+      const { modelInstance: model } = await getModel(req.body, {
         modelOptions: req.body?.options?.modelOptions,
         req, // Pass request for ModelCall context updating
       });

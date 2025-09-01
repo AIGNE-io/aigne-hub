@@ -976,16 +976,18 @@ router.get('/model-rates', user, async (req, res) => {
       limit: pageSize,
     });
 
+    const list = await Promise.all(
+      modelRates.map(async (rate) => {
+        const modelStatus = await AiModelStatus.findOne({
+          where: { providerId: rate.providerId, model: rate.model },
+        });
+        return { ...rate.toJSON(), status: modelStatus };
+      })
+    );
+
     return res.json({
       count,
-      list: await Promise.all(
-        modelRates.map(async (rate) => {
-          const modelStatus = await AiModelStatus.findOne({
-            where: { providerId: rate.providerId, model: rate.model },
-          });
-          return { ...rate.toJSON(), status: modelStatus };
-        })
-      ),
+      list,
       paging: {
         page,
         pageSize,
@@ -1119,16 +1121,16 @@ router.get('/models', async (req, res) => {
       });
     });
 
-    return res.json(
-      await Promise.all(
-        result.map(async (item) => {
-          const modelStatus = await AiModelStatus.findOne({
-            where: { providerId: item.providerId, model: item.model },
-          });
-          return { ...item, status: modelStatus };
-        })
-      )
+    const list = await Promise.all(
+      result.map(async (item) => {
+        const modelStatus = await AiModelStatus.findOne({
+          where: { providerId: item.providerId, model: item.model },
+        });
+        return { ...item, status: modelStatus };
+      })
     );
+
+    return res.json(list);
   } catch (error) {
     logger.error('Failed to get available models:', error);
     return res.status(500).json({
@@ -1142,7 +1144,7 @@ const inputSchema = createListParamSchema({
   pageSize: Joi.number().integer().min(10).optional(),
 });
 
-router.get('/test-models', user, rateLimitMiddleware, async (req, res) => {
+router.get('/test-models', user, ensureAdmin, rateLimitMiddleware, async (req, res) => {
   try {
     const { page, pageSize, providerId, model, type } = req.query || {};
 
