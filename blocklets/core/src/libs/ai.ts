@@ -11,12 +11,18 @@ export const textCompletions = createTextCompletionApi({
   fetch: createFetch(),
   path: '/api/v1/completions',
   timeout: API_TIMEOUT,
+  headers: {
+    'x-aigne-hub-client-did': window.blocklet?.appPid,
+  },
 });
 
 export const textCompletionsV2 = createTextCompletionApi({
   fetch: createFetch(),
   path: '/api/v2/completions',
   timeout: API_TIMEOUT,
+  headers: {
+    'x-aigne-hub-client-did': window.blocklet?.appPid,
+  },
 });
 
 export const imageGenerations = createImageGenerationApi({ axios, path: '/api/v1/image/generations' });

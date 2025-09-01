@@ -24,7 +24,7 @@ repository:
   type: git
   url: git+https://github.com/AIGNE-io/aigne-hub.git
 specVersion: 1.2.8
-version: 0.3.15
+version: 0.4.1
 logo: screenshots/logo.png
 files:
   - dist
@@ -131,6 +131,7 @@ navigation:
       zh: 额度分析
     icon: ion:receipt-outline
     link: /credit-usage
+    private: true
     section:
       - userCenter
       - sessionManager

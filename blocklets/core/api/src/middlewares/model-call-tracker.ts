@@ -1,6 +1,6 @@
 import logger from '@api/libs/logger';
 import { getCurrentUnixTimestamp } from '@api/libs/timestamp';
-import { getModelAndProviderId } from '@api/providers/models';
+import { getModelAndProviderId } from '@api/providers/util';
 import ModelCall from '@api/store/models/model-call';
 import { CallType } from '@api/store/models/types';
 import BigNumber from 'bignumber.js';
@@ -60,7 +60,7 @@ export function createModelCallMiddleware(callType: CallType) {
         imageStyle: req.body?.style,
       };
     }
-    const appDid = (req.headers['x-aigne-hub-client-did'] as string) || process.env.BLOCKLET_APP_PID || '';
+    const appDid = (req.headers['x-aigne-hub-client-did'] as string) || '';
     req.appClient = {
       appId: appDid,
       userDid,

@@ -11,6 +11,7 @@ export const AI_PROVIDERS = {
   XAI: 'xai',
   DOUBAO: 'doubao',
   POE: 'poe',
+  IDEOGRAM: 'ideogram',
 } as const;
 
 export type AIProviderType = (typeof AI_PROVIDERS)[keyof typeof AI_PROVIDERS];

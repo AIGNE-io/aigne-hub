@@ -59,7 +59,7 @@ export const createTextCompletionApi =
         })
       : fetch(path, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...headers },
           body: JSON.stringify(options),
         })
           .then((res) => res.json())
@@ -110,7 +110,7 @@ export const createImageGenerationApi =
   }): ImageGenerationFn<P> =>
   async (options) => {
     return axios
-      .post(path, options)
+      .post(path, options, { headers: { 'x-aigne-hub-client-did': window.blocklet?.appPid } })
       .then((res) => res.data)
       .catch(processResponseError);
   };

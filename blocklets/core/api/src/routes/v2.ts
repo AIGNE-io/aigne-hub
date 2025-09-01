@@ -101,7 +101,7 @@ router.post('/:type(chat)?/completions', compression(), user, chatCallTracker, a
             completionTokens: (usageData.usage?.outputTokens as number) || 0,
             model: req.body?.model as string,
             modelParams: req.body?.options?.modelOptions,
-            appId: (req.headers['x-aigne-hub-client-did'] as string) || req.appClient?.appId,
+            appId: req.headers['x-aigne-hub-client-did'] as string,
             userDid: userDid!,
             creditBasedBillingEnabled: Config.creditBasedBillingEnabled,
             additionalMetrics: {
@@ -174,7 +174,7 @@ router.post(
                 model: req.body?.model as string,
                 modelParams: req.body?.options?.modelOptions,
                 userDid: userDid!,
-                appId: (req.headers['x-aigne-hub-client-did'] as string) || req.appClient?.appId,
+                appId: req.headers['x-aigne-hub-client-did'] as string,
                 creditBasedBillingEnabled: Config.creditBasedBillingEnabled,
                 additionalMetrics: {
                   totalTokens: (usageData.usage as any)?.totalTokens,
@@ -195,6 +195,71 @@ router.post(
             }
             return data;
           },
+        },
+      });
+    } catch (error) {
+      handleModelCallError(req, error);
+      throw error;
+    }
+  })
+);
+
+router.post(
+  '/image',
+  user,
+  imageCallTracker,
+  createRetryHandler(async (req, res) => {
+    const userDid = req.user?.did;
+    if (Config.creditBasedBillingEnabled && !isPaymentRunning()) {
+      throw new CustomError(502, 'Payment kit is not Running');
+    }
+
+    try {
+      if (userDid && Config.creditBasedBillingEnabled) {
+        await checkUserCreditBalance({ userDid });
+      }
+
+      const usageData = await processImageGeneration({
+        req,
+        res,
+        version: 'v2',
+        inputBody: {
+          model: req.body.model,
+          ...req.body.input,
+          ...req.body.options?.modelOptions,
+          responseFormat: req.body.input.response_format || req.body.input.responseFormat,
+        },
+      });
+
+      let aigneHubCredits;
+      if (usageData && userDid) {
+        aigneHubCredits = await createUsageAndCompleteModelCall({
+          req,
+          type: 'imageGeneration',
+          model: usageData.model,
+          modelParams: usageData.modelParams,
+          numberOfImageGeneration: usageData.numberOfImageGeneration,
+          appId: req.headers['x-aigne-hub-client-did'] as string,
+          userDid: userDid!,
+          creditBasedBillingEnabled: Config.creditBasedBillingEnabled,
+          additionalMetrics: {
+            imageSize: usageData.modelParams?.size,
+            imageQuality: usageData.modelParams?.quality,
+            imageStyle: usageData.modelParams?.style,
+          },
+          metadata: {
+            endpoint: req.path,
+            numberOfImages: usageData.numberOfImageGeneration,
+          },
+        });
+      }
+
+      res.json({
+        images: usageData?.images,
+        data: usageData?.images,
+        model: usageData?.modelName,
+        usage: {
+          aigneHubCredits: Number(aigneHubCredits),
         },
       });
     } catch (error) {
@@ -229,7 +294,7 @@ router.post(
           completionTokens: 0, // Embeddings don't have completion tokens
           model: usageData.model,
           userDid: userDid!,
-          appId: (req.headers['x-aigne-hub-client-did'] as string) || req.appClient?.appId,
+          appId: req.headers['x-aigne-hub-client-did'] as string,
           creditBasedBillingEnabled: Config.creditBasedBillingEnabled,
           additionalMetrics: {
             // No additional usage metrics for embeddings
@@ -266,16 +331,25 @@ router.post(
         await checkUserCreditBalance({ userDid });
       }
 
-      const usageData = await processImageGeneration(req, res, 'v2');
+      const usageData = await processImageGeneration({
+        req,
+        res,
+        version: 'v2',
+        inputBody: {
+          ...req.body,
+          responseFormat: req.body.response_format || req.body.responseFormat,
+        },
+      });
 
+      let aigneHubCredits;
       if (usageData && userDid) {
-        await createUsageAndCompleteModelCall({
+        aigneHubCredits = await createUsageAndCompleteModelCall({
           req,
           type: 'imageGeneration',
           model: usageData.model,
           modelParams: usageData.modelParams,
           numberOfImageGeneration: usageData.numberOfImageGeneration,
-          appId: (req.headers['x-aigne-hub-client-did'] as string) || req.appClient?.appId,
+          appId: req.headers['x-aigne-hub-client-did'] as string,
           userDid: userDid!,
           creditBasedBillingEnabled: Config.creditBasedBillingEnabled,
           additionalMetrics: {
@@ -289,6 +363,15 @@ router.post(
           },
         });
       }
+
+      res.json({
+        images: usageData?.images,
+        data: usageData?.images,
+        model: usageData?.modelName,
+        usage: {
+          aigneHubCredits: Number(aigneHubCredits),
+        },
+      });
     } catch (error) {
       handleModelCallError(req, error);
       throw error;

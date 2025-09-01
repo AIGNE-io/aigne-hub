@@ -98,11 +98,20 @@ router.post(
     }
 
     // Process image generation and get usage data
-    const usageData = await processImageGeneration(req, res, 'v1');
+    const usageData = await processImageGeneration({
+      req,
+      res,
+      version: 'v1',
+      inputBody: {
+        ...req.body,
+        responseFormat: req.body.response_format || req.body.responseFormat,
+      },
+    });
 
+    let aigneHubCredits;
     // Report usage with v1 specific parameters
     if (usageData) {
-      await createAndReportUsage({
+      aigneHubCredits = await createAndReportUsage({
         type: 'imageGeneration',
         model: usageData.model,
         modelParams: usageData.modelParams,
@@ -110,6 +119,15 @@ router.post(
         appId: req.appClient?.appId,
       });
     }
+
+    res.json({
+      images: usageData?.images,
+      data: usageData?.images,
+      model: usageData?.modelName,
+      usage: {
+        aigneHubCredits: Number(aigneHubCredits),
+      },
+    });
   })
 );
 

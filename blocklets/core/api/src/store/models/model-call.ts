@@ -154,6 +154,7 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
     status,
     model,
     providerId,
+    appDid,
   }: {
     userDid?: string;
     startTime?: number;
@@ -164,6 +165,7 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
     status?: 'success' | 'failed' | 'all';
     model?: string;
     providerId?: string;
+    appDid?: string;
   }): Promise<{
     count: number;
     list: (ModelCall & { provider?: AiProvider })[];
@@ -172,6 +174,10 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
 
     if (userDid) {
       whereClause.userDid = userDid;
+    }
+
+    if (appDid) {
+      whereClause.appDid = appDid;
     }
 
     if (startTime || endTime) {
@@ -193,7 +199,7 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
     }
 
     if (search) {
-      whereClause[Op.or] = [{ model: { [Op.like]: `%${search}%` } }];
+      whereClause[Op.or] = [{ model: { [Op.like]: `%${search}%` } }, { appDid: { [Op.like]: `%${search}%` } }];
     }
 
     const { rows, count } = await ModelCall.findAndCountAll({

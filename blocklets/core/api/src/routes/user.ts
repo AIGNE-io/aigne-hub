@@ -1,3 +1,4 @@
+import { getDidDomainForBlocklet } from '@abtnode/util/lib/get-domain-for-blocklet';
 import { blocklet, getConnectQueryParam } from '@api/libs/auth';
 import { Config } from '@api/libs/env';
 import logger from '@api/libs/logger';
@@ -14,17 +15,88 @@ import { ensureAdmin } from '@api/libs/security';
 import { formatToShortUrl } from '@api/libs/url';
 import ModelCall from '@api/store/models/model-call';
 import ModelCallStat from '@api/store/models/model-call-stat';
+import { isValid as isValidDid } from '@arcblock/did';
 import { proxyToAIKit } from '@blocklet/aigne-hub/api/call';
 import { CustomError } from '@blocklet/error';
 import config from '@blocklet/sdk/lib/config';
 import sessionMiddleware from '@blocklet/sdk/lib/middlewares/session';
 import { fromUnitToToken } from '@ocap/util';
+import axios from 'axios';
 import BigNumber from 'bignumber.js';
 import { Router } from 'express';
 import Joi from 'joi';
 import { pick } from 'lodash';
 import { Op } from 'sequelize';
 import { joinURL, withQuery } from 'ufo';
+
+interface AppNameCacheItem {
+  appName: string;
+  appLogo: string;
+  appDid: string;
+  appUrl: string;
+  timestamp: number;
+  expiresAt: number;
+}
+
+const CACHE_DURATION = 24 * 60 * 60 * 1000;
+const MAX_CACHE_SIZE = 1000;
+
+const appNameCache = new Map<string, AppNameCacheItem>();
+
+const getAppName = async (appDid: string) => {
+  try {
+    const now = Date.now();
+
+    const cached = appNameCache.get(appDid);
+    if (cached && now < cached.expiresAt) {
+      return {
+        appName: cached.appName,
+        appDid,
+        appLogo: cached.appLogo,
+        appUrl: cached.appUrl,
+      };
+    }
+
+    if (cached && now >= cached.expiresAt) {
+      appNameCache.delete(appDid);
+    }
+
+    if (appNameCache.size >= MAX_CACHE_SIZE) {
+      const oldestKey = appNameCache.keys().next().value;
+      if (oldestKey) {
+        appNameCache.delete(oldestKey);
+      }
+    }
+
+    const url = joinURL(`https://${getDidDomainForBlocklet({ did: appDid })}`, '__blocklet__.js?type=json');
+    const { data } = await axios.get(url, { timeout: 3000 });
+    const appName = data?.appName || appDid;
+
+    appNameCache.set(appDid, {
+      appName,
+      timestamp: now,
+      expiresAt: now + CACHE_DURATION,
+      appDid,
+      appUrl: data?.appUrl,
+      appLogo: data?.appLogo,
+    });
+
+    return {
+      appName,
+      appDid,
+      appLogo: data.appLogo,
+      appUrl: data.appUrl,
+    };
+  } catch (error) {
+    logger.error('Failed to get app name:', error);
+    return {
+      appName: appDid,
+      appDid,
+      appLogo: '',
+      appUrl: '',
+    };
+  }
+};
 
 const router = Router();
 
@@ -334,6 +406,7 @@ export interface ModelCallsQuery {
   status?: 'success' | 'failed' | 'all';
   model?: string;
   providerId?: string;
+  appDid?: string;
 }
 
 const modelCallsSchema = Joi.object<ModelCallsQuery>({
@@ -345,6 +418,7 @@ const modelCallsSchema = Joi.object<ModelCallsQuery>({
   status: Joi.string().valid('success', 'failed', 'all').empty([null, '']),
   model: Joi.string().max(100).empty([null, '']),
   providerId: Joi.string().max(100).empty([null, '']),
+  appDid: Joi.string().optional().empty([null, '']),
 });
 
 export interface UsageStatsQuery {
@@ -526,6 +600,7 @@ router.get('/model-calls', user, async (req, res) => {
       status,
       model,
       providerId,
+      appDid,
     } = await modelCallsSchema.validateAsync(req.query, {
       stripUnknown: true,
     });
@@ -536,6 +611,7 @@ router.get('/model-calls', user, async (req, res) => {
     }
 
     const offset = (page - 1) * pageSize;
+
     const calls = await ModelCall.getCallsByDateRange({
       userDid,
       startTime: startTime ? parseInt(startTime, 10) : undefined,
@@ -546,11 +622,39 @@ router.get('/model-calls', user, async (req, res) => {
       status,
       model,
       providerId,
+      appDid,
+    });
+
+    const uniqueAppDids = [
+      ...new Set(calls.list.filter((call) => call.appDid && isValidDid(call.appDid)).map((call) => call.appDid!)),
+    ];
+
+    const appNameMap = new Map<string, { appName: string; appDid: string; appLogo: string; appUrl: string }>();
+    if (uniqueAppDids.length) {
+      await Promise.all(
+        uniqueAppDids.map(async (appDid) => {
+          const data = await getAppName(appDid);
+          appNameMap.set(appDid, data);
+        })
+      );
+    }
+
+    const list = calls.list.map((call) => {
+      if (call.appDid) {
+        if (isValidDid(call.appDid)) {
+          return {
+            ...call.dataValues,
+            appInfo: appNameMap.get(call.appDid),
+          };
+        }
+      }
+
+      return call.dataValues;
     });
 
     return res.json({
       count: calls.count,
-      list: calls.list,
+      list,
       paging: {
         page,
         pageSize,
@@ -563,9 +667,12 @@ router.get('/model-calls', user, async (req, res) => {
 
 router.get('/model-calls/export', user, async (req, res) => {
   try {
-    const { startTime, endTime, search, status, model, providerId } = await modelCallsSchema.validateAsync(req.query, {
-      stripUnknown: true,
-    });
+    const { startTime, endTime, search, status, model, providerId, appDid } = await modelCallsSchema.validateAsync(
+      req.query,
+      {
+        stripUnknown: true,
+      }
+    );
     const userDid = req.user?.did;
 
     if (!userDid) {
@@ -582,6 +689,7 @@ router.get('/model-calls/export', user, async (req, res) => {
       status,
       model,
       providerId,
+      appDid,
     });
 
     // Convert to CSV format

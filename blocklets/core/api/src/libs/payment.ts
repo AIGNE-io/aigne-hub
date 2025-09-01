@@ -250,6 +250,77 @@ export async function ensureDefaultCreditPrice() {
   }
 }
 
+export async function updateCreditConfig({
+  priceId,
+  paymentLinkId,
+  paymentLink,
+  currencyId,
+}: {
+  priceId?: string;
+  paymentLinkId?: string;
+  paymentLink?: string;
+  currencyId?: string;
+}) {
+  let meterCurrencyId = currencyId;
+  if (!currencyId) {
+    const meter = await ensureMeter();
+    if (!meter) {
+      return;
+    }
+    meterCurrencyId = meter.currency_id;
+  }
+  if (!meterCurrencyId) {
+    return;
+  }
+
+  try {
+    const currency = await payment.paymentCurrencies.getRechargeConfig(meterCurrencyId);
+    const rechargeConfig = currency?.recharge_config;
+    if (!rechargeConfig || !rechargeConfig?.base_price_id) {
+      const defaultPrice = await payment.prices.retrieve(priceId || DEFAULT_CREDIT_PRICE_KEY);
+      if (!defaultPrice) {
+        return;
+      }
+      const updates: any = {
+        base_price_id: defaultPrice.id,
+      };
+      if (paymentLinkId) {
+        updates.payment_link_id = paymentLinkId;
+      }
+      if (paymentLink) {
+        updates.checkout_url = paymentLink;
+      }
+      await payment.paymentCurrencies.updateRechargeConfig(meterCurrencyId, updates);
+      return;
+    }
+    if (!priceId) {
+      return;
+    }
+    if (
+      rechargeConfig &&
+      rechargeConfig.payment_link_id === paymentLinkId &&
+      rechargeConfig.base_price_id === priceId
+    ) {
+      return;
+    }
+    const updates: any = {
+      base_price_id: priceId,
+    };
+    if (paymentLinkId) {
+      updates.payment_link_id = paymentLinkId;
+    }
+    if (paymentLink) {
+      updates.checkout_url = paymentLink;
+    }
+    await payment.paymentCurrencies.updateRechargeConfig(meterCurrencyId, {
+      payment_link_id: paymentLinkId,
+      base_price_id: priceId,
+      checkout_url: paymentLink || '',
+    });
+  } catch (error) {
+    logger.error('failed to update credit config', { error });
+  }
+}
 export async function ensureDefaultCreditPaymentLink() {
   if (!isPaymentRunning()) return null;
   const price = await ensureDefaultCreditPrice();
@@ -262,6 +333,11 @@ export async function ensureDefaultCreditPaymentLink() {
     if (!existingPaymentLink) {
       throw new CustomError(404, 'Default credit payment link not found');
     }
+    await updateCreditConfig({
+      currencyId: price.metadata.credit_config.currency_id,
+      priceId: price.id,
+      paymentLinkId: existingPaymentLink.id,
+    });
     return joinURL(getPaymentKitPrefix(), 'checkout/pay', existingPaymentLink.id);
   } catch (error) {
     logger.error('failed to retrieve default credit payment link, create a new one', { error });
@@ -283,6 +359,11 @@ export async function ensureDefaultCreditPaymentLink() {
     });
     const link = joinURL('/checkout/pay', paymentLink.id);
     Config.creditPaymentLink = link;
+    await updateCreditConfig({
+      currencyId: price.metadata.credit_config.currency_id,
+      priceId: price.id,
+      paymentLinkId: paymentLink.id,
+    });
     return joinURL(getPaymentKitPrefix(), link);
   }
 }
@@ -291,9 +372,13 @@ export async function ensureDefaultCreditPaymentLink() {
 export async function getCreditPaymentLink() {
   if (!isPaymentRunning()) return null;
   if (Config?.creditPaymentLink) {
+    let url = Config.creditPaymentLink;
     if (Config.creditPaymentLink.startsWith('/')) {
-      return joinURL(getPaymentKitPrefix(), Config.creditPaymentLink);
+      url = joinURL(getPaymentKitPrefix(), Config.creditPaymentLink);
     }
+    await updateCreditConfig({
+      paymentLink: url,
+    });
     return Config.creditPaymentLink;
   }
   // fallback to default payment link

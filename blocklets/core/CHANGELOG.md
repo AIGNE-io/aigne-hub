@@ -1,3 +1,67 @@
+## 0.4.1 (2025-9-1)
+
+- feat: set credit-usage private
+
+## 0.4.0 (2025-8-29)
+
+- fix(ui): simplify wave animation and improve canvas rendering in credits balance
+
+## 0.3.29 (2025-8-29)
+
+- chore: update package to latest
+
+## 0.3.28 (2025-8-28)
+
+- chore: support ideogram provider
+
+## 0.3.27 (2025-8-28)
+
+- feat(core): enhance credit payment configuration and update dependencies
+
+## 0.3.26 (2025-8-28)
+
+- chore: support reviewer github action
+
+## 0.3.25 (2025-8-28)
+
+- chore: support responseFormat for image generation
+
+## 0.3.24 (2025-8-28)
+
+- feat(core): add auto-topup with enhanced credits UI
+
+## 0.3.23 (2025-8-27)
+
+- chore: return usage for image generation api
+
+## 0.3.22 (2025-8-27)
+
+- chore: update package to latest
+
+## 0.3.21 (2025-8-27)
+
+- feat: integrate framework image agent for image generation
+
+## 0.3.20 (2025-8-25)
+
+- fix: remove default addPid header is used when headers are missing
+
+## 0.3.19 (2025-8-25)
+
+- fix: update caller did name for filtering call history
+
+## 0.3.18 (2025-8-25)
+
+- fix: add filtering by pid for call history
+
+## 0.3.17 (2025-8-25)
+
+- fix: show detailed popper info on user hover
+
+## 0.3.16 (2025-8-22)
+
+- fix(api): display user info of called AIGNE Hub
+
 ## 0.3.15 (2025-8-19)
 
 - chore: update dependencies
