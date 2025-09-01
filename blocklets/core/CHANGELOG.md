@@ -1,6 +1,6 @@
 ## 0.4.2 (2025-9-1)
 
-- fix: show model status
+- feat: added support for testing model availability and displaying its status in the UI
 
 ## 0.4.1 (2025-9-1)
 

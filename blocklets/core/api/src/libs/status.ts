@@ -155,10 +155,6 @@ export function withModelStatus(handler: (req: Request, res: Response) => Promis
         duration: Date.now() - start,
       });
     } catch (error) {
-      if (error instanceof CustomError) {
-        throw error;
-      }
-
       await updateModelStatus({
         model: req.body.model,
         success: false,
@@ -192,10 +188,6 @@ export async function callWithModelStatus(
     // if (credentialId && [401, 402].includes(Number(error.code))) {
     //   await AiCredential.update({ active: false }, { where: { id: credentialId } });
     // }
-
-    if (error instanceof CustomError) {
-      throw error;
-    }
 
     await updateModelStatus({
       model: `${provider}/${model}`,

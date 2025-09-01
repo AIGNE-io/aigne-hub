@@ -1140,8 +1140,8 @@ router.get('/models', async (req, res) => {
 });
 
 const inputSchema = createListParamSchema({
-  page: Joi.number().integer().min(1).optional(),
-  pageSize: Joi.number().integer().min(10).optional(),
+  page: Joi.number().integer().optional(),
+  pageSize: Joi.number().integer().optional(),
 });
 
 router.get('/test-models', user, ensureAdmin, rateLimitMiddleware, async (req, res) => {
