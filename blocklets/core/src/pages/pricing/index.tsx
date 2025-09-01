@@ -1,5 +1,7 @@
+import { Status } from '@app/components/status';
 /* eslint-disable react/no-unstable-nested-components */
 import { getPrefix } from '@app/libs/util';
+import { useSubscription } from '@app/libs/ws';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import Toast from '@arcblock/ux/lib/Toast';
 import { Table } from '@blocklet/aigne-hub/components';
@@ -57,6 +59,14 @@ interface ModelData {
       style?: string[];
     };
   };
+  status?: {
+    available?: boolean;
+    error?: {
+      code?: string;
+      message?: string;
+    };
+  };
+  loading?: boolean;
 }
 
 const SearchRow = styled(Box)`
@@ -108,7 +118,11 @@ export default function PricingPage() {
     setSearchInput(search?.q || '');
   }, [search?.q]);
 
-  const { data: modelData = [], loading } = useRequest(
+  const {
+    data: modelData = [],
+    loading,
+    mutate,
+  } = useRequest(
     async () => {
       const url = '/api/ai-providers/models';
       const response = await api.get(url);
@@ -119,6 +133,23 @@ export default function PricingPage() {
         Toast.error(formatError(error));
       },
     }
+  );
+
+  useSubscription(
+    'model.status.updated',
+    ({ provider, model, available }: { provider: string; model: string; available: boolean }) => {
+      mutate((r: any) => {
+        r.forEach((item: any) => {
+          if (item.provider === provider && item.model === model && item.status) {
+            item.loading = false;
+            item.status.available = available;
+          }
+        });
+
+        return r;
+      });
+    },
+    []
   );
 
   const filteredData = useMemo(() => {
@@ -227,7 +258,6 @@ export default function PricingPage() {
         customBodyRender: (_value: any, tableMeta: any) => {
           const model = filteredData.list[tableMeta.rowIndex];
           if (!model) return null;
-          const isAvailable = model.active !== false;
           if (isMobile) {
             return (
               <Stack direction="column" alignItems="flex-end">
@@ -243,6 +273,7 @@ export default function PricingPage() {
               </Stack>
             );
           }
+
           return (
             <Stack
               direction="row"
@@ -258,30 +289,8 @@ export default function PricingPage() {
               <Stack direction="column" spacing={0.5}>
                 <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                   <Typography variant="subtitle1">{model.model}</Typography>
-                  <Stack
-                    direction="row"
-                    spacing={0.5}
-                    sx={{
-                      alignItems: 'center',
-                      display: isMobile ? 'none' : 'flex',
-                    }}>
-                    <Box
-                      sx={{
-                        width: 6,
-                        height: 6,
-                        bgcolor: isAvailable ? 'success.main' : 'warning.main',
-                        borderRadius: '50%',
-                      }}
-                    />
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        fontWeight: '600',
-                        color: isAvailable ? 'success.main' : 'warning.main',
-                      }}>
-                      {t(`pricing.status.${isAvailable ? 'available' : 'pending'}`)}
-                    </Typography>
-                  </Stack>
+
+                  <Status model={model} t={t} />
                 </Stack>
                 <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                   <Typography variant="caption" sx={{ color: 'text.secondary' }}>

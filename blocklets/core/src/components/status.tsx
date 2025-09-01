@@ -23,7 +23,7 @@ export function Status({
       return 'warning';
     }
 
-    return 'pending';
+    return 'available';
   };
   const status = getStatus();
 
@@ -34,8 +34,8 @@ export function Status({
   return (
     <Tooltip title={model.status?.error?.message}>
       <Stack direction="row" spacing={1} sx={{ alignItems: 'center', justifyContent: 'center' }}>
-        <Box sx={{ width: 6, height: 6, bgcolor: status ? map[status] : map.pending, borderRadius: '50%' }} />
-        <Typography variant="body2" sx={{ color: status ? map[status] : map.pending }}>
+        <Box sx={{ width: 6, height: 6, bgcolor: status ? map[status] : map.available, borderRadius: '50%' }} />
+        <Typography variant="body2" sx={{ color: status ? map[status] : map.available }}>
           {t(`pricing.status.${status}`)}
         </Typography>
       </Stack>

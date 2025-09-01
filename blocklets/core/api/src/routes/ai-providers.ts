@@ -21,6 +21,23 @@ import { Op } from 'sequelize';
 import { getQueue } from '../libs/queue';
 
 const testModelsRateLimit = new Map<string, { count: number; startTime: number }>();
+const TEST_MODELS_RATE_LIMIT_TIME = 10 * 60 * 1000; // 10 minutes
+const TEST_MODELS_RATE_LIMIT_COUNT = 5;
+
+const typeFilterMap: Record<string, string> = {
+  chatCompletion: 'chatCompletion',
+  imageGeneration: 'imageGeneration',
+  embedding: 'embedding',
+  chat: 'chatCompletion',
+  image_generation: 'imageGeneration',
+  image: 'imageGeneration',
+};
+
+const typeMap = {
+  chatCompletion: 'chat',
+  imageGeneration: 'image_generation',
+  embedding: 'embedding',
+};
 
 const rateLimitMiddleware = (req: Request, res: Response, next: NextFunction): void => {
   if (req.user?.did) {
@@ -28,9 +45,9 @@ const rateLimitMiddleware = (req: Request, res: Response, next: NextFunction): v
     const userLimit = testModelsRateLimit.get(req.user.did);
 
     if (userLimit) {
-      if (now - userLimit.startTime < 10 * 60 * 1000) {
-        if (userLimit.count >= 5) {
-          const remainingTime = Math.ceil((10 * 60 * 1000 - (now - userLimit.startTime)) / 1000);
+      if (now - userLimit.startTime < TEST_MODELS_RATE_LIMIT_TIME) {
+        if (userLimit.count >= TEST_MODELS_RATE_LIMIT_COUNT) {
+          const remainingTime = Math.ceil((TEST_MODELS_RATE_LIMIT_TIME - (now - userLimit.startTime)) / 1000);
 
           res.status(429).json({
             error: 'Rate limit exceeded',
@@ -55,7 +72,7 @@ const rateLimitMiddleware = (req: Request, res: Response, next: NextFunction): v
 const modelStatusQueue = getQueue({
   name: 'model-status',
   options: {
-    concurrency: 5,
+    concurrency: 2,
     maxRetries: 0,
   },
   onJob: async ({
@@ -568,6 +585,12 @@ router.post('/:providerId/model-rates', ensureAdmin, async (req, res) => {
       unitCosts: value.unitCosts,
     });
 
+    modelStatusQueue.push({
+      model: modelRate.model,
+      type: typeMap[modelRate.type as keyof typeof typeMap] || 'chat',
+      providerId: modelRate.providerId,
+    });
+
     return res.json(modelRate.toJSON());
   } catch (error) {
     logger.error('Failed to create model rate:', error);
@@ -745,6 +768,14 @@ router.post('/model-rates', ensureAdmin, async (req, res) => {
         return modelRate.toJSON();
       })
     );
+
+    createdRates.forEach((rate) => {
+      modelStatusQueue.push({
+        model: rate.model,
+        type: typeMap[rate.type as keyof typeof typeMap] || 'chat',
+        providerId: rate.providerId,
+      });
+    });
 
     return res.json({
       message: `Successfully created ${createdRates.length} model rates`,
@@ -999,21 +1030,6 @@ router.get('/model-rates', user, async (req, res) => {
   }
 });
 
-const typeFilterMap: Record<string, string> = {
-  chatCompletion: 'chatCompletion',
-  imageGeneration: 'imageGeneration',
-  embedding: 'embedding',
-  chat: 'chatCompletion',
-  image_generation: 'imageGeneration',
-  image: 'imageGeneration',
-};
-
-const typeMap = {
-  chatCompletion: 'chat',
-  imageGeneration: 'image_generation',
-  embedding: 'embedding',
-};
-
 // get available models in LiteLLM format (public endpoint)
 router.get('/models', async (req, res) => {
   try {
@@ -1196,25 +1212,14 @@ router.get('/test-models', user, ensureAdmin, rateLimitMiddleware, async (req, r
 
     const modelRates = await AiModelRate.findAll({
       where,
-      include: [
-        {
-          model: AiProvider,
-          as: 'provider',
-          where: { id: { [Op.in]: providers.map((p) => p.id) } },
-          attributes: ['id', 'name'],
-        },
-      ],
       order: [['createdAt', req.query.o === 'asc' ? 'ASC' : 'DESC']],
       ...params,
     });
 
     modelRates.forEach((rate) => {
-      const rateJson = rate.toJSON() as any;
-      const modelName = rateJson.model;
-
       modelStatusQueue.push({
-        model: modelName,
-        type: typeMap[rateJson.type as keyof typeof typeMap] || 'chat',
+        model: rate.model,
+        type: typeMap[rate.type as keyof typeof typeMap] || 'chat',
         providerId: rate.providerId,
       });
     });
