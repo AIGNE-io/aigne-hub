@@ -173,7 +173,7 @@ export function withModelStatus(handler: (req: Request, res: Response) => Promis
 }
 
 export async function callWithModelStatus(
-  { provider, model, credentialId }: { provider: string; model: string; credentialId?: string },
+  { provider, model }: { provider: string; model: string },
   handler: ({ provider, model }: { provider: string; model: string }) => Promise<void>
 ) {
   const start = Date.now();
@@ -207,15 +207,15 @@ export async function callWithModelStatus(
 }
 
 const checkChatModelStatus = async ({ provider, model }: { provider: string; model: string }) => {
-  const { m, credentialId } = await getModel({ model: `${provider}/${model}` });
-  await callWithModelStatus({ provider, model, credentialId }, async () => {
+  const { m } = await getModel({ model: `${provider}/${model}` });
+  await callWithModelStatus({ provider, model }, async () => {
     await m.invoke({ messages: [{ role: 'user', content: 'hi' }] });
   });
 };
 
 const checkImageModelStatus = async ({ provider, model }: { provider: string; model: string }) => {
-  const { m, credentialId } = await getImageModel({ model: `${provider}/${model}` });
-  await callWithModelStatus({ provider, model, credentialId }, async () => {
+  const { m } = await getImageModel({ model: `${provider}/${model}` });
+  await callWithModelStatus({ provider, model }, async () => {
     await m.invoke({ prompt: 'input number 1', n: 1, model });
   });
 };

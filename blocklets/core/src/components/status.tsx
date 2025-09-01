@@ -1,5 +1,5 @@
-import { Box, Button, ButtonProps, CircularProgress, Stack, Tooltip, Typography } from '@mui/material';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
+import { Box, Button, ButtonProps, CircularProgress, Stack, Tooltip, Typography } from '@mui/material';
 
 export function Status({
   t,
@@ -52,7 +52,7 @@ export function TestModelButton({
   const { t } = useLocaleContext();
   return (
     <Button variant="outlined" sx={{ alignSelf: 'flex-end' }} disabled={statusLoading} {...props}>
-      {statusLoading ? <CircularProgress size={14} sx={{ mr: 1 }} />: null}
+      {statusLoading ? <CircularProgress size={14} sx={{ mr: 1 }} /> : null}
       {statusLoading ? t('testStatus') : t('testStatus')}
     </Button>
   );
