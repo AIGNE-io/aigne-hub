@@ -187,9 +187,9 @@ export async function callWithModelStatus(
       duration: Date.now() - start,
     });
   } catch (error) {
-    if (credentialId && [401, 402].includes(Number(error.code))) {
-      await AiCredential.update({ active: false }, { where: { id: credentialId } });
-    }
+    // if (credentialId && [401, 402].includes(Number(error.code))) {
+    //   await AiCredential.update({ active: false }, { where: { id: credentialId } });
+    // }
 
     if (error instanceof CustomError) {
       throw error;

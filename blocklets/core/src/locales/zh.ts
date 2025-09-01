@@ -448,4 +448,6 @@ export default flatten({
   customRange: '自定义范围',
   dataAvailableFrom: '数据可查询近3个月',
   usedBy: '使用者',
+  testStatus: '测试状态',
+  testing: '测试中...',
 });
