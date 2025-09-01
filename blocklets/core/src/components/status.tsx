@@ -49,8 +49,8 @@ export function TestModelButton({
   statusLoading: boolean;
 } & ButtonProps) {
   return (
-    <Button variant="contained" sx={{ alignSelf: 'flex-end' }} disabled={statusLoading} {...props}>
-      {statusLoading && <CircularProgress size={14} sx={{ mr: 1 }} />}
+    <Button variant="outlined" sx={{ alignSelf: 'flex-end' }} disabled={statusLoading} {...props}>
+      {statusLoading ? <CircularProgress size={14} sx={{ mr: 1 }} />: null}
       {statusLoading ? 'Testing...' : 'Test Model Status'}
     </Button>
   );
