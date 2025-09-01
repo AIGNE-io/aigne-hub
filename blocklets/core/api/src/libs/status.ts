@@ -185,6 +185,7 @@ export async function callWithModelStatus(
       duration: Date.now() - start,
     });
   } catch (error) {
+    console.error('Failed to call with model status', error);
     // if (credentialId && [401, 402].includes(Number(error.code))) {
     //   await AiCredential.update({ active: false }, { where: { id: credentialId } });
     // }
@@ -258,14 +259,19 @@ export const checkModelStatus = async ({
     return;
   }
 
-  if (type === 'chat') {
-    await checkChatModelStatus({ provider: provider.name, model });
-  } else if (type === 'image_generation') {
-    await checkImageModelStatus({ provider: provider.name, model });
-  } else if (type === 'embedding') {
-    await checkEmbeddingModelStatus({ provider: provider.name, model });
-  } else {
-    console.error('Invalid model type', type);
-    throw new CustomError(500, 'Invalid model type');
+  try {
+    if (type === 'chat') {
+      await checkChatModelStatus({ provider: provider.name, model });
+    } else if (type === 'image_generation') {
+      await checkImageModelStatus({ provider: provider.name, model });
+    } else if (type === 'embedding') {
+      await checkEmbeddingModelStatus({ provider: provider.name, model });
+    } else {
+      console.error('Invalid model type', type);
+      throw new CustomError(500, 'Invalid model type');
+    }
+  } catch (error) {
+    await updateModelStatus({ model: `${provider.name}/${model}`, success: false, duration: 0, error });
+    throw error;
   }
 };

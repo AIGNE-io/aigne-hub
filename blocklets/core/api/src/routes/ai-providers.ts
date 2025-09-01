@@ -87,6 +87,7 @@ const modelStatusQueue = getQueue({
     logger.info('check model status', providerId, model, type);
     await checkModelStatus({ providerId, model, type }).catch((error) => {
       logger.error('check model status error', error);
+      throw error;
     });
   },
 });
