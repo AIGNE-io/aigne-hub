@@ -9,7 +9,7 @@ import { app, server } from './src';
     appType: 'custom',
     server,
     host: '127.0.0.1',
-    port: Number(5678),
+    port: Number(process.env.BLOCKLET_VITE_PORT || 11111),
     // importMetaHot: import.meta.hot,
   });
 
