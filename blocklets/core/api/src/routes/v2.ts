@@ -77,15 +77,12 @@ router.get('/status', user, async (req, res) => {
   return res.json({ available: true });
 });
 
-const checkUserMiddleware = (req: Request, _res: Response, next: NextFunction) => {
+const checkCreditBasedBillingMiddleware = (req: Request, _res: Response, next: NextFunction) => {
   const userDid = req.user?.did;
   if (!userDid) {
     throw new CustomError(401, 'User not authenticated');
   }
-  next();
-};
 
-const checkCreditBasedBillingMiddleware = (_req: Request, _res: Response, next: NextFunction) => {
   if (Config.creditBasedBillingEnabled && !isPaymentRunning()) {
     throw new CustomError(502, 'Payment kit is not Running');
   }
@@ -96,9 +93,8 @@ router.post(
   '/:type(chat)?/completions',
   compression(),
   user,
-  chatCallTracker,
-  checkUserMiddleware,
   checkCreditBasedBillingMiddleware,
+  chatCallTracker,
   withModelStatus(async (req, res) => {
     const userDid = req.user?.did;
 
@@ -151,9 +147,8 @@ router.post(
 router.post(
   '/chat',
   user,
-  chatCallTracker,
-  checkUserMiddleware,
   checkCreditBasedBillingMiddleware,
+  chatCallTracker,
   createRetryHandler(
     withModelStatus(async (req, res) => {
       const userDid = req.user?.did;
@@ -215,8 +210,8 @@ router.post(
 router.post(
   '/image',
   user,
-  imageCallTracker,
   checkCreditBasedBillingMiddleware,
+  imageCallTracker,
   createRetryHandler(
     withModelStatus(async (req, res) => {
       const userDid = req.user?.did;
@@ -276,8 +271,8 @@ router.post(
 router.post(
   '/embeddings',
   user,
-  embeddingCallTracker,
   checkCreditBasedBillingMiddleware,
+  embeddingCallTracker,
   createRetryHandler(
     withModelStatus(async (req, res) => {
       const userDid = req.user?.did;
@@ -318,8 +313,8 @@ router.post(
 router.post(
   '/image/generations',
   user,
-  imageCallTracker,
   checkCreditBasedBillingMiddleware,
+  imageCallTracker,
   createRetryHandler(
     withModelStatus(async (req, res) => {
       const userDid = req.user?.did;
