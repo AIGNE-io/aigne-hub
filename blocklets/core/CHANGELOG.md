@@ -1,3 +1,7 @@
+## 0.4.1 (2025-9-1)
+
+- feat: set credit-usage private
+
 ## 0.4.0 (2025-8-29)
 
 - fix(ui): simplify wave animation and improve canvas rendering in credits balance
