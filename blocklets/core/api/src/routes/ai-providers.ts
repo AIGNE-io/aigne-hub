@@ -342,9 +342,6 @@ router.post('/:providerId/credentials', ensureAdmin, async (req, res) => {
       apiKey: rawValue.credentialType === 'api_key' ? rawValue.value : undefined,
       accessKeyId: rawValue.credentialType === 'access_key_pair' ? rawValue.value.access_key_id : undefined,
       secretAccessKey: rawValue.credentialType === 'access_key_pair' ? rawValue.value.secret_access_key : undefined,
-    }).catch((error) => {
-      logger.error('check model is valid error:', error);
-      return res.status(400).json({ error: error.message });
     });
 
     // 处理凭证值
@@ -382,9 +379,7 @@ router.post('/:providerId/credentials', ensureAdmin, async (req, res) => {
     return res.json(credentialJson);
   } catch (error) {
     logger.error('Failed to create credential:', error);
-    return res.status(500).json({
-      error: 'Failed to create credential',
-    });
+    return res.status(500).json({ error: error.message || 'Failed to create credential' });
   }
 });
 
@@ -411,9 +406,6 @@ router.put('/:providerId/credentials/:credentialId', ensureAdmin, async (req, re
       apiKey: value.credentialType === 'api_key' ? value.value : undefined,
       accessKeyId: value.credentialType === 'access_key_pair' ? value.value.access_key_id : undefined,
       secretAccessKey: value.credentialType === 'access_key_pair' ? value.value.secret_access_key : undefined,
-    }).catch((error) => {
-      logger.error('check model is valid error:', error);
-      return res.status(400).json({ error: error.message });
     });
 
     // 处理凭证值
@@ -448,7 +440,7 @@ router.put('/:providerId/credentials/:credentialId', ensureAdmin, async (req, re
     return res.json(credentialJson);
   } catch (error) {
     logger.error('Failed to update credential:', error);
-    return res.status(500).json({ error: 'Failed to update credential' });
+    return res.status(500).json({ error: error.message || 'Failed to update credential' });
   }
 });
 
