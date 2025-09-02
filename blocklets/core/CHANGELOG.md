@@ -1,3 +1,7 @@
+## 0.4.4 (2025-9-2)
+
+- chore: merge model for chat
+
 ## 0.4.3 (2025-9-1)
 
 - fix: testing model availability in pricing page
