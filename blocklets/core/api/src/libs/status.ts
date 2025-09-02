@@ -222,7 +222,7 @@ export async function callWithModelStatus(
 
       NotificationManager.sendCustomNotificationByRoles(['owner', 'admin'], {
         title: 'AIGNE Hub Credential Invalid',
-        body: `${provider}/${model} ${credential?.name} credential invalid: ${error.message}, please check it`,
+        body: `${provider}/${model} ${credential?.name} credential is invalid: ${error.message}. Please check it.`,
       });
 
       await AiCredential.update({ active: false, error: error.message }, { where: { id: credentialId } });
@@ -251,7 +251,7 @@ const checkChatModelStatus = async ({ provider, model }: { provider: string; mod
 const checkImageModelStatus = async ({ provider, model }: { provider: string; model: string }) => {
   const { modelInstance, credentialId } = await getImageModel({ model: `${provider}/${model}` });
   await callWithModelStatus({ provider, model, credentialId }, async () => {
-    await modelInstance.invoke({ prompt: 'draw a picture of a cat', model });
+    await modelInstance.invoke({ prompt: 'A simple image of a picture of a cat', model });
   });
 };
 

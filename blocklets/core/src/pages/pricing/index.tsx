@@ -141,9 +141,15 @@ export default function PricingPage() {
       mutate((r: any) => {
         return r.map((item: any) => {
           if (item.provider === provider && item.model === model && item.status) {
-            item.loading = false;
-            item.status.available = available;
-            item.status.error = error;
+            return {
+              ...item,
+              loading: false,
+              status: {
+                ...item.status,
+                available,
+                error,
+              },
+            };
           }
 
           return item;

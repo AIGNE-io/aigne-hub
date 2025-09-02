@@ -198,9 +198,16 @@ export default function CredentialForm({
               {t('cancel')}
             </Button>
             <Button type="submit" variant="contained" disabled={loading}>
-              {loading && <CircularProgress size={16} />}
-              {loading && t('loading')}
-              {!loading && (isEdit ? t('update') : t('create'))}
+              {loading ? (
+                <>
+                  <CircularProgress size={16} sx={{ mr: 1 }} />
+                  {t('loading')}
+                </>
+              ) : isEdit ? (
+                t('update')
+              ) : (
+                t('create')
+              )}
             </Button>
           </Stack>
         </Stack>

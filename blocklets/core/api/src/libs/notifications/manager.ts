@@ -12,13 +12,13 @@ export async function getDidListByRole(role: string | string[]) {
       await Promise.all(
         role.map(async (r: string) => {
           const { users } = await blocklet.getUsers({ query: { role: r } });
-          users.forEach((u: any) => didSet.add(u.did));
+          users.forEach((u: { did: string }) => didSet.add(u.did));
         })
       );
       return Array.from(didSet);
     }
     const { users } = await blocklet.getUsers({ query: { role } });
-    return users.map((x: any) => x?.did);
+    return users.map((x: { did: string }) => x?.did);
   } catch (error) {
     logger.error('getDidListByRole error', error);
     throw error;

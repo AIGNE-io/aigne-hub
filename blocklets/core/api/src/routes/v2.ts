@@ -33,7 +33,6 @@ const chatCallTracker = createModelCallMiddleware('chatCompletion');
 const embeddingCallTracker = createModelCallMiddleware('embedding');
 const imageCallTracker = createModelCallMiddleware('imageGeneration');
 
-// 哪里使用了？
 router.get('/status', user, async (req, res) => {
   const userDid = req.user?.did;
   if (userDid && Config.creditBasedBillingEnabled) {

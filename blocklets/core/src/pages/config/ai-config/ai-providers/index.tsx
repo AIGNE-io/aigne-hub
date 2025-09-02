@@ -258,7 +258,9 @@ export default function AIProviders() {
             );
           }
 
-          const errorCredential = provider.credentials?.find((credential: Credential) => credential.active === false);
+          const errorCredential = provider.credentials
+            ? provider.credentials.find((credential: Credential) => credential.active === false)
+            : null;
 
           return (
             <Typography
@@ -279,7 +281,9 @@ export default function AIProviders() {
           const provider = providers[tableMeta.rowIndex];
           if (!provider) return null;
 
-          const errorCredential = provider.credentials?.find((credential: Credential) => credential.active === false);
+          const errorCredential = provider.credentials
+            ? provider.credentials.find((credential: Credential) => credential.active === false)
+            : null;
           const isConnected = provider.enabled && (provider.credentials?.length || 0) > 0;
           return (
             <Stack

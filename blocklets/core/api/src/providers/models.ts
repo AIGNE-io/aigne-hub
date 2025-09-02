@@ -270,7 +270,7 @@ const getModelByProviderName = async (provider: string) => {
       return m.name.toLowerCase().includes(provider);
     }
 
-    return m;
+    return m.name.some((n) => n.toLowerCase().includes(provider));
   });
 
   return m;
