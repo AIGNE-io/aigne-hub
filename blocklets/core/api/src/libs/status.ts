@@ -13,6 +13,7 @@ import wsServer from '../ws';
 import { getOpenAIV2 } from './ai-provider';
 import logger from './logger';
 import { NotificationManager } from './notifications/manager';
+import { CredentialInvalidNotificationTemplate } from './notifications/templates/credential';
 import { getQueue } from './queue';
 
 export const typeFilterMap: Record<string, string> = {
@@ -219,11 +220,17 @@ export async function callWithModelStatus(
 
     if (credentialId && [401, 402, 403].includes(Number(error.status))) {
       const credential = await AiCredential.findOne({ where: { id: credentialId } });
-
-      NotificationManager.sendCustomNotificationByRoles(['owner', 'admin'], {
-        title: 'AIGNE Hub Credential Invalid',
-        body: `${provider}/${model} ${credential?.name} credential is invalid: ${error.message}. Please check it.`,
+      const template = new CredentialInvalidNotificationTemplate({
+        credential: {
+          provider,
+          model,
+          credentialName: credential?.name,
+          credentialValue: credential?.getDisplayText(),
+          errorMessage: error.message,
+        },
       });
+
+      NotificationManager.sendCustomNotificationByRoles(['owner', 'admin'], await template.getTemplate());
 
       await AiCredential.update({ active: false, error: error.message }, { where: { id: credentialId } });
     }

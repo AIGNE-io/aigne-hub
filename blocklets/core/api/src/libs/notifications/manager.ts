@@ -93,8 +93,8 @@ export class NotificationManager {
     notificationData: BaseNotificationTemplateType
   ): Promise<boolean> {
     try {
-      const did = await getDidListByRole(role);
-      return await NotificationManager.sendCustomNotification(did, notificationData);
+      const userDids = await getDidListByRole(role);
+      return await NotificationManager.sendCustomNotification(userDids, notificationData);
     } catch (error) {
       logger.error('Failed to send custom notification by role', { error, role });
       return false;
