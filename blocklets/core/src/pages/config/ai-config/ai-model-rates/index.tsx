@@ -174,10 +174,13 @@ export default function AIModelRates() {
         const data = r.list || [];
 
         data.forEach((item: any) => {
-          if (item.provider?.name === provider && item.model === model && item.status) {
+          if (item.provider?.name === provider && item.model === model) {
             item.loading = false;
-            item.status.available = available;
-            item.status.error = error;
+
+            if (item.status) {
+              item.status.available = available;
+              item.status.error = error;
+            }
           }
         });
 

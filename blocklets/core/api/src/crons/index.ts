@@ -6,7 +6,7 @@ import {
 } from '@api/libs/env';
 
 import logger from '../libs/logger';
-import { checkAllModelStatus } from '../libs/status';
+// import { checkAllModelStatus } from '../libs/status';
 import { cleanupStaleProcessingCalls } from '../middlewares/model-call-tracker';
 import { createModelCallStats } from './model-call-stats';
 
@@ -35,8 +35,8 @@ function init() {
         name: 'check.model.status',
         time: CHECK_MODEL_STATUS_CRON_TIME,
         fn: () => {
-          logger.info('start check all model status');
-          checkAllModelStatus();
+          // logger.info('start check all model status');
+          // checkAllModelStatus();
         },
         options: { runOnInit: false },
       },

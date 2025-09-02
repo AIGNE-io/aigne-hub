@@ -206,8 +206,8 @@ const loadImageModel = async (
     req?: any; // Express Request with modelCallContext
   } = {}
 ) => {
-  const providerName = (provider || '').toLowerCase() === 'google' ? 'gemini' : provider?.toLowerCase();
-  const m = await getImageModelByProviderName(providerName || '');
+  const providerName = (provider || '').toLowerCase() === 'google' ? 'gemini' : provider?.toLowerCase() || '';
+  const m = await getImageModelByProviderName(providerName);
 
   if (!m) {
     throw new CustomError(
@@ -278,7 +278,7 @@ const getModelByProviderName = async (provider: string) => {
 
 const getImageModelByProviderName = async (provider: string) => {
   const models = availableImageModels();
-  const m = models.find((m) => provider && m.name.toLowerCase().includes(provider.toLowerCase()));
+  const m = models.find((m) => m.name.toLowerCase().includes(provider.toLowerCase()));
   return m;
 };
 

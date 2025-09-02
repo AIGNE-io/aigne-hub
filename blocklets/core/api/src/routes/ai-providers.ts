@@ -398,6 +398,7 @@ router.put('/:providerId/credentials/:credentialId', ensureAdmin, async (req, re
     if (!provider) {
       return res.status(404).json({ error: 'Provider not found' });
     }
+
     await checkModelIsValid(provider.name, {
       apiKey: value.credentialType === 'api_key' ? value.value : undefined,
       accessKeyId: value.credentialType === 'access_key_pair' ? value.value.access_key_id : undefined,

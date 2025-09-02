@@ -319,12 +319,7 @@ export const checkModelStatus = async ({
       throw new CustomError(500, 'Invalid model type');
     }
   } catch (error) {
-    logger.error('check model status error', {
-      provider: provider.name,
-      model,
-      type,
-      error,
-    });
+    logger.error('check model status error', { provider: provider.name, model, type, error });
 
     await updateModelStatus({ model: `${provider.name}/${model}`, success: false, duration: 0, error });
     throw error;
