@@ -258,7 +258,17 @@ const checkChatModelStatus = async ({ provider, model }: { provider: string; mod
 const checkImageModelStatus = async ({ provider, model }: { provider: string; model: string }) => {
   const { modelInstance, credentialId } = await getImageModel({ model: `${provider}/${model}` });
   await callWithModelStatus({ provider, model, credentialId }, async () => {
-    await modelInstance.invoke({ prompt: 'A simple image of a picture of a cat', model });
+    try {
+      await modelInstance.invoke({ prompt: 'A simple image of a cat', model });
+    } catch (error) {
+      const message = classifyError(error);
+      if (message.code === ModelErrorType.INVALID_ARGUMENT) {
+        await modelInstance.invoke({ prompt: 'A beautiful sunset over a calm ocean', model });
+        return;
+      }
+
+      throw error;
+    }
   });
 };
 
