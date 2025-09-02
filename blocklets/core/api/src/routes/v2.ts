@@ -158,10 +158,12 @@ router.post(
       }
 
       await checkModelRateAvailable(req.body.model);
-      const { modelInstance: model } = await getModel(req.body, {
-        modelOptions: req.body?.options?.modelOptions,
-        req, // Pass request for ModelCall context updating
-      });
+
+      const modelOptions = req.body?.input?.modelOptions;
+      const { modelInstance: model } = await getModel(req.body, { modelOptions, req });
+      if (modelOptions) {
+        delete req.body.input.modelOptions;
+      }
 
       const engine = new AIGNE({ model });
       const aigneServer = new AIGNEHTTPServer(engine);

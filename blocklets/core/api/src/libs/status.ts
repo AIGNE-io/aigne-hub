@@ -146,6 +146,10 @@ export function withModelStatus(handler: (req: Request, res: Response) => Promis
   return async (req: Request, res: Response) => {
     const start = Date.now();
 
+    if (!req.body.model) {
+      req.body.model = req.body.input?.modelOptions?.model;
+    }
+
     try {
       await handler(req, res);
 
