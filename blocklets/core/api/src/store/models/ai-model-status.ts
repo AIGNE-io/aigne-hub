@@ -8,6 +8,7 @@ const idGenerator = new Worker();
 const nextId = () => idGenerator.nextId().toString();
 
 export enum ModelErrorType {
+  INVALID_ARGUMENT = 'Invalid Argument',
   INVALID_API_KEY = 'Invalid API Key',
   NO_CREDITS_AVAILABLE = 'No Credits Available',
   EXPIRED_CREDENTIAL = 'Expired Credential',
@@ -38,7 +39,7 @@ export default class AiModelStatus extends Model<
 
   declare available: boolean;
 
-  declare error?: ModelError;
+  declare error?: ModelError | null;
 
   declare responseTime?: number;
 
@@ -131,7 +132,7 @@ export default class AiModelStatus extends Model<
     providerId: string;
     model: string;
     available: boolean;
-    error?: ModelError;
+    error?: ModelError | null;
     responseTime?: number;
   }): Promise<AiModelStatus> {
     const [status] = await AiModelStatus.findOrCreate({

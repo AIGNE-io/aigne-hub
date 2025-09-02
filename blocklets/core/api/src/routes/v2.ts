@@ -33,6 +33,7 @@ const chatCallTracker = createModelCallMiddleware('chatCompletion');
 const embeddingCallTracker = createModelCallMiddleware('embedding');
 const imageCallTracker = createModelCallMiddleware('imageGeneration');
 
+// 哪里使用了？
 router.get('/status', user, async (req, res) => {
   const userDid = req.user?.did;
   if (userDid && Config.creditBasedBillingEnabled) {
@@ -65,15 +66,18 @@ router.get('/status', user, async (req, res) => {
       },
     ],
   });
+
   if (providers.length === 0) {
     return res.json({ available: false });
   }
+
   if (modelName && Config.creditBasedBillingEnabled) {
     const modelRate = await AiModelRate.findOne({ where: { model: modelName } });
     if (!modelRate) {
       return res.json({ available: false, error: 'Model rate not available' });
     }
   }
+
   return res.json({ available: true });
 });
 

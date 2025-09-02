@@ -38,6 +38,8 @@ export default class AiCredential extends Model<InferAttributes<AiCredential>, I
 
   declare updatedAt: CreationOptional<Date>;
 
+  declare error?: string;
+
   public static readonly GENESIS_ATTRIBUTES = {
     id: {
       type: DataTypes.STRING,
@@ -84,6 +86,10 @@ export default class AiCredential extends Model<InferAttributes<AiCredential>, I
       type: DataTypes.DATE,
       allowNull: false,
     },
+    error: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
   };
 
   // 关联方法
@@ -91,17 +97,6 @@ export default class AiCredential extends Model<InferAttributes<AiCredential>, I
     AiCredential.belongsTo(models.AiProvider, {
       foreignKey: 'providerId',
       as: 'provider',
-    });
-  }
-
-  // 获取活跃的凭证
-  static async getActiveCredentials(providerId: string): Promise<AiCredential[]> {
-    return AiCredential.findAll({
-      where: {
-        providerId,
-        active: true,
-      },
-      order: [['usageCount', 'ASC']], // 优先使用使用次数少的
     });
   }
 

@@ -458,4 +458,5 @@ export default flatten({
   usedBy: 'Used By',
   testStatus: 'Test Status',
   testing: 'Testing...',
+  errorConnected: 'Incorrect Credentials',
 });

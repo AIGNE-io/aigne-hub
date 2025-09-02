@@ -6,7 +6,7 @@ import AiCredential from '@api/store/models/ai-credential';
 import AiProvider from '@api/store/models/ai-provider';
 import { ChatCompletionInput, ChatCompletionResponse } from '@blocklet/aigne-hub/api/types';
 import { CustomError } from '@blocklet/error';
-import { pick } from 'lodash';
+import { omit, omitBy, pick } from 'lodash';
 
 import { AIProviderType as AIProvider } from '../libs/constants';
 import { BASE_URL_CONFIG_MAP, aigneHubConfigProviderUrl, getAIApiKey, getBedrockConfig } from './keys';
@@ -137,15 +137,8 @@ async function loadModel(
     req?: any; // Express Request with modelCallContext
   } = {}
 ) {
-  const models = availableChatModels();
   const providerName = provider?.toLowerCase().replace(/-/g, '') || '';
-
-  const m = models.find((m) => {
-    if (typeof m.name === 'string') {
-      return m.name.toLowerCase().includes(providerName);
-    }
-    return m.name.some((n) => n.toLowerCase().includes(providerName));
-  });
+  const m = await getModelByProviderName(providerName);
 
   if (!m)
     throw new CustomError(
@@ -175,8 +168,13 @@ async function loadModel(
     params.clientOptions = clientOptions;
   }
 
+  const filteredParams = omit(
+    omitBy({ ...params, model }, (value) => !value),
+    'id'
+  );
+
   return {
-    modelInstance: m.create({ ...params, model }),
+    modelInstance: m.create(filteredParams),
     credentialId: params.id,
   };
 }
@@ -208,16 +206,8 @@ const loadImageModel = async (
     req?: any; // Express Request with modelCallContext
   } = {}
 ) => {
-  const models = availableImageModels();
   const providerName = (provider || '').toLowerCase() === 'google' ? 'gemini' : provider?.toLowerCase();
-  if (!providerName) {
-    throw new CustomError(
-      404,
-      `Provider ${provider} model ${model} not found, Please check the model name and provider.`
-    );
-  }
-
-  const m = models.find((m) => providerName && m.name.toLowerCase().includes(providerName.toLowerCase()));
+  const m = await getImageModelByProviderName(providerName || '');
 
   if (!m) {
     throw new CustomError(
@@ -248,8 +238,13 @@ const loadImageModel = async (
     params.clientOptions = clientOptions;
   }
 
+  const filteredParams = omit(
+    omitBy({ ...params, model }, (value) => !value),
+    'id'
+  );
+
   return {
-    modelInstance: m.create({ ...params, model }),
+    modelInstance: m.create(filteredParams),
     credentialId: params.id,
   };
 };
@@ -265,4 +260,57 @@ export const getImageModel = async (
   const { modelName: model, providerName: provider } = await getModelAndProviderId(input.model);
   const result = await loadImageModel(model, { provider, ...options });
   return result;
+};
+
+const getModelByProviderName = async (provider: string) => {
+  const models = availableChatModels();
+
+  const m = models.find((m) => {
+    if (typeof m.name === 'string') {
+      return m.name.toLowerCase().includes(provider);
+    }
+
+    return m;
+  });
+
+  return m;
+};
+
+const getImageModelByProviderName = async (provider: string) => {
+  const models = availableImageModels();
+  const m = models.find((m) => provider && m.name.toLowerCase().includes(provider.toLowerCase()));
+  return m;
+};
+
+export const checkModelIsValid = async (
+  providerName: string,
+  params: {
+    apiKey?: string;
+    baseURL?: string;
+    accessKeyId?: string;
+    secretAccessKey?: string;
+    region?: string;
+  }
+) => {
+  const m = await getModelByProviderName(providerName);
+
+  if (m) {
+    const model = await m.create(params);
+    logger.info('check chat model is valid model:', model.name);
+    const res = await model.invoke({ messages: [{ role: 'user', content: 'Hello, world!' }] });
+    logger.info('check chat model is valid result:', res);
+
+    return;
+  }
+
+  const imageModel = await getImageModelByProviderName(providerName);
+  if (imageModel) {
+    const model = await imageModel.create(params);
+    logger.info('check image model is valid model:', model.name);
+    const res = await model.invoke({ prompt: 'draw a picture of a cat' });
+    logger.info('check image model is valid result:', res);
+    return;
+  }
+
+  throw new CustomError(404, `Provider ${providerName} not found, Please check the model name and provider.`);
 };

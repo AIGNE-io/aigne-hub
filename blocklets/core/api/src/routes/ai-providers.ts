@@ -4,8 +4,8 @@ import { Config } from '@api/libs/env';
 import logger from '@api/libs/logger';
 import modelRegistry from '@api/libs/model-registry';
 import { ensureAdmin } from '@api/libs/security';
-import { checkModelStatus } from '@api/libs/status';
 import { createListParamSchema, getWhereFromKvQuery } from '@api/libs/validate';
+import { checkModelIsValid } from '@api/providers/models';
 import AiCredential, { CredentialValue } from '@api/store/models/ai-credential';
 import AiModelRate from '@api/store/models/ai-model-rate';
 import AiModelStatus from '@api/store/models/ai-model-status';
@@ -18,26 +18,11 @@ import pick from 'lodash/pick';
 import pAll from 'p-all';
 import { Op } from 'sequelize';
 
-import { getQueue } from '../libs/queue';
+import { modelStatusQueue, typeFilterMap, typeMap } from '../libs/status';
 
 const testModelsRateLimit = new Map<string, { count: number; startTime: number }>();
 const TEST_MODELS_RATE_LIMIT_TIME = 10 * 60 * 1000; // 10 minutes
 const TEST_MODELS_RATE_LIMIT_COUNT = 5;
-
-const typeFilterMap: Record<string, string> = {
-  chatCompletion: 'chatCompletion',
-  imageGeneration: 'imageGeneration',
-  embedding: 'embedding',
-  chat: 'chatCompletion',
-  image_generation: 'imageGeneration',
-  image: 'imageGeneration',
-};
-
-const typeMap = {
-  chatCompletion: 'chat',
-  imageGeneration: 'image_generation',
-  embedding: 'embedding',
-};
 
 const rateLimitMiddleware = (req: Request, res: Response, next: NextFunction): void => {
   if (req.user?.did) {
@@ -68,29 +53,6 @@ const rateLimitMiddleware = (req: Request, res: Response, next: NextFunction): v
 
   next();
 };
-
-const modelStatusQueue = getQueue({
-  name: 'model-status',
-  options: {
-    concurrency: 2,
-    maxRetries: 0,
-  },
-  onJob: async ({
-    providerId,
-    model,
-    type,
-  }: {
-    providerId: string;
-    model: string;
-    type: 'chat' | 'image_generation' | 'embedding';
-  }) => {
-    logger.info('check model status', providerId, model, type);
-    await checkModelStatus({ providerId, model, type }).catch((error) => {
-      logger.error('check model status error', error);
-      throw error;
-    });
-  },
-});
 
 const router = Router();
 
@@ -247,7 +209,6 @@ router.get('/', user, async (req, res) => {
 
     const credentials = await AiCredential.findAll({
       where: {
-        active: true,
         providerId: {
           [Op.in]: providers.map((provider) => provider.id),
         },
@@ -368,18 +329,23 @@ router.post('/:providerId/credentials', ensureAdmin, async (req, res) => {
       stripUnknown: true,
     });
     if (error) {
-      return res.status(400).json({
-        error: error.details[0]?.message || 'Validation error',
-      });
+      return res.status(400).json({ error: error.details[0]?.message || 'Validation error' });
     }
 
     // 验证provider是否存在
     const provider = await AiProvider.findByPk(req.params.providerId);
     if (!provider) {
-      return res.status(404).json({
-        error: 'Provider not found',
-      });
+      return res.status(404).json({ error: 'Provider not found' });
     }
+
+    await checkModelIsValid(provider.name, {
+      apiKey: rawValue.credentialType === 'api_key' ? rawValue.value : undefined,
+      accessKeyId: rawValue.credentialType === 'access_key_pair' ? rawValue.value.access_key_id : undefined,
+      secretAccessKey: rawValue.credentialType === 'access_key_pair' ? rawValue.value.secret_access_key : undefined,
+    }).catch((error) => {
+      logger.error('check model is valid error:', error);
+      return res.status(400).json({ error: error.message });
+    });
 
     // 处理凭证值
     let credentialValue: CredentialValue;
@@ -427,9 +393,7 @@ router.put('/:providerId/credentials/:credentialId', ensureAdmin, async (req, re
   try {
     const { error, value } = createCredentialSchema.validate(req.body);
     if (error) {
-      return res.status(400).json({
-        error: error.details[0]?.message || 'Validation error',
-      });
+      return res.status(400).json({ error: error.details[0]?.message || 'Validation error' });
     }
 
     const credential = await AiCredential.findOne({
@@ -440,10 +404,17 @@ router.put('/:providerId/credentials/:credentialId', ensureAdmin, async (req, re
     });
 
     if (!credential) {
-      return res.status(404).json({
-        error: 'Credential not found',
-      });
+      return res.status(404).json({ error: 'Credential not found' });
     }
+
+    await checkModelIsValid(credential.providerId, {
+      apiKey: value.credentialType === 'api_key' ? value.value : undefined,
+      accessKeyId: value.credentialType === 'access_key_pair' ? value.value.access_key_id : undefined,
+      secretAccessKey: value.credentialType === 'access_key_pair' ? value.value.secret_access_key : undefined,
+    }).catch((error) => {
+      logger.error('check model is valid error:', error);
+      return res.status(400).json({ error: error.message });
+    });
 
     // 处理凭证值
     let credentialValue: CredentialValue;
@@ -477,9 +448,7 @@ router.put('/:providerId/credentials/:credentialId', ensureAdmin, async (req, re
     return res.json(credentialJson);
   } catch (error) {
     logger.error('Failed to update credential:', error);
-    return res.status(500).json({
-      error: 'Failed to update credential',
-    });
+    return res.status(500).json({ error: 'Failed to update credential' });
   }
 });
 
@@ -1150,9 +1119,7 @@ router.get('/models', async (req, res) => {
     return res.json(list);
   } catch (error) {
     logger.error('Failed to get available models:', error);
-    return res.status(500).json({
-      error: 'Failed to get available models',
-    });
+    return res.status(500).json({ error: error?.message });
   }
 });
 
@@ -1200,15 +1167,11 @@ router.get('/test-models', user, ensureAdmin, rateLimitMiddleware, async (req, r
 
     const providers = await AiProvider.getEnabledProviders();
     if (providers.length === 0) {
-      return res.json({
-        error: 'No providers found',
-      });
+      return res.json({ error: 'No providers found' });
     }
 
     if (!Config.creditBasedBillingEnabled) {
-      return res.json({
-        error: 'No credit billing enabled',
-      });
+      return res.json({ error: 'No credit billing enabled' });
     }
 
     const modelRates = await AiModelRate.findAll({
@@ -1230,9 +1193,7 @@ router.get('/test-models', user, ensureAdmin, rateLimitMiddleware, async (req, r
     });
   } catch (error) {
     logger.error('Failed to get available models:', error);
-    return res.status(500).json({
-      error: 'Failed to get available models',
-    });
+    return res.status(500).json({ error: error?.message });
   }
 });
 

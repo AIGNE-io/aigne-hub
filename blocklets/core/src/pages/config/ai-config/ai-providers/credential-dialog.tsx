@@ -3,7 +3,7 @@ import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import Toast from '@arcblock/ux/lib/Toast';
 import { formatError } from '@blocklet/error';
 import { Add as AddIcon, Delete as DeleteIcon, Edit as EditIcon } from '@mui/icons-material';
-import { Alert, Box, Button, Chip, Collapse, Fade, IconButton, Slide, Stack, Typography } from '@mui/material';
+import { Alert, Box, Button, Chip, Collapse, Fade, IconButton, Slide, Stack, Tooltip, Typography } from '@mui/material';
 import { useState } from 'react';
 
 import { useSessionContext } from '../../../../contexts/session';
@@ -26,6 +26,7 @@ export interface Credential {
   createdAt: string;
   updatedAt: string;
   credentialValue: Record<string, string>;
+  error?: string;
 }
 
 interface CredentialDialogProps {
@@ -167,7 +168,7 @@ export default function CredentialDialog({ provider, onClose, onCredentialChange
                         sx={{
                           p: 2,
                           border: 1,
-                          borderColor: 'divider',
+                          borderColor: credential.active ? 'divider' : 'warning.main',
                           borderRadius: 1,
                           transition: 'all 0.2s ease-in-out',
                           '&:hover': {
@@ -197,6 +198,20 @@ export default function CredentialDialog({ provider, onClose, onCredentialChange
                                 variant="outlined"
                                 color={credential.active ? 'success' : 'default'}
                               />
+
+                              <Tooltip title={credential.active ? undefined : credential.error}>
+                                <Box
+                                  sx={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 1,
+                                    width: 8,
+                                    height: 8,
+                                    borderRadius: '50%',
+                                    backgroundColor: credential.active ? 'success.main' : 'error.main',
+                                  }}
+                                />
+                              </Tooltip>
                             </Stack>
 
                             <Typography
@@ -227,6 +242,10 @@ export default function CredentialDialog({ provider, onClose, onCredentialChange
                                 <strong>{t('created')}:</strong> {formatDate(credential.createdAt)}
                               </Box>
                             </Stack>
+
+                            <Typography variant="body2" sx={{ color: 'warning.main', fontSize: 12, mt: 1 }}>
+                              {credential.error}
+                            </Typography>
                           </Box>
 
                           <Stack direction="row" spacing={1} sx={{ position: 'absolute', right: '-8px', top: '-8px' }}>

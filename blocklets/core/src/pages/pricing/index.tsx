@@ -137,16 +137,17 @@ export default function PricingPage() {
 
   useSubscription(
     'model.status.updated',
-    ({ provider, model, available }: { provider: string; model: string; available: boolean }) => {
+    ({ provider, model, available, error }: { provider: string; model: string; available: boolean; error: any }) => {
       mutate((r: any) => {
-        r.forEach((item: any) => {
+        return r.map((item: any) => {
           if (item.provider === provider && item.model === model && item.status) {
             item.loading = false;
             item.status.available = available;
+            item.status.error = error;
           }
-        });
 
-        return r;
+          return item;
+        });
       });
     },
     []

@@ -95,9 +95,11 @@ export default class AiProvider extends Model<InferAttributes<AiProvider>, Infer
   // 获取启用的提供商
   static async getEnabledProviders(typeFilter?: string): Promise<AiProvider[]> {
     const where: any = { enabled: true };
+
     if (typeFilter) {
       where.type = typeFilter;
     }
+
     const providers = await AiProvider.findAll({
       where,
       include: [

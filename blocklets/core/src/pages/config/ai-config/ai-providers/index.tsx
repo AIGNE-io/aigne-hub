@@ -36,6 +36,7 @@ export default function AIProviders() {
   const [showForm, setShowForm] = useState(false);
   const [editingProvider, setEditingProvider] = useState<Provider | null>(null);
   const [credentialsProvider, setCredentialsProvider] = useState<Provider | null>(null);
+  const [loadingCredentials, setLoadingCredentials] = useState(false);
 
   // 获取AI Provider列表
   const fetchProviders = async () => {
@@ -122,6 +123,7 @@ export default function AIProviders() {
           })
           .filter(Boolean);
 
+        setLoadingCredentials(true);
         await Promise.all(credentialPromises);
       }
 
@@ -131,6 +133,8 @@ export default function AIProviders() {
       setEditingProvider(null);
     } catch (error: any) {
       Toast.error(formatError(error) || t('createProviderFailed'));
+    } finally {
+      setLoadingCredentials(false);
     }
   };
 
@@ -254,10 +258,12 @@ export default function AIProviders() {
             );
           }
 
+          const errorCredential = provider.credentials?.find((credential: Credential) => credential.active === false);
+
           return (
             <Typography
               variant="body2"
-              sx={{ cursor: 'pointer', color: 'primary.main' }}
+              sx={{ cursor: 'pointer', color: errorCredential ? 'warning.main' : 'primary.main' }}
               onClick={() => setCredentialsProvider(provider)}>
               {credentialCount} {t('credentialCount')}
             </Typography>
@@ -273,6 +279,7 @@ export default function AIProviders() {
           const provider = providers[tableMeta.rowIndex];
           if (!provider) return null;
 
+          const errorCredential = provider.credentials?.find((credential: Credential) => credential.active === false);
           const isConnected = provider.enabled && (provider.credentials?.length || 0) > 0;
           return (
             <Stack
@@ -289,11 +296,11 @@ export default function AIProviders() {
                   width: 8,
                   height: 8,
                   borderRadius: '50%',
-                  backgroundColor: isConnected ? 'success.main' : 'error.main',
+                  backgroundColor: isConnected ? (errorCredential ? 'warning.main' : 'success.main') : 'error.main',
                 }}
               />
-              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                {isConnected ? t('connected') : t('disconnected')}
+              <Typography variant="body2" sx={{ color: errorCredential ? 'warning.main' : 'text.secondary' }}>
+                {isConnected ? (errorCredential ? t('errorConnected') : t('connected')) : t('disconnected')}
               </Typography>
             </Stack>
           );
@@ -384,6 +391,7 @@ export default function AIProviders() {
         maxWidth="sm"
         title={editingProvider ? t('editProvider') : t('addProvider')}>
         <ProviderForm
+          loading={loadingCredentials}
           provider={editingProvider}
           onSubmit={editingProvider ? handleUpdateProvider : handleCreateProvider}
           onCancel={() => {
