@@ -22,10 +22,34 @@ import sessionMiddleware from '@blocklet/sdk/lib/middlewares/session';
 import compression from 'compression';
 import { NextFunction, Request, Response, Router } from 'express';
 import proxy from 'express-http-proxy';
+import Joi from 'joi';
 
 import { getModel } from '../providers/models';
 
 const router = Router();
+
+const aigneHubModelCallSchema = Joi.object({
+  input: Joi.object({ modelOptions: Joi.object({ model: Joi.string().required() }).required() })
+    .pattern(Joi.string(), Joi.any())
+    .required(),
+  agent: Joi.string().optional(),
+  options: Joi.object({
+    returnProgressChunks: Joi.boolean().optional(),
+    userContext: Joi.any().optional(),
+    memories: Joi.array().items(Joi.any()).optional(),
+    streaming: Joi.boolean().optional(),
+  }).optional(),
+});
+
+const aigneHubModelBodyValidate = (body: Request['body']) => {
+  const { error, value } = aigneHubModelCallSchema.validate(body, { stripUnknown: true });
+
+  if (error) {
+    throw new CustomError(400, `Validation error: ${error.details.map((d) => d.message).join(', ')}`);
+  }
+
+  return value;
+};
 
 const user = sessionMiddleware({ accessKey: true });
 
@@ -154,16 +178,18 @@ router.post(
   chatCallTracker,
   createRetryHandler(
     withModelStatus(async (req, res) => {
+      const value = aigneHubModelBodyValidate(req.body);
+
       const userDid = req.user?.did;
 
       if (userDid && Config.creditBasedBillingEnabled) {
         await checkUserCreditBalance({ userDid });
       }
 
-      await checkModelRateAvailable(req.body.model);
+      const { modelOptions } = value.input;
+      await checkModelRateAvailable(modelOptions.model);
 
-      const modelOptions = req.body?.input?.modelOptions;
-      const { modelInstance: model } = await getModel(req.body, { modelOptions, req });
+      const { modelInstance: model } = await getModel(modelOptions, { modelOptions, req });
       if (modelOptions) {
         delete req.body.input.modelOptions;
       }
@@ -172,7 +198,7 @@ router.post(
       const aigneServer = new AIGNEHTTPServer(engine);
 
       await aigneServer.invoke(req, res, {
-        userContext: { userId: req.user?.did },
+        userContext: { userId: req.user?.did, ...value.options },
         hooks: {
           onEnd: async (data) => {
             const usageData = data.output;
@@ -182,8 +208,8 @@ router.post(
                 type: 'chatCompletion',
                 promptTokens: (usageData.usage?.inputTokens as number) || 0,
                 completionTokens: (usageData.usage?.outputTokens as number) || 0,
-                model: req.body?.model as string,
-                modelParams: req.body?.options?.modelOptions,
+                model: modelOptions?.model,
+                modelParams: modelOptions,
                 userDid: userDid!,
                 appId: req.headers['x-aigne-hub-client-did'] as string,
                 creditBasedBillingEnabled: Config.creditBasedBillingEnabled,
@@ -219,20 +245,24 @@ router.post(
   imageCallTracker,
   createRetryHandler(
     withModelStatus(async (req, res) => {
+      const value = aigneHubModelBodyValidate(req.body);
+
       const userDid = req.user?.did;
 
       if (userDid && Config.creditBasedBillingEnabled) {
         await checkUserCreditBalance({ userDid });
       }
 
+      const { input } = value;
+      const { modelOptions, ...otherInput } = input;
+
       const usageData = await processImageGeneration({
         req,
         res,
         version: 'v2',
         inputBody: {
-          model: req.body.model,
-          ...req.body.input,
-          ...req.body.options?.modelOptions,
+          ...otherInput,
+          ...modelOptions,
           responseFormat: req.body.input.response_format || req.body.input.responseFormat,
         },
       });
