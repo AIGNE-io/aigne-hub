@@ -202,7 +202,7 @@ router.post(
       const aigneServer = new AIGNEHTTPServer(engine);
 
       await aigneServer.invoke(req, res, {
-        userContext: { userId: req.user?.did, ...value.options },
+        userContext: { userId: req.user?.did, ...value.options?.userContext },
         hooks: {
           onEnd: async (data) => {
             const usageData = data.output;
