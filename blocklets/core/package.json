@@ -1,6 +1,6 @@
 {
   "name": "ai-kit",
-  "version": "0.4.6",
+  "version": "0.4.7",
   "author": "Arcblock <blocklet@arcblock.io> https://github.com/blocklet",
   "scripts": {
     "dev": "cross-env COMPONENT_STORE_URL=https://test.store.blocklet.dev blocklet dev",
