@@ -1,3 +1,7 @@
+## 0.4.6 (2025-9-3)
+
+- chore: lock version
+
 ## 0.4.5 (2025-9-2)
 
 - chore: check credential before add credential
