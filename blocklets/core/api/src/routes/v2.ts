@@ -35,13 +35,17 @@ const aigneHubModelCallSchema = Joi.object({
   agent: Joi.string().optional(),
   options: Joi.object({
     returnProgressChunks: Joi.boolean().optional(),
-    userContext: Joi.any().optional(),
+    userContext: Joi.object().optional(),
     memories: Joi.array().items(Joi.any()).optional(),
     streaming: Joi.boolean().optional(),
   }).optional(),
 });
 
 const aigneHubModelBodyValidate = (body: Request['body']) => {
+  if (!body) {
+    throw new CustomError(400, 'Request body is required');
+  }
+
   const { error, value } = aigneHubModelCallSchema.validate(body, { stripUnknown: true });
 
   if (error) {
