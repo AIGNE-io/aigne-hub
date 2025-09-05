@@ -1,3 +1,7 @@
+## 0.4.10 (2025-9-5)
+
+- fix: compatible with old client
+
 ## 0.4.9 (2025-9-5)
 
 - chore: bump deps
