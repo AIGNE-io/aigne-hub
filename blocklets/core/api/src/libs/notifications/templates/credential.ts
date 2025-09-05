@@ -23,12 +23,12 @@ function translate(key: string, locale: string, params?: Record<string, any>): s
   const translations = {
     en: {
       title: 'AIGNE Hub Credential Invalid',
-      body: 'Your {credentialName} ({credentialValue}) for provider "{provider}" is invalid, reason: {errorMessage}. Please update or verify this credential to continue using the service.',
+      body: 'Your Credential (credentialValue) for (provider) is invalid, Please update or verify this credential to continue using the service.',
       credentials: 'Manage Credentials',
     },
     zh: {
       title: 'AIGNE Hub 凭证错误',
-      body: '您在 {provider} 使用的 {credentialName}（{credentialValue}）无效，原因：{errorMessage}。请更新或检查该凭证，以继续使用服务。',
+      body: '您在 (provider) 使用的 credentialValue（{credentialValue}）无效, 请更新或验证该凭证以继续使用服务。',
       credentials: '管理凭证',
     },
   };
@@ -66,47 +66,66 @@ export class CredentialInvalidNotificationTemplate extends BaseNotificationTempl
     const titleKey = 'title';
     const bodyKey = 'body';
 
-    const attachments = [
+    const fields = [
       {
-        type: 'section',
-        fields: [
-          {
-            type: 'text',
-            data: {
-              type: 'plain',
-              color: '#9397A1',
-              text: `provider: ${credential.provider}`,
-            },
-          },
-          {
-            type: 'text',
-            data: {
-              type: 'plain',
-              color: '#9397A1',
-              text: `credential name: ${credential.credentialName}`,
-            },
-          },
-        ],
+        type: 'text',
+        data: {
+          type: 'plain',
+          color: '#9397A1',
+          text: 'Provider',
+        },
       },
       {
-        type: 'section',
-        fields: [
-          {
-            type: 'text',
-            data: {
-              type: 'plain',
-              color: '#FF6B6B',
-              text: 'Error Details:',
-            },
-          },
-          {
-            type: 'text',
-            data: {
-              type: 'plain',
-              text: credential.errorMessage,
-            },
-          },
-        ],
+        type: 'text',
+        data: {
+          type: 'plain',
+          text: credential.provider,
+        },
+      },
+      {
+        type: 'text',
+        data: {
+          type: 'plain',
+          color: '#9397A1',
+          text: 'Credential Name',
+        },
+      },
+      {
+        type: 'text',
+        data: {
+          type: 'plain',
+          text: credential.credentialName,
+        },
+      },
+      {
+        type: 'text',
+        data: {
+          type: 'plain',
+          color: '#9397A1',
+          text: 'Credential Value',
+        },
+      },
+      {
+        type: 'text',
+        data: {
+          type: 'plain',
+          text: credential.credentialValue,
+        },
+      },
+      {
+        type: 'text',
+        data: {
+          type: 'plain',
+          color: '#9397A1',
+          text: 'Error Reason',
+        },
+      },
+      {
+        type: 'text',
+        data: {
+          type: 'plain',
+          text: credential.errorMessage,
+        },
       },
     ];
 
@@ -119,7 +138,12 @@ export class CredentialInvalidNotificationTemplate extends BaseNotificationTempl
         credentialValue: credential.credentialValue,
         errorMessage: credential.errorMessage,
       }),
-      attachments,
+      attachments: [
+        {
+          type: 'section',
+          fields,
+        },
+      ],
       actions: [
         {
           name: translate('credentials', locale),

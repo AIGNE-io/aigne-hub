@@ -1,6 +1,7 @@
 import { getProviderCredentials } from '@api/providers/models';
 import { SubscriptionError, SubscriptionErrorType } from '@blocklet/aigne-hub/api';
 import { CustomError } from '@blocklet/error';
+import { Request } from 'express';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import { OpenAI } from 'openai';
 
@@ -83,4 +84,8 @@ export function getModelNameWithProvider(model: string, defaultProviderName: str
     modelName: model,
     providerName: defaultProviderName,
   };
+}
+
+export function getReqModel(req: Request) {
+  return req.body?.model || req.body?.input?.modelOptions?.model;
 }

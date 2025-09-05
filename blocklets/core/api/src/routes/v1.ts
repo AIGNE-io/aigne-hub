@@ -1,4 +1,4 @@
-import { getOpenAIV2 } from '@api/libs/ai-provider';
+import { getOpenAIV2, getReqModel } from '@api/libs/ai-provider';
 import {
   createRetryHandler,
   processChatCompletion,
@@ -45,7 +45,7 @@ router.post(
             type: 'chatCompletion',
             promptTokens: (usageData.usage?.inputTokens as number) || 0,
             completionTokens: (usageData.usage?.outputTokens as number) || 0,
-            model: (req.body?.model || req.body?.input?.modelOptions?.model) as string,
+            model: getReqModel(req) as string,
             modelParams: req.body?.options?.modelOptions,
           }).catch((err) => {
             logger.error('Create token usage v2 error', { error: err });

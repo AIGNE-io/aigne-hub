@@ -1,6 +1,6 @@
 import { AIGNE } from '@aigne/core';
 import { AIGNEHTTPServer } from '@aigne/transport/http-server/index';
-import { getModelNameWithProvider, getOpenAIV2 } from '@api/libs/ai-provider';
+import { getModelNameWithProvider, getOpenAIV2, getReqModel } from '@api/libs/ai-provider';
 import {
   createRetryHandler,
   processChatCompletion,
@@ -143,7 +143,7 @@ router.post(
             type: 'chatCompletion',
             promptTokens: (usageData.usage?.inputTokens as number) || 0,
             completionTokens: (usageData.usage?.outputTokens as number) || 0,
-            model: (req.body?.model || req.body?.input?.modelOptions?.model) as string,
+            model: getReqModel(req) as string,
             modelParams: req.body?.options?.modelOptions,
             appId: req.headers['x-aigne-hub-client-did'] as string,
             userDid: userDid!,

@@ -1,3 +1,4 @@
+import { getReqModel } from '@api/libs/ai-provider';
 import logger from '@api/libs/logger';
 import { getCurrentUnixTimestamp } from '@api/libs/timestamp';
 import { getModelAndProviderId } from '@api/providers/util';
@@ -45,7 +46,7 @@ declare global {
 export function createModelCallMiddleware(callType: CallType) {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const userDid = req.user?.did;
-    const model = req.body?.model || req.body.input.modelOptions.model;
+    const model = getReqModel(req);
 
     if (!userDid || !model) {
       logger.error('Model call middleware error', { error: 'User did or model is required', userDid, model });
