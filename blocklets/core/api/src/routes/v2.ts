@@ -54,7 +54,7 @@ const aigneHubModelBodyValidate = (body: Request['body']) => {
       input: {
         ...body.input,
         // For old version of AIGNE Client, the `model` field is in the body
-        modelOptions: body.input.modelOptions || { model: body.model || DEFAULT_MODEL },
+        modelOptions: body.input?.modelOptions || { model: body.model || DEFAULT_MODEL },
       },
     },
     { stripUnknown: true }
