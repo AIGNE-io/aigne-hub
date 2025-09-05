@@ -1,3 +1,7 @@
+## 0.4.13 (2025-9-5)
+
+- fix: increase request entity size limit
+
 ## 0.4.12 (2025-9-5)
 
 - fix: add type definitions and improve the type safety of the AI provider interface
