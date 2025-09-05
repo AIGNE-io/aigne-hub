@@ -25,6 +25,11 @@ import { Config } from './env';
 import { processImageUrl } from './image';
 import logger from './logger';
 
+interface ImageResult {
+  base64?: string;
+  url?: string;
+}
+
 // Common Joi Schemas
 export const completionsRequestSchema = Joi.object<
   { model: string } & (
@@ -405,7 +410,7 @@ export async function processImageGeneration({
     });
 
     response = {
-      data: result.images.map((i: { base64?: string; url?: string }) => ({ b64_json: i.base64, url: i.url })),
+      data: result.images.map((i: ImageResult) => ({ b64_json: i.base64, url: i.url })),
       created: Date.now(),
     };
   }

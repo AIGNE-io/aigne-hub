@@ -2,7 +2,6 @@ import { ModelCallContext } from '@api/middlewares/model-call-tracker';
 import { getProviderCredentials } from '@api/providers/models';
 import { SubscriptionError, SubscriptionErrorType } from '@blocklet/aigne-hub/api';
 import { CustomError } from '@blocklet/error';
-import { Request } from 'express';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import { OpenAI } from 'openai';
 
@@ -87,6 +86,6 @@ export function getModelNameWithProvider(model: string, defaultProviderName: str
   };
 }
 
-export function getReqModel(req: Request): string {
-  return req.body?.model || req.body?.input?.modelOptions?.model;
+export function getReqModel(req: { body: { model?: string; input?: { modelOptions?: { model?: string } } } }): string {
+  return req.body?.model || req.body?.input?.modelOptions?.model || '';
 }

@@ -31,6 +31,10 @@ export const typeMap = {
   embedding: 'embedding',
 };
 
+interface ProviderWithCredentials extends AiProvider {
+  credentials: AiCredential[];
+}
+
 function classifyError(error: Error & { status?: number; code?: number; statusCode?: number }): ModelError {
   const errorMessage = error.message || error.toString();
   const errorCode = error.status || error.code || error.statusCode;
@@ -323,10 +327,10 @@ export const checkModelStatus = async ({
   const provider = (await AiProvider.findOne({
     where: { id: providerId },
     include: [{ model: AiCredential, as: 'credentials', required: false }],
-  })) as AiProvider & { credentials: AiCredential[] };
+  })) as ProviderWithCredentials;
 
   if (!provider) {
-    throw new CustomError(500, 'AI provider not found');
+    throw new CustomError(500, `AI provider with ID ${providerId} not found`);
   }
 
   if (!provider.credentials || provider.credentials.length === 0) {
