@@ -2,11 +2,13 @@ import { availableModels as availableChatModels, availableImageModels } from '@a
 import { AIGNE, ChatModelOptions, ChatModelOutput, ImageModelOptions } from '@aigne/core';
 import type { OpenAIChatModelOptions, OpenAIImageModelOptions } from '@aigne/openai';
 import logger from '@api/libs/logger';
+import { ModelCallContext } from '@api/middlewares/model-call-tracker';
 import AiCredential from '@api/store/models/ai-credential';
 import AiProvider from '@api/store/models/ai-provider';
 import { ChatCompletionInput, ChatCompletionResponse } from '@blocklet/aigne-hub/api/types';
 import { CustomError } from '@blocklet/error';
-import { pick } from 'lodash';
+import { Request } from 'express';
+import { omit, omitBy, pick } from 'lodash';
 
 import { AIProviderType as AIProvider } from '../libs/constants';
 import { BASE_URL_CONFIG_MAP, aigneHubConfigProviderUrl, getAIApiKey, getBedrockConfig } from './keys';
@@ -15,10 +17,11 @@ import { adaptStreamToOldFormat, convertToFrameworkMessages, getModelAndProvider
 export async function getProviderCredentials(
   provider: string,
   options?: {
-    modelCallContext?: any; // ModelCallContext from middleware
-    model?: string; // Actual model name to record
+    modelCallContext?: ModelCallContext;
+    model?: string;
   }
 ): Promise<{
+  id?: string;
   apiKey?: string;
   baseURL?: string;
   accessKeyId?: string;
@@ -54,9 +57,7 @@ export async function getProviderCredentials(
 
   const errorMessage = await aigneHubConfigProviderUrl();
 
-  const providerRecord = await AiProvider.findOne({
-    where: { name: provider, enabled: true },
-  });
+  const providerRecord = await AiProvider.findOne({ where: { name: provider, enabled: true } });
   if (!providerRecord) {
     return callback(new CustomError(404, `Provider ${provider} not found, ${errorMessage}`));
   }
@@ -89,6 +90,7 @@ export async function getProviderCredentials(
   }
 
   return {
+    id: credential.id,
     apiKey: value.api_key,
     baseURL: providerRecord?.baseUrl,
     accessKeyId: value.access_key_id,
@@ -102,14 +104,14 @@ export async function chatCompletionByFrameworkModel(
   userDid?: string,
   options?: {
     onEnd?: (data?: { output?: ChatModelOutput }) => Promise<{ output?: ChatModelOutput } | undefined>;
-    req?: any;
+    req: Request;
   }
 ): Promise<AsyncGenerator<ChatCompletionResponse>> {
-  const model = await getModel(input, { req: options?.req });
+  const { modelInstance } = await getModel(input, { req: options?.req });
   const engine = new AIGNE();
 
   const response = await engine.invoke(
-    model,
+    modelInstance,
     {
       messages: convertToFrameworkMessages(input.messages),
       responseFormat: input.responseFormat?.type === 'json_schema' ? input.responseFormat : { type: 'text' },
@@ -134,18 +136,11 @@ async function loadModel(
     provider?: string;
     modelOptions?: ChatModelOptions;
     clientOptions?: OpenAIChatModelOptions['clientOptions'];
-    req?: any; // Express Request with modelCallContext
+    req?: Request;
   } = {}
 ) {
-  const models = availableChatModels();
   const providerName = provider?.toLowerCase().replace(/-/g, '') || '';
-
-  const m = models.find((m) => {
-    if (typeof m.name === 'string') {
-      return m.name.toLowerCase().includes(providerName);
-    }
-    return m.name.some((n) => n.toLowerCase().includes(providerName));
-  });
+  const m = await getModelByProviderName(providerName);
 
   if (!m)
     throw new CustomError(
@@ -154,6 +149,7 @@ async function loadModel(
     );
 
   const params: {
+    id?: string;
     apiKey?: string;
     baseURL?: string;
     accessKeyId?: string;
@@ -174,20 +170,35 @@ async function loadModel(
     params.clientOptions = clientOptions;
   }
 
-  return m.create({ ...params, model });
+  const filteredParams = omit(
+    omitBy({ ...params, model }, (value) => !value),
+    'id'
+  );
+
+  return {
+    modelInstance: m.create(filteredParams),
+    credentialId: params.id,
+  };
 }
 
 export const getModel = async (
-  input: ChatCompletionInput & Required<Pick<ChatCompletionInput, 'model'>>,
+  input: Required<Pick<ChatCompletionInput, 'model'>>,
   options?: {
     modelOptions?: ChatModelOptions;
     clientOptions?: OpenAIChatModelOptions['clientOptions'];
-    req?: any;
+    req?: Request;
   }
 ) => {
   const { modelName: model, providerName: provider } = await getModelAndProviderId(input.model);
-  const m = await loadModel(model, { provider, ...options });
-  return m;
+  const result = await loadModel(model, { provider, ...options });
+
+  if (options?.req) {
+    options.req.provider = provider;
+    options.req.model = model;
+    options.req.credentialId = result.credentialId;
+  }
+
+  return result;
 };
 
 const loadImageModel = async (
@@ -201,19 +212,11 @@ const loadImageModel = async (
     provider?: string;
     modelOptions?: ImageModelOptions;
     clientOptions?: OpenAIImageModelOptions['clientOptions'];
-    req?: any; // Express Request with modelCallContext
+    req?: Request;
   } = {}
 ) => {
-  const models = availableImageModels();
-  const providerName = (provider || '').toLowerCase() === 'google' ? 'gemini' : provider?.toLowerCase();
-  if (!providerName) {
-    throw new CustomError(
-      404,
-      `Provider ${provider} model ${model} not found, Please check the model name and provider.`
-    );
-  }
-
-  const m = models.find((m) => providerName && m.name.toLowerCase().includes(providerName.toLowerCase()));
+  const providerName = (provider || '').toLowerCase() === 'google' ? 'gemini' : provider?.toLowerCase() || '';
+  const m = await getImageModelByProviderName(providerName);
 
   if (!m) {
     throw new CustomError(
@@ -223,6 +226,7 @@ const loadImageModel = async (
   }
 
   const params: {
+    id?: string;
     apiKey?: string;
     baseURL?: string;
     accessKeyId?: string;
@@ -243,7 +247,15 @@ const loadImageModel = async (
     params.clientOptions = clientOptions;
   }
 
-  return m.create({ ...params, model });
+  const filteredParams = omit(
+    omitBy({ ...params, model }, (value) => !value),
+    'id'
+  );
+
+  return {
+    modelInstance: m.create(filteredParams),
+    credentialId: params.id,
+  };
 };
 
 export const getImageModel = async (
@@ -251,10 +263,70 @@ export const getImageModel = async (
   options?: {
     modelOptions?: ImageModelOptions;
     clientOptions?: OpenAIImageModelOptions['clientOptions'];
-    req?: any;
+    req?: Request;
   }
 ) => {
   const { modelName: model, providerName: provider } = await getModelAndProviderId(input.model);
-  const m = await loadImageModel(model, { provider, ...options });
+  const result = await loadImageModel(model, { provider, ...options });
+
+  if (options?.req) {
+    options.req.provider = provider;
+    options.req.model = model;
+    options.req.credentialId = result.credentialId;
+  }
+
+  return result;
+};
+
+const getModelByProviderName = async (provider: string) => {
+  const models = availableChatModels();
+
+  const m = models.find((m) => {
+    if (typeof m.name === 'string') {
+      return m.name.toLowerCase().includes(provider);
+    }
+
+    return m.name.some((n) => n.toLowerCase().includes(provider));
+  });
+
   return m;
+};
+
+const getImageModelByProviderName = async (provider: string) => {
+  const models = availableImageModels();
+  const m = models.find((m) => m.name.toLowerCase().includes(provider.toLowerCase()));
+  return m;
+};
+
+export const checkModelIsValid = async (
+  providerName: string,
+  params: {
+    apiKey?: string;
+    baseURL?: string;
+    accessKeyId?: string;
+    secretAccessKey?: string;
+    region?: string;
+  }
+) => {
+  const m = await getModelByProviderName(providerName);
+
+  if (m) {
+    const model = await m.create(params);
+    logger.info('check chat model is valid model:', model.name);
+    const res = await model.invoke({ messages: [{ role: 'user', content: 'Hello, world!' }] });
+    logger.info('check chat model is valid result:', res);
+
+    return;
+  }
+
+  const imageModel = await getImageModelByProviderName(providerName);
+  if (imageModel) {
+    const model = await imageModel.create(params);
+    logger.info('check image model is valid model:', model.name);
+    const res = await model.invoke({ prompt: 'draw a picture of a cat' });
+    logger.info('check image model is valid result:', res);
+    return;
+  }
+
+  throw new CustomError(404, `Provider ${providerName} not found, Please check the model name and provider.`);
 };

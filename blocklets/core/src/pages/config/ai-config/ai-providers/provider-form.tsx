@@ -11,6 +11,7 @@ import {
   Avatar,
   Box,
   Button,
+  CircularProgress,
   FormControl,
   FormHelperText,
   IconButton,
@@ -68,6 +69,7 @@ const PROVIDER_OPTIONS = [
 ];
 
 interface Props {
+  loading: boolean;
   provider?: any;
   onSubmit: (data: ProviderFormData) => void;
   onCancel: () => void;
@@ -77,7 +79,7 @@ function isValidCredentialType(value: any): value is 'api_key' | 'access_key_pai
   return ['api_key', 'access_key_pair', 'custom'].includes(value);
 }
 
-export default function ProviderForm({ provider = null, onSubmit, onCancel }: Props) {
+export default function ProviderForm({ loading, provider = null, onSubmit, onCancel }: Props) {
   const { t } = useLocaleContext();
   const [credentials, setCredentials] = useState<CredentialData[]>(
     provider?.credentials?.map((cred: any) => ({
@@ -376,8 +378,10 @@ export default function ProviderForm({ provider = null, onSubmit, onCancel }: Pr
               justifyContent: 'flex-end',
             }}>
             <Button onClick={onCancel}>{t('cancel')}</Button>
-            <Button variant="contained" onClick={handleSubmit(handleFormSubmit)}>
-              {provider ? t('update') : t('create')}
+            <Button variant="contained" onClick={handleSubmit(handleFormSubmit)} disabled={loading}>
+              {loading && <CircularProgress size={16} />}
+              {loading && t('loading')}
+              {!loading && (provider ? t('update') : t('create'))}
             </Button>
           </Stack>
         </Stack>

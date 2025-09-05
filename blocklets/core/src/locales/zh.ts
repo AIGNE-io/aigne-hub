@@ -59,7 +59,8 @@ export default flatten({
     },
     status: {
       available: '可用',
-      pending: '暂停中',
+      pending: '未使用',
+      warning: '不可用',
     },
   },
 
@@ -447,4 +448,7 @@ export default flatten({
   customRange: '自定义范围',
   dataAvailableFrom: '数据可查询近3个月',
   usedBy: '使用者',
+  testStatus: '测试状态',
+  testing: '测试中...',
+  errorConnected: '{errorCount} 个无效凭证',
 });

@@ -281,7 +281,7 @@ export async function createUsageAndCompleteModelCall({
   req: Request;
   type: CallType;
   model: string;
-  modelParams?: any;
+  modelParams?: Record<string, any>;
   promptTokens?: number;
   completionTokens?: number;
   numberOfImageGeneration?: number;

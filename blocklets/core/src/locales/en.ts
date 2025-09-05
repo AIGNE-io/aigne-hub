@@ -59,7 +59,8 @@ export default flatten({
     },
     status: {
       available: 'Available',
-      pending: 'Pending',
+      pending: 'Never used',
+      warning: 'Unavailable',
     },
   },
 
@@ -455,4 +456,7 @@ export default flatten({
   customRange: 'Custom Range',
   dataAvailableFrom: 'Data available from 3 months ago',
   usedBy: 'Used By',
+  testStatus: 'Test Status',
+  testing: 'Testing...',
+  errorConnected: '{errorCount} of {total} is invalid',
 });

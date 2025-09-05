@@ -1,3 +1,53 @@
+## 0.4.13 (2025-9-5)
+
+- fix: increase request entity size limit
+
+## 0.4.12 (2025-9-5)
+
+- fix: add type definitions and improve the type safety of the AI provider interface
+
+## 0.4.11 (2025-9-5)
+
+- fix: should use default model if client not pass model
+
+## 0.4.10 (2025-9-5)
+
+- fix: compatible with old client
+
+## 0.4.9 (2025-9-5)
+
+- chore: bump deps
+
+## 0.4.8 (2025-9-5)
+
+- fix: refine notification messages for better clarity
+- fix: improve invalid api_key warning display
+- fix: catch and handle invalid api_key errors in requests
+
+## 0.4.7 (2025-9-3)
+
+- fix: add request body validation for AIGNE Hub API endpoints
+
+## 0.4.6 (2025-9-3)
+
+- chore: lock version
+
+## 0.4.5 (2025-9-2)
+
+- chore: check credential before add credential
+
+## 0.4.4 (2025-9-2)
+
+- chore: merge model for chat api
+
+## 0.4.3 (2025-9-1)
+
+- fix: testing model availability in pricing page
+
+## 0.4.2 (2025-9-1)
+
+- feat: added support for testing model availability and displaying its status in the UI
+
 ## 0.4.1 (2025-9-1)
 
 - feat: set credit-usage private
