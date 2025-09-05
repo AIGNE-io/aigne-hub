@@ -1,3 +1,7 @@
+## 0.4.12 (2025-9-5)
+
+- fix: add type definitions and improve the type safety of the AI provider interface
+
 ## 0.4.11 (2025-9-5)
 
 - fix: should use default model if client not pass model
