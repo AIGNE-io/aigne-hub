@@ -1,3 +1,7 @@
+## 0.4.9 (2025-9-5)
+
+- chore: bump deps
+
 ## 0.4.8 (2025-9-5)
 
 - fix: refine notification messages for better clarity
