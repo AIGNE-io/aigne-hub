@@ -117,13 +117,14 @@ export class CredentialInvalidNotificationTemplate extends BaseNotificationTempl
         data: {
           type: 'plain',
           color: '#9397A1',
-          text: 'Error Reason',
+          text: 'Invalid Reason',
         },
       },
       {
         type: 'text',
         data: {
           type: 'plain',
+          color: '#FF0000',
           text: credential.errorMessage,
         },
       },
