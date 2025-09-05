@@ -9,6 +9,8 @@ import { AIProviderType, SUPPORTED_PROVIDERS_SET } from './constants';
 import { Config } from './env';
 import logger from './logger';
 
+const DEFAULT_MODEL = 'openai/gpt-5-mini';
+
 export function getOpenAI() {
   const { httpsProxy, openaiBaseURL } = Config;
 
@@ -23,7 +25,7 @@ export function getOpenAI() {
 }
 
 export async function getOpenAIV2(req: { body: { model: string }; modelCallContext?: ModelCallContext }) {
-  const { modelName } = getModelNameWithProvider(req?.body?.model);
+  const { modelName } = getModelNameWithProvider(req?.body?.model || DEFAULT_MODEL);
   const params = await getProviderCredentials('openai', {
     modelCallContext: req?.modelCallContext,
     model: modelName,
