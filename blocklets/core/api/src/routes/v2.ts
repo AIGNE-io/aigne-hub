@@ -31,7 +31,9 @@ const DEFAULT_MODEL = 'openai/gpt-5-mini';
 const router = Router();
 
 const aigneHubModelCallSchema = Joi.object({
-  input: Joi.object({ modelOptions: Joi.object({ model: Joi.string().required() }).required() })
+  input: Joi.object({
+    modelOptions: Joi.object({ model: Joi.string().required() }).pattern(Joi.string(), Joi.any()).required(),
+  })
     .pattern(Joi.string(), Joi.any())
     .required(),
   agent: Joi.string().optional(),
@@ -54,7 +56,10 @@ const aigneHubModelBodyValidate = (body: Request['body']) => {
       input: {
         ...body.input,
         // For old version of AIGNE Client, the `model` field is in the body
-        modelOptions: body.input?.modelOptions || { model: body.model || DEFAULT_MODEL },
+        modelOptions: {
+          ...body.input?.modelOptions,
+          model: body.input?.modelOptions?.model || body.model || DEFAULT_MODEL,
+        },
       },
     },
     { stripUnknown: true }
