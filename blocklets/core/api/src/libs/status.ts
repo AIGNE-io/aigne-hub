@@ -146,22 +146,30 @@ const sendCredentialInvalidNotification = async ({
   credentialId?: string;
   error: Error & { status: number };
 }) => {
-  if (credentialId && [401, 402, 403].includes(Number(error.status))) {
-    const credential = await AiCredential.findOne({ where: { id: credentialId } });
+  try {
+    if (credentialId && [401, 402, 403].includes(Number(error.status))) {
+      const credential = await AiCredential.findOne({ where: { id: credentialId } });
 
-    const template = new CredentialInvalidNotificationTemplate({
-      credential: {
-        provider,
-        model,
-        credentialName: credential?.name,
-        credentialValue: credential?.getDisplayText(),
-        errorMessage: error.message,
-      },
-    });
+      const template = new CredentialInvalidNotificationTemplate({
+        credential: {
+          provider,
+          model,
+          credentialName: credential?.name,
+          credentialValue: credential?.getDisplayText(),
+          errorMessage: error.message,
+        },
+      });
 
-    NotificationManager.sendCustomNotificationByRoles(['owner', 'admin'], await template.getTemplate());
+      NotificationManager.sendCustomNotificationByRoles(['owner', 'admin'], await template.getTemplate()).catch(
+        (error) => {
+          logger.error('Failed to send credential invalid notification', error);
+        }
+      );
 
-    await AiCredential.update({ active: false, error: error.message }, { where: { id: credentialId } });
+      await AiCredential.update({ active: false, error: error.message }, { where: { id: credentialId } });
+    }
+  } catch (error) {
+    logger.error('Failed to send credential invalid notification', error);
   }
 };
 
@@ -220,7 +228,7 @@ export function withModelStatus(handler: (req: Request, res: Response) => Promis
         duration: Date.now() - start,
       });
     } catch (error) {
-      console.error('Failed to call with model status', error.message);
+      logger.error('Failed to call with model status', error.message);
 
       const { model, provider, credentialId } = req as any;
       await sendCredentialInvalidNotification({ model, provider, credentialId, error });
@@ -231,7 +239,7 @@ export function withModelStatus(handler: (req: Request, res: Response) => Promis
         duration: Date.now() - start,
         error,
       }).catch((error) => {
-        console.error('Failed to update model status', error);
+        logger.error('Failed to update model status', error);
       });
 
       handleModelCallError(req, error);
@@ -255,7 +263,7 @@ export async function callWithModelStatus(
       duration: Date.now() - start,
     });
   } catch (error) {
-    console.error('Failed to call with model status', error.message);
+    logger.error('Failed to call with model status', error.message);
 
     await sendCredentialInvalidNotification({ model, provider, credentialId, error });
 
@@ -265,7 +273,7 @@ export async function callWithModelStatus(
       duration: Date.now() - start,
       error,
     }).catch((error) => {
-      console.error('Failed to update model status', error);
+      logger.error('Failed to update model status', error);
     });
 
     throw error;
@@ -339,7 +347,7 @@ export const checkModelStatus = async ({
     } else if (type === 'embedding') {
       await checkEmbeddingModelStatus({ provider: provider.name, model });
     } else {
-      console.error('Invalid model type', type);
+      logger.error('Invalid model type', type);
       throw new CustomError(500, 'Invalid model type');
     }
   } catch (error) {

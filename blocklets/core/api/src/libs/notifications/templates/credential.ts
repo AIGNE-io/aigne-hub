@@ -25,11 +25,19 @@ function translate(key: string, locale: string, params?: Record<string, any>): s
       title: 'AIGNE Hub Credential Invalid',
       body: 'Your Credential {credentialValue} for {provider} is invalid, Please update or verify this credential to continue using the service.',
       credentials: 'Manage Credentials',
+      provider: 'Provider',
+      credentialName: 'Credential Name',
+      credentialValue: 'Credential Value',
+      errorMessage: 'Invalid Reason',
     },
     zh: {
       title: 'AIGNE Hub 凭证错误',
       body: '您在 {provider} 使用的 {credentialValue} 无效, 请更新或验证该凭证以继续使用服务。',
       credentials: '管理凭证',
+      provider: '提供者',
+      credentialName: '凭证名称',
+      credentialValue: '凭证值',
+      errorMessage: '错误原因',
     },
   };
 
@@ -72,7 +80,7 @@ export class CredentialInvalidNotificationTemplate extends BaseNotificationTempl
         data: {
           type: 'plain',
           color: '#9397A1',
-          text: 'Provider',
+          text: translate('provider', locale),
         },
       },
       {
@@ -87,7 +95,7 @@ export class CredentialInvalidNotificationTemplate extends BaseNotificationTempl
         data: {
           type: 'plain',
           color: '#9397A1',
-          text: 'Credential Name',
+          text: translate('credentialName', locale),
         },
       },
       {
@@ -102,7 +110,7 @@ export class CredentialInvalidNotificationTemplate extends BaseNotificationTempl
         data: {
           type: 'plain',
           color: '#9397A1',
-          text: 'Credential Value',
+          text: translate('credentialValue', locale),
         },
       },
       {
