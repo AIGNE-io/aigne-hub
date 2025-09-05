@@ -22,6 +22,8 @@ import { initialize } from './store/models';
 import { sequelize } from './store/sequelize';
 import wsServer from './ws';
 
+const REQUEST_ENTITY_SIZE_LIMIT = process.env.REQUEST_ENTITY_SIZE_LIMIT || '30 mb';
+
 if (process.env.NODE_ENV === 'development') {
   dotenv.config();
 }
@@ -34,8 +36,8 @@ const app = express();
 app.set('trust proxy', true);
 app.use(cookieParser());
 
-app.use(express.json({ limit: '1 mb' }));
-app.use(express.urlencoded({ extended: true, limit: '1 mb' }));
+app.use(express.json({ limit: REQUEST_ENTITY_SIZE_LIMIT }));
+app.use(express.urlencoded({ extended: true, limit: REQUEST_ENTITY_SIZE_LIMIT }));
 
 app.use(cors());
 
