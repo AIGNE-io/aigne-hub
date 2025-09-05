@@ -1,3 +1,7 @@
+## 0.4.11 (2025-9-5)
+
+- fix: should use default model if client not pass model
+
 ## 0.4.10 (2025-9-5)
 
 - fix: compatible with old client
