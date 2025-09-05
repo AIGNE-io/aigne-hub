@@ -18,7 +18,6 @@ import { Config } from '../libs/env';
 import { ensureAdmin, ensureComponentCall } from '../libs/security';
 
 const router = Router();
-const DEFAULT_MODEL = 'openai/gpt-5-mini';
 
 router.get('/status', ensureRemoteComponentCall(App.findPublicKeyById, ensureComponentCall(ensureAdmin)), (_, res) => {
   const { openaiApiKey } = Config;
@@ -142,8 +141,8 @@ router.post(
       return '/v1/audio/transcriptions';
     },
     parseReqBody: false,
-    async proxyReqOptDecorator(proxyReqOpts) {
-      const { apiKey } = await getOpenAIV2({ body: { model: DEFAULT_MODEL } });
+    async proxyReqOptDecorator(proxyReqOpts, srcReq) {
+      const { apiKey } = await getOpenAIV2(srcReq);
       proxyReqOpts.headers!.Authorization = `Bearer ${apiKey}`;
       return proxyReqOpts;
     },
@@ -159,8 +158,8 @@ router.post(
     proxyReqPathResolver() {
       return '/v1/audio/speech';
     },
-    async proxyReqOptDecorator(proxyReqOpts) {
-      const { apiKey } = await getOpenAIV2({ body: { model: DEFAULT_MODEL } });
+    async proxyReqOptDecorator(proxyReqOpts, srcReq) {
+      const { apiKey } = await getOpenAIV2(srcReq);
       proxyReqOpts.headers!.Authorization = `Bearer ${apiKey}`;
       return proxyReqOpts;
     },

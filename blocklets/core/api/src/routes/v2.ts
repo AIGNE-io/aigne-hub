@@ -442,8 +442,8 @@ router.post(
       return '/v2/audio/transcriptions';
     },
     parseReqBody: false,
-    async proxyReqOptDecorator(proxyReqOpts) {
-      const { apiKey } = await getOpenAIV2({ body: { model: DEFAULT_MODEL } });
+    async proxyReqOptDecorator(proxyReqOpts, srcReq) {
+      const { apiKey } = await getOpenAIV2(srcReq);
       proxyReqOpts.headers!.Authorization = `Bearer ${apiKey}`;
       return proxyReqOpts;
     },
@@ -460,8 +460,8 @@ router.post(
     proxyReqPathResolver() {
       return '/v2/audio/speech';
     },
-    async proxyReqOptDecorator(proxyReqOpts) {
-      const { apiKey } = await getOpenAIV2({ body: { model: DEFAULT_MODEL } });
+    async proxyReqOptDecorator(proxyReqOpts, srcReq) {
+      const { apiKey } = await getOpenAIV2(srcReq);
       proxyReqOpts.headers!.Authorization = `Bearer ${apiKey}`;
       return proxyReqOpts;
     },
