@@ -125,7 +125,7 @@ export class CredentialInvalidNotificationTemplate extends BaseNotificationTempl
         data: {
           type: 'plain',
           color: '#9397A1',
-          text: 'Invalid Reason',
+          text: translate('errorMessage', locale),
         },
       },
       {
