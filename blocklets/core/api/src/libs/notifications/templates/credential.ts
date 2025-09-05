@@ -1,3 +1,4 @@
+import AiProvider from '@api/store/models/ai-provider';
 import { getUrl } from '@blocklet/sdk';
 
 import {
@@ -17,6 +18,7 @@ export interface CredentialInvalidNotificationTemplateContext extends BaseNotifi
     errorMessage: string;
     credentialValue: string;
   };
+  provider: AiProvider | null;
 }
 
 function translate(key: string, locale: string, params?: Record<string, any>): string {
@@ -60,16 +62,19 @@ export class CredentialInvalidNotificationTemplate extends BaseNotificationTempl
   async getContext(): Promise<CredentialInvalidNotificationTemplateContext> {
     const { credential } = this.options;
 
+    const provider = await AiProvider.findOne({ where: { name: credential.provider } }).catch(() => null);
+
     return {
       locale: 'en',
       userDid: '',
       credential,
+      provider,
     };
   }
 
   async getTemplate(): Promise<BaseNotificationTemplateType> {
     const context = await this.getContext();
-    const { locale, credential } = context;
+    const { locale, credential, provider } = context;
 
     const titleKey = 'title';
     const bodyKey = 'body';
@@ -87,7 +92,7 @@ export class CredentialInvalidNotificationTemplate extends BaseNotificationTempl
         type: 'text',
         data: {
           type: 'plain',
-          text: credential.provider,
+          text: provider?.displayName || credential.provider,
         },
       },
       {
@@ -141,7 +146,7 @@ export class CredentialInvalidNotificationTemplate extends BaseNotificationTempl
     const template: BaseNotificationTemplateType = {
       title: translate(titleKey, locale, {}),
       body: translate(bodyKey, locale, {
-        provider: credential.provider,
+        provider: provider?.displayName || credential.provider,
         model: credential.model,
         credentialName: credential.credentialName,
         credentialValue: credential.credentialValue,
