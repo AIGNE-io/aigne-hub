@@ -458,5 +458,5 @@ export default flatten({
   usedBy: 'Used By',
   testStatus: 'Test Status',
   testing: 'Testing...',
-  errorConnected: '{errorCount}/{total} is invalid',
+  errorConnected: '{errorCount} of {total} is invalid',
 });
