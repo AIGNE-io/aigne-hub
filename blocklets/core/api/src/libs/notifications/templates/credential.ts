@@ -66,6 +66,50 @@ export class CredentialInvalidNotificationTemplate extends BaseNotificationTempl
     const titleKey = 'title';
     const bodyKey = 'body';
 
+    const attachments = [
+      {
+        type: 'section',
+        fields: [
+          {
+            type: 'text',
+            data: {
+              type: 'plain',
+              color: '#9397A1',
+              text: `provider: ${credential.provider}`,
+            },
+          },
+          {
+            type: 'text',
+            data: {
+              type: 'plain',
+              color: '#9397A1',
+              text: `credential name: ${credential.credentialName}`,
+            },
+          },
+        ],
+      },
+      {
+        type: 'section',
+        fields: [
+          {
+            type: 'text',
+            data: {
+              type: 'plain',
+              color: '#FF6B6B',
+              text: 'Error Details:',
+            },
+          },
+          {
+            type: 'text',
+            data: {
+              type: 'plain',
+              text: credential.errorMessage,
+            },
+          },
+        ],
+      },
+    ];
+
     const template: BaseNotificationTemplateType = {
       title: translate(titleKey, locale, {}),
       body: translate(bodyKey, locale, {
@@ -75,6 +119,7 @@ export class CredentialInvalidNotificationTemplate extends BaseNotificationTempl
         credentialValue: credential.credentialValue,
         errorMessage: credential.errorMessage,
       }),
+      attachments,
       actions: [
         {
           name: translate('credentials', locale),

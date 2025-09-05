@@ -450,5 +450,5 @@ export default flatten({
   usedBy: '使用者',
   testStatus: '测试状态',
   testing: '测试中...',
-  errorConnected: '{count} 是无效凭证',
+  errorConnected: '{errorCount} 个无效凭证',
 });

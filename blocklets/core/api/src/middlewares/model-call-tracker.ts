@@ -45,9 +45,10 @@ declare global {
 export function createModelCallMiddleware(callType: CallType) {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const userDid = req.user?.did;
-    const model = req.body?.model;
+    const model = req.body?.model || req.body.input.modelOptions.model;
 
     if (!userDid || !model) {
+      logger.error('Model call middleware error', { error: 'User did or model is required', userDid, model });
       next();
       return;
     }

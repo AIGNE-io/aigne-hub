@@ -285,10 +285,10 @@ export default function AIProviders() {
             ? provider.credentials.find((credential: Credential) => credential.active === false)
             : null;
 
-          const total = (provider.credentials||[]).length;
-          const errorCount = (provider.credentials||[]).filter((credential: Credential) => credential.active === false).length;
-          const isConnected = provider.enabled && (provider.credentials?.length || 0) > 0;
-
+          const credentials = provider.credentials || [];
+          const total = credentials.length;
+          const errorCount = credentials.filter((credential: Credential) => credential.active === false).length;
+          const isConnected = provider.enabled && total > 0;
 
           return (
             <Stack
@@ -309,7 +309,11 @@ export default function AIProviders() {
                 }}
               />
               <Typography variant="body2" sx={{ color: errorCredential ? 'warning.main' : 'text.secondary' }}>
-                {isConnected ? (errorCredential ? t('errorConnected', { count: `${errorCount}/${total}` }) : t('connected')) : t('disconnected')}
+                {isConnected
+                  ? errorCredential
+                    ? t('errorConnected', { errorCount, total })
+                    : t('connected')
+                  : t('disconnected')}
               </Typography>
             </Stack>
           );

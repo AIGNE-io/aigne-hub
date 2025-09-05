@@ -143,7 +143,7 @@ router.post(
             type: 'chatCompletion',
             promptTokens: (usageData.usage?.inputTokens as number) || 0,
             completionTokens: (usageData.usage?.outputTokens as number) || 0,
-            model: req.body?.model as string,
+            model: (req.body?.model || req.body?.input?.modelOptions?.model) as string,
             modelParams: req.body?.options?.modelOptions,
             appId: req.headers['x-aigne-hub-client-did'] as string,
             userDid: userDid!,
