@@ -1,3 +1,9 @@
+## 0.4.8 (2025-9-5)
+
+- fix: refine notification messages for better clarity
+- fix: improve invalid api_key warning display
+- fix: catch and handle invalid api_key errors in requests
+
 ## 0.4.7 (2025-9-3)
 
 - fix: add request body validation for AIGNE Hub API endpoints
