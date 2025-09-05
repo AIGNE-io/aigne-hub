@@ -2,6 +2,7 @@ import { availableModels as availableChatModels, availableImageModels } from '@a
 import { AIGNE, ChatModelOptions, ChatModelOutput, ImageModelOptions } from '@aigne/core';
 import type { OpenAIChatModelOptions, OpenAIImageModelOptions } from '@aigne/openai';
 import logger from '@api/libs/logger';
+import { ModelCallContext } from '@api/middlewares/model-call-tracker';
 import AiCredential from '@api/store/models/ai-credential';
 import AiProvider from '@api/store/models/ai-provider';
 import { ChatCompletionInput, ChatCompletionResponse } from '@blocklet/aigne-hub/api/types';
@@ -16,8 +17,8 @@ import { adaptStreamToOldFormat, convertToFrameworkMessages, getModelAndProvider
 export async function getProviderCredentials(
   provider: string,
   options?: {
-    modelCallContext?: any; // ModelCallContext from middleware
-    model?: string; // Actual model name to record
+    modelCallContext?: ModelCallContext;
+    model?: string;
   }
 ): Promise<{
   id?: string;
@@ -135,7 +136,7 @@ async function loadModel(
     provider?: string;
     modelOptions?: ChatModelOptions;
     clientOptions?: OpenAIChatModelOptions['clientOptions'];
-    req?: any; // Express Request with modelCallContext
+    req?: Request;
   } = {}
 ) {
   const providerName = provider?.toLowerCase().replace(/-/g, '') || '';
@@ -185,7 +186,7 @@ export const getModel = async (
   options?: {
     modelOptions?: ChatModelOptions;
     clientOptions?: OpenAIChatModelOptions['clientOptions'];
-    req?: any;
+    req?: Request;
   }
 ) => {
   const { modelName: model, providerName: provider } = await getModelAndProviderId(input.model);
@@ -211,7 +212,7 @@ const loadImageModel = async (
     provider?: string;
     modelOptions?: ImageModelOptions;
     clientOptions?: OpenAIImageModelOptions['clientOptions'];
-    req?: any; // Express Request with modelCallContext
+    req?: Request;
   } = {}
 ) => {
   const providerName = (provider || '').toLowerCase() === 'google' ? 'gemini' : provider?.toLowerCase() || '';
@@ -262,7 +263,7 @@ export const getImageModel = async (
   options?: {
     modelOptions?: ImageModelOptions;
     clientOptions?: OpenAIImageModelOptions['clientOptions'];
-    req?: any;
+    req?: Request;
   }
 ) => {
   const { modelName: model, providerName: provider } = await getModelAndProviderId(input.model);

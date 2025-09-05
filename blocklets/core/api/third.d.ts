@@ -29,6 +29,32 @@ declare module '@blocklet/logger' {
   export default createLogger;
 }
 
+interface ModelCallContext {
+  id: string;
+  startTime: number;
+  complete: (result: ModelCallResult) => Promise<void>;
+  fail: (error: string, partialUsage?: Partial<UsageData>) => Promise<void>;
+  updateCredentials: (providerId: string, credentialId: string, actualModel?: string) => Promise<void>;
+}
+
+interface UsageData {
+  promptTokens: number;
+  completionTokens: number;
+  numberOfImageGeneration: number;
+  credits: number;
+  usageMetrics: Record<string, any>;
+  metadata?: Record<string, any>;
+}
+
+interface ModelCallResult {
+  promptTokens?: number;
+  completionTokens?: number;
+  numberOfImageGeneration?: number;
+  credits?: number;
+  usageMetrics?: Record<string, any>;
+  metadata?: Record<string, any>;
+}
+
 namespace Express {
   import { SessionUser } from '@blocklet/sdk/lib/util/login';
 
@@ -39,5 +65,11 @@ namespace Express {
       appId: string;
       userDid: string;
     };
+
+    model?: string;
+    provider?: string;
+    credentialId?: string;
+
+    modelCallContext?: ModelCallContext;
   }
 }

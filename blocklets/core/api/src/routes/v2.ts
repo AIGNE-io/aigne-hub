@@ -160,7 +160,7 @@ router.post(
             type: 'chatCompletion',
             promptTokens: (usageData.usage?.inputTokens as number) || 0,
             completionTokens: (usageData.usage?.outputTokens as number) || 0,
-            model: getReqModel(req) as string,
+            model: getReqModel(req),
             modelParams: req.body?.options?.modelOptions,
             appId: req.headers['x-aigne-hub-client-did'] as string,
             userDid: userDid!,
@@ -443,7 +443,7 @@ router.post(
     },
     parseReqBody: false,
     async proxyReqOptDecorator(proxyReqOpts) {
-      const { apiKey } = await getOpenAIV2();
+      const { apiKey } = await getOpenAIV2({ body: { model: DEFAULT_MODEL } });
       proxyReqOpts.headers!.Authorization = `Bearer ${apiKey}`;
       return proxyReqOpts;
     },
@@ -461,7 +461,7 @@ router.post(
       return '/v2/audio/speech';
     },
     async proxyReqOptDecorator(proxyReqOpts) {
-      const { apiKey } = await getOpenAIV2();
+      const { apiKey } = await getOpenAIV2({ body: { model: DEFAULT_MODEL } });
       proxyReqOpts.headers!.Authorization = `Bearer ${apiKey}`;
       return proxyReqOpts;
     },

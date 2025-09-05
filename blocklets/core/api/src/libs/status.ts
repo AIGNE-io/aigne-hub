@@ -31,7 +31,7 @@ export const typeMap = {
   embedding: 'embedding',
 };
 
-function classifyError(error: any): ModelError {
+function classifyError(error: Error & { status?: number; code?: number; statusCode?: number }): ModelError {
   const errorMessage = error.message || error.toString();
   const errorCode = error.status || error.code || error.statusCode;
 
@@ -141,8 +141,8 @@ const sendCredentialInvalidNotification = async ({
   credentialId,
   error,
 }: {
-  model: string;
-  provider: string;
+  model?: string;
+  provider?: string;
   credentialId?: string;
   error: Error & { status: number };
 }) => {
@@ -230,7 +230,7 @@ export function withModelStatus(handler: (req: Request, res: Response) => Promis
     } catch (error) {
       logger.error('Failed to call with model status', error.message);
 
-      const { model, provider, credentialId } = req as any;
+      const { model, provider, credentialId } = req;
       await sendCredentialInvalidNotification({ model, provider, credentialId, error });
 
       await updateModelStatus({
@@ -320,16 +320,16 @@ export const checkModelStatus = async ({
   model: string;
   type: 'chat' | 'image_generation' | 'embedding';
 }) => {
-  const provider = await AiProvider.findOne({
+  const provider = (await AiProvider.findOne({
     where: { id: providerId },
     include: [{ model: AiCredential, as: 'credentials', required: false }],
-  });
+  })) as AiProvider & { credentials: AiCredential[] };
 
   if (!provider) {
     throw new CustomError(500, 'AI provider not found');
   }
 
-  if (!(provider as any).credentials || (provider as any).credentials.length === 0) {
+  if (!provider.credentials || provider.credentials.length === 0) {
     await updateModelStatus({
       model: `${provider.name}/${model}`,
       success: false,

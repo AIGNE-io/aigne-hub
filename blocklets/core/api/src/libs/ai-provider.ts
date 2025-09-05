@@ -1,3 +1,4 @@
+import { ModelCallContext } from '@api/middlewares/model-call-tracker';
 import { getProviderCredentials } from '@api/providers/models';
 import { SubscriptionError, SubscriptionErrorType } from '@blocklet/aigne-hub/api';
 import { CustomError } from '@blocklet/error';
@@ -22,7 +23,7 @@ export function getOpenAI() {
   });
 }
 
-export async function getOpenAIV2(req?: any) {
+export async function getOpenAIV2(req: { body: { model: string }; modelCallContext?: ModelCallContext }) {
   const { modelName } = getModelNameWithProvider(req?.body?.model);
   const params = await getProviderCredentials('openai', {
     modelCallContext: req?.modelCallContext,
@@ -86,6 +87,6 @@ export function getModelNameWithProvider(model: string, defaultProviderName: str
   };
 }
 
-export function getReqModel(req: Request) {
+export function getReqModel(req: Request): string {
   return req.body?.model || req.body?.input?.modelOptions?.model;
 }

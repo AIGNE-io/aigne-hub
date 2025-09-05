@@ -18,6 +18,7 @@ import { Config } from '../libs/env';
 import { ensureAdmin, ensureComponentCall } from '../libs/security';
 
 const router = Router();
+const DEFAULT_MODEL = 'openai/gpt-5-mini';
 
 router.get('/status', ensureRemoteComponentCall(App.findPublicKeyById, ensureComponentCall(ensureAdmin)), (_, res) => {
   const { openaiApiKey } = Config;
@@ -45,7 +46,7 @@ router.post(
             type: 'chatCompletion',
             promptTokens: (usageData.usage?.inputTokens as number) || 0,
             completionTokens: (usageData.usage?.outputTokens as number) || 0,
-            model: getReqModel(req) as string,
+            model: getReqModel(req),
             modelParams: req.body?.options?.modelOptions,
           }).catch((err) => {
             logger.error('Create token usage v2 error', { error: err });
@@ -142,7 +143,7 @@ router.post(
     },
     parseReqBody: false,
     async proxyReqOptDecorator(proxyReqOpts) {
-      const { apiKey } = await getOpenAIV2();
+      const { apiKey } = await getOpenAIV2({ body: { model: DEFAULT_MODEL } });
       proxyReqOpts.headers!.Authorization = `Bearer ${apiKey}`;
       return proxyReqOpts;
     },
@@ -159,7 +160,7 @@ router.post(
       return '/v1/audio/speech';
     },
     async proxyReqOptDecorator(proxyReqOpts) {
-      const { apiKey } = await getOpenAIV2();
+      const { apiKey } = await getOpenAIV2({ body: { model: DEFAULT_MODEL } });
       proxyReqOpts.headers!.Authorization = `Bearer ${apiKey}`;
       return proxyReqOpts;
     },
