@@ -135,6 +135,36 @@ function classifyError(error: any): ModelError {
 
 const modelStatusCache = new Map<string, boolean>();
 
+const sendCredentialInvalidNotification = async ({
+  model,
+  provider,
+  credentialId,
+  error,
+}: {
+  model: string;
+  provider: string;
+  credentialId?: string;
+  error: Error & { status: number };
+}) => {
+  if (credentialId && [401, 402, 403].includes(Number(error.status))) {
+    const credential = await AiCredential.findOne({ where: { id: credentialId } });
+
+    const template = new CredentialInvalidNotificationTemplate({
+      credential: {
+        provider,
+        model,
+        credentialName: credential?.name,
+        credentialValue: credential?.getDisplayText(),
+        errorMessage: error.message,
+      },
+    });
+
+    NotificationManager.sendCustomNotificationByRoles(['owner', 'admin'], await template.getTemplate());
+
+    await AiCredential.update({ active: false, error: error.message }, { where: { id: credentialId } });
+  }
+};
+
 export async function updateModelStatus({
   model,
   success: available,
@@ -190,6 +220,11 @@ export function withModelStatus(handler: (req: Request, res: Response) => Promis
         duration: Date.now() - start,
       });
     } catch (error) {
+      console.error('Failed to call with model status', error.message);
+
+      const { model, provider, credentialId } = req as any;
+      await sendCredentialInvalidNotification({ model, provider, credentialId, error });
+
       await updateModelStatus({
         model: req.body.model,
         success: false,
@@ -222,22 +257,7 @@ export async function callWithModelStatus(
   } catch (error) {
     console.error('Failed to call with model status', error.message);
 
-    if (credentialId && [401, 402, 403].includes(Number(error.status))) {
-      const credential = await AiCredential.findOne({ where: { id: credentialId } });
-      const template = new CredentialInvalidNotificationTemplate({
-        credential: {
-          provider,
-          model,
-          credentialName: credential?.name,
-          credentialValue: credential?.getDisplayText(),
-          errorMessage: error.message,
-        },
-      });
-
-      NotificationManager.sendCustomNotificationByRoles(['owner', 'admin'], await template.getTemplate());
-
-      await AiCredential.update({ active: false, error: error.message }, { where: { id: credentialId } });
-    }
+    await sendCredentialInvalidNotification({ model, provider, credentialId, error });
 
     await updateModelStatus({
       model: `${provider}/${model}`,

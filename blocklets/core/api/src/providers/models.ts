@@ -6,6 +6,7 @@ import AiCredential from '@api/store/models/ai-credential';
 import AiProvider from '@api/store/models/ai-provider';
 import { ChatCompletionInput, ChatCompletionResponse } from '@blocklet/aigne-hub/api/types';
 import { CustomError } from '@blocklet/error';
+import { Request } from 'express';
 import { omit, omitBy, pick } from 'lodash';
 
 import { AIProviderType as AIProvider } from '../libs/constants';
@@ -102,7 +103,7 @@ export async function chatCompletionByFrameworkModel(
   userDid?: string,
   options?: {
     onEnd?: (data?: { output?: ChatModelOutput }) => Promise<{ output?: ChatModelOutput } | undefined>;
-    req?: any;
+    req: Request;
   }
 ): Promise<AsyncGenerator<ChatCompletionResponse>> {
   const { modelInstance } = await getModel(input, { req: options?.req });
@@ -189,6 +190,13 @@ export const getModel = async (
 ) => {
   const { modelName: model, providerName: provider } = await getModelAndProviderId(input.model);
   const result = await loadModel(model, { provider, ...options });
+
+  if (options?.req) {
+    options.req.provider = provider;
+    options.req.model = model;
+    options.req.credentialId = result.credentialId;
+  }
+
   return result;
 };
 
@@ -259,6 +267,13 @@ export const getImageModel = async (
 ) => {
   const { modelName: model, providerName: provider } = await getModelAndProviderId(input.model);
   const result = await loadImageModel(model, { provider, ...options });
+
+  if (options?.req) {
+    options.req.provider = provider;
+    options.req.model = model;
+    options.req.credentialId = result.credentialId;
+  }
+
   return result;
 };
 

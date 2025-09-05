@@ -23,13 +23,13 @@ function translate(key: string, locale: string, params?: Record<string, any>): s
   const translations = {
     en: {
       title: 'AIGNE Hub Credential Invalid',
-      body: '{provider}/{model} {credentialName}:{credentialValue} credential is invalid: {errorMessage}. Please check it.',
-      credentials: 'View Credentials',
+      body: 'Your {credentialName} ({credentialValue}) for provider "{provider}" is invalid, reason: {errorMessage}. Please update or verify this credential to continue using the service.',
+      credentials: 'Manage Credentials',
     },
     zh: {
-      title: 'AIGNE Hub 凭证已失效',
-      body: '{provider}/{model} {credentialName}:{credentialValue} 凭证已失效：{errorMessage}。请检查。',
-      credentials: '查看凭证',
+      title: 'AIGNE Hub 凭证错误',
+      body: '您在 {provider} 使用的 {credentialName}（{credentialValue}）无效，原因：{errorMessage}。请更新或检查该凭证，以继续使用服务。',
+      credentials: '管理凭证',
     },
   };
 

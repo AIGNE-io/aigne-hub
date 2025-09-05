@@ -201,42 +201,49 @@ router.post(
       const engine = new AIGNE({ model });
       const aigneServer = new AIGNEHTTPServer(engine);
 
-      await aigneServer.invoke(req, res, {
-        userContext: { userId: req.user?.did, ...value.options?.userContext },
-        hooks: {
-          onEnd: async (data) => {
-            const usageData = data.output;
-            if (usageData) {
-              const usage = await createUsageAndCompleteModelCall({
-                req,
-                type: 'chatCompletion',
-                promptTokens: (usageData.usage?.inputTokens as number) || 0,
-                completionTokens: (usageData.usage?.outputTokens as number) || 0,
-                model: modelOptions?.model,
-                modelParams: modelOptions,
-                userDid: userDid!,
-                appId: req.headers['x-aigne-hub-client-did'] as string,
-                creditBasedBillingEnabled: Config.creditBasedBillingEnabled,
-                additionalMetrics: {
-                  totalTokens: (usageData.usage as any)?.totalTokens,
-                  endpoint: req.path,
-                },
-              }).catch((err) => {
-                logger.error('Create usage and complete model call error', { error: err });
-                return undefined;
-              });
+      await new Promise((resolve, reject) => {
+        aigneServer.invoke(req, res, {
+          userContext: { userId: req.user?.did, ...value.options?.userContext },
+          hooks: {
+            onEnd: async (data) => {
+              const usageData = data.output;
+              if (usageData) {
+                const usage = await createUsageAndCompleteModelCall({
+                  req,
+                  type: 'chatCompletion',
+                  promptTokens: (usageData.usage?.inputTokens as number) || 0,
+                  completionTokens: (usageData.usage?.outputTokens as number) || 0,
+                  model: modelOptions?.model,
+                  modelParams: modelOptions,
+                  userDid: userDid!,
+                  appId: req.headers['x-aigne-hub-client-did'] as string,
+                  creditBasedBillingEnabled: Config.creditBasedBillingEnabled,
+                  additionalMetrics: {
+                    totalTokens: (usageData.usage as any)?.totalTokens,
+                    endpoint: req.path,
+                  },
+                }).catch((err) => {
+                  logger.error('Create usage and complete model call error', { error: err });
+                  return undefined;
+                });
 
-              if (data.output.usage && Config.creditBasedBillingEnabled && usage) {
-                data.output.usage = {
-                  ...data.output.usage,
-                  aigneHubCredits: usage,
-                  modelCallId: req.modelCallContext?.id,
-                };
+                if (data.output.usage && Config.creditBasedBillingEnabled && usage) {
+                  data.output.usage = {
+                    ...data.output.usage,
+                    aigneHubCredits: usage,
+                    modelCallId: req.modelCallContext?.id,
+                  };
+                }
               }
-            }
-            return data;
+
+              resolve(data);
+              return data;
+            },
+            onError: async ({ error }) => {
+              reject(error);
+            },
           },
-        },
+        });
       });
     })
   )
