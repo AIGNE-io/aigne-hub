@@ -1255,7 +1255,7 @@ router.post('/bulk-rate-update', ensureAdmin, async (req, res) => {
   }
 });
 
-router.get('/health', ensureAdmin, async (_req, res) => {
+router.get('/health', async (_req, res) => {
   const credentials = (await AiCredential.findAll({
     attributes: ['id', 'name', 'active', 'providerId'],
     include: [
