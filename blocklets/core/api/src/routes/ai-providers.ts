@@ -1258,7 +1258,6 @@ router.post('/bulk-rate-update', ensureAdmin, async (req, res) => {
 router.get('/health', ensureAdmin, async (_req, res) => {
   const credentials = (await AiCredential.findAll({
     attributes: ['id', 'name', 'active', 'providerId'],
-    where: {},
     include: [
       {
         model: AiProvider,
@@ -1276,8 +1275,12 @@ router.get('/health', ensureAdmin, async (_req, res) => {
   }, {});
 
   res.json({
-    message: 'Credentials Health Check',
-    status,
+    code: 'OK',
+    data: {
+      message: 'Credentials Health Check',
+      status,
+      timestamp: new Date().toISOString(),
+    },
   });
 });
 
