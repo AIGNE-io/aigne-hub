@@ -1255,4 +1255,30 @@ router.post('/bulk-rate-update', ensureAdmin, async (req, res) => {
   }
 });
 
+router.get('/health', ensureAdmin, async (_req, res) => {
+  const credentials = (await AiCredential.findAll({
+    attributes: ['id', 'name', 'active', 'providerId'],
+    where: {},
+    include: [
+      {
+        model: AiProvider,
+        as: 'provider',
+        attributes: ['id', 'name', 'displayName'],
+      },
+    ],
+  })) as (AiCredential & { provider: AiProvider })[];
+
+  const status = credentials.reduce<Record<string, Record<string, { running: boolean }>>>((acc, credential) => {
+    const providerName = credential.provider.name;
+    if (!acc[providerName]) acc[providerName] = {};
+    acc[providerName][credential.name] = { running: credential.active };
+    return acc;
+  }, {});
+
+  res.json({
+    message: 'Credentials Health Check',
+    status,
+  });
+});
+
 export default router;
