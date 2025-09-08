@@ -1,6 +1,6 @@
 ## 0.4.14 (2025-9-8)
 
-- feat: enable cluster mode
+- feat: activate cluster mode capability in blocklet
 
 ## 0.4.13 (2025-9-5)
 
