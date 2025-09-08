@@ -82,7 +82,7 @@ environments:
     secure: true
     shared: false
 capabilities:
-  clusterMode: false
+  clusterMode: true
   component: true
   navigation: true
 screenshots:
