@@ -1267,7 +1267,7 @@ router.get('/health', async (_req, res) => {
     ],
   })) as (AiCredential & { provider: AiProvider })[];
 
-  const status = credentials.reduce<Record<string, Record<string, { running: boolean }>>>((acc, credential) => {
+  const providers = credentials.reduce<Record<string, Record<string, { running: boolean }>>>((acc, credential) => {
     const providerName = credential.provider.name;
     if (!acc[providerName]) acc[providerName] = {};
     acc[providerName][credential.name] = { running: credential.active };
@@ -1275,12 +1275,8 @@ router.get('/health', async (_req, res) => {
   }, {});
 
   res.json({
-    code: 'OK',
-    data: {
-      message: 'Credentials Health Check',
-      status,
-      timestamp: new Date().toISOString(),
-    },
+    providers,
+    timestamp: new Date().toISOString(),
   });
 });
 
