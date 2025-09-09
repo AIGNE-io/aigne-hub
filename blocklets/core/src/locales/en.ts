@@ -404,6 +404,8 @@ export default flatten({
   analytics: {
     creditUsage: 'Credit Usage',
     creditBoardDescription: 'Monitor your model usage and manage AIGNE Hub Credits',
+    allCreditsUsage: 'All Credits Usage',
+    allCreditBoardDescription: 'Monitor all users model usage and manage AIGNE Hub Credits',
     loadingData: 'Loading data...',
     startDate: 'Start Date',
     endDate: 'End Date',
@@ -434,7 +436,7 @@ export default flatten({
     ofTotalUsage: 'of total calls',
     callHistory: 'Call History',
     callHistoryDescription: 'Detailed log of all model API calls',
-    searchPlaceholder: 'Search by model or appDid...',
+    searchPlaceholder: 'Search by model / {did}...',
     allStatus: 'All Status',
     timestamp: 'Timestamp',
     noCallsFound: 'No calls found matching your criteria',
@@ -459,4 +461,5 @@ export default flatten({
   testStatus: 'Test Status',
   testing: 'Testing...',
   errorConnected: '{errorCount} of {total} is invalid',
+  export: 'Export',
 });

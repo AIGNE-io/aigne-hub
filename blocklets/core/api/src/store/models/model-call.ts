@@ -199,7 +199,11 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
     }
 
     if (search) {
-      whereClause[Op.or] = [{ model: { [Op.like]: `%${search}%` } }, { appDid: { [Op.like]: `%${search}%` } }];
+      whereClause[Op.or] = [
+        { model: { [Op.like]: `%${search}%` } },
+        { appDid: { [Op.like]: `%${search}%` } },
+        { userDid: { [Op.like]: `%${search}%` } },
+      ];
     }
 
     const { rows, count } = await ModelCall.findAndCountAll({

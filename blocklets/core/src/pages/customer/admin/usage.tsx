@@ -1,6 +1,5 @@
 import { CallHistory, DateRangePicker, ModelUsageStats, UsageCharts, UsageSummary } from '@app/components/analytics';
 import {
-  CreditsBalanceSkeleton,
   ModelUsageStatsSkeleton,
   UsageChartsSkeleton,
   UsageSummarySkeleton,
@@ -9,18 +8,16 @@ import {
 } from '@app/components/usage';
 import { Toast } from '@arcblock/ux';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
-import { UserInfoResult } from '@blocklet/aigne-hub/api/types/user';
 import { formatError } from '@blocklet/error';
 import { RefreshOutlined } from '@mui/icons-material';
 import { Alert, Box, Divider, IconButton, Stack, Tooltip, Typography } from '@mui/material';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
 
-import dayjs from '../../libs/dayjs';
-import { CreditsBalance } from './credits-balance';
-import { useCreditBalance, useUsageStats } from './hooks';
+import dayjs from '../../../libs/dayjs';
+import { useUsageStats } from '../hooks';
+import WrappedLayout from './layout';
 
 function CreditBoard() {
   const { t } = useLocaleContext();
@@ -29,16 +26,6 @@ function CreditBoard() {
     to: toUTCTimestamp(dayjs(), true),
   });
   const [refreshKey, setRefreshKey] = useState(0);
-  const [searchParams] = useSearchParams();
-  const appDid = searchParams.get('appDid') || searchParams.get('appdid');
-
-  // API hooks
-  const {
-    data: creditBalance,
-    loading: balanceLoading,
-    error: balanceError,
-    refetch: refetchBalance,
-  } = useCreditBalance();
 
   const {
     data: usageStats,
@@ -46,6 +33,7 @@ function CreditBoard() {
     error: statsError,
     refetch: refetchStats,
   } = useUsageStats({
+    allUsers: true,
     startTime: dateRange.from.toString(),
     endTime: dateRange.to.toString(),
   });
@@ -57,29 +45,25 @@ function CreditBoard() {
     });
   };
 
-  const hasError = balanceError || statsError;
+  const hasError = statsError;
 
-  // Smart loading states to prevent flickering
-  const showBalanceSkeleton = useSmartLoading(balanceLoading, creditBalance);
   const showStatsSkeleton = useSmartLoading(statsLoading, usageStats);
 
   const onRefresh = () => {
-    refetchBalance();
     refetchStats();
     setRefreshKey((prev) => prev + 1);
     Toast.success(t('analytics.refreshSuccess'));
   };
 
   const dailyStats = usageStats?.dailyStats?.filter(
-    (stat: any) => stat.timestamp >= dateRange.from && stat.timestamp <= dateRange.to
+    (stat: { timestamp: number }) => stat.timestamp >= dateRange.from && stat.timestamp <= dateRange.to
   );
   const isCreditBillingEnabled = window.blocklet?.preferences?.creditBasedBillingEnabled;
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
-      <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+      <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', py: 3 }}>
         <Stack spacing={3}>
-          {/* Header */}
           <Stack
             direction={{ xs: 'column', md: 'row' }}
             spacing={2}
@@ -89,14 +73,14 @@ function CreditBoard() {
             }}>
             <Box>
               <Typography variant="h2" sx={{ fontWeight: 'bold', mb: 0.5, color: 'text.primary' }}>
-                {t('analytics.creditUsage')}
+                {t('analytics.allCreditsUsage')}
               </Typography>
               <Typography
                 variant="body1"
                 sx={{
                   color: 'text.secondary',
                 }}>
-                {t('analytics.creditBoardDescription')}
+                {t('analytics.allCreditBoardDescription')}
               </Typography>
             </Box>
             <Stack direction="row" spacing={1}>
@@ -129,18 +113,10 @@ function CreditBoard() {
             </Stack>
           </Stack>
 
-          {/* Error Alert */}
           {hasError && (
             <Alert severity="error" sx={{ borderRadius: 2 }}>
-              {formatError(balanceError || statsError)}
+              {formatError(statsError)}
             </Alert>
-          )}
-
-          {/* Credits Balance */}
-          {showBalanceSkeleton ? (
-            <CreditsBalanceSkeleton />
-          ) : (
-            <CreditsBalance data={creditBalance as unknown as UserInfoResult} />
           )}
 
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '2fr 1fr' }, gap: 3 }}>
@@ -180,11 +156,17 @@ function CreditBoard() {
 
           <Divider sx={{ my: 2 }} />
 
-          <CallHistory refreshKey={refreshKey} dateRange={dateRange} enableExport appDid={appDid ?? undefined} />
+          <CallHistory refreshKey={refreshKey} dateRange={dateRange} enableExport allUsers />
         </Stack>
       </Box>
     </LocalizationProvider>
   );
 }
 
-export default CreditBoard;
+export default function () {
+  return (
+    <WrappedLayout>
+      <CreditBoard />
+    </WrappedLayout>
+  );
+}

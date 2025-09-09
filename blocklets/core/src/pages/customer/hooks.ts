@@ -120,18 +120,24 @@ export function useCreditBalance() {
   };
 }
 
-export function useUsageStats(params: { startTime: string; endTime: string }) {
+export function useUsageStats(params: { startTime: string; endTime: string; allUsers?: boolean }) {
   const {
     data,
     loading,
     error,
     runAsync: refetch,
-  } = useRequest(() => api.get('/api/user/usage-stats', { params }).then((res) => res.data), {
-    refreshDeps: [params.startTime, params.endTime],
-    onError: (error) => {
-      console.error('Failed to fetch usage stats:', error);
-    },
-  });
+  } = useRequest(
+    () =>
+      api
+        .get(params.allUsers ? '/api/user/admin/user-stats' : '/api/user/usage-stats', { params })
+        .then((res) => res.data),
+    {
+      refreshDeps: [params.startTime, params.endTime],
+      onError: (error) => {
+        console.error('Failed to fetch usage stats:', error);
+      },
+    }
+  );
 
   return {
     data,

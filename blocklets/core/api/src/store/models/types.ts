@@ -25,6 +25,7 @@ export interface TypeStats {
 }
 
 export interface DailyStats {
+  timestamp?: number;
   totalUsage: number;
   totalCredits: number;
   totalCalls: number;

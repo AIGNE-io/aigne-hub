@@ -15,7 +15,9 @@
     "bundle:api": "tsc -p tsconfig.api.json && tsc-alias -p tsconfig.api.json",
     "bundle:blocklet": "blocklet bundle --compact --external 'sqlite3,@dqbd/tiktoken,@aigne/sqlite' --create-release",
     "deploy": "npm run bundle && blocklet deploy .blocklet/bundle",
-    "upload": "npm run bundle && blocklet upload .blocklet/release/blocklet.json"
+    "upload": "npm run bundle && blocklet upload .blocklet/release/blocklet.json",
+    "test": "bun test",
+    "test:coverage": "bun test --coverage --coverage-reporter=lcov --coverage-reporter=text"
   },
   "browserslist": {
     "production": [
@@ -109,6 +111,7 @@
     "zustand": "^4.5.5"
   },
   "devDependencies": {
+    "@types/bun": "^1.2.21",
     "@types/compression": "^1.7.5",
     "@types/content-type": "^1.1.9",
     "@types/cookie-parser": "^1.4.7",

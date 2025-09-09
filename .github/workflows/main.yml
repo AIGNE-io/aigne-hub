@@ -24,11 +24,19 @@ jobs:
         with:
           node-version: 20
           cache: pnpm
+
       - name: Install dependencies
         run: pnpm install
 
+      - name: Setup bun
+        uses: oven-sh/setup-bun@v2
+
       - name: Build libs
         run: pnpm build:libs
+
+      - name: Test
+        run: pnpm test:coverage
+
 
       - name: Publish to NPM
         if: "! contains(toJSON(github.event.commits.*.message), '[skip npm]')"

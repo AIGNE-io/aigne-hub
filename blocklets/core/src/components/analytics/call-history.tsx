@@ -3,6 +3,8 @@ import DID from '@arcblock/ux/lib/DID';
 /* eslint-disable react/no-unstable-nested-components */
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import Toast from '@arcblock/ux/lib/Toast';
+import UserCard from '@arcblock/ux/lib/UserCard';
+import { CardType, InfoType } from '@arcblock/ux/lib/UserCard/types';
 import { Table } from '@blocklet/aigne-hub/components';
 import { formatNumber } from '@blocklet/aigne-hub/utils/util';
 import { formatError } from '@blocklet/error';
@@ -52,6 +54,7 @@ export interface CallHistoryQuery {
   search?: string;
   status?: 'all' | 'success' | 'failed';
   appDid?: string;
+  allUsers?: boolean;
 }
 
 interface CallHistoryProps {
@@ -67,6 +70,7 @@ interface CallHistoryProps {
   enableExport?: boolean;
   refreshKey?: number;
   appDid?: string;
+  allUsers?: boolean;
 }
 
 function formatDuration(duration?: number) {
@@ -115,6 +119,7 @@ export function CallHistory({
   enableExport = true,
   refreshKey = 0,
   appDid = undefined,
+  allUsers = false,
 }: CallHistoryProps) {
   const { t } = useLocaleContext();
   const { api } = useSessionContext();
@@ -149,6 +154,7 @@ export function CallHistory({
       page: pagination.page,
       pageSize: pagination.pageSize,
       appDid,
+      allUsers,
     };
 
     if (dateRange) {
@@ -381,6 +387,26 @@ export function CallHistory({
         },
       },
     },
+    allUsers && {
+      name: 'userDid',
+      label: t('user'),
+      width: 200,
+      options: {
+        customBodyRender: (_value: any, tableMeta: any) => {
+          const call = modelCalls[tableMeta.rowIndex];
+          if (!call) return null;
+          return (
+            <UserCard
+              showDid
+              did={call.userDid}
+              cardType={CardType.Detailed}
+              infoType={InfoType.Minimal}
+              sx={{ border: 0, padding: 0 }}
+            />
+          );
+        },
+      },
+    },
     {
       name: 'duration',
       label: t('duration'),
@@ -433,7 +459,7 @@ export function CallHistory({
         },
       },
     },
-  ];
+  ].filter(Boolean);
 
   // 条件性添加列
   const columns = [...baseColumns];
@@ -513,7 +539,7 @@ export function CallHistory({
       </Stack>
       <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
         <TextField
-          placeholder={t('analytics.searchPlaceholder')}
+          placeholder={t('analytics.searchPlaceholder', { did: allUsers ? 'appDid / userDid' : 'appDid' })}
           value={searchValue}
           onChange={(e) => setSearchValue(e.target.value)}
           slotProps={{
