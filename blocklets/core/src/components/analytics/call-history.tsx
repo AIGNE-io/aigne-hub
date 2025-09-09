@@ -429,6 +429,13 @@ export function CallHistory({
         customBodyRender: (_value: any, tableMeta: any) => {
           const call = modelCalls[tableMeta.rowIndex];
           if (!call) return null;
+
+          const map: Record<string, 'warning' | 'success' | 'error'> = {
+            'processing':'warning',
+            'success':'success',
+            'failed':'error',
+          }
+
           return (
             <Box>
               <Stack
@@ -450,7 +457,7 @@ export function CallHistory({
                     )
                   }
                   size="small"
-                  color={call.status === 'success' ? 'success' : 'error'}
+                  color={map[call.status]}
                   variant="outlined"
                 />
               </Stack>

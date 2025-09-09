@@ -224,6 +224,7 @@ router.post(
           hooks: {
             onEnd: async (data) => {
               const usageData = data.output;
+
               if (usageData) {
                 const usage = await createUsageAndCompleteModelCall({
                   req,
@@ -243,6 +244,8 @@ router.post(
                   logger.error('Create usage and complete model call error', { error: err });
                   return undefined;
                 });
+
+                logger.info('usage', data.output.usage, Config.creditBasedBillingEnabled, usage);
 
                 if (data.output.usage && Config.creditBasedBillingEnabled && usage) {
                   data.output.usage = {
