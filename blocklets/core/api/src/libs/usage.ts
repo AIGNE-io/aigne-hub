@@ -216,52 +216,118 @@ const tasksV2: { [key: string]: DebouncedFunc<(options: { appId: string; userDid
 
 async function reportUsageV2({ appId, userDid }: { appId: string; userDid: string }) {
   const taskKey = `${appId}-${userDid}`;
+
   tasksV2[taskKey] ??= throttle(
     async ({ appId, userDid }: { appId: string; userDid: string }) => {
-      try {
-        if (!isPaymentRunning()) return;
-
-        const { pricing } = Config;
-        if (!pricing) throw new CustomError(400, 'Missing required preference `pricing`');
-
-        const start = await Usage.findOne({
-          where: { appId, userDid, usageReportStatus: { [Op.not]: null } },
-          order: [['id', 'desc']],
-          limit: 1,
-        });
-        const end = await Usage.findOne({
-          where: { appId, userDid, id: { [Op.gt]: start?.id || '' } },
-          order: [['id', 'desc']],
-          limit: 1,
-        });
-
-        if (!end) return;
-
-        const quantity = await Usage.sum('usedCredits', {
-          where: { appId, userDid, id: { [Op.gt]: start?.id || '', [Op.lte]: end.id } },
-        });
-
-        await end.update({ usageReportStatus: 'counted' });
-
-        logger.info('create meter event', { quantity });
-        await createMeterEvent({
-          userDid,
-          amount: new BigNumber(quantity).decimalPlaces(2).toNumber(),
-          metadata: {
-            appId,
-          },
-        });
-
-        await end.update({ usageReportStatus: 'reported' });
-      } catch (error) {
-        logger.error('report usage v2 error', { error });
-      }
+      await executeOriginalReportLogicWithProtection({ appId, userDid });
     },
     Config.usageReportThrottleTime,
     { leading: false, trailing: true }
   );
 
   tasksV2[taskKey]!({ appId, userDid });
+}
+
+async function executeOriginalReportLogicWithProtection({ appId, userDid }: { appId: string; userDid: string }) {
+  try {
+    if (!isPaymentRunning()) return;
+
+    const { pricing } = Config;
+    if (!pricing) throw new CustomError(400, 'Missing required preference `pricing`');
+
+    const start = await Usage.findOne({
+      where: { appId, userDid, usageReportStatus: { [Op.not]: null } },
+      order: [['id', 'desc']],
+      limit: 1,
+    });
+    const end = await Usage.findOne({
+      where: { appId, userDid, id: { [Op.gt]: start?.id || '' } },
+      order: [['id', 'desc']],
+      limit: 1,
+    });
+
+    if (!end) return;
+
+    // Step 2: Atomic range claim - prevent concurrent processing of the same batch
+    const [updatedRows] = await Usage.update(
+      { usageReportStatus: 'counted' },
+      {
+        where: {
+          appId,
+          userDid,
+          id: { [Op.gt]: start?.id || '', [Op.lte]: end.id },
+          usageReportStatus: null, // Only claim unclaimed records
+        },
+      }
+    );
+
+    if (updatedRows === 0) {
+      // No records were claimed - another process already processed this range
+      logger.debug('Usage range already claimed by another process', {
+        appId,
+        userDid,
+        startId: start?.id,
+        endId: end.id,
+        processId: process.pid,
+      });
+      return;
+    }
+
+    // Step 3: Process the claimed batch
+    const quantity = await Usage.sum('usedCredits', {
+      where: { appId, userDid, id: { [Op.gt]: start?.id || '', [Op.lte]: end.id } },
+    });
+
+    logger.info('create meter event', { quantity, processId: process.pid, userDid });
+
+    try {
+      await createMeterEvent({
+        userDid,
+        amount: new BigNumber(quantity).decimalPlaces(2).toNumber(),
+        metadata: {
+          appId,
+        },
+      });
+
+      // Step 4: Mark the entire range as successfully reported
+      await Usage.update(
+        { usageReportStatus: 'reported' },
+        {
+          where: {
+            appId,
+            userDid,
+            id: { [Op.gt]: start?.id || '', [Op.lte]: end.id },
+            usageReportStatus: 'counted', // Only update records we claimed
+          },
+        }
+      );
+    } catch (apiError) {
+      // Reset entire range to null if API call fails, allowing retry
+      await Usage.update(
+        { usageReportStatus: null },
+        {
+          where: {
+            appId,
+            userDid,
+            id: { [Op.gt]: start?.id || '', [Op.lte]: end.id },
+            usageReportStatus: 'counted', // Only reset records we claimed
+          },
+        }
+      ).catch((resetError) => {
+        logger.error('Failed to reset processing state for range', {
+          resetError,
+          appId,
+          userDid,
+          startId: start?.id,
+          endId: end.id,
+          processId: process.pid,
+        });
+      });
+      throw apiError;
+    }
+  } catch (error) {
+    logger.error('report usage v2 error', { error, processId: process.pid });
+  }
 }
 
 export async function createUsageAndCompleteModelCall({
