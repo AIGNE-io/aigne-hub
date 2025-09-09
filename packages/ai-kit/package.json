@@ -122,7 +122,7 @@
     "@arcblock/ux": "^3.1.37",
     "@blocklet/error": "0.2.5",
     "@blocklet/logger": "^1.16.51",
-    "@blocklet/payment-js": "^1.20.5",
+    "@blocklet/payment-js": "^1.20.6",
     "@blocklet/sdk": "^1.16.51",
     "@emotion/css": "^11.13.5",
     "@emotion/react": "^11.14.0",
