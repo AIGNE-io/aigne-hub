@@ -24,7 +24,7 @@ import { ChatLazy } from './pages/playground';
 const ConfigPage = lazy(() => import('./pages/config'));
 const CreditBoardPage = lazy(() => import('./pages/customer/usage'));
 const PricingPage = lazy(() => import('./pages/pricing'));
-const AdminUsagePage = lazy(() => import('./pages/customer/admin/usage'));
+const AdminUsagePage = lazy(() => import('./pages/admin/usage'));
 
 export default function App() {
   const basename = window.blocklet?.prefix || '/';

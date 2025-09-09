@@ -1,7 +1,7 @@
 import { Card, Skeleton, Stack } from '@mui/material';
 import { useEffect, useRef, useState } from 'react';
 
-import dayjs from '../libs/dayjs';
+import dayjs from '../../libs/dayjs';
 
 // Custom hook for smart skeleton loading
 export const useSmartLoading = (loading: boolean, data: any, minLoadingTime = 300) => {

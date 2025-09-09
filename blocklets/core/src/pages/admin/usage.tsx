@@ -5,7 +5,7 @@ import {
   UsageSummarySkeleton,
   toUTCTimestamp,
   useSmartLoading,
-} from '@app/components/usage';
+} from '@app/components/analytics/skeleton';
 import { Toast } from '@arcblock/ux';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import { formatError } from '@blocklet/error';
@@ -15,9 +15,9 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { useState } from 'react';
 
-import dayjs from '../../../libs/dayjs';
-import { useUsageStats } from '../hooks';
-import WrappedLayout from './layout';
+import dayjs from '../../libs/dayjs';
+import { useUsageStats } from '../customer/hooks';
+import Layout from '../../components/layout/admin';
 
 function CreditBoard() {
   const { t } = useLocaleContext();
@@ -163,8 +163,8 @@ function CreditBoard() {
 
 export default function UsageAdminPage() {
   return (
-    <WrappedLayout>
+    <Layout>
       <CreditBoard />
-    </WrappedLayout>
+    </Layout>
   );
 }
