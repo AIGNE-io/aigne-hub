@@ -1,6 +1,10 @@
-## 0.4.16 (2025-9-9)
+## 0.4.17 (2025-9-9)
 
 - chore: support summary page
+
+## 0.4.16 (2025-9-9)
+
+- chore: upgrade aigne deps
 
 ## 0.4.15 (2025-9-8)
 
