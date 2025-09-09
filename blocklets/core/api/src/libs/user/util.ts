@@ -164,7 +164,7 @@ export async function getUsageStatsHourlyOptimized(userDid: string, startTime: n
 export async function getUsageStatsHourlyOptimizedAdmin(startTime: number, endTime: number) {
   try {
     const existingStat = await getHourlyStatsInRange(startTime, endTime);
-    return formatUsageStats({ hourlyStatsRaw: existingStat, hours: existingStat.map((stat) => stat.timestamp) });
+    return formatUsageStats({ hourlyStatsRaw: existingStat, hours: existingStat.map((stat) => stat.timestamp!) });
   } catch (error) {
     logger.error('Failed to get hourly optimized usage stats, falling back to legacy method:', error);
     throw error;

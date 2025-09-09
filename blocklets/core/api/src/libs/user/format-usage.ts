@@ -43,6 +43,7 @@ export function formatUsageStats({ hourlyStatsRaw, hours }: { hourlyStatsRaw: Da
 
     addToTotals(usageStats, hourStats);
 
+    if (!hourTimestamp) return;
     const date = new Date(hourTimestamp * 1000).toISOString().split('T')[0];
     if (!date) return;
     if (!dailyStatsMap.has(date)) {
