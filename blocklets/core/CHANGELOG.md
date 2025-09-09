@@ -1,3 +1,7 @@
+## 0.4.16 (2025-9-9)
+
+- chore: upgrade aigne deps
+
 ## 0.4.15 (2025-9-8)
 
 - feat: add an AI credential health check endpoint
