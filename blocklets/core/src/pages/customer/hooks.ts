@@ -1,4 +1,5 @@
 import api from '@app/libs/api';
+import Toast from '@arcblock/ux/lib/Toast';
 import { useRequest } from 'ahooks';
 
 // Types
@@ -135,6 +136,7 @@ export function useUsageStats(params: { startTime: string; endTime: string; allU
       refreshDeps: [params.startTime, params.endTime],
       onError: (error) => {
         console.error('Failed to fetch usage stats:', error);
+        Toast.error(error?.message);
       },
     }
   );

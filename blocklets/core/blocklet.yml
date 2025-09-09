@@ -106,7 +106,7 @@ navigation:
       en: Summary
       zh: 总览
     icon: ion:stats-chart-outline
-    link: /credits/list
+    link: /summary
     section:
       - dashboard
     role:

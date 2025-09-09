@@ -4,14 +4,15 @@ import { useNavigate } from 'react-router-dom';
 import Layout from '../../../components/layout/admin';
 import { useSessionContext } from '../../../contexts/session';
 
+const ADMIN_ROLES = ['owner', 'admin'] as const;
+
 export default function WrappedLayout({ children }: { children: React.ReactNode }) {
   const { session } = useSessionContext();
   const navigate = useNavigate();
   useEffect(() => {
-    if (session.user && ['owner', 'admin'].includes(session.user.role) === false) {
+    if (!session.user || !ADMIN_ROLES.includes(session.user.role)) {
       navigate('/');
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.user]);
 
   return <Layout>{children}</Layout>;

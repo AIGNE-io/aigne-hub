@@ -2,6 +2,10 @@ import { DailyStats } from '@api/store/models/types';
 import BigNumber from 'bignumber.js';
 
 export function computeGrowth(current: number, previous: number): number {
+  if (typeof current !== 'number' || typeof previous !== 'number' || Number.isNaN(current) || Number.isNaN(previous)) {
+    return 0;
+  }
+
   if (previous > 0) {
     return new BigNumber(current).minus(previous).div(previous).toNumber();
   }
@@ -9,14 +13,26 @@ export function computeGrowth(current: number, previous: number): number {
   return current > 0 ? 1 : 0;
 }
 
+interface StatsTotals {
+  totalUsage: BigNumber;
+  totalCredits: BigNumber;
+  totalCalls: BigNumber;
+  byType: {
+    [key: string]: {
+      totalUsage: BigNumber;
+      totalCalls: BigNumber;
+    };
+  };
+}
+
 export const sumStats = (stats: DailyStats[]) => {
   const zero = new BigNumber(0);
 
-  const totals = {
+  const totals: StatsTotals = {
     totalUsage: zero,
     totalCredits: zero,
     totalCalls: zero,
-    byType: {} as { [key: string]: { totalUsage: typeof zero; totalCalls: typeof zero } },
+    byType: {},
   };
 
   for (const hourStats of stats) {

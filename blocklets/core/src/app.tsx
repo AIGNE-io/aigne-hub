@@ -86,9 +86,7 @@ function AppRoutes({ basename }: { basename: string }) {
         <Route key="config-tabs" path="/config/:group" element={<ConfigPage />} />
         <Route key="config-sub" path="/config/:group/:page" element={<ConfigPage />} />
         <Route key="config-fallback" path="/config/*" element={<ConfigPage />} />
-        <Route path="credits" element={isAdmin ? undefined : <Navigate to="/" />}>
-          <Route path="list" element={<AdminUsagePage />} />
-        </Route>
+        <Route path="summary" element={isAdmin ? <AdminUsagePage /> : <Navigate to="/" />} />
         <Route
           key="credit-board"
           path="/credit-usage"

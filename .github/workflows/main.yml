@@ -37,7 +37,6 @@ jobs:
       - name: Test
         run: pnpm test:coverage
 
-
       - name: Publish to NPM
         if: "! contains(toJSON(github.event.commits.*.message), '[skip npm]')"
         run: |

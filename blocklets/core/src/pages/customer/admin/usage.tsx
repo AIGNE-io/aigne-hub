@@ -45,8 +45,6 @@ function CreditBoard() {
     });
   };
 
-  const hasError = statsError;
-
   const showStatsSkeleton = useSmartLoading(statsLoading, usageStats);
 
   const onRefresh = () => {
@@ -113,7 +111,7 @@ function CreditBoard() {
             </Stack>
           </Stack>
 
-          {hasError && (
+          {statsError && (
             <Alert severity="error" sx={{ borderRadius: 2 }}>
               {formatError(statsError)}
             </Alert>
@@ -163,7 +161,7 @@ function CreditBoard() {
   );
 }
 
-export default function () {
+export default function UsageAdminPage() {
   return (
     <WrappedLayout>
       <CreditBoard />

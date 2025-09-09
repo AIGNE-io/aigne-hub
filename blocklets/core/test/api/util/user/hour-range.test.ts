@@ -26,9 +26,7 @@ describe('generateHourRangeFromTimestamps', () => {
   });
 
   test('should handle single hour range', () => {
-    // 2024-01-15 10:15:00 UTC
     const startTime = 1705312500;
-    // 2024-01-15 10:45:00 UTC
     const endTime = 1705314300;
 
     const result = generateHourRangeFromTimestamps(startTime, endTime);
@@ -77,10 +75,9 @@ describe('generateHourRangeFromTimestamps', () => {
 
     const result = generateHourRangeFromTimestamps(startTime, endTime);
 
-    // Should generate 48 hours
     expect(result).toHaveLength(48);
-    expect(result[0]).toBe(1704067200); // 2024-01-01 00:00:00 UTC
-    expect(result[47]).toBe(1704236400); // 2024-01-02 23:00:00 UTC
+    expect(result[0]).toBe(1704067200);
+    expect(result[47]).toBe(1704236400);
   });
 
   test('should handle leap year February', () => {

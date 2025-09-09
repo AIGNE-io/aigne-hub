@@ -7,7 +7,7 @@ import { Op } from 'sequelize';
 import { joinURL } from 'ufo';
 
 import { formatUsageStats } from './format-usage';
-import { TrendComparisonResult, generateHourRangeFromTimestamps } from './hour-range';
+import { UsageTrendComparisonResult, generateHourRangeFromTimestamps } from './hour-range';
 import { computeGrowth, sumStats } from './sum';
 
 interface AppNameCacheItem {
@@ -49,7 +49,11 @@ export const getAppName = async (appDid: string) => {
       }
     }
 
-    const url = joinURL(`https://${getDidDomainForBlocklet({ did: appDid })}`, '__blocklet__.js?type=json');
+    const domain = getDidDomainForBlocklet({ did: appDid });
+    if (!domain) {
+      throw new Error('Invalid blocklet DID');
+    }
+    const url = joinURL(`https://${domain}`, '__blocklet__.js?type=json');
     const { data } = await axios.get(url, { timeout: 3000 });
     const appName = data?.appName || appDid;
 
@@ -65,8 +69,8 @@ export const getAppName = async (appDid: string) => {
     return {
       appName,
       appDid,
-      appLogo: data.appLogo,
-      appUrl: data.appUrl,
+      appLogo: data?.appLogo,
+      appUrl: data?.appUrl,
     };
   } catch (error) {
     logger.error('Failed to get app name:', error);
@@ -96,7 +100,7 @@ export async function getTrendComparisonOptimized({
   userDid?: string;
   startTime: number;
   endTime: number;
-}): Promise<TrendComparisonResult | null> {
+}): Promise<UsageTrendComparisonResult | null> {
   const periodDuration = endTime - startTime;
   const previousEnd = startTime - 1;
   const previousStart = previousEnd - periodDuration;

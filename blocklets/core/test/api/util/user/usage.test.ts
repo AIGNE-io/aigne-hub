@@ -261,7 +261,7 @@ describe('formatUsageStats', () => {
     expect(result.totalCredits).toBe(50);
     expect(result.dailyStats).toHaveLength(1);
     expect(result.dailyStats[0]?.date).toBe('2024-01-15');
-    expect(result.dailyStats[0]?.timestamp).toBe(1705276800); // 2024-01-15T00:00:00.000Z
+    expect(result.dailyStats[0]?.timestamp).toBe(1705276800);
     expect(result.dailyStats[0]?.totalUsage).toBe(100);
     expect(result.dailyStats[0]?.totalCredits).toBe(50);
     expect(result.dailyStats[0]?.totalCalls).toBe(10);
@@ -285,7 +285,7 @@ describe('formatUsageStats', () => {
         },
       },
       {
-        timestamp: 1705315800, // 2024-01-15 11:30:00
+        timestamp: 1705315800,
         totalUsage: 75,
         totalCredits: 37.5,
         totalCalls: 7,
@@ -336,7 +336,7 @@ describe('formatUsageStats', () => {
   test('should format multiple days correctly', () => {
     const hourlyStatsRaw: DailyStats[] = [
       {
-        timestamp: 1705312200, // 2024-01-15 10:30:00
+        timestamp: 1705312200,
         totalUsage: 100,
         totalCredits: 50,
         totalCalls: 10,
@@ -351,7 +351,7 @@ describe('formatUsageStats', () => {
         },
       },
       {
-        timestamp: 1705398600, // 2024-01-16 10:30:00
+        timestamp: 1705398600,
         totalUsage: 200,
         totalCredits: 100,
         totalCalls: 20,
@@ -472,7 +472,7 @@ describe('formatUsageStats', () => {
   test('should sort daily stats by timestamp', () => {
     const hourlyStatsRaw: DailyStats[] = [
       {
-        timestamp: 1705485000, // 2024-01-17 10:30:00
+        timestamp: 1705485000,
         totalUsage: 300,
         totalCredits: 150,
         totalCalls: 30,
@@ -487,7 +487,7 @@ describe('formatUsageStats', () => {
         },
       },
       {
-        timestamp: 1705312200, // 2024-01-15 10:30:00
+        timestamp: 1705312200,
         totalUsage: 100,
         totalCredits: 50,
         totalCalls: 10,
@@ -502,7 +502,7 @@ describe('formatUsageStats', () => {
         },
       },
       {
-        timestamp: 1705398600, // 2024-01-16 10:30:00
+        timestamp: 1705398600,
         totalUsage: 200,
         totalCredits: 100,
         totalCalls: 20,

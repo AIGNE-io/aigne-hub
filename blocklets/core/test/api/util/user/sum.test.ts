@@ -4,10 +4,10 @@ import { describe, expect, test } from 'bun:test';
 
 describe('computeGrowth', () => {
   test('should calculate growth rate correctly when previous > 0', () => {
-    expect(computeGrowth(120, 100)).toBe(0.2); // 20% growth
-    expect(computeGrowth(80, 100)).toBe(-0.2); // 20% decline
-    expect(computeGrowth(100, 100)).toBe(0); // no change
-    expect(computeGrowth(150, 50)).toBe(2); // 200% growth
+    expect(computeGrowth(120, 100)).toBe(0.2);
+    expect(computeGrowth(80, 100)).toBe(-0.2);
+    expect(computeGrowth(100, 100)).toBe(0);
+    expect(computeGrowth(150, 50)).toBe(2);
   });
 
   test('should return 1 when previous is 0 and current > 0', () => {
@@ -21,8 +21,8 @@ describe('computeGrowth', () => {
   });
 
   test('should handle decimal values', () => {
-    expect(computeGrowth(1.5, 1.0)).toBe(0.5); // 50% growth
-    expect(computeGrowth(0.8, 1.0)).toBe(-0.2); // -20% decline
+    expect(computeGrowth(1.5, 1.0)).toBe(0.5);
+    expect(computeGrowth(0.8, 1.0)).toBe(-0.2);
   });
 });
 
