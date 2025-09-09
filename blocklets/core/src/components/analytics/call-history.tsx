@@ -387,26 +387,6 @@ export function CallHistory({
         },
       },
     },
-    allUsers && {
-      name: 'userDid',
-      label: t('user'),
-      width: 200,
-      options: {
-        customBodyRender: (_value: any, tableMeta: any) => {
-          const call = modelCalls[tableMeta.rowIndex];
-          if (!call) return null;
-          return (
-            <UserCard
-              showDid
-              did={call.userDid}
-              cardType={CardType.Detailed}
-              infoType={InfoType.Minimal}
-              sx={{ border: 0, padding: 0 }}
-            />
-          );
-        },
-      },
-    },
     {
       name: 'duration',
       label: t('duration'),
@@ -430,11 +410,11 @@ export function CallHistory({
           const call = modelCalls[tableMeta.rowIndex];
           if (!call) return null;
 
-          const map: Record<string, 'warning' | 'success' | 'error'> = {
-            'processing':'warning',
-            'success':'success',
-            'failed':'error',
-          }
+          const map: Record<string, 'default' | 'success' | 'error'> = {
+            processing: 'default',
+            success: 'success',
+            failed: 'error',
+          };
 
           return (
             <Box>
@@ -469,19 +449,25 @@ export function CallHistory({
   ].filter(Boolean);
 
   // 条件性添加列
-  const columns = [...baseColumns];
-  if (showUserColumn) {
+  const columns: { name: string; label: string; width?: number; options: any }[] = [...baseColumns];
+  if (showUserColumn || allUsers) {
     columns.splice(1, 0, {
       name: 'userDid',
       label: t('user'),
+      width: 200,
       options: {
         customBodyRender: (_value: any, tableMeta: any) => {
           const call = modelCalls[tableMeta.rowIndex];
           if (!call) return null;
+
           return (
-            <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
-              {call.userDid ? call.userDid.slice(-8) : '-'}
-            </Typography>
+            <UserCard
+              showDid
+              did={call.userDid}
+              cardType={CardType.Detailed}
+              infoType={InfoType.Minimal}
+              sx={{ border: 0, padding: 0 }}
+            />
           );
         },
       },
