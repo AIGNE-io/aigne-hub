@@ -1,3 +1,7 @@
+## 0.4.18 (2025-9-9)
+
+- feat(api): enhance usage reporting with atomic processing and error handling
+
 ## 0.4.17 (2025-9-9)
 
 - chore: support summary page
