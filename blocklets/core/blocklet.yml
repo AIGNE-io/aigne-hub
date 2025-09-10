@@ -101,17 +101,6 @@ components:
       name: z2qa2GCqPJkufzqF98D8o7PWHrRRSHpYkNhEh
       version: latest
 navigation:
-  - id: summary
-    title:
-      en: Summary
-      zh: 总览
-    icon: ion:stats-chart-outline
-    link: /summary
-    section:
-      - dashboard
-    role:
-      - owner
-      - admin
   - id: settings
     title:
       en: Config
@@ -132,7 +121,6 @@ navigation:
     link: /playground
     section:
       - sessionManager
-      - dashboard
     role:
       - admin
       - owner

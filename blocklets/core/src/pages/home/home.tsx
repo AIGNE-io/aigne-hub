@@ -97,7 +97,7 @@ const result = await model.invoke({
                     <Button component={Link} to="/config" variant="contained">
                       {t('configuration')}
                     </Button>
-                    <Button component={Link} to="/playground" variant="outlined">
+                    <Button component={Link} to="/config/playground" variant="outlined">
                       {t('playground')}
                     </Button>
                   </>
