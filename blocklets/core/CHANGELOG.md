@@ -1,3 +1,7 @@
+## 0.4.19 (2025-9-10)
+
+- fix: record the traceId when calling the model
+
 ## 0.4.18 (2025-9-9)
 
 - feat(api): enhance usage reporting with atomic processing and error handling
