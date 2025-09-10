@@ -15,11 +15,10 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { useState } from 'react';
 
-import Layout from '../../components/layout/admin';
 import dayjs from '../../libs/dayjs';
 import { useUsageStats } from '../customer/hooks';
 
-function CreditBoard() {
+export default function CreditBoard() {
   const { t } = useLocaleContext();
   const [dateRange, setDateRange] = useState({
     from: toUTCTimestamp(dayjs().subtract(6, 'day')),
@@ -60,7 +59,7 @@ function CreditBoard() {
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
-      <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', py: 3 }}>
+      <Box sx={{ bgcolor: 'background.default' }}>
         <Stack spacing={3}>
           <Stack
             direction={{ xs: 'column', md: 'row' }}
@@ -158,13 +157,5 @@ function CreditBoard() {
         </Stack>
       </Box>
     </LocalizationProvider>
-  );
-}
-
-export default function UsageAdminPage() {
-  return (
-    <Layout>
-      <CreditBoard />
-    </Layout>
   );
 }

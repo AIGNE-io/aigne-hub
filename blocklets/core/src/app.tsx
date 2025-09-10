@@ -19,12 +19,10 @@ import { TransitionProvider } from './components/loading/progress-bar';
 import { SessionProvider, useIsRole } from './contexts/session';
 import { translations } from './locales';
 import { HomeLazy } from './pages/home';
-import { ChatLazy } from './pages/playground';
 
 const ConfigPage = lazy(() => import('./pages/config'));
 const CreditBoardPage = lazy(() => import('./pages/customer/usage'));
 const PricingPage = lazy(() => import('./pages/pricing'));
-const AdminUsagePage = lazy(() => import('./pages/admin/usage'));
 
 export default function App() {
   const basename = window.blocklet?.prefix || '/';
@@ -78,15 +76,16 @@ function AppRoutes({ basename }: { basename: string }) {
     createRoutesFromElements(
       <Route>
         <Route index element={<HomeLazy />} />
-        <Route path="playground" element={isAdmin ? undefined : <Navigate to="/" />}>
-          <Route index element={<Navigate to="/playground/chat" replace />} />
-          <Route path="chat" element={<ChatLazy />} />
-        </Route>
         <Route key="config-index" path="/config" element={<ConfigPage />} />
+        {/* <Route
+          key="config-playground"
+          path="/config/playground"
+          element={isAdmin ? <ConfigPage /> : <Navigate to="/" />}
+        /> */}
+        <Route key="config-summary" path="/config/summary" element={isAdmin ? <ConfigPage /> : <Navigate to="/" />} />
         <Route key="config-tabs" path="/config/:group" element={<ConfigPage />} />
         <Route key="config-sub" path="/config/:group/:page" element={<ConfigPage />} />
         <Route key="config-fallback" path="/config/*" element={<ConfigPage />} />
-        <Route path="summary" element={isAdmin ? <AdminUsagePage /> : <Navigate to="/" />} />
         <Route
           key="credit-board"
           path="/credit-usage"

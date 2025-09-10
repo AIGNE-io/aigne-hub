@@ -1,7 +1,7 @@
 import { flatten } from 'flat';
 
 export default flatten({
-  usage: '使用情况',
+  usage: '用量',
   aiProvider: 'AI 提供商',
   aiProviderSubscription: '订阅 AIGNE Hub 服务',
   aiProviderLocalAIKit: '本地 AIGNE Hub 组件',
