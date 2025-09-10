@@ -30,7 +30,7 @@ import { joinURL, withQuery } from 'ufo';
 
 import { useSessionContext } from '../../contexts/session';
 import dayjs from '../../libs/dayjs';
-import { OBSERVABILITY_DID } from '../../libs/env';
+import { getObservabilityBlocklet } from '../../libs/env';
 
 export interface ModelCall {
   id: string;
@@ -233,9 +233,7 @@ export function CallHistory({
     setPagination({ page: 1, pageSize });
   };
 
-  const haveObservability = (window.blocklet?.componentMountPoints || [])?.find(
-    (point) => point.did === OBSERVABILITY_DID
-  );
+  const observabilityBlocklet = getObservabilityBlocklet();
 
   // 构建基础列
   const baseColumns = [
@@ -446,12 +444,12 @@ export function CallHistory({
                   variant="outlined"
                 />
 
-                {haveObservability?.mountPoint && call.traceId && (
+                {observabilityBlocklet?.mountPoint && call.traceId && (
                   <IconButton
                     size="small"
                     onClick={() =>
                       window.open(
-                        withQuery(joinURL(window.location.origin, haveObservability.mountPoint), {
+                        withQuery(joinURL(window.location.origin, observabilityBlocklet.mountPoint), {
                           traceId: call.traceId,
                         }),
                         '_blank'
