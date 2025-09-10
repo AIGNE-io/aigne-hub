@@ -30,8 +30,8 @@ import { joinURL, withQuery } from 'ufo';
 
 import { useSessionContext } from '../../contexts/session';
 import dayjs from '../../libs/dayjs';
+import { OBSERVABILITY_DID } from '../../libs/env';
 
-const OBSERVABILITY_DID = 'z2qa2GCqPJkufzqF98D8o7PWHrRRSHpYkNhEh';
 
 export interface ModelCall {
   id: string;
