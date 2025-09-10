@@ -18,7 +18,7 @@ import { useState } from 'react';
 import dayjs from '../../libs/dayjs';
 import { useUsageStats } from '../customer/hooks';
 
-export default function CreditBoard() {
+export default function UsageStatsBoard() {
   const { t } = useLocaleContext();
   const [dateRange, setDateRange] = useState({
     from: toUTCTimestamp(dayjs().subtract(6, 'day')),

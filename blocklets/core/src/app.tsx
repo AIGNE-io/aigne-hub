@@ -10,13 +10,13 @@ import { Global, css } from '@emotion/react';
 import { Box, CircularProgress, CssBaseline } from '@mui/material';
 import { ReactNode, Suspense, lazy } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
-import { Navigate, Route, RouterProvider, createBrowserRouter, createRoutesFromElements } from 'react-router-dom';
+import { Route, RouterProvider, createBrowserRouter, createRoutesFromElements } from 'react-router-dom';
 
 import NotFoundView from './components/error/not-found';
 import UserLayout from './components/layout/user';
 import Loading from './components/loading';
 import { TransitionProvider } from './components/loading/progress-bar';
-import { SessionProvider, useIsRole } from './contexts/session';
+import { SessionProvider } from './contexts/session';
 import { translations } from './locales';
 import { HomeLazy } from './pages/home';
 
@@ -70,22 +70,16 @@ export default function App() {
 }
 
 function AppRoutes({ basename }: { basename: string }) {
-  const isAdmin = useIsRole('owner', 'admin');
-
   const router = createBrowserRouter(
     createRoutesFromElements(
       <Route>
         <Route index element={<HomeLazy />} />
-        <Route key="config-index" path="/config" element={<ConfigPage />} />
-        {/* <Route
-          key="config-playground"
-          path="/config/playground"
-          element={isAdmin ? <ConfigPage /> : <Navigate to="/" />}
-        /> */}
-        <Route key="config-summary" path="/config/summary" element={isAdmin ? <ConfigPage /> : <Navigate to="/" />} />
-        <Route key="config-tabs" path="/config/:group" element={<ConfigPage />} />
-        <Route key="config-sub" path="/config/:group/:page" element={<ConfigPage />} />
-        <Route key="config-fallback" path="/config/*" element={<ConfigPage />} />
+        <Route path="/config">
+          <Route index element={<ConfigPage />} />
+          <Route path=":group" element={<ConfigPage />} />
+          <Route path=":group/:page" element={<ConfigPage />} />
+          <Route path="*" element={<ConfigPage />} />
+        </Route>
         <Route
           key="credit-board"
           path="/credit-usage"

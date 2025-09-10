@@ -8,7 +8,7 @@ import Layout from '../../components/layout/admin';
 import ProgressBar, { useTransitionContext } from '../../components/loading/progress-bar';
 import { useIsRole, useSessionContext } from '../../contexts/session';
 
-const pages: Record<string, React.LazyExoticComponent<() => JSX.Element>> = {
+const pages: Record<string, React.LazyExoticComponent<React.ComponentType>> = {
   overview: React.lazy(() => import('./overview')),
   'ai-config': React.lazy(() => import('./ai-config')),
   usage: React.lazy(() => import('../admin/usage')),
@@ -75,7 +75,7 @@ function Integrations() {
         />
       </Stack>
 
-      <Box sx={{ flex: 1, overflow: 'auto', px: 3 }}>
+      <Box component="main" sx={{ flex: 1, overflow: 'auto', px: 3 }}>
         {React.isValidElement(TabComponent) ? TabComponent : <TabComponent />}
       </Box>
     </>
