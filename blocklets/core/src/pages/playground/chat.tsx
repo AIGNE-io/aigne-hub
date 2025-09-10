@@ -149,7 +149,16 @@ export default function Chat() {
   return (
     <Conversation
       ref={ref}
-      sx={{ maxWidth: 1000, mx: 'auto', width: '100%', height: '100%' }}
+      sx={{
+        maxWidth: 1000,
+        mx: 'auto',
+        width: '100%',
+        height: '100%',
+        overflow: 'initial',
+        '.conversation-container': {
+          m: 0,
+        },
+      }}
       messages={messages}
       onSubmit={(prompt) => add(prompt)}
       customActions={customActions}
