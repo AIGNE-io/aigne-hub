@@ -118,7 +118,7 @@ navigation:
       en: Playground
       zh: 沙盒
     icon: carbon:run
-    link: /playground
+    link: /config/playground
     section:
       - sessionManager
     role:
