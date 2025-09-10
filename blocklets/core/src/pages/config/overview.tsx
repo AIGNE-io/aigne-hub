@@ -1,4 +1,4 @@
-import { getObservabilityUrl,getObservabilityBlocklet } from '@app/libs/env';
+import { getObservabilityBlocklet, getObservabilityUrl } from '@app/libs/env';
 import { getPrefix } from '@app/libs/util';
 import Dialog from '@arcblock/ux/lib/Dialog';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
@@ -15,7 +15,15 @@ export default function Overview() {
 
   const observabilityBlocklet = getObservabilityBlocklet();
 
-  const basicFeatures = [
+  const basicFeatures: {
+    title: string;
+    description: string;
+    icon: React.ReactNode;
+    path: string;
+    external?: boolean;
+    showDialog?: boolean;
+    credit?: boolean;
+  }[] = [
     {
       title: 'aiProviderSettings',
       description: 'aiProviderSettingsDesc',
@@ -31,15 +39,18 @@ export default function Overview() {
       showDialog: true,
       credit: true,
     },
-    observabilityBlocklet && {
+  ];
+
+  if (observabilityBlocklet) {
+    basicFeatures.push({
       title: 'usageAnalytics',
       description: 'usageAnalyticsDesc',
       icon: <AnalyticsOutlined sx={{ fontSize: 32, color: (theme) => theme.palette.grey[400] }} />,
       path: getObservabilityUrl(),
       external: true,
-    },
-  ].filter(Boolean);
-  
+    });
+  }
+
   const handleClick = (item: any) => {
     if (item.showDialog) {
       setCreditsDialogOpen(true);
