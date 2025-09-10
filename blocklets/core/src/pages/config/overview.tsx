@@ -1,4 +1,4 @@
-import { getObservabilityUrl } from '@app/libs/env';
+import { getObservabilityUrl,getObservabilityBlocklet } from '@app/libs/env';
 import { getPrefix } from '@app/libs/util';
 import Dialog from '@arcblock/ux/lib/Dialog';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
@@ -12,6 +12,9 @@ export default function Overview() {
   const { t } = useLocaleContext();
   const navigate = useNavigate();
   const [creditsDialogOpen, setCreditsDialogOpen] = useState(false);
+
+  const observabilityBlocklet = getObservabilityBlocklet();
+
   const basicFeatures = [
     {
       title: 'aiProviderSettings',
@@ -28,14 +31,15 @@ export default function Overview() {
       showDialog: true,
       credit: true,
     },
-    {
+    observabilityBlocklet && {
       title: 'usageAnalytics',
       description: 'usageAnalyticsDesc',
       icon: <AnalyticsOutlined sx={{ fontSize: 32, color: (theme) => theme.palette.grey[400] }} />,
       path: getObservabilityUrl(),
       external: true,
     },
-  ];
+  ].filter(Boolean);
+  
   const handleClick = (item: any) => {
     if (item.showDialog) {
       setCreditsDialogOpen(true);
