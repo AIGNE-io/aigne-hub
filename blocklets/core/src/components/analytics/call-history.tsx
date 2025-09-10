@@ -32,7 +32,6 @@ import { useSessionContext } from '../../contexts/session';
 import dayjs from '../../libs/dayjs';
 import { OBSERVABILITY_DID } from '../../libs/env';
 
-
 export interface ModelCall {
   id: string;
   createdAt: string;
