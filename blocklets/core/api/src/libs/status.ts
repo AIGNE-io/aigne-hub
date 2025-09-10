@@ -137,8 +137,6 @@ function classifyError(error: Error & { status?: number; code?: number; statusCo
   };
 }
 
-const modelStatusCache = new Map<string, boolean>();
-
 const sendCredentialInvalidNotification = async ({
   model,
   provider,
@@ -188,13 +186,13 @@ export async function updateModelStatus({
   duration: number;
   error?: Error;
 }) {
-  const current = modelStatusCache.get(model);
   const { modelName, providerName } = await getModelAndProviderId(model);
+  const provider = await AiProvider.findOne({ where: { name: providerName } });
 
-  if (current !== available) {
-    const provider = await AiProvider.findOne({ where: { name: providerName } });
+  if (provider) {
+    const current = await AiModelStatus.findOne({ where: { model: modelName, providerId: provider.id } });
 
-    if (provider) {
+    if (current?.available !== available) {
       await AiModelStatus.upsertModelStatus({
         providerId: provider.id,
         model: modelName,
@@ -203,8 +201,6 @@ export async function updateModelStatus({
         error: error ? classifyError(error) : null,
       });
     }
-
-    modelStatusCache.set(model, available);
   }
 
   wsServer.broadcast('model.status.updated', {
