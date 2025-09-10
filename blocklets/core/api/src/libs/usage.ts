@@ -278,7 +278,7 @@ async function executeOriginalReportLogicWithProtection({ appId, userDid }: { ap
       where: { appId, userDid, id: { [Op.gt]: start?.id || '', [Op.lte]: end.id } },
     });
 
-    logger.info('create meter event', { quantity, processId: process.pid, userDid });
+    logger.info('create meter event', { quantity, processId: process.pid, userDid, startId: start?.id, endId: end.id });
 
     try {
       await createMeterEvent({
