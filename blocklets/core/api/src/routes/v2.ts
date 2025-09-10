@@ -173,6 +173,7 @@ router.post(
               responseId: data.output.id,
               model: data.output.model,
             },
+            traceId: data.context?.id,
           }).catch((err) => {
             logger.error('Create usage and complete model call error', { error: err });
             return undefined;
@@ -240,6 +241,7 @@ router.post(
                     totalTokens: (usageData.usage as any)?.totalTokens,
                     endpoint: req.path,
                   },
+                  traceId: data.context?.id,
                 }).catch((err) => {
                   logger.error('Create usage and complete model call error', { error: err });
                   return undefined;
@@ -287,16 +289,28 @@ router.post(
       const { input } = value;
       const { modelOptions, ...otherInput } = input;
 
-      const usageData = await processImageGeneration({
-        req,
-        res,
-        version: 'v2',
-        inputBody: {
-          ...otherInput,
-          ...modelOptions,
-          responseFormat: req.body.input.response_format || req.body.input.responseFormat,
+      let traceId;
+      const usageData = await processImageGeneration(
+        {
+          req,
+          res,
+          version: 'v2',
+          inputBody: {
+            ...otherInput,
+            ...modelOptions,
+            responseFormat: req.body.input.response_format || req.body.input.responseFormat,
+          },
         },
-      });
+        {
+          userContext: { userId: req.user?.did, ...otherInput?.userContext },
+          hooks: {
+            onEnd: async (data) => {
+              traceId = data?.context?.id;
+              return data;
+            },
+          },
+        }
+      );
 
       let aigneHubCredits;
       if (usageData && userDid) {
@@ -318,6 +332,7 @@ router.post(
             endpoint: req.path,
             numberOfImages: usageData.numberOfImageGeneration,
           },
+          traceId,
         });
       }
 

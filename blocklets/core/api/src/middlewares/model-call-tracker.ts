@@ -17,7 +17,7 @@ export interface ModelCallContext {
   updateCredentials: (providerId: string, credentialId: string, actualModel?: string) => Promise<void>;
 }
 
-interface UsageData {
+export interface UsageData {
   promptTokens: number;
   completionTokens: number;
   numberOfImageGeneration: number;
@@ -26,13 +26,14 @@ interface UsageData {
   metadata?: Record<string, any>;
 }
 
-interface ModelCallResult {
+export interface ModelCallResult {
   promptTokens?: number;
   completionTokens?: number;
   numberOfImageGeneration?: number;
   credits?: number;
   usageMetrics?: Record<string, any>;
   metadata?: Record<string, any>;
+  traceId?: string;
 }
 
 declare global {
@@ -223,6 +224,7 @@ async function createModelCallContext({
               completedAt: getCurrentUnixTimestamp(),
               ...(result.metadata || {}),
             },
+            traceId: result.traceId,
           },
           { where: { id: modelCall.id } }
         );

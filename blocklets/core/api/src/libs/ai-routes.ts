@@ -1,4 +1,4 @@
-import { ChatModelOutput } from '@aigne/core';
+import { AIGNE, ChatModelOutput } from '@aigne/core';
 import { camelize } from '@aigne/core/utils/camelize';
 import { checkModelRateAvailable } from '@api/providers';
 import { chatCompletionByFrameworkModel, getImageModel } from '@api/providers/models';
@@ -199,7 +199,10 @@ export async function processChatCompletion(
   res: Response,
   version: 'v1' | 'v2' = 'v1',
   options?: {
-    onEnd?: (data?: { output?: ChatModelOutput }) => Promise<{ output?: ChatModelOutput } | undefined>;
+    onEnd?: (data?: {
+      output?: ChatModelOutput;
+      context?: { id?: string };
+    }) => Promise<{ output?: ChatModelOutput } | undefined>;
   }
 ): Promise<{ promptTokens: number; completionTokens: number; model: string; modelParams: Record<string, any> } | null> {
   const { error, value: body } = completionsRequestSchema.validate(req.body, { stripUnknown: true });
@@ -339,16 +342,27 @@ export async function processEmbeddings(
 }
 
 // Core image generation logic - returns usage data for caller to handle
-export async function processImageGeneration({
-  req,
-  version,
-  inputBody,
-}: {
-  inputBody: ImageGenerationInput & Required<Pick<ImageGenerationInput, 'model' | 'n'>>;
-  req: Request;
-  res: Response;
-  version: 'v1' | 'v2';
-}): Promise<{
+export async function processImageGeneration(
+  {
+    req,
+    version,
+    inputBody,
+  }: {
+    inputBody: ImageGenerationInput & Required<Pick<ImageGenerationInput, 'model' | 'n'>>;
+    req: Request;
+    res: Response;
+    version: 'v1' | 'v2';
+  },
+  options?: {
+    userContext?: Record<string, any>;
+    hooks?: {
+      onEnd?: (data?: {
+        output?: ImagesResponse;
+        context?: { id?: string };
+      }) => Promise<{ output?: ImagesResponse } | undefined>;
+    };
+  }
+): Promise<{
   model: string;
   modelParams: Record<string, any>;
   numberOfImageGeneration: number;
@@ -404,10 +418,15 @@ export async function processImageGeneration({
     const params: { prompt: string; [key: string]: any } = camelize({ ...formatParams(), model: modelName });
     logger.info('invoke image generation params', { params });
 
-    const result = await modelInstance.invoke({
-      ...params,
-      responseFormat: params.responseFormat === 'b64_json' ? 'base64' : params.responseFormat || 'base64',
-    });
+    const aigne = new AIGNE();
+    const result = await aigne.invoke(
+      modelInstance,
+      {
+        ...params,
+        responseFormat: params.responseFormat === 'b64_json' ? 'base64' : params.responseFormat || 'base64',
+      },
+      { ...options, hooks: { onEnd: options?.hooks?.onEnd } }
+    );
 
     response = {
       data: result.images.map((i: ImageResult) => ({ b64_json: i.base64, url: i.url })),

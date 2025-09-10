@@ -53,6 +53,7 @@ interface ModelCallResult {
   credits?: number;
   usageMetrics?: Record<string, any>;
   metadata?: Record<string, any>;
+  traceId?: string;
 }
 
 namespace Express {

@@ -55,6 +55,8 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
 
   declare updatedAt: CreationOptional<Date>;
 
+  declare traceId?: string;
+
   public static readonly GENESIS_ATTRIBUTES = {
     id: {
       type: DataTypes.STRING,
@@ -141,6 +143,10 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
     updatedAt: {
       type: DataTypes.DATE,
       allowNull: false,
+    },
+    traceId: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
   };
 

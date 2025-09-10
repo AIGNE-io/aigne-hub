@@ -21,8 +21,6 @@ AIGNEObserver.setExportFn(async (spans) => {
     return;
   }
 
-  logger.info('Sending trace tree to Observability blocklet', { spans });
-
   await call({
     name: OBSERVABILITY_DID,
     method: 'POST',

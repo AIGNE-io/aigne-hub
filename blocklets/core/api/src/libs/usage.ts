@@ -343,6 +343,7 @@ export async function createUsageAndCompleteModelCall({
   additionalMetrics = {},
   metadata = {},
   creditBasedBillingEnabled = true,
+  traceId,
 }: {
   req: Request;
   type: CallType;
@@ -356,6 +357,7 @@ export async function createUsageAndCompleteModelCall({
   additionalMetrics?: Record<string, any>;
   metadata?: Record<string, any>;
   creditBasedBillingEnabled?: boolean;
+  traceId?: string;
 }): Promise<number | undefined> {
   try {
     let credits: number | undefined = 0;
@@ -390,6 +392,7 @@ export async function createUsageAndCompleteModelCall({
           ...additionalMetrics,
         },
         metadata,
+        traceId,
       });
     }
 
