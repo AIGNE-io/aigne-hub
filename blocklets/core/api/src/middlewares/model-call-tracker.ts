@@ -140,14 +140,18 @@ async function createModelCallContext({
   metadata?: Record<string, any>;
   usageMetrics?: Record<string, any>;
 }): Promise<ModelCallContext | null> {
+  let p = '';
+  let m = '';
+  const startTime = getCurrentUnixTimestamp();
   try {
-    const startTime = getCurrentUnixTimestamp();
     const { providerId, modelName } = await getModelAndProviderId(model);
+    p = providerId;
+    m = modelName;
 
     // Create ModelCall record without provider/credential info initially
     const modelCall = await ModelCall.create({
       providerId: providerId || '',
-      model: modelName,
+      model: modelName || model,
       credentialId: '',
       type,
       totalUsage: 0,
@@ -276,7 +280,19 @@ async function createModelCallContext({
       },
     };
   } catch (error) {
-    logger.error('Failed to create model call context', { error, model, userDid });
+    logger.error('Failed to create model call context', {
+      error,
+      model,
+      r: {
+        providerId: p,
+        model: m,
+        userDid,
+        requestId,
+        metadata,
+        usageMetrics,
+        callTime: startTime,
+      },
+    });
     return null;
   }
 }

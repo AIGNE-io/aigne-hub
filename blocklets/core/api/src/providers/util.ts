@@ -148,5 +148,5 @@ export async function getModelAndProviderId(model: string) {
   }
 
   const provider = await AiProvider.findOne({ where: { name: providerName } });
-  return { providerId: provider?.id, modelName, providerName };
+  return { providerId: provider?.id || '', modelName, providerName };
 }
