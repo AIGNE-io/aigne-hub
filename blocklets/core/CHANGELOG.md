@@ -1,3 +1,7 @@
+## 0.4.23 (2025-9-11)
+
+- fix: add logger for catch validation error
+
 ## 0.4.22 (2025-9-11)
 
 - fix(api): improve error logging in model call context
