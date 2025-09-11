@@ -168,6 +168,31 @@ async function createModelCallContext({
         originalModel: model,
       },
       callTime: startTime,
+    }).catch((error) => {
+      logger.error('Failed to create model call record', {
+        error,
+        params: {
+          providerId: providerId || '',
+          model: modelName || model,
+          credentialId: '',
+          type,
+          totalUsage: 0,
+          credits: 0,
+          status: 'processing',
+          appDid,
+          userDid,
+          requestId,
+          usageMetrics,
+          metadata: {
+            ...metadata,
+            startTime,
+            phase: 'started',
+            originalModel: model,
+          },
+          callTime: startTime,
+        },
+      });
+      throw error;
     });
 
     logger.info('Created processing model call record', {
