@@ -43,7 +43,7 @@ export async function createAndReportUsage({
       }
     }
 
-    await Usage.create({
+    const params = {
       type,
       model,
       modelParams,
@@ -52,20 +52,10 @@ export async function createAndReportUsage({
       numberOfImageGeneration,
       appId,
       usedCredits,
-    }).catch((error) => {
-      logger.error('Failed to create usage record', {
-        error,
-        params: {
-          type,
-          model,
-          modelParams,
-          promptTokens,
-          completionTokens,
-          numberOfImageGeneration,
-          appId,
-          usedCredits,
-        },
-      });
+    };
+
+    await Usage.create(params).catch((error) => {
+      logger.error('Failed to create usage record', { error, params });
       throw error;
     });
 
@@ -153,7 +143,7 @@ export async function createAndReportUsageV2({
       }
     }
 
-    await Usage.create({
+    const params = {
       type,
       model,
       modelParams,
@@ -163,21 +153,10 @@ export async function createAndReportUsageV2({
       appId,
       usedCredits,
       userDid,
-    }).catch((error) => {
-      logger.error('Failed to create usage record', {
-        error,
-        params: {
-          type,
-          model,
-          modelParams,
-          promptTokens,
-          completionTokens,
-          numberOfImageGeneration,
-          appId,
-          usedCredits,
-          userDid,
-        },
-      });
+    };
+
+    await Usage.create(params).catch((error) => {
+      logger.error('Failed to create usage record', { error, params });
       throw error;
     });
 
