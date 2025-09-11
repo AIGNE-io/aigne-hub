@@ -1,7 +1,15 @@
+## 0.4.22 (2025-9-11)
+
+- fix(api): improve error logging in model call context
+
 ## 0.4.21 (2025-9-10)
 
 - refactor: reorganize admin routing and adjust UI layout
 
+## 0.4.20 (2025-9-10)
+
+- refactor: reorganize admin routing and adjust UI layout
+  
 ## 0.4.19 (2025-9-10)
 
 - fix: record the traceId when calling the model
