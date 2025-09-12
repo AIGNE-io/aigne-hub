@@ -4,7 +4,6 @@ import AiCredential from '@api/store/models/ai-credential';
 import AiModelRate from '@api/store/models/ai-model-rate';
 import AiModelStatus, { ModelError, ModelErrorType } from '@api/store/models/ai-model-status';
 import AiProvider from '@api/store/models/ai-provider';
-import { CreditError } from '@blocklet/aigne-hub/api';
 import { CustomError } from '@blocklet/error';
 import type { Request, Response } from 'express';
 
@@ -234,11 +233,7 @@ export function withModelStatus(handler: (req: Request, res: Response) => Promis
       const { model, provider, credentialId } = req;
       await sendCredentialInvalidNotification({ model, provider, credentialId, error });
 
-      if (
-        error.status &&
-        [401, 403, 404, 429].includes(Number(error.status)) &&
-        String(error.status).startsWith('50')
-      ) {
+      if (error.status && [401, 403, 404, 429, 500, 501, 503].includes(Number(error.status))) {
         await updateModelStatus({
           model: req.body.model,
           success: false,
