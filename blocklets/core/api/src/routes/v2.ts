@@ -126,7 +126,7 @@ router.get('/status', user, async (req, res) => {
   return res.json({ available: true });
 });
 
-const checkCreditBasedBillingMiddleware = async (req: Request, _res: Response, next: NextFunction) => {
+const checkCreditBasedBillingMiddleware = (req: Request, _res: Response, next: NextFunction) => {
   const userDid = req.user?.did;
   if (!userDid) {
     throw new CustomError(401, 'User not authenticated');
@@ -135,11 +135,6 @@ const checkCreditBasedBillingMiddleware = async (req: Request, _res: Response, n
   if (Config.creditBasedBillingEnabled && !isPaymentRunning()) {
     throw new CustomError(502, 'Payment kit is not Running');
   }
-
-  if (userDid && Config.creditBasedBillingEnabled) {
-    await checkUserCreditBalance({ userDid });
-  }
-
   next();
 };
 
@@ -151,6 +146,10 @@ router.post(
   chatCallTracker,
   withModelStatus(async (req, res) => {
     const userDid = req.user?.did;
+
+    if (userDid && Config.creditBasedBillingEnabled) {
+      await checkUserCreditBalance({ userDid });
+    }
 
     await processChatCompletion(req, res, 'v2', {
       onEnd: async (data) => {
@@ -208,6 +207,10 @@ router.post(
       const value = aigneHubModelBodyValidate(req.body);
 
       const userDid = req.user?.did;
+
+      if (userDid && Config.creditBasedBillingEnabled) {
+        await checkUserCreditBalance({ userDid });
+      }
 
       const { modelOptions } = value.input;
       await checkModelRateAvailable(modelOptions.model);
@@ -284,6 +287,10 @@ router.post(
 
       const userDid = req.user?.did;
 
+      if (userDid && Config.creditBasedBillingEnabled) {
+        await checkUserCreditBalance({ userDid });
+      }
+
       const { input } = value;
       const { modelOptions, ...otherInput } = input;
 
@@ -359,6 +366,10 @@ router.post(
     withModelStatus(async (req, res) => {
       const userDid = req.user?.did;
 
+      if (userDid && Config.creditBasedBillingEnabled) {
+        await checkUserCreditBalance({ userDid });
+      }
+
       const usageData = await processEmbeddings(req, res);
 
       if (usageData && userDid) {
@@ -396,6 +407,10 @@ router.post(
   createRetryHandler(
     withModelStatus(async (req, res) => {
       const userDid = req.user?.did;
+
+      if (userDid && Config.creditBasedBillingEnabled) {
+        await checkUserCreditBalance({ userDid });
+      }
 
       const usageData = await processImageGeneration({
         req,
