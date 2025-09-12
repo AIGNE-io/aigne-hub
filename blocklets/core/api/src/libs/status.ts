@@ -236,7 +236,7 @@ export function withModelStatus(handler: (req: Request, res: Response) => Promis
 
       if (
         error.status &&
-        [401, 402, 403, 404, 429].includes(Number(error.status)) &&
+        [401, 403, 404, 429].includes(Number(error.status)) &&
         String(error.status).startsWith('50')
       ) {
         await updateModelStatus({
