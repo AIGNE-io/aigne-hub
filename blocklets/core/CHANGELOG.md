@@ -1,3 +1,7 @@
+## 0.4.26 (2025-9-12)
+
+- fix: fail early if balance is insufficient without recording usage
+
 ## 0.4.25 (2025-9-12)
 
 - fix: update error request traceid
