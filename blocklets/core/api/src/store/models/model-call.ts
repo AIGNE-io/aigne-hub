@@ -55,6 +55,8 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
 
   declare updatedAt: CreationOptional<Date>;
 
+  declare traceId?: string;
+
   public static readonly GENESIS_ATTRIBUTES = {
     id: {
       type: DataTypes.STRING,
@@ -142,6 +144,10 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
       type: DataTypes.DATE,
       allowNull: false,
     },
+    traceId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
   };
 
   static async getCallsByDateRange({
@@ -199,7 +205,11 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
     }
 
     if (search) {
-      whereClause[Op.or] = [{ model: { [Op.like]: `%${search}%` } }, { appDid: { [Op.like]: `%${search}%` } }];
+      whereClause[Op.or] = [
+        { model: { [Op.like]: `%${search}%` } },
+        { appDid: { [Op.like]: `%${search}%` } },
+        { userDid: { [Op.like]: `%${search}%` } },
+      ];
     }
 
     const { rows, count } = await ModelCall.findAndCountAll({

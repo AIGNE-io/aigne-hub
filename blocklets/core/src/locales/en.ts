@@ -59,7 +59,8 @@ export default flatten({
     },
     status: {
       available: 'Available',
-      pending: 'Pending',
+      pending: 'Never used',
+      warning: 'Unavailable',
     },
   },
 
@@ -68,8 +69,8 @@ export default flatten({
   welcomeDesc:
     'Get started by configuring AI providers to enable AI services. You can also enable Credits billing to manage user usage quotas.',
 
-  aiConfig: 'AI Config',
-  quickStarts: 'Quick Starts',
+  aiConfig: 'Config',
+  quickStarts: 'Quick Start',
   // AI Provider features
   aiProviderSettings: 'AI Provider Settings',
   aiProviderSettingsDesc: 'Configure and manage your AI service providers and API credentials',
@@ -403,6 +404,8 @@ export default flatten({
   analytics: {
     creditUsage: 'Credit Usage',
     creditBoardDescription: 'Monitor your model usage and manage AIGNE Hub Credits',
+    allCreditsUsage: 'All Credits Usage',
+    allCreditBoardDescription: 'Monitor all users model usage and manage AIGNE Hub Credits',
     loadingData: 'Loading data...',
     startDate: 'Start Date',
     endDate: 'End Date',
@@ -433,7 +436,7 @@ export default flatten({
     ofTotalUsage: 'of total calls',
     callHistory: 'Call History',
     callHistoryDescription: 'Detailed log of all model API calls',
-    searchPlaceholder: 'Search by model or appDid...',
+    searchPlaceholder: 'Search by model / {did}...',
     allStatus: 'All Status',
     timestamp: 'Timestamp',
     noCallsFound: 'No calls found matching your criteria',
@@ -455,4 +458,8 @@ export default flatten({
   customRange: 'Custom Range',
   dataAvailableFrom: 'Data available from 3 months ago',
   usedBy: 'Used By',
+  testStatus: 'Test Status',
+  testing: 'Testing...',
+  errorConnected: '{errorCount} of {total} is invalid',
+  export: 'Export',
 });

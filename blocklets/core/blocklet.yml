@@ -24,7 +24,7 @@ repository:
   type: git
   url: git+https://github.com/AIGNE-io/aigne-hub.git
 specVersion: 1.2.8
-version: 0.4.1
+version: 0.4.26
 logo: screenshots/logo.png
 files:
   - dist
@@ -82,7 +82,7 @@ environments:
     secure: true
     shared: false
 capabilities:
-  clusterMode: false
+  clusterMode: true
   component: true
   navigation: true
 screenshots:
@@ -103,8 +103,8 @@ components:
 navigation:
   - id: settings
     title:
-      en: Config
-      zh: 设置
+      en: Console
+      zh: 控制台
     icon: ion:settings-outline
     link: /config
     section:
@@ -118,10 +118,9 @@ navigation:
       en: Playground
       zh: 沙盒
     icon: carbon:run
-    link: /playground
+    link: /config/playground
     section:
       - sessionManager
-      - dashboard
     role:
       - admin
       - owner
@@ -131,7 +130,6 @@ navigation:
       zh: 额度分析
     icon: ion:receipt-outline
     link: /credit-usage
-    private: true
     section:
       - userCenter
       - sessionManager
