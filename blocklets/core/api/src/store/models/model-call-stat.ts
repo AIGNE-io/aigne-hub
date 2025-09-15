@@ -8,15 +8,12 @@ import {
   Op,
   QueryTypes,
 } from 'sequelize';
-import { Worker } from 'snowflake-uuid';
 
+import nextId from '../../libs/next-id';
 import { getDateUnixTimestamp, getTodayString } from '../../libs/timestamp';
 import { sequelize } from '../sequelize';
 import { DailyStats } from './types';
 import { generateCacheKey } from './utils';
-
-const idGenerator = new Worker();
-const nextId = () => idGenerator.nextId().toString();
 
 export default class ModelCallStat extends Model<
   InferAttributes<ModelCallStat>,

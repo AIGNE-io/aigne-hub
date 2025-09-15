@@ -1,11 +1,7 @@
 import { CreationOptional, DataTypes, InferAttributes, InferCreationAttributes, Model, Op } from 'sequelize';
-import { Worker } from 'snowflake-uuid';
 
+import nextId from '../../libs/next-id';
 import { sequelize } from '../sequelize';
-
-const idGenerator = new Worker();
-
-const nextId = () => idGenerator.nextId().toString();
 
 export default class Usage extends Model<InferAttributes<Usage>, InferCreationAttributes<Usage>> {
   declare id: CreationOptional<string>;

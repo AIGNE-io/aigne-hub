@@ -8,15 +8,12 @@ import {
   Op,
   QueryTypes,
 } from 'sequelize';
-import { Worker } from 'snowflake-uuid';
 
+import nextId from '../../libs/next-id';
 import { getCurrentUnixTimestamp } from '../../libs/timestamp';
 import { sequelize } from '../sequelize';
 import AiProvider from './ai-provider';
 import { CallStatus, CallType, UsageMetrics } from './types';
-
-const idGenerator = new Worker();
-const nextId = () => idGenerator.nextId().toString();
 
 export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCreationAttributes<ModelCall>> {
   declare id: CreationOptional<string>;
