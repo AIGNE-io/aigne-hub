@@ -1,3 +1,7 @@
+## 0.4.27 (2025-9-15)
+
+- chore: update license
+
 ## 0.4.26 (2025-9-12)
 
 - fix: fail early if balance is insufficient without recording usage
