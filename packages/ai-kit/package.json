@@ -7,7 +7,7 @@
   },
   "author": "Arcblock <blocklet@arcblock.io> https://github.com/blocklet",
   "homepage": "https://github.com/blocklet/ai-kit#readme",
-  "license": "Elastic License 2.0",
+  "license": "Elastic-2.0",
   "main": "./lib/cjs/index.js",
   "module": "./lib/esm/index.js",
   "types": "./lib/types/index.d.ts",
