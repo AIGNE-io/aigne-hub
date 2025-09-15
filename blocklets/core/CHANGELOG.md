@@ -1,3 +1,7 @@
+## 0.4.28 (2025-9-15)
+
+- chore: centralize snowflake ID generation into shared utility
+
 ## 0.4.27 (2025-9-15)
 
 - chore: update license
