@@ -31,6 +31,7 @@
       "last 1 safari version"
     ]
   },
+  "license": "Elastic License 2.0",
   "dependencies": {
     "@abtnode/cron": "^1.16.51",
     "@abtnode/queue": "^1.16.51",

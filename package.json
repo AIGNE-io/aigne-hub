@@ -24,6 +24,7 @@
     "test": "pnpm -r run test",
     "test:coverage": "pnpm -r run test:coverage"
   },
+  "license": "Elastic License 2.0",
   "simple-git-hooks": {
     "pre-commit": "npx lint-staged"
   },
