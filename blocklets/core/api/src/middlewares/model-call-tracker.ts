@@ -278,7 +278,7 @@ async function createModelCallContext({
           { where: { id: modelCall.id } }
         );
 
-        logger.error('Model call failed', {
+        logger.warn('Model call failed', {
           id: modelCall.id,
           duration,
           errorReason: errorReason.substring(0, 200),
