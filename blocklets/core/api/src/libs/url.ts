@@ -48,7 +48,7 @@ export async function formatToShortUrl(url: string): Promise<string> {
     });
 
     if (!response.ok) {
-      logger.warn('Failed to create short URL, using original URL', {
+      logger.error('Failed to create short URL, using original URL', {
         status: response.status,
         statusText: response.statusText,
         url,

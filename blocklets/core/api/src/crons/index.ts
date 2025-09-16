@@ -10,6 +10,8 @@ import logger from '../libs/logger';
 import { cleanupStaleProcessingCalls } from '../middlewares/model-call-tracker';
 import { createModelCallStats } from './model-call-stats';
 
+const isMaster = process.env.BLOCKLET_INSTANCE_ID === '0';
+
 function init() {
   Cron.init({
     context: {},
@@ -17,16 +19,22 @@ function init() {
       {
         name: 'model.call.stats',
         time: MODEL_CALL_STATS_CRON_TIME,
-        fn: () => createModelCallStats(),
+        fn: () => {
+          if (process.env.BLOCKLET_INSTANCE_ID === undefined || isMaster) {
+            createModelCallStats();
+          }
+        },
         options: { runOnInit: false },
       },
       {
         name: 'cleanup.stale.model.calls',
         time: CLEANUP_STALE_MODEL_CALLS_CRON_TIME,
         fn: async () => {
-          const cleanedCount = await cleanupStaleProcessingCalls(30);
-          if (cleanedCount > 0) {
-            logger.info(`Model call cleanup completed, cleaned ${cleanedCount} stale calls`);
+          if (process.env.BLOCKLET_INSTANCE_ID === undefined || isMaster) {
+            const cleanedCount = await cleanupStaleProcessingCalls(30);
+            if (cleanedCount > 0) {
+              logger.info(`Model call cleanup completed, cleaned ${cleanedCount} stale calls`);
+            }
           }
         },
         options: { runOnInit: false },

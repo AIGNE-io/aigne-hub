@@ -71,7 +71,7 @@ export async function createModelCallStats(hourTimestamp?: number) {
               userDid: user.userDid,
             });
           } catch (error) {
-            logger.warn('Failed to process hourly stats', {
+            logger.error('Failed to process hourly stats', {
               hour: new Date(hourTimestamp * 1000).toISOString(),
               userDid: user.userDid,
               error,
