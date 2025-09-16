@@ -1,3 +1,7 @@
+## 0.4.29 (2025-9-16)
+
+- chore: support doubao image model
+
 ## 0.4.28 (2025-9-15)
 
 - chore: centralize snowflake ID generation into shared utility
