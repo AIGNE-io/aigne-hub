@@ -182,6 +182,11 @@ const sendCredentialInvalidNotification = async ({
         credentialsQueue.push({ job: { credentialId, providerId: credential.providerId }, delay: 5 });
       }
     }
+
+    // 如果请求频率过高，降低权重
+    if (credentialId && [429].includes(Number(error.status))) {
+      await AiCredential.update({ weight: 10 }, { where: { id: credentialId } });
+    }
   } catch (error) {
     logger.error('Failed to send credential invalid notification', error);
   }
