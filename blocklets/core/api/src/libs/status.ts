@@ -172,7 +172,7 @@ const sendCredentialInvalidNotification = async ({
 
       NotificationManager.sendCustomNotificationByRoles(['owner', 'admin'], await template.getTemplate()).catch(
         (error) => {
-          logger.error('Failed to send credential valid notification', error);
+          logger.error('Failed to send credential invalid notification', error);
         }
       );
 

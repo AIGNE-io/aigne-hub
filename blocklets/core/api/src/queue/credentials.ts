@@ -27,7 +27,7 @@ const credentialsQueue = getQueue({
 
       NotificationManager.sendCustomNotificationByRoles(['owner', 'admin'], await template.getTemplate()).catch(
         (error) => {
-          logger.error('Failed to send credential invalid notification', error);
+          logger.error('Failed to send credential valid notification', error);
         }
       );
     } catch (err) {
@@ -38,10 +38,10 @@ const credentialsQueue = getQueue({
 
       // 指数增长时间
       const time = data?.time || 0;
-      const delay = (data?.delay || 5) + 2 * time;
+      const delay = (data?.delay || 5) + 2 ** time;
       if (delay > checkCredentialsMaxTime) return;
 
-      credentialsQueue.push({ job: { ...data, delay }, delay });
+      credentialsQueue.push({ job: { ...data, delay, time: time + 1 }, delay });
     }
   },
 });
