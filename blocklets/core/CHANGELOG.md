@@ -1,3 +1,7 @@
+## 0.4.32 (2025-9-17)
+
+- feat(credential): add weight-based load balancing for AI credentials
+
 ## 0.4.31 (2025-9-17)
 
 - fix: improve credential validation and status checking
