@@ -475,7 +475,11 @@ router.get('/:providerId/credentials/:credentialId/check', ensureAdmin, async (r
   const { credentialId, providerId } = req.params;
 
   try {
-    const credential = await checkCredentials(credentialId!, providerId!);
+    if (!credentialId || !providerId) {
+      throw new Error('Credential ID and provider ID are required');
+    }
+
+    const credential = await checkCredentials(credentialId, providerId);
     const credentialJson = {
       ...credential.toJSON(),
       displayText: credential.getDisplayText(),

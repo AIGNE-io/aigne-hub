@@ -12,8 +12,7 @@ import { createModelCallStats } from './model-call-stats';
 function shouldExecuteTask(): boolean {
   const isMasterCluster = process.env.BLOCKLET_INSTANCE_ID === '0';
   const nonCluster = process.env.BLOCKLET_INSTANCE_ID === undefined;
-  logger.info('isMasterCluster', isMasterCluster);
-  logger.info('nonCluster', nonCluster);
+  logger.info('Cluster execution check:', { isMasterCluster, nonCluster });
 
   return nonCluster || isMasterCluster;
 }
@@ -28,7 +27,7 @@ function init() {
         fn: () => {
           logger.info('cron model.call.stats');
           if (shouldExecuteTask()) {
-            logger.info('is master cluster id', process.env.BLOCKLET_INSTANCE_ID);
+            logger.info('Executing model.call.stats on cluster:', { instanceId: process.env.BLOCKLET_INSTANCE_ID });
             createModelCallStats();
           }
         },

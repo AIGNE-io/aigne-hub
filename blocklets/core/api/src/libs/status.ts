@@ -147,10 +147,10 @@ const sendCredentialInvalidNotification = async ({
   model?: string;
   provider?: string;
   credentialId?: string;
-  error: Error & { status: number; code?: number };
+  error: Error & { status: number };
 }) => {
   try {
-    if (credentialId && [401, 403].includes(Number(error.status || error.code))) {
+    if (credentialId && [401, 403].includes(Number(error.status))) {
       logger.info('update credential status and send credential invalid notification', {
         credentialId,
         provider,
@@ -172,13 +172,15 @@ const sendCredentialInvalidNotification = async ({
 
       NotificationManager.sendCustomNotificationByRoles(['owner', 'admin'], await template.getTemplate()).catch(
         (error) => {
-          logger.error('Failed to send credential invalid notification', error);
+          logger.error('Failed to send credential valid notification', error);
         }
       );
 
       await AiCredential.update({ active: false, error: error.message }, { where: { id: credentialId } });
 
-      credentialsQueue.push({ job: { credentialId, providerId: credential?.providerId }, delay: 5 });
+      if (credential) {
+        credentialsQueue.push({ job: { credentialId, providerId: credential.providerId }, delay: 5 });
+      }
     }
   } catch (error) {
     logger.error('Failed to send credential invalid notification', error);

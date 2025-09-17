@@ -31,9 +31,9 @@ function translate(key: string, locale: string, params?: Record<string, any>): s
       credentialName: 'Credential Name',
       credentialValue: 'Credential Value',
       errorMessage: 'Invalid Reason',
-      validTitle: 'AIGNE Hub Credential Valid',
+      validTitle: 'AIGNE Hub Credential Restored',
       validBody:
-        'Your Credential {credentialName}({credentialValue}) for {provider} has been restored, You can continue using the service.',
+        'Your credential {credentialName}({credentialValue}) for {provider} has been restored. You can now continue using the service.',
     },
     zh: {
       title: 'AIGNE Hub 凭证错误',
@@ -43,8 +43,8 @@ function translate(key: string, locale: string, params?: Record<string, any>): s
       credentialName: '凭证名称',
       credentialValue: '凭证值',
       errorMessage: '错误原因',
-      validTitle: 'AIGNE Hub 凭证恢复可用',
-      validBody: '您在 {provider} 使用的 {credentialName}({credentialValue}) 已恢复可用，可以继续使用服务。',
+      validTitle: 'AIGNE Hub 凭证已恢复',
+      validBody: '您在 {provider} 使用的凭证 {credentialName}({credentialValue}) 已恢复正常，现在可以继续使用服务。',
     },
   };
 

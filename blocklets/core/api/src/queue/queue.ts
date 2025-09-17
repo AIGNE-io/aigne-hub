@@ -18,9 +18,9 @@ export const getQueue = <T = any>({
     maxRetries?: number;
     maxTimeout?: number;
     retryDelay?: number;
-    enableScheduledJob?: false | true;
+    enableScheduledJob?: boolean;
   };
-}): any => {
+}): ReturnType<typeof createQueue> => {
   if (queueMap.has(name)) {
     return queueMap.get(name);
   }
