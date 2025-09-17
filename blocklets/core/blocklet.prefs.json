@@ -273,6 +273,53 @@
                   }
                 }
               },
+              "vjyq5moqu3a": {
+                "type": "void",
+                "x-component": "FormCollapse",
+                "x-component-props": {
+                  "style": {
+                    "margin": "8px 0px 0px 0px"
+                  },
+                  "collapsible": "header",
+                  "ghost": false,
+                  "bordered": false
+                },
+                "x-designable-id": "vjyq5moqu3a",
+                "x-index": 2,
+                "properties": {
+                  "i28uz5lqm5h": {
+                    "type": "void",
+                    "x-component": "FormCollapse.CollapsePanel",
+                    "x-component-props": {
+                      "header": "Credentials Settings"
+                    },
+                    "x-designable-id": "i28uz5lqm5h",
+                    "x-index": 0,
+                    "properties": {
+                      "checkCredentialsMaxTime": {
+                        "type": "number",
+                        "title": "Check Credentials Max Time",
+                        "x-decorator": "FormItem",
+                        "x-component": "NumberPicker",
+                        "x-validator": [
+                          {
+                            "triggerType": "onInput",
+                            "min": 0
+                          }
+                        ],
+                        "x-component-props": {},
+                        "x-decorator-props": {},
+                        "name": "checkCredentialsMaxTime",
+                        "default": 10800,
+                        "required": true,
+                        "x-designable-id": "17eqqginx4i",
+                        "x-index": 0,
+                        "description": "If credentials are invalid, a check will be performed in the queue, taking a time of seconds."
+                      }
+                    }
+                  }
+                }
+              },
               "4y906v0wdpt": {
                 "type": "void",
                 "x-component": "FormCollapse",
@@ -285,7 +332,7 @@
                   "bordered": false
                 },
                 "x-designable-id": "4y906v0wdpt",
-                "x-index": 2,
+                "x-index": 3,
                 "properties": {
                   "hp63pfovl7s": {
                     "type": "void",
@@ -602,6 +649,6 @@
         }
       }
     },
-    "x-designable-id": "nfh0hwwcasv"
+    "x-designable-id": "0w1hdjy8d5d"
   }
 }

@@ -1,3 +1,4 @@
+import checkCredentials from '@api/libs/ai-credentials';
 import { getModelNameWithProvider } from '@api/libs/ai-provider';
 import { AI_PROVIDER_VALUES } from '@api/libs/constants';
 import { Config } from '@api/libs/env';
@@ -467,6 +468,24 @@ router.delete('/:providerId/credentials/:credentialId', ensureAdmin, async (req,
   } catch (error) {
     logger.error('Failed to delete credential:', error);
     return res.status(500).json({ error: formatError(error) || 'Failed to delete credential' });
+  }
+});
+
+router.get('/:providerId/credentials/:credentialId/check', ensureAdmin, async (req, res) => {
+  const { credentialId, providerId } = req.params;
+
+  try {
+    const credential = await checkCredentials(credentialId!, providerId!);
+    const credentialJson = {
+      ...credential.toJSON(),
+      displayText: credential.getDisplayText(),
+      maskedValue: credential.getMaskedValue(),
+      credentialValue: '',
+    };
+
+    return res.json(credentialJson);
+  } catch (err) {
+    return res.status(401).json({ error: 'Invalid credentials', detail: err.message });
   }
 });
 

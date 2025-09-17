@@ -6,13 +6,14 @@ import {
 } from '@api/libs/env';
 
 import logger from '../libs/logger';
-// import { checkAllModelStatus } from '../libs/status';
 import { cleanupStaleProcessingCalls } from '../middlewares/model-call-tracker';
 import { createModelCallStats } from './model-call-stats';
 
 function shouldExecuteTask(): boolean {
   const isMasterCluster = process.env.BLOCKLET_INSTANCE_ID === '0';
   const nonCluster = process.env.BLOCKLET_INSTANCE_ID === undefined;
+  logger.info('isMasterCluster', isMasterCluster);
+  logger.info('nonCluster', nonCluster);
 
   return nonCluster || isMasterCluster;
 }
@@ -25,7 +26,9 @@ function init() {
         name: 'model.call.stats',
         time: MODEL_CALL_STATS_CRON_TIME,
         fn: () => {
+          logger.info('cron model.call.stats');
           if (shouldExecuteTask()) {
+            logger.info('is master cluster id', process.env.BLOCKLET_INSTANCE_ID);
             createModelCallStats();
           }
         },

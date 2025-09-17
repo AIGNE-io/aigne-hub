@@ -31,6 +31,9 @@ function translate(key: string, locale: string, params?: Record<string, any>): s
       credentialName: 'Credential Name',
       credentialValue: 'Credential Value',
       errorMessage: 'Invalid Reason',
+      validTitle: 'AIGNE Hub Credential Valid',
+      validBody:
+        'Your Credential {credentialName}({credentialValue}) for {provider} has been restored, You can continue using the service.',
     },
     zh: {
       title: 'AIGNE Hub 凭证错误',
@@ -40,6 +43,8 @@ function translate(key: string, locale: string, params?: Record<string, any>): s
       credentialName: '凭证名称',
       credentialValue: '凭证值',
       errorMessage: '错误原因',
+      validTitle: 'AIGNE Hub 凭证恢复可用',
+      validBody: '您在 {provider} 使用的 {credentialName}({credentialValue}) 已恢复可用，可以继续使用服务。',
     },
   };
 
@@ -139,6 +144,106 @@ export class CredentialInvalidNotificationTemplate extends BaseNotificationTempl
           type: 'plain',
           color: '#FF0000',
           text: credential.errorMessage,
+        },
+      },
+    ];
+
+    const template: BaseNotificationTemplateType = {
+      title: translate(titleKey, locale, {}),
+      body: translate(bodyKey, locale, {
+        provider: provider?.displayName || credential.provider,
+        model: credential.model,
+        credentialName: credential.credentialName,
+        credentialValue: credential.credentialValue,
+        errorMessage: credential.errorMessage,
+      }),
+      attachments: [
+        {
+          type: 'section',
+          fields,
+        },
+      ],
+      actions: [
+        {
+          name: translate('credentials', locale),
+          title: translate('credentials', locale),
+          link: getUrl('/config/ai-config/providers'),
+        },
+      ],
+    };
+
+    return template;
+  }
+}
+
+export class CredentialValidNotificationTemplate extends BaseNotificationTemplate<
+  CredentialInvalidNotificationTemplateContext,
+  CredentialInvalidNotificationTemplateOptions
+> {
+  async getContext(): Promise<CredentialInvalidNotificationTemplateContext> {
+    const { credential } = this.options;
+
+    const provider = await AiProvider.findOne({ where: { id: credential.providerId } }).catch(() => null);
+
+    return {
+      locale: 'en',
+      userDid: '',
+      credential,
+      provider,
+    };
+  }
+
+  async getTemplate(): Promise<BaseNotificationTemplateType> {
+    const context = await this.getContext();
+    const { locale, credential, provider } = context;
+
+    const titleKey = 'validTitle';
+    const bodyKey = 'validBody';
+
+    const fields = [
+      {
+        type: 'text',
+        data: {
+          type: 'plain',
+          color: '#9397A1',
+          text: translate('provider', locale),
+        },
+      },
+      {
+        type: 'text',
+        data: {
+          type: 'plain',
+          text: provider?.displayName || credential.provider,
+        },
+      },
+      {
+        type: 'text',
+        data: {
+          type: 'plain',
+          color: '#9397A1',
+          text: translate('credentialName', locale),
+        },
+      },
+      {
+        type: 'text',
+        data: {
+          type: 'plain',
+          text: credential.credentialName,
+        },
+      },
+      {
+        type: 'text',
+        data: {
+          type: 'plain',
+          color: '#9397A1',
+          text: translate('credentialValue', locale),
+        },
+      },
+      {
+        type: 'text',
+        data: {
+          type: 'plain',
+          text: credential.credentialValue,
         },
       },
     ];

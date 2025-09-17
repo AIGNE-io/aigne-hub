@@ -9,12 +9,13 @@ import type { Request, Response } from 'express';
 
 import { getImageModel, getModel } from '../providers/models';
 import { getModelAndProviderId } from '../providers/util';
+import credentialsQueue from '../queue/credentials';
+import { getQueue } from '../queue/queue';
 import wsServer from '../ws';
 import { getOpenAIV2 } from './ai-provider';
 import logger from './logger';
 import { NotificationManager } from './notifications/manager';
 import { CredentialInvalidNotificationTemplate } from './notifications/templates/credential';
-import { getQueue } from './queue';
 
 export const typeFilterMap: Record<string, string> = {
   chatCompletion: 'chatCompletion',
@@ -146,10 +147,17 @@ const sendCredentialInvalidNotification = async ({
   model?: string;
   provider?: string;
   credentialId?: string;
-  error: Error & { status: number };
+  error: Error & { status: number; code?: number };
 }) => {
   try {
-    if (credentialId && [401, 402, 403].includes(Number(error.status))) {
+    if (credentialId && [401, 403].includes(Number(error.status || error.code))) {
+      logger.info('update credential status and send credential invalid notification', {
+        credentialId,
+        provider,
+        model,
+        error,
+      });
+
       const credential = await AiCredential.findOne({ where: { id: credentialId } });
 
       const template = new CredentialInvalidNotificationTemplate({
@@ -169,6 +177,8 @@ const sendCredentialInvalidNotification = async ({
       );
 
       await AiCredential.update({ active: false, error: error.message }, { where: { id: credentialId } });
+
+      credentialsQueue.push({ job: { credentialId, providerId: credential?.providerId }, delay: 10 });
     }
   } catch (error) {
     logger.error('Failed to send credential invalid notification', error);
@@ -221,6 +231,10 @@ export function withModelStatus(handler: (req: Request, res: Response) => Promis
 
     try {
       await handler(req, res);
+
+      if (req.body.model) {
+        throw new CustomError(403, 'Model is required');
+      }
 
       await updateModelStatus({
         model: req.body.model,

@@ -2,7 +2,7 @@ import Dialog from '@arcblock/ux/lib/Dialog';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import Toast from '@arcblock/ux/lib/Toast';
 import { formatError } from '@blocklet/error';
-import { Add as AddIcon, Delete as DeleteIcon, Edit as EditIcon } from '@mui/icons-material';
+import { Add as AddIcon, Delete as DeleteIcon, Edit as EditIcon, Refresh as RefreshIcon } from '@mui/icons-material';
 import { Alert, Box, Button, Chip, Collapse, Fade, IconButton, Slide, Stack, Tooltip, Typography } from '@mui/material';
 import { useState } from 'react';
 
@@ -42,6 +42,7 @@ export default function CredentialDialog({ provider, onClose, onCredentialChange
   const [editingCredential, setEditingCredential] = useState<Credential | null>(null);
   const [deleteCredential, setDeleteCredential] = useState<Credential | null>(null);
   const [deletingCredentialId, setDeletingCredentialId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const handleCreateCredential = async (data: CredentialFormData) => {
     try {
@@ -50,6 +51,18 @@ export default function CredentialDialog({ provider, onClose, onCredentialChange
       setShowForm(false);
     } catch (error: any) {
       Toast.error(formatError(error) || t('createCredentialFailed'));
+    }
+  };
+
+  const handleCheckCredential = async (credential: Credential) => {
+    try {
+      setLoading(true);
+      await api.get(`/api/ai-providers/${provider.id}/credentials/${credential.id}/check`);
+      onCredentialChange();
+    } catch (error: any) {
+      Toast.error(formatError(error) || t('checkCredentialFailed'));
+    } finally {
+      setTimeout(() => setLoading(false), 500);
     }
   };
 
@@ -249,6 +262,28 @@ export default function CredentialDialog({ provider, onClose, onCredentialChange
                           </Box>
 
                           <Stack direction="row" spacing={1} sx={{ position: 'absolute', right: '-8px', top: '-8px' }}>
+                            {!credential.active && (
+                              <IconButton
+                                size="small"
+                                onClick={() => handleCheckCredential(credential)}
+                                sx={{
+                                  transition: 'all 0.2s ease-in-out',
+                                  '&:hover': {
+                                    color: 'primary.main',
+                                  },
+                                  '& .refresh-icon': {
+                                    animation: loading ? 'spin 1s linear infinite' : 'none',
+                                  },
+                                  '@keyframes spin': {
+                                    '0%': { transform: 'rotate(0deg)' },
+                                    '100%': { transform: 'rotate(360deg)' },
+                                  },
+                                }}
+                                disabled={loading}>
+                                <RefreshIcon className="refresh-icon" />
+                              </IconButton>
+                            )}
+
                             <IconButton
                               size="small"
                               onClick={() => setEditingCredential(credential)}
@@ -261,6 +296,7 @@ export default function CredentialDialog({ provider, onClose, onCredentialChange
                               }}>
                               <EditIcon />
                             </IconButton>
+
                             <IconButton
                               size="small"
                               onClick={() => setDeleteCredential(credential)}
