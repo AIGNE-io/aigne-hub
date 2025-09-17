@@ -6,10 +6,12 @@ import { NotificationManager } from '../libs/notifications/manager';
 import { CredentialValidNotificationTemplate } from '../libs/notifications/templates/credential';
 import { getQueue } from './queue';
 
+const DEFAULT_MAX_TIME = 10800; // 3 hours
+
 const credentialsQueue = getQueue({
   name: 'check-credentials',
   options: { concurrency: 1, maxRetries: 0, enableScheduledJob: true },
-  onJob: async (data: { credentialId: string; providerId: string; delay?: number }) => {
+  onJob: async (data: { credentialId: string; providerId: string; delay?: number; time?: number }) => {
     logger.info('start check credentials', data);
 
     try {
@@ -32,13 +34,12 @@ const credentialsQueue = getQueue({
       logger.error('check credentials failed', err);
 
       // default 3 hours
-      const checkCredentialsMaxTime = config.env.preferences.checkCredentialsMaxTime || 10800;
+      const checkCredentialsMaxTime = config.env.preferences.checkCredentialsMaxTime || DEFAULT_MAX_TIME;
 
-      // 指数增长
-      const delay = (data?.delay || 5) * 2;
-      if (delay > checkCredentialsMaxTime) {
-        return;
-      }
+      // 指数增长时间
+      const time = data?.time || 0;
+      const delay = (data?.delay || 5) + 2 * time;
+      if (delay > checkCredentialsMaxTime) return;
 
       credentialsQueue.push({ job: { ...data, delay }, delay });
     }

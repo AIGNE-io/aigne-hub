@@ -127,7 +127,7 @@ export function CallHistory({
 
   // Local state for search and pagination
   const [searchTerm, setSearchTerm] = useState('');
-  const [searchValue, setSearchValue] = useState('');
+  const [searchValue, setSearchValue] = useState(appDid || '');
   const [statusFilter, setStatusFilter] = useState<'all' | 'success' | 'failed'>('all');
   const [pagination, setPagination] = useState({
     page: 1,
@@ -138,8 +138,11 @@ export function CallHistory({
     setSearchValue(searchTerm);
   }, [searchTerm]);
 
-  // 防抖搜索
+  useEffect(() => {
+    setSearchValue(appDid || '');
+  }, [appDid]);
 
+  // 防抖搜索
   useDebounceEffect(
     () => {
       setSearchTerm(searchValue);
@@ -154,7 +157,6 @@ export function CallHistory({
     const query: CallHistoryQuery = {
       page: pagination.page,
       pageSize: pagination.pageSize,
-      appDid,
       allUsers,
     };
 
