@@ -1,13 +1,12 @@
 import security from '@blocklet/sdk/lib/security';
 import { CreationOptional, DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequelize';
 
+import { AIGNE_HUB_DEFAULT_WEIGHT } from '../../libs/constants';
 import nextId from '../../libs/next-id';
 import { sequelize } from '../sequelize';
 
 export type CredentialType = 'api_key' | 'access_key_pair' | 'custom';
-
 const credentialWeightCache: Record<string, Record<string, { current: number; weight: number }>> = {};
-const AIGNE_HUB_DEFAULT_WEIGHT = 100;
 
 export interface CredentialValue {
   access_key_id?: string;
