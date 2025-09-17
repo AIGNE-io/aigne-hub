@@ -39,10 +39,10 @@ const credentialsQueue = getQueue({
 
       // 指数增长时间
       const time = data?.time || 0;
-      const delay = (data?.delay || 5) + 2 ** time;
+      const delay = 5 + 2 ** time;
       if (delay > checkCredentialsMaxTime) return;
 
-      credentialsQueue.push({ job: { ...data, delay, time: time + 1 }, delay });
+      credentialsQueue.push({ job: { ...data, time: time + 1 }, delay });
     }
   },
 });
