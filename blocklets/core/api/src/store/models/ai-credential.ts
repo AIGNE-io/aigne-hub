@@ -39,7 +39,7 @@ export default class AiCredential extends Model<InferAttributes<AiCredential>, I
 
   declare error?: string | null;
 
-  declare weight: number;
+  declare weight?: number;
 
   public static readonly GENESIS_ATTRIBUTES = {
     id: {
