@@ -32,7 +32,10 @@ const checkCredentials = async (credentialId: string, providerId: string) => {
 
   try {
     await checkModelIsValid(provider.name, params);
-    await credential.update({ active: true, error: null });
+
+    if (!credential.active) {
+      await credential.update({ active: true, error: null });
+    }
   } catch (err) {
     await credential.update({ active: false, error: err.message });
     throw err;
