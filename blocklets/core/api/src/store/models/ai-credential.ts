@@ -34,7 +34,7 @@ export default class AiCredential extends Model<InferAttributes<AiCredential>, I
 
   declare updatedAt: CreationOptional<Date>;
 
-  declare error?: string;
+  declare error?: string | null;
 
   public static readonly GENESIS_ATTRIBUTES = {
     id: {

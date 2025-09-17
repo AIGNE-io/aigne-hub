@@ -426,6 +426,8 @@ router.put('/:providerId/credentials/:credentialId', ensureAdmin, async (req, re
       name: value.name,
       credentialValue: encryptedCredentialValue,
       credentialType: value.credentialType,
+      active: true,
+      error: null,
     });
 
     // 返回时包含显示文本
