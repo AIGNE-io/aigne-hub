@@ -232,10 +232,6 @@ export function withModelStatus(handler: (req: Request, res: Response) => Promis
     try {
       await handler(req, res);
 
-      if (req.body.model) {
-        throw new CustomError(403, 'Model is required');
-      }
-
       await updateModelStatus({
         model: req.body.model,
         success: true,
