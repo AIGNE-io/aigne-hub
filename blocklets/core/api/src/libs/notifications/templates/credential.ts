@@ -31,7 +31,7 @@ function translate(key: string, locale: string, params?: Record<string, any>): s
       credentialName: 'Credential Name',
       credentialValue: 'Credential Value',
       errorMessage: 'Invalid Reason',
-      validTitle: 'AIGNE Hub Credential Restored',
+      validTitle: 'AIGNE Hub Credential Alive',
       validBody:
         'Your credential {credentialName}({credentialValue}) for {provider} has been restored. You can now continue using the service.',
     },

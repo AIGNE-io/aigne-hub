@@ -6,7 +6,7 @@ import { NotificationManager } from '../libs/notifications/manager';
 import { CredentialValidNotificationTemplate } from '../libs/notifications/templates/credential';
 import { getQueue } from './queue';
 
-const DEFAULT_MAX_TIME = 10800; // 3 hours
+const AIGNE_HUB_CREDENTIAL_CHECK_TIMEOUT = 10800; // 3 hours
 
 const credentialsQueue = getQueue({
   name: 'check-credentials',
@@ -34,7 +34,8 @@ const credentialsQueue = getQueue({
       logger.error('check credentials failed', err);
 
       // default 3 hours
-      const checkCredentialsMaxTime = config.env.preferences.checkCredentialsMaxTime || DEFAULT_MAX_TIME;
+      const checkCredentialsMaxTime =
+        config.env.preferences.checkCredentialsMaxTime || AIGNE_HUB_CREDENTIAL_CHECK_TIMEOUT;
 
       // 指数增长时间
       const time = data?.time || 0;
