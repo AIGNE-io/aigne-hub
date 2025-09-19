@@ -1,3 +1,7 @@
+## 0.4.33 (2025-9-19)
+
+- fix: correct input parameter reference in AI image generation
+
 ## 0.4.32 (2025-9-17)
 
 - feat(credential): add weight-based load balancing for AI credentials
