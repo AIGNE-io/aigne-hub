@@ -3,15 +3,8 @@ import { TNotification } from '@blocklet/sdk/lib/types/notification';
 
 import { blocklet } from '../auth';
 import logger from '../logger';
+import shouldExecuteTask from '../master-cluster';
 import { BaseNotificationTemplate, BaseNotificationTemplateType } from './templates/base';
-
-function shouldExecuteTask(): boolean {
-  const isMasterCluster = process.env.BLOCKLET_INSTANCE_ID === '0';
-  const nonCluster = process.env.BLOCKLET_INSTANCE_ID === undefined;
-  logger.info('Cluster execution check:', { isMasterCluster, nonCluster });
-
-  return nonCluster || isMasterCluster;
-}
 
 export async function getDidListByRole(role: string | string[]) {
   try {

@@ -6,16 +6,9 @@ import {
 } from '@api/libs/env';
 
 import logger from '../libs/logger';
+import shouldExecuteTask from '../libs/master-cluster';
 import { cleanupStaleProcessingCalls } from '../middlewares/model-call-tracker';
 import { createModelCallStats } from './model-call-stats';
-
-function shouldExecuteTask(): boolean {
-  const isMasterCluster = process.env.BLOCKLET_INSTANCE_ID === '0';
-  const nonCluster = process.env.BLOCKLET_INSTANCE_ID === undefined;
-  logger.info('Cluster execution check:', { isMasterCluster, nonCluster });
-
-  return nonCluster || isMasterCluster;
-}
 
 function init() {
   Cron.init({
