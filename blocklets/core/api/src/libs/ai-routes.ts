@@ -396,10 +396,10 @@ export async function processImageGeneration(
   } else {
     const formatParams = () => {
       if (input.model.includes('google')) {
-        return { ...input, response_format: 'b64_json' as const };
+        return { ...inputBody, response_format: 'b64_json' as const };
       }
 
-      return input;
+      return inputBody;
     };
 
     const { modelInstance } = await getImageModel(input, { req });
