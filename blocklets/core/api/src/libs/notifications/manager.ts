@@ -5,6 +5,14 @@ import { blocklet } from '../auth';
 import logger from '../logger';
 import { BaseNotificationTemplate, BaseNotificationTemplateType } from './templates/base';
 
+function shouldExecuteTask(): boolean {
+  const isMasterCluster = process.env.BLOCKLET_INSTANCE_ID === '0';
+  const nonCluster = process.env.BLOCKLET_INSTANCE_ID === undefined;
+  logger.info('Cluster execution check:', { isMasterCluster, nonCluster });
+
+  return nonCluster || isMasterCluster;
+}
+
 export async function getDidListByRole(role: string | string[]) {
   try {
     if (Array.isArray(role)) {
@@ -30,6 +38,10 @@ export class NotificationManager {
     template: T,
     userDid: string
   ): Promise<boolean> {
+    if (!shouldExecuteTask()) {
+      return false;
+    }
+
     try {
       const notificationData = await template.getTemplate();
 
@@ -66,6 +78,10 @@ export class NotificationManager {
     userDid: string | string[],
     notificationData: BaseNotificationTemplateType
   ): Promise<boolean> {
+    if (!shouldExecuteTask()) {
+      return false;
+    }
+
     try {
       const payload: TNotification = {
         title: notificationData.title,
@@ -92,6 +108,10 @@ export class NotificationManager {
     role: string | string[],
     notificationData: BaseNotificationTemplateType
   ): Promise<boolean> {
+    if (!shouldExecuteTask()) {
+      return false;
+    }
+
     try {
       const userDids = await getDidListByRole(role);
       return await NotificationManager.sendCustomNotification(userDids, notificationData);
