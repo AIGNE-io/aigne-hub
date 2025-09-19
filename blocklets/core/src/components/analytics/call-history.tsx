@@ -3,6 +3,8 @@ import DID from '@arcblock/ux/lib/DID';
 /* eslint-disable react/no-unstable-nested-components */
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import Toast from '@arcblock/ux/lib/Toast';
+import UserCard from '@arcblock/ux/lib/UserCard';
+import { CardType, InfoType } from '@arcblock/ux/lib/UserCard/types';
 import { Table } from '@blocklet/aigne-hub/components';
 import { formatNumber } from '@blocklet/aigne-hub/utils/util';
 import { formatError } from '@blocklet/error';
@@ -24,10 +26,11 @@ import {
 import { useDebounceEffect, useRequest } from 'ahooks';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { joinURL } from 'ufo';
+import { joinURL, withQuery } from 'ufo';
 
 import { useSessionContext } from '../../contexts/session';
 import dayjs from '../../libs/dayjs';
+import { getObservabilityBlocklet } from '../../libs/env';
 
 export interface ModelCall {
   id: string;
@@ -52,6 +55,7 @@ export interface CallHistoryQuery {
   search?: string;
   status?: 'all' | 'success' | 'failed';
   appDid?: string;
+  allUsers?: boolean;
 }
 
 interface CallHistoryProps {
@@ -67,6 +71,7 @@ interface CallHistoryProps {
   enableExport?: boolean;
   refreshKey?: number;
   appDid?: string;
+  allUsers?: boolean;
 }
 
 function formatDuration(duration?: number) {
@@ -115,13 +120,14 @@ export function CallHistory({
   enableExport = true,
   refreshKey = 0,
   appDid = undefined,
+  allUsers = false,
 }: CallHistoryProps) {
   const { t } = useLocaleContext();
   const { api } = useSessionContext();
 
   // Local state for search and pagination
   const [searchTerm, setSearchTerm] = useState('');
-  const [searchValue, setSearchValue] = useState('');
+  const [searchValue, setSearchValue] = useState(appDid || '');
   const [statusFilter, setStatusFilter] = useState<'all' | 'success' | 'failed'>('all');
   const [pagination, setPagination] = useState({
     page: 1,
@@ -132,8 +138,11 @@ export function CallHistory({
     setSearchValue(searchTerm);
   }, [searchTerm]);
 
-  // 防抖搜索
+  useEffect(() => {
+    setSearchValue(appDid || '');
+  }, [appDid]);
 
+  // 防抖搜索
   useDebounceEffect(
     () => {
       setSearchTerm(searchValue);
@@ -148,7 +157,7 @@ export function CallHistory({
     const query: CallHistoryQuery = {
       page: pagination.page,
       pageSize: pagination.pageSize,
-      appDid,
+      allUsers,
     };
 
     if (dateRange) {
@@ -225,6 +234,8 @@ export function CallHistory({
   const handlePageSizeChange = (pageSize: number) => {
     setPagination({ page: 1, pageSize });
   };
+
+  const observabilityBlocklet = getObservabilityBlocklet();
 
   // 构建基础列
   const baseColumns = [
@@ -403,6 +414,13 @@ export function CallHistory({
         customBodyRender: (_value: any, tableMeta: any) => {
           const call = modelCalls[tableMeta.rowIndex];
           if (!call) return null;
+
+          const map: Record<string, 'default' | 'success' | 'error'> = {
+            processing: 'default',
+            success: 'success',
+            failed: 'error',
+          };
+
           return (
             <Box>
               <Stack
@@ -424,31 +442,52 @@ export function CallHistory({
                     )
                   }
                   size="small"
-                  color={call.status === 'success' ? 'success' : 'error'}
+                  color={map[call.status]}
                   variant="outlined"
                 />
+
+                {observabilityBlocklet?.mountPoint && call.traceId && (
+                  <IconButton
+                    size="small"
+                    onClick={() =>
+                      window.open(
+                        withQuery(joinURL(window.location.origin, observabilityBlocklet.mountPoint), {
+                          traceId: call.traceId,
+                        }),
+                        '_blank'
+                      )
+                    }>
+                    <OpenInNew sx={{ fontSize: 16 }} />
+                  </IconButton>
+                )}
               </Stack>
             </Box>
           );
         },
       },
     },
-  ];
+  ].filter(Boolean);
 
   // 条件性添加列
-  const columns = [...baseColumns];
-  if (showUserColumn) {
+  const columns: { name: string; label: string; width?: number; options: any }[] = [...baseColumns];
+  if (showUserColumn || allUsers) {
     columns.splice(1, 0, {
       name: 'userDid',
       label: t('user'),
+      width: 200,
       options: {
         customBodyRender: (_value: any, tableMeta: any) => {
           const call = modelCalls[tableMeta.rowIndex];
           if (!call) return null;
+
           return (
-            <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
-              {call.userDid ? call.userDid.slice(-8) : '-'}
-            </Typography>
+            <UserCard
+              showDid
+              did={call.userDid}
+              cardType={CardType.Detailed}
+              infoType={InfoType.Minimal}
+              sx={{ border: 0, padding: 0 }}
+            />
           );
         },
       },
@@ -513,7 +552,7 @@ export function CallHistory({
       </Stack>
       <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
         <TextField
-          placeholder={t('analytics.searchPlaceholder')}
+          placeholder={t('analytics.searchPlaceholder', { did: allUsers ? 'appDid / userDid' : 'appDid' })}
           value={searchValue}
           onChange={(e) => setSearchValue(e.target.value)}
           slotProps={{

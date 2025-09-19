@@ -7,10 +7,8 @@ import {
   MessageItem,
   useConversation,
 } from '@blocklet/aigne-hub/components';
-import Dashboard from '@blocklet/ui-react/lib/Dashboard';
-import styled from '@emotion/styled';
 import { HighlightOff } from '@mui/icons-material';
-import { Avatar, Box, Button, MenuItem, Select, Tooltip } from '@mui/material';
+import { Avatar, Button, MenuItem, Select, Tooltip } from '@mui/material';
 import { ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { joinURL } from 'ufo';
 
@@ -149,104 +147,76 @@ export default function Chat() {
   );
 
   return (
-    <Root>
-      <Dashboard
-        footerProps={{ className: 'dashboard-footer' }}
-        // @ts-ignore
-        headerAddons={(exists: ReactNode[]) => [<CreditButton />, ...exists]}
-        // FIXME: remove following undefined props after issue https://github.com/ArcBlock/ux/issues/1136 solved
-        meta={undefined}
-        fallbackUrl={undefined}
-        invalidPathFallback={undefined}
-        sessionManagerProps={undefined}
-        links={undefined}
-        showDomainWarningDialog={undefined}>
-        <Conversation
-          ref={ref}
-          sx={{ maxWidth: 1000, mx: 'auto', width: '100%', height: '100%' }}
-          messages={messages}
-          onSubmit={(prompt) => add(prompt)}
-          customActions={customActions}
-          promptProps={{
-            startAdornment: (
-              <Select
-                value={model}
-                onChange={(e) => setModel(e.target.value)}
-                size="small"
-                sx={{ alignSelf: 'stretch', minWidth: 280 }}
-                displayEmpty
-                disabled={loading || modelGroups.length === 0}
-                renderValue={(selected) => {
-                  if (loading) return 'Loading...';
-                  if (modelGroups.length === 0) return 'No models available';
+    <Conversation
+      ref={ref}
+      sx={{
+        maxWidth: 1000,
+        mx: 'auto',
+        width: '100%',
+        height: '100%',
+        overflow: 'initial',
+        '.conversation-container': {
+          m: 0,
+        },
+      }}
+      messages={messages}
+      onSubmit={(prompt) => add(prompt)}
+      customActions={customActions}
+      promptProps={{
+        startAdornment: (
+          <Select
+            value={model}
+            onChange={(e) => setModel(e.target.value)}
+            size="small"
+            sx={{ alignSelf: 'stretch', minWidth: 280 }}
+            displayEmpty
+            disabled={loading || modelGroups.length === 0}
+            renderValue={(selected) => {
+              if (loading) return 'Loading...';
+              if (modelGroups.length === 0) return 'No models available';
 
-                  const selectedModel = modelGroups.flatMap((g) => g.models).find((m) => m.value === selected);
-                  return selectedModel?.label || 'Select Model';
-                }}
-                MenuProps={{
-                  PaperProps: { sx: { maxHeight: 400 } },
-                }}>
-                {loading ? (
-                  <MenuItem disabled>Loading models...</MenuItem>
-                ) : modelGroups.length === 0 ? (
-                  <MenuItem disabled>No models available</MenuItem>
-                ) : (
-                  modelGroups.map((group) => [
-                    <MenuItem
-                      key={`header-${group.provider}`}
-                      disabled
-                      sx={{
-                        fontSize: 14,
-                        display: 'flex',
-                        alignItems: 'center',
-                        color: 'text.secondary',
-                        gap: 1,
-                        '&.Mui-disabled': {
-                          opacity: 1,
-                        },
-                      }}>
-                      <Avatar
-                        src={joinURL(getPrefix(), `/logo/${group.provider}.png`)}
-                        sx={{ width: 24, height: 24 }}
-                        alt={group.provider}
-                      />
-                      {group.displayName}
-                    </MenuItem>,
-                    ...group.models.map((model) => (
-                      <MenuItem key={model.value} value={model.value} sx={{ ml: 1 }}>
-                        {model.label}
-                      </MenuItem>
-                    )),
-                  ])
-                )}
-              </Select>
-            ),
-          }}
-        />
-      </Dashboard>
-    </Root>
+              const selectedModel = modelGroups.flatMap((g) => g.models).find((m) => m.value === selected);
+              return selectedModel?.label || 'Select Model';
+            }}
+            MenuProps={{
+              PaperProps: { sx: { maxHeight: 400 } },
+            }}>
+            {loading ? (
+              <MenuItem disabled>Loading models...</MenuItem>
+            ) : modelGroups.length === 0 ? (
+              <MenuItem disabled>No models available</MenuItem>
+            ) : (
+              modelGroups.map((group) => [
+                <MenuItem
+                  key={`header-${group.provider}`}
+                  disabled
+                  sx={{
+                    fontSize: 14,
+                    display: 'flex',
+                    alignItems: 'center',
+                    color: 'text.secondary',
+                    gap: 1,
+                    '&.Mui-disabled': {
+                      opacity: 1,
+                    },
+                  }}>
+                  <Avatar
+                    src={joinURL(getPrefix(), `/logo/${group.provider}.png`)}
+                    sx={{ width: 24, height: 24 }}
+                    alt={group.provider}
+                  />
+                  {group.displayName}
+                </MenuItem>,
+                ...group.models.map((model) => (
+                  <MenuItem key={model.value} value={model.value} sx={{ ml: 1 }}>
+                    {model.label}
+                  </MenuItem>
+                )),
+              ])
+            )}
+          </Select>
+        ),
+      }}
+    />
   );
 }
-
-const Root = styled(Box)`
-  > .dashboard-body > .dashboard-main {
-    > .dashboard-content {
-      display: flex;
-      flex-direction: column;
-      padding-left: 0;
-      padding-right: 0;
-      overflow: hidden;
-    }
-
-    > .dashboard-footer {
-      margin-top: 0;
-      padding: 8px 0;
-
-      .logo-container {
-        svg {
-          height: 100%;
-        }
-      }
-    }
-  }
-`;

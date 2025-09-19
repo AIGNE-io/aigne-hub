@@ -1,7 +1,7 @@
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import { FormLabel } from '@blocklet/aigne-hub/components';
 import { CalendarMonth, ExpandLess, ExpandMore, KeyboardArrowDown } from '@mui/icons-material';
-import { Box, Button, Collapse, Divider, Popover, Stack, SxProps, Typography } from '@mui/material';
+import { Box, Button, Collapse, Divider, Popover, Stack, SxProps, Typography, useMediaQuery } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs, { Dayjs } from 'dayjs';
 import { useState } from 'react';
@@ -32,6 +32,7 @@ export function DateRangePicker({
   const { t, locale } = useLocaleContext();
   const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
   const [showCustom, setShowCustom] = useState(false);
+  const isMobile = useMediaQuery((theme) => theme.breakpoints.down('md'));
 
   const handleStartDateChange = (date: Dayjs | null) => {
     if (!date) {
@@ -209,11 +210,11 @@ export function DateRangePicker({
             },
           },
         }}>
-        <Box sx={{ p: 3 }}>
+        <Box sx={{ p: isMobile ? 2 : 3 }}>
           <Typography
             variant="h6"
             sx={{
-              mb: 2.5,
+              mb: isMobile ? 1.5 : 2.5,
               color: 'text.primary',
               fontWeight: 600,
               fontSize: '1rem',
@@ -226,7 +227,7 @@ export function DateRangePicker({
               display: 'grid',
               gridTemplateColumns: '1fr 1fr',
               gap: 1.5,
-              mb: 2.5,
+              mb: isMobile ? 1.5 : 2.5,
             }}>
             {quickRanges.map((range) => {
               const isActive = activeQuickRange?.label === range.label;
@@ -258,7 +259,7 @@ export function DateRangePicker({
             })}
           </Box>
 
-          <Divider sx={{ mb: 2 }} />
+          <Divider sx={{ mb: isMobile ? 1.5 : 2.5 }} />
 
           <Button
             variant="text"
@@ -268,73 +269,71 @@ export function DateRangePicker({
               width: '100%',
               justifyContent: 'flex-start',
               textTransform: 'none',
-              py: 1,
-              px: 0,
+              p: 0,
               fontWeight: 600,
               color: 'text.primary',
               fontSize: '1rem',
+              mb: isMobile ? 1.5 : 2.5,
             }}>
             {t('customRange')}
           </Button>
 
           <Collapse in={showCustom}>
-            <Box sx={{ pt: 2 }}>
-              <Stack sx={{ gap: 3 }}>
-                <Box sx={{ display: 'flex', gap: 2 }}>
-                  <Box sx={{ flex: 1 }}>
-                    <FormLabel sx={{ mb: 1, color: 'text.secondary' }}>{t('analytics.startDate')}</FormLabel>
-                    <DatePicker
-                      value={startDate}
-                      onChange={handleStartDateChange}
-                      maxDate={maxDate}
-                      minDate={minDate}
-                      slotProps={{
-                        textField: {
-                          size: 'small',
-                          fullWidth: true,
-                          sx: {
-                            '& .MuiOutlinedInput-root': {
-                              borderRadius: 1.5,
-                            },
+            <Stack sx={{ gap: 3 }}>
+              <Box sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 2 }}>
+                <Box sx={{ flex: 1 }}>
+                  <FormLabel sx={{ mb: 1, color: 'text.secondary' }}>{t('analytics.startDate')}</FormLabel>
+                  <DatePicker
+                    value={startDate}
+                    onChange={handleStartDateChange}
+                    maxDate={maxDate}
+                    minDate={minDate}
+                    slotProps={{
+                      textField: {
+                        size: 'small',
+                        fullWidth: true,
+                        sx: {
+                          '& .MuiOutlinedInput-root': {
+                            borderRadius: 1.5,
                           },
                         },
-                      }}
-                    />
-                  </Box>
-
-                  <Box sx={{ flex: 1 }}>
-                    <FormLabel sx={{ mb: 1, color: 'text.secondary' }}>{t('analytics.endDate')}</FormLabel>
-                    <DatePicker
-                      value={endDate}
-                      onChange={handleEndDateChange}
-                      minDate={startDate}
-                      maxDate={maxDate}
-                      slotProps={{
-                        textField: {
-                          size: 'small',
-                          fullWidth: true,
-                          sx: {
-                            '& .MuiOutlinedInput-root': {
-                              borderRadius: 1.5,
-                            },
-                          },
-                        },
-                      }}
-                    />
-                  </Box>
+                      },
+                    }}
+                  />
                 </Box>
-                <Typography
-                  variant="caption"
-                  sx={{
-                    color: 'text.secondary',
-                    fontStyle: 'italic',
-                    textAlign: 'center',
-                    fontSize: '0.75rem',
-                  }}>
-                  {t('dataAvailableFrom')}
-                </Typography>
-              </Stack>
-            </Box>
+
+                <Box sx={{ flex: 1 }}>
+                  <FormLabel sx={{ mb: 1, color: 'text.secondary' }}>{t('analytics.endDate')}</FormLabel>
+                  <DatePicker
+                    value={endDate}
+                    onChange={handleEndDateChange}
+                    minDate={startDate}
+                    maxDate={maxDate}
+                    slotProps={{
+                      textField: {
+                        size: 'small',
+                        fullWidth: true,
+                        sx: {
+                          '& .MuiOutlinedInput-root': {
+                            borderRadius: 1.5,
+                          },
+                        },
+                      },
+                    }}
+                  />
+                </Box>
+              </Box>
+              <Typography
+                variant="caption"
+                sx={{
+                  color: 'text.secondary',
+                  fontStyle: 'italic',
+                  textAlign: 'center',
+                  fontSize: '0.75rem',
+                }}>
+                {t('dataAvailableFrom')}
+              </Typography>
+            </Stack>
           </Collapse>
         </Box>
       </Popover>

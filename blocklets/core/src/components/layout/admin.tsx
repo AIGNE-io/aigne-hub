@@ -13,8 +13,14 @@ const Root = styled(Dashboard)<{ padding: string }>`
   background-color: ${({ theme }) => theme.palette.background.default};
 
   > .dashboard-body > .dashboard-main {
+    overflow: hidden;
+
     > .dashboard-content {
-      padding: ${(props) => props.padding || '0 24px'};
+      padding: 0;
+      height: 0;
+      display: flex;
+      flex-direction: column;
+
       .MuiTab-root {
         padding: 0;
         margin-right: 24px;
@@ -29,17 +35,8 @@ const Root = styled(Dashboard)<{ padding: string }>`
         }
       }
 
-      .MuiTabs-root {
-        min-height: 32px;
-        margin-bottom: 8px;
-      }
-
       .MuiTabs-scroller {
         border-bottom: 1px solid ${({ theme }) => theme.palette.divider};
-      }
-
-      .page-content {
-        margin-top: 2px;
       }
 
       .MuiToggleButton-root {

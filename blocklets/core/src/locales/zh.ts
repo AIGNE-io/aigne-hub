@@ -1,7 +1,7 @@
 import { flatten } from 'flat';
 
 export default flatten({
-  usage: '使用情况',
+  usage: '用量',
   aiProvider: 'AI 提供商',
   aiProviderSubscription: '订阅 AIGNE Hub 服务',
   aiProviderLocalAIKit: '本地 AIGNE Hub 组件',
@@ -59,7 +59,8 @@ export default flatten({
     },
     status: {
       available: '可用',
-      pending: '暂停中',
+      pending: '未使用',
+      warning: '不可用',
     },
   },
 
@@ -67,7 +68,7 @@ export default flatten({
   welcome: '欢迎使用 AIGNE Hub',
   welcomeDesc: '开始使用前，请先配置 AI 提供商来启用 AI 服务。您也可以启用 Credits 计费功能来管理用户使用额度。',
 
-  aiConfig: 'AI 配置',
+  aiConfig: '配置',
   quickStarts: '快速开始',
   // AI Provider features
   aiProviderSettings: 'AI 提供商设置',
@@ -393,7 +394,9 @@ export default flatten({
 
   // Analytics & Credit Board
   analytics: {
+    allCreditsUsage: '额度总览',
     creditUsage: '额度分析',
+    allCreditBoardDescription: '实时监控团队成员的模型使用情况，统一管理 AIGNE Hub Credits',
     creditBoardDescription: '监控您的模型使用情况并管理 AIGNE Hub Credits 额度',
     loadingData: '数据加载中...',
     startDate: '开始日期',
@@ -425,7 +428,7 @@ export default flatten({
     ofTotalUsage: '占总请求数',
     callHistory: '调用历史',
     callHistoryDescription: '所有模型API调用的详细记录',
-    searchPlaceholder: '按模型或者 appDid 搜索...',
+    searchPlaceholder: '按模型 / {did} 搜索...',
     allStatus: '所有状态',
     timestamp: '时间戳',
     noCallsFound: '未找到符合条件的调用记录',
@@ -447,4 +450,8 @@ export default flatten({
   customRange: '自定义范围',
   dataAvailableFrom: '数据可查询近3个月',
   usedBy: '使用者',
+  testStatus: '测试状态',
+  testing: '测试中...',
+  errorConnected: '{errorCount} 个无效凭证',
+  export: '导出',
 });

@@ -24,7 +24,7 @@ export const aigneHubConfigProviderUrl = async () => {
   const url = await getRemoteBaseUrl(process.env?.BLOCKLET_AIGNE_API_URL || '').catch(
     () => process.env?.BLOCKLET_AIGNE_API_URL
   );
-  const errorMessage = `Please config provider in ${joinURL(url || '', 'config/ai-config/providers')}`;
+  const errorMessage = `Please configure the provider in ${joinURL(url || '', 'config/ai-config/providers')}`;
   return errorMessage;
 };
 

@@ -15,8 +15,9 @@ declare module 'express-history-api-fallback';
 
 declare module 'express-async-errors';
 
-declare module '@abtnode/util/*';
+declare module '@abtnode/*';
 
+declare module '@arcblock/ws';
 declare module '@abtnode/cron';
 declare module '@blocklet/logger' {
   function createLogger(name: string): typeof console;
@@ -38,5 +39,9 @@ namespace Express {
       appId: string;
       userDid: string;
     };
+
+    model?: string;
+    provider?: string;
+    credentialId?: string;
   }
 }
