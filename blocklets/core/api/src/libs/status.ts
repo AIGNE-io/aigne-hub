@@ -147,10 +147,10 @@ const sendCredentialInvalidNotification = async ({
   model?: string;
   provider?: string;
   credentialId?: string;
-  error: Error & { status: number; code: number };
+  error: Error & { status: number };
 }) => {
   try {
-    if (credentialId && [401, 403].includes(Number(error.status || error.code))) {
+    if (credentialId && [401, 403].includes(Number(error.status))) {
       logger.info('update credential status and send credential invalid notification', {
         credentialId,
         provider,
@@ -243,10 +243,6 @@ export function withModelStatus(handler: (req: Request, res: Response) => Promis
 
     try {
       await handler(req, res);
-
-      if (req.body.model) {
-        // throw new CustomError(403, 'Forbidden call model');
-      }
 
       await updateModelStatus({
         model: req.body.model,
