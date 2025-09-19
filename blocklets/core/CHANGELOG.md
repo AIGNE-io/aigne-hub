@@ -1,3 +1,7 @@
+## 0.4.34 (2025-9-19)
+
+- fix: add cluster execution checks to prevent duplicate notifications
+
 ## 0.4.33 (2025-9-19)
 
 - fix: correct input parameter reference in AI image generation

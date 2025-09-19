@@ -3,6 +3,7 @@ import { TNotification } from '@blocklet/sdk/lib/types/notification';
 
 import { blocklet } from '../auth';
 import logger from '../logger';
+import shouldExecuteTask from '../master-cluster';
 import { BaseNotificationTemplate, BaseNotificationTemplateType } from './templates/base';
 
 export async function getDidListByRole(role: string | string[]) {
@@ -30,6 +31,10 @@ export class NotificationManager {
     template: T,
     userDid: string
   ): Promise<boolean> {
+    if (!shouldExecuteTask()) {
+      return false;
+    }
+
     try {
       const notificationData = await template.getTemplate();
 
@@ -66,6 +71,10 @@ export class NotificationManager {
     userDid: string | string[],
     notificationData: BaseNotificationTemplateType
   ): Promise<boolean> {
+    if (!shouldExecuteTask()) {
+      return false;
+    }
+
     try {
       const payload: TNotification = {
         title: notificationData.title,
@@ -92,6 +101,10 @@ export class NotificationManager {
     role: string | string[],
     notificationData: BaseNotificationTemplateType
   ): Promise<boolean> {
+    if (!shouldExecuteTask()) {
+      return false;
+    }
+
     try {
       const userDids = await getDidListByRole(role);
       return await NotificationManager.sendCustomNotification(userDids, notificationData);
