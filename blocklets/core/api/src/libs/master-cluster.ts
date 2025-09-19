@@ -1,10 +1,10 @@
 import logger from './logger';
 
 function shouldExecuteTask(): boolean {
-  const isMasterCluster = process.env.BLOCKLET_INSTANCE_ID === '0';
-  const nonCluster = process.env.BLOCKLET_INSTANCE_ID === undefined;
-  logger.info('Cluster execution check:', { isMasterCluster, nonCluster });
-
+  const instanceId = process.env.BLOCKLET_INSTANCE_ID;
+  const isMasterCluster = instanceId === '0';
+  const nonCluster = !instanceId;
+  logger.info('cluster execution check:', { instanceId, isMasterCluster, nonCluster });
   return nonCluster || isMasterCluster;
 }
 
