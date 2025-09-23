@@ -1,4 +1,4 @@
-import { availableModels as availableChatModels, availableImageModels } from '@aigne/aigne-hub';
+import { availableModels as availableChatModels, findImageModel } from '@aigne/aigne-hub';
 import { AIGNE, ChatModelOptions, ImageModelOptions } from '@aigne/core';
 import type { OpenAIChatModelOptions, OpenAIImageModelOptions } from '@aigne/openai';
 import logger from '@api/libs/logger';
@@ -214,7 +214,7 @@ const loadImageModel = async (
   } = {}
 ) => {
   const providerName = (provider || '').toLowerCase() === 'google' ? 'gemini' : provider?.toLowerCase() || '';
-  const m = await getImageModelByProviderName(providerName);
+  const m = findImageModel(providerName).match;
 
   if (!m) {
     throw new CustomError(
@@ -290,12 +290,6 @@ const getModelByProviderName = async (provider: string) => {
   return m;
 };
 
-const getImageModelByProviderName = async (provider: string) => {
-  const models = availableImageModels();
-  const m = models.find((m) => m.name.toLowerCase().includes(provider.toLowerCase()));
-  return m;
-};
-
 export const checkModelIsValid = async (
   providerName: string,
   params: {
@@ -309,7 +303,7 @@ export const checkModelIsValid = async (
   const m = await getModelByProviderName(providerName);
 
   if (m) {
-    const model = await m.create(params);
+    const model = m.create(params);
     logger.info('check chat model is valid model:', model.name);
     const res = await model.invoke({ messages: [{ role: 'user', content: 'Hello, world!' }] });
     logger.info('check chat model is valid result:', res);
@@ -317,9 +311,9 @@ export const checkModelIsValid = async (
     return;
   }
 
-  const imageModel = await getImageModelByProviderName(providerName);
+  const imageModel = findImageModel(providerName).match;
   if (imageModel) {
-    const model = await imageModel.create(params);
+    const model = imageModel.create(params);
     logger.info('check image model is valid model:', model.name);
     const res = await model.invoke({ prompt: 'draw a picture of a cat' });
     logger.info('check image model is valid result:', res);

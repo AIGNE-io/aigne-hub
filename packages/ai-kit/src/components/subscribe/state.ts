@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+import { StoreApi, UseBoundStore, create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 
 import { AIKitServiceConfig, AppStatusResult, appStatus, setAppConfig } from '../../api/app';
@@ -14,7 +14,7 @@ export interface AIKitServiceStatus {
   };
 }
 
-export const useAIKitServiceStatus = create<AIKitServiceStatus>()(
+export const useAIKitServiceStatus: UseBoundStore<StoreApi<AIKitServiceStatus>> = create<AIKitServiceStatus>()(
   immer((set, get) => ({
     loading: true,
     fetch: async () => {

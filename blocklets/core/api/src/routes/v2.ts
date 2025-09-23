@@ -1,5 +1,7 @@
-import { AIGNE } from '@aigne/core';
-import { AIGNEHTTPServer } from '@aigne/transport/http-server/index';
+import { findImageModel, parseModel } from '@aigne/aigne-hub';
+import { AIGNE, Message, imageModelInputSchema } from '@aigne/core';
+import { checkArguments, pick } from '@aigne/core/utils/type-utils';
+import { AIGNEHTTPServer, invokePayloadSchema } from '@aigne/transport/http-server/index';
 import { getModelNameWithProvider, getOpenAIV2, getReqModel } from '@api/libs/ai-provider';
 import {
   createRetryHandler,
@@ -25,7 +27,7 @@ import proxy from 'express-http-proxy';
 import Joi from 'joi';
 
 import onError from '../libs/on-error';
-import { getModel } from '../providers/models';
+import { getModel, getProviderCredentials } from '../providers/models';
 
 const DEFAULT_MODEL = 'openai/gpt-5-mini';
 
@@ -276,6 +278,8 @@ router.post(
   )
 );
 
+const DEFAULT_IMAGE_MODEL = 'openai/dall-e-2';
+
 router.post(
   '/image',
   user,
@@ -283,7 +287,8 @@ router.post(
   imageCallTracker,
   createRetryHandler(
     withModelStatus(async (req, res) => {
-      const value = aigneHubModelBodyValidate(req.body);
+      const body = checkArguments('Check image generation payload', invokePayloadSchema, req.body);
+      const input = checkArguments('Check image model input', imageModelInputSchema.passthrough(), body.input);
 
       const userDid = req.user?.did;
 
@@ -291,23 +296,26 @@ router.post(
         await checkUserCreditBalance({ userDid });
       }
 
-      const { input } = value;
-      const { modelOptions, ...otherInput } = input;
+      const m = (input.modelOptions?.model as string) || DEFAULT_IMAGE_MODEL; // should remove this field in the future
+
+      const { provider, model } = parseModel(m);
+      if (!provider || !model) throw new CustomError(400, `Invalid model format: ${m}, should be {provider}/{model}`);
+
+      await checkModelRateAvailable(m);
+
+      const { match: M } = findImageModel(provider);
+      if (!M) throw new CustomError(400, `Image model provider ${provider} not found`);
+      const credential = await getProviderCredentials(provider, { modelCallContext: req.modelCallContext, model });
+      const modelInstance = M.create(credential);
 
       let traceId;
-      const usageData = await processImageGeneration(
+
+      const aigne = new AIGNE();
+      const response = await aigne.invoke(
+        modelInstance,
+        { ...input, modelOptions: { ...input.modelOptions, model } },
         {
-          req,
-          res,
-          version: 'v2',
-          inputBody: {
-            ...otherInput,
-            ...modelOptions,
-            responseFormat: req.body.input.response_format || req.body.input.responseFormat,
-          },
-        },
-        {
-          userContext: { userId: req.user?.did, ...otherInput?.userContext },
+          userContext: { ...body.options?.userContext, userId: req.user?.did },
           hooks: {
             onEnd: async (data) => {
               traceId = data?.context?.id;
@@ -320,38 +328,34 @@ router.post(
         }
       );
 
-      let aigneHubCredits;
-      if (usageData && userDid) {
+      let aigneHubCredits: number | undefined;
+
+      if (response.usage && userDid) {
         aigneHubCredits = await createUsageAndCompleteModelCall({
           req,
           type: 'imageGeneration',
-          model: usageData.model,
-          modelParams: usageData.modelParams,
-          numberOfImageGeneration: usageData.numberOfImageGeneration,
+          model: response.model || model,
+          modelParams: pick(input as Message, 'size', 'responseFormat', 'style', 'quality'),
+          promptTokens: response.usage.inputTokens,
+          completionTokens: response.usage.outputTokens,
+          numberOfImageGeneration: response.images.length,
           appId: req.headers['x-aigne-hub-client-did'] as string,
           userDid: userDid!,
           creditBasedBillingEnabled: Config.creditBasedBillingEnabled,
           additionalMetrics: {
-            imageSize: usageData.modelParams?.size,
-            imageQuality: usageData.modelParams?.quality,
-            imageStyle: usageData.modelParams?.style,
+            imageSize: (input as Message).size,
+            imageQuality: (input as Message).quality,
+            imageStyle: (input as Message).style,
           },
           metadata: {
             endpoint: req.path,
-            numberOfImages: usageData.numberOfImageGeneration,
+            numberOfImages: response.images.length,
           },
           traceId,
         });
       }
 
-      res.json({
-        images: usageData?.images,
-        data: usageData?.images,
-        model: usageData?.modelName,
-        usage: {
-          aigneHubCredits: Number(aigneHubCredits),
-        },
-      });
+      res.json({ ...response, usage: { ...response.usage, aigneHubCredits } });
     })
   )
 );
