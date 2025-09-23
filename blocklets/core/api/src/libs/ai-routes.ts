@@ -26,11 +26,6 @@ import { processImageUrl } from './image';
 import logger from './logger';
 import { InvokeOptions } from './on-error';
 
-interface ImageResult {
-  base64?: string;
-  url?: string;
-}
-
 // Common Joi Schemas
 export const completionsRequestSchema = Joi.object<
   { model: string } & (
@@ -417,7 +412,10 @@ export async function processImageGeneration(
     );
 
     response = {
-      data: result.images.map((i: ImageResult) => ({ b64_json: i.base64, url: i.url })),
+      data: result.images.map((i) => ({
+        b64_json: i.type === 'file' ? i.data : undefined,
+        url: i.type === 'url' ? i.url : undefined,
+      })),
       created: Date.now(),
     };
   }
