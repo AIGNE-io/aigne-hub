@@ -1,3 +1,7 @@
+## 0.4.35 (2025-9-23)
+
+- feat: support latest image model of AIGNE Framework
+
 ## 0.4.34 (2025-9-19)
 
 - fix: add cluster execution checks to prevent duplicate notifications
@@ -57,7 +61,7 @@
 ## 0.4.20 (2025-9-10)
 
 - refactor: reorganize admin routing and adjust UI layout
-  
+
 ## 0.4.19 (2025-9-10)
 
 - fix: record the traceId when calling the model
