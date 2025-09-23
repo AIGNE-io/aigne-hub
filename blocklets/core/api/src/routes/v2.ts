@@ -301,6 +301,8 @@ router.post(
       const { provider, model } = parseModel(m);
       if (!provider || !model) throw new CustomError(400, `Invalid model format: ${m}, should be {provider}/{model}`);
 
+      await checkModelRateAvailable(m);
+
       const { match: M } = findImageModel(provider);
       if (!M) throw new CustomError(400, `Image model provider ${provider} not found`);
       const credential = await getProviderCredentials(provider, { modelCallContext: req.modelCallContext, model });
