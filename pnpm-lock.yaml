@@ -83,20 +83,20 @@ importers:
         specifier: ^1.16.51
         version: 1.16.51
       '@aigne/aigne-hub':
-        specifier: ^0.10.0-beta
-        version: 0.10.0-beta(@libsql/client@0.15.9)(@modelcontextprotocol/sdk@1.18.1)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(encoding@0.1.13)(sqlite3@5.1.7)(ws@8.18.0)
+        specifier: ^0.10.0-beta.2
+        version: 0.10.0-beta.2(@libsql/client@0.15.9)(@modelcontextprotocol/sdk@1.18.1)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(encoding@0.1.13)(sqlite3@5.1.7)(ws@8.18.0)
       '@aigne/core':
-        specifier: ^1.61.0-beta
-        version: 1.61.0-beta(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)
+        specifier: ^1.61.0-beta.1
+        version: 1.61.0-beta.1(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)
       '@aigne/observability-api':
         specifier: ^0.10.4
         version: 0.10.4(@libsql/client@0.15.9)(bun-types@1.2.21(@types/react@18.3.9))(sqlite3@5.1.7)
       '@aigne/openai':
-        specifier: ^0.16.0-beta
-        version: 0.16.0-beta(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
+        specifier: ^0.16.0-beta.2
+        version: 0.16.0-beta.2(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
       '@aigne/transport':
-        specifier: ^0.15.9-beta
-        version: 0.15.9-beta(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
+        specifier: ^0.15.9-beta.2
+        version: 0.15.9-beta.2(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
       '@arcblock/did':
         specifier: 1.24.3
         version: 1.24.3
@@ -604,29 +604,29 @@ packages:
   '@adobe/css-tools@4.4.0':
     resolution: {integrity: sha512-Ff9+ksdQQB3rMncgqDK78uLznstjyfIf2Arnh22pW8kBpLs6rpKDwgnZT46hin5Hl1WzazzK64DOrhSwYpS7bQ==}
 
-  '@aigne/aigne-hub@0.10.0-beta':
-    resolution: {integrity: sha512-QUJL0GmUf8E+vzmhXeg6UQqGtALWhfx6HAHOF1Hh9YwRC/UBtJaEuu7X1pFEVlVt/2ut/wOBb1CduYe6wPIyAg==}
+  '@aigne/aigne-hub@0.10.0-beta.2':
+    resolution: {integrity: sha512-sHoOR0waqOk0iE3ArEZa/N1MSEjrHNNtHf95Ib7DKOp7W+fUr/j902k3Ar9V0NhJvPnkVEt1S8GpA8EzEk0Oqw==}
 
-  '@aigne/anthropic@0.13.5-beta':
-    resolution: {integrity: sha512-nueWwikaPk9wprUEU5NgkLn9f58HgUoOX+K6o/PBuig2I7lRAxdhREXsBPIqs2ikywRZcVwLPqm5wgO9mUEq/g==}
+  '@aigne/anthropic@0.13.5-beta.1':
+    resolution: {integrity: sha512-odWkvkXL7CBKTb4KpaHzSARnewEMg8YtKDqNUeMzySqwexttnnZLtepF0TEZEdoK3yIIRjDfrWGS2CMUgtYZVw==}
 
-  '@aigne/bedrock@0.10.5-beta':
-    resolution: {integrity: sha512-AAIrPESXD0f2ri/ssSY5nlOPq4PQmzca7Cl/aE5NaxQ46+cknfD6TJfJEAZJn+CKnuSQfH5+GKdI/j8ozhLT2g==}
+  '@aigne/bedrock@0.10.5-beta.1':
+    resolution: {integrity: sha512-CvB/rMEpL+hwonXD4AhH6L0dRcA/gBLzKmUSBMaEFVebDuMpGGjh+MQgbh6ASl4aKEFrc9OmJfU0JIvCdTthzw==}
 
-  '@aigne/core@1.61.0-beta':
-    resolution: {integrity: sha512-h7NagjtSw3StskoP4Wf2umtQPz3QbmUAp8zb0Zm/XjatmrsukOH3f68S7G5X/qnNXxHIpEIpG4EN1OHhw9aDEg==}
+  '@aigne/core@1.61.0-beta.1':
+    resolution: {integrity: sha512-nhcCAB9zMGXGlOMWxVywGXZY0zUYhYWQnbDR2ldA49NYxfLbsUVST6J7aLhatyesI+6zUPymxZgFK1xydm/Azg==}
 
-  '@aigne/deepseek@0.7.46-beta':
-    resolution: {integrity: sha512-NBRRYcvrEk2wdHGyjFd5T1d76mAwltORyJSO/YLdHaWt8lwCxPxtVro0r3WOfP1EpK4MZ4lwxQanN5U3iIA4EA==}
+  '@aigne/deepseek@0.7.46-beta.2':
+    resolution: {integrity: sha512-T0CU7H7AlVsZr+6MxkySg/IXzlvb1azmCMI20x7whlAvL8oJuQNEXxi6skyTvRNm8F2o3NBFgkKl48n2xv4R8w==}
 
-  '@aigne/doubao@1.1.0-beta':
-    resolution: {integrity: sha512-b3QaJmACCNBRDTlGAGILW1kT7GYdSqbIzX+k0J74gVpPo9GO5pqZrcVnDJpa2prBhaPge7an3y8KrELJLTT5Aw==}
+  '@aigne/doubao@1.1.0-beta.2':
+    resolution: {integrity: sha512-rYvd7NQ21leOwDWcIzONNnjsLyI6uO2jUfcfmtVaSEoWOEFrx/tDFF11V5JxkDIYoyfsBZRQo688QpLPrH4InA==}
 
-  '@aigne/gemini@0.14.0-beta':
-    resolution: {integrity: sha512-uE20PRfi2+HBrmKCbhM+Qu9trKLyFDBYY9HkyqNhaIVb4HYVJukjWmdPUD2DnXJle0AgDDc53no/+MNapQejlA==}
+  '@aigne/gemini@0.14.0-beta.2':
+    resolution: {integrity: sha512-4deQxrUqLA3t/HFeWmkOtLMKz8aA3KdZ8n8q6GnRLRG3qyWBJiI6Dw4lJIEhngMhaa/h3ZTK1onYVrR3c8nhYQ==}
 
-  '@aigne/ideogram@0.4.0-beta':
-    resolution: {integrity: sha512-ebnt9rBb3z6HmkOB6usbbz+74AOAXZ1HA6Wrkl+GwNfZpNMVFzIbGhgDnJuXcZBYyeWq28n6xodGTKiRrcL2xA==}
+  '@aigne/ideogram@0.4.0-beta.1':
+    resolution: {integrity: sha512-J4MgoE0O663ydR2o6nRPeqrgwpQ8Np7zjrt23PiSE2ycFOvL2s5JXpZNTzYoRITUBXsrqqi8A2yvTfVZQc450g==}
 
   '@aigne/json-schema-to-zod@1.3.3':
     resolution: {integrity: sha512-8QsF5Vm/Znj16KAvfNIoXghSB7XzGGp+HHoI3CWyuFLX6DbI0YrzRm3EpKo87OhbpdtiWQurC0bidkH2cbsYNQ==}
@@ -636,29 +636,29 @@ packages:
   '@aigne/observability-api@0.10.4':
     resolution: {integrity: sha512-jv93+EMQYigXq3qmrmMLdaQPcr0QuqAph33oElQwWvS/mUlyOu0iWzylsvSbRnbNJ8hOQsoZYdGMXe+jGPoL8A==}
 
-  '@aigne/ollama@0.7.46-beta':
-    resolution: {integrity: sha512-kDBlxesbRAdIY6eheGnni0aLEo50Bkb+pgeiz6oosX39eikpNWRaU+47RSKt98sFfQgV1SD2/ra5rYgmqyrWGg==}
+  '@aigne/ollama@0.7.46-beta.2':
+    resolution: {integrity: sha512-n3O3/5HdUMEvtfvIXr5lSCMDQXVI7GAGnSmM9EIf3vGqdRsuaghJHLV899TV5ZrJlKFJPN4N3FI8gdpiEID0gQ==}
 
-  '@aigne/open-router@0.7.46-beta':
-    resolution: {integrity: sha512-e5HNDwWJ3Ew3fqdupOJJR7pnFPwIUzkyvkxZTsxmUYLttRuve8PYhir0nkQ88zhtbHlzAALHGEsMnUy08Iqegg==}
+  '@aigne/open-router@0.7.46-beta.2':
+    resolution: {integrity: sha512-EL1Ya4UtV5z0PxO5Kz4FdehHUhOkHK/kHZysVnhnjgBpWLCjDgxqAnUWDSDs9dd/Cf+ZTbJeYgkYRImPz/+4nA==}
 
-  '@aigne/openai@0.16.0-beta':
-    resolution: {integrity: sha512-0F7PNjLJSy+NOFoYo06ZXqjiK2G3AVgPB24lnNlksB97PIMa/frBzKaWaVOEnNMB9comC0Inq2b6G2T1oj0SbA==}
+  '@aigne/openai@0.16.0-beta.2':
+    resolution: {integrity: sha512-uvFj754MYBDfCQjqH4P2pXKLhaYgyNpFRPIe2a/EemhlEvRHRFkPLogDposox4yXCuxCKb9kwzI8uHTyDNfA1w==}
 
   '@aigne/platform-helpers@0.6.3-beta':
     resolution: {integrity: sha512-nSo0QdK4V/GHiqaKIiZHyrWkqWoeBToStdDXX+lftJ9FnQ29PwVy3X+c8F+t+LRFD5V8pFoPS/TQaVY98iGIcw==}
 
-  '@aigne/poe@1.0.26-beta':
-    resolution: {integrity: sha512-5RypejiwSj29UkImApbVnZaTCRDo0b+LchhDxNAQmboN7Ha2a96I7m2iHfiTgEQelVy/KUTU3wZqb4r07aauwg==}
+  '@aigne/poe@1.0.26-beta.2':
+    resolution: {integrity: sha512-IVJfN7WgobcpofHIdQjwF4dVJ5yEX0u2fz5xX5c6d8PfhAow/CHNlTae2WhMh2jT88TI9hsH5vRlpa1OTB51bg==}
 
   '@aigne/sqlite@0.4.1':
     resolution: {integrity: sha512-npOrVQSUMuq8hZIMRuwEOynUAu1R/h0f27gI6CmPLo2T43zqg/w/sakR2sJyjL/jO/KZw3YDkcw9APzErO5sXw==}
 
-  '@aigne/transport@0.15.9-beta':
-    resolution: {integrity: sha512-UWgGvm9DFopDXDNlpWp6N+fe1+ta2Yyqjrph0sTpkqdsc4Fpo2u4f7YDtlv8ua7AM+NHAKqFqoVNVGonLAiqfA==}
+  '@aigne/transport@0.15.9-beta.2':
+    resolution: {integrity: sha512-zIWcLHjJThubG/L/5Cp7OAl4RWy9dabaGoW+dF/nXXDMf/rcM1GB27nyTL/nxm1aNOYBZhjEZpunfVNvjm9+og==}
 
-  '@aigne/xai@0.7.46-beta':
-    resolution: {integrity: sha512-JOoMUL8bU4GngUqg94EwgrIFBu8m8Hpeot4zet1O7D0TiddoGjixVrkJGk+dsSIlXzPI1tmhy7qe66e/HNRb6A==}
+  '@aigne/xai@0.7.46-beta.2':
+    resolution: {integrity: sha512-sz/1rCL3zt6ujwkPvcfOtednW7rA3tHchLna0HiNnK/v+5ghbs0anVtN0m8A+n/vlN/qcIFbN73Pr8AlWZc8ZQ==}
 
   '@ampproject/remapping@2.3.0':
     resolution: {integrity: sha512-30iZtAPgz+LTIYoeivqYo853f02jBYSd5uGnGpkFV0M3xOt9aN73erkgYAmZU43x4VfqcnLxW9Kpg3R5LC4YYw==}
@@ -10075,22 +10075,22 @@ snapshots:
 
   '@adobe/css-tools@4.4.0': {}
 
-  '@aigne/aigne-hub@0.10.0-beta(@libsql/client@0.15.9)(@modelcontextprotocol/sdk@1.18.1)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(encoding@0.1.13)(sqlite3@5.1.7)(ws@8.18.0)':
+  '@aigne/aigne-hub@0.10.0-beta.2(@libsql/client@0.15.9)(@modelcontextprotocol/sdk@1.18.1)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(encoding@0.1.13)(sqlite3@5.1.7)(ws@8.18.0)':
     dependencies:
-      '@aigne/anthropic': 0.13.5-beta(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)
-      '@aigne/bedrock': 0.10.5-beta(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)
-      '@aigne/core': 1.61.0-beta(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)
-      '@aigne/deepseek': 0.7.46-beta(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
-      '@aigne/doubao': 1.1.0-beta(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
-      '@aigne/gemini': 0.14.0-beta(@libsql/client@0.15.9)(@modelcontextprotocol/sdk@1.18.1)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(encoding@0.1.13)(sqlite3@5.1.7)(ws@8.18.0)
-      '@aigne/ideogram': 0.4.0-beta(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)
-      '@aigne/ollama': 0.7.46-beta(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
-      '@aigne/open-router': 0.7.46-beta(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
-      '@aigne/openai': 0.16.0-beta(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
+      '@aigne/anthropic': 0.13.5-beta.1(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)
+      '@aigne/bedrock': 0.10.5-beta.1(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)
+      '@aigne/core': 1.61.0-beta.1(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)
+      '@aigne/deepseek': 0.7.46-beta.2(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
+      '@aigne/doubao': 1.1.0-beta.2(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
+      '@aigne/gemini': 0.14.0-beta.2(@libsql/client@0.15.9)(@modelcontextprotocol/sdk@1.18.1)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(encoding@0.1.13)(sqlite3@5.1.7)(ws@8.18.0)
+      '@aigne/ideogram': 0.4.0-beta.1(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)
+      '@aigne/ollama': 0.7.46-beta.2(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
+      '@aigne/open-router': 0.7.46-beta.2(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
+      '@aigne/openai': 0.16.0-beta.2(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
       '@aigne/platform-helpers': 0.6.3-beta
-      '@aigne/poe': 1.0.26-beta(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
-      '@aigne/transport': 0.15.9-beta(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
-      '@aigne/xai': 0.7.46-beta(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
+      '@aigne/poe': 1.0.26-beta.2(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
+      '@aigne/transport': 0.15.9-beta.2(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
+      '@aigne/xai': 0.7.46-beta.2(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
       '@smithy/node-http-handler': 4.2.1
       https-proxy-agent: 7.0.6
       ufo: 1.6.1
@@ -10134,9 +10134,9 @@ snapshots:
       - utf-8-validate
       - ws
 
-  '@aigne/anthropic@0.13.5-beta(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)':
+  '@aigne/anthropic@0.13.5-beta.1(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)':
     dependencies:
-      '@aigne/core': 1.61.0-beta(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)
+      '@aigne/core': 1.61.0-beta.1(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)
       '@aigne/platform-helpers': 0.6.3-beta
       '@anthropic-ai/sdk': 0.63.0(zod@3.25.76)
       ajv: 8.17.1
@@ -10176,9 +10176,9 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@aigne/bedrock@0.10.5-beta(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)':
+  '@aigne/bedrock@0.10.5-beta.1(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)':
     dependencies:
-      '@aigne/core': 1.61.0-beta(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)
+      '@aigne/core': 1.61.0-beta.1(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)
       '@aws-sdk/client-bedrock-runtime': 3.893.0
       uuid: 13.0.0
       zod: 3.25.76
@@ -10218,7 +10218,7 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@aigne/core@1.61.0-beta(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)':
+  '@aigne/core@1.61.0-beta.1(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)':
     dependencies:
       '@aigne/json-schema-to-zod': 1.3.3(zod@3.25.76)
       '@aigne/observability-api': 0.10.4(@libsql/client@0.15.9)(bun-types@1.2.21(@types/react@18.3.9))(sqlite3@5.1.7)
@@ -10284,9 +10284,9 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@aigne/deepseek@0.7.46-beta(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)':
+  '@aigne/deepseek@0.7.46-beta.2(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)':
     dependencies:
-      '@aigne/openai': 0.16.0-beta(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
+      '@aigne/openai': 0.16.0-beta.2(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
     transitivePeerDependencies:
       - '@aws-sdk/client-rds-data'
       - '@cloudflare/workers-types'
@@ -10323,9 +10323,9 @@ snapshots:
       - utf-8-validate
       - ws
 
-  '@aigne/doubao@1.1.0-beta(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)':
+  '@aigne/doubao@1.1.0-beta.2(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)':
     dependencies:
-      '@aigne/openai': 0.16.0-beta(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
+      '@aigne/openai': 0.16.0-beta.2(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
       ufo: 1.6.1
       zod: 3.25.76
     transitivePeerDependencies:
@@ -10364,9 +10364,9 @@ snapshots:
       - utf-8-validate
       - ws
 
-  '@aigne/gemini@0.14.0-beta(@libsql/client@0.15.9)(@modelcontextprotocol/sdk@1.18.1)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(encoding@0.1.13)(sqlite3@5.1.7)(ws@8.18.0)':
+  '@aigne/gemini@0.14.0-beta.2(@libsql/client@0.15.9)(@modelcontextprotocol/sdk@1.18.1)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(encoding@0.1.13)(sqlite3@5.1.7)(ws@8.18.0)':
     dependencies:
-      '@aigne/openai': 0.16.0-beta(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
+      '@aigne/openai': 0.16.0-beta.2(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
       '@aigne/platform-helpers': 0.6.3-beta
       '@google/genai': 1.20.0(@modelcontextprotocol/sdk@1.18.1)(encoding@0.1.13)
       uuid: 13.0.0
@@ -10409,9 +10409,9 @@ snapshots:
       - utf-8-validate
       - ws
 
-  '@aigne/ideogram@0.4.0-beta(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)':
+  '@aigne/ideogram@0.4.0-beta.1(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)':
     dependencies:
-      '@aigne/core': 1.61.0-beta(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)
+      '@aigne/core': 1.61.0-beta.1(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)
       ufo: 1.6.1
     transitivePeerDependencies:
       - '@aws-sdk/client-rds-data'
@@ -10505,9 +10505,9 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@aigne/ollama@0.7.46-beta(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)':
+  '@aigne/ollama@0.7.46-beta.2(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)':
     dependencies:
-      '@aigne/openai': 0.16.0-beta(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
+      '@aigne/openai': 0.16.0-beta.2(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
     transitivePeerDependencies:
       - '@aws-sdk/client-rds-data'
       - '@cloudflare/workers-types'
@@ -10544,9 +10544,9 @@ snapshots:
       - utf-8-validate
       - ws
 
-  '@aigne/open-router@0.7.46-beta(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)':
+  '@aigne/open-router@0.7.46-beta.2(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)':
     dependencies:
-      '@aigne/openai': 0.16.0-beta(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
+      '@aigne/openai': 0.16.0-beta.2(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
     transitivePeerDependencies:
       - '@aws-sdk/client-rds-data'
       - '@cloudflare/workers-types'
@@ -10583,9 +10583,9 @@ snapshots:
       - utf-8-validate
       - ws
 
-  '@aigne/openai@0.16.0-beta(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)':
+  '@aigne/openai@0.16.0-beta.2(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)':
     dependencies:
-      '@aigne/core': 1.61.0-beta(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)
+      '@aigne/core': 1.61.0-beta.1(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)
       '@aigne/platform-helpers': 0.6.3-beta
       ajv: 8.17.1
       openai: 5.22.0(ws@8.18.0)(zod@3.25.76)
@@ -10633,9 +10633,9 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@aigne/poe@1.0.26-beta(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)':
+  '@aigne/poe@1.0.26-beta.2(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)':
     dependencies:
-      '@aigne/openai': 0.16.0-beta(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
+      '@aigne/openai': 0.16.0-beta.2(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
     transitivePeerDependencies:
       - '@aws-sdk/client-rds-data'
       - '@cloudflare/workers-types'
@@ -10709,9 +10709,9 @@ snapshots:
       - sqlite3
       - utf-8-validate
 
-  '@aigne/transport@0.15.9-beta(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)':
+  '@aigne/transport@0.15.9-beta.2(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)':
     dependencies:
-      '@aigne/openai': 0.16.0-beta(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
+      '@aigne/openai': 0.16.0-beta.2(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
       content-type: 1.0.5
       p-retry: 7.0.0
       raw-body: 3.0.1
@@ -10752,9 +10752,9 @@ snapshots:
       - utf-8-validate
       - ws
 
-  '@aigne/xai@0.7.46-beta(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)':
+  '@aigne/xai@0.7.46-beta.2(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)':
     dependencies:
-      '@aigne/openai': 0.16.0-beta(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
+      '@aigne/openai': 0.16.0-beta.2(@libsql/client@0.15.9)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
     transitivePeerDependencies:
       - '@aws-sdk/client-rds-data'
       - '@cloudflare/workers-types'

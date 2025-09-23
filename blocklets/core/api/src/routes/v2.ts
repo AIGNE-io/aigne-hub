@@ -296,10 +296,7 @@ router.post(
         await checkUserCreditBalance({ userDid });
       }
 
-      const m =
-        input.model ||
-        (input as any).modelOptions?.model || // should remove this field in the future
-        DEFAULT_IMAGE_MODEL;
+      const m = (input.modelOptions?.model as string) || DEFAULT_IMAGE_MODEL; // should remove this field in the future
 
       const { provider, model } = parseModel(m);
       if (!provider || !model) throw new CustomError(400, `Invalid model format: ${m}, should be {provider}/{model}`);
@@ -314,7 +311,7 @@ router.post(
       const aigne = new AIGNE();
       const response = await aigne.invoke(
         modelInstance,
-        { ...input, model },
+        { ...input, modelOptions: { ...input.modelOptions, model } },
         {
           userContext: { ...body.options?.userContext, userId: req.user?.did },
           hooks: {
