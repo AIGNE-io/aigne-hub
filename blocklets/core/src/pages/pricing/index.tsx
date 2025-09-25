@@ -24,10 +24,11 @@ import {
   Typography,
 } from '@mui/material';
 import { useRequest, useSetState } from 'ahooks';
+import BigNumber from 'bignumber.js';
 import { debounce } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { joinURL } from 'ufo';
-import BigNumber from 'bignumber.js';
+
 import { useSessionContext } from '../../contexts/session';
 import { ReactComponent as EmbeddingIcon } from '../../icons/icon-embedding.svg';
 import { ReactComponent as ImageIcon } from '../../icons/icon-image.svg';
@@ -389,7 +390,7 @@ export default function PricingPage() {
               </Box>
               {window.blocklet.preferences.baseCreditPrice && (
                 <Box sx={{ color: 'text.secondary', fontSize: 14 }}>
-                  {`$${getPrice(new BigNumber(model.input_credits_per_token).times(new BigNumber(window.blocklet.preferences.baseCreditPrice || 0)), 2, model.type === 'image_generation')}`}
+                  {`$${getPrice(new BigNumber(model.input_credits_per_token).multipliedBy(new BigNumber(window.blocklet.preferences.baseCreditPrice || 0)), 2, model.type === 'image_generation')}`}
                 </Box>
               )}
             </Box>
@@ -462,7 +463,7 @@ export default function PricingPage() {
               </Box>
               {window.blocklet.preferences.baseCreditPrice && (
                 <Box sx={{ color: 'text.secondary', fontSize: 14 }}>
-                  {`$${getPrice(new BigNumber(model.output_credits_per_token).times(new BigNumber(window.blocklet.preferences.baseCreditPrice || 0)), 2, model.type === 'image_generation')}`}
+                  {`$${getPrice(new BigNumber(model.output_credits_per_token).multipliedBy(new BigNumber(window.blocklet.preferences.baseCreditPrice || 0)), 2, model.type === 'image_generation')}`}
                 </Box>
               )}
             </Box>
