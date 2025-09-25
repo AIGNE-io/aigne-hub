@@ -9,7 +9,6 @@ import { formatNumber } from '@blocklet/aigne-hub/utils/util';
 import { formatError } from '@blocklet/error';
 import Header from '@blocklet/ui-react/lib/Header';
 import styled from '@emotion/styled';
-import { Icon } from '@iconify/react';
 import { AllInclusiveOutlined, ArrowDropDown, ArrowDropUp, Search as SearchIcon } from '@mui/icons-material';
 import {
   Avatar,
@@ -31,6 +30,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { joinURL } from 'ufo';
 
 import { useSessionContext } from '../../contexts/session';
+import { ReactComponent as ChatIcon } from '../../icons/icon-text.svg';
+import { ReactComponent as ImageIcon } from '../../icons/icon-image.svg';
+import { ReactComponent as EmbeddingIcon } from '../../icons/icon-embedding.svg';
 
 const ONE_MILLION = 1000000;
 
@@ -232,17 +234,17 @@ export default function PricingPage() {
     {
       key: 'chat',
       label: t('modelTypes.chatCompletion'),
-      icon: <Icon icon="fluent:text-12-regular" />,
+      icon: <ChatIcon viewBox="0 0 12 12"/>,
     },
     {
       key: 'image_generation',
       label: t('modelTypes.imageGeneration'),
-      icon: <Icon icon="ri:image-line" />,
+      icon: <ImageIcon viewBox="0 0 12 12" />,
     },
     {
       key: 'embedding',
       label: t('modelTypes.embedding'),
-      icon: <Icon icon="uil:vector-square" />,
+      icon: <EmbeddingIcon viewBox="0 0 12 12"/>,
     },
     // {
     //   key: 'audio_transcription',
