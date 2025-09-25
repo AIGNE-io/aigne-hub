@@ -70,7 +70,7 @@ interface ModelData {
 
 const SearchRow = styled(Box)`
   display: flex;
-  gap: 16px;
+  gap: 8px;
   align-items: center;
   flex-direction: column;
 
@@ -232,7 +232,7 @@ export default function PricingPage() {
     {
       key: 'chat',
       label: t('modelTypes.chatCompletion'),
-      icon: <Icon icon="ph:text-t" />,
+      icon: <Icon icon="fluent:text-12-regular" />,
     },
     {
       key: 'image_generation',
@@ -242,7 +242,7 @@ export default function PricingPage() {
     {
       key: 'embedding',
       label: t('modelTypes.embedding'),
-      icon: <Icon icon="oui:vector" />,
+      icon: <Icon icon="uil:vector-square" />,
     },
     // {
     //   key: 'audio_transcription',
@@ -320,7 +320,7 @@ export default function PricingPage() {
                 gap={0.5}
                 sx={{ border: '1px solid', borderColor: 'divider', px: 1.35, py: 0.5, pb: 0.75, borderRadius: 2 }}>
                 <Box sx={{ width: 14, height: 14, svg: { width: '100%', height: '100%' } }}>{icon}</Box>
-                <Typography variant="body2" sx={{ fontSize: 12, lineHeight: 1 }}>
+                <Typography color="text.secondary" sx={{ fontSize: 12, lineHeight: 1 }}>
                   {t(`modelTypes.${TYPE_MAPPING[model.type] || model.type}`)}
                 </Typography>
               </Box>
@@ -358,7 +358,11 @@ export default function PricingPage() {
           if (model.input_credits_per_token === 0) return '-';
 
           return (
-            <Box>
+            <Box sx={{
+              display: 'flex',
+              alignItems: 'flex-end',
+              flexDirection: 'column',
+            }}>
               <Box
                 sx={{
                   display: 'flex',
@@ -425,7 +429,11 @@ export default function PricingPage() {
           }
 
           return (
-            <Box>
+            <Box sx={{
+              display: 'flex',
+              alignItems: 'flex-end',
+              flexDirection: 'column',
+            }}>
               <Box
                 sx={{
                   display: 'flex',
@@ -499,7 +507,7 @@ export default function PricingPage() {
         <Box sx={{ mb: { xs: 3, md: 5 }, mt: { xs: 5, md: 10 } }}>
           <Box
             display="flex"
-            alignItems="center"
+            alignItems={{ xs: 'flex-start', md: 'center' }}
             justifyContent="space-between"
             flexDirection={{ xs: 'column', md: 'row' }}
             gap={1}>
@@ -524,11 +532,12 @@ export default function PricingPage() {
                       color: isSelected ? 'text.secondary' : 'text.secondary',
                       borderColor: isSelected ? 'divider' : 'transparent',
                       '&:hover': {
-                        borderColor: isSelected ? 'text.secondary' : 'transparent',
-                        backgroundColor: isSelected ? 'action.hover' : 'transparent',
+                        color: 'text.secondary',
+                        borderColor: isSelected ? 'divider' : 'transparent',
+                        backgroundColor: isSelected ? 'transparent' : 'transparent',
                       },
                     }}
-                    startIcon={category.icon}>
+                    >
                     {category.label}
                   </Button>
                 );
@@ -583,7 +592,7 @@ export default function PricingPage() {
               <FormControl
                 size="small"
                 sx={{
-                  width: 300,
+                  width: { xs: '100%', md: 300 },
                   '& .MuiOutlinedInput-notchedOutline': {
                     borderColor: 'divider',
                   },
