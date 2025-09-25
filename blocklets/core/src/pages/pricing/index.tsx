@@ -665,7 +665,6 @@ export default function PricingPage() {
 const Root = styled(Box)`
   @media (max-width: ${({ theme }: { theme: any }) => theme.breakpoints.values.md}px) {
     .MuiTable-root > .MuiTableBody-root > .MuiTableRow-root > td.MuiTableCell-root {
-      align-items: center !important;
       padding-bottom: 8px;
 
       &:first-of-type > div:first-of-type {
