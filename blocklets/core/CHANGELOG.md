@@ -1,3 +1,7 @@
+## 0.4.36 (2025-9-25)
+
+- feat: redesign the pricing page layout and optimize the style
+
 ## 0.4.35 (2025-9-23)
 
 - feat: support latest image model of AIGNE Framework
