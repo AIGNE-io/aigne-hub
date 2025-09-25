@@ -18,7 +18,6 @@ import {
   Container,
   Divider,
   FormControl,
-  InputAdornment,
   MenuItem,
   Select,
   Stack,
@@ -32,6 +31,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { joinURL } from 'ufo';
 
 import { useSessionContext } from '../../contexts/session';
+
+const ONE_MILLION = 1000000;
+
+const getPrice = (price: number | Decimal, fixed?: number, isImage?: boolean) => {
+  const priceDecimal = new Decimal(price).mul(new Decimal(isImage ? 1 : ONE_MILLION));
+  return formatNumber(fixed ? priceDecimal.toFixed(fixed) : priceDecimal.toString());
+};
 
 interface ModelData {
   key: string;
@@ -365,19 +371,19 @@ export default function PricingPage() {
                   sx={{
                     color: 'primary.main',
                   }}>
-                  {formatNumber(model.input_credits_per_token)} credits
+                  {getPrice(model.input_credits_per_token, 0, model.type === 'image_generation')} credits
                 </Typography>
                 <Typography
-                  variant="subtitle2"
                   sx={{
                     color: 'text.secondary',
+                    fontSize: 14,
                   }}>
-                  / token
+                  / 1M tokens
                 </Typography>
               </Box>
               {window.blocklet.preferences.baseCreditPrice && (
                 <Box sx={{ color: 'text.secondary', fontSize: 14 }}>
-                  {`$${new Decimal(model.input_credits_per_token).mul(new Decimal(window.blocklet.preferences.baseCreditPrice || 10)).toFixed(8)}`}
+                  {`$${getPrice(new Decimal(model.input_credits_per_token).mul(new Decimal(window.blocklet.preferences.baseCreditPrice || 10)), 2, model.type === 'image_generation')}`}
                 </Box>
               )}
             </Box>
@@ -413,7 +419,7 @@ export default function PricingPage() {
 
           if (model.output_credits_per_token === 0) return '-';
 
-          let unit = 'token';
+          let unit = '1M tokens';
           if (model.type === 'image_generation') {
             unit = 'image';
           }
@@ -433,19 +439,19 @@ export default function PricingPage() {
                     color: 'primary.main',
                     fontWeight: '700',
                   }}>
-                  {formatNumber(model.output_credits_per_token)} credits
+                  {getPrice(model.output_credits_per_token, 0, model.type === 'image_generation')} credits
                 </Typography>
                 <Typography
-                  variant="subtitle2"
                   sx={{
                     color: 'text.secondary',
+                    fontSize: 14,
                   }}>
                   / {unit}
                 </Typography>
               </Box>
               {window.blocklet.preferences.baseCreditPrice && (
                 <Box sx={{ color: 'text.secondary', fontSize: 14 }}>
-                  {`$${new Decimal(model.output_credits_per_token).mul(new Decimal(window.blocklet.preferences.baseCreditPrice || 10)).toFixed(8)}`}
+                  {`$${getPrice(new Decimal(model.output_credits_per_token).mul(new Decimal(window.blocklet.preferences.baseCreditPrice || 10)), 2, model.type === 'image_generation')}`}
                 </Box>
               )}
             </Box>
@@ -479,28 +485,18 @@ export default function PricingPage() {
         <Box
           sx={{
             textAlign: 'center',
-            mb: 4,
+            mb: 6,
           }}>
           <Typography
-            variant="h2"
-            component="h1"
-            gutterBottom
+            variant="h1"
             sx={{
-              fontWeight: 'bold',
+              fontWeight: 600,
+              color: 'text.primary',
             }}>
             {t('pricing.title')}
           </Typography>
-          <Typography
-            variant="h6"
-            sx={{
-              color: 'text.secondary',
-              maxWidth: 600,
-              mx: 'auto',
-            }}>
-            {t('pricing.subtitle')}
-          </Typography>
         </Box>
-        <Box sx={{ mb: { xs: 3, md: 5 } }}>
+        <Box sx={{ mb: { xs: 3, md: 5 }, mt: { xs: 5, md: 10 } }}>
           <Box
             display="flex"
             alignItems="center"
@@ -523,7 +519,14 @@ export default function PricingPage() {
                     onClick={() => setSearch({ type: category.key, page: 1 })}
                     sx={{
                       px: 2,
+                      height: 40,
                       fontWeight: 600,
+                      color: isSelected ? 'text.secondary' : 'text.secondary',
+                      borderColor: isSelected ? 'divider' : 'transparent',
+                      '&:hover': {
+                        borderColor: isSelected ? 'text.secondary' : 'transparent',
+                        backgroundColor: isSelected ? 'action.hover' : 'transparent',
+                      },
                     }}
                     startIcon={category.icon}>
                     {category.label}
@@ -542,22 +545,54 @@ export default function PricingPage() {
                   setSearchInput(value);
                   debouncedSearch(value);
                 }}
+                size="small"
                 slotProps={{
                   htmlInput: {
                     startAdornment: (
-                      <InputAdornment position="start">
-                        <SearchIcon sx={{ color: 'text.secondary' }} />
-                      </InputAdornment>
+                      <Box sx={{ px: 1 }}>
+                        <Box
+                          component={SearchIcon}
+                          sx={{
+                            color: 'grey.500',
+                            height: 16,
+                            width: 16,
+                          }}
+                        />
+                      </Box>
                     ),
                   },
                 }}
-                variant="outlined"
-                size="small"
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderColor: 'divider',
+                    bgcolor: 'grey.50',
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'divider',
+                    },
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'divider',
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'divider',
+                      borderWidth: 1,
+                    },
+                  },
+                }}
               />
+
               <FormControl
                 size="small"
                 sx={{
-                  minWidth: { xs: '100%', lg: 200 },
+                  width: 300,
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'divider',
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'divider',
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'divider',
+                  },
                 }}>
                 <Select
                   size="small"
