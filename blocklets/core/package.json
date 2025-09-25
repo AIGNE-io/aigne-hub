@@ -80,7 +80,6 @@
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "dayjs": "^1.11.12",
-    "decimal.js": "^10.6.0",
     "dotenv-flow": "^4.1.0",
     "express": "^5.1.0",
     "express-async-errors": "^3.1.1",

@@ -24,21 +24,20 @@ import {
   Typography,
 } from '@mui/material';
 import { useRequest, useSetState } from 'ahooks';
-import Decimal from 'decimal.js';
 import { debounce } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { joinURL } from 'ufo';
-
+import BigNumber from 'bignumber.js';
 import { useSessionContext } from '../../contexts/session';
 import { ReactComponent as EmbeddingIcon } from '../../icons/icon-embedding.svg';
 import { ReactComponent as ImageIcon } from '../../icons/icon-image.svg';
 import { ReactComponent as ChatIcon } from '../../icons/icon-text.svg';
 
-const ONE_MILLION = 1000000;
+const ONE_MILLION = new BigNumber(1000000);
 
-const getPrice = (price: number | Decimal, fixed?: number, isImage?: boolean) => {
-  const priceDecimal = new Decimal(price).mul(new Decimal(isImage ? 1 : ONE_MILLION));
-  return formatNumber(fixed ? priceDecimal.toFixed(fixed) : priceDecimal.toString());
+const getPrice = (price: number | BigNumber.Value, fixed?: number, isImage?: boolean) => {
+  const priceBN = new BigNumber(price).multipliedBy(isImage ? 1 : ONE_MILLION);
+  return formatNumber(fixed !== undefined ? priceBN.toFixed(fixed) : priceBN.toString());
 };
 
 interface ModelData {
@@ -390,7 +389,7 @@ export default function PricingPage() {
               </Box>
               {window.blocklet.preferences.baseCreditPrice && (
                 <Box sx={{ color: 'text.secondary', fontSize: 14 }}>
-                  {`$${getPrice(new Decimal(model.input_credits_per_token).mul(new Decimal(window.blocklet.preferences.baseCreditPrice || 10)), 2, model.type === 'image_generation')}`}
+                  {`$${getPrice(new BigNumber(model.input_credits_per_token).times(new BigNumber(window.blocklet.preferences.baseCreditPrice || 0)), 2, model.type === 'image_generation')}`}
                 </Box>
               )}
             </Box>
@@ -463,7 +462,7 @@ export default function PricingPage() {
               </Box>
               {window.blocklet.preferences.baseCreditPrice && (
                 <Box sx={{ color: 'text.secondary', fontSize: 14 }}>
-                  {`$${getPrice(new Decimal(model.output_credits_per_token).mul(new Decimal(window.blocklet.preferences.baseCreditPrice || 10)), 2, model.type === 'image_generation')}`}
+                  {`$${getPrice(new BigNumber(model.output_credits_per_token).times(new BigNumber(window.blocklet.preferences.baseCreditPrice || 0)), 2, model.type === 'image_generation')}`}
                 </Box>
               )}
             </Box>
@@ -533,12 +532,13 @@ export default function PricingPage() {
                       px: 2,
                       height: 40,
                       fontWeight: 600,
-                      color: isSelected ? 'text.secondary' : 'text.secondary',
+                      color: '#18181b',
                       borderColor: isSelected ? 'divider' : 'transparent',
+                      bgcolor: 'transparent',
                       '&:hover': {
-                        color: 'text.secondary',
+                        color: '#18181b',
                         borderColor: isSelected ? 'divider' : 'transparent',
-                        backgroundColor: isSelected ? 'transparent' : 'transparent',
+                        bgcolor: 'transparent',
                       },
                     }}>
                     {category.label}
