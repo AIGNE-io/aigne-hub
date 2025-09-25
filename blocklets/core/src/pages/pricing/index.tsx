@@ -226,7 +226,7 @@ export default function PricingPage() {
     {
       key: 'chat',
       label: t('modelTypes.chatCompletion'),
-      icon: <Icon icon="cuida:text-outline" />,
+      icon: <Icon icon="ph:text-t" />,
     },
     {
       key: 'image_generation',
