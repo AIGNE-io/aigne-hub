@@ -9,15 +9,7 @@ import { formatNumber } from '@blocklet/aigne-hub/utils/util';
 import { formatError } from '@blocklet/error';
 import Header from '@blocklet/ui-react/lib/Header';
 import styled from '@emotion/styled';
-import {
-  AllInclusiveOutlined,
-  ArrowDropDown,
-  ArrowDropUp,
-  ChatOutlined,
-  CropOutlined,
-  ImageOutlined,
-  Search as SearchIcon,
-} from '@mui/icons-material';
+import { AllInclusiveOutlined, ArrowDropDown, ArrowDropUp, Search as SearchIcon } from '@mui/icons-material';
 import {
   Avatar,
   Box,
@@ -25,20 +17,29 @@ import {
   Container,
   Divider,
   FormControl,
-  InputAdornment,
   MenuItem,
   Select,
   Stack,
   TextField,
   Typography,
-  useMediaQuery,
 } from '@mui/material';
 import { useRequest, useSetState } from 'ahooks';
+import BigNumber from 'bignumber.js';
 import { debounce } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { joinURL } from 'ufo';
 
 import { useSessionContext } from '../../contexts/session';
+import { ReactComponent as EmbeddingIcon } from '../../icons/icon-embedding.svg';
+import { ReactComponent as ImageIcon } from '../../icons/icon-image.svg';
+import { ReactComponent as ChatIcon } from '../../icons/icon-text.svg';
+
+const ONE_MILLION = new BigNumber(1000000);
+
+const getPrice = (price: number | BigNumber.Value, fixed?: number, isImage?: boolean) => {
+  const priceBN = new BigNumber(price).multipliedBy(isImage ? 1 : ONE_MILLION);
+  return formatNumber(fixed !== undefined ? priceBN.toFixed(fixed) : priceBN.toString());
+};
 
 interface ModelData {
   key: string;
@@ -71,8 +72,7 @@ interface ModelData {
 
 const SearchRow = styled(Box)`
   display: flex;
-  gap: 16px;
-  margin-bottom: 24px;
+  gap: 8px;
   align-items: center;
   flex-direction: column;
 
@@ -91,8 +91,6 @@ const listKey = 'pricing-models';
 export default function PricingPage() {
   const { t } = useLocaleContext();
   const { api } = useSessionContext();
-
-  const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
 
   const [search, setSearch] = useSetState({
     pageSize: 25,
@@ -236,17 +234,17 @@ export default function PricingPage() {
     {
       key: 'chat',
       label: t('modelTypes.chatCompletion'),
-      icon: <ChatOutlined />,
+      icon: <ChatIcon viewBox="0 0 12 12" />,
     },
     {
       key: 'image_generation',
       label: t('modelTypes.imageGeneration'),
-      icon: <ImageOutlined />,
+      icon: <ImageIcon viewBox="0 0 12 12" />,
     },
     {
       key: 'embedding',
       label: t('modelTypes.embedding'),
-      icon: <CropOutlined />,
+      icon: <EmbeddingIcon viewBox="0 0 12 12" />,
     },
     // {
     //   key: 'audio_transcription',
@@ -260,45 +258,31 @@ export default function PricingPage() {
     {
       name: 'model',
       label: t('pricing.table.model'),
-      width: '60%',
+      width: 400,
       options: {
         customBodyRender: (_value: any, tableMeta: any) => {
           const model = filteredData.list[tableMeta.rowIndex];
           if (!model) return null;
-          if (isMobile) {
-            return (
-              <Stack direction="column" alignItems="flex-end">
-                <Typography variant="subtitle1">{model.model}</Typography>
-                <Typography
-                  variant="caption"
-                  sx={{
-                    color: 'text.secondary',
-                  }}>
-                  {t('pricing.table.contextWindow')}:{' '}
-                  {model.modelMetadata?.maxTokens ? formatNumber(model.modelMetadata?.maxTokens) : '-'}
-                </Typography>
-              </Stack>
-            );
-          }
 
           return (
-            <Stack
-              direction="row"
-              spacing={1.5}
-              sx={{
-                alignItems: 'center',
-              }}>
-              <Avatar
-                src={joinURL(getPrefix(), `/logo/${model.provider}.png`)}
-                sx={{ width: 20, height: 20 }}
-                alt={model.provider}
-              />
-              <Stack direction="column" spacing={0.5}>
-                <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                  <Typography variant="subtitle1">{model.model}</Typography>
+            <Stack gap={1}>
+              <Box display="flex" alignItems="flex-end" gap={1}>
+                <Box sx={{ width: 24, height: 24, position: 'relative' }}>
+                  <Avatar
+                    src={joinURL(getPrefix(), `/logo/${model.provider}.png`)}
+                    sx={{ width: '100%', height: '100%' }}
+                    alt={model.provider}
+                  />
 
-                  <Status model={model} t={t} />
-                </Stack>
+                  <Box sx={{ position: 'absolute', right: 0, bottom: 0 }}>
+                    <Status model={model} t={t} onlyIcon />
+                  </Box>
+                </Box>
+
+                <Typography variant="subtitle1">{model.model}</Typography>
+              </Box>
+
+              <Stack direction="column" spacing={0.5}>
                 <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                   <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                     {model.providerDisplayName || model.provider}
@@ -319,56 +303,6 @@ export default function PricingPage() {
         },
       },
     },
-    ...(isMobile
-      ? [
-          {
-            name: 'provider',
-            label: t('pricing.table.provider'),
-            options: {
-              customBodyRender: (_value: any, tableMeta: any) => {
-                const model = filteredData.list[tableMeta.rowIndex];
-                if (!model) return null;
-                return (
-                  <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                    <Avatar
-                      src={joinURL(getPrefix(), `/logo/${model.provider}.png`)}
-                      sx={{ width: 20, height: 20 }}
-                      alt={model.provider}
-                    />
-                    <Typography variant="body2">{model.providerDisplayName || model.provider}</Typography>
-                  </Stack>
-                );
-              },
-            },
-          },
-          {
-            name: 'status',
-            label: t('pricing.table.status'),
-            options: {
-              customBodyRender: (_value: any, tableMeta: any) => {
-                const model = filteredData.list[tableMeta.rowIndex];
-                if (!model) return null;
-                const isAvailable = model.active !== false;
-                return (
-                  <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                    <Box
-                      sx={{
-                        width: 6,
-                        height: 6,
-                        bgcolor: isAvailable ? 'success.main' : 'warning.main',
-                        borderRadius: '50%',
-                      }}
-                    />
-                    <Typography variant="body2" sx={{ color: isAvailable ? 'success.main' : 'warning.main' }}>
-                      {t(`pricing.status.${isAvailable ? 'available' : 'pending'}`)}
-                    </Typography>
-                  </Stack>
-                );
-              },
-            },
-          },
-        ]
-      : []),
     {
       name: 'type',
       label: t('pricing.table.type'),
@@ -380,14 +314,19 @@ export default function PricingPage() {
           if (!model) return null;
           const icon = typeCategories.find((category) => category.key === model.type)?.icon;
           return (
-            <Button
-              startIcon={icon}
-              size="small"
-              component="span"
-              variant="text"
-              sx={{ color: 'text.primary', fontWeight: 'normal' }}>
-              {t(`modelTypes.${TYPE_MAPPING[model.type] || model.type}`)}
-            </Button>
+            <Box display="flex" alignItems="center" justifyContent="flex-start">
+              <Box
+                display="flex"
+                alignItems="self-end"
+                justifyContent="center"
+                gap={0.5}
+                sx={{ border: '1px solid', borderColor: 'divider', px: 1.35, py: 0.5, pb: 0.75, borderRadius: 2 }}>
+                <Box sx={{ width: 14, height: 14, svg: { width: '100%', height: '100%' } }}>{icon}</Box>
+                <Typography color="text.secondary" sx={{ fontSize: 12, lineHeight: 1 }}>
+                  {t(`modelTypes.${TYPE_MAPPING[model.type] || model.type}`)}
+                </Typography>
+              </Box>
+            </Box>
           );
         },
       },
@@ -423,22 +362,37 @@ export default function PricingPage() {
           return (
             <Box
               sx={{
-                textAlign: 'right',
+                display: 'flex',
+                alignItems: 'flex-end',
+                flexDirection: 'column',
               }}>
-              <Typography
-                variant="subtitle1"
+              <Box
                 sx={{
-                  color: 'primary.main',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.5,
+                  justifyContent: 'flex-end',
                 }}>
-                {formatNumber(model.input_credits_per_token)} credits
-              </Typography>
-              <Typography
-                variant="caption"
-                sx={{
-                  color: 'text.secondary',
-                }}>
-                / per token
-              </Typography>
+                <Typography
+                  variant="subtitle2"
+                  sx={{
+                    color: 'primary.main',
+                  }}>
+                  {getPrice(model.input_credits_per_token, 0, model.type === 'image_generation')} credits
+                </Typography>
+                <Typography
+                  sx={{
+                    color: 'text.secondary',
+                    fontSize: 14,
+                  }}>
+                  / 1M tokens
+                </Typography>
+              </Box>
+              {window.blocklet.preferences.baseCreditPrice && (
+                <Box sx={{ color: 'text.secondary', fontSize: 14 }}>
+                  {`$${getPrice(new BigNumber(model.input_credits_per_token).multipliedBy(new BigNumber(window.blocklet.preferences.baseCreditPrice || 0)), 2, model.type === 'image_generation')}`}
+                </Box>
+              )}
             </Box>
           );
         },
@@ -472,7 +426,7 @@ export default function PricingPage() {
 
           if (model.output_credits_per_token === 0) return '-';
 
-          let unit = 'token';
+          let unit = '1M tokens';
           if (model.type === 'image_generation') {
             unit = 'image';
           }
@@ -480,23 +434,38 @@ export default function PricingPage() {
           return (
             <Box
               sx={{
-                textAlign: 'right',
+                display: 'flex',
+                alignItems: 'flex-end',
+                flexDirection: 'column',
               }}>
-              <Typography
-                variant="subtitle1"
+              <Box
                 sx={{
-                  color: 'primary.main',
-                  fontWeight: '700',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.5,
+                  justifyContent: 'flex-end',
                 }}>
-                {formatNumber(model.output_credits_per_token)} credits
-              </Typography>
-              <Typography
-                variant="caption"
-                sx={{
-                  color: 'text.secondary',
-                }}>
-                / per {unit}
-              </Typography>
+                <Typography
+                  variant="subtitle2"
+                  sx={{
+                    color: 'primary.main',
+                    fontWeight: '700',
+                  }}>
+                  {getPrice(model.output_credits_per_token, 0, model.type === 'image_generation')} credits
+                </Typography>
+                <Typography
+                  sx={{
+                    color: 'text.secondary',
+                    fontSize: 14,
+                  }}>
+                  / {unit}
+                </Typography>
+              </Box>
+              {window.blocklet.preferences.baseCreditPrice && (
+                <Box sx={{ color: 'text.secondary', fontSize: 14 }}>
+                  {`$${getPrice(new BigNumber(model.output_credits_per_token).multipliedBy(new BigNumber(window.blocklet.preferences.baseCreditPrice || 0)), 2, model.type === 'image_generation')}`}
+                </Box>
+              )}
             </Box>
           );
         },
@@ -516,6 +485,7 @@ export default function PricingPage() {
         maxWidth={false}
         sx={{ borderBottom: '1px solid', borderColor: 'divider' }}
       />
+
       <Container
         maxWidth="lg"
         sx={{
@@ -527,123 +497,141 @@ export default function PricingPage() {
         <Box
           sx={{
             textAlign: 'center',
-            mb: 4,
+            mb: 6,
           }}>
           <Typography
-            variant="h2"
-            component="h1"
-            gutterBottom
+            variant="h1"
             sx={{
-              fontWeight: 'bold',
+              fontWeight: 600,
+              color: 'text.primary',
             }}>
             {t('pricing.title')}
           </Typography>
-          <Typography
-            variant="h6"
-            sx={{
-              color: 'text.secondary',
-              maxWidth: 600,
-              mx: 'auto',
-            }}>
-            {t('pricing.subtitle')}
-          </Typography>
         </Box>
-        <Box
-          sx={{
-            mb: {
-              xs: 3,
-              md: 5,
-            },
-          }}>
-          {/* Search and Filter Row */}
-          <SearchRow>
-            <TextField
-              fullWidth
-              placeholder={t('pricing.searchPlaceholder')}
-              value={searchInput}
-              onChange={({ target: { value } }) => {
-                setSearchInput(value);
-                debouncedSearch(value);
-              }}
-              slotProps={{
-                htmlInput: {
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon sx={{ color: 'text.secondary' }} />
-                    </InputAdornment>
-                  ),
-                },
-              }}
-              variant="outlined"
-              size="medium"
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  height: 44,
-                },
-              }}
-            />
-            <FormControl
-              size="medium"
-              sx={{
-                minWidth: { xs: '100%', lg: 200 },
-              }}>
-              <Select
-                value={search?.provider || 'all'}
-                onChange={(e) => setSearch({ provider: e.target.value === 'all' ? '' : e.target.value, page: 1 })}
-                sx={{
-                  height: 44,
-                }}>
-                <MenuItem value="all">{t('pricing.filters.allProviders')}</MenuItem>
-                {availableProviders.map((provider) => (
-                  <MenuItem key={provider.provider} value={provider.provider}>
-                    <Stack
-                      direction="row"
-                      spacing={1}
-                      sx={{
-                        alignItems: 'center',
-                      }}>
-                      <Avatar
-                        src={joinURL(getPrefix(), `/logo/${provider.provider}.png`)}
-                        sx={{ width: 20, height: 20 }}
-                        alt={provider.provider}
-                      />
-                      <Typography variant="body2">{provider.displayName}</Typography>
-                    </Stack>
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </SearchRow>
-
-          {/* Type Filter Buttons */}
+        <Box sx={{ mb: { xs: 3, md: 5 }, mt: { xs: 5, md: 10 } }}>
           <Box
-            sx={{
-              display: 'flex',
-              gap: 1,
-              flexWrap: 'wrap',
-            }}>
-            {typeCategories.map((category) => {
-              const isSelected = (search?.type || 'all') === category.key;
-              return (
-                <Button
-                  key={category.key}
-                  variant={isSelected ? 'contained' : 'outlined'}
-                  onClick={() => setSearch({ type: category.key, page: 1 })}
-                  sx={{
-                    px: 2,
-                    fontWeight: 600,
-                    color: isSelected ? 'white' : 'text.primary',
-                    borderColor: isSelected ? 'primary.main' : 'divider',
-                    bgcolor: isSelected ? 'primary.main' : 'background.paper',
-                    '&:hover': {
-                      bgcolor: isSelected ? 'primary.main' : 'action.hover',
+            display="flex"
+            alignItems={{ xs: 'flex-start', md: 'center' }}
+            justifyContent="space-between"
+            flexDirection={{ xs: 'column', md: 'row' }}
+            gap={1}>
+            {/* Type Filter Buttons */}
+            <Box
+              sx={{
+                display: 'flex',
+                gap: 1,
+                flexWrap: 'wrap',
+              }}>
+              {typeCategories.map((category) => {
+                const isSelected = (search?.type || 'all') === category.key;
+                return (
+                  <Button
+                    key={category.key}
+                    variant={isSelected ? 'outlined' : 'text'}
+                    onClick={() => setSearch({ type: category.key, page: 1 })}
+                    sx={{
+                      px: 2,
+                      height: 40,
+                      fontWeight: 600,
+                      color: '#18181b',
+                      borderColor: isSelected ? 'divider' : 'transparent',
+                      bgcolor: 'transparent',
+                      '&:hover': {
+                        color: '#18181b',
+                        borderColor: isSelected ? 'divider' : 'transparent',
+                        bgcolor: 'transparent',
+                      },
+                    }}>
+                    {category.label}
+                  </Button>
+                );
+              })}
+            </Box>
+
+            {/* Search and Filter Row */}
+            <SearchRow sx={{ minWidth: { xs: '100%', md: 500 } }}>
+              <TextField
+                fullWidth
+                placeholder={t('pricing.searchPlaceholder')}
+                value={searchInput}
+                onChange={({ target: { value } }) => {
+                  setSearchInput(value);
+                  debouncedSearch(value);
+                }}
+                size="small"
+                slotProps={{
+                  htmlInput: {
+                    startAdornment: (
+                      <Box sx={{ px: 1 }}>
+                        <Box
+                          component={SearchIcon}
+                          sx={{
+                            color: 'grey.500',
+                            height: 16,
+                            width: 16,
+                          }}
+                        />
+                      </Box>
+                    ),
+                  },
+                }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderColor: 'divider',
+                    bgcolor: 'grey.50',
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'divider',
                     },
-                  }}
-                  startIcon={category.icon}>
-                  {category.label}
-                </Button>
-              );
-            })}
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'divider',
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'divider',
+                      borderWidth: 1,
+                    },
+                  },
+                }}
+              />
+
+              <FormControl
+                size="small"
+                sx={{
+                  width: { xs: '100%', md: 300 },
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'divider',
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'divider',
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'divider',
+                  },
+                }}>
+                <Select
+                  size="small"
+                  value={search?.provider || 'all'}
+                  onChange={(e) => setSearch({ provider: e.target.value === 'all' ? '' : e.target.value, page: 1 })}>
+                  <MenuItem value="all">{t('pricing.filters.allProviders')}</MenuItem>
+                  {availableProviders.map((provider) => (
+                    <MenuItem key={provider.provider} value={provider.provider}>
+                      <Stack
+                        direction="row"
+                        spacing={1}
+                        sx={{
+                          alignItems: 'center',
+                        }}>
+                        <Avatar
+                          src={joinURL(getPrefix(), `/logo/${provider.provider}.png`)}
+                          sx={{ width: 20, height: 20 }}
+                          alt={provider.provider}
+                        />
+                        <Typography variant="body2">{provider.displayName}</Typography>
+                      </Stack>
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </SearchRow>
           </Box>
         </Box>
         <Root>
@@ -678,10 +666,17 @@ export default function PricingPage() {
 const Root = styled(Box)`
   @media (max-width: ${({ theme }: { theme: any }) => theme.breakpoints.values.md}px) {
     .MuiTable-root > .MuiTableBody-root > .MuiTableRow-root > td.MuiTableCell-root {
+      padding-bottom: 8px;
+
+      &:first-of-type > div:first-of-type {
+        display: none;
+      }
+
       > div {
         width: fit-content;
         flex: inherit;
         font-size: 14px;
+        margin: 0;
       }
     }
   }

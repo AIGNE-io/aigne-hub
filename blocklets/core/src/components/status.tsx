@@ -4,9 +4,11 @@ import { Box, Button, ButtonProps, CircularProgress, Stack, Tooltip, Typography 
 export function Status({
   t,
   model,
+  onlyIcon = false,
 }: {
   t: any;
   model: { status?: { available?: boolean; error?: { message?: string } }; loading?: boolean };
+  onlyIcon?: boolean;
 }) {
   const map = {
     available: 'success.main',
@@ -29,6 +31,10 @@ export function Status({
 
   if (model.loading) {
     return <CircularProgress size={14} />;
+  }
+
+  if (onlyIcon) {
+    return <Box sx={{ width: 6, height: 6, bgcolor: status ? map[status] : map.available, borderRadius: '50%' }} />;
   }
 
   return (

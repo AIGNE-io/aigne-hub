@@ -1,5 +1,5 @@
 import { findImageModel, parseModel } from '@aigne/aigne-hub';
-import { AIGNE, Message, imageModelInputSchema } from '@aigne/core';
+import { AIGNE, ChatModelOutput, Message, imageModelInputSchema } from '@aigne/core';
 import { checkArguments, pick } from '@aigne/core/utils/type-utils';
 import { AIGNEHTTPServer, invokePayloadSchema } from '@aigne/transport/http-server/index';
 import { getModelNameWithProvider, getOpenAIV2, getReqModel } from '@api/libs/ai-provider';
@@ -161,15 +161,15 @@ router.post(
           const usage = await createUsageAndCompleteModelCall({
             req,
             type: 'chatCompletion',
-            promptTokens: (usageData.usage?.inputTokens as number) || 0,
-            completionTokens: (usageData.usage?.outputTokens as number) || 0,
+            promptTokens: usageData.usage?.inputTokens || 0,
+            completionTokens: usageData.usage?.outputTokens || 0,
             model: getReqModel(req),
             modelParams: req.body?.options?.modelOptions,
             appId: req.headers['x-aigne-hub-client-did'] as string,
             userDid: userDid!,
             creditBasedBillingEnabled: Config.creditBasedBillingEnabled,
             additionalMetrics: {
-              totalTokens: (usageData.usage as any)?.totalTokens, // Real usage metric
+              totalTokens: (usageData.usage?.inputTokens || 0) + (usageData.usage?.outputTokens || 0),
             },
             metadata: {
               endpoint: req.path, // Move to metadata
@@ -230,21 +230,21 @@ router.post(
           userContext: { userId: req.user?.did, ...value.options?.userContext },
           hooks: {
             onEnd: async (data) => {
-              const usageData = data.output;
+              const usageData: ChatModelOutput = data.output;
 
               if (usageData) {
                 const usage = await createUsageAndCompleteModelCall({
                   req,
                   type: 'chatCompletion',
-                  promptTokens: (usageData.usage?.inputTokens as number) || 0,
-                  completionTokens: (usageData.usage?.outputTokens as number) || 0,
+                  promptTokens: usageData.usage?.inputTokens || 0,
+                  completionTokens: usageData.usage?.outputTokens || 0,
                   model: modelOptions?.model,
                   modelParams: modelOptions,
                   userDid: userDid!,
                   appId: req.headers['x-aigne-hub-client-did'] as string,
                   creditBasedBillingEnabled: Config.creditBasedBillingEnabled,
                   additionalMetrics: {
-                    totalTokens: (usageData.usage as any)?.totalTokens,
+                    totalTokens: (usageData.usage?.inputTokens || 0) + (usageData.usage?.outputTokens || 0),
                     endpoint: req.path,
                   },
                   traceId: data.context?.id,
@@ -346,6 +346,7 @@ router.post(
             imageSize: (input as Message).size,
             imageQuality: (input as Message).quality,
             imageStyle: (input as Message).style,
+            totalTokens: (response.usage?.inputTokens || 0) + (response.usage?.outputTokens || 0),
           },
           metadata: {
             endpoint: req.path,
