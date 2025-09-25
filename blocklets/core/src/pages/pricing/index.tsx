@@ -30,9 +30,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { joinURL } from 'ufo';
 
 import { useSessionContext } from '../../contexts/session';
-import { ReactComponent as ChatIcon } from '../../icons/icon-text.svg';
-import { ReactComponent as ImageIcon } from '../../icons/icon-image.svg';
 import { ReactComponent as EmbeddingIcon } from '../../icons/icon-embedding.svg';
+import { ReactComponent as ImageIcon } from '../../icons/icon-image.svg';
+import { ReactComponent as ChatIcon } from '../../icons/icon-text.svg';
 
 const ONE_MILLION = 1000000;
 
@@ -234,7 +234,7 @@ export default function PricingPage() {
     {
       key: 'chat',
       label: t('modelTypes.chatCompletion'),
-      icon: <ChatIcon viewBox="0 0 12 12"/>,
+      icon: <ChatIcon viewBox="0 0 12 12" />,
     },
     {
       key: 'image_generation',
@@ -244,7 +244,7 @@ export default function PricingPage() {
     {
       key: 'embedding',
       label: t('modelTypes.embedding'),
-      icon: <EmbeddingIcon viewBox="0 0 12 12"/>,
+      icon: <EmbeddingIcon viewBox="0 0 12 12" />,
     },
     // {
     //   key: 'audio_transcription',
@@ -360,11 +360,12 @@ export default function PricingPage() {
           if (model.input_credits_per_token === 0) return '-';
 
           return (
-            <Box sx={{
-              display: 'flex',
-              alignItems: 'flex-end',
-              flexDirection: 'column',
-            }}>
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'flex-end',
+                flexDirection: 'column',
+              }}>
               <Box
                 sx={{
                   display: 'flex',
@@ -431,11 +432,12 @@ export default function PricingPage() {
           }
 
           return (
-            <Box sx={{
-              display: 'flex',
-              alignItems: 'flex-end',
-              flexDirection: 'column',
-            }}>
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'flex-end',
+                flexDirection: 'column',
+              }}>
               <Box
                 sx={{
                   display: 'flex',
@@ -538,8 +540,7 @@ export default function PricingPage() {
                         borderColor: isSelected ? 'divider' : 'transparent',
                         backgroundColor: isSelected ? 'transparent' : 'transparent',
                       },
-                    }}
-                    >
+                    }}>
                     {category.label}
                   </Button>
                 );
