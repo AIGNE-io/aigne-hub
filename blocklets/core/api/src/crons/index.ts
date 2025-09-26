@@ -19,7 +19,7 @@ function init() {
         time: MODEL_CALL_STATS_CRON_TIME,
         fn: () => {
           logger.info('cron model.call.stats');
-          if (shouldExecuteTask()) {
+          if (shouldExecuteTask('model.call.stats cron')) {
             logger.info('Executing model.call.stats on cluster:', { instanceId: process.env.BLOCKLET_INSTANCE_ID });
             createModelCallStats();
           }
@@ -30,7 +30,7 @@ function init() {
         name: 'cleanup.stale.model.calls',
         time: CLEANUP_STALE_MODEL_CALLS_CRON_TIME,
         fn: async () => {
-          if (shouldExecuteTask()) {
+          if (shouldExecuteTask('cleanup.stale.model.calls cron')) {
             const cleanedCount = await cleanupStaleProcessingCalls(30);
             if (cleanedCount > 0) {
               logger.info(`Model call cleanup completed, cleaned ${cleanedCount} stale calls`);

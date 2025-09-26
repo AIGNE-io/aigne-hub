@@ -31,7 +31,7 @@ export class NotificationManager {
     template: T,
     userDid: string
   ): Promise<boolean> {
-    if (!shouldExecuteTask()) {
+    if (!shouldExecuteTask('sendTemplateNotification')) {
       return false;
     }
 
@@ -71,7 +71,7 @@ export class NotificationManager {
     userDid: string | string[],
     notificationData: BaseNotificationTemplateType
   ): Promise<boolean> {
-    if (!shouldExecuteTask()) {
+    if (!shouldExecuteTask('sendCustomNotification')) {
       return false;
     }
 
@@ -101,7 +101,7 @@ export class NotificationManager {
     role: string | string[],
     notificationData: BaseNotificationTemplateType
   ): Promise<boolean> {
-    if (!shouldExecuteTask()) {
+    if (!shouldExecuteTask('sendCustomNotificationByRoles')) {
       return false;
     }
 
