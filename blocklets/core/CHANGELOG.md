@@ -1,3 +1,7 @@
+## 0.4.37 (2025-9-26)
+
+- fix: subscribe to events only in the main process to avoid duplicate listeners
+
 ## 0.4.36 (2025-9-25)
 
 - feat: redesign the pricing page layout and optimize the style
