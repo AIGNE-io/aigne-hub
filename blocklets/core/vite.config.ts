@@ -9,7 +9,20 @@ import tsconfigPaths from 'vite-tsconfig-paths';
 // https://vitejs.dev/config/
 export default defineConfig(() => {
   return {
-    plugins: [tsconfigPaths(), react(), createBlockletPlugin({ disableNodePolyfills: false }), svgr()],
+    plugins: [
+      tsconfigPaths(),
+      react(),
+      createBlockletPlugin({ disableNodePolyfills: false }),
+      svgr({
+        svgrOptions: {
+          exportType: 'named',
+          ref: true,
+          svgo: false,
+          titleProp: true,
+        },
+        include: '**/*.svg',
+      }),
+    ],
     build: {
       commonjsOptions: {
         transformMixedEsModules: true,

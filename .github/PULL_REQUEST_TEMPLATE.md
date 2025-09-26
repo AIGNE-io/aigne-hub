@@ -1,38 +1,38 @@
-### 关联 Issue
+### Related Issue
 
-<!-- 请用 fixes、closes、resolves、relates 这些关键词来关联 issue，原则上，所有 PR 都应该有关联 Issue -->
+<!-- Please use keywords like fixes, closes, resolves, or relates to link issues. In principle, all PRs should have associated issues -->
 
-### 主要改动
+### Main Changes
 
 <!--
   @example:
-    1. 修复了 xxx
-    2. 改进了 xxx
-    3. 调整了 xxx
+    1. Fixed xxx
+    2. Improved xxx
+    3. Adjusted xxx
 -->
 
-### 界面截图
+### Screenshots
 
-<!-- 如果改动的是跟 UI 相关的，不论是 CLI 还是 WEB 都应该截图 -->
+<!-- If the changes are UI-related, whether CLI or Web, screenshots should be included -->
 
-### 测试计划
+### Test Plan
 
-<!-- 如果本次变更没有自动化测试覆盖，你整理的测试用例集是什么？需要编写成 todo list 放到下面 -->
+<!-- If this change is not covered by automated tests, what manual test cases should be performed? Please write as a todo list below -->
 
-### 检查清单
+### Checklist
 
-- [ ] 这次变更包含 breaking change，我为 breaking change 编写了 migration script【如果不是 breaking change 可以勾选】
-- [ ] 本次变更需要更新文档，并且我更新了相关文档，如果还没更新文档，请新建文档更新的 Issue 并关联上来
-- [ ] 本次变更的地方已经有测试覆盖，并且我调整了变更部分的测试覆盖
-- [ ] 本次变更新增的代码逻辑也增加了测试覆盖
-- [ ] 本次变更的兼容性测试覆盖了 Chrome
-- [ ] 本次变更的兼容性测试覆盖了 Safari
-- [ ] 本次变更的兼容性测试覆盖了 PC 端
-- [ ] 本次变更的兼容性测试覆盖了移动端【手机浏览器、钱包内置浏览器】
-- [ ] 本次变更中有用户输入的逻辑，用户输入的后端、前端都增加了校验、错误提示
-- [ ] 本次变更中新增了修改后端数据的 API，我给这个 API 增加了 AuditLog
-- [ ] 本次变更新增了文件，对应 package.json 的 files 字段包括了这些新增的文件
-- [ ] 本次变更增加了依赖，并且放在了 dependencies 和 devDependencies 里面了
-- [ ] 本次变更中有添加或更新 npm 依赖，并且没有导致同 1 个依赖出现多个版本【检查 pnpm-lock.yaml 的 diff】
-- [ ] 本次变更我已经把 ArcBlock 的依赖升级到了最新：`pnpm update:deps`
-- [ ] (merge master 前检测) 成功 pnpm dev, pnpm bundle, pnpm bump-version
+- [ ] This change contains breaking changes, and I have written migration scripts for the breaking changes (check if this is not a breaking change)
+- [ ] This change requires documentation updates, and I have updated the relevant documentation. If documentation is not yet updated, please create and link a documentation update issue
+- [ ] The changed areas already have test coverage, and I have adjusted the test coverage for the changed parts
+- [ ] The new code logic added in this change also has test coverage
+- [ ] Compatibility testing for this change covers Chrome
+- [ ] Compatibility testing for this change covers Safari
+- [ ] Compatibility testing for this change covers PC platforms
+- [ ] Compatibility testing for this change covers mobile platforms (mobile browsers, in-app browsers)
+- [ ] This change includes user input logic, and both backend and frontend have added validation and error messages for user input
+- [ ] This change adds APIs that modify backend data, and I have added AuditLog for these APIs
+- [ ] This change adds new files, and the corresponding package.json files field includes these new files
+- [ ] This change adds dependencies, and they are placed in dependencies and devDependencies
+- [ ] This change adds or updates npm dependencies without causing multiple versions of the same dependency (check pnpm-lock.yaml diff)
+- [ ] I have upgraded ArcBlock dependencies to the latest version for this change: `pnpm update:deps`
+- [ ] (Check before merging to main) Successfully ran pnpm dev, pnpm bundle, pnpm bump-version

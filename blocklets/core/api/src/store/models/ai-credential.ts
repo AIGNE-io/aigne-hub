@@ -1,14 +1,12 @@
 import security from '@blocklet/sdk/lib/security';
 import { CreationOptional, DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequelize';
-import { Worker } from 'snowflake-uuid';
 
+import { AIGNE_HUB_DEFAULT_WEIGHT } from '../../libs/constants';
+import nextId from '../../libs/next-id';
 import { sequelize } from '../sequelize';
 
-const idGenerator = new Worker();
-
-const nextId = () => idGenerator.nextId().toString();
-
 export type CredentialType = 'api_key' | 'access_key_pair' | 'custom';
+const credentialWeightCache: Record<string, Record<string, { current: number; weight: number }>> = {};
 
 export interface CredentialValue {
   access_key_id?: string;
@@ -37,6 +35,10 @@ export default class AiCredential extends Model<InferAttributes<AiCredential>, I
   declare createdAt: CreationOptional<Date>;
 
   declare updatedAt: CreationOptional<Date>;
+
+  declare error?: string | null;
+
+  declare weight?: number;
 
   public static readonly GENESIS_ATTRIBUTES = {
     id: {
@@ -84,6 +86,15 @@ export default class AiCredential extends Model<InferAttributes<AiCredential>, I
       type: DataTypes.DATE,
       allowNull: false,
     },
+    error: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    weight: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 100,
+    },
   };
 
   // 关联方法
@@ -91,17 +102,6 @@ export default class AiCredential extends Model<InferAttributes<AiCredential>, I
     AiCredential.belongsTo(models.AiProvider, {
       foreignKey: 'providerId',
       as: 'provider',
-    });
-  }
-
-  // 获取活跃的凭证
-  static async getActiveCredentials(providerId: string): Promise<AiCredential[]> {
-    return AiCredential.findAll({
-      where: {
-        providerId,
-        active: true,
-      },
-      order: [['usageCount', 'ASC']], // 优先使用使用次数少的
     });
   }
 
@@ -113,26 +113,59 @@ export default class AiCredential extends Model<InferAttributes<AiCredential>, I
 
   // 获取下一个可用的凭证（负载均衡）
   static async getNextAvailableCredential(providerId: string): Promise<AiCredential | null> {
-    return AiCredential.findOne({
-      where: {
-        providerId,
-        active: true,
-      },
+    const credentials = await AiCredential.findAll({
+      where: { providerId, active: true },
       order: [
         ['usageCount', 'ASC'],
         ['lastUsedAt', 'ASC'],
       ],
     });
+
+    if (credentials.length === 0) {
+      return null;
+    }
+
+    const totalWeight = credentials.reduce((sum, c) => sum + (c.weight || AIGNE_HUB_DEFAULT_WEIGHT), 0);
+
+    if (!credentialWeightCache[providerId]) credentialWeightCache[providerId] = {};
+    const weights = credentialWeightCache[providerId];
+
+    // 更新缓存权重，保留 current_weight
+    const currentIds = new Set(credentials.map((c) => c.id));
+
+    // 移除已删除或禁用的
+    for (const id of Object.keys(weights)) {
+      if (!currentIds.has(id)) delete weights[id];
+    }
+
+    // 同步权重，新增初始化 current_weight
+    credentials.forEach((c) => {
+      if (!weights[c.id]) {
+        weights[c.id] = { current: 0, weight: c.weight || AIGNE_HUB_DEFAULT_WEIGHT };
+      } else {
+        weights[c.id]!.weight = c.weight || AIGNE_HUB_DEFAULT_WEIGHT;
+      }
+    });
+
+    // 平滑加权轮询
+    let selected: AiCredential | null = null;
+    for (const c of credentials) {
+      const w = weights[c.id];
+      if (w) {
+        w.current += w.weight;
+        if (!selected || w.current > weights[selected.id]!.current) selected = c;
+      }
+    }
+
+    if (selected) weights[selected.id]!.current -= totalWeight;
+
+    credentialWeightCache[providerId] = weights;
+    return selected;
   }
 
   // 批量更新凭证状态
   static async updateCredentialStatus(ids: string[], active: boolean): Promise<number> {
-    const [affectedCount] = await AiCredential.update(
-      { active },
-      {
-        where: { id: ids },
-      }
-    );
+    const [affectedCount] = await AiCredential.update({ active }, { where: { id: ids } });
     return affectedCount;
   }
 

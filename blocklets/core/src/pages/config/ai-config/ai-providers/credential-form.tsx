@@ -4,6 +4,7 @@ import { Visibility, VisibilityOff } from '@mui/icons-material';
 import {
   Box,
   Button,
+  CircularProgress,
   FormControl,
   FormHelperText,
   IconButton,
@@ -37,6 +38,7 @@ const CREDENTIAL_TYPE_OPTIONS = [
 ];
 
 interface CredentialFormProps {
+  loadingCredentials?: boolean;
   initialData?: Partial<CredentialFormData>;
   onSubmit: (data: CredentialFormData) => Promise<void>;
   onCancel: () => void;
@@ -196,7 +198,16 @@ export default function CredentialForm({
               {t('cancel')}
             </Button>
             <Button type="submit" variant="contained" disabled={loading}>
-              {isEdit ? t('update') : t('create')}
+              {loading ? (
+                <>
+                  <CircularProgress size={16} sx={{ mr: 1 }} />
+                  {t('loading')}
+                </>
+              ) : isEdit ? (
+                t('update')
+              ) : (
+                t('create')
+              )}
             </Button>
           </Stack>
         </Stack>

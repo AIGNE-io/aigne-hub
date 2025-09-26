@@ -8,15 +8,12 @@ import {
   Op,
   QueryTypes,
 } from 'sequelize';
-import { Worker } from 'snowflake-uuid';
 
+import nextId from '../../libs/next-id';
 import { getCurrentUnixTimestamp } from '../../libs/timestamp';
 import { sequelize } from '../sequelize';
 import AiProvider from './ai-provider';
 import { CallStatus, CallType, UsageMetrics } from './types';
-
-const idGenerator = new Worker();
-const nextId = () => idGenerator.nextId().toString();
 
 export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCreationAttributes<ModelCall>> {
   declare id: CreationOptional<string>;
@@ -54,6 +51,8 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
   declare createdAt: CreationOptional<Date>;
 
   declare updatedAt: CreationOptional<Date>;
+
+  declare traceId?: string;
 
   public static readonly GENESIS_ATTRIBUTES = {
     id: {
@@ -142,6 +141,10 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
       type: DataTypes.DATE,
       allowNull: false,
     },
+    traceId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
   };
 
   static async getCallsByDateRange({
@@ -199,7 +202,11 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
     }
 
     if (search) {
-      whereClause[Op.or] = [{ model: { [Op.like]: `%${search}%` } }, { appDid: { [Op.like]: `%${search}%` } }];
+      whereClause[Op.or] = [
+        { model: { [Op.like]: `%${search}%` } },
+        { appDid: { [Op.like]: `%${search}%` } },
+        { userDid: { [Op.like]: `%${search}%` } },
+      ];
     }
 
     const { rows, count } = await ModelCall.findAndCountAll({

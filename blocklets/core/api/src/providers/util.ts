@@ -26,7 +26,7 @@ export function convertToFrameworkMessages(
                     return { type: 'text', text: item.text };
                   }
                   if (item.type === 'image_url') {
-                    return { type: 'image_url', url: item.imageUrl.url };
+                    return { type: 'url', url: item.imageUrl.url };
                   }
                   return item;
                 }),
@@ -148,5 +148,5 @@ export async function getModelAndProviderId(model: string) {
   }
 
   const provider = await AiProvider.findOne({ where: { name: providerName } });
-  return { providerId: provider?.id, modelName, providerName };
+  return { providerId: provider?.id || '', modelName, providerName };
 }

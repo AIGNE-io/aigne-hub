@@ -1,134 +1,27 @@
 import { CallHistory, DateRangePicker, ModelUsageStats, UsageCharts, UsageSummary } from '@app/components/analytics';
+import {
+  CreditsBalanceSkeleton,
+  ModelUsageStatsSkeleton,
+  UsageChartsSkeleton,
+  UsageSummarySkeleton,
+  toUTCTimestamp,
+  useSmartLoading,
+} from '@app/components/analytics/skeleton';
 import { Toast } from '@arcblock/ux';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import { UserInfoResult } from '@blocklet/aigne-hub/api/types/user';
 import { formatError } from '@blocklet/error';
 import { RefreshOutlined } from '@mui/icons-material';
-import { Alert, Box, Card, Divider, IconButton, Skeleton, Stack, Tooltip, Typography } from '@mui/material';
+import { Alert, Box, Divider, IconButton, Stack, Tooltip, Typography } from '@mui/material';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 import dayjs from '../../libs/dayjs';
 import { CreditsBalance } from './credits-balance';
 import { useCreditBalance, useUsageStats } from './hooks';
 
-// Custom hook for smart skeleton loading
-const useSmartLoading = (loading: boolean, data: any, minLoadingTime = 300) => {
-  const [showSkeleton, setShowSkeleton] = useState(false);
-  const [isFirstLoad, setIsFirstLoad] = useState(true);
-  const [hasInitialized, setHasInitialized] = useState(false);
-  const startTimeRef = useRef<number>(0);
-
-  useEffect(() => {
-    let timer: NodeJS.Timeout | null = null;
-
-    if (isFirstLoad && !hasInitialized && !data) {
-      startTimeRef.current = Date.now();
-      setShowSkeleton(true);
-      setHasInitialized(true);
-    } else if (loading && !data && !isFirstLoad) {
-      timer = setTimeout(() => {
-        startTimeRef.current = Date.now();
-        setShowSkeleton(true);
-      }, 200);
-    } else if (!loading && data && showSkeleton) {
-      const elapsed = Date.now() - startTimeRef.current;
-      const minTime = isFirstLoad ? 1000 : minLoadingTime;
-      const delay = Math.max(0, minTime - elapsed);
-
-      timer = setTimeout(() => {
-        setShowSkeleton(false);
-        setIsFirstLoad(false);
-      }, delay);
-    } else if (data && !hasInitialized) {
-      setIsFirstLoad(false);
-      setHasInitialized(true);
-    }
-
-    return () => {
-      if (timer) clearTimeout(timer);
-    };
-  }, [loading, data, minLoadingTime, showSkeleton, isFirstLoad, hasInitialized]);
-
-  return showSkeleton;
-};
-
-function UsageSummarySkeleton() {
-  return (
-    <Stack direction={{ xs: 'column', md: 'row' }} spacing={3}>
-      {[1, 2, 3].map((i) => (
-        <Card key={i} sx={{ flex: 1, p: 2 }}>
-          <Stack spacing={1}>
-            <Skeleton variant="text" width="60%" height={20} />
-            <Skeleton variant="text" width="40%" height={32} />
-            <Skeleton variant="text" width="80%" height={16} />
-          </Stack>
-        </Card>
-      ))}
-    </Stack>
-  );
-}
-
-function UsageChartsSkeleton() {
-  return (
-    <Card sx={{ p: 3 }}>
-      <Skeleton variant="text" width="40%" height={24} sx={{ mb: 2 }} />
-      <Skeleton variant="rectangular" width="100%" height={260} />
-    </Card>
-  );
-}
-
-function ModelUsageStatsSkeleton() {
-  return (
-    <Card sx={{ p: 3, height: '100%' }}>
-      <Stack spacing={3}>
-        <Stack spacing={1}>
-          <Skeleton variant="text" width="60%" height={24} />
-          <Skeleton variant="text" width="80%" height={16} />
-        </Stack>
-        {[1, 2, 3, 4, 5].map((i) => (
-          <Stack
-            key={i}
-            direction="row"
-            sx={{
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            }}>
-            <Stack
-              direction="row"
-              spacing={3}
-              sx={{
-                alignItems: 'center',
-              }}>
-              <Skeleton variant="circular" width={24} height={24} />
-              <Stack>
-                <Skeleton variant="text" width={120} height={20} />
-              </Stack>
-            </Stack>
-            <Skeleton variant="text" width={60} height={20} />
-          </Stack>
-        ))}
-      </Stack>
-    </Card>
-  );
-}
-
-function CreditsBalanceSkeleton() {
-  return (
-    <Card sx={{ p: 3 }}>
-      <Stack spacing={1}>
-        <Skeleton variant="text" width="20%" height={30} />
-        <Skeleton variant="text" width="10%" height={32} />
-      </Stack>
-    </Card>
-  );
-}
-
-const toUTCTimestamp = (localDayjs: dayjs.Dayjs, isEndOfDay = false) => {
-  return isEndOfDay ? localDayjs.endOf('day').utc().unix() : localDayjs.startOf('day').utc().unix();
-};
 function CreditBoard() {
   const { t } = useLocaleContext();
   const [dateRange, setDateRange] = useState({

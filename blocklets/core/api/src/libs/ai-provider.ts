@@ -1,3 +1,4 @@
+import { ModelCallContext } from '@api/middlewares/model-call-tracker';
 import { getProviderCredentials } from '@api/providers/models';
 import { SubscriptionError, SubscriptionErrorType } from '@blocklet/aigne-hub/api';
 import { CustomError } from '@blocklet/error';
@@ -7,6 +8,8 @@ import { OpenAI } from 'openai';
 import { AIProviderType, SUPPORTED_PROVIDERS_SET } from './constants';
 import { Config } from './env';
 import logger from './logger';
+
+const DEFAULT_MODEL = 'openai/gpt-5-mini';
 
 export function getOpenAI() {
   const { httpsProxy, openaiBaseURL } = Config;
@@ -21,8 +24,8 @@ export function getOpenAI() {
   });
 }
 
-export async function getOpenAIV2(req?: any) {
-  const { modelName } = getModelNameWithProvider(req?.body?.model);
+export async function getOpenAIV2(req: { body: { model: string }; modelCallContext?: ModelCallContext }) {
+  const { modelName } = getModelNameWithProvider(req?.body?.model || DEFAULT_MODEL);
   const params = await getProviderCredentials('openai', {
     modelCallContext: req?.modelCallContext,
     model: modelName,
@@ -83,4 +86,8 @@ export function getModelNameWithProvider(model: string, defaultProviderName: str
     modelName: model,
     providerName: defaultProviderName,
   };
+}
+
+export function getReqModel(req: { body: { model?: string; input?: { modelOptions?: { model?: string } } } }): string {
+  return req.body?.model || req.body?.input?.modelOptions?.model || '';
 }
