@@ -1,3 +1,7 @@
+## 0.4.38 (2025-9-29)
+
+- feat(core): optimize usage reporting with single-pass aggregation and clearer sourceData
+
 ## 0.4.37 (2025-9-26)
 
 - fix: subscribe to events only in the main process to avoid duplicate listeners
