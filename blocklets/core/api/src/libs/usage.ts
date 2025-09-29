@@ -2,6 +2,7 @@ import AiModelRate from '@api/store/models/ai-model-rate';
 import AiProvider from '@api/store/models/ai-provider';
 import { CallType } from '@api/store/models/types';
 import Usage from '@api/store/models/usage';
+import { sequelize } from '@api/store/sequelize';
 import { CustomError } from '@blocklet/error';
 import payment from '@blocklet/payment-js';
 import BigNumber from 'bignumber.js';
@@ -14,6 +15,7 @@ import { getModelNameWithProvider } from './ai-provider';
 import { wallet } from './auth';
 import { Config } from './env';
 import logger from './logger';
+import shouldExecuteTask from './master-cluster';
 import { createMeterEvent, getActiveSubscriptionOfApp, isPaymentRunning } from './payment';
 
 export async function createAndReportUsage({
@@ -241,6 +243,7 @@ async function reportUsageV2({ appId, userDid }: { appId: string; userDid: strin
 async function executeOriginalReportLogicWithProtection({ appId, userDid }: { appId: string; userDid: string }) {
   try {
     if (!isPaymentRunning()) return;
+    if (!shouldExecuteTask('report credit usage events')) return;
 
     const { pricing } = Config;
     if (!pricing) throw new CustomError(400, 'Missing required preference `pricing`');
@@ -258,14 +261,17 @@ async function executeOriginalReportLogicWithProtection({ appId, userDid }: { ap
 
     if (!end) return;
 
+    const rangeWhere = {
+      appId,
+      userDid,
+      id: { [Op.gt]: start?.id || '', [Op.lte]: end.id },
+    };
     // Step 2: Atomic range claim - prevent concurrent processing of the same batch
     const [updatedRows] = await Usage.update(
       { usageReportStatus: 'counted' },
       {
         where: {
-          appId,
-          userDid,
-          id: { [Op.gt]: start?.id || '', [Op.lte]: end.id },
+          ...rangeWhere,
           usageReportStatus: null, // Only claim unclaimed records
         },
       }
@@ -283,20 +289,82 @@ async function executeOriginalReportLogicWithProtection({ appId, userDid }: { ap
       return;
     }
 
-    // Step 3: Process the claimed batch
-    const quantity = await Usage.sum('usedCredits', {
-      where: { appId, userDid, id: { [Op.gt]: start?.id || '', [Op.lte]: end.id } },
+    // Step 3: Process the claimed batch with one aggregate query
+    const sums = (await Usage.findOne({
+      attributes: [
+        [sequelize.fn('COALESCE', sequelize.fn('SUM', sequelize.col('usedCredits')), 0), 'usedCredits'],
+        [sequelize.fn('COALESCE', sequelize.fn('SUM', sequelize.col('promptTokens')), 0), 'promptTokens'],
+        [sequelize.fn('COALESCE', sequelize.fn('SUM', sequelize.col('completionTokens')), 0), 'completionTokens'],
+        [
+          sequelize.fn('COALESCE', sequelize.fn('SUM', sequelize.col('numberOfImageGeneration')), 0),
+          'numberOfImageGeneration',
+        ],
+      ],
+      where: {
+        ...rangeWhere,
+        usageReportStatus: 'counted',
+      },
+      raw: true,
+    })) as unknown as {
+      usedCredits: string | number | null;
+      promptTokens: string | number | null;
+      completionTokens: string | number | null;
+      numberOfImageGeneration: string | number | null;
+    };
+    const quantity = sums?.usedCredits ?? 0;
+    const inputTokens = sums?.promptTokens ?? 0;
+    const outputTokens = sums?.completionTokens ?? 0;
+    const imagesGenerated = sums?.numberOfImageGeneration ?? 0;
+
+    logger.info('create meter event', {
+      quantity,
+      processId: process.pid,
+      userDid,
+      startId: start?.id,
+      endId: end.id,
+      recordCount: updatedRows,
     });
 
-    logger.info('create meter event', { quantity, processId: process.pid, userDid, startId: start?.id, endId: end.id });
-
+    const reportQuantity = new BigNumber(quantity || 0).decimalPlaces(2).toNumber();
+    const imagesGeneratedNum = Number(imagesGenerated) || 0;
     try {
       await createMeterEvent({
         userDid,
-        amount: new BigNumber(quantity).decimalPlaces(2).toNumber(),
+        amount: reportQuantity,
         metadata: {
           appId,
         },
+        sourceData: [
+          {
+            key: 'source',
+            label: { en: 'Source', zh: '来源' },
+            value: 'AIGNE Hub',
+          },
+          {
+            key: 'record_count',
+            label: { en: 'API Calls', zh: 'API 调用数' },
+            value: `${updatedRows}`,
+          },
+          {
+            key: 'total_tokens',
+            label: { en: 'Total Tokens', zh: 'Token数量' },
+            value: `${new BigNumber(inputTokens || 0).plus(new BigNumber(outputTokens || 0)).toNumber()}`,
+          },
+          ...(imagesGeneratedNum > 0
+            ? [
+                {
+                  key: 'images_generated',
+                  label: { en: 'Images Generated', zh: '生成图片数' },
+                  value: `${imagesGeneratedNum}`,
+                },
+              ]
+            : []),
+          {
+            key: 'total_credits',
+            label: { en: 'Total Credits', zh: 'Credits 用量' },
+            value: `${reportQuantity}`,
+          },
+        ],
       });
 
       // Step 4: Mark the entire range as successfully reported

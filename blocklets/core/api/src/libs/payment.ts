@@ -171,10 +171,12 @@ export async function createMeterEvent({
   userDid,
   amount,
   metadata,
+  sourceData,
 }: {
   userDid: string;
   amount: number;
   metadata?: Record<string, any>;
+  sourceData?: any;
 }): Promise<TMeterEventExpanded | undefined> {
   if (!isPaymentRunning()) throw new CustomError(502, 'Payment Kit is not running');
   const meter = await ensureMeter();
@@ -192,6 +194,8 @@ export async function createMeterEvent({
     },
     identifier: `${userDid}-${meter.event_name}-${now}`,
     metadata,
+    // @ts-ignore
+    source_data: sourceData,
   });
   return meterEvent;
 }
