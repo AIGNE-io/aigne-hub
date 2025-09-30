@@ -261,7 +261,7 @@ async function executeOriginalReportLogicWithProtection({ appId, userDid }: { ap
 
     if (!end) return;
 
-    const rangeWhere = {
+    const usageRangeConditions = {
       appId,
       userDid,
       id: { [Op.gt]: start?.id || '', [Op.lte]: end.id },
@@ -271,7 +271,7 @@ async function executeOriginalReportLogicWithProtection({ appId, userDid }: { ap
       { usageReportStatus: 'counted' },
       {
         where: {
-          ...rangeWhere,
+          ...usageRangeConditions,
           usageReportStatus: null, // Only claim unclaimed records
         },
       }
@@ -301,7 +301,7 @@ async function executeOriginalReportLogicWithProtection({ appId, userDid }: { ap
         ],
       ],
       where: {
-        ...rangeWhere,
+        ...usageRangeConditions,
         usageReportStatus: 'counted',
       },
       raw: true,

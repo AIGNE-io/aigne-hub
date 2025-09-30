@@ -2,7 +2,7 @@ import { CreditError, CreditErrorType, SubscriptionError, SubscriptionErrorType 
 import { appStatus } from '@blocklet/aigne-hub/api/call/app';
 import { BlockletStatus } from '@blocklet/constant';
 import { CustomError } from '@blocklet/error';
-import payment, { Subscription, TMeterEventExpanded } from '@blocklet/payment-js';
+import payment, { SourceData, Subscription, TMeterEventExpanded } from '@blocklet/payment-js';
 import { getComponentMountPoint, getUrl } from '@blocklet/sdk';
 import config from '@blocklet/sdk/lib/config';
 import { toBN } from '@ocap/util';
@@ -176,7 +176,7 @@ export async function createMeterEvent({
   userDid: string;
   amount: number;
   metadata?: Record<string, any>;
-  sourceData?: any;
+  sourceData?: SourceData;
 }): Promise<TMeterEventExpanded | undefined> {
   if (!isPaymentRunning()) throw new CustomError(502, 'Payment Kit is not running');
   const meter = await ensureMeter();
@@ -194,7 +194,6 @@ export async function createMeterEvent({
     },
     identifier: `${userDid}-${meter.event_name}-${now}`,
     metadata,
-    // @ts-ignore
     source_data: sourceData,
   });
   return meterEvent;
