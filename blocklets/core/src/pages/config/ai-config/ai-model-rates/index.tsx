@@ -93,7 +93,9 @@ export default function AIModelRates() {
 
   useRequest(() => api.get('/api/ai-providers').then((res: any) => res.data), {
     onSuccess: (data: Provider[]) => {
-      const sortedData = (data || []).sort((a, b) => a.displayName.localeCompare(b.displayName));
+      const sortedData = (data || []).sort((a, b) =>
+        (a.displayName || a.name || '').localeCompare(b.displayName || b.name || '')
+      );
       setProviders(sortedData);
     },
   });
