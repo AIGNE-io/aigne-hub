@@ -1,3 +1,7 @@
+## 0.4.39 (2025-9-30)
+
+- fix(core): streamline usage reporting and sort providers by display name
+
 ## 0.4.38 (2025-9-29)
 
 - feat(core): optimize usage reporting with single-pass aggregation and clearer sourceData
