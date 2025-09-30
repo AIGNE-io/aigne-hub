@@ -222,7 +222,9 @@ export default function PricingPage() {
       }
     });
 
-    return Object.entries(providerMap).map(([provider, displayName]) => ({ provider, displayName }));
+    return Object.entries(providerMap)
+      .map(([provider, displayName]) => ({ provider, displayName }))
+      .sort((a, b) => a.displayName.localeCompare(b.displayName));
   }, [modelData]);
 
   const typeCategories = [
