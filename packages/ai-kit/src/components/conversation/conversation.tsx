@@ -61,7 +61,9 @@ export default function Conversation({
         overflow: 'auto',
         ...props.sx,
       }}>
-      <Box sx={{ mt: 2, mx: 2, flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+      <Box
+        sx={{ mt: 2, mx: 2, flexGrow: 1, display: 'flex', flexDirection: 'column' }}
+        className="conversation-container">
         <Box sx={{ flexGrow: 1, width: '100%', mx: 'auto', maxWidth }}>
           {messages.map((msg) => {
             const actions = customActions?.(msg);

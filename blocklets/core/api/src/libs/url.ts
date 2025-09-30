@@ -31,14 +31,14 @@ export async function formatToShortUrl(url: string): Promise<string> {
       longUrl: url,
       tags: [],
       shortCodeLength: 4,
-      domain: 's.abtnet.io',
+      domain: 's.aigne.io',
       findIfExists: true,
       validateUrl: true,
       forwardQuery: true,
       crawlable: true,
     };
 
-    const response = await fetch('https://s.abtnet.io/rest/v3/short-urls', {
+    const response = await fetch('https://s.aigne.io/rest/v3/short-urls', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -48,7 +48,7 @@ export async function formatToShortUrl(url: string): Promise<string> {
     });
 
     if (!response.ok) {
-      logger.warn('Failed to create short URL, using original URL', {
+      logger.error('Failed to create short URL, using original URL', {
         status: response.status,
         statusText: response.statusText,
         url,
