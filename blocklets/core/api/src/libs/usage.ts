@@ -15,7 +15,6 @@ import { getModelNameWithProvider } from './ai-provider';
 import { wallet } from './auth';
 import { Config } from './env';
 import logger from './logger';
-import shouldExecuteTask from './master-cluster';
 import { createMeterEvent, getActiveSubscriptionOfApp, isPaymentRunning } from './payment';
 
 export async function createAndReportUsage({
@@ -243,7 +242,6 @@ async function reportUsageV2({ appId, userDid }: { appId: string; userDid: strin
 async function executeOriginalReportLogicWithProtection({ appId, userDid }: { appId: string; userDid: string }) {
   try {
     if (!isPaymentRunning()) return;
-    if (!shouldExecuteTask('report credit usage events')) return;
 
     const { pricing } = Config;
     if (!pricing) throw new CustomError(400, 'Missing required preference `pricing`');
