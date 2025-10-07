@@ -253,7 +253,7 @@ export default function AIProviders() {
                 sx={{
                   color: 'text.secondary',
                 }}>
-                0 {t('credentialCount')}
+                {t('credentialCount', { count: 0 })}
               </Typography>
             );
           }
@@ -267,7 +267,7 @@ export default function AIProviders() {
               variant="body2"
               sx={{ cursor: 'pointer', color: errorCredential ? 'warning.main' : 'primary.main' }}
               onClick={() => setCredentialsProvider(provider)}>
-              {credentialCount} {t('credentialCount')}
+              {t(credentialCount > 1 ? 'credentialCountPlural' : 'credentialCount', { count: credentialCount })}
             </Typography>
           );
         },

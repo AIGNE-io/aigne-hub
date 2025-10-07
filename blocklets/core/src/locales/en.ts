@@ -331,7 +331,8 @@ export default flatten({
 
   // Credentials
   credentials: 'Credentials',
-  credentialCount: 'credentials',
+  credentialCount: '{count} credential',
+  credentialCountPlural: '{count} credentials',
   addCredential: 'Add Credential',
   editCredential: 'Edit Credential',
   deleteCredential: 'Delete Credential',

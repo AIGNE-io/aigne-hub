@@ -319,6 +319,7 @@ export default flatten({
   // Credentials
   credentials: '凭证',
   credentialCount: '个凭证',
+  credentialCountPlural: '个凭证',
   addCredential: '添加凭证',
   editCredential: '编辑凭证',
   deleteCredential: '删除凭证',
