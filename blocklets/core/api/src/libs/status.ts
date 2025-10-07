@@ -87,7 +87,7 @@ function classifyError(error: Error & { status?: number; code?: number; statusCo
     }
   }
 
-  // 错误消息关键词分类
+  // Classify error by keyword matching
   const message = errorMessage.toLowerCase();
 
   if (message.includes('timeout') || message.includes('timed out')) {
@@ -183,7 +183,7 @@ const sendCredentialInvalidNotification = async ({
       }
     }
 
-    // 如果请求频率过高，降低权重
+    // If rate limit exceeded, reduce credential weight
     if (credentialId && [429].includes(Number(error.status))) {
       await AiCredential.update({ weight: 10 }, { where: { id: credentialId } });
 

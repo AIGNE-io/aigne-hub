@@ -53,7 +53,7 @@
 
 ## 0.4.30 (2025-9-17)
 
-- fix: reset credential status when update redential
+- fix: reset credential status when updating credential
 
 ## 0.4.29 (2025-9-16)
 

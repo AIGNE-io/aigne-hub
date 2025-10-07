@@ -41,11 +41,11 @@ export async function getHoursToWarmup(): Promise<number[]> {
   return [previousHour];
 }
 
-// 创建指定小时的缓存统计
+// Create cached statistics for specified hour
 export async function createModelCallStats(hourTimestamp?: number) {
   const hours = hourTimestamp ? [hourTimestamp] : await getHoursToWarmup();
 
-  // 获取所有活跃用户（最近7天有调用的用户）
+  // Get all active users (users with calls in the last 7 days)
   const activeUsers = (await sequelize.query(
     `
     SELECT DISTINCT "userDid" 

@@ -5,7 +5,7 @@ export default flatten({
   usage: 'Usage',
   aiProvider: 'AI Provider',
   aiProviderSubscription: 'Subscribe to AI Service',
-  aiProviderLocalAIKit: 'Local AIKit component',
+  aiProviderLocalAIKit: 'Local AIGNE Hub component',
   selectMonth: 'Select Month',
   subscribeAITip: 'Subscribe to AIGNE Hub now to unlock the power of AI.',
   unsubscribe: 'Unsubscribe',
@@ -14,13 +14,12 @@ export default flatten({
   unsubscribeAt: 'Unsubscribe at',
   cancelled: 'Cancelled',
   recoverSubscription: 'Recover Subscription',
-  recoverSubscriptionTip: 'After recovering the subscription, you can use the AI services we provide.',
+  recoverSubscriptionTip: 'After recovering your subscription, you can resume using our AI services.',
   recoverSubscriptionSucceed: 'Subscription recovery successful!',
   total: 'Total',
   monthlySpend: 'Monthly Spend',
   viewSubscriptionDetail: 'View subscription details',
-  subscriptionPastDueTip:
-    'Your subscription is overdue. Please make a payment promptly to restore your subscription service.',
+  subscriptionPastDueTip: 'Your subscription is overdue. Please make a payment promptly to restore your service.',
   payNow: 'Pay Now',
   enterHint: 'Enter to create',
   type: 'Type',
@@ -31,7 +30,7 @@ export default flatten({
   pricing: {
     title: 'AIGNE Hub Model Pricing',
     subtitle:
-      'Transparent pricing, pay-as-you-use. Explore our rich AI model library and find the models that best fit your project',
+      'Transparent pricing, pay as you go. Explore our extensive AI model library and find the models that best fit your project',
     searchPlaceholder: 'Search model names, providers...',
     filters: {
       providers: 'Supported Providers',
@@ -85,16 +84,16 @@ export default flatten({
   enableCreditsDesc: 'Configure credit-based billing model to manage user usage quotas',
   creditsConfigTitle: 'Enable Credits Billing Feature',
   creditsConfigDesc:
-    'After enabling this feature, users need to purchase Credits to use AI services. Please follow these steps to configure:',
+    'After enabling this feature, users will need to purchase Credits to use AI services. Please follow these steps to configure:',
   gotoConfig: 'Go to Configuration',
   installPaymentKit: 'Step 1: Install Payment Kit',
   updatePreferences: 'Step 2: Update AIGNE Hub Preferences',
   installPaymentKitDesc:
-    'Search and install the Payment Kit component from the Blocklet Store. This is a prerequisite for enabling Credits billing. With Payment Kit, you can manage multiple payment methods and related configurations, providing users with a convenient top-up experience.',
+    'Search for and install the Payment Kit component from the Blocklet Store. This is a prerequisite for enabling Credits billing. Payment Kit allows you to manage multiple payment methods and related configurations, providing users with a convenient top-up experience.',
 
   configModelRates: 'Step 3: Configure Model Rates',
   configModelRatesDesc:
-    'You can go to the "AI Config - Model Rates" page to configure the pricing rates for different AI models and providers. You can set different rates for each model and select different providers.',
+    'Go to the "AI Config - Model Rates" page to configure pricing rates for different AI models and providers. You can set different rates for each model and select different providers.',
 
   // Types
   modelTypes: {
@@ -155,7 +154,7 @@ export default flatten({
         modelDisplay: {
           label: 'Display Name',
           placeholder: 'Auto-generated from model name',
-          description: 'Model display name for UI presentation (optional)',
+          description: 'Model display name for UI (optional)',
         },
         rateType: {
           label: 'Rate Type',
@@ -179,7 +178,7 @@ export default flatten({
         providers: {
           label: 'Providers',
           tooltip: 'Select which AI providers support this model',
-          required: 'Please select at least one provider',
+          required: 'At least one provider must be selected',
         },
         description: {
           label: 'Description',
@@ -308,17 +307,17 @@ export default flatten({
 
   // AI Providers page
   aiProviders: 'AI Providers Settings',
-  aiProvidersDesc: 'Manage your AI service providers and API credentials',
+  aiProvidersDesc: 'Manage AI service providers and API credentials',
   addProvider: 'Add Provider',
   editProvider: 'Edit Provider',
   awsRegionDesc: 'AWS region where your Bedrock service is located',
   provider: 'Provider',
   providerName: 'Provider',
-  providerNameRequired: 'Please select provider',
+  providerNameRequired: 'Provider selection is required',
   providerInfo: 'Provider Information',
   baseUrl: 'Base URL',
   region: 'Region',
-  regionRequired: 'Please enter region',
+  regionRequired: 'Region is required',
   endpointRegion: 'Endpoint / Region',
   enabled: 'Enabled',
   disabled: 'Disabled',
@@ -372,9 +371,9 @@ export default flatten({
   submitFailed: 'Submit failed',
 
   // Home page
-  homeSubtitle: 'The decentralized AI access solution for blocklets',
+  homeSubtitle: 'A decentralized AI access solution for blocklets',
   creditBillingInfo:
-    'AIGNE Hub has enabled Credit-Based Billing. You can choose to buy credits or manage your credit balance.',
+    'AIGNE Hub has enabled credit-based billing. You can purchase credits or manage your credit balance.',
   loginToAccess: 'Login to Access',
   configuration: 'Configuration',
   playground: 'Playground',

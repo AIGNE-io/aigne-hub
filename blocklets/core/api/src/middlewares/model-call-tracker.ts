@@ -86,13 +86,13 @@ export function createModelCallMiddleware(callType: CallType) {
       if (context) {
         req.modelCallContext = context;
 
-        // 监听响应结束事件，如果没有手动完成则标记为异常
+        // Listen for response end event; mark as failed if not manually completed
         const originalEnd = res.end.bind(res);
         let completed = false;
 
         res.end = (...args: any[]) => {
           if (!completed && req.modelCallContext) {
-            // 如果响应结束但没有手动完成ModelCall，标记为异常
+            // If response ends without manual ModelCall completion, mark as failed
             req.modelCallContext.fail('Response ended without completion').catch((err) => {
               logger.error('Failed to mark incomplete model call as failed', { error: err });
             });
@@ -100,7 +100,7 @@ export function createModelCallMiddleware(callType: CallType) {
           return originalEnd(...args);
         };
 
-        // 重写complete和fail方法以确保只能调用一次
+        // Override complete and fail methods to ensure they can only be called once
         const originalComplete = context.complete;
         const originalFail = context.fail;
 
@@ -311,7 +311,7 @@ async function createModelCallContext({
   }
 }
 
-// 清理长时间处于processing状态的记录
+// Clean up records that have been in processing state for too long
 export async function cleanupStaleProcessingCalls(timeoutMinutes: number = 30): Promise<number> {
   try {
     const cutoffTime = getCurrentUnixTimestamp() - timeoutMinutes * 60;

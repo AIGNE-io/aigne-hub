@@ -26,11 +26,11 @@ pnpm dev
 
 ### Available Scripts
 
-- `pnpm dev` - Start development server
+- `pnpm dev` - Start the development server
 - `pnpm build` - Build for production
-- `pnpm lint` - Run linter
+- `pnpm lint` - Run the linter
 - `pnpm clean` - Clean build artifacts
-- `pnpm bundle` - Create production bundle
+- `pnpm bundle` - Create a production bundle
 
 ## Project Structure
 
@@ -60,10 +60,10 @@ aigne-hub/
 
 ### Adding a New AI Provider
 
-1. Create provider implementation in `api/src/providers/`
+1. Create a provider implementation in `api/src/providers/`
 2. Add provider configuration to `api/src/providers/models.ts`
 3. Update the frontend provider selection in `src/pages/config/ai-providers/`
-4. Add provider logo to `public/logo/`
+4. Add the provider logo to `public/logo/`
 5. Update documentation
 
 ### Database Changes
@@ -78,7 +78,7 @@ We use Sequelize for database management. To add new tables or modify existing o
 
 - Built with React 19 and TypeScript
 - Uses Material-UI for components
-- Internationalization with custom locales system
+- Internationalization with a custom locales system
 - State management with Zustand
 
 ### API Development
@@ -102,7 +102,7 @@ pnpm lint:fix
 
 ## Testing
 
-Currently, the project uses manual testing. We welcome contributions to add automated testing:
+Currently, the project relies on manual testing. We welcome contributions to add automated testing:
 
 - Unit tests for utility functions
 - Integration tests for API endpoints
@@ -111,7 +111,7 @@ Currently, the project uses manual testing. We welcome contributions to add auto
 ## Submitting Changes
 
 1. **Fork the repository** and create a new branch from `main`
-2. **Make your changes** following the code style guidelines
+2. **Make your changes** while following the code style guidelines
 3. **Test thoroughly** - ensure your changes don't break existing functionality
 4. **Update documentation** if you're adding new features
 5. **Create a pull request** with a clear description of your changes
@@ -119,7 +119,7 @@ Currently, the project uses manual testing. We welcome contributions to add auto
 ### Pull Request Guidelines
 
 - Use a clear and descriptive title
-- Include a detailed description of changes made
+- Include a detailed description of the changes made
 - Reference any related issues
 - Include screenshots for UI changes
 - Ensure all checks pass
@@ -128,11 +128,11 @@ Currently, the project uses manual testing. We welcome contributions to add auto
 
 When adding new features:
 
-1. **Discuss first** - Create an issue to discuss the feature before implementation
-2. **Follow existing patterns** - Look at existing code to understand current patterns
+1. **Discuss first** - Create an issue to discuss the feature before implementing it
+2. **Follow existing patterns** - Review existing code to understand current patterns
 3. **Update configuration** - Add necessary environment variables and settings
-4. **Document thoroughly** - Update README and create any necessary documentation
-5. **Consider backwards compatibility** - Ensure changes don't break existing deployments
+4. **Document thoroughly** - Update the README and create any necessary documentation
+5. **Consider backward compatibility** - Ensure changes don't break existing deployments
 
 ## Debugging
 
@@ -149,8 +149,8 @@ DEBUG=aigne:* pnpm dev
 ### Frontend Debugging
 
 - Use browser developer tools
-- React DevTools extension recommended
-- Check console for errors and warnings
+- React DevTools extension is recommended
+- Check the console for errors and warnings
 
 ## Community Guidelines
 
