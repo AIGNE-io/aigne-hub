@@ -1,3 +1,7 @@
+## 0.4.40 (2025-10-7)
+
+- fix: worker-id overflow when cluster many reload
+
 ## 0.4.39 (2025-9-30)
 
 - fix(core): streamline usage reporting and sort providers by display name
