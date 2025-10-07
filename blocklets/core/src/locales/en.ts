@@ -7,9 +7,9 @@ export default flatten({
   aiProviderSubscription: 'Subscribe to AI Service',
   aiProviderLocalAIKit: 'Local AIGNE Hub component',
   selectMonth: 'Select Month',
-  subscribeAITip: 'Subscribe to AIGNE Hub now to unlock the power of AI.',
+  subscribeAITip: 'Subscribe to AIGNE Hub to unlock AI capabilities.',
   unsubscribe: 'Unsubscribe',
-  unsubscribeTip: 'After unsubscribing, you will no longer be able to use the AI services we provide.',
+  unsubscribeTip: 'Unsubscribing will disable access to AI services.',
   cancel: 'Cancel',
   unsubscribeAt: 'Unsubscribe at',
   cancelled: 'Cancelled',
@@ -21,7 +21,7 @@ export default flatten({
   viewSubscriptionDetail: 'View subscription details',
   subscriptionPastDueTip: 'Your subscription is overdue. Please make a payment promptly to restore your service.',
   payNow: 'Pay Now',
-  enterHint: 'Enter to create',
+  enterHint: 'Press Enter to create',
   type: 'Type',
   model: 'Model',
   viewPricing: 'View Model Pricing',
@@ -29,9 +29,8 @@ export default flatten({
   // Pricing page
   pricing: {
     title: 'AIGNE Hub Model Pricing',
-    subtitle:
-      'Transparent pricing, pay as you go. Explore our extensive AI model library and find the models that best fit your project',
-    searchPlaceholder: 'Search model names, providers...',
+    subtitle: 'Pay only for what you use. Browse our AI model library to find the perfect fit for your project.',
+    searchPlaceholder: 'Search models or providers',
     filters: {
       providers: 'Supported Providers',
       allProviders: 'All Providers',
@@ -58,15 +57,14 @@ export default flatten({
     },
     status: {
       available: 'Available',
-      pending: 'Never used',
+      pending: 'Not yet used',
       warning: 'Unavailable',
     },
   },
 
   // AIGNE Hub integrations
   welcome: 'Welcome to AIGNE Hub',
-  welcomeDesc:
-    'Get started by configuring AI providers to enable AI services. You can also enable Credits billing to manage user usage quotas.',
+  welcomeDesc: 'Get started by connecting AI providers. You can also enable credit billing to track and manage usage.',
 
   aiConfig: 'Config',
   quickStarts: 'Quick Start',
@@ -79,21 +77,19 @@ export default flatten({
   userManagementDesc: 'Manage user access and permissions for AI services',
 
   // Credits configuration
-  enableCredits: 'Enable Credits Billing',
+  enableCredits: 'Enable Credit Billing',
   configCredits: 'Configure Model Rates',
-  enableCreditsDesc: 'Configure credit-based billing model to manage user usage quotas',
-  creditsConfigTitle: 'Enable Credits Billing Feature',
-  creditsConfigDesc:
-    'After enabling this feature, users will need to purchase Credits to use AI services. Please follow these steps to configure:',
+  enableCreditsDesc: 'Set up credit-based billing to manage usage',
+  creditsConfigTitle: 'Enable Credit Billing',
+  creditsConfigDesc: 'When enabled, users will need to purchase credits to access AI services. Follow these steps:',
   gotoConfig: 'Go to Configuration',
   installPaymentKit: 'Step 1: Install Payment Kit',
   updatePreferences: 'Step 2: Update AIGNE Hub Preferences',
   installPaymentKitDesc:
-    'Search for and install the Payment Kit component from the Blocklet Store. This is a prerequisite for enabling Credits billing. Payment Kit allows you to manage multiple payment methods and related configurations, providing users with a convenient top-up experience.',
+    'Install the Payment Kit component from the Blocklet Store. This is required for credit billing and enables multiple payment methods for users.',
 
   configModelRates: 'Step 3: Configure Model Rates',
-  configModelRatesDesc:
-    'Go to the "AI Config - Model Rates" page to configure pricing rates for different AI models and providers. You can set different rates for each model and select different providers.',
+  configModelRatesDesc: 'Configure pricing for each AI model and provider in the "AI Config - Model Rates" section.',
 
   // Types
   modelTypes: {
@@ -148,8 +144,8 @@ export default flatten({
       form: {
         modelName: {
           label: 'Model Name',
-          placeholder: 'For example: gpt-4o',
-          required: 'Model Name is required',
+          placeholder: 'e.g., gpt-4o',
+          required: 'Please enter a model name',
         },
         modelDisplay: {
           label: 'Display Name',
@@ -158,7 +154,7 @@ export default flatten({
         },
         rateType: {
           label: 'Rate Type',
-          required: 'Rate type is required',
+          required: 'Please select a rate type',
           options: {
             chatCompletion: 'Text',
             imageGeneration: 'Image',
@@ -166,23 +162,23 @@ export default flatten({
           },
         },
         inputRate: {
-          label: 'Input AIGNE Hub Credits Per Token',
+          label: 'Input Cost (Credits per Token)',
           placeholder: '0',
-          required: 'Input is required',
+          required: 'Please enter an input rate',
         },
         outputRate: {
-          label: 'Output AIGNE Hub Credits Per Token',
+          label: 'Output Cost (Credits per Token)',
           placeholder: '0',
-          required: 'Output is required',
+          required: 'Please enter an output rate',
         },
         providers: {
           label: 'Providers',
-          tooltip: 'Select which AI providers support this model',
-          required: 'At least one provider must be selected',
+          tooltip: 'Choose which AI providers support this model',
+          required: 'Please select at least one provider',
         },
         description: {
           label: 'Description',
-          placeholder: 'Additional notes about this model rate...',
+          placeholder: 'Add notes about this rate (optional)',
         },
         advancedOptions: 'Advanced Options',
         maxTokens: {
@@ -217,13 +213,13 @@ export default flatten({
       },
 
       // Messages
-      createSuccess: 'Model rate created successfully',
-      updateSuccess: 'Model rate updated successfully',
-      deleteSuccess: 'Model rate deleted successfully',
-      createFailed: 'Failed to create model rate',
-      updateFailed: 'Failed to update model rate',
-      deleteFailed: 'Failed to delete model rate',
-      fetchFailed: 'Failed to fetch model rates',
+      createSuccess: 'Model rate created',
+      updateSuccess: 'Model rate updated',
+      deleteSuccess: 'Model rate deleted',
+      createFailed: 'Unable to create model rate',
+      updateFailed: 'Unable to update model rate',
+      deleteFailed: 'Unable to delete model rate',
+      fetchFailed: 'Unable to load model rates',
 
       // Search
       search: {
@@ -236,7 +232,7 @@ export default flatten({
         creditValue: 'AIGNE Hub Credits Price: ',
         profitMargin: 'Target Profit Margin: ',
         formula: 'Pricing Formula',
-        adjustSettings: 'To adjust base price and profit margin, go to',
+        adjustSettings: 'To change base price and profit margin, visit',
         settingsLink: 'AIGNE Hub Preferences',
         autoCalculate: 'Auto Calculate',
         actualCost: 'Token Cost: ',
@@ -283,7 +279,7 @@ export default flatten({
       // Delete dialog
       deleteDialog: {
         title: 'Delete Model Rate',
-        message: 'Are you sure you want to delete this model rate? This action cannot be undone.',
+        message: 'Delete this model rate? This action cannot be undone.',
         confirm: 'Delete',
         cancel: 'Cancel',
       },
@@ -306,18 +302,18 @@ export default flatten({
   optional: 'Optional',
 
   // AI Providers page
-  aiProviders: 'AI Providers Settings',
-  aiProvidersDesc: 'Manage AI service providers and API credentials',
+  aiProviders: 'AI Providers',
+  aiProvidersDesc: 'Connect and manage AI service providers',
   addProvider: 'Add Provider',
   editProvider: 'Edit Provider',
-  awsRegionDesc: 'AWS region where your Bedrock service is located',
+  awsRegionDesc: 'The AWS region for your Bedrock service',
   provider: 'Provider',
   providerName: 'Provider',
-  providerNameRequired: 'Provider selection is required',
+  providerNameRequired: 'Please select a provider',
   providerInfo: 'Provider Information',
   baseUrl: 'Base URL',
   region: 'Region',
-  regionRequired: 'Region is required',
+  regionRequired: 'Please enter a region',
   endpointRegion: 'Endpoint / Region',
   enabled: 'Enabled',
   disabled: 'Disabled',
@@ -336,11 +332,11 @@ export default flatten({
   editCredential: 'Edit Credential',
   deleteCredential: 'Delete Credential',
   manageCredentials: 'Manage Credentials',
-  noCredentials: 'No credentials configured',
+  noCredentials: 'No credentials added yet',
   credentialName: 'Credential Name',
-  credentialNameRequired: 'Credential name is required',
+  credentialNameRequired: 'Please enter a credential name',
   credentialValue: 'API Key',
-  credentialValueRequired: 'API Key is required',
+  credentialValueRequired: 'Please enter your API key',
   credentialType: 'Credential Type',
   credentialTypeRequired: 'Credential type is required',
   enterCredentialValue: 'Enter credential value',
@@ -352,29 +348,28 @@ export default flatten({
   usageCount: 'Usage Count',
   lastUsed: 'Last Used',
   created: 'Created',
-  deleteCredentialConfirm: 'Are you sure you want to delete credential',
+  deleteCredentialConfirm: 'Delete this credential?',
 
   // Messages
-  providerCreated: 'Provider created successfully',
-  providerUpdated: 'Provider updated successfully',
-  providerEnabled: 'Provider enabled successfully',
-  providerDisabled: 'Provider disabled successfully',
-  createProviderFailed: 'Failed to create provider',
-  updateProviderFailed: 'Failed to update provider',
-  fetchProvidersFailed: 'Failed to fetch providers',
+  providerCreated: 'Provider added',
+  providerUpdated: 'Provider updated',
+  providerEnabled: 'Provider enabled',
+  providerDisabled: 'Provider disabled',
+  createProviderFailed: 'Unable to add provider',
+  updateProviderFailed: 'Unable to update provider',
+  fetchProvidersFailed: 'Unable to load providers',
 
-  createCredentialFailed: 'Failed to create credential',
-  updateCredentialFailed: 'Failed to update credential',
-  deleteCredentialFailed: 'Failed to delete credential',
+  createCredentialFailed: 'Unable to add credential',
+  updateCredentialFailed: 'Unable to update credential',
+  deleteCredentialFailed: 'Unable to delete credential',
 
   selectProviders: 'Select Providers',
-  submitFailed: 'Submit failed',
+  submitFailed: 'Unable to submit',
 
   // Home page
-  homeSubtitle: 'A decentralized AI access solution for blocklets',
-  creditBillingInfo:
-    'AIGNE Hub has enabled credit-based billing. You can purchase credits or manage your credit balance.',
-  loginToAccess: 'Login to Access',
+  homeSubtitle: 'Decentralized AI access for blocklets',
+  creditBillingInfo: 'Credit billing is enabled. Purchase credits or manage your balance below.',
+  loginToAccess: 'Log In to Continue',
   configuration: 'Configuration',
   playground: 'Playground',
   integration: 'Integration',
@@ -403,21 +398,21 @@ export default flatten({
   // Analytics & Credit Board
   analytics: {
     creditUsage: 'Credit Usage',
-    creditBoardDescription: 'Monitor your model usage and manage AIGNE Hub Credits',
-    allCreditsUsage: 'All Credits Usage',
-    allCreditBoardDescription: 'Monitor all users model usage and manage AIGNE Hub Credits',
-    loadingData: 'Loading data...',
+    creditBoardDescription: 'Track your model usage and manage credits',
+    allCreditsUsage: 'All Credit Usage',
+    allCreditBoardDescription: 'Monitor all users and manage credits',
+    loadingData: 'Loading...',
     startDate: 'Start Date',
     endDate: 'End Date',
-    creditsBalance: 'AIGNE Hub Credits Balance',
-    availableCredits: 'Available AIGNE Hub Credits for model usage',
-    addCredits: 'Buy Credits',
-    creditsBalanceDescription: 'Current balance is sufficient for AI services',
-    creditsBalanceLowDescription: 'Low balance - consider topping up soon',
-    creditsBalanceVeryLowDescription: 'Very low balance - please top up immediately',
-    creditsBalanceHelp: 'View credits balance information and usage guidelines',
-    overdueDescription: 'Please top up promptly to continue using services',
-    noLimitDescription: 'Your account has no credit limit and can use AI services without restrictions',
+    creditsBalance: 'Credit Balance',
+    availableCredits: 'Available credits for AI models',
+    addCredits: 'Add Credits',
+    creditsBalanceDescription: 'Your balance is sufficient',
+    creditsBalanceLowDescription: 'Low balance - consider adding credits soon',
+    creditsBalanceVeryLowDescription: 'Very low balance - please add credits',
+    creditsBalanceHelp: 'View balance and usage information',
+    overdueDescription: 'Please add credits to continue using services',
+    noLimitDescription: 'Your account has unlimited access to AI services',
     viewBilling: 'View Billing',
     totalCreditsUsed: 'Total Credits Used',
     totalUsage: 'Total Model Usage',
@@ -435,17 +430,17 @@ export default flatten({
       'This value is the combined usage across all models (units may vary by model type). Hover to view detailed usage.',
     ofTotalUsage: 'of total calls',
     callHistory: 'Call History',
-    callHistoryDescription: 'Detailed log of all model API calls',
-    searchPlaceholder: 'Search by model / {did}...',
-    allStatus: 'All Status',
-    timestamp: 'Timestamp',
-    noCallsFound: 'No calls found matching your criteria',
+    callHistoryDescription: 'View all model API calls',
+    searchPlaceholder: 'Search by model or {did}',
+    allStatus: 'All',
+    timestamp: 'Time',
+    noCallsFound: 'No calls found',
     dailyTokenUsage: 'Daily Token Usage',
     noLimit: 'No Limit',
-    modelUsageStatsEmpty: 'No model usage records',
-    dailyUsageEmpty: 'No usage records',
-    refresh: 'Refresh Usage',
-    refreshSuccess: 'Refresh successful',
+    modelUsageStatsEmpty: 'No usage yet',
+    dailyUsageEmpty: 'No usage yet',
+    refresh: 'Refresh',
+    refreshSuccess: 'Updated',
     fromPreviousDay: 'from previous day',
     fromPreviousWeek: 'from previous week',
     fromPreviousMonth: 'from previous month',
@@ -456,10 +451,10 @@ export default flatten({
 
   quickSelect: 'Quick Select',
   customRange: 'Custom Range',
-  dataAvailableFrom: 'Data available from 3 months ago',
+  dataAvailableFrom: 'Showing data from the past 3 months',
   usedBy: 'Used By',
   testStatus: 'Test Status',
   testing: 'Testing...',
-  errorConnected: '{errorCount} of {total} is invalid',
+  errorConnected: '{errorCount} of {total} invalid',
   export: 'Export',
 });
