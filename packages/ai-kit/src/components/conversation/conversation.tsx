@@ -1,4 +1,4 @@
-import { Avatar, Box, BoxProps, CircularProgress } from '@mui/material';
+import { Avatar, Box, BoxProps, CircularProgress, Fade } from '@mui/material';
 import isNil from 'lodash/isNil';
 import { ChatCompletionMessageParam } from 'openai/resources/index';
 import { ReactNode, RefObject, useCallback, useEffect, useImperativeHandle, useRef } from 'react';
@@ -15,6 +15,7 @@ export interface MessageItem {
   loading?: boolean;
   error?: { message: string; [key: string]: unknown };
   meta?: any;
+  timestamp?: number;
 }
 
 export interface ConversationRef {
@@ -30,6 +31,7 @@ export default function Conversation({
   maxWidth = 1000,
   scrollContainer = undefined,
   promptProps = {},
+  chatLayout = 'left-right',
   ...props
 }: Omit<BoxProps, 'onSubmit'> & {
   messages: MessageItem[];
@@ -38,6 +40,7 @@ export default function Conversation({
   renderAvatar?: (item: MessageItem, isAI: boolean) => ReactNode;
   scrollContainer?: HTMLElement;
   promptProps?: Partial<PromptProps>;
+  chatLayout?: 'traditional' | 'left-right';
 }) {
   const scroller = useRef<HTMLElement>(scrollContainer ?? null);
   const { element, scrollToBottom } = useAutoScrollToBottom({ scroller });
@@ -62,59 +65,71 @@ export default function Conversation({
         ...props.sx,
       }}>
       <Box
-        sx={{ mt: 2, mx: 2, flexGrow: 1, display: 'flex', flexDirection: 'column' }}
+        sx={{ mt: 3, mx: 2, flexGrow: 1, display: 'flex', flexDirection: 'column' }}
         className="conversation-container">
         <Box sx={{ flexGrow: 1, width: '100%', mx: 'auto', maxWidth }}>
           {messages.map((msg) => {
             const actions = customActions?.(msg);
+            const isLeftRight = chatLayout === 'left-right';
 
             return (
-              <Box key={msg.id} id={`conversation-${msg.id}`}>
-                {!isNil(msg.prompt) && (
-                  <Message
-                    avatar={renderAvatar?.(msg, false) ?? <Avatar sx={{ bgcolor: 'secondary.main' }}>🧑</Avatar>}
-                    message={msg.prompt}
-                    actions={actions?.[0]}
-                  />
-                )}
-                {(!isNil(msg.response) || !isNil(msg.loading) || !isNil(msg.error)) && (
-                  <Message
-                    my={1}
-                    id={`response-${msg.id}`}
-                    loading={msg.loading && !!msg.response}
-                    message={typeof msg.response === 'string' ? msg.response : undefined}
-                    avatar={renderAvatar?.(msg, true) ?? <Avatar sx={{ bgcolor: 'primary.main' }}>🤖️</Avatar>}
-                    actions={actions?.[1]}>
-                    {Array.isArray(msg.response) && (
-                      <ImagePreview
-                        itemWidth={100}
-                        dataSource={msg.response.map(({ url }) => {
-                          return {
-                            src: url,
-                            onLoad: () => scrollToBottom(),
-                          };
-                        })}
-                      />
-                    )}
-                    {msg.error ? (
-                      // @ts-ignore
-                      <CreditErrorAlert error={msg.error} />
-                    ) : (
-                      msg.loading &&
-                      !msg.response && (
-                        <Box
-                          sx={{
-                            minHeight: 24,
-                            display: 'flex',
-                            alignItems: 'center',
-                          }}>
-                          <CircularProgress size={16} />
-                        </Box>
-                      )
-                    )}
-                  </Message>
-                )}
-              </Box>
+              <Fade in key={msg.id} timeout={300}>
+                <Box id={`conversation-${msg.id}`}>
+                  {!isNil(msg.prompt) && (
+                    <Message
+                      avatar={renderAvatar?.(msg, false) ?? <Avatar sx={{ bgcolor: 'secondary.main' }}>🧑</Avatar>}
+                      message={msg.prompt}
+                      actions={actions?.[0]}
+                      timestamp={msg.timestamp}
+                      isUser={isLeftRight}
+                      chatLayout={chatLayout}
+                    />
+                  )}
+                  {(!isNil(msg.response) || !isNil(msg.loading) || !isNil(msg.error)) && (
+                    <Message
+                      id={`response-${msg.id}`}
+                      loading={msg.loading && !!msg.response}
+                      message={typeof msg.response === 'string' ? msg.response : undefined}
+                      avatar={renderAvatar?.(msg, true) ?? <Avatar sx={{ bgcolor: 'primary.main' }}>🤖️</Avatar>}
+                      actions={actions?.[1]}
+                      timestamp={msg.timestamp}
+                      isUser={false}
+                      chatLayout={chatLayout}>
+                      {Array.isArray(msg.response) && (
+                        <ImagePreview
+                          itemWidth={100}
+                          dataSource={msg.response.map(({ url }) => {
+                            return {
+                              src: url,
+                              onLoad: () => scrollToBottom(),
+                            };
+                          })}
+                        />
+                      )}
+                      {msg.error ? (
+                        // @ts-ignore
+                        <CreditErrorAlert error={msg.error} />
+                      ) : (
+                        msg.loading &&
+                        !msg.response && (
+                          <Box
+                            sx={{
+                              minHeight: 32,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 1.5,
+                              color: 'text.secondary',
+                              fontSize: '14px',
+                            }}>
+                            <CircularProgress size={18} thickness={4} />
+                            <span>AI is thinking...</span>
+                          </Box>
+                        )
+                      )}
+                    </Message>
+                  )}
+                </Box>
+              </Fade>
             );
           })}
 
@@ -124,7 +139,7 @@ export default function Conversation({
         <Box sx={{ mx: 'auto', width: '100%', maxWidth, position: 'sticky', bottom: 0 }}>
           <Box
             sx={{
-              height: 16,
+              height: 24,
               pointerEvents: 'none',
               background: (theme) => `linear-gradient(transparent, ${theme.palette.background.paper})`,
             }}

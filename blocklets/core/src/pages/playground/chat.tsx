@@ -7,8 +7,8 @@ import {
   MessageItem,
   useConversation,
 } from '@blocklet/aigne-hub/components';
-import { HighlightOff } from '@mui/icons-material';
-import { Avatar, Button, MenuItem, Select, Tooltip } from '@mui/material';
+import { DeleteOutline, HighlightOff } from '@mui/icons-material';
+import { Avatar, Button, IconButton, MenuItem, Select, Tooltip } from '@mui/material';
 import { ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { joinURL } from 'ufo';
 
@@ -78,6 +78,8 @@ function formatModelsData(apiModels: ApiModel[]): ModelGroup[] {
   return modelGroups.sort((a, b) => a.provider.localeCompare(b.provider));
 }
 
+const STORAGE_KEY = 'aigne-hub-selected-model';
+
 export default function Chat() {
   const { api } = useSessionContext();
   const ref = useRef<ConversationRef>(null);
@@ -85,7 +87,7 @@ export default function Chat() {
   const [model, setModel] = useState<string>('');
   const [loading, setLoading] = useState(true);
 
-  // 获取模型数据
+  // Fetch models data
   useEffect(() => {
     const fetchModels = async () => {
       try {
@@ -97,13 +99,23 @@ export default function Chat() {
         const formattedGroups = formatModelsData(apiModels);
         setModelGroups(formattedGroups);
 
-        // Set default selected model
-        if (formattedGroups.length > 0 && formattedGroups[0]!.models && formattedGroups[0]!.models!.length > 0) {
-          setModel(formattedGroups[0]?.models[0]?.value || '');
+        // Try to restore previously selected model from localStorage
+        const savedModel = localStorage.getItem(STORAGE_KEY);
+        const allModels = formattedGroups.flatMap((g) => g.models);
+        const isValidSavedModel = savedModel && allModels.some((m) => m.value === savedModel);
+
+        if (isValidSavedModel) {
+          setModel(savedModel);
+        } else if (formattedGroups.length > 0 && formattedGroups[0]!.models && formattedGroups[0]!.models!.length > 0) {
+          // Set default selected model if no valid saved model
+          const defaultModel = formattedGroups[0]?.models[0]?.value || '';
+          setModel(defaultModel);
+          if (defaultModel) {
+            localStorage.setItem(STORAGE_KEY, defaultModel);
+          }
         }
       } catch (error) {
         console.error('Failed to fetch models:', error);
-        // If fetching fails, you can set a default empty array or display error information
         setModelGroups([]);
       } finally {
         setLoading(false);
@@ -113,7 +125,13 @@ export default function Chat() {
     fetchModels();
   }, [api]);
 
-  const { messages, add, cancel } = useConversation({
+  // Save selected model to localStorage when it changes
+  const handleModelChange = useCallback((newModel: string) => {
+    setModel(newModel);
+    localStorage.setItem(STORAGE_KEY, newModel);
+  }, []);
+
+  const { messages, add, cancel, clearHistory } = useConversation({
     scrollToBottom: (o) => ref.current?.scrollToBottom(o),
     textCompletions: (prompt) =>
       textCompletionsV2({
@@ -125,7 +143,14 @@ export default function Chat() {
       imageGenerationsV2({ ...prompt, size: prompt.size as ImageGenerationSize, response_format: 'b64_json' }).then(
         (res) => res.data.map((i) => ({ url: `data:image/png;base64,${i.b64_json}` }))
       ),
+    enableCache: true, // Enable conversation history caching
   });
+
+  const handleClearHistory = useCallback(() => {
+    if (window.confirm('Are you sure you want to clear all conversation history?')) {
+      clearHistory();
+    }
+  }, [clearHistory]);
 
   const customActions = useCallback(
     (msg: MessageItem): Array<ReactNode[]> => {
@@ -164,57 +189,111 @@ export default function Chat() {
       customActions={customActions}
       promptProps={{
         startAdornment: (
-          <Select
-            value={model}
-            onChange={(e) => setModel(e.target.value)}
-            size="small"
-            sx={{ alignSelf: 'stretch', minWidth: 280 }}
-            displayEmpty
-            disabled={loading || modelGroups.length === 0}
-            renderValue={(selected) => {
-              if (loading) return 'Loading...';
-              if (modelGroups.length === 0) return 'No models available';
+          <>
+            <Select
+              value={model}
+              onChange={(e) => handleModelChange(e.target.value)}
+              size="small"
+              sx={{
+                minWidth: 200,
+                border: 'none',
+                '& .MuiOutlinedInput-notchedOutline': {
+                  border: 'none',
+                },
+                '&:hover .MuiOutlinedInput-notchedOutline': {
+                  border: 'none',
+                },
+                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                  border: 'none',
+                },
+                '& .MuiSelect-select': {
+                  py: 1,
+                  px: 1.5,
+                  borderRadius: 2,
+                  bgcolor: 'action.hover',
+                  transition: 'all 0.2s ease',
+                  fontSize: '14px',
+                  fontWeight: 500,
+                  '&:hover': {
+                    bgcolor: 'action.selected',
+                  },
+                },
+              }}
+              displayEmpty
+              disabled={loading || modelGroups.length === 0}
+              renderValue={(selected) => {
+                if (loading) return 'Loading...';
+                if (modelGroups.length === 0) return 'No models available';
 
-              const selectedModel = modelGroups.flatMap((g) => g.models).find((m) => m.value === selected);
-              return selectedModel?.label || 'Select Model';
-            }}
-            MenuProps={{
-              PaperProps: { sx: { maxHeight: 400 } },
-            }}>
-            {loading ? (
-              <MenuItem disabled>Loading models...</MenuItem>
-            ) : modelGroups.length === 0 ? (
-              <MenuItem disabled>No models available</MenuItem>
-            ) : (
-              modelGroups.map((group) => [
-                <MenuItem
-                  key={`header-${group.provider}`}
-                  disabled
-                  sx={{
-                    fontSize: 14,
-                    display: 'flex',
-                    alignItems: 'center',
-                    color: 'text.secondary',
-                    gap: 1,
-                    '&.Mui-disabled': {
-                      opacity: 1,
-                    },
-                  }}>
-                  <Avatar
-                    src={joinURL(getPrefix(), `/logo/${group.provider}.png`)}
-                    sx={{ width: 24, height: 24 }}
-                    alt={group.provider}
-                  />
-                  {group.displayName}
-                </MenuItem>,
-                ...group.models.map((model) => (
-                  <MenuItem key={model.value} value={model.value} sx={{ ml: 1 }}>
-                    {model.label}
-                  </MenuItem>
-                )),
-              ])
-            )}
-          </Select>
+                const selectedModel = modelGroups.flatMap((g) => g.models).find((m) => m.value === selected);
+                return selectedModel?.label || 'Select Model';
+              }}
+              MenuProps={{
+                PaperProps: {
+                  sx: {
+                    maxHeight: 400,
+                    borderRadius: 2,
+                    mt: 1,
+                    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
+                  },
+                },
+              }}>
+              {loading ? (
+                <MenuItem disabled>Loading models...</MenuItem>
+              ) : modelGroups.length === 0 ? (
+                <MenuItem disabled>No models available</MenuItem>
+              ) : (
+                modelGroups.map((group) => [
+                  <MenuItem
+                    key={`header-${group.provider}`}
+                    disabled
+                    sx={{
+                      fontSize: 14,
+                      display: 'flex',
+                      alignItems: 'center',
+                      color: 'text.secondary',
+                      gap: 1,
+                      '&.Mui-disabled': {
+                        opacity: 1,
+                      },
+                    }}>
+                    <Avatar
+                      src={joinURL(getPrefix(), `/logo/${group.provider}.png`)}
+                      sx={{ width: 24, height: 24 }}
+                      alt={group.provider}
+                    />
+                    {group.displayName}
+                  </MenuItem>,
+                  ...group.models.map((model) => (
+                    <MenuItem key={model.value} value={model.value} sx={{ ml: 1 }}>
+                      {model.label}
+                    </MenuItem>
+                  )),
+                ])
+              )}
+            </Select>
+            <Tooltip title="Clear conversation history" placement="top">
+              <IconButton
+                onClick={handleClearHistory}
+                size="small"
+                disabled={messages.length <= 1}
+                sx={{
+                  ml: 0.5,
+                  color: 'text.secondary',
+                  transition: 'all 0.2s ease',
+                  '&:hover': {
+                    color: 'error.main',
+                    bgcolor: 'error.light',
+                    transform: 'scale(1.1)',
+                  },
+                  '&.Mui-disabled': {
+                    color: 'action.disabled',
+                  },
+                }}>
+                <DeleteOutline fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </>
         ),
       }}
     />

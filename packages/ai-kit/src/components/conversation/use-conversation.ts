@@ -1,16 +1,57 @@
 import { produce } from 'immer';
 import { nanoid } from 'nanoid';
 import { ChatCompletionMessageParam } from 'openai/resources/index';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { MessageItem } from './conversation';
 
 const nextId = () => nanoid(16);
+const STORAGE_KEY = 'aigne-hub-conversation-history';
+const MAX_CACHED_MESSAGES = 50; // Limit cached messages
+
+// Load messages from localStorage
+const loadMessages = (): MessageItem[] => {
+  try {
+    const cached = localStorage.getItem(STORAGE_KEY);
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      // Validate and filter out invalid messages
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.filter((msg) => msg.id && (msg.prompt || msg.response));
+      }
+    }
+  } catch (error) {
+    console.warn('Failed to load conversation history:', error);
+  }
+  return [{ id: nextId(), response: 'Hi, I am AIGNE Hub! How can I assist you today?', timestamp: Date.now() }];
+};
+
+// Save messages to localStorage
+const saveMessages = (messages: MessageItem[]) => {
+  try {
+    // Only save completed messages (no loading state)
+    const toSave = messages
+      .filter((msg) => !msg.loading)
+      .slice(-MAX_CACHED_MESSAGES) // Keep only last N messages
+      .map((msg) => ({
+        id: msg.id,
+        prompt: msg.prompt,
+        response: msg.response,
+        timestamp: msg.timestamp,
+        meta: msg.meta,
+        // Don't save error state
+      }));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+  } catch (error) {
+    console.warn('Failed to save conversation history:', error);
+  }
+};
 
 export default function useConversation({
   scrollToBottom,
   textCompletions,
   imageGenerations,
+  enableCache = true,
 }: {
   scrollToBottom?: (options?: { force?: boolean }) => void;
   textCompletions: (
@@ -23,15 +64,26 @@ export default function useConversation({
     prompt: { prompt: string; n: number; size: string },
     options: { meta?: any }
   ) => Promise<{ url: string }[]>;
+  enableCache?: boolean;
 }) {
-  const [messages, setMessages] = useState<MessageItem[]>(() => [
-    { id: nextId(), response: 'Hi, I am AIGNE Hub! How can I assist you today?' },
-  ]);
+  const [messages, setMessages] = useState<MessageItem[]>(() =>
+    enableCache
+      ? loadMessages()
+      : [{ id: nextId(), response: 'Hi, I am AIGNE Hub! How can I assist you today?', timestamp: Date.now() }]
+  );
+
+  // Save messages to localStorage whenever they change
+  useEffect(() => {
+    if (enableCache && messages.length > 0) {
+      saveMessages(messages);
+    }
+  }, [messages, enableCache]);
 
   const add = useCallback(
     async (prompt: string | ChatCompletionMessageParam[], meta?: any) => {
       const id = nextId();
-      setMessages((v) => v.concat({ id, prompt, loading: true, meta }));
+      const timestamp = Date.now();
+      setMessages((v) => v.concat({ id, prompt, loading: true, meta, timestamp }));
       scrollToBottom?.({ force: true });
 
       try {
@@ -141,5 +193,17 @@ export default function useConversation({
     );
   }, []);
 
-  return { messages, add, cancel, setMessages };
+  const clearHistory = useCallback(() => {
+    const initialMessage = {
+      id: nextId(),
+      response: 'Hi, I am AIGNE Hub! How can I assist you today?',
+      timestamp: Date.now(),
+    };
+    setMessages([initialMessage]);
+    if (enableCache) {
+      localStorage.removeItem(STORAGE_KEY);
+    }
+  }, [enableCache]);
+
+  return { messages, add, cancel, setMessages, clearHistory };
 }
