@@ -68,11 +68,23 @@ export default function Message({
       display="flex"
       className={cx(isLeftRight && isUser && 'user-message', isLeftRight && !isUser && 'ai-message')}
       sx={{
+        mb: 2.5,
+        '&:hover .message-meta': {
+          opacity: 1,
+        },
         ...(isLeftRight && isUser
           ? {
               justifyContent: 'flex-end',
               '.avatar': { order: 2, mr: 0, ml: 1 },
               '.content': { alignItems: 'flex-end' },
+              '.message-meta .actions button': {
+                bgcolor: 'rgba(255, 255, 255, 0.15) !important',
+                color: 'rgba(255, 255, 255, 0.9) !important',
+                '&:hover': {
+                  bgcolor: 'rgba(255, 255, 255, 0.25) !important',
+                  color: 'white !important',
+                },
+              },
             }
           : {}),
         ...props.sx,
@@ -80,8 +92,15 @@ export default function Message({
       <Box
         className="avatar"
         sx={{
+          pt: 0.625,
+          flexShrink: 0,
           mr: isLeftRight && !isUser ? 1 : isLeftRight && isUser ? 0 : 1,
           ml: isLeftRight && isUser ? 1 : 0,
+          '& .MuiAvatar-root': {
+            width: 38,
+            height: 38,
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.12)',
+          },
         }}>
         {avatar}
       </Box>
@@ -124,7 +143,26 @@ export default function Message({
               {formattedTime}
             </Box>
           )}
-          <Box className="actions" sx={{ display: 'flex', gap: 0.5 }}>
+          <Box
+            className="actions"
+            sx={{
+              display: 'flex',
+              gap: 0.5,
+              '& button': {
+                minWidth: 0,
+                p: 0.5,
+                height: 24,
+                width: 24,
+                color: 'rgba(0, 0, 0, 0.5)',
+                borderRadius: 0.5,
+                transition: 'all 0.15s ease',
+                bgcolor: 'rgba(0, 0, 0, 0.04)',
+                '&:hover': {
+                  bgcolor: 'rgba(0, 0, 0, 0.1)',
+                  color: 'rgba(0, 0, 0, 0.8)',
+                },
+              },
+            }}>
             {actions}
             {text && <CopyButton key="copy" message={text} />}
           </Box>
@@ -160,20 +198,7 @@ function CopyButton({ message }: { message: string }) {
     </Tooltip>
   );
 }
-
 const Root = styled(Box)`
-  margin-bottom: 20px;
-
-  > .avatar {
-    padding-top: 5px;
-    flex-shrink: 0;
-
-    > .MuiAvatar-root {
-      width: 38px;
-      height: 38px;
-    }
-  }
-
   > .message-content-wrapper {
     > .content {
       min-height: 40px;
@@ -302,26 +327,6 @@ const Root = styled(Box)`
         }
       }
     }
-
-    > .message-meta {
-      .actions {
-        button {
-          min-width: 0;
-          padding: 4px;
-          height: 24px;
-          width: 24px;
-          color: rgba(0, 0, 0, 0.5);
-          border-radius: 4px;
-          transition: all 0.15s ease;
-          background-color: rgba(0, 0, 0, 0.04);
-
-          &:hover {
-            background-color: rgba(0, 0, 0, 0.1);
-            color: rgba(0, 0, 0, 0.8);
-          }
-        }
-      }
-    }
   }
 
   /* User message style (right-aligned with blue background) */
@@ -435,13 +440,6 @@ const Root = styled(Box)`
     }
   }
 
-  &:hover {
-    > .message-content-wrapper > .message-meta,
-    .message-content-wrapper > .message-meta {
-      opacity: 1;
-    }
-  }
-
   /* Traditional mode (non left-right) also shows meta on hover */
   &:not(.user-message):not(.ai-message) {
     > .message-content-wrapper > .content {
@@ -459,7 +457,6 @@ const Root = styled(Box)`
           background: linear-gradient(to bottom, #f5f5f5, #eeeeee);
           border: 1px solid rgba(0, 0, 0, 0.1);
         }
-
         pre {
           background: linear-gradient(to bottom, #f8f9fa, #f1f3f4);
           border: 1px solid rgba(0, 0, 0, 0.08);
