@@ -1,6 +1,7 @@
 import { AI_PROVIDER_DISPLAY_NAMES } from '@blocklet/aigne-hub/api';
 import type { ModelCapabilities } from '@blocklet/aigne-hub/api/types';
 import {
+  AttachmentUploader,
   Conversation,
   ConversationRef,
   CreditButton,
@@ -81,6 +82,7 @@ export default function Chat() {
   const [modelCapabilities, setModelCapabilities] = useState<ModelCapabilities | null>(null);
   const [modelsDataMap, setModelsDataMap] = useState<Map<string, ApiModel>>(new Map());
   const [selectorOpen, setSelectorOpen] = useState(false);
+  const [attachments, setAttachments] = useState<any[]>([]);
 
   // Fetch models data
   useEffect(() => {
@@ -219,79 +221,70 @@ export default function Chat() {
         },
       }}
       messages={messages}
-      onSubmit={(prompt, attachments) => add(prompt, attachments)}
+      onSubmit={(prompt) => {
+        add(prompt, attachments);
+        setAttachments([]); // Clear attachments after submit
+      }}
       customActions={customActions}
       promptProps={{
         modelCapabilities,
-        startAdornment: (
+        showAttachmentUploader: false, // Don't show in input area
+        topAdornment: (
           <>
-            <Button
-              onClick={() => setSelectorOpen(true)}
-              disabled={loading || modelGroups.length === 0}
-              endIcon={<ArrowDropDown />}
-              sx={{
-                minWidth: 200,
-                justifyContent: 'space-between',
-                py: 1,
-                px: 1.5,
-                borderRadius: 2,
-                bgcolor: 'action.hover',
-                color: 'text.primary',
-                textTransform: 'none',
-                fontSize: '14px',
-                fontWeight: 500,
-                transition: 'all 0.2s ease',
-                border: 'none',
-                '&:hover': {
-                  bgcolor: 'action.selected',
-                  border: 'none',
-                },
-                '&.Mui-disabled': {
-                  bgcolor: 'action.disabledBackground',
-                  color: 'text.disabled',
-                },
-              }}>
+            {/* Left side: Model selector + Attachment uploader */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1 }}>
+              {/* Model selector as text with dropdown icon */}
               <Box
+                onClick={() => !loading && modelGroups.length > 0 && setSelectorOpen(true)}
                 sx={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 1,
-                  overflow: 'hidden',
+                  gap: 0.5,
+                  cursor: loading || modelGroups.length === 0 ? 'not-allowed' : 'pointer',
+                  color: loading || modelGroups.length === 0 ? 'text.disabled' : 'text.primary',
+                  transition: 'color 0.2s ease',
+                  '&:hover': {
+                    color: loading || modelGroups.length === 0 ? 'text.disabled' : 'primary.main',
+                  },
                 }}>
                 <Typography
                   variant="body2"
                   sx={{
                     fontWeight: 500,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
+                    fontSize: '14px',
                   }}>
                   {loading ? 'Loading...' : selectedModelDisplay}
                 </Typography>
+                <ArrowDropDown sx={{ fontSize: 20 }} />
               </Box>
-            </Button>
 
-            <Tooltip title="Clear conversation history" placement="top">
-              <IconButton
-                onClick={handleClearHistory}
-                size="small"
-                disabled={messages.length <= 1}
-                sx={{
-                  ml: 0.5,
-                  color: 'text.secondary',
-                  transition: 'all 0.2s ease',
-                  '&:hover': {
-                    color: 'error.main',
-                    bgcolor: 'error.light',
-                    transform: 'scale(1.1)',
-                  },
-                  '&.Mui-disabled': {
-                    color: 'action.disabled',
-                  },
-                }}>
-                <DeleteOutline fontSize="small" />
-              </IconButton>
-            </Tooltip>
+              {/* Attachment uploader */}
+              <AttachmentUploader onAttachmentsChange={setAttachments} modelCapabilities={modelCapabilities} />
+            </Box>
+
+            {/* Right side: Clear history button */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Tooltip title="Clear conversation history" placement="top">
+                <IconButton
+                  onClick={handleClearHistory}
+                  size="small"
+                  disabled={messages.length <= 1}
+                  sx={{
+                    color: 'text.secondary',
+                    transition: 'all 0.2s ease',
+                    '&:hover': {
+                      color: 'error.main',
+                      bgcolor: 'error.light',
+                      transform: 'scale(1.05)',
+                    },
+                    '&.Mui-disabled': {
+                      color: 'action.disabled',
+                    },
+                  }}>
+                  <DeleteOutline fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </Box>
 
             <ModelSelector
               open={selectorOpen}

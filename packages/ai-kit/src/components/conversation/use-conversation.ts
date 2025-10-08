@@ -31,7 +31,15 @@ const buildVisionMessages = async (
       if (attachment.base64) {
         return attachment.base64;
       }
-      return fileToBase64(attachment.file);
+      // If url is already base64, use it directly
+      if (attachment.url.startsWith('data:')) {
+        return attachment.url;
+      }
+      // Otherwise convert File to base64
+      if (attachment.file) {
+        return fileToBase64(attachment.file);
+      }
+      return attachment.url;
     })
   );
 
@@ -79,6 +87,15 @@ const saveMessages = (messages: MessageItem[]) => {
         response: msg.response,
         timestamp: msg.timestamp,
         meta: msg.meta,
+        attachments: msg.attachments?.map((att) => ({
+          type: att.type,
+          url: att.url, // base64 data URL
+          base64: att.base64,
+          mimeType: att.mimeType,
+          size: att.size,
+          name: att.name,
+          // Don't save File object
+        })),
         // Don't save error state
       }));
     localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
@@ -111,6 +128,18 @@ export default function useConversation({
       ? loadMessages()
       : [{ id: nextId(), response: 'Hi, I am AIGNE Hub! How can I assist you today?', timestamp: Date.now() }]
   );
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+
+  // Scroll to bottom on initial load
+  useEffect(() => {
+    if (isInitialLoad && messages.length > 0) {
+      // Wait for DOM to render
+      setTimeout(() => {
+        scrollToBottom?.({ force: true });
+        setIsInitialLoad(false);
+      }, 100);
+    }
+  }, [isInitialLoad, messages.length, scrollToBottom]);
 
   // Save messages to localStorage whenever they change
   useEffect(() => {
@@ -123,7 +152,34 @@ export default function useConversation({
     async (prompt: string | ChatCompletionMessageParam[], attachments?: Attachment[], meta?: any) => {
       const id = nextId();
       const timestamp = Date.now();
-      setMessages((v) => v.concat({ id, prompt, loading: true, meta, timestamp, attachments }));
+
+      // Convert attachments to base64 for persistent storage
+      let base64Attachments: Attachment[] | undefined;
+      if (attachments && attachments.length > 0) {
+        base64Attachments = await Promise.all(
+          attachments.map(async (attachment) => {
+            // Get base64: either from cache, existing url (if already base64), or convert from file
+            let base64: string;
+            if (attachment.base64) {
+              base64 = attachment.base64;
+            } else if (attachment.url.startsWith('data:')) {
+              base64 = attachment.url;
+            } else if (attachment.file) {
+              base64 = await fileToBase64(attachment.file);
+            } else {
+              base64 = attachment.url; // Fallback
+            }
+
+            return {
+              ...attachment,
+              url: base64, // Use base64 as url for display
+              base64,
+            };
+          })
+        );
+      }
+
+      setMessages((v) => v.concat({ id, prompt, loading: true, meta, timestamp, attachments: base64Attachments }));
       scrollToBottom?.({ force: true });
 
       try {
@@ -158,9 +214,9 @@ export default function useConversation({
         // Build prompt with attachments if any
         let finalPrompt: string | ChatCompletionMessageParam[] = prompt;
 
-        if (attachments && attachments.length > 0 && typeof prompt === 'string') {
-          // Convert to vision message format
-          finalPrompt = await buildVisionMessages(prompt, attachments);
+        if (base64Attachments && base64Attachments.length > 0 && typeof prompt === 'string') {
+          // Convert to vision message format (base64Attachments already have base64)
+          finalPrompt = await buildVisionMessages(prompt, base64Attachments);
         }
 
         const result = await textCompletions(finalPrompt, { meta });

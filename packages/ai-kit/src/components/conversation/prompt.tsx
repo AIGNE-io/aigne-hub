@@ -10,6 +10,7 @@ export interface PromptProps extends Omit<BoxProps<'form'>, 'onSubmit' | 'sx'> {
   onSubmit: (prompt: string, attachments?: Attachment[]) => any;
   startAdornment?: ReactNode;
   endAdornment?: ReactNode;
+  topAdornment?: ReactNode; // New: toolbar above input
   slotProps?: any;
   sx?: SxProps;
   modelCapabilities?: ModelCapabilities | null;
@@ -19,6 +20,7 @@ export interface PromptProps extends Omit<BoxProps<'form'>, 'onSubmit' | 'sx'> {
 export default function Prompt({
   startAdornment = undefined,
   endAdornment = undefined,
+  topAdornment = undefined,
   onSubmit,
   slotProps = {},
   sx = {},
@@ -52,9 +54,24 @@ export default function Prompt({
   return (
     <Box
       {...props}
-      sx={{ display: 'flex', gap: 0, alignItems: 'stretch', ...sx }}
+      sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, ...sx }}
       component="form"
       onSubmit={(e: React.FormEvent<HTMLFormElement>) => e.preventDefault()}>
+      {/* Toolbar above input */}
+      {topAdornment && (
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 2,
+            px: 1,
+          }}>
+          {topAdornment}
+        </Box>
+      )}
+
+      {/* Input area */}
       <Box
         sx={{
           position: 'relative',

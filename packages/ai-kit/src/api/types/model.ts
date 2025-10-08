@@ -19,8 +19,8 @@ export interface ModelCapabilities {
  */
 export interface Attachment {
   type: 'image' | 'audio' | 'file';
-  file: File;
-  url: string; // Object URL for preview (created by URL.createObjectURL)
+  file?: File; // Optional: only present when uploading, not when loaded from cache
+  url: string; // Object URL or base64 data URL for preview
   base64?: string; // Base64 encoded data for API transmission
   mimeType: string;
   size: number;
