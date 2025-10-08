@@ -6,6 +6,8 @@ import { ChatCompletionMessageParam } from 'openai/resources/index';
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 
+import { Attachment } from '../../api/types';
+
 export interface MessageProps extends BoxProps {
   avatar?: ReactNode;
   message?: string | ChatCompletionMessageParam[];
@@ -15,6 +17,7 @@ export interface MessageProps extends BoxProps {
   timestamp?: number;
   isUser?: boolean;
   chatLayout?: 'traditional' | 'left-right';
+  attachments?: Attachment[];
 }
 
 export default function Message({
@@ -26,6 +29,7 @@ export default function Message({
   timestamp = undefined,
   isUser = false,
   chatLayout = 'traditional',
+  attachments = undefined,
   ...props
 }: MessageProps) {
   const text = useMemo(
@@ -114,9 +118,52 @@ export default function Message({
           position: 'relative',
         }}>
         <Box className={cx('content')}>
-          <Box component={ReactMarkdown} className={cx('message', loading && 'cursor')}>
-            {text}
-          </Box>
+          {/* Display image attachments for user messages */}
+          {attachments && attachments.length > 0 && (
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: attachments.length === 1 ? '1fr' : 'repeat(auto-fill, minmax(120px, 1fr))',
+                gap: 1,
+                mb: text ? 1.5 : 0,
+              }}>
+              {attachments.map((attachment, index) => (
+                <Box
+                  key={attachment.url || index}
+                  sx={{
+                    position: 'relative',
+                    width: '100%',
+                    paddingTop: attachments.length === 1 ? '66.67%' : '100%', // 3:2 ratio for single image, square for grid
+                    borderRadius: 2,
+                    overflow: 'hidden',
+                    border: '1px solid',
+                    borderColor: isUser ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
+                    '&:hover': {
+                      borderColor: isUser ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.2)',
+                    },
+                  }}>
+                  <img
+                    src={attachment.url}
+                    alt={attachment.name || `Image ${index + 1}`}
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                    }}
+                  />
+                </Box>
+              ))}
+            </Box>
+          )}
+
+          {text && (
+            <Box component={ReactMarkdown} className={cx('message', loading && 'cursor')}>
+              {text}
+            </Box>
+          )}
 
           {children}
         </Box>

@@ -1,5 +1,5 @@
-import { getPrefix } from '@app/libs/util';
 import { AI_PROVIDER_DISPLAY_NAMES } from '@blocklet/aigne-hub/api';
+import type { ModelCapabilities } from '@blocklet/aigne-hub/api/types';
 import {
   Conversation,
   ConversationRef,
@@ -7,24 +7,13 @@ import {
   MessageItem,
   useConversation,
 } from '@blocklet/aigne-hub/components';
-import { DeleteOutline, HighlightOff } from '@mui/icons-material';
-import { Avatar, Button, IconButton, MenuItem, Select, Tooltip } from '@mui/material';
-import { ReactNode, useCallback, useEffect, useRef, useState } from 'react';
-import { joinURL } from 'ufo';
+import { ArrowDropDown, DeleteOutline, HighlightOff } from '@mui/icons-material';
+import { Box, Button, IconButton, Tooltip, Typography } from '@mui/material';
+import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import ModelSelector, { ModelGroup, ModelOption } from '../../components/model-selector';
 import { useSessionContext } from '../../contexts/session';
 import { ImageGenerationSize, imageGenerationsV2, textCompletionsV2 } from '../../libs/ai';
-
-interface ModelOption {
-  value: string;
-  label: string;
-}
-
-interface ModelGroup {
-  provider: string;
-  displayName: string;
-  models: ModelOption[];
-}
 
 interface ApiModel {
   model: string;
@@ -34,6 +23,7 @@ interface ApiModel {
     name: string;
     displayName: string;
   }>;
+  capabilities?: ModelCapabilities;
 }
 
 // Provider name mapping
@@ -59,6 +49,8 @@ function formatModelsData(apiModels: ApiModel[]): ModelGroup[] {
         existingModels.push({
           value: modelValue,
           label: modelLabel,
+          description: apiModel.description,
+          capabilities: apiModel.capabilities,
         });
       }
     });
@@ -86,6 +78,9 @@ export default function Chat() {
   const [modelGroups, setModelGroups] = useState<ModelGroup[]>([]);
   const [model, setModel] = useState<string>('');
   const [loading, setLoading] = useState(true);
+  const [modelCapabilities, setModelCapabilities] = useState<ModelCapabilities | null>(null);
+  const [modelsDataMap, setModelsDataMap] = useState<Map<string, ApiModel>>(new Map());
+  const [selectorOpen, setSelectorOpen] = useState(false);
 
   // Fetch models data
   useEffect(() => {
@@ -95,6 +90,13 @@ export default function Chat() {
         const response = await api.get('/api/ai-providers/chat/models?type=chatCompletion');
 
         const apiModels: ApiModel[] = response.data || [];
+
+        // Build a map of model name to model data (including capabilities)
+        const dataMap = new Map<string, ApiModel>();
+        apiModels.forEach((apiModel) => {
+          dataMap.set(apiModel.model, apiModel);
+        });
+        setModelsDataMap(dataMap);
 
         const formattedGroups = formatModelsData(apiModels);
         setModelGroups(formattedGroups);
@@ -125,11 +127,42 @@ export default function Chat() {
     fetchModels();
   }, [api]);
 
+  // Update model capabilities when model changes
+  useEffect(() => {
+    if (!model || modelsDataMap.size === 0) {
+      setModelCapabilities(null);
+      return;
+    }
+
+    // Extract model name from "provider/model" format
+    const modelName = model.includes('/') ? model.split('/').pop() : model;
+
+    if (modelName) {
+      const modelData = modelsDataMap.get(modelName);
+      if (modelData?.capabilities) {
+        setModelCapabilities(modelData.capabilities);
+        // eslint-disable-next-line no-console
+        console.log(`Model ${modelName} capabilities:`, modelData.capabilities);
+      } else {
+        setModelCapabilities(null);
+      }
+    }
+  }, [model, modelsDataMap]);
+
   // Save selected model to localStorage when it changes
   const handleModelChange = useCallback((newModel: string) => {
     setModel(newModel);
     localStorage.setItem(STORAGE_KEY, newModel);
+    // Don't auto-close - let ModelSelector handle it
   }, []);
+
+  // Get display name for selected model
+  const selectedModelDisplay = useMemo(() => {
+    if (!model) return 'Select Model';
+    const allModels = modelGroups.flatMap((g) => g.models);
+    const selectedModel = allModels.find((m) => m.value === model);
+    return selectedModel?.label || model.split('/').pop() || 'Select Model';
+  }, [model, modelGroups]);
 
   const { messages, add, cancel, clearHistory } = useConversation({
     scrollToBottom: (o) => ref.current?.scrollToBottom(o),
@@ -147,6 +180,7 @@ export default function Chat() {
   });
 
   const handleClearHistory = useCallback(() => {
+    // eslint-disable-next-line no-alert
     if (window.confirm('Are you sure you want to clear all conversation history?')) {
       clearHistory();
     }
@@ -185,93 +219,58 @@ export default function Chat() {
         },
       }}
       messages={messages}
-      onSubmit={(prompt) => add(prompt)}
+      onSubmit={(prompt, attachments) => add(prompt, attachments)}
       customActions={customActions}
       promptProps={{
+        modelCapabilities,
         startAdornment: (
           <>
-            <Select
-              value={model}
-              onChange={(e) => handleModelChange(e.target.value)}
-              size="small"
+            <Button
+              onClick={() => setSelectorOpen(true)}
+              disabled={loading || modelGroups.length === 0}
+              endIcon={<ArrowDropDown />}
               sx={{
                 minWidth: 200,
+                justifyContent: 'space-between',
+                py: 1,
+                px: 1.5,
+                borderRadius: 2,
+                bgcolor: 'action.hover',
+                color: 'text.primary',
+                textTransform: 'none',
+                fontSize: '14px',
+                fontWeight: 500,
+                transition: 'all 0.2s ease',
                 border: 'none',
-                '& .MuiOutlinedInput-notchedOutline': {
+                '&:hover': {
+                  bgcolor: 'action.selected',
                   border: 'none',
                 },
-                '&:hover .MuiOutlinedInput-notchedOutline': {
-                  border: 'none',
-                },
-                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                  border: 'none',
-                },
-                '& .MuiSelect-select': {
-                  py: 1,
-                  px: 1.5,
-                  borderRadius: 2,
-                  bgcolor: 'action.hover',
-                  transition: 'all 0.2s ease',
-                  fontSize: '14px',
-                  fontWeight: 500,
-                  '&:hover': {
-                    bgcolor: 'action.selected',
-                  },
-                },
-              }}
-              displayEmpty
-              disabled={loading || modelGroups.length === 0}
-              renderValue={(selected) => {
-                if (loading) return 'Loading...';
-                if (modelGroups.length === 0) return 'No models available';
-
-                const selectedModel = modelGroups.flatMap((g) => g.models).find((m) => m.value === selected);
-                return selectedModel?.label || 'Select Model';
-              }}
-              MenuProps={{
-                PaperProps: {
-                  sx: {
-                    maxHeight: 400,
-                    borderRadius: 2,
-                    mt: 1,
-                    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
-                  },
+                '&.Mui-disabled': {
+                  bgcolor: 'action.disabledBackground',
+                  color: 'text.disabled',
                 },
               }}>
-              {loading ? (
-                <MenuItem disabled>Loading models...</MenuItem>
-              ) : modelGroups.length === 0 ? (
-                <MenuItem disabled>No models available</MenuItem>
-              ) : (
-                modelGroups.map((group) => [
-                  <MenuItem
-                    key={`header-${group.provider}`}
-                    disabled
-                    sx={{
-                      fontSize: 14,
-                      display: 'flex',
-                      alignItems: 'center',
-                      color: 'text.secondary',
-                      gap: 1,
-                      '&.Mui-disabled': {
-                        opacity: 1,
-                      },
-                    }}>
-                    <Avatar
-                      src={joinURL(getPrefix(), `/logo/${group.provider}.png`)}
-                      sx={{ width: 24, height: 24 }}
-                      alt={group.provider}
-                    />
-                    {group.displayName}
-                  </MenuItem>,
-                  ...group.models.map((model) => (
-                    <MenuItem key={model.value} value={model.value} sx={{ ml: 1 }}>
-                      {model.label}
-                    </MenuItem>
-                  )),
-                ])
-              )}
-            </Select>
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  overflow: 'hidden',
+                }}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontWeight: 500,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}>
+                  {loading ? 'Loading...' : selectedModelDisplay}
+                </Typography>
+              </Box>
+            </Button>
+
             <Tooltip title="Clear conversation history" placement="top">
               <IconButton
                 onClick={handleClearHistory}
@@ -293,6 +292,14 @@ export default function Chat() {
                 <DeleteOutline fontSize="small" />
               </IconButton>
             </Tooltip>
+
+            <ModelSelector
+              open={selectorOpen}
+              onClose={() => setSelectorOpen(false)}
+              modelGroups={modelGroups}
+              selectedModel={model}
+              onModelSelect={handleModelChange}
+            />
           </>
         ),
       }}

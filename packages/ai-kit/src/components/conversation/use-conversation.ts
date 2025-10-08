@@ -3,11 +3,51 @@ import { nanoid } from 'nanoid';
 import { ChatCompletionMessageParam } from 'openai/resources/index';
 import { useCallback, useEffect, useState } from 'react';
 
+import { Attachment } from '../../api/types';
 import { MessageItem } from './conversation';
 
 const nextId = () => nanoid(16);
 const STORAGE_KEY = 'aigne-hub-conversation-history';
 const MAX_CACHED_MESSAGES = 50; // Limit cached messages
+
+// Convert File to base64 data URL
+const fileToBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+};
+
+// Build messages with images for vision models
+const buildVisionMessages = async (
+  prompt: string,
+  attachments: Attachment[]
+): Promise<ChatCompletionMessageParam[]> => {
+  const imageUrls = await Promise.all(
+    attachments.map(async (attachment) => {
+      // Use cached base64 if available, otherwise convert
+      if (attachment.base64) {
+        return attachment.base64;
+      }
+      return fileToBase64(attachment.file);
+    })
+  );
+
+  return [
+    {
+      role: 'user',
+      content: [
+        ...imageUrls.map((url) => ({
+          type: 'image_url' as const,
+          image_url: { url },
+        })),
+        ...(prompt ? [{ type: 'text' as const, text: prompt }] : []),
+      ],
+    },
+  ];
+};
 
 // Load messages from localStorage
 const loadMessages = (): MessageItem[] => {
@@ -80,13 +120,14 @@ export default function useConversation({
   }, [messages, enableCache]);
 
   const add = useCallback(
-    async (prompt: string | ChatCompletionMessageParam[], meta?: any) => {
+    async (prompt: string | ChatCompletionMessageParam[], attachments?: Attachment[], meta?: any) => {
       const id = nextId();
       const timestamp = Date.now();
-      setMessages((v) => v.concat({ id, prompt, loading: true, meta, timestamp }));
+      setMessages((v) => v.concat({ id, prompt, loading: true, meta, timestamp, attachments }));
       scrollToBottom?.({ force: true });
 
       try {
+        // Handle image generation command
         if (imageGenerations && typeof prompt === 'string') {
           const m = prompt.match(/^\/image(\s+(?<size>256|512|1024))?(\s+(?<n>[1-9]|10))?\s+(?<prompt>[\s\S]+)/);
           if (m?.groups) {
@@ -114,7 +155,15 @@ export default function useConversation({
           }
         }
 
-        const result = await textCompletions(prompt, { meta });
+        // Build prompt with attachments if any
+        let finalPrompt: string | ChatCompletionMessageParam[] = prompt;
+
+        if (attachments && attachments.length > 0 && typeof prompt === 'string') {
+          // Convert to vision message format
+          finalPrompt = await buildVisionMessages(prompt, attachments);
+        }
+
+        const result = await textCompletions(finalPrompt, { meta });
 
         const isText = (i: any): i is { type: 'text'; text: string } => i.type === 'text';
         const isImages = (i: any): i is { type: 'images'; images: { url: string }[] } => i.type === 'images';
