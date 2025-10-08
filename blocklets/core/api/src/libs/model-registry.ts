@@ -128,6 +128,9 @@ class ModelRegistry {
     };
 
     Object.entries(rawData).forEach(([modelName, options]) => {
+      if (options.litellm_provider === 'gemini') {
+        options.litellm_provider = 'google';
+      }
       // Skip sample spec and filtered models
       if (modelName === 'sample_spec' || this.shouldFilterModel(modelName, options)) {
         return;
