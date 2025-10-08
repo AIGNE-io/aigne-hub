@@ -171,8 +171,6 @@ const Root = styled(Box)`
     > .MuiAvatar-root {
       width: 38px;
       height: 38px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
-      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     }
   }
 
@@ -329,31 +327,15 @@ const Root = styled(Box)`
   /* User message style (right-aligned with blue background) */
   &.user-message {
     > .message-content-wrapper > .content {
-      background: linear-gradient(135deg, #1e88e5 0%, #1976d2 50%, #1565c0 100%);
+      background: #64b5f6;
       color: white;
       border: none;
       border-radius: 20px;
       box-shadow:
-        0 3px 12px rgba(25, 118, 210, 0.25),
-        0 1px 4px rgba(25, 118, 210, 0.15);
+        0 2px 8px rgba(100, 181, 246, 0.2),
+        0 1px 3px rgba(100, 181, 246, 0.12);
       position: relative;
       overflow: visible;
-
-      /* Subtle glow effect */
-      &::before {
-        content: '';
-        position: absolute;
-        inset: -1px;
-        border-radius: 20px;
-        padding: 1px;
-        background: linear-gradient(135deg, rgba(255, 255, 255, 0.3), transparent);
-        -webkit-mask:
-          linear-gradient(#fff 0 0) content-box,
-          linear-gradient(#fff 0 0);
-        -webkit-mask-composite: xor;
-        mask-composite: exclude;
-        pointer-events: none;
-      }
 
       .message {
         color: white;
@@ -394,28 +376,8 @@ const Root = styled(Box)`
       }
     }
 
-    > .message-content-wrapper > .message-meta {
-      .timestamp {
-        color: rgba(255, 255, 255, 0.7) !important;
-      }
-
-      .actions button {
-        background-color: rgba(255, 255, 255, 0.15);
-        color: rgba(255, 255, 255, 0.9);
-
-        &:hover {
-          background-color: rgba(255, 255, 255, 0.25);
-          color: white;
-        }
-      }
-    }
-
     &:hover > .message-content-wrapper > .content {
-      background: linear-gradient(135deg, #1976d2 0%, #1565c0 50%, #0d47a1 100%);
-      box-shadow:
-        0 4px 16px rgba(25, 118, 210, 0.35),
-        0 2px 6px rgba(25, 118, 210, 0.2);
-      transform: translateY(-1px);
+      background: #42a5f5;
     }
   }
 
@@ -469,20 +431,11 @@ const Root = styled(Box)`
 
     &:hover > .message-content-wrapper > .content {
       background: linear-gradient(to bottom, #fafafa 0%, #f5f5f5 100%);
-      box-shadow:
-        0 3px 12px rgba(0, 0, 0, 0.08),
-        0 2px 4px rgba(0, 0, 0, 0.06);
       border-color: rgba(0, 0, 0, 0.12);
-      transform: translateY(-1px);
     }
   }
 
   &:hover {
-    > .avatar > .MuiAvatar-root {
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
-      transform: scale(1.05);
-    }
-
     > .message-content-wrapper > .message-meta,
     .message-content-wrapper > .message-meta {
       opacity: 1;
@@ -522,11 +475,7 @@ const Root = styled(Box)`
 
     &:hover > .message-content-wrapper > .content {
       background: linear-gradient(to bottom, #fafafa 0%, #f5f5f5 100%);
-      box-shadow:
-        0 3px 12px rgba(0, 0, 0, 0.08),
-        0 2px 4px rgba(0, 0, 0, 0.06);
       border-color: rgba(0, 0, 0, 0.12);
-      transform: translateY(-1px);
     }
   }
 `;
