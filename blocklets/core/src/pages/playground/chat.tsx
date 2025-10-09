@@ -13,7 +13,7 @@ import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 're
 
 import ModelSelector from '../../components/model-selector';
 import { useSessionContext } from '../../contexts/session';
-import { ImageGenerationSize, imageGenerationsV2, textCompletionsV2 } from '../../libs/ai';
+import { imageGenerationsV2Image, textCompletionsV2 } from '../../libs/ai';
 
 interface ApiModel {
   model: string;
@@ -157,17 +157,73 @@ export default function Chat() {
     return selectedModel?.label || model.split('/').pop() || 'Select Model';
   }, [model, modelGroups]);
 
+  // Get current model type
+  const currentModelType = useMemo(() => {
+    const allModels = modelGroups.flatMap((g) => g.models);
+    const selectedModel = allModels.find((m) => m.value === model);
+    return selectedModel?.type || 'chatCompletion';
+  }, [model, modelGroups]);
+
+  // Helper function to process image response
+  const processImageResponse = (images: any[]) => {
+    return images.map((i: any) => {
+      // Handle AIGNE framework response format
+      if (i.type === 'file' && i.data) {
+        return { url: `data:${i.mimeType || 'image/png'};base64,${i.data}` };
+      }
+      // Fallback to OpenAI format
+      return { url: `data:image/png;base64,${i.b64_json || i.b64Json}` };
+    });
+  };
+
   const { messages, add, cancel, clearHistory } = useConversation({
     scrollToBottom: (o) => ref.current?.scrollToBottom(o),
-    textCompletions: (prompt) =>
-      textCompletionsV2({
+    textCompletions: (prompt) => {
+      // Route to different APIs based on model type
+      if (currentModelType === 'imageGeneration') {
+        // For image generation models, use image API
+        const promptText =
+          typeof prompt === 'string' ? prompt : Array.isArray(prompt) ? (prompt[0] as any)?.content || '' : '';
+        return imageGenerationsV2Image({
+          prompt: promptText,
+          size: '1024x1024',
+          n: 1,
+          response_format: 'b64_json',
+          model,
+        }).then((res) => {
+          // Convert to streaming format
+          const images = Array.isArray(res.images) && res.images.length > 0 ? processImageResponse(res.images) : [];
+
+          if (images.length === 0) {
+            return new ReadableStream({
+              start(controller) {
+                controller.enqueue({
+                  type: 'text',
+                  text: 'No images generated. Please check the model configuration or try again.',
+                });
+                controller.close();
+              },
+            });
+          }
+
+          return new ReadableStream({
+            start(controller) {
+              controller.enqueue({ type: 'images', images });
+              controller.close();
+            },
+          });
+        });
+      }
+      // Default to chat completion
+      return textCompletionsV2({
         ...(typeof prompt === 'string' ? { prompt } : { messages: prompt }),
         stream: true,
         model,
-      }),
+      });
+    },
     imageGenerations: (prompt) =>
-      imageGenerationsV2({ ...prompt, size: prompt.size as ImageGenerationSize, response_format: 'b64_json' }).then(
-        (res) => res.data.map((i) => ({ url: `data:image/png;base64,${i.b64_json}` }))
+      imageGenerationsV2Image({ ...prompt, size: prompt.size, response_format: 'b64_json', model }).then((res) =>
+        processImageResponse(res.images)
       ),
     enableCache: true, // Enable conversation history caching
   });
@@ -217,6 +273,12 @@ export default function Chat() {
       }}
       customActions={customActions}
       promptProps={{
+        placeholder:
+          currentModelType === 'imageGeneration'
+            ? 'Describe the image you want to generate...'
+            : currentModelType === 'embedding'
+              ? 'Enter text to convert to embedding vector...'
+              : 'Type your message... (Shift+Enter for new line)',
         topAdornment: (
           <>
             {/* Left side: Model selector */}
@@ -241,7 +303,7 @@ export default function Chat() {
                     fontWeight: 500,
                     fontSize: '14px',
                   }}>
-                  {loading ? 'Loading...' : selectedModelDisplay}
+                  {loading ? 'Loading...' : `${selectedModelDisplay} (${currentModelType})`}
                 </Typography>
                 <ArrowDropDown sx={{ fontSize: 20 }} />
               </Box>

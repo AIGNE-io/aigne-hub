@@ -33,14 +33,28 @@ const saveMessages = (messages: MessageItem[]) => {
     const toSave = messages
       .filter((msg) => !msg.loading)
       .slice(-MAX_CACHED_MESSAGES) // Keep only last N messages
-      .map((msg) => ({
-        id: msg.id,
-        prompt: msg.prompt,
-        response: msg.response,
-        timestamp: msg.timestamp,
-        meta: msg.meta,
-        // Don't save error state
-      }));
+      .map((msg) => {
+        // Remove base64 image data to save storage space
+        const response =
+          msg.response && typeof msg.response === 'object' && 'images' in msg.response
+            ? {
+                ...msg.response,
+                images: (msg.response as any).images?.map((img: any) => ({
+                  ...img,
+                  url: img.url?.includes('data:') ? '[CACHED_IMAGE_DATA]' : img.url,
+                })),
+              }
+            : msg.response;
+
+        return {
+          id: msg.id,
+          prompt: msg.prompt,
+          response,
+          timestamp: msg.timestamp,
+          meta: msg.meta,
+          // Don't save error state
+        };
+      });
     localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
   } catch (error) {
     console.warn('Failed to save conversation history:', error);

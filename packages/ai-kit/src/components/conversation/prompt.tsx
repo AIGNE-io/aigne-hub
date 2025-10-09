@@ -10,6 +10,7 @@ export interface PromptProps extends Omit<BoxProps<'form'>, 'onSubmit' | 'sx'> {
   topAdornment?: ReactNode;
   slotProps?: any;
   sx?: SxProps;
+  placeholder?: string;
 }
 
 export default function Prompt({
@@ -19,6 +20,7 @@ export default function Prompt({
   onSubmit,
   slotProps = {},
   sx = {},
+  placeholder = 'Type your message... (Shift+Enter for new line)',
   ...props
 }: PromptProps) {
   const [prompt, setPrompt] = useState('');
@@ -93,7 +95,7 @@ export default function Prompt({
           value={prompt}
           multiline
           maxRows={10}
-          placeholder="Type your message... (Shift+Enter for new line)"
+          placeholder={placeholder}
           sx={{
             py: 0,
             px: 0,

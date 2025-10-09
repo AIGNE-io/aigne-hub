@@ -153,11 +153,15 @@ export default function ImagePreview({
                 <PhotoView {...item}>
                   <LoadingImage
                     {...item}
-                    src={withQuery(item.src, {
-                      imageFilter: 'resize',
-                      f: 'webp',
-                      w: typeof itemWidth === 'number' ? Math.min(itemWidth * 2, 1200) : undefined,
-                    })}
+                    src={
+                      item.src.startsWith('data:')
+                        ? item.src
+                        : withQuery(item.src, {
+                            imageFilter: 'resize',
+                            f: 'webp',
+                            w: typeof itemWidth === 'number' ? Math.min(itemWidth * 2, 1200) : undefined,
+                          })
+                    }
                     style={{
                       transition,
                       borderRadius,
