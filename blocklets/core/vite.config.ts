@@ -12,7 +12,7 @@ export default defineConfig(() => {
     plugins: [
       tsconfigPaths(),
       react(),
-      createBlockletPlugin({ disableNodePolyfills: false }),
+      createBlockletPlugin({ disableNodePolyfills: false, disableDynamicAssetHost: false }),
       svgr({
         svgrOptions: {
           exportType: 'named',
@@ -24,6 +24,7 @@ export default defineConfig(() => {
       }),
     ],
     build: {
+      modulePreload: false,
       commonjsOptions: {
         transformMixedEsModules: true,
       },
