@@ -1,3 +1,7 @@
+## 0.4.42 (2025-10-9)
+
+- chore: update aigne deps
+
 ## 0.4.41 (2025-10-9)
 
 - feat: support dynamic asset cdn host
