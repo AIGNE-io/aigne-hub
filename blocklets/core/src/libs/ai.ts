@@ -58,3 +58,23 @@ export const imageGenerationsV2Image = async (input: {
 
   return response.data;
 };
+
+// Embeddings API using /api/v2/embeddings endpoint
+export const embeddingsV2Direct = async (
+  input: string | Array<string>,
+  model: string
+): Promise<{ data: { embedding: number[] }[] }> => {
+  const response = await axios.post(
+    '/api/v2/embeddings',
+    {
+      model: model.replace(/^openai\//, ''),
+      input,
+    },
+    {
+      headers: { 'x-aigne-hub-client-did': window.blocklet?.appPid },
+      timeout: 30 * 1000, // 30 second timeout
+    }
+  );
+
+  return response.data;
+};

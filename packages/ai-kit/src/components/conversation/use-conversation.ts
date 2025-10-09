@@ -247,7 +247,13 @@ export default function useConversation({
         setMessages((v) =>
           produce(v, (draft) => {
             const item = draft.find((i) => i.id === id);
-            if (item) item.error = error;
+            if (item) {
+              // Format error for CreditErrorAlert component
+              item.error = {
+                message: error instanceof Error ? error.message : String(error),
+                type: 'unknown' as any,
+              };
+            }
           })
         );
         return null;

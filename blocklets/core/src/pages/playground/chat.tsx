@@ -13,7 +13,7 @@ import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 're
 
 import ModelSelector from '../../components/model-selector';
 import { useSessionContext } from '../../contexts/session';
-import { imageGenerationsV2Image, textCompletionsV2 } from '../../libs/ai';
+import { embeddingsV2Direct, imageGenerationsV2Image, textCompletionsV2 } from '../../libs/ai';
 
 interface ApiModel {
   model: string;
@@ -215,6 +215,57 @@ export default function Chat() {
           });
         });
       }
+
+      if (currentModelType === 'embedding') {
+        // For embedding models, use embeddings API
+        const promptText =
+          typeof prompt === 'string' ? prompt : Array.isArray(prompt) ? (prompt[0] as any)?.content || '' : '';
+
+        return embeddingsV2Direct(promptText, model)
+          .then((res) => {
+            // Format embeddings response as text
+            const embeddings = res.data;
+            let responseText = '**Embeddings Generated**\n\n';
+            responseText += `**Input:** ${promptText}\n`;
+            responseText += `**Model:** ${model}\n`;
+            responseText += `**Dimensions:** ${embeddings[0]?.embedding?.length || 0}\n\n`;
+
+            if (embeddings.length === 1 && embeddings[0]?.embedding) {
+              responseText += '**Vector (first 10 dimensions):**\n';
+              responseText += `[${embeddings[0].embedding
+                .slice(0, 10)
+                .map((n) => n.toFixed(4))
+                .join(', ')}...]`;
+            } else {
+              responseText += `**Generated ${embeddings.length} embeddings**`;
+            }
+
+            return new ReadableStream({
+              start(controller) {
+                controller.enqueue({
+                  type: 'text',
+                  text: responseText,
+                });
+                controller.close();
+              },
+            });
+          })
+          .catch((error) => {
+            // Handle API errors
+            console.error('Embeddings API error:', error);
+            const errorMessage = error?.response?.data?.message || error?.message || 'Failed to generate embeddings';
+            return new ReadableStream({
+              start(controller) {
+                controller.enqueue({
+                  type: 'text',
+                  text: `**Error generating embeddings**\n\n${errorMessage}`,
+                });
+                controller.close();
+              },
+            });
+          });
+      }
+
       // Default to chat completion
       return textCompletionsV2({
         ...(typeof prompt === 'string' ? { prompt } : { messages: prompt }),

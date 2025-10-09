@@ -13,7 +13,6 @@ import {
   List,
   ListItemButton,
   ListItemText,
-  ListSubheader,
   TextField,
   Typography,
 } from '@mui/material';
@@ -135,7 +134,7 @@ export default function ModelSelector({
 
       <DialogContent sx={{ p: 0 }}>
         {/* Search Bar */}
-        <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
+        <Box sx={{ p: 2, borderColor: 'divider' }}>
           <TextField
             fullWidth
             placeholder="Search models..."
@@ -317,64 +316,40 @@ export default function ModelSelector({
               <Typography variant="body2">Try adjusting your search or filter</Typography>
             </Box>
           ) : (
-            filteredGroups.map((group) => (
-              <Box key={group.provider}>
-                <ListSubheader
+            filteredGroups.flatMap((group) =>
+              group.models.map((model) => (
+                <ListItemButton
+                  key={model.value}
+                  selected={selectedModel === model.value}
+                  onClick={() => handleModelClick(model.value)}
                   sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1,
                     py: 1.5,
-                    bgcolor: 'background.default',
+                    px: 3,
                     borderBottom: '1px solid',
                     borderColor: 'divider',
-                    position: 'sticky',
-                    top: 0,
-                    zIndex: 1,
-                  }}>
-                  <Avatar
-                    src={joinURL(getPrefix(), `/logo/${group.provider}.png`)}
-                    sx={{ width: 24, height: 24 }}
-                    alt={group.provider}
-                  />
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, color: 'text.primary' }}>
-                    {group.displayName}
-                  </Typography>
-                  <Chip
-                    label={group.models.length}
-                    size="small"
-                    sx={{
-                      height: 20,
-                      fontSize: '11px',
-                      bgcolor: 'action.selected',
-                    }}
-                  />
-                </ListSubheader>
-
-                {group.models.map((model) => (
-                  <ListItemButton
-                    key={model.value}
-                    selected={selectedModel === model.value}
-                    onClick={() => handleModelClick(model.value)}
-                    sx={{
-                      py: 1.5,
-                      px: 3,
-                      borderBottom: '1px solid',
-                      borderColor: 'divider',
-                      '&.Mui-selected': {
-                        bgcolor: 'primary.lighter',
-                        borderLeft: '3px solid',
-                        borderLeftColor: 'primary.main',
-                        '&:hover': {
-                          bgcolor: 'primary.lighter',
-                        },
-                      },
+                    '&.Mui-selected': {
+                      bgcolor: 'primary.lighter',
+                      borderLeft: '3px solid',
+                      borderLeftColor: 'primary.main',
                       '&:hover': {
-                        bgcolor: 'action.hover',
+                        bgcolor: 'primary.lighter',
                       },
-                    }}>
-                    <ListItemText
-                      primary={
+                    },
+                    '&:hover': {
+                      bgcolor: 'action.hover',
+                    },
+                  }}>
+                  <ListItemText
+                    primary={
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 1,
+                          flexWrap: 'wrap',
+                          justifyContent: 'space-between',
+                          width: '100%',
+                        }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                           <Typography variant="body2" sx={{ fontWeight: 500 }}>
                             {model.label}
@@ -429,12 +404,30 @@ export default function ModelSelector({
                             />
                           )}
                         </Box>
-                      }
-                    />
-                  </ListItemButton>
-                ))}
-              </Box>
-            ))
+
+                        {/* Provider Tag */}
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <Avatar
+                            src={joinURL(getPrefix(), `/logo/${group.provider}.png`)}
+                            sx={{ width: 16, height: 16 }}
+                            alt={group.provider}
+                          />
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              fontSize: 10,
+                              color: 'text.secondary',
+                              fontWeight: 500,
+                            }}>
+                            {group.displayName}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    }
+                  />
+                </ListItemButton>
+              ))
+            )
           )}
         </List>
       </DialogContent>
