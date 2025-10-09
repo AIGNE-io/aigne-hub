@@ -3,6 +3,7 @@ import { resolve } from 'path';
 
 import { getOpenGraphInfo } from '@api/libs/og';
 import { getBlockletJs } from '@blocklet/sdk/lib/config';
+import { cdn } from '@blocklet/sdk/lib/middlewares/cdn';
 import { Express, Request, Router } from 'express';
 import Mustache from 'mustache';
 import type { ViteDevServer } from 'vite';
@@ -15,6 +16,7 @@ export default function setupHtmlRouter(app: Express, viteDevServer?: ViteDevSer
     : readFileSync(resolve(process.env.BLOCKLET_APP_DIR!, 'dist/index.html'), 'utf-8');
 
   const router = Router();
+  router.use(cdn());
 
   const loadHtml = async (req: Request) => {
     let html = template;

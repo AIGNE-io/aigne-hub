@@ -12,7 +12,7 @@ export default defineConfig(() => {
     plugins: [
       tsconfigPaths(),
       react(),
-      createBlockletPlugin({ disableNodePolyfills: false }),
+      createBlockletPlugin({ disableNodePolyfills: false, disableDynamicAssetHost: false }),
       svgr({
         svgrOptions: {
           exportType: 'named',
@@ -24,6 +24,8 @@ export default defineConfig(() => {
       }),
     ],
     build: {
+      // 禁用模块预加载以优化 CDN 集成
+      modulePreload: false,
       commonjsOptions: {
         transformMixedEsModules: true,
       },

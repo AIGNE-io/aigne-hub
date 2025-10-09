@@ -14,6 +14,7 @@ async function markUserGranted(user: any) {
     AICreditGranted: true,
   });
   await blocklet.updateUserExtra({
+    // @ts-ignore
     did: user.did,
     extra: JSON.stringify(preSaveData),
   });

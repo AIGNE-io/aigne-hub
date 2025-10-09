@@ -1,3 +1,8 @@
+## 0.4.41 (2025-10-9)
+
+- feat: support dynamic asset cdn host
+- chore: update deps
+
 ## 0.4.40 (2025-10-7)
 
 - fix: worker-id overflow when cluster many reload
