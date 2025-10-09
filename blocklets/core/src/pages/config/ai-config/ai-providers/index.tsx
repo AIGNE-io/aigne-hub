@@ -1,3 +1,4 @@
+import Actions from '@app/components/actions';
 import { getPrefix } from '@app/libs/util';
 import Dialog from '@arcblock/ux/lib/Dialog';
 /* eslint-disable react/no-unstable-nested-components */
@@ -6,7 +7,7 @@ import Toast from '@arcblock/ux/lib/Toast';
 import { Switch, Table } from '@blocklet/aigne-hub/components';
 import { formatError } from '@blocklet/error';
 import styled from '@emotion/styled';
-import { Add as AddIcon, Edit as EditIcon, InfoOutlined, Settings as SettingsIcon } from '@mui/icons-material';
+import { Add as AddIcon, InfoOutlined, Settings as SettingsIcon } from '@mui/icons-material';
 import { Avatar, Box, Button, Stack, Tooltip, Typography } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { joinURL } from 'ufo';
@@ -216,12 +217,6 @@ export default function AIProviders() {
 
           return (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Tooltip title={provider.baseUrl ? t('editEndpointTip') : t('editRegionTip')} placement="top">
-                <EditIcon
-                  onClick={() => handleEditProvider(provider)}
-                  sx={{ cursor: 'pointer', fontSize: 16, color: 'primary.main' }}
-                />
-              </Tooltip>
               {isBedrock && <Typography variant="body2">{provider.region || '-'}</Typography>}
               {!isBedrock && provider.baseUrl && (
                 <Typography variant="body2" sx={{ mb: 0.5 }}>
@@ -362,6 +357,32 @@ export default function AIProviders() {
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <Switch checked={provider.enabled} onChange={() => toggleProvider(provider)} size="small" />
             </Box>
+          );
+        },
+      },
+    },
+    {
+      name: 'actions',
+      label: t('actions'),
+      options: {
+        customBodyRender: (_value: any, tableMeta: any) => {
+          const provider = providers[tableMeta.rowIndex];
+          if (!provider) return null;
+          return (
+            <Actions
+              actions={[
+                {
+                  label: t('manageCredentials'),
+                  handler: () => setCredentialsProvider(provider),
+                  color: 'text.secondary',
+                },
+                {
+                  label: provider.baseUrl ? t('editEndpointTip') : t('editRegionTip'),
+                  handler: () => handleEditProvider(provider),
+                  color: 'text.secondary',
+                },
+              ]}
+            />
           );
         },
       },
