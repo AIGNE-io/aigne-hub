@@ -3,7 +3,6 @@ import isNil from 'lodash/isNil';
 import { ChatCompletionMessageParam } from 'openai/resources/index';
 import { ReactNode, RefObject, useCallback, useEffect, useImperativeHandle, useRef } from 'react';
 
-import { Attachment } from '../../api/types';
 import CreditErrorAlert from '../credit/alert';
 import ImagePreview from '../image-preview';
 import Message from './message';
@@ -17,7 +16,6 @@ export interface MessageItem {
   error?: { message: string; [key: string]: unknown };
   meta?: any;
   timestamp?: number;
-  attachments?: Attachment[]; // Image/audio/file attachments
 }
 
 export interface ConversationRef {
@@ -37,7 +35,7 @@ export default function Conversation({
   ...props
 }: Omit<BoxProps, 'onSubmit'> & {
   messages: MessageItem[];
-  onSubmit: (prompt: string, attachments?: Attachment[]) => void;
+  onSubmit: (prompt: string) => void;
   customActions?: (item: MessageItem) => Array<ReactNode[]>;
   renderAvatar?: (item: MessageItem, isAI: boolean) => ReactNode;
   scrollContainer?: HTMLElement;
@@ -85,7 +83,6 @@ export default function Conversation({
                       timestamp={msg.timestamp}
                       isUser={isLeftRight}
                       chatLayout={chatLayout}
-                      attachments={msg.attachments}
                     />
                   )}
                   {(!isNil(msg.response) || !isNil(msg.loading) || !isNil(msg.error)) && (

@@ -1,6 +1,9 @@
 import { flatten } from 'flat';
 
 export default flatten({
+  common: {
+    redirecting: 'Redirecting...',
+  },
   locale: 'en',
   usage: 'Usage',
   aiProvider: 'AI Provider',

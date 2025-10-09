@@ -1,7 +1,6 @@
 import { AI_PROVIDER_DISPLAY_NAMES } from '@blocklet/aigne-hub/api';
-import type { ModelCapabilities } from '@blocklet/aigne-hub/api/types';
+import type { ModelGroup, ModelOption } from '@blocklet/aigne-hub/api/types';
 import {
-  AttachmentUploader,
   Conversation,
   ConversationRef,
   CreditButton,
@@ -12,7 +11,7 @@ import { ArrowDropDown, DeleteOutline, HighlightOff } from '@mui/icons-material'
 import { Box, Button, IconButton, Tooltip, Typography } from '@mui/material';
 import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import ModelSelector, { ModelGroup, ModelOption } from '../../components/model-selector';
+import ModelSelector from '../../components/model-selector';
 import { useSessionContext } from '../../contexts/session';
 import { ImageGenerationSize, imageGenerationsV2, textCompletionsV2 } from '../../libs/ai';
 
@@ -24,7 +23,14 @@ interface ApiModel {
     name: string;
     displayName: string;
   }>;
-  capabilities?: ModelCapabilities;
+  rates: Array<{
+    id: string;
+    type: string;
+    inputRate: number;
+    outputRate: number;
+    provider: any;
+    description?: string;
+  }>;
 }
 
 // Provider name mapping
@@ -47,12 +53,29 @@ function formatModelsData(apiModels: ApiModel[]): ModelGroup[] {
       // Avoid adding duplicate models
       const existingModels = providerMap.get(providerName)!;
       if (!existingModels.some((m) => m.value === modelValue)) {
-        existingModels.push({
-          value: modelValue,
-          label: modelLabel,
-          description: apiModel.description,
-          capabilities: apiModel.capabilities,
-        });
+        // Get all unique types from rates for this model
+        const uniqueTypes = [...new Set(apiModel.rates?.map((rate) => rate.type) || [])];
+
+        // If model has multiple types, create separate entries for each type
+        if (uniqueTypes.length > 0) {
+          uniqueTypes.forEach((modelType) => {
+            const suffix = uniqueTypes.length > 1 ? ` (${modelType})` : '';
+            existingModels.push({
+              value: uniqueTypes.length > 1 ? `${modelValue}-${modelType}` : modelValue,
+              label: modelLabel + suffix,
+              description: apiModel.description,
+              type: modelType,
+            });
+          });
+        } else {
+          // Fallback to chatCompletion if no rates
+          existingModels.push({
+            value: modelValue,
+            label: modelLabel,
+            description: apiModel.description,
+            type: 'chatCompletion',
+          });
+        }
       }
     });
   });
@@ -79,26 +102,16 @@ export default function Chat() {
   const [modelGroups, setModelGroups] = useState<ModelGroup[]>([]);
   const [model, setModel] = useState<string>('');
   const [loading, setLoading] = useState(true);
-  const [modelCapabilities, setModelCapabilities] = useState<ModelCapabilities | null>(null);
-  const [modelsDataMap, setModelsDataMap] = useState<Map<string, ApiModel>>(new Map());
   const [selectorOpen, setSelectorOpen] = useState(false);
-  const [attachments, setAttachments] = useState<any[]>([]);
 
   // Fetch models data
   useEffect(() => {
     const fetchModels = async () => {
       try {
         setLoading(true);
-        const response = await api.get('/api/ai-providers/chat/models?type=chatCompletion');
+        const response = await api.get('/api/ai-providers/chat/models');
 
         const apiModels: ApiModel[] = response.data || [];
-
-        // Build a map of model name to model data (including capabilities)
-        const dataMap = new Map<string, ApiModel>();
-        apiModels.forEach((apiModel) => {
-          dataMap.set(apiModel.model, apiModel);
-        });
-        setModelsDataMap(dataMap);
 
         const formattedGroups = formatModelsData(apiModels);
         setModelGroups(formattedGroups);
@@ -128,28 +141,6 @@ export default function Chat() {
 
     fetchModels();
   }, [api]);
-
-  // Update model capabilities when model changes
-  useEffect(() => {
-    if (!model || modelsDataMap.size === 0) {
-      setModelCapabilities(null);
-      return;
-    }
-
-    // Extract model name from "provider/model" format
-    const modelName = model.includes('/') ? model.split('/').pop() : model;
-
-    if (modelName) {
-      const modelData = modelsDataMap.get(modelName);
-      if (modelData?.capabilities) {
-        setModelCapabilities(modelData.capabilities);
-        // eslint-disable-next-line no-console
-        console.log(`Model ${modelName} capabilities:`, modelData.capabilities);
-      } else {
-        setModelCapabilities(null);
-      }
-    }
-  }, [model, modelsDataMap]);
 
   // Save selected model to localStorage when it changes
   const handleModelChange = useCallback((newModel: string) => {
@@ -222,16 +213,13 @@ export default function Chat() {
       }}
       messages={messages}
       onSubmit={(prompt) => {
-        add(prompt, attachments);
-        setAttachments([]); // Clear attachments after submit
+        add(prompt);
       }}
       customActions={customActions}
       promptProps={{
-        modelCapabilities,
-        showAttachmentUploader: false, // Don't show in input area
         topAdornment: (
           <>
-            {/* Left side: Model selector + Attachment uploader */}
+            {/* Left side: Model selector */}
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1 }}>
               {/* Model selector as text with dropdown icon */}
               <Box
@@ -257,9 +245,6 @@ export default function Chat() {
                 </Typography>
                 <ArrowDropDown sx={{ fontSize: 20 }} />
               </Box>
-
-              {/* Attachment uploader */}
-              <AttachmentUploader onAttachmentsChange={setAttachments} modelCapabilities={modelCapabilities} />
             </Box>
 
             {/* Right side: Clear history button */}

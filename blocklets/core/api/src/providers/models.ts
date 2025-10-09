@@ -108,10 +108,12 @@ export async function chatCompletionByFrameworkModel(
   const { modelInstance } = await getModel(input, { req: options?.req });
   const engine = new AIGNE();
 
+  const convertedMessages = await convertToFrameworkMessages(input.messages);
+
   const response = await engine.invoke(
     modelInstance,
     {
-      messages: convertToFrameworkMessages(input.messages),
+      messages: convertedMessages,
       responseFormat: input.responseFormat?.type === 'json_schema' ? input.responseFormat : { type: 'text' },
       toolChoice: input.toolChoice,
       tools: input.tools,
@@ -322,91 +324,3 @@ export const checkModelIsValid = async (
 
   throw new CustomError(404, `Provider ${providerName} not found, Please check the model name and provider.`);
 };
-
-/**
- * Model capabilities interface
- * Defines what features a model supports
- */
-export interface ModelCapabilities {
-  text: boolean; // All models support text
-  vision: boolean; // Image understanding (GPT-4V, GPT-4o, Gemini Pro Vision, Claude 3, etc.)
-  audio: boolean; // Audio input/output (Whisper, GPT-4o Audio, etc.)
-  imageGeneration: boolean; // Image generation (DALL-E, Ideogram, etc.)
-  realtime: boolean; // Realtime conversation support
-  search: boolean; // Web search capability
-  streaming: boolean; // Streaming response support
-  maxImageCount?: number; // Maximum images per request
-  supportedImageFormats?: string[]; // Supported image formats
-}
-
-/**
- * Detect model capabilities based on model name
- * @param modelName - The full model name (e.g., "gpt-4o", "claude-3-sonnet")
- * @returns ModelCapabilities object
- */
-export function detectModelCapabilities(modelName: string): ModelCapabilities {
-  const name = modelName.toLowerCase();
-
-  // Vision models detection
-  const isVisionModel =
-    name.includes('vision') ||
-    name.includes('gpt-4-turbo') ||
-    name.includes('gpt-4o') ||
-    name.includes('gpt-4.5') ||
-    name.includes('gpt-5') ||
-    name.includes('gemini-1.5') ||
-    name.includes('gemini-2.0') ||
-    name.includes('gemini-exp') ||
-    name.includes('claude-3') ||
-    name.includes('claude-3.5');
-
-  // Audio models detection
-  const isAudioModel =
-    name.includes('audio') || name.includes('whisper') || (name.includes('gpt-4o') && name.includes('audio'));
-
-  // Image generation models
-  const isImageGenerationModel =
-    name.includes('dall-e') ||
-    name.includes('gpt-image') ||
-    name.includes('ideogram') ||
-    name.includes('stable-diffusion') ||
-    name.includes('midjourney');
-
-  // Realtime models
-  const isRealtimeModel = name.includes('realtime');
-
-  // Search-enabled models
-  const isSearchModel = name.includes('search');
-
-  // O-series models and some others don't support streaming
-  const supportsStreaming =
-    !name.includes('o1-') &&
-    !name.includes('o1mini') &&
-    !name.includes('o3-') &&
-    !name.includes('o3mini') &&
-    !name.includes('o4-');
-
-  // Determine max image count based on model
-  let maxImageCount = 0;
-  if (isVisionModel) {
-    if (name.includes('gpt-4o') || name.includes('gpt-5') || name.includes('gemini-2.0')) {
-      maxImageCount = 50; // Latest models support more images
-    } else if (name.includes('gemini-1.5') || name.includes('claude-3')) {
-      maxImageCount = 20;
-    } else {
-      maxImageCount = 10;
-    }
-  }
-
-  return {
-    text: true, // All models support text
-    vision: isVisionModel,
-    audio: isAudioModel,
-    imageGeneration: isImageGenerationModel,
-    realtime: isRealtimeModel,
-    search: isSearchModel,
-    streaming: supportsStreaming,
-    maxImageCount,
-    supportedImageFormats: isVisionModel ? ['jpeg', 'jpg', 'png', 'gif', 'webp'] : [],
-  };
-}

@@ -1,6 +1,9 @@
 import { flatten } from 'flat';
 
 export default flatten({
+  common: {
+    redirecting: '跳转中...',
+  },
   usage: '用量',
   aiProvider: 'AI 提供商',
   aiProviderSubscription: '订阅 AIGNE Hub 服务',

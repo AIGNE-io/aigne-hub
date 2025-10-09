@@ -3,59 +3,11 @@ import { nanoid } from 'nanoid';
 import { ChatCompletionMessageParam } from 'openai/resources/index';
 import { useCallback, useEffect, useState } from 'react';
 
-import { Attachment } from '../../api/types';
 import { MessageItem } from './conversation';
 
 const nextId = () => nanoid(16);
 const STORAGE_KEY = 'aigne-hub-conversation-history';
 const MAX_CACHED_MESSAGES = 50; // Limit cached messages
-
-// Convert File to base64 data URL
-const fileToBase64 = (file: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-};
-
-// Build messages with images for vision models
-const buildVisionMessages = async (
-  prompt: string,
-  attachments: Attachment[]
-): Promise<ChatCompletionMessageParam[]> => {
-  const imageUrls = await Promise.all(
-    attachments.map(async (attachment) => {
-      // Use cached base64 if available, otherwise convert
-      if (attachment.base64) {
-        return attachment.base64;
-      }
-      // If url is already base64, use it directly
-      if (attachment.url.startsWith('data:')) {
-        return attachment.url;
-      }
-      // Otherwise convert File to base64
-      if (attachment.file) {
-        return fileToBase64(attachment.file);
-      }
-      return attachment.url;
-    })
-  );
-
-  return [
-    {
-      role: 'user',
-      content: [
-        ...imageUrls.map((url) => ({
-          type: 'image_url' as const,
-          image_url: { url },
-        })),
-        ...(prompt ? [{ type: 'text' as const, text: prompt }] : []),
-      ],
-    },
-  ];
-};
 
 // Load messages from localStorage
 const loadMessages = (): MessageItem[] => {
@@ -87,15 +39,6 @@ const saveMessages = (messages: MessageItem[]) => {
         response: msg.response,
         timestamp: msg.timestamp,
         meta: msg.meta,
-        attachments: msg.attachments?.map((att) => ({
-          type: att.type,
-          url: att.url, // base64 data URL
-          base64: att.base64,
-          mimeType: att.mimeType,
-          size: att.size,
-          name: att.name,
-          // Don't save File object
-        })),
         // Don't save error state
       }));
     localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
@@ -149,37 +92,11 @@ export default function useConversation({
   }, [messages, enableCache]);
 
   const add = useCallback(
-    async (prompt: string | ChatCompletionMessageParam[], attachments?: Attachment[], meta?: any) => {
+    async (prompt: string | ChatCompletionMessageParam[], meta?: any) => {
       const id = nextId();
       const timestamp = Date.now();
 
-      // Convert attachments to base64 for persistent storage
-      let base64Attachments: Attachment[] | undefined;
-      if (attachments && attachments.length > 0) {
-        base64Attachments = await Promise.all(
-          attachments.map(async (attachment) => {
-            // Get base64: either from cache, existing url (if already base64), or convert from file
-            let base64: string;
-            if (attachment.base64) {
-              base64 = attachment.base64;
-            } else if (attachment.url.startsWith('data:')) {
-              base64 = attachment.url;
-            } else if (attachment.file) {
-              base64 = await fileToBase64(attachment.file);
-            } else {
-              base64 = attachment.url; // Fallback
-            }
-
-            return {
-              ...attachment,
-              url: base64, // Use base64 as url for display
-              base64,
-            };
-          })
-        );
-      }
-
-      setMessages((v) => v.concat({ id, prompt, loading: true, meta, timestamp, attachments: base64Attachments }));
+      setMessages((v) => v.concat({ id, prompt, loading: true, meta, timestamp }));
       scrollToBottom?.({ force: true });
 
       try {
@@ -211,15 +128,7 @@ export default function useConversation({
           }
         }
 
-        // Build prompt with attachments if any
-        let finalPrompt: string | ChatCompletionMessageParam[] = prompt;
-
-        if (base64Attachments && base64Attachments.length > 0 && typeof prompt === 'string') {
-          // Convert to vision message format (base64Attachments already have base64)
-          finalPrompt = await buildVisionMessages(prompt, base64Attachments);
-        }
-
-        const result = await textCompletions(finalPrompt, { meta });
+        const result = await textCompletions(prompt, { meta });
 
         const isText = (i: any): i is { type: 'text'; text: string } => i.type === 'text';
         const isImages = (i: any): i is { type: 'images'; images: { url: string }[] } => i.type === 'images';

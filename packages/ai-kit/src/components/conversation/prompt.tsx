@@ -3,18 +3,13 @@ import { Box, BoxProps, IconButton, Input, SxProps } from '@mui/material';
 import { useHistoryTravel } from 'ahooks';
 import { ReactNode, useState } from 'react';
 
-import { Attachment, ModelCapabilities } from '../../api/types';
-import AttachmentUploader from './attachment-uploader';
-
 export interface PromptProps extends Omit<BoxProps<'form'>, 'onSubmit' | 'sx'> {
-  onSubmit: (prompt: string, attachments?: Attachment[]) => any;
+  onSubmit: (prompt: string) => any;
   startAdornment?: ReactNode;
   endAdornment?: ReactNode;
-  topAdornment?: ReactNode; // New: toolbar above input
+  topAdornment?: ReactNode;
   slotProps?: any;
   sx?: SxProps;
-  modelCapabilities?: ModelCapabilities | null;
-  showAttachmentUploader?: boolean;
 }
 
 export default function Prompt({
@@ -24,17 +19,14 @@ export default function Prompt({
   onSubmit,
   slotProps = {},
   sx = {},
-  modelCapabilities = null,
-  showAttachmentUploader = true,
   ...props
 }: PromptProps) {
   const [prompt, setPrompt] = useState('');
   const [isFocused, setIsFocused] = useState(false);
-  const [attachments, setAttachments] = useState<Attachment[]>([]);
 
   const { value: historyPrompt, setValue: setHistoryPrompt, forwardLength, back, go, forward } = useHistoryTravel('');
   const submit = () => {
-    if (!prompt.trim() && attachments.length === 0) {
+    if (!prompt.trim()) {
       return;
     }
 
@@ -42,9 +34,8 @@ export default function Prompt({
     // wait for history to set before submitting
     setTimeout(() => {
       setHistoryPrompt(prompt);
-      onSubmit(prompt, attachments);
+      onSubmit(prompt);
       setPrompt('');
-      setAttachments([]);
     }, 50);
   };
 
@@ -81,7 +72,7 @@ export default function Prompt({
           gap: 1.5,
           p: 1.5,
           boxShadow: '0 2px 12px rgba(0, 0, 0, 0.08)',
-          borderRadius: 3,
+          borderRadius: 2,
           border: '1px solid',
           borderColor: 'divider',
           transition: 'all 0.2s ease',
@@ -96,9 +87,6 @@ export default function Prompt({
           },
         }}>
         {startAdornment}
-        {showAttachmentUploader && (
-          <AttachmentUploader onAttachmentsChange={setAttachments} modelCapabilities={modelCapabilities} />
-        )}
         <Input
           fullWidth
           disableUnderline
@@ -145,18 +133,18 @@ export default function Prompt({
           onClick={submit}
           size="medium"
           type="submit"
-          disabled={!prompt.trim() && attachments.length === 0}
+          disabled={!prompt.trim()}
           sx={{
-            bgcolor: prompt.trim() || attachments.length > 0 ? 'primary.main' : 'action.disabledBackground',
-            color: prompt.trim() || attachments.length > 0 ? 'primary.contrastText' : 'action.disabled',
+            bgcolor: prompt.trim() ? 'primary.main' : 'action.disabledBackground',
+            color: prompt.trim() ? 'primary.contrastText' : 'action.disabled',
             transition: 'all 0.2s ease',
             width: 44,
             height: 44,
             alignSelf: 'flex-end',
             flexShrink: 0,
             '&:hover': {
-              bgcolor: prompt.trim() || attachments.length > 0 ? 'primary.dark' : 'action.disabledBackground',
-              transform: prompt.trim() || attachments.length > 0 ? 'scale(1.05)' : 'none',
+              bgcolor: prompt.trim() ? 'primary.dark' : 'action.disabledBackground',
+              transform: prompt.trim() ? 'scale(1.05)' : 'none',
             },
             '&.Mui-disabled': {
               bgcolor: 'action.disabledBackground',

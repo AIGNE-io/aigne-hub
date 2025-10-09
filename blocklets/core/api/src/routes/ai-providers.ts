@@ -21,7 +21,6 @@ import pAll from 'p-all';
 import { Op } from 'sequelize';
 
 import { modelStatusQueue, typeFilterMap, typeMap } from '../libs/status';
-import { detectModelCapabilities } from '../providers/models';
 
 const testModelsRateLimit = new Map<string, { count: number; startTime: number }>();
 const TEST_MODELS_RATE_LIMIT_TIME = 10 * 60 * 1000; // 10 minutes
@@ -490,7 +489,7 @@ router.get('/:providerId/credentials/:credentialId/check', ensureAdmin, async (r
 
     return res.json(credentialJson);
   } catch (err) {
-    return res.status(401).json({ error: 'Invalid credentials', detail: err.message });
+    return res.status(400).json({ error: 'Invalid credentials', detail: err.message });
   }
 });
 
@@ -813,7 +812,6 @@ async function getDefaultModelsFromProviders(typeFilter?: string) {
               displayName: provider.displayName,
             },
           ],
-          capabilities: detectModelCapabilities(modelName), // Add capabilities
         });
       });
     } else {
@@ -856,7 +854,6 @@ async function getDefaultModelsFromProviders(typeFilter?: string) {
                   displayName: providerJson.displayName,
                 },
               ],
-              capabilities: detectModelCapabilities(modelOption.name), // Add capabilities
             });
           });
         });
@@ -948,50 +945,12 @@ router.get('/chat/models', user, async (req, res) => {
     const models = Array.from(modelsMap.values()).map((model: any) => ({
       ...model,
       providers: Array.from(model.providers),
-      capabilities: detectModelCapabilities(model.model), // Add capabilities
     }));
 
     return res.json(models);
   } catch (error) {
     logger.error('Failed to get models:', error);
     return res.status(500).json({ error: formatError(error) || 'Failed to get models' });
-  }
-});
-
-// Get model capabilities by model identifier (provider/model format)
-router.get('/models/:modelId/capabilities', user, async (req, res) => {
-  try {
-    const rawModelId = req.params.modelId;
-    if (!rawModelId) {
-      return res.status(400).json({
-        error: 'Missing model identifier',
-      });
-    }
-
-    const modelId = decodeURIComponent(rawModelId);
-
-    // Extract model name from provider/model format
-    // e.g., "openai/gpt-4o" -> "gpt-4o"
-    let modelName: string;
-    if (modelId.includes('/')) {
-      const parts = modelId.split('/');
-      modelName = parts[parts.length - 1] || '';
-    } else {
-      modelName = modelId;
-    }
-
-    if (!modelName) {
-      return res.status(400).json({
-        error: 'Invalid model identifier',
-      });
-    }
-
-    const capabilities = detectModelCapabilities(modelName);
-
-    return res.json(capabilities);
-  } catch (error) {
-    logger.error('Failed to get model capabilities:', error);
-    return res.status(500).json({ error: formatError(error) || 'Failed to get model capabilities' });
   }
 });
 

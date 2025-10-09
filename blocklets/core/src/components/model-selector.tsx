@@ -1,5 +1,5 @@
 import { getPrefix } from '@app/libs/util';
-import type { ModelCapabilities } from '@blocklet/aigne-hub/api/types';
+import type { ModelGroup } from '@blocklet/aigne-hub/api/types';
 import { Close, Search } from '@mui/icons-material';
 import {
   Avatar,
@@ -17,21 +17,12 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { joinURL } from 'ufo';
 
-export interface ModelOption {
-  value: string;
-  label: string;
-  description?: string;
-  capabilities?: ModelCapabilities;
-}
-
-export interface ModelGroup {
-  provider: string;
-  displayName: string;
-  models: ModelOption[];
-}
+import { ReactComponent as EmbeddingIcon } from '../icons/icon-embedding.svg';
+import { ReactComponent as ImageIcon } from '../icons/icon-image.svg';
+import { ReactComponent as ChatIcon } from '../icons/icon-text.svg';
 
 interface ModelSelectorProps {
   open: boolean;
@@ -39,53 +30,6 @@ interface ModelSelectorProps {
   modelGroups: ModelGroup[];
   selectedModel: string;
   onModelSelect: (modelValue: string) => void;
-}
-
-// Helper function to generate capability badges
-function CapabilityChips({ capabilities = undefined }: { capabilities?: ModelCapabilities }) {
-  if (!capabilities) return null;
-
-  const chips: Array<{ label: string; color: string }> = [];
-
-  if (capabilities.vision) {
-    chips.push({ label: 'Vision', color: '#7c3aed' }); // Purple
-  }
-  if (capabilities.imageGeneration) {
-    chips.push({ label: 'Image Gen', color: '#ec4899' }); // Pink
-  }
-  if (capabilities.audio) {
-    chips.push({ label: 'Audio', color: '#f59e0b' }); // Amber
-  }
-  if (capabilities.search) {
-    chips.push({ label: 'Search', color: '#3b82f6' }); // Blue
-  }
-  if (capabilities.realtime) {
-    chips.push({ label: 'Realtime', color: '#10b981' }); // Green
-  }
-
-  if (chips.length === 0) return null;
-
-  return (
-    <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-      {chips.map((chip) => (
-        <Chip
-          key={chip.label}
-          label={chip.label}
-          size="small"
-          sx={{
-            height: 20,
-            fontSize: '11px',
-            fontWeight: 600,
-            bgcolor: chip.color,
-            color: 'white',
-            '& .MuiChip-label': {
-              px: 1,
-            },
-          }}
-        />
-      ))}
-    </Box>
-  );
 }
 
 export default function ModelSelector({
@@ -96,56 +40,31 @@ export default function ModelSelector({
   onModelSelect,
 }: ModelSelectorProps) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<'all' | 'text' | 'vision' | 'image' | 'audio'>('all');
   const [providerFilter, setProviderFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
 
-  // Get unique providers for filtering (with filtered counts based on category)
+  // Get unique providers for filtering (based on current type filter)
   const availableProviders = useMemo(() => {
-    return modelGroups
-      .map((group) => {
-        // Apply category filter to count
-        let filteredModels = group.models;
+    let filtered = modelGroups;
 
-        if (categoryFilter !== 'all') {
-          filteredModels = group.models.filter((model) => {
-            const caps = model.capabilities;
-            if (!caps) return categoryFilter === 'text';
-
-            switch (categoryFilter) {
-              case 'vision':
-                return caps.vision;
-              case 'image':
-                return caps.imageGeneration;
-              case 'audio':
-                return caps.audio;
-              case 'text':
-                return caps.text && !caps.vision && !caps.imageGeneration && !caps.audio;
-              default:
-                return true;
-            }
-          });
-        }
-
-        return {
-          value: group.provider,
-          label: group.displayName,
-          count: filteredModels.length,
-        };
-      })
-      .filter((provider) => provider.count > 0); // Only show providers with models
-  }, [modelGroups, categoryFilter]);
-
-  // Reset provider filter if current provider has no models after category filter
-  useEffect(() => {
-    if (providerFilter !== 'all') {
-      const currentProvider = availableProviders.find((p) => p.value === providerFilter);
-      if (!currentProvider) {
-        setProviderFilter('all');
-      }
+    // Apply type filter to get accurate provider counts
+    if (typeFilter !== 'all') {
+      filtered = filtered
+        .map((group) => ({
+          ...group,
+          models: group.models.filter((model) => model.type === typeFilter),
+        }))
+        .filter((group) => group.models.length > 0);
     }
-  }, [availableProviders, providerFilter]);
 
-  // Filter models based on search, category, and provider
+    return filtered.map((group) => ({
+      value: group.provider,
+      label: group.displayName,
+      count: group.models.length,
+    }));
+  }, [modelGroups, typeFilter]);
+
+  // Filter models based on search, provider, and type
   const filteredGroups = useMemo(() => {
     let filtered = modelGroups;
 
@@ -154,28 +73,12 @@ export default function ModelSelector({
       filtered = filtered.filter((group) => group.provider === providerFilter);
     }
 
-    // Apply category filter
-    if (categoryFilter !== 'all') {
+    // Apply type filter
+    if (typeFilter !== 'all') {
       filtered = filtered
         .map((group) => ({
           ...group,
-          models: group.models.filter((model) => {
-            const caps = model.capabilities;
-            if (!caps) return categoryFilter === 'text';
-
-            switch (categoryFilter) {
-              case 'vision':
-                return caps.vision;
-              case 'image':
-                return caps.imageGeneration;
-              case 'audio':
-                return caps.audio;
-              case 'text':
-                return caps.text && !caps.vision && !caps.imageGeneration && !caps.audio;
-              default:
-                return true;
-            }
-          }),
+          models: group.models.filter((model) => model.type === typeFilter),
         }))
         .filter((group) => group.models.length > 0);
     }
@@ -194,38 +97,12 @@ export default function ModelSelector({
     }
 
     return filtered;
-  }, [modelGroups, searchQuery, categoryFilter, providerFilter]);
+  }, [modelGroups, searchQuery, providerFilter, typeFilter]);
 
   const handleModelClick = (modelValue: string) => {
     onModelSelect(modelValue);
     // Don't auto-close - let user browse and compare models
   };
-
-  const categoryOptions = [
-    { value: 'all', label: 'All Models', count: modelGroups.flatMap((g) => g.models).length },
-    {
-      value: 'text',
-      label: 'Text Only',
-      count: modelGroups
-        .flatMap((g) => g.models)
-        .filter((m) => m.capabilities?.text && !m.capabilities?.vision && !m.capabilities?.imageGeneration).length,
-    },
-    {
-      value: 'vision',
-      label: 'Vision',
-      count: modelGroups.flatMap((g) => g.models).filter((m) => m.capabilities?.vision).length,
-    },
-    {
-      value: 'image',
-      label: 'Image Gen',
-      count: modelGroups.flatMap((g) => g.models).filter((m) => m.capabilities?.imageGeneration).length,
-    },
-    {
-      value: 'audio',
-      label: 'Audio',
-      count: modelGroups.flatMap((g) => g.models).filter((m) => m.capabilities?.audio).length,
-    },
-  ];
 
   return (
     <Dialog
@@ -287,7 +164,7 @@ export default function ModelSelector({
           />
         </Box>
 
-        {/* Category Filter Tabs */}
+        {/* Type Filter Tabs */}
         <Box
           sx={{
             display: 'flex',
@@ -305,19 +182,43 @@ export default function ModelSelector({
               borderRadius: 3,
             },
           }}>
-          {categoryOptions.map((option) => (
+          {[
+            { key: 'all', label: 'All Models', icon: null },
+            { key: 'chatCompletion', label: 'Chat', icon: <ChatIcon viewBox="0 0 12 12" /> },
+            { key: 'imageGeneration', label: 'Image Gen', icon: <ImageIcon viewBox="0 0 12 12" /> },
+            { key: 'embedding', label: 'Embedding', icon: <EmbeddingIcon viewBox="0 0 12 12" /> },
+          ].map((option) => (
             <Chip
-              key={option.value}
-              label={`${option.label} (${option.count})`}
-              onClick={() => setCategoryFilter(option.value as any)}
-              variant={categoryFilter === option.value ? 'filled' : 'outlined'}
+              key={option.key}
+              label={
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5 }}>
+                  {option.icon && (
+                    <Box
+                      sx={{
+                        width: 12,
+                        height: 12,
+                        svg: { width: '100%', height: '100%' },
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}>
+                      {option.icon}
+                    </Box>
+                  )}
+                  <Typography variant="caption" sx={{ fontSize: '12px', lineHeight: 1 }}>
+                    {option.label}
+                  </Typography>
+                </Box>
+              }
+              onClick={() => setTypeFilter(option.key)}
+              variant={typeFilter === option.key ? 'filled' : 'outlined'}
               sx={{
-                fontWeight: categoryFilter === option.value ? 600 : 400,
-                bgcolor: categoryFilter === option.value ? 'primary.main' : 'transparent',
-                color: categoryFilter === option.value ? 'primary.contrastText' : 'text.primary',
-                borderColor: categoryFilter === option.value ? 'primary.main' : 'divider',
+                fontWeight: typeFilter === option.key ? 600 : 400,
+                bgcolor: typeFilter === option.key ? 'primary.main' : 'transparent',
+                color: typeFilter === option.key ? 'primary.contrastText' : 'text.primary',
+                borderColor: typeFilter === option.key ? 'primary.main' : 'divider',
                 '&:hover': {
-                  bgcolor: categoryFilter === option.value ? 'primary.dark' : 'action.hover',
+                  bgcolor: typeFilter === option.key ? 'primary.dark' : 'action.hover',
                 },
               }}
             />
@@ -363,7 +264,18 @@ export default function ModelSelector({
           {availableProviders.map((provider) => (
             <Chip
               key={provider.value}
-              label={`${provider.label} (${provider.count})`}
+              label={
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5 }}>
+                  <Avatar
+                    src={joinURL(getPrefix(), `/logo/${provider.value}.png`)}
+                    sx={{ width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    alt={provider.label}
+                  />
+                  <Typography variant="caption" sx={{ fontSize: '12px', lineHeight: 1 }}>
+                    {provider.label} ({provider.count})
+                  </Typography>
+                </Box>
+              }
               onClick={() => setProviderFilter(provider.value)}
               variant={providerFilter === provider.value ? 'filled' : 'outlined'}
               size="small"
@@ -467,6 +379,43 @@ export default function ModelSelector({
                           <Typography variant="body2" sx={{ fontWeight: 500 }}>
                             {model.label}
                           </Typography>
+                          {model.type && (
+                            <Box
+                              sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 0.5,
+                                px: 1,
+                                py: 0.5,
+                                border: '1px solid',
+                                borderColor: 'divider',
+                                borderRadius: 1,
+                                bgcolor: 'background.paper',
+                              }}>
+                              <Box
+                                sx={{
+                                  width: 12,
+                                  height: 12,
+                                  svg: { width: '100%', height: '100%' },
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                }}>
+                                {model.type === 'chatCompletion' && <ChatIcon viewBox="0 0 12 12" />}
+                                {model.type === 'imageGeneration' && <ImageIcon viewBox="0 0 12 12" />}
+                                {model.type === 'embedding' && <EmbeddingIcon viewBox="0 0 12 12" />}
+                              </Box>
+                              <Typography
+                                variant="caption"
+                                sx={{ fontSize: 10, color: 'text.secondary', lineHeight: 1 }}>
+                                {model.type === 'chatCompletion'
+                                  ? 'Chat'
+                                  : model.type === 'imageGeneration'
+                                    ? 'Image'
+                                    : 'Embedding'}
+                              </Typography>
+                            </Box>
+                          )}
                           {selectedModel === model.value && (
                             <Chip
                               label="Selected"
@@ -479,7 +428,6 @@ export default function ModelSelector({
                               }}
                             />
                           )}
-                          <CapabilityChips capabilities={model.capabilities} />
                         </Box>
                       }
                     />
