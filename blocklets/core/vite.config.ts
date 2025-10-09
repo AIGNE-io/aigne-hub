@@ -24,6 +24,7 @@ export default defineConfig(() => {
       }),
     ],
     build: {
+      // 禁用模块预加载以优化 CDN 集成
       modulePreload: false,
       commonjsOptions: {
         transformMixedEsModules: true,
