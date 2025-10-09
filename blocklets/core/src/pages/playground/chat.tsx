@@ -8,7 +8,7 @@ import {
   useConversation,
 } from '@blocklet/aigne-hub/components';
 import { ArrowDropDown, DeleteOutline, HighlightOff } from '@mui/icons-material';
-import { Box, Button, IconButton, Tooltip, Typography } from '@mui/material';
+import { Box, Button, CircularProgress, IconButton, Tooltip, Typography } from '@mui/material';
 import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import ModelSelector from '../../components/model-selector';
@@ -103,6 +103,7 @@ export default function Chat() {
   const [model, setModel] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [selectorOpen, setSelectorOpen] = useState(false);
+  const [cacheInfo, setCacheInfo] = useState<{ count: number; totalSize: number }>({ count: 0, totalSize: 0 });
 
   // Fetch models data
   useEffect(() => {
@@ -176,7 +177,7 @@ export default function Chat() {
     });
   };
 
-  const { messages, add, cancel, clearHistory } = useConversation({
+  const { messages, add, cancel, clearHistory, getCacheInfo, isLoadingHistory } = useConversation({
     scrollToBottom: (o) => ref.current?.scrollToBottom(o),
     textCompletions: (prompt) => {
       // Route to different APIs based on model type
@@ -227,6 +228,22 @@ export default function Chat() {
       ),
     enableCache: true, // Enable conversation history caching
   });
+
+  // Update cache info periodically
+  useEffect(() => {
+    const updateCacheInfo = async () => {
+      try {
+        const info = await getCacheInfo();
+        setCacheInfo(info);
+      } catch (error) {
+        console.warn('Failed to get cache info:', error);
+      }
+    };
+
+    updateCacheInfo();
+    const interval = setInterval(updateCacheInfo, 5000); // Update every 5 seconds
+    return () => clearInterval(interval);
+  }, [getCacheInfo]);
 
   const handleClearHistory = useCallback(() => {
     // eslint-disable-next-line no-alert
@@ -309,8 +326,33 @@ export default function Chat() {
               </Box>
             </Box>
 
-            {/* Right side: Clear history button */}
+            {/* Right side: Cache info and Clear history button */}
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              {/* Cache info */}
+              {cacheInfo.count > 0 && (
+                <Tooltip
+                  title={`${cacheInfo.count} cached images (${Math.round((cacheInfo.totalSize / 1024 / 1024) * 100) / 100} MB)`}
+                  placement="top">
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: 'text.secondary',
+                      fontSize: '11px',
+                      px: 1,
+                      py: 0.5,
+                      bgcolor: 'action.hover',
+                      borderRadius: 1,
+                      fontWeight: 500,
+                    }}>
+                    📦 {cacheInfo.count}
+                  </Typography>
+                </Tooltip>
+              )}
+
+              {/* Loading indicator */}
+              {isLoadingHistory && <CircularProgress size={16} sx={{ color: 'text.secondary' }} />}
+
+              {/* Clear history button */}
               <Tooltip title="Clear conversation history" placement="top">
                 <IconButton
                   onClick={handleClearHistory}

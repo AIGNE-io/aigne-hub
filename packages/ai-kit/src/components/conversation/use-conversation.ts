@@ -7,42 +7,51 @@ import { MessageItem } from './conversation';
 
 const nextId = () => nanoid(16);
 const STORAGE_KEY = 'aigne-hub-conversation-history';
-const MAX_CACHED_MESSAGES = 50; // Limit cached messages
+const SESSION_STORAGE_KEY = 'aigne-hub-conversation-session';
+const MAX_CACHED_MESSAGES = 5; // Limit cached messages to reduce storage usage
 
-// Load messages from localStorage
-const loadMessages = (): MessageItem[] => {
+// Load messages from localStorage/sessionStorage
+const loadMessages = async (): Promise<MessageItem[]> => {
   try {
-    const cached = localStorage.getItem(STORAGE_KEY);
+    // Try localStorage first, then sessionStorage as fallback
+    let cached = localStorage.getItem(STORAGE_KEY);
+    if (!cached) {
+      cached = sessionStorage.getItem(SESSION_STORAGE_KEY);
+    }
     if (cached) {
       const parsed = JSON.parse(cached);
       // Validate and filter out invalid messages
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed.filter((msg) => msg.id && (msg.prompt || msg.response));
+        const validMessages = parsed.filter((msg) => msg.id && (msg.prompt || msg.response));
+        return validMessages;
       }
     }
   } catch (error) {
     console.warn('Failed to load conversation history:', error);
   }
-  return [{ id: nextId(), response: 'Hi, I am AIGNE Hub! How can I assist you today?', timestamp: Date.now() }];
+
+  // Return empty array if no history, let the component handle initial message
+  return [];
 };
 
 // Save messages to localStorage
-const saveMessages = (messages: MessageItem[]) => {
+const saveMessages = async (messages: MessageItem[]) => {
   try {
     // Only save completed messages (no loading state)
     const toSave = messages
       .filter((msg) => !msg.loading)
       .slice(-MAX_CACHED_MESSAGES) // Keep only last N messages
       .map((msg) => {
-        // Remove base64 image data to save storage space
+        // Replace image data URLs with placeholders to save storage space
         const response =
           msg.response && typeof msg.response === 'object' && 'images' in msg.response
             ? {
                 ...msg.response,
-                images: (msg.response as any).images?.map((img: any) => ({
-                  ...img,
-                  url: img.url?.includes('data:') ? '[CACHED_IMAGE_DATA]' : img.url,
-                })),
+                images:
+                  (msg.response as any).images?.map((img: any) => ({
+                    ...img,
+                    url: img.url && img.url.startsWith('data:') ? '[IMAGE_PLACEHOLDER]' : img.url,
+                  })) || [],
               }
             : msg.response;
 
@@ -51,11 +60,27 @@ const saveMessages = (messages: MessageItem[]) => {
           prompt: msg.prompt,
           response,
           timestamp: msg.timestamp,
-          meta: msg.meta,
-          // Don't save error state
+          // Don't save meta and error state to reduce size
         };
       });
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+
+    // Try to save to localStorage, fallback to sessionStorage if quota exceeded
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+      // Clear sessionStorage if localStorage succeeded
+      sessionStorage.removeItem(SESSION_STORAGE_KEY);
+    } catch (storageError) {
+      if (storageError instanceof Error && storageError.name === 'QuotaExceededError') {
+        // Fallback to sessionStorage
+        try {
+          sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(toSave));
+        } catch (sessionError) {
+          console.warn('Failed to save to sessionStorage:', sessionError);
+        }
+      } else {
+        console.warn('Failed to save to localStorage:', storageError);
+      }
+    }
   } catch (error) {
     console.warn('Failed to save conversation history:', error);
   }
@@ -80,29 +105,55 @@ export default function useConversation({
   ) => Promise<{ url: string }[]>;
   enableCache?: boolean;
 }) {
-  const [messages, setMessages] = useState<MessageItem[]>(() =>
-    enableCache
-      ? loadMessages()
-      : [{ id: nextId(), response: 'Hi, I am AIGNE Hub! How can I assist you today?', timestamp: Date.now() }]
-  );
+  const [messages, setMessages] = useState<MessageItem[]>([]);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(enableCache);
+
+  // Load initial messages from cache
+  useEffect(() => {
+    if (enableCache && isLoadingHistory) {
+      loadMessages().then((loadedMessages) => {
+        // If no messages loaded, show welcome message
+        if (loadedMessages.length === 0) {
+          setMessages([
+            { id: nextId(), response: 'Hi, I am AIGNE Hub! How can I assist you today?', timestamp: Date.now() },
+          ]);
+        } else {
+          setMessages(loadedMessages);
+        }
+        setIsLoadingHistory(false);
+      });
+    } else if (!enableCache) {
+      setMessages([
+        { id: nextId(), response: 'Hi, I am AIGNE Hub! How can I assist you today?', timestamp: Date.now() },
+      ]);
+      setIsLoadingHistory(false);
+    }
+  }, [enableCache, isLoadingHistory]);
 
   // Scroll to bottom on initial load
   useEffect(() => {
-    if (isInitialLoad && messages.length > 0) {
+    if (isInitialLoad && messages.length > 0 && !isLoadingHistory) {
       // Wait for DOM to render
       setTimeout(() => {
         scrollToBottom?.({ force: true });
         setIsInitialLoad(false);
       }, 100);
     }
-  }, [isInitialLoad, messages.length, scrollToBottom]);
+  }, [isInitialLoad, messages.length, scrollToBottom, isLoadingHistory]);
 
-  // Save messages to localStorage whenever they change
+  // Save messages to localStorage whenever they change (with debounce)
   useEffect(() => {
     if (enableCache && messages.length > 0) {
-      saveMessages(messages);
+      const timeoutId = setTimeout(() => {
+        saveMessages(messages).catch((error) => {
+          console.error('❌ Failed to save messages:', error);
+        });
+      }, 1000); // Delay save by 1 second to avoid saving during streaming
+
+      return () => clearTimeout(timeoutId);
     }
+    return () => {};
   }, [messages, enableCache]);
 
   const add = useCallback(
@@ -163,7 +214,7 @@ export default function useConversation({
             } else if (isText(value)) {
               response = value.text;
             } else if (isImages(value)) {
-              response = value.images;
+              response = { images: value.images } as any;
             } else {
               delta = decoder.decode(value);
             }
@@ -221,7 +272,7 @@ export default function useConversation({
     );
   }, []);
 
-  const clearHistory = useCallback(() => {
+  const clearHistory = useCallback(async () => {
     const initialMessage = {
       id: nextId(),
       response: 'Hi, I am AIGNE Hub! How can I assist you today?',
@@ -230,8 +281,22 @@ export default function useConversation({
     setMessages([initialMessage]);
     if (enableCache) {
       localStorage.removeItem(STORAGE_KEY);
+      sessionStorage.removeItem(SESSION_STORAGE_KEY);
     }
   }, [enableCache]);
 
-  return { messages, add, cancel, setMessages, clearHistory };
+  const getCacheInfo = useCallback(async () => {
+    // Image caching is disabled, return empty cache info
+    return { count: 0, totalSize: 0 };
+  }, []);
+
+  return {
+    messages,
+    add,
+    cancel,
+    setMessages,
+    clearHistory,
+    getCacheInfo,
+    isLoadingHistory,
+  };
 }

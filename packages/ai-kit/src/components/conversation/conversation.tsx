@@ -95,17 +95,64 @@ export default function Conversation({
                       timestamp={msg.timestamp}
                       isUser={false}
                       chatLayout={chatLayout}>
-                      {Array.isArray(msg.response) && (
-                        <ImagePreview
-                          itemWidth={100}
-                          dataSource={msg.response.map(({ url }) => {
-                            return {
-                              src: url,
-                              onLoad: () => scrollToBottom(),
-                            };
-                          })}
-                        />
-                      )}
+                      {msg.response &&
+                        typeof msg.response === 'object' &&
+                        'images' in msg.response &&
+                        Array.isArray(msg.response.images) &&
+                        msg.response.images.length > 0 && (
+                          <>
+                            {/* Show actual images if they have real data URLs */}
+                            {msg.response.images.some((img) => img.url && img.url.startsWith('data:')) && (
+                              <ImagePreview
+                                itemWidth={200}
+                                borderRadius={12}
+                                dataSource={msg.response.images
+                                  .filter((img) => img.url && img.url.startsWith('data:'))
+                                  .map(({ url }) => ({
+                                    src: url,
+                                    onLoad: () => scrollToBottom(),
+                                  }))}
+                              />
+                            )}
+
+                            {/* Show placeholder for images without real data */}
+                            {msg.response.images.some((img) => !img.url || img.url === '[IMAGE_PLACEHOLDER]') && (
+                              <Box
+                                sx={{
+                                  margin: '8px 0',
+                                  minHeight: '200px',
+                                  background: '#f5f5f5',
+                                  borderRadius: '8px',
+                                  padding: '16px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  flexDirection: 'column',
+                                  gap: '12px',
+                                  border: '2px dashed #ddd',
+                                }}>
+                                <Box sx={{ fontSize: '48px', opacity: 0.4 }}>🖼️</Box>
+                                <Box
+                                  sx={{
+                                    fontSize: '14px',
+                                    color: '#666',
+                                    textAlign: 'center',
+                                    fontWeight: 500,
+                                    minWidth: 200,
+                                  }}>
+                                  {msg.response.images.filter((img) => !img.url || img.url === '[IMAGE_PLACEHOLDER]')
+                                    .length === 1
+                                    ? 'Image (Not Cached)'
+                                    : `${
+                                        msg.response.images.filter(
+                                          (img) => !img.url || img.url === '[IMAGE_PLACEHOLDER]'
+                                        ).length
+                                      } Images (Not Cached)`}
+                                </Box>
+                              </Box>
+                            )}
+                          </>
+                        )}
                       {msg.error ? (
                         // @ts-ignore
                         <CreditErrorAlert error={msg.error} />
