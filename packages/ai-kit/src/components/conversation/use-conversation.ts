@@ -162,7 +162,9 @@ export default function useConversation({
       const timestamp = Date.now();
 
       setMessages((v) => v.concat({ id, prompt, loading: true, meta, timestamp }));
-      scrollToBottom?.({ force: true });
+      setTimeout(() => {
+        scrollToBottom?.({ force: true });
+      }, 100);
 
       try {
         // Handle image generation command
