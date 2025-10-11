@@ -379,6 +379,25 @@ export default flatten({
   loginToAccess: 'Log In to Continue',
   configuration: 'Configuration',
   playground: 'Playground',
+
+  // Chat/Conversation related
+  chat: {
+    loading: 'Loading...',
+    clearHistory: 'Clear conversation history',
+    clearHistoryConfirm: 'Are you sure you want to clear all conversation history?',
+    placeholders: {
+      chat: 'Type your message... (Shift+Enter for new line)',
+      imageGeneration: 'Describe the image you want to generate...',
+      embedding: 'Enter text to convert to embedding vector...',
+    },
+    modelTypes: {
+      chatCompletion: 'Chat',
+      imageGeneration: 'Image',
+      embedding: 'Embedding',
+    },
+    cacheInfo: '{count} cached images ({size} MB)',
+    noModelsAvailable: 'No models available',
+  },
   integration: 'Integration',
   manageCredits: 'Manage Credits',
   creditUsage: 'Credit Usage',

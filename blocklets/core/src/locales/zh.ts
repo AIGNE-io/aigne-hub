@@ -377,6 +377,25 @@ export default flatten({
   loginToAccess: '登录以继续',
   configuration: '配置管理',
   playground: '沙盒环境',
+
+  // Chat/Conversation related
+  chat: {
+    loading: '加载中...',
+    clearHistory: '清除对话历史',
+    clearHistoryConfirm: '确定要清除所有对话历史吗？',
+    placeholders: {
+      chat: '输入您的消息...（Shift+Enter 换行）',
+      imageGeneration: '描述您想要生成的图片...',
+      embedding: '输入要转换为向量的文本...',
+    },
+    modelTypes: {
+      chatCompletion: '对话',
+      imageGeneration: '图片',
+      embedding: '向量',
+    },
+    cacheInfo: '{count} 张缓存图片（{size} MB）',
+    noModelsAvailable: '暂无可用模型',
+  },
   integration: '集成示例',
   manageCredits: '管理 Credits',
   creditUsage: '额度分析',

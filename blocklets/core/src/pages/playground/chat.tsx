@@ -1,3 +1,4 @@
+import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import { AI_PROVIDER_DISPLAY_NAMES } from '@blocklet/aigne-hub/api';
 import type { ModelGroup, ModelOption } from '@blocklet/aigne-hub/api/types';
 import {
@@ -98,6 +99,7 @@ const STORAGE_KEY = 'aigne-hub-selected-model';
 
 export default function Chat() {
   const { api } = useSessionContext();
+  const { t } = useLocaleContext();
   const ref = useRef<ConversationRef>(null);
   const [modelGroups, setModelGroups] = useState<ModelGroup[]>([]);
   const [model, setModel] = useState<string>('');
@@ -298,10 +300,10 @@ export default function Chat() {
 
   const handleClearHistory = useCallback(() => {
     // eslint-disable-next-line no-alert
-    if (window.confirm('Are you sure you want to clear all conversation history?')) {
+    if (window.confirm(t('chat.clearHistoryConfirm'))) {
       clearHistory();
     }
-  }, [clearHistory]);
+  }, [clearHistory, t]);
 
   const customActions = useCallback(
     (msg: MessageItem): Array<ReactNode[]> => {
@@ -343,10 +345,10 @@ export default function Chat() {
       promptProps={{
         placeholder:
           currentModelType === 'imageGeneration'
-            ? 'Describe the image you want to generate...'
+            ? t('chat.placeholders.imageGeneration')
             : currentModelType === 'embedding'
-              ? 'Enter text to convert to embedding vector...'
-              : 'Type your message... (Shift+Enter for new line)',
+              ? t('chat.placeholders.embedding')
+              : t('chat.placeholders.chat'),
         topAdornment: (
           <>
             {/* Left side: Model selector */}
@@ -371,7 +373,9 @@ export default function Chat() {
                     fontWeight: 500,
                     fontSize: '14px',
                   }}>
-                  {loading ? 'Loading...' : `${selectedModelDisplay} (${currentModelType})`}
+                  {loading
+                    ? t('chat.loading')
+                    : `${selectedModelDisplay} (${t(`chat.modelTypes.${currentModelType}`)})`}
                 </Typography>
                 <ArrowDropDown sx={{ fontSize: 20 }} />
               </Box>
@@ -382,7 +386,10 @@ export default function Chat() {
               {/* Cache info */}
               {cacheInfo.count > 0 && (
                 <Tooltip
-                  title={`${cacheInfo.count} cached images (${Math.round((cacheInfo.totalSize / 1024 / 1024) * 100) / 100} MB)`}
+                  title={t('chat.cacheInfo', {
+                    count: cacheInfo.count,
+                    size: Math.round((cacheInfo.totalSize / 1024 / 1024) * 100) / 100,
+                  })}
                   placement="top">
                   <Typography
                     variant="caption"
@@ -404,7 +411,7 @@ export default function Chat() {
               {isLoadingHistory && <CircularProgress size={16} sx={{ color: 'text.secondary' }} />}
 
               {/* Clear history button */}
-              <Tooltip title="Clear conversation history" placement="top">
+              <Tooltip title={t('chat.clearHistory')} placement="top">
                 <IconButton
                   onClick={handleClearHistory}
                   size="small"
