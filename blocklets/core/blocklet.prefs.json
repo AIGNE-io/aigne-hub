@@ -56,6 +56,19 @@
                         "x-designable-id": "870n0z9d7gj",
                         "x-index": 0
                       },
+                      "guestPlaygroundEnabled": {
+                        "type": "boolean",
+                        "title": "Enable Guest Playground",
+                        "x-decorator": "FormItem",
+                        "x-component": "Switch",
+                        "x-validator": [],
+                        "x-component-props": {},
+                        "x-decorator-props": {},
+                        "name": "guestPlaygroundEnabled",
+                        "default": true,
+                        "x-designable-id": "1chplbavzv0",
+                        "x-index": 1
+                      },
                       "creditPaymentLink": {
                         "type": "string",
                         "title": "Credit Payment Link",
@@ -83,7 +96,7 @@
                         },
                         "required": false,
                         "x-designable-id": "36uj2hjx6cg",
-                        "x-index": 1
+                        "x-index": 2
                       },
                       "newUserCreditGrantEnabled": {
                         "type": "boolean",
@@ -112,7 +125,7 @@
                         },
                         "default": true,
                         "x-designable-id": "2s5o9h6xxum",
-                        "x-index": 2
+                        "x-index": 3
                       },
                       "newUserCreditGrantAmount": {
                         "type": "number",
@@ -149,7 +162,7 @@
                           }
                         },
                         "x-designable-id": "coghf002tcn",
-                        "x-index": 3
+                        "x-index": 4
                       },
                       "creditExpirationDays": {
                         "type": "number",
@@ -202,7 +215,7 @@
                           }
                         },
                         "x-designable-id": "28c5d040bkv",
-                        "x-index": 4
+                        "x-index": 5
                       }
                     }
                   }
@@ -649,6 +662,6 @@
         }
       }
     },
-    "x-designable-id": "0w1hdjy8d5d"
+    "x-designable-id": "5dndgv4n391"
   }
 }
