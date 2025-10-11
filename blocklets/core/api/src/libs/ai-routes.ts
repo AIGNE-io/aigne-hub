@@ -48,7 +48,26 @@ export const completionsRequestSchema = Joi.object<
         })
         .when(Joi.object({ role: Joi.valid('user') }).unknown(), {
           then: Joi.object({
-            content: Joi.string().min(1).allow(null).required(),
+            content: Joi.alternatives(
+              Joi.string().allow(null, ''),
+              Joi.array().items(
+                Joi.object({
+                  type: Joi.string().valid('text', 'image_url').required(),
+                })
+                  .when(Joi.object({ type: Joi.valid('text') }).unknown(), {
+                    then: Joi.object({
+                      text: Joi.string().required(),
+                    }),
+                  })
+                  .when(Joi.object({ type: Joi.valid('image_url') }).unknown(), {
+                    then: Joi.object({
+                      imageUrl: Joi.object({
+                        url: Joi.string().required(),
+                      }).required(),
+                    }),
+                  })
+              )
+            ).required(),
             name: Joi.string().empty([null, '']),
           }),
         })
