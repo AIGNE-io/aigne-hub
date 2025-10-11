@@ -1,6 +1,6 @@
 import checkCredentials from '@api/libs/ai-credentials';
 import { getModelNameWithProvider } from '@api/libs/ai-provider';
-import { AI_PROVIDER_VALUES } from '@api/libs/constants';
+import { AIProviderType, AI_PROVIDER_VALUES } from '@api/libs/constants';
 import { Config } from '@api/libs/env';
 import logger from '@api/libs/logger';
 import modelRegistry from '@api/libs/model-registry';
@@ -489,7 +489,7 @@ router.get('/:providerId/credentials/:credentialId/check', ensureAdmin, async (r
 
     return res.json(credentialJson);
   } catch (err) {
-    return res.status(401).json({ error: 'Invalid credentials', detail: err.message });
+    return res.status(400).json({ error: 'Invalid credentials', detail: err.message });
   }
 });
 
@@ -827,6 +827,12 @@ async function getDefaultModelsFromProviders(typeFilter?: string) {
             if (typeFilter && typeFilter !== modelOption.mode) {
               return;
             }
+
+            modelOption.name =
+              providerJson.name === 'google'
+                ? (modelOption.name.replace('gemini/', '') as AIProviderType)
+                : modelOption.name;
+
             models.push({
               model: modelOption.name,
               modelDisplay: modelOption.displayName,
@@ -865,6 +871,11 @@ async function getDefaultModelsFromProviders(typeFilter?: string) {
 
 router.get('/chat/models', user, async (req, res) => {
   try {
+    if (!Config.creditBasedBillingEnabled) {
+      const defaultModels = await getDefaultModelsFromProviders(req.query.type as string);
+      return res.json(defaultModels);
+    }
+
     const where: any = {};
     if (req.query.type) {
       const requestedType = req.query.type as string;
@@ -879,6 +890,7 @@ router.get('/chat/models', user, async (req, res) => {
       const mappedType = typeFilterMap[requestedType] || requestedType;
       where.type = mappedType;
     }
+
     const modelRates = await AiModelRate.findAll({
       where,
       include: [
@@ -896,11 +908,6 @@ router.get('/chat/models', user, async (req, res) => {
         ['type', 'ASC'],
       ],
     });
-
-    if (!Config.creditBasedBillingEnabled) {
-      const defaultModels = await getDefaultModelsFromProviders(req.query.type as string);
-      return res.json(defaultModels);
-    }
 
     // Group by model name
     const modelsMap = new Map();

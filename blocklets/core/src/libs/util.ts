@@ -1,7 +1,7 @@
 import BigNumber from 'bignumber.js';
 import { joinURL } from 'ufo';
 
-const AIGNE_HUB_DID = 'z8ia3xzq2tMq8CRHfaXj1BTYJyYnEcHbqP8cJ';
+export const AIGNE_HUB_DID = 'z8ia3xzq2tMq8CRHfaXj1BTYJyYnEcHbqP8cJ';
 export const getPrefix = (): string => {
   const prefix = window.blocklet?.prefix || '/';
   const baseUrl = window.location?.origin; // required when use payment feature cross origin

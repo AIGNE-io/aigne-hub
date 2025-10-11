@@ -398,9 +398,11 @@ export async function processImageGeneration(
     };
 
     const { modelInstance } = await getImageModel(input, { req });
-    const params: { prompt: string; [key: string]: any } = camelize({ ...formatParams(), model: modelName });
-    logger.info('invoke image generation params', { params });
-
+    const params: { prompt: string; [key: string]: any } = camelize({
+      ...formatParams(),
+      model: modelName,
+      modelOptions: { model: modelName },
+    });
     const aigne = new AIGNE();
     const result = await aigne.invoke(
       modelInstance,

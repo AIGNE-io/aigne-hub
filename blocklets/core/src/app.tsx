@@ -19,6 +19,7 @@ import { TransitionProvider } from './components/loading/progress-bar';
 import { SessionProvider } from './contexts/session';
 import { translations } from './locales';
 import { HomeLazy } from './pages/home';
+import { ChatLazy } from './pages/playground';
 
 const ConfigPage = lazy(() => import('./pages/config'));
 const CreditBoardPage = lazy(() => import('./pages/customer/usage'));
@@ -90,6 +91,24 @@ function AppRoutes({ basename }: { basename: string }) {
           }
         />
         <Route key="pricing" path="/pricing" element={<PricingPage />} />
+        <Route
+          key="playground"
+          path="/playground"
+          element={
+            <Box
+              component="main"
+              sx={{ overflow: 'hidden', height: '100vh', display: 'flex', flexDirection: 'column', pb: 2 }}>
+              <Header
+                // @ts-ignore
+                maxWidth={null}
+                addons={(exists: ReactNode[]) => [<CreditButton />, ...exists]}
+              />
+              <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
+                <ChatLazy />
+              </Box>
+            </Box>
+          }
+        />
         {/* <Route path="billing/*" element={<BillingRoutes />} /> */}
         <Route
           path="*"

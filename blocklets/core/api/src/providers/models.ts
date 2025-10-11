@@ -108,10 +108,12 @@ export async function chatCompletionByFrameworkModel(
   const { modelInstance } = await getModel(input, { req: options?.req });
   const engine = new AIGNE();
 
+  const convertedMessages = await convertToFrameworkMessages(input.messages);
+
   const response = await engine.invoke(
     modelInstance,
     {
-      messages: convertToFrameworkMessages(input.messages),
+      messages: convertedMessages,
       responseFormat: input.responseFormat?.type === 'json_schema' ? input.responseFormat : { type: 'text' },
       toolChoice: input.toolChoice,
       tools: input.tools,

@@ -311,7 +311,7 @@ async function createModelCallContext({
   }
 }
 
-// 清理长时间处于processing状态的记录
+// Cleanup model call records that have been stuck in processing state beyond the specified timeout
 export async function cleanupStaleProcessingCalls(timeoutMinutes: number = 30): Promise<number> {
   try {
     const cutoffTime = getCurrentUnixTimestamp() - timeoutMinutes * 60;

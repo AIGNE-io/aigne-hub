@@ -22,6 +22,20 @@
             "x-designable-id": "doc1z1uo846",
             "x-index": 0,
             "properties": {
+              "guestPlaygroundEnabled": {
+                "type": "boolean",
+                "title": "Enable Guest Playground",
+                "x-decorator": "FormItem",
+                "x-component": "Switch",
+                "x-validator": [],
+                "x-component-props": {},
+                "x-decorator-props": {},
+                "name": "guestPlaygroundEnabled",
+                "default": false,
+                "x-designable-id": "1chplbavzv0",
+                "x-index": 0,
+                "description": "Allow guests to use the playground"
+              },
               "rfnqchxbwb4": {
                 "type": "void",
                 "x-component": "FormCollapse",
@@ -30,7 +44,7 @@
                   "bordered": false
                 },
                 "x-designable-id": "rfnqchxbwb4",
-                "x-index": 0,
+                "x-index": 1,
                 "properties": {
                   "d4bm9ro1vnh": {
                     "type": "void",
@@ -219,7 +233,7 @@
                   "bordered": false
                 },
                 "x-designable-id": "thosupmsgla",
-                "x-index": 1,
+                "x-index": 2,
                 "properties": {
                   "q5xpu8g3ptd": {
                     "type": "void",
@@ -285,7 +299,7 @@
                   "bordered": false
                 },
                 "x-designable-id": "vjyq5moqu3a",
-                "x-index": 2,
+                "x-index": 3,
                 "properties": {
                   "i28uz5lqm5h": {
                     "type": "void",
@@ -332,7 +346,7 @@
                   "bordered": false
                 },
                 "x-designable-id": "4y906v0wdpt",
-                "x-index": 3,
+                "x-index": 4,
                 "properties": {
                   "hp63pfovl7s": {
                     "type": "void",
@@ -649,6 +663,6 @@
         }
       }
     },
-    "x-designable-id": "0w1hdjy8d5d"
+    "x-designable-id": "4d8rlspayft"
   }
 }
