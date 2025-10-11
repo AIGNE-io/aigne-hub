@@ -1,7 +1,7 @@
 {
   "name": "ai-kit",
   "private": true,
-  "version": "0.4.43",
+  "version": "0.4.44",
   "workspaces": [
     "blocklets/*",
     "packages/*"
