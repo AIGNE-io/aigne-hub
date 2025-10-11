@@ -20,7 +20,6 @@ export default function Home() {
   const [showCodeModal, setShowCodeModal] = useState(false);
 
   const isCreditBillingEnabled = window.blocklet?.preferences?.creditBasedBillingEnabled;
-
   const codeExample = `import { AIGNEHubChatModel } from "@aigne/aigne-hub";
 
 const model = new AIGNEHubChatModel({
@@ -36,6 +35,61 @@ const result = await model.invoke({
   const copyCode = () => {
     navigator.clipboard.writeText(codeExample);
     Toast.success(t('codeCopied'));
+  };
+
+  // Render action buttons based on user role and billing status
+  const renderActionButtons = () => {
+    const showGuestPlayground = isCreditBillingEnabled && window.blocklet?.preferences?.guestPlaygroundEnabled;
+
+    if (!session.user) {
+      return (
+        <Button onClick={session?.login} variant="contained" size="large">
+          {t('loginToAccess')}
+        </Button>
+      );
+    }
+
+    if (isAdmin) {
+      return (
+        <>
+          <Button component={Link} to="/config" variant="contained">
+            {t('configuration')}
+          </Button>
+          <Button component={Link} to="/config/playground" variant="outlined">
+            {t('playground')}
+          </Button>
+        </>
+      );
+    }
+
+    if (isCreditBillingEnabled) {
+      return (
+        <>
+          <CreditButton variant="contained" />
+          <Button
+            component={Link}
+            to={`${joinURL(getPrefix(), '/credit-usage')}`}
+            variant="outlined"
+            startIcon={<Assessment />}>
+            {t('creditUsage')}
+          </Button>
+          <Button variant="text" startIcon={<Code />} onClick={() => setShowCodeModal(true)}>
+            {t('integration')}
+          </Button>
+          {showGuestPlayground && (
+            <Button component={Link} to="/playground" variant="outlined">
+              {t('playground')}
+            </Button>
+          )}
+        </>
+      );
+    }
+
+    return (
+      <Button variant="outlined" startIcon={<Code />} onClick={() => setShowCodeModal(true)}>
+        {t('integration')}
+      </Button>
+    );
   };
 
   return (
@@ -92,40 +146,7 @@ const result = await model.invoke({
                   justifyContent: { xs: 'center', sm: 'flex-start' },
                   gap: 2,
                 }}>
-                {isAdmin ? (
-                  <>
-                    <Button component={Link} to="/config" variant="contained">
-                      {t('configuration')}
-                    </Button>
-                    <Button component={Link} to="/config/playground" variant="outlined">
-                      {t('playground')}
-                    </Button>
-                  </>
-                ) : session.user ? (
-                  isCreditBillingEnabled ? (
-                    <>
-                      <CreditButton variant="contained" />
-                      <Button
-                        component={Link}
-                        to={`${joinURL(getPrefix(), '/credit-usage')}`}
-                        variant="outlined"
-                        startIcon={<Assessment />}>
-                        {t('creditUsage')}
-                      </Button>
-                      <Button variant="text" startIcon={<Code />} onClick={() => setShowCodeModal(true)}>
-                        {t('integration')}
-                      </Button>
-                    </>
-                  ) : (
-                    <Button variant="outlined" startIcon={<Code />} onClick={() => setShowCodeModal(true)}>
-                      {t('integration')}
-                    </Button>
-                  )
-                ) : (
-                  <Button onClick={session?.login} variant="contained" size="large">
-                    {t('loginToAccess')}
-                  </Button>
-                )}
+                {renderActionButtons()}
               </Stack>
 
               {isCreditBillingEnabled && (

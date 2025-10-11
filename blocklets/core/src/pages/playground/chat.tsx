@@ -11,9 +11,10 @@ import {
 import { ArrowDropDown, DeleteOutline, HighlightOff } from '@mui/icons-material';
 import { Box, Button, CircularProgress, IconButton, Tooltip, Typography } from '@mui/material';
 import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import ModelSelector from '../../components/model-selector';
-import { useSessionContext } from '../../contexts/session';
+import { useIsRole, useSessionContext } from '../../contexts/session';
 import { embeddingsV2Direct, imageGenerationsV2Image, textCompletionsV2 } from '../../libs/ai';
 
 interface ApiModel {
@@ -106,6 +107,17 @@ export default function Chat() {
   const [loading, setLoading] = useState(true);
   const [selectorOpen, setSelectorOpen] = useState(false);
   const [cacheInfo, setCacheInfo] = useState<{ count: number; totalSize: number }>({ count: 0, totalSize: 0 });
+  const isAdmin = useIsRole('owner', 'admin');
+  const navigate = useNavigate();
+
+  const isCreditBillingEnabled = window.blocklet?.preferences?.creditBasedBillingEnabled;
+  const showPlayground = isAdmin || (isCreditBillingEnabled && window.blocklet?.preferences?.guestPlaygroundEnabled);
+
+  useEffect(() => {
+    if (!showPlayground) {
+      navigate('/');
+    }
+  }, [showPlayground, navigate]);
 
   // Fetch models data
   useEffect(() => {
