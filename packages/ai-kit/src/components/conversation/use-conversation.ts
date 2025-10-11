@@ -293,18 +293,12 @@ export default function useConversation({
     }
   }, [enableCache]);
 
-  const getCacheInfo = useCallback(async () => {
-    // Image caching is disabled, return empty cache info
-    return { count: 0, totalSize: 0 };
-  }, []);
-
   return {
     messages,
     add,
     cancel,
     setMessages,
     clearHistory,
-    getCacheInfo,
     isLoadingHistory,
   };
 }

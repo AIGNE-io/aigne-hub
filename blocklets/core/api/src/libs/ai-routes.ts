@@ -48,7 +48,7 @@ export const completionsRequestSchema = Joi.object<
         })
         .when(Joi.object({ role: Joi.valid('user') }).unknown(), {
           then: Joi.object({
-            content: Joi.string().allow(null, '').required(),
+            content: Joi.string().min(1).allow(null).required(),
             name: Joi.string().empty([null, '']),
           }),
         })

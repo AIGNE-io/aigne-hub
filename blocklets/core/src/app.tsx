@@ -95,9 +95,18 @@ function AppRoutes({ basename }: { basename: string }) {
           key="playground"
           path="/playground"
           element={
-            <Layout>
-              <ChatLazy />
-            </Layout>
+            <Box
+              component="main"
+              sx={{ overflow: 'hidden', height: '100vh', display: 'flex', flexDirection: 'column', pb: 2 }}>
+              <Header
+                // @ts-ignore
+                maxWidth={null}
+                addons={(exists: ReactNode[]) => [<CreditButton />, ...exists]}
+              />
+              <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
+                <ChatLazy />
+              </Box>
+            </Box>
           }
         />
         {/* <Route path="billing/*" element={<BillingRoutes />} /> */}
