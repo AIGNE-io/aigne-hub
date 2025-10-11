@@ -1,7 +1,10 @@
-import { AIProviderType, SUPPORTED_PROVIDERS_SET as SUPPORTED_PROVIDERS } from '@api/libs/constants';
-import axios from 'axios';
+import { AIProviderType, AI_PROVIDERS, SUPPORTED_PROVIDERS_SET as SUPPORTED_PROVIDERS } from '@api/libs/constants';
 
 import logger from './logger';
+
+const ModelProvider = {
+  GEMINI: 'gemini',
+};
 
 interface LiteLLMModelData {
   [key: string]: {
@@ -128,8 +131,8 @@ class ModelRegistry {
     };
 
     Object.entries(rawData).forEach(([modelName, options]) => {
-      if (options.litellm_provider === 'gemini') {
-        options.litellm_provider = 'google';
+      if (options.litellm_provider === ModelProvider.GEMINI) {
+        options.litellm_provider = AI_PROVIDERS.GOOGLE;
       }
       // Skip sample spec and filtered models
       if (modelName === 'sample_spec' || this.shouldFilterModel(modelName, options)) {

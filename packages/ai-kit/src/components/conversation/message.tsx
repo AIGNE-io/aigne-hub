@@ -384,8 +384,14 @@ function CopyButton({ message }: { message: string }) {
         onMouseEnter={() => setShowTooltip(true)}
         onMouseLeave={() => setShowTooltip(false)}
         onClick={() => {
-          navigator.clipboard.writeText(message);
-          setCopied('copied');
+          navigator.clipboard
+            .writeText(message)
+            .then(() => {
+              setCopied('copied');
+            })
+            .catch((err) => {
+              console.error('Failed to copy message', err);
+            });
           setShowTooltip(false);
           setTimeout(() => setCopied(false), 2000);
         }}
