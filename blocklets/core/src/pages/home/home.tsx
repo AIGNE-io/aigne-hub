@@ -39,7 +39,7 @@ const result = await model.invoke({
 
   // Render action buttons based on user role and billing status
   const renderActionButtons = () => {
-    const showGuestPlayground = isCreditBillingEnabled && window.blocklet?.preferences?.guestPlaygroundEnabled;
+    const showGuestPlayground = window.blocklet?.preferences?.guestPlaygroundEnabled;
 
     if (!session.user) {
       return (

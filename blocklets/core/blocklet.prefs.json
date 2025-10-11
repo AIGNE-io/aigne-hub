@@ -22,6 +22,20 @@
             "x-designable-id": "doc1z1uo846",
             "x-index": 0,
             "properties": {
+              "guestPlaygroundEnabled": {
+                "type": "boolean",
+                "title": "Enable Guest Playground",
+                "x-decorator": "FormItem",
+                "x-component": "Switch",
+                "x-validator": [],
+                "x-component-props": {},
+                "x-decorator-props": {},
+                "name": "guestPlaygroundEnabled",
+                "default": false,
+                "x-designable-id": "1chplbavzv0",
+                "x-index": 0,
+                "description": "Allow guests to use the playground"
+              },
               "rfnqchxbwb4": {
                 "type": "void",
                 "x-component": "FormCollapse",
@@ -30,7 +44,7 @@
                   "bordered": false
                 },
                 "x-designable-id": "rfnqchxbwb4",
-                "x-index": 0,
+                "x-index": 1,
                 "properties": {
                   "d4bm9ro1vnh": {
                     "type": "void",
@@ -207,20 +221,6 @@
                     }
                   }
                 }
-              },
-              "guestPlaygroundEnabled": {
-                "type": "boolean",
-                "title": "Enable Guest Playground",
-                "x-decorator": "FormItem",
-                "x-component": "Switch",
-                "x-validator": [],
-                "x-component-props": {},
-                "x-decorator-props": {},
-                "name": "guestPlaygroundEnabled",
-                "default": true,
-                "x-designable-id": "1chplbavzv0",
-                "x-index": 1,
-                "description": "Allow guests to use the playground (requires \"Enable Credit Billing\" to be enabled)"
               },
               "thosupmsgla": {
                 "type": "void",

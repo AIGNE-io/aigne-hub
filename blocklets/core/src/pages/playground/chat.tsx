@@ -110,8 +110,7 @@ export default function Chat() {
   const isAdmin = useIsRole('owner', 'admin');
   const navigate = useNavigate();
 
-  const isCreditBillingEnabled = window.blocklet?.preferences?.creditBasedBillingEnabled;
-  const showPlayground = isAdmin || (isCreditBillingEnabled && window.blocklet?.preferences?.guestPlaygroundEnabled);
+  const showPlayground = isAdmin || window.blocklet?.preferences?.guestPlaygroundEnabled;
 
   useEffect(() => {
     if (!showPlayground) {
