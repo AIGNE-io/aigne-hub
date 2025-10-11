@@ -1,7 +1,6 @@
 import { cx } from '@emotion/css';
-import styled from '@emotion/styled';
 import { CheckCircleOutline, CopyAll } from '@mui/icons-material';
-import { Box, BoxProps, Button, Tooltip } from '@mui/material';
+import { Box, BoxProps, Button, Tooltip, useTheme } from '@mui/material';
 import { ChatCompletionMessageParam } from 'openai/resources/index';
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
@@ -28,10 +27,207 @@ export default function Message({
   chatLayout = 'traditional',
   ...props
 }: MessageProps) {
+  const theme = useTheme();
   const text = useMemo(
     () => (typeof message === 'string' ? message : message?.map((i) => `${i.role}: ${i.content}`).join('\n\n')),
     [message]
   );
+
+  // Create theme-based styles
+  const getMessageStyles = () => {
+    const baseStyles = {
+      '> .message-content-wrapper': {
+        '> .content': {
+          '> .message': {
+            lineHeight: 1.6,
+            fontSize: '15px',
+            '> *:first-of-type': {
+              marginTop: 0,
+            },
+            '> *:last-child': {
+              marginBottom: 0,
+            },
+            pre: {
+              lineHeight: 1.5,
+              backgroundColor: theme.palette.grey[50],
+              overflow: 'auto',
+              padding: 2,
+              borderRadius: 1,
+              border: `1px solid ${theme.palette.divider}`,
+              margin: '12px 0',
+              boxShadow: theme.shadows[1],
+              position: 'relative',
+              '&::before': {
+                content: 'attr(data-language)',
+                position: 'absolute',
+                top: 8,
+                right: 8,
+                fontSize: '11px',
+                color: theme.palette.text.disabled,
+                textTransform: 'uppercase',
+                fontWeight: 600,
+                letterSpacing: '0.5px',
+              },
+            },
+            code: {
+              backgroundColor: theme.palette.action.hover,
+              padding: '2px 6px',
+              borderRadius: 0.5,
+              fontSize: '0.9em',
+              fontFamily: '"Monaco", "Menlo", "Ubuntu Mono", "Consolas", "source-code-pro", monospace',
+            },
+            'pre code': {
+              backgroundColor: 'transparent',
+              padding: 0,
+              display: 'block',
+              border: 'none !important',
+            },
+            'ul, ol': {
+              paddingLeft: '24px',
+            },
+            li: {
+              margin: '4px 0',
+            },
+            blockquote: {
+              borderLeft: `3px solid ${theme.palette.divider}`,
+              paddingLeft: 2,
+              margin: '12px 0',
+              color: theme.palette.text.secondary,
+            },
+            table: {
+              borderCollapse: 'collapse',
+              width: '100%',
+              margin: '12px 0',
+            },
+            'th, td': {
+              border: `1px solid ${theme.palette.divider}`,
+              padding: '8px 12px',
+              textAlign: 'left',
+            },
+            th: {
+              backgroundColor: theme.palette.action.hover,
+              fontWeight: 600,
+            },
+            '&.cursor': {
+              '> *:last-child': {
+                '&:after': {
+                  content: '""',
+                  display: 'inline-block',
+                  verticalAlign: 'middle',
+                  height: '1em',
+                  marginTop: '-0.15em',
+                  marginLeft: '0.15em',
+                  borderRight: `0.15em solid ${theme.palette.primary.main}`,
+                  animation: 'blink-caret 0.75s step-end infinite',
+                  '@keyframes blink-caret': {
+                    'from, to': {
+                      borderColor: 'transparent',
+                    },
+                    '50%': {
+                      borderColor: theme.palette.primary.main,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    };
+
+    // User message styles (right-aligned with blue background)
+    if (chatLayout === 'left-right' && isUser) {
+      return {
+        ...baseStyles,
+        '> .message-content-wrapper > .content': {
+          background: theme.palette.primary.light,
+          color: theme.palette.primary.contrastText,
+          border: 'none',
+          boxShadow: theme.shadows[2],
+          position: 'relative',
+          overflow: 'visible',
+          '.message': {
+            color: theme.palette.primary.contrastText,
+            code: {
+              backgroundColor: 'rgba(255, 255, 255, 0.25)',
+              color: theme.palette.primary.contrastText,
+              border: '1px solid rgba(255, 255, 255, 0.15)',
+            },
+            pre: {
+              backgroundColor: 'rgba(0, 0, 0, 0.25)',
+              borderColor: 'rgba(255, 255, 255, 0.15)',
+              boxShadow: 'inset 0 1px 3px rgba(0, 0, 0, 0.2)',
+              code: {
+                color: 'rgba(255, 255, 255, 0.95)',
+                border: 'none !important',
+                backgroundColor: 'transparent !important',
+                padding: '0 !important',
+              },
+            },
+            a: {
+              color: theme.palette.primary.light,
+              textDecoration: 'underline',
+              textDecorationColor: 'rgba(255, 255, 255, 0.4)',
+              '&:hover': {
+                color: '#bbdefb',
+              },
+            },
+            strong: {
+              fontWeight: 600,
+              color: 'rgba(255, 255, 255, 0.98)',
+            },
+          },
+        },
+        '&:hover > .message-content-wrapper > .content': {
+          background: theme.palette.primary.main,
+        },
+      };
+    }
+
+    // AI message styles (left-aligned with light background)
+    return {
+      ...baseStyles,
+      '> .message-content-wrapper > .content': {
+        background: theme.palette.background.paper,
+        border: `1px solid ${theme.palette.divider}`,
+        boxShadow: theme.shadows[1],
+        '.message': {
+          color: theme.palette.text.primary,
+          code: {
+            background: theme.palette.grey[100],
+            border: `1px solid ${theme.palette.divider}`,
+          },
+          pre: {
+            background: theme.palette.grey[50],
+            border: `1px solid ${theme.palette.divider}`,
+            code: {
+              background: 'transparent !important',
+              border: 'none !important',
+              padding: '0 !important',
+            },
+          },
+          a: {
+            color: theme.palette.primary.main,
+            textDecoration: 'none',
+            borderBottom: `1px solid ${theme.palette.primary.light}`,
+            transition: 'all 0.2s ease',
+            '&:hover': {
+              color: theme.palette.primary.dark,
+              borderBottomColor: theme.palette.primary.dark,
+            },
+          },
+          strong: {
+            fontWeight: 600,
+            color: theme.palette.text.primary,
+          },
+        },
+      },
+      '&:hover > .message-content-wrapper > .content': {
+        background: theme.palette.grey[50],
+        borderColor: theme.palette.action.focus,
+      },
+    };
+  };
 
   // Force re-render every minute to update relative time
   const [now, setNow] = useState(Date.now());
@@ -63,7 +259,7 @@ export default function Message({
   const isLeftRight = chatLayout === 'left-right';
 
   return (
-    <Root
+    <Box
       {...props}
       display="flex"
       className={cx(isLeftRight && isUser && 'user-message', isLeftRight && !isUser && 'ai-message')}
@@ -79,6 +275,7 @@ export default function Message({
               '.content': { alignItems: 'flex-end' },
             }
           : {}),
+        ...getMessageStyles(),
         ...props.sx,
       }}>
       <Box
@@ -161,14 +358,9 @@ export default function Message({
                 p: 0.5,
                 height: 24,
                 width: 24,
-                color: 'rgba(0, 0, 0, 0.5)',
+                color: 'text.secondary',
                 borderRadius: 0.5,
                 transition: 'all 0.15s ease',
-                bgcolor: 'rgba(0, 0, 0, 0.04)',
-                '&:hover': {
-                  bgcolor: 'rgba(0, 0, 0, 0.1)',
-                  color: 'rgba(0, 0, 0, 0.8)',
-                },
               },
             }}>
             {actions}
@@ -176,7 +368,7 @@ export default function Message({
           </Box>
         </Box>
       </Box>
-    </Root>
+    </Box>
   );
 }
 
@@ -206,266 +398,3 @@ function CopyButton({ message }: { message: string }) {
     </Tooltip>
   );
 }
-const Root = styled(Box)`
-  > .message-content-wrapper {
-    > .content {
-      > .message {
-        line-height: 1.6;
-        font-size: 15px;
-
-        > *:first-of-type {
-          margin-top: 0;
-        }
-        > *:last-child {
-          margin-bottom: 0;
-        }
-
-        p {
-          margin: 0.8em 0;
-        }
-
-        pre {
-          line-height: 1.5;
-          background-color: #f6f8fa;
-          overflow: auto;
-          padding: 16px;
-          border-radius: 8px;
-          border: 1px solid rgba(0, 0, 0, 0.08);
-          margin: 12px 0;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-          position: relative;
-
-          &::before {
-            content: attr(data-language);
-            position: absolute;
-            top: 8px;
-            right: 8px;
-            font-size: 11px;
-            color: rgba(0, 0, 0, 0.4);
-            text-transform: uppercase;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-          }
-        }
-
-        code {
-          background-color: rgba(175, 184, 193, 0.2);
-          padding: 2px 6px;
-          border-radius: 4px;
-          font-size: 0.9em;
-          font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace;
-        }
-
-        pre code {
-          background-color: transparent;
-          padding: 0;
-          display: block;
-          border: none !important;
-        }
-
-        ul,
-        ol {
-          padding-left: 24px;
-        }
-
-        li {
-          margin: 4px 0;
-        }
-
-        blockquote {
-          border-left: 3px solid rgba(0, 0, 0, 0.1);
-          padding-left: 16px;
-          margin: 12px 0;
-          color: rgba(0, 0, 0, 0.7);
-        }
-
-        table {
-          border-collapse: collapse;
-          width: 100%;
-          margin: 12px 0;
-        }
-
-        th,
-        td {
-          border: 1px solid rgba(0, 0, 0, 0.1);
-          padding: 8px 12px;
-          text-align: left;
-        }
-
-        th {
-          background-color: rgba(0, 0, 0, 0.02);
-          font-weight: 600;
-        }
-
-        &.cursor {
-          > *:last-child {
-            &:after {
-              content: '';
-              display: inline-block;
-              vertical-align: middle;
-              height: 1em;
-              margin-top: -0.15em;
-              margin-left: 0.15em;
-              border-right: 0.15em solid #1976d2;
-              animation: blink-caret 0.75s step-end infinite;
-
-              @keyframes blink-caret {
-                from,
-                to {
-                  border-color: transparent;
-                }
-                50% {
-                  border-color: #1976d2;
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-
-  /* User message style (right-aligned with blue background) */
-  &.user-message {
-    > .message-content-wrapper > .content {
-      background: #64b5f6;
-      color: white;
-      border: none;
-      box-shadow:
-        0 2px 8px rgba(100, 181, 246, 0.2),
-        0 1px 3px rgba(100, 181, 246, 0.12);
-      position: relative;
-      overflow: visible;
-
-      .message {
-        color: white;
-
-        code {
-          background-color: rgba(255, 255, 255, 0.25);
-          color: white;
-          border: 1px solid rgba(255, 255, 255, 0.15);
-        }
-
-        pre {
-          background-color: rgba(0, 0, 0, 0.25);
-          border-color: rgba(255, 255, 255, 0.15);
-          box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
-
-          code {
-            color: rgba(255, 255, 255, 0.95);
-            border: none !important;
-            background-color: transparent !important;
-            padding: 0 !important;
-          }
-        }
-
-        a {
-          color: #90caf9;
-          text-decoration: underline;
-          text-decoration-color: rgba(255, 255, 255, 0.4);
-
-          &:hover {
-            color: #bbdefb;
-          }
-        }
-
-        strong {
-          font-weight: 600;
-          color: rgba(255, 255, 255, 0.98);
-        }
-      }
-    }
-
-    &:hover > .message-content-wrapper > .content {
-      background: #42a5f5;
-    }
-  }
-
-  /* AI message style (left-aligned with light background) */
-  &.ai-message {
-    > .message-content-wrapper > .content {
-      background: linear-gradient(to bottom, #ffffff 0%, #fafafa 100%);
-      border: 1px solid rgba(0, 0, 0, 0.08);
-      box-shadow:
-        0 2px 8px rgba(0, 0, 0, 0.04),
-        0 1px 2px rgba(0, 0, 0, 0.06);
-
-      .message {
-        color: rgba(0, 0, 0, 0.87);
-
-        code {
-          background: linear-gradient(to bottom, #f5f5f5, #eeeeee);
-          border: 1px solid rgba(0, 0, 0, 0.1);
-        }
-
-        pre {
-          background: linear-gradient(to bottom, #f8f9fa, #f1f3f4);
-          border: 1px solid rgba(0, 0, 0, 0.08);
-
-          code {
-            background: transparent !important;
-            border: none !important;
-            padding: 0 !important;
-          }
-        }
-
-        a {
-          color: #1976d2;
-          text-decoration: none;
-          border-bottom: 1px solid rgba(25, 118, 210, 0.3);
-          transition: all 0.2s ease;
-
-          &:hover {
-            color: #1565c0;
-            border-bottom-color: #1565c0;
-          }
-        }
-
-        strong {
-          font-weight: 600;
-          color: rgba(0, 0, 0, 0.95);
-        }
-      }
-    }
-
-    &:hover > .message-content-wrapper > .content {
-      background: linear-gradient(to bottom, #fafafa 0%, #f5f5f5 100%);
-      border-color: rgba(0, 0, 0, 0.12);
-    }
-  }
-
-  /* Traditional mode (non left-right) also shows meta on hover */
-  &:not(.user-message):not(.ai-message) {
-    > .message-content-wrapper > .content {
-      background: linear-gradient(to bottom, #ffffff 0%, #fafafa 100%);
-      border: 1px solid rgba(0, 0, 0, 0.08);
-      box-shadow:
-        0 2px 8px rgba(0, 0, 0, 0.04),
-        0 1px 2px rgba(0, 0, 0, 0.06);
-
-      .message {
-        color: rgba(0, 0, 0, 0.87);
-
-        code {
-          background: linear-gradient(to bottom, #f5f5f5, #eeeeee);
-          border: 1px solid rgba(0, 0, 0, 0.1);
-        }
-        pre {
-          background: linear-gradient(to bottom, #f8f9fa, #f1f3f4);
-          border: 1px solid rgba(0, 0, 0, 0.08);
-
-          code {
-            background: transparent !important;
-            border: none !important;
-            padding: 0 !important;
-          }
-        }
-      }
-    }
-
-    &:hover > .message-content-wrapper > .content {
-      background: linear-gradient(to bottom, #fafafa 0%, #f5f5f5 100%);
-      border-color: rgba(0, 0, 0, 0.12);
-    }
-  }
-`;
