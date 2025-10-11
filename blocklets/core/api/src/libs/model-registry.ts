@@ -1,4 +1,5 @@
 import { AIProviderType, AI_PROVIDERS, SUPPORTED_PROVIDERS_SET as SUPPORTED_PROVIDERS } from '@api/libs/constants';
+import axios from 'axios';
 
 import logger from './logger';
 

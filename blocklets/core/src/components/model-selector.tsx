@@ -184,7 +184,7 @@ export default function ModelSelector({
           {[
             { key: 'all', label: 'All Models', icon: null },
             { key: 'chatCompletion', label: 'Chat', icon: <ChatIcon viewBox="0 0 12 12" /> },
-            { key: 'imageGeneration', label: 'Image Gen', icon: <ImageIcon viewBox="0 0 12 12" /> },
+            { key: 'imageGeneration', label: 'Image', icon: <ImageIcon viewBox="0 0 12 12" /> },
             { key: 'embedding', label: 'Embedding', icon: <EmbeddingIcon viewBox="0 0 12 12" /> },
           ].map((option) => (
             <Chip
