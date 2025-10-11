@@ -7,11 +7,14 @@ import { ensureCustomer, ensureMeter, getUserCredits, paymentClient } from '@api
 import { subscribe } from '@blocklet/sdk/lib/service/eventbus';
 import merge from 'lodash/merge';
 
+import shouldExecuteTask from '../libs/master-cluster';
+
 async function markUserGranted(user: any) {
   const preSaveData = merge({}, user?.extra || {}, {
     AICreditGranted: true,
   });
   await blocklet.updateUserExtra({
+    // @ts-ignore
     did: user.did,
     extra: JSON.stringify(preSaveData),
   });
@@ -175,6 +178,10 @@ const handleUserUpdated = async (user: any) => {
 
 export function subscribeEvents() {
   subscribe((event: any) => {
+    if (!shouldExecuteTask(`subscribeEvents:${event.type}`)) {
+      return;
+    }
+
     if (event.type === 'blocklet.user.added') {
       logger.info('user.added', event.id, event.data.object?.did);
       const user = event.data.object;

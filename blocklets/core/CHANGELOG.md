@@ -1,3 +1,174 @@
+## 0.4.43 (2025-10-11)
+
+- chore: update deps
+
+## 0.4.42 (2025-10-9)
+
+- chore: update aigne deps
+
+## 0.4.41 (2025-10-9)
+
+- feat: support dynamic asset cdn host
+- chore: update deps
+
+## 0.4.40 (2025-10-7)
+
+- fix: worker-id overflow when cluster many reload
+
+## 0.4.39 (2025-9-30)
+
+- fix(core): streamline usage reporting and sort providers by display name
+
+## 0.4.38 (2025-9-29)
+
+- feat(core): optimize usage reporting with single-pass aggregation and clearer sourceData
+
+## 0.4.37 (2025-9-26)
+
+- fix: subscribe to events only in the main process to avoid duplicate listeners
+
+## 0.4.36 (2025-9-25)
+
+- feat: redesign the pricing page layout and optimize the style
+
+## 0.4.35 (2025-9-23)
+
+- feat: support latest image model of AIGNE Framework
+
+## 0.4.34 (2025-9-19)
+
+- fix: add cluster execution checks to prevent duplicate notifications
+
+## 0.4.33 (2025-9-19)
+
+- fix: correct input parameter reference in AI image generation
+
+## 0.4.32 (2025-9-17)
+
+- feat(credential): add weight-based load balancing for AI credentials
+
+## 0.4.31 (2025-9-17)
+
+- fix: improve credential validation and status checking
+
+## 0.4.30 (2025-9-17)
+
+- fix: reset credential status when update redential
+
+## 0.4.29 (2025-9-16)
+
+- chore: support doubao image model
+
+## 0.4.28 (2025-9-15)
+
+- chore: centralize snowflake ID generation into shared utility
+
+## 0.4.27 (2025-9-15)
+
+- chore: update license
+
+## 0.4.26 (2025-9-12)
+
+- fix: fail early if balance is insufficient without recording usage
+
+## 0.4.25 (2025-9-12)
+
+- fix: update error request traceid
+
+## 0.4.24 (2025-9-11)
+
+- feat: add error handling and observability tracking system
+
+## 0.4.23 (2025-9-11)
+
+- fix: add logger for catch validation error
+
+## 0.4.22 (2025-9-11)
+
+- fix(api): improve error logging in model call context
+
+## 0.4.21 (2025-9-10)
+
+- refactor: reorganize admin routing and adjust UI layout
+
+## 0.4.20 (2025-9-10)
+
+- refactor: reorganize admin routing and adjust UI layout
+
+## 0.4.19 (2025-9-10)
+
+- fix: record the traceId when calling the model
+
+## 0.4.18 (2025-9-9)
+
+- feat(api): enhance usage reporting with atomic processing and error handling
+
+## 0.4.17 (2025-9-9)
+
+- chore: support summary page
+
+## 0.4.16 (2025-9-9)
+
+- chore: upgrade aigne deps
+
+## 0.4.15 (2025-9-8)
+
+- feat: add an AI credential health check endpoint
+
+## 0.4.14 (2025-9-8)
+
+- feat: activate cluster mode capability in blocklet
+
+## 0.4.13 (2025-9-5)
+
+- fix: increase request entity size limit
+
+## 0.4.12 (2025-9-5)
+
+- fix: add type definitions and improve the type safety of the AI provider interface
+
+## 0.4.11 (2025-9-5)
+
+- fix: should use default model if client not pass model
+
+## 0.4.10 (2025-9-5)
+
+- fix: compatible with old client
+
+## 0.4.9 (2025-9-5)
+
+- chore: bump deps
+
+## 0.4.8 (2025-9-5)
+
+- fix: refine notification messages for better clarity
+- fix: improve invalid api_key warning display
+- fix: catch and handle invalid api_key errors in requests
+
+## 0.4.7 (2025-9-3)
+
+- fix: add request body validation for AIGNE Hub API endpoints
+
+## 0.4.6 (2025-9-3)
+
+- chore: lock version
+
+## 0.4.5 (2025-9-2)
+
+- chore: check credential before add credential
+
+## 0.4.4 (2025-9-2)
+
+- chore: merge model for chat api
+
+## 0.4.3 (2025-9-1)
+
+- fix: testing model availability in pricing page
+
+## 0.4.2 (2025-9-1)
+
+- feat: added support for testing model availability and displaying its status in the UI
+
 ## 0.4.1 (2025-9-1)
 
 - feat: set credit-usage private

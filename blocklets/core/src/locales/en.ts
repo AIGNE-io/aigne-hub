@@ -7,15 +7,15 @@ export default flatten({
   aiProviderSubscription: 'Subscribe to AI Service',
   aiProviderLocalAIKit: 'Local AIKit component',
   selectMonth: 'Select Month',
-  subscribeAITip: 'Subscribe to AIGNE Hub now to unlock the power of AI!',
+  subscribeAITip: 'Subscribe to AIGNE Hub now to unlock the power of AI.',
   unsubscribe: 'Unsubscribe',
-  unsubscribeTip: 'After unsubscribing, you will no longer be able to continue using the AI services we provide!',
+  unsubscribeTip: 'After unsubscribing, you will no longer be able to use the AI services we provide.',
   cancel: 'Cancel',
   unsubscribeAt: 'Unsubscribe at',
   cancelled: 'Cancelled',
   recoverSubscription: 'Recover Subscription',
-  recoverSubscriptionTip: 'After recover the subscription, you can use the AI services we provide!',
-  recoverSubscriptionSucceed: 'Subscription recover successful!',
+  recoverSubscriptionTip: 'After recovering the subscription, you can use the AI services we provide.',
+  recoverSubscriptionSucceed: 'Subscription recovery successful!',
   total: 'Total',
   monthlySpend: 'Monthly Spend',
   viewSubscriptionDetail: 'View subscription details',
@@ -59,7 +59,8 @@ export default flatten({
     },
     status: {
       available: 'Available',
-      pending: 'Pending',
+      pending: 'Never used',
+      warning: 'Unavailable',
     },
   },
 
@@ -68,8 +69,8 @@ export default flatten({
   welcomeDesc:
     'Get started by configuring AI providers to enable AI services. You can also enable Credits billing to manage user usage quotas.',
 
-  aiConfig: 'AI Config',
-  quickStarts: 'Quick Starts',
+  aiConfig: 'Config',
+  quickStarts: 'Quick Start',
   // AI Provider features
   aiProviderSettings: 'AI Provider Settings',
   aiProviderSettingsDesc: 'Configure and manage your AI service providers and API credentials',
@@ -89,7 +90,7 @@ export default flatten({
   installPaymentKit: 'Step 1: Install Payment Kit',
   updatePreferences: 'Step 2: Update AIGNE Hub Preferences',
   installPaymentKitDesc:
-    'Search and install the Payment Kit component from Blocklet Store. This is a prerequisite for enabling Credits billing. With Payment Kit, you can manage multiple payment methods and related configurations, providing users with a convenient top-up experience.',
+    'Search and install the Payment Kit component from the Blocklet Store. This is a prerequisite for enabling Credits billing. With Payment Kit, you can manage multiple payment methods and related configurations, providing users with a convenient top-up experience.',
 
   configModelRates: 'Step 3: Configure Model Rates',
   configModelRatesDesc:
@@ -100,10 +101,10 @@ export default flatten({
     chatCompletion: 'Text',
     completion: 'Text',
     imageGeneration: 'Image',
-    videoGeneration: 'Video generation',
-    audioGeneration: 'Audio generation',
+    videoGeneration: 'Video Generation',
+    audioGeneration: 'Audio Generation',
     embedding: 'Embedding',
-    transcription: 'Audio transcription',
+    transcription: 'Audio Transcription',
     speech: 'Text-to-Speech',
   },
 
@@ -403,6 +404,8 @@ export default flatten({
   analytics: {
     creditUsage: 'Credit Usage',
     creditBoardDescription: 'Monitor your model usage and manage AIGNE Hub Credits',
+    allCreditsUsage: 'All Credits Usage',
+    allCreditBoardDescription: 'Monitor all users model usage and manage AIGNE Hub Credits',
     loadingData: 'Loading data...',
     startDate: 'Start Date',
     endDate: 'End Date',
@@ -433,7 +436,7 @@ export default flatten({
     ofTotalUsage: 'of total calls',
     callHistory: 'Call History',
     callHistoryDescription: 'Detailed log of all model API calls',
-    searchPlaceholder: 'Search by model or appDid...',
+    searchPlaceholder: 'Search by model / {did}...',
     allStatus: 'All Status',
     timestamp: 'Timestamp',
     noCallsFound: 'No calls found matching your criteria',
@@ -455,4 +458,8 @@ export default flatten({
   customRange: 'Custom Range',
   dataAvailableFrom: 'Data available from 3 months ago',
   usedBy: 'Used By',
+  testStatus: 'Test Status',
+  testing: 'Testing...',
+  errorConnected: '{errorCount} of {total} is invalid',
+  export: 'Export',
 });

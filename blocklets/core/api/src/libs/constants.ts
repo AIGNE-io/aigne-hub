@@ -19,3 +19,5 @@ export type AIProviderType = (typeof AI_PROVIDERS)[keyof typeof AI_PROVIDERS];
 export const AI_PROVIDER_VALUES = Object.values(AI_PROVIDERS);
 
 export const SUPPORTED_PROVIDERS_SET = new Set(AI_PROVIDER_VALUES);
+
+export const AIGNE_HUB_DEFAULT_WEIGHT = 100;

@@ -1,13 +1,9 @@
 import { AIProviderType } from '@api/libs/constants';
 import { CreationOptional, DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequelize';
-import { Worker } from 'snowflake-uuid';
 
+import nextId from '../../libs/next-id';
 import { sequelize } from '../sequelize';
 import AiCredential from './ai-credential';
-
-const idGenerator = new Worker();
-
-const nextId = () => idGenerator.nextId().toString();
 
 export default class AiProvider extends Model<InferAttributes<AiProvider>, InferCreationAttributes<AiProvider>> {
   declare id: CreationOptional<string>;
@@ -95,9 +91,11 @@ export default class AiProvider extends Model<InferAttributes<AiProvider>, Infer
   // 获取启用的提供商
   static async getEnabledProviders(typeFilter?: string): Promise<AiProvider[]> {
     const where: any = { enabled: true };
+
     if (typeFilter) {
       where.type = typeFilter;
     }
+
     const providers = await AiProvider.findAll({
       where,
       include: [
