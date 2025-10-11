@@ -8,11 +8,11 @@
 
 **The Unified AI Gateway for the AIGNE Ecosystem**
 
-_Formerly AI Kit - evolved into the comprehensive AIGNE Hub_
+_Formerly AI Kit - Now evolved into the comprehensive AIGNE Hub_
 
 ## Overview
 
-AIGNE Hub is a unified AI gateway that manages connections to multiple LLM and AIGC providers, eliminating the complexity of handling API keys, usage tracking, and billing across different AI services. Built as a [Blocklet](https://blocklet.io) using the AIGNE framework, it has evolved from our AI Kit project to become the backbone of the entire AIGNE ecosystem.
+AIGNE Hub is a unified AI gateway that manages connections to multiple LLM and AIGC providers, eliminating the complexity of handling API keys, usage tracking, and billing across different AI services. Built as a [Blocklet](https://blocklet.io) using the AIGNE framework, it evolved from our AI Kit project to become the backbone of the entire AIGNE ecosystem.
 
 Whether you're building applications with the AIGNE framework, using AIGNE Studio, or developing with the AIGNE CLI, AIGNE Hub seamlessly provides unified AI capabilities behind the scenes.
 
@@ -45,7 +45,7 @@ Whether you're building applications with the AIGNE framework, using AIGNE Studi
 
 Perfect for internal teams and organizations requiring data control:
 
-- Deploy within your own infrastructure
+- Deploy within your infrastructure
 - No external billing - pay providers directly
 - Keep all data within your security perimeter
 - Ideal for corporate AI initiatives and development teams
@@ -75,9 +75,9 @@ Turn AIGNE Hub into a customer-facing AI service:
 
 ### For Internal Use
 
-3. **Start Using**: Your AIGNE Hub is ready for team use with OAuth or direct API access
+3. **Start Using**: Your AIGNE Hub is ready for team usage with OAuth or direct API access
 
-### For Service Providers
+### For Service Provider
 
 3. **Enable Billing**: Install Payment Kit, configure rates, and set up customer flows
 

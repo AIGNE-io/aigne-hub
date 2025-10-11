@@ -15,7 +15,7 @@ export class Lock {
 
   acquire() {
     return new Promise((resolve) => {
-      // If someone has the lock, wait until they release it and try again
+      // If somebody has the lock, wait until he/she releases the lock and try again
       if (this.locked) {
         const tryAcquire = () => {
           if (!this.locked) {

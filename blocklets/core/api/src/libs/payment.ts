@@ -511,7 +511,7 @@ export function getSubscriptionDescription() {
   return ['[AI Service]', config.env.appName, `<${parseURL(config.env.appUrl).host}>`].join(' ');
 }
 
-// Auto-update subscription description in payment
+// 更新 payment 中订阅的描述
 export function autoUpdateSubscriptionMeta() {
   function updateDescription() {
     const subscriptionDescription = getSubscriptionDescription();

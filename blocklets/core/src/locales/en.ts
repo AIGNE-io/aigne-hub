@@ -8,7 +8,7 @@ export default flatten({
   usage: 'Usage',
   aiProvider: 'AI Provider',
   aiProviderSubscription: 'Subscribe to AI Service',
-  aiProviderLocalAIKit: 'Local AIGNE Hub component',
+  aiProviderLocalAIKit: 'Local AIKit component',
   selectMonth: 'Select Month',
   subscribeAITip: 'Subscribe to AIGNE Hub to unlock AI capabilities.',
   unsubscribe: 'Unsubscribe',
@@ -17,12 +17,13 @@ export default flatten({
   unsubscribeAt: 'Unsubscribe at',
   cancelled: 'Cancelled',
   recoverSubscription: 'Recover Subscription',
-  recoverSubscriptionTip: 'After recovering your subscription, you can resume using our AI services.',
+  recoverSubscriptionTip: 'After recovering the subscription, you can use the AI services we provide.',
   recoverSubscriptionSucceed: 'Subscription recovery successful!',
   total: 'Total',
   monthlySpend: 'Monthly Spend',
   viewSubscriptionDetail: 'View subscription details',
-  subscriptionPastDueTip: 'Your subscription is overdue. Please make a payment promptly to restore your service.',
+  subscriptionPastDueTip:
+    'Your subscription is overdue. Please make a payment promptly to restore your subscription service.',
   payNow: 'Pay Now',
   enterHint: 'Press Enter to create',
   type: 'Type',
@@ -153,7 +154,7 @@ export default flatten({
         modelDisplay: {
           label: 'Display Name',
           placeholder: 'Auto-generated from model name',
-          description: 'Model display name for UI (optional)',
+          description: 'Model display name for UI presentation (optional)',
         },
         rateType: {
           label: 'Rate Type',

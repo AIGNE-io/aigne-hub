@@ -1,11 +1,12 @@
-// Subscription is for v1 version subscription errors, will be deprecated in new versions but kept for compatibility
+// Subscription 为v1版本订阅错误, 新版本将废弃，保留是为了兼容
 export enum SubscriptionErrorType {
   UNSUBSCRIBED = 'UNSUBSCRIBED',
   UNKNOWN = 'UNKNOWN',
 }
 
 const SubscriptionErrors: Record<SubscriptionErrorType, string> = {
-  [SubscriptionErrorType.UNSUBSCRIBED]: 'To continue using this service, please subscribe to AIGNE Hub',
+  [SubscriptionErrorType.UNSUBSCRIBED]:
+    'Hello, in order to continue chatting, please first subscribe to AI-KIT service',
   [SubscriptionErrorType.UNKNOWN]: 'An unknown error occurred',
 };
 
@@ -23,7 +24,7 @@ export class SubscriptionError extends Error {
   }
 }
 
-// ConfigError is for v2 version configuration errors, used for v1 version subscription errors
+// ConfigError 为v2版本配置错误, 用于v1版本订阅错误
 export enum ConfigErrorType {
   UNKNOWN = 'UNKNOWN',
   MISSING_API_KEY = 'MISSING_API_KEY',
@@ -32,9 +33,10 @@ export enum ConfigErrorType {
 
 const ConfigErrors: Record<ConfigErrorType, string> = {
   [ConfigErrorType.UNKNOWN]: 'An unknown error occurred',
-  [ConfigErrorType.MISSING_API_KEY]: 'To continue, please configure your API key in the dashboard.',
+  [ConfigErrorType.MISSING_API_KEY]:
+    'Hello, in order to continue chatting, please first configure the API key in the dashboard.',
   [ConfigErrorType.MISSING_DASHBOARD_CONFIG]:
-    'Unable to connect to AIGNE Hub: missing baseUrl or accessKey.\nIf you are an administrator, please configure them in the dashboard.\nIf you are not an administrator, please contact your system administrator for assistance.',
+    'Unable to connect to AIGNE Hub: missing baseUrl or accessKey.\n If you are an administrator, please configure them in the dashboard.\n If you are not an administrator, please contact your system admin for assistance.',
 };
 
 export class ConfigError extends Error {
@@ -63,7 +65,8 @@ export enum CreditErrorType {
 }
 
 const CreditErrors: Record<CreditErrorType, string> = {
-  [CreditErrorType.NOT_ENOUGH]: 'Insufficient credits to continue. Please purchase credits using the link below.',
+  [CreditErrorType.NOT_ENOUGH]:
+    'Hello, in order to continue chatting, please first buy some credits in the link below.',
   [CreditErrorType.UNKNOWN]: 'An unknown error occurred',
 };
 
