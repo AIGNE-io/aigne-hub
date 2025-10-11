@@ -27,41 +27,44 @@ export interface CreditGrantedNotificationTemplateContext extends BaseNotificati
 function translate(key: string, locale: string, params?: Record<string, any>): string {
   const translations = {
     en: {
-      'notification.creditGranted.welcomeTitle': 'Welcome to AIGNE Hub!',
+      'notification.creditGranted.welcomeTitle': 'Welcome to AIGNE Hub! Your AI credits are ready',
       'notification.creditGranted.welcomeBody':
-        'Your account is now active with {grantedAmount} in credits. Start using AI services now! Credits expire {expiresAt}.',
+        'Your AIGNE Hub account has been activated with {grantedAmount} in credits. Use them to access our AI services until {expiresAt}. Start exploring now!',
       'notification.creditGranted.welcomeBodyNoExpire':
-        'Your account is now active with {grantedAmount} in credits. Start using AI services anytime!',
+        'Your AIGNE Hub account has been activated with {grantedAmount} in credits. Use them to access our AI services anytime.',
 
-      'notification.creditGranted.title': 'Credits Added',
+      'notification.creditGranted.title': 'Your AIGNE Hub account has been credited',
       'notification.creditGranted.body':
-        '{grantedAmount} in credits have been added to your account. Valid until {expiresAt}.',
-      'notification.creditGranted.bodyNoExpire': '{grantedAmount} in credits have been added to your account.',
+        'Your AIGNE Hub account has received {grantedAmount} in credits. Use them to call AI services until {expiresAt}.',
+      'notification.creditGranted.bodyNoExpire':
+        'Your AIGNE Hub account has received {grantedAmount} in credits. Use them to call AI services anytime.',
 
-      'notification.creditGranted.grantedCredit': 'Amount',
-      'notification.creditGranted.validUntil': 'Valid Until',
-      'notification.creditGranted.neverExpires': 'Never Expires',
+      'notification.creditGranted.grantedCredit': 'Credit Amount',
+      'notification.creditGranted.validUntil': 'Valid until',
+      'notification.creditGranted.neverExpires': 'No expiration',
       'notification.common.account': 'Account',
       'notification.common.viewCreditGrant': 'View Credits',
-      'notification.common.aiServicesHint': 'Use credits to access AI services',
+      'notification.common.aiServicesHint': 'Use credits to access all AIGNE Hub AI services',
     },
     zh: {
-      'notification.creditGranted.welcomeTitle': '欢迎使用 AIGNE Hub！',
+      'notification.creditGranted.welcomeTitle': '欢迎来到 AIGNE Hub！AI额度已激活',
       'notification.creditGranted.welcomeBody':
-        '您的账户已激活，现有 {grantedAmount} Credits。立即开始使用 AI 服务！Credits 有效期至 {expiresAt}',
+        '您的 AIGNE Hub 账户已激活 {grantedAmount} 额度，可用于调用平台所有AI服务至 {expiresAt}。立即体验！',
       'notification.creditGranted.welcomeBodyNoExpire':
-        '您的账户已激活，现有 {grantedAmount} Credits。随时开始使用 AI 服务！',
+        '您的 AIGNE Hub 账户已激活 {grantedAmount} 额度，可随时调用平台AI服务。',
 
-      'notification.creditGranted.title': 'Credits 已添加',
-      'notification.creditGranted.body': '已向您的账户添加 {grantedAmount} Credits，有效期至 {expiresAt}',
-      'notification.creditGranted.bodyNoExpire': '已向您的账户添加 {grantedAmount} Credits',
+      'notification.creditGranted.title': '您的 AIGNE Hub 账户额度已更新',
+      'notification.creditGranted.body':
+        '您的 AIGNE Hub 账户已获得 {grantedAmount} 额度，有效期至 {expiresAt}，可用于所有AI服务调用。',
+      'notification.creditGranted.bodyNoExpire':
+        '您的 AIGNE Hub 账户已获得 {grantedAmount} 额度，可随时用于AI服务调用。',
 
-      'notification.creditGranted.grantedCredit': '金额',
+      'notification.creditGranted.grantedCredit': '额度',
       'notification.creditGranted.validUntil': '有效期至',
-      'notification.creditGranted.neverExpires': '永不过期',
+      'notification.creditGranted.neverExpires': '永久有效',
       'notification.common.account': '账户',
-      'notification.common.viewCreditGrant': '查看 Credits',
-      'notification.common.aiServicesHint': '使用 Credits 访问 AI 服务',
+      'notification.common.viewCreditGrant': '查看额度',
+      'notification.common.aiServicesHint': '额度可用于调用 AIGNE Hub 平台所有AI服务',
     },
   };
 

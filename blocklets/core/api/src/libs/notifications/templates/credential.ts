@@ -25,7 +25,7 @@ function translate(key: string, locale: string, params?: Record<string, any>): s
   const translations = {
     en: {
       title: 'AIGNE Hub Credential Invalid',
-      body: 'The credential {credentialName} ({credentialValue}) for {provider} is invalid. Please update or verify this credential to continue.',
+      body: 'Your Credential {credentialName}({credentialValue}) for {provider} is invalid, Please update or verify this credential to continue using the service.',
       credentials: 'Manage Credentials',
       provider: 'Provider',
       credentialName: 'Credential Name',
@@ -33,18 +33,18 @@ function translate(key: string, locale: string, params?: Record<string, any>): s
       errorMessage: 'Invalid Reason',
       validTitle: 'AIGNE Hub Credential Alive',
       validBody:
-        'The credential {credentialName} ({credentialValue}) for {provider} has been restored and is working again.',
+        'Your credential {credentialName}({credentialValue}) for {provider} has been restored. You can now continue using the service.',
     },
     zh: {
-      title: 'AIGNE Hub 凭证无效',
-      body: '{provider} 的凭证 {credentialName} ({credentialValue}) 无效，请更新或验证该凭证以继续使用',
+      title: 'AIGNE Hub 凭证错误',
+      body: '您在 {provider} 使用的 {credentialName}({credentialValue}) 无效, 请更新或验证该凭证以继续使用服务。',
       credentials: '管理凭证',
-      provider: '提供商',
+      provider: '提供者',
       credentialName: '凭证名称',
       credentialValue: '凭证值',
       errorMessage: '错误原因',
       validTitle: 'AIGNE Hub 凭证已恢复',
-      validBody: '{provider} 的凭证 {credentialName} ({credentialValue}) 已恢复正常',
+      validBody: '您在 {provider} 使用的凭证 {credentialName}({credentialValue}) 已恢复正常，现在可以继续使用服务。',
     },
   };
 
