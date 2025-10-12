@@ -1,3 +1,4 @@
+import Actions from '@app/components/actions';
 import { getPrefix } from '@app/libs/util';
 import Dialog from '@arcblock/ux/lib/Dialog';
 /* eslint-disable react/no-unstable-nested-components */
@@ -6,8 +7,8 @@ import Toast from '@arcblock/ux/lib/Toast';
 import { Switch, Table } from '@blocklet/aigne-hub/components';
 import { formatError } from '@blocklet/error';
 import styled from '@emotion/styled';
-import { Add as AddIcon } from '@mui/icons-material';
-import { Avatar, Box, Button, Stack, Typography } from '@mui/material';
+import { Add as AddIcon, InfoOutlined, Settings as SettingsIcon } from '@mui/icons-material';
+import { Avatar, Box, Button, Stack, Tooltip, Typography } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { joinURL } from 'ufo';
 
@@ -184,6 +185,7 @@ export default function AIProviders() {
     {
       name: 'provider',
       label: t('provider'),
+      width: 250,
       options: {
         customBodyRender: (_value: any, tableMeta: any) => {
           const provider = providers[tableMeta.rowIndex];
@@ -205,25 +207,23 @@ export default function AIProviders() {
     {
       name: 'endpoint',
       label: t('endpointRegion'),
-      width: 280,
       options: {
         customBodyRender: (_value: any, tableMeta: any) => {
           const provider = providers[tableMeta.rowIndex];
           if (!provider) return null;
 
           // 如果是AWS Bedrock，只显示region
-          if (provider.name === 'bedrock') {
-            return <Typography variant="body2">{provider.region || '-'}</Typography>;
-          }
+          const isBedrock = provider.name === 'bedrock';
 
           return (
-            <Box>
-              {provider.baseUrl && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              {isBedrock && <Typography variant="body2">{provider.region || '-'}</Typography>}
+              {!isBedrock && provider.baseUrl && (
                 <Typography variant="body2" sx={{ mb: 0.5 }}>
                   {provider.baseUrl}
                 </Typography>
               )}
-              {provider.region && (
+              {!isBedrock && provider.region && (
                 <Typography
                   variant="caption"
                   sx={{
@@ -239,8 +239,17 @@ export default function AIProviders() {
     },
     {
       name: 'credentials',
-      label: t('credentials'),
       options: {
+        customHeadLabelRender: () => {
+          return (
+            <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              {t('credentials')}
+              <Tooltip title={t('credentialTooltip')} placement="top">
+                <InfoOutlined sx={{ fontSize: 16, color: 'text.secondary', cursor: 'help' }} />
+              </Tooltip>
+            </Typography>
+          );
+        },
         customBodyRender: (_value: any, tableMeta: any) => {
           const provider = providers[tableMeta.rowIndex];
           if (!provider) return null;
@@ -251,9 +260,15 @@ export default function AIProviders() {
               <Typography
                 variant="body2"
                 sx={{
-                  color: 'text.secondary',
-                }}>
-                0 {t('credentialCount')}
+                  cursor: 'pointer',
+                  color: 'primary.main',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                }}
+                onClick={() => setCredentialsProvider(provider)}>
+                <AddIcon sx={{ fontSize: 16, color: 'primary.main' }} />
+                {t('addNow')}
               </Typography>
             );
           }
@@ -263,12 +278,22 @@ export default function AIProviders() {
             : null;
 
           return (
-            <Typography
-              variant="body2"
-              sx={{ cursor: 'pointer', color: errorCredential ? 'warning.main' : 'primary.main' }}
-              onClick={() => setCredentialsProvider(provider)}>
-              {credentialCount} {t('credentialCount')}
-            </Typography>
+            <Tooltip title={t('manageCredentials')} placement="top">
+              <Typography
+                variant="body2"
+                sx={{
+                  cursor: 'pointer',
+                  color: errorCredential ? 'warning.main' : 'primary.main',
+                  display: 'flex',
+                  alignItems: 'center',
+                  width: 'fit-content',
+                  gap: 1,
+                }}
+                onClick={() => setCredentialsProvider(provider)}>
+                <SettingsIcon sx={{ fontSize: 16, color: 'primary.main' }} />
+                {t(credentialCount > 1 ? 'credentialCountPlural' : 'credentialCount', { count: credentialCount })}
+              </Typography>
+            </Tooltip>
           );
         },
       },
@@ -343,16 +368,21 @@ export default function AIProviders() {
         customBodyRender: (_value: any, tableMeta: any) => {
           const provider = providers[tableMeta.rowIndex];
           if (!provider) return null;
-
           return (
-            <Stack direction="row" spacing={1}>
-              <Button size="small" onClick={() => handleEditProvider(provider)} sx={{ minWidth: 'auto', px: 1 }}>
-                {t('edit')}
-              </Button>
-              <Button size="small" onClick={() => setCredentialsProvider(provider)} sx={{ minWidth: 'auto', px: 1 }}>
-                {t('configureCredentials')}
-              </Button>
-            </Stack>
+            <Actions
+              actions={[
+                {
+                  label: t('manageCredentials'),
+                  handler: () => setCredentialsProvider(provider),
+                  color: 'text.secondary',
+                },
+                {
+                  label: provider.baseUrl ? t('editEndpointTip') : t('editRegionTip'),
+                  handler: () => handleEditProvider(provider),
+                  color: 'text.secondary',
+                },
+              ]}
+            />
           );
         },
       },

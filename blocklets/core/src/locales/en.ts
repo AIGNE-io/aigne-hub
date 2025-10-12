@@ -1,6 +1,9 @@
 import { flatten } from 'flat';
 
 export default flatten({
+  common: {
+    redirecting: 'Redirecting...',
+  },
   locale: 'en',
   usage: 'Usage',
   aiProvider: 'AI Provider',
@@ -31,7 +34,7 @@ export default flatten({
   pricing: {
     title: 'AIGNE Hub Model Pricing',
     subtitle:
-      'Transparent pricing, pay-as-you-use. Explore our rich AI model library and find the models that best fit your project',
+      'Transparent pricing, pay as you go. Explore our extensive AI model library and find the models that best fit your project',
     searchPlaceholder: 'Search model names, providers...',
     filters: {
       providers: 'Supported Providers',
@@ -85,16 +88,16 @@ export default flatten({
   enableCreditsDesc: 'Configure credit-based billing model to manage user usage quotas',
   creditsConfigTitle: 'Enable Credits Billing Feature',
   creditsConfigDesc:
-    'After enabling this feature, users need to purchase Credits to use AI services. Please follow these steps to configure:',
+    'After enabling this feature, users will need to purchase Credits to use AI services. Please follow these steps to configure:',
   gotoConfig: 'Go to Configuration',
   installPaymentKit: 'Step 1: Install Payment Kit',
   updatePreferences: 'Step 2: Update AIGNE Hub Preferences',
   installPaymentKitDesc:
-    'Search and install the Payment Kit component from the Blocklet Store. This is a prerequisite for enabling Credits billing. With Payment Kit, you can manage multiple payment methods and related configurations, providing users with a convenient top-up experience.',
+    'Search for and install the Payment Kit component from the Blocklet Store. This is a prerequisite for enabling Credits billing. Payment Kit allows you to manage multiple payment methods and related configurations, providing users with a convenient top-up experience.',
 
   configModelRates: 'Step 3: Configure Model Rates',
   configModelRatesDesc:
-    'You can go to the "AI Config - Model Rates" page to configure the pricing rates for different AI models and providers. You can set different rates for each model and select different providers.',
+    'Go to the "AI Config - Model Rates" page to configure pricing rates for different AI models and providers. You can set different rates for each model and select different providers.',
 
   // Types
   modelTypes: {
@@ -179,7 +182,7 @@ export default flatten({
         providers: {
           label: 'Providers',
           tooltip: 'Select which AI providers support this model',
-          required: 'Please select at least one provider',
+          required: 'At least one provider must be selected',
         },
         description: {
           label: 'Description',
@@ -308,30 +311,35 @@ export default flatten({
 
   // AI Providers page
   aiProviders: 'AI Providers Settings',
-  aiProvidersDesc: 'Manage your AI service providers and API credentials',
+  aiProvidersDesc: 'Manage AI service providers and API credentials',
   addProvider: 'Add Provider',
   editProvider: 'Edit Provider',
   awsRegionDesc: 'AWS region where your Bedrock service is located',
   provider: 'Provider',
   providerName: 'Provider',
-  providerNameRequired: 'Please select provider',
+  providerNameRequired: 'Provider selection is required',
   providerInfo: 'Provider Information',
   baseUrl: 'Base URL',
   region: 'Region',
-  regionRequired: 'Please enter region',
+  regionRequired: 'Region is required',
   endpointRegion: 'Endpoint / Region',
+  editEndpointTip: 'Edit Endpoint',
+  editRegionTip: 'Edit Region',
   enabled: 'Enabled',
   disabled: 'Disabled',
   connected: 'Connected',
   disconnected: 'Disconnected',
   status: 'Status',
-  enableStatus: 'Enable Status',
+  enableStatus: 'Enable',
   actions: 'Actions',
-  configureCredentials: 'Configure Credentials',
 
   // Credentials
   credentials: 'Credentials',
-  credentialCount: 'credentials',
+  credentialTooltip:
+    'Authentication details for service access (e.g., AWS "Access Key + Secret Key" or LLM "API Key")—enter required sensitive info for valid access.',
+  credentialCount: '{count} credential',
+  credentialCountPlural: '{count} credentials',
+  addNow: 'Add Now',
   addCredential: 'Add Credential',
   editCredential: 'Edit Credential',
   deleteCredential: 'Delete Credential',
@@ -371,12 +379,31 @@ export default flatten({
   submitFailed: 'Submit failed',
 
   // Home page
-  homeSubtitle: 'The decentralized AI access solution for blocklets',
+  homeSubtitle: 'A decentralized AI access solution for blocklets',
   creditBillingInfo:
-    'AIGNE Hub has enabled Credit-Based Billing. You can choose to buy credits or manage your credit balance.',
+    'AIGNE Hub has enabled credit-based billing. You can purchase credits or manage your credit balance.',
   loginToAccess: 'Login to Access',
   configuration: 'Configuration',
   playground: 'Playground',
+
+  // Chat/Conversation related
+  chat: {
+    loading: 'Loading...',
+    clearHistory: 'Clear conversation history',
+    clearHistoryConfirm: 'Are you sure you want to clear all conversation history?',
+    placeholders: {
+      chat: 'Type your message... (Shift+Enter for new line)',
+      imageGeneration: 'Describe the image you want to generate...',
+      embedding: 'Enter text to convert to embedding vector...',
+    },
+    modelTypes: {
+      chatCompletion: 'Chat',
+      imageGeneration: 'Image',
+      embedding: 'Embedding',
+    },
+    cacheInfo: '{count} cached images ({size} MB)',
+    noModelsAvailable: 'No models available',
+  },
   integration: 'Integration',
   manageCredits: 'Manage Credits',
   creditUsage: 'Credit Usage',

@@ -4,60 +4,51 @@ import AiProvider from '@api/store/models/ai-provider';
 import { ChatCompletionChunk, ChatCompletionInput, ChatCompletionResponse } from '@blocklet/aigne-hub/api/types';
 import { CustomError } from '@blocklet/error';
 
-export function convertToFrameworkMessages(
+export async function convertToFrameworkMessages(
   messages: ChatCompletionInput['messages']
-): import('@aigne/core').ChatModelInputMessage[] {
-  return messages.map((message): import('@aigne/core').ChatModelInputMessage => {
-    switch (message.role) {
-      case 'system':
-        return {
-          role: 'system' as const,
-          content: message.content,
-        };
+): Promise<import('@aigne/core').ChatModelInputMessage[]> {
+  return Promise.all(
+    messages.map(async (message): Promise<import('@aigne/core').ChatModelInputMessage> => {
+      switch (message.role) {
+        case 'system':
+          return {
+            role: 'system' as const,
+            content: message.content,
+          };
 
-      case 'user':
-        return {
-          role: 'user' as const,
-          content:
-            typeof message.content === 'string'
-              ? message.content
-              : message.content.map((item) => {
-                  if (item.type === 'text') {
-                    return { type: 'text', text: item.text };
-                  }
-                  if (item.type === 'image_url') {
-                    return { type: 'url', url: item.imageUrl.url };
-                  }
-                  return item;
-                }),
-        };
+        case 'user':
+          return {
+            role: 'user' as const,
+            content: message.content as string,
+          };
 
-      case 'assistant':
-        return {
-          role: 'agent' as const,
-          content: message.content,
-          toolCalls: message.toolCalls?.map((call) => ({
-            id: call.id,
-            type: 'function' as const,
-            function: {
-              name: call.function.name,
-              arguments: call.function.arguments as unknown as Message,
-            },
-          })),
-        };
+        case 'assistant':
+          return {
+            role: 'agent' as const,
+            content: message.content,
+            toolCalls: message.toolCalls?.map((call) => ({
+              id: call.id,
+              type: 'function' as const,
+              function: {
+                name: call.function.name,
+                arguments: call.function.arguments as unknown as Message,
+              },
+            })),
+          };
 
-      case 'tool':
-        return {
-          role: 'tool' as const,
-          content: message.content,
-          toolCallId: message.toolCallId,
-        };
+        case 'tool':
+          return {
+            role: 'tool' as const,
+            content: message.content,
+            toolCallId: message.toolCallId,
+          };
 
-      default:
-        // @ts-ignore
-        throw new CustomError(400, `Unknown message role: ${message.role}`);
-    }
-  });
+        default:
+          // @ts-ignore
+          throw new CustomError(400, `Unknown message role: ${message.role}`);
+      }
+    })
+  );
 }
 
 export async function* adaptStreamToOldFormat(
