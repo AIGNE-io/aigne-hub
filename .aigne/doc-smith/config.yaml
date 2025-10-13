@@ -1,0 +1,75 @@
+# Project information for documentation publishing
+projectName: aigne-hub
+projectDesc: AIGNE Hub is the default multi-provider LLM/GPT adapter and API key
+  usage manager for all AIGNE-based apps and Blocklets.
+projectLogo: https://avatars.githubusercontent.com/u/143965177?v=4
+
+# =============================================================================
+# Documentation Configuration
+# =============================================================================
+
+# Purpose: What's the main outcome you want readers to achieve?
+# Available options (uncomment and modify as needed):
+#   getStarted       - Get started quickly: Help new users go from zero to working in <30 minutes
+#   completeTasks    - Complete specific tasks: Guide users through common workflows and use cases
+#   findAnswers      - Find answers fast: Provide searchable reference for all features and APIs
+#   understandSystem - Understand the system: Explain how it works, why design decisions were made
+#   solveProblems    - Troubleshoot common issues: Help users troubleshoot and fix issues
+#   mixedPurpose     - Serve multiple purposes: Comprehensive documentation covering multiple needs
+documentPurpose:
+  - understandSystem
+
+# Target Audience: Who will be reading this most often?
+# Available options (uncomment and modify as needed):
+#   endUsers         - End users (non-technical): People who use the product but don't code
+#   developers       - Developers integrating your product/API: Engineers adding this to their projects
+#   devops           - DevOps / SRE / Infrastructure teams: Teams deploying, monitoring, maintaining systems
+#   decisionMakers   - Technical decision makers: Architects, leads evaluating or planning implementation
+#   supportTeams     - Support teams: People helping others use the product
+#   mixedTechnical   - Mixed technical audience: Developers, DevOps, and technical users
+targetAudienceTypes:
+  - devops
+
+# Reader Knowledge Level: What do readers typically know when they arrive?
+# Available options (uncomment and modify as needed):
+#   completeBeginners    - Is a total beginner, starting from scratch: New to this domain/technology entirely
+#   domainFamiliar       - Has used similar tools before: Know the problem space, new to this specific solution
+#   experiencedUsers     - Is an expert trying to do something specific: Regular users needing reference/advanced topics
+#   emergencyTroubleshooting - Emergency/troubleshooting: Something's broken, need to fix it quickly
+#   exploringEvaluating  - Is evaluating this tool against others: Trying to understand if this fits their needs
+readerKnowledgeLevel: experiencedUsers
+
+# Documentation Depth: How comprehensive should the documentation be?
+# Available options (uncomment and modify as needed):
+#   essentialOnly      - Essential only: Cover the 80% use cases, keep it concise
+#   balancedCoverage   - Balanced coverage: Good depth with practical examples [RECOMMENDED]
+#   comprehensive      - Comprehensive: Cover all features, edge cases, and advanced scenarios
+#   aiDecide           - Let AI decide: Analyze code complexity and suggest appropriate depth
+documentationDepth: balancedCoverage
+
+# Custom Rules: Define specific documentation generation rules and requirements
+rules: "Do not generate any content about how to contribute to the project, do not include any content that you are not sure"
+
+# Target Audience: Describe your specific target audience and their characteristics
+targetAudience: ""
+
+# Glossary: Define project-specific terms and definitions
+# glossary: "@glossary.md"  # Path to markdown file containing glossary definitions
+
+locale: en
+# translateLanguages:  # List of languages to translate the documentation to
+#   - zh  # Example: Chinese translation
+#   - en  # Example: English translation
+docsDir: .aigne/doc-smith/docs  # Directory to save generated documentation
+sourcesPath:  # Source code paths to analyze
+  - ./README.md
+  - ./blocklets/core/blocklet.md
+  - ./blocklets/core/api/src
+  - ./blocklets/core/src/
+  - ./overview.png
+  - ./blocklets/core/screenshots
+lastGitHead: 8794e0eaa8316a750c81df1d20968c3b481821c5
+appUrl: https://staging.docsmith.aigne.io
+boardId: ai-kit
+# Checkout ID for document deployment service
+checkoutId: ""

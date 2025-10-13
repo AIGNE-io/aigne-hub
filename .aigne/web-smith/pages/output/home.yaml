@@ -1,0 +1,1783 @@
+id: 616571b7c79a8472
+createdAt: 2025-09-20T00:03:04.800Z
+updatedAt: 2025-09-20T00:03:04.800Z
+publishedAt: 2025-09-20T00:03:04.800Z
+isPublic: true
+locales:
+  en:
+    backgroundColor: ""
+    style:
+      maxWidth: custom:1560px
+      paddingX: large
+    title: "AIGNE Hub: The Unified Gateway for All LLM Providers"
+    description: Simplify AI development with AIGNE Hub. Connect to OpenAI, Claude,
+      Gemini, and more through a single API, dashboard, and security model.
+      Self-host for full control.
+    image: mediakit://overview.png
+    header:
+      sticky: true
+sections:
+  82242c237be7bc6a:
+    id: 82242c237be7bc6a
+    component: layout-block
+    name: hero
+    config:
+      gridSettings:
+        desktop:
+          e12a52130347da02:
+            x: 0
+            y: 0
+            w: 6
+            h: 1
+          6b809366c82a0ae8:
+            x: 0
+            y: 1
+            w: 6
+            h: 1
+          b2765b982789c1e8:
+            x: 0
+            y: 2
+            w: 6
+            h: 1
+          56ce298ac921359e:
+            x: 6
+            y: 0
+            w: 6
+            h: 3
+        mobile:
+          e12a52130347da02:
+            x: 0
+            y: 0
+            w: 12
+            h: 1
+          6b809366c82a0ae8:
+            x: 0
+            y: 1
+            w: 12
+            h: 1
+          56ce298ac921359e:
+            x: 0
+            y: 2
+            w: 12
+            h: 1
+          b2765b982789c1e8:
+            x: 0
+            y: 3
+            w: 12
+            h: 1
+      gap: normal
+      paddingX: normal
+      paddingY: large
+    sections:
+      e12a52130347da02:
+        id: e12a52130347da02
+        name: RichTextTitle
+        component: custom-component
+        config:
+          componentId: xoHu0J44322kDYc-
+          useCache: true
+      6b809366c82a0ae8:
+        id: 6b809366c82a0ae8
+        name: RichTextDescription
+        component: custom-component
+        config:
+          componentId: xoHu0J44322kDYc-
+          useCache: true
+      56ce298ac921359e:
+        id: 56ce298ac921359e
+        name: MediaImage
+        component: custom-component
+        config:
+          componentId: xoHu0JPjPs122kaaa-
+          useCache: true
+      b2765b982789c1e8:
+        id: b2765b982789c1e8
+        name: ActionButton
+        component: custom-component
+        config:
+          componentId: a44r0SiGV9AFn2Fj
+          useCache: true
+    sectionIds:
+      - e12a52130347da02
+      - 6b809366c82a0ae8
+      - 56ce298ac921359e
+      - b2765b982789c1e8
+  f5867f5f715daadd:
+    id: f5867f5f715daadd
+    component: layout-block
+    name: keyFeatures
+    config:
+      gridSettings:
+        desktop:
+          d9ed72f6c019fdf2:
+            x: 0
+            y: 0
+            w: 12
+            h: 1
+          2b8b5199dbc85729:
+            x: 0
+            y: 1
+            w: 6
+            h: 1
+          c919982c8989485e:
+            x: 6
+            y: 1
+            w: 6
+            h: 1
+          ffae2a1fe9a3e36f:
+            x: 0
+            y: 2
+            w: 6
+            h: 1
+          63330e85f3dec4ce:
+            x: 6
+            y: 2
+            w: 6
+            h: 1
+        mobile:
+          d9ed72f6c019fdf2:
+            x: 0
+            y: 0
+            w: 12
+            h: 1
+          2b8b5199dbc85729:
+            x: 0
+            y: 1
+            w: 12
+            h: 1
+          c919982c8989485e:
+            x: 0
+            y: 2
+            w: 12
+            h: 1
+          ffae2a1fe9a3e36f:
+            x: 0
+            y: 3
+            w: 12
+            h: 1
+          63330e85f3dec4ce:
+            x: 0
+            y: 4
+            w: 12
+            h: 1
+      gap: normal
+      paddingX: normal
+      paddingY: large
+    sections:
+      d9ed72f6c019fdf2:
+        id: d9ed72f6c019fdf2
+        name: RichTextTitle
+        component: custom-component
+        config:
+          componentId: xoHu0J44322kDYc-
+          useCache: true
+      2b8b5199dbc85729:
+        id: 2b8b5199dbc85729
+        component: layout-block
+        name: TitleDescription
+        config:
+          gridSettings:
+            desktop:
+              d8a9c07716beff46:
+                x: 0
+                y: 0
+                w: 12
+                h: 1
+              8f868a0bbe526786:
+                x: 0
+                y: 1
+                w: 12
+                h: 1
+            mobile:
+              d8a9c07716beff46:
+                x: 0
+                y: 0
+                w: 12
+                h: 1
+              8f868a0bbe526786:
+                x: 0
+                y: 1
+                w: 12
+                h: 1
+          gap: normal
+          paddingX: normal
+          paddingY: normal
+        sections:
+          d8a9c07716beff46:
+            id: d8a9c07716beff46
+            name: RichTextTitle
+            component: custom-component
+            config:
+              componentId: xoHu0J44322kDYc-
+              useCache: true
+          8f868a0bbe526786:
+            id: 8f868a0bbe526786
+            name: RichTextDescription
+            component: custom-component
+            config:
+              componentId: xoHu0J44322kDYc-
+              useCache: true
+        sectionIds:
+          - d8a9c07716beff46
+          - 8f868a0bbe526786
+      c919982c8989485e:
+        id: c919982c8989485e
+        component: layout-block
+        name: TitleDescription
+        config:
+          gridSettings:
+            desktop:
+              4094222647d56f7e:
+                x: 0
+                y: 0
+                w: 12
+                h: 1
+              9916622dce190015:
+                x: 0
+                y: 1
+                w: 12
+                h: 1
+            mobile:
+              4094222647d56f7e:
+                x: 0
+                y: 0
+                w: 12
+                h: 1
+              9916622dce190015:
+                x: 0
+                y: 1
+                w: 12
+                h: 1
+          gap: normal
+          paddingX: normal
+          paddingY: normal
+        sections:
+          4094222647d56f7e:
+            id: 4094222647d56f7e
+            name: RichTextTitle
+            component: custom-component
+            config:
+              componentId: xoHu0J44322kDYc-
+              useCache: true
+          9916622dce190015:
+            id: 9916622dce190015
+            name: RichTextDescription
+            component: custom-component
+            config:
+              componentId: xoHu0J44322kDYc-
+              useCache: true
+        sectionIds:
+          - 4094222647d56f7e
+          - 9916622dce190015
+      ffae2a1fe9a3e36f:
+        id: ffae2a1fe9a3e36f
+        component: layout-block
+        name: TitleDescription
+        config:
+          gridSettings:
+            desktop:
+              04d2de18399bc7ac:
+                x: 0
+                y: 0
+                w: 12
+                h: 1
+              f9739fe393cb3a79:
+                x: 0
+                y: 1
+                w: 12
+                h: 1
+            mobile:
+              04d2de18399bc7ac:
+                x: 0
+                y: 0
+                w: 12
+                h: 1
+              f9739fe393cb3a79:
+                x: 0
+                y: 1
+                w: 12
+                h: 1
+          gap: normal
+          paddingX: normal
+          paddingY: normal
+        sections:
+          04d2de18399bc7ac:
+            id: 04d2de18399bc7ac
+            name: RichTextTitle
+            component: custom-component
+            config:
+              componentId: xoHu0J44322kDYc-
+              useCache: true
+          f9739fe393cb3a79:
+            id: f9739fe393cb3a79
+            name: RichTextDescription
+            component: custom-component
+            config:
+              componentId: xoHu0J44322kDYc-
+              useCache: true
+        sectionIds:
+          - 04d2de18399bc7ac
+          - f9739fe393cb3a79
+      63330e85f3dec4ce:
+        id: 63330e85f3dec4ce
+        component: layout-block
+        name: TitleDescription
+        config:
+          gridSettings:
+            desktop:
+              e11fae49b61deb9e:
+                x: 0
+                y: 0
+                w: 12
+                h: 1
+              b8336d0b0b6a6514:
+                x: 0
+                y: 1
+                w: 12
+                h: 1
+            mobile:
+              e11fae49b61deb9e:
+                x: 0
+                y: 0
+                w: 12
+                h: 1
+              b8336d0b0b6a6514:
+                x: 0
+                y: 1
+                w: 12
+                h: 1
+          gap: normal
+          paddingX: normal
+          paddingY: normal
+        sections:
+          e11fae49b61deb9e:
+            id: e11fae49b61deb9e
+            name: RichTextTitle
+            component: custom-component
+            config:
+              componentId: xoHu0J44322kDYc-
+              useCache: true
+          b8336d0b0b6a6514:
+            id: b8336d0b0b6a6514
+            name: RichTextDescription
+            component: custom-component
+            config:
+              componentId: xoHu0J44322kDYc-
+              useCache: true
+        sectionIds:
+          - e11fae49b61deb9e
+          - b8336d0b0b6a6514
+    sectionIds:
+      - d9ed72f6c019fdf2
+      - 2b8b5199dbc85729
+      - c919982c8989485e
+      - ffae2a1fe9a3e36f
+      - 63330e85f3dec4ce
+  b38024eccec532c9:
+    id: b38024eccec532c9
+    component: layout-block
+    name: coreCapabilities
+    config:
+      gridSettings:
+        desktop:
+          744427bda4f4b326:
+            x: 0
+            y: 0
+            w: 12
+            h: 1
+          dc7e567342ab9d8f:
+            x: 0
+            y: 1
+            w: 12
+            h: 1
+          21e44fa3a1e79c89:
+            x: 0
+            y: 2
+            w: 12
+            h: 2
+        mobile:
+          744427bda4f4b326:
+            x: 0
+            y: 0
+            w: 12
+            h: 1
+          dc7e567342ab9d8f:
+            x: 0
+            y: 1
+            w: 12
+            h: 1
+          21e44fa3a1e79c89:
+            x: 0
+            y: 2
+            w: 12
+            h: 2
+      gap: normal
+      paddingX: normal
+      paddingY: large
+    sections:
+      744427bda4f4b326:
+        id: 744427bda4f4b326
+        name: RichTextTitle
+        component: custom-component
+        config:
+          componentId: xoHu0J44322kDYc-
+          useCache: true
+      dc7e567342ab9d8f:
+        id: dc7e567342ab9d8f
+        name: RichTextDescription
+        component: custom-component
+        config:
+          componentId: xoHu0J44322kDYc-
+          useCache: true
+      21e44fa3a1e79c89:
+        id: 21e44fa3a1e79c89
+        name: CodeBlock
+        component: custom-component
+        config:
+          componentId: 2EHGy3vwxlS9JGr2
+          useCache: true
+    sectionIds:
+      - 744427bda4f4b326
+      - dc7e567342ab9d8f
+      - 21e44fa3a1e79c89
+  55a04171b66f26e9:
+    id: 55a04171b66f26e9
+    component: layout-block
+    name: supportedProviders
+    config:
+      gridSettings:
+        desktop:
+          8ea0140d35b5440f:
+            x: 0
+            y: 0
+            w: 12
+            h: 1
+          b2af08a8b4c1e97f:
+            x: 0
+            y: 1
+            w: 4
+            h: 1
+          44391b0fe8376926:
+            x: 4
+            y: 1
+            w: 4
+            h: 1
+          c3e2467aafc66e9c:
+            x: 8
+            y: 1
+            w: 4
+            h: 1
+          3c37a2cae5c16de4:
+            x: 2
+            y: 2
+            w: 4
+            h: 1
+          2dab0495d47afe15:
+            x: 6
+            y: 2
+            w: 4
+            h: 1
+        mobile:
+          8ea0140d35b5440f:
+            x: 0
+            y: 0
+            w: 12
+            h: 1
+          b2af08a8b4c1e97f:
+            x: 0
+            y: 1
+            w: 12
+            h: 1
+          44391b0fe8376926:
+            x: 0
+            y: 2
+            w: 12
+            h: 1
+          c3e2467aafc66e9c:
+            x: 0
+            y: 3
+            w: 12
+            h: 1
+          3c37a2cae5c16de4:
+            x: 0
+            y: 4
+            w: 12
+            h: 1
+          2dab0495d47afe15:
+            x: 0
+            y: 5
+            w: 12
+            h: 1
+      gap: normal
+      paddingX: normal
+      paddingY: large
+    sections:
+      8ea0140d35b5440f:
+        id: 8ea0140d35b5440f
+        name: RichTextTitle
+        component: custom-component
+        config:
+          componentId: xoHu0J44322kDYc-
+          useCache: true
+      b2af08a8b4c1e97f:
+        id: b2af08a8b4c1e97f
+        component: layout-block
+        name: TitleDescription
+        config:
+          gridSettings:
+            desktop:
+              56c5134b852f8253:
+                x: 0
+                y: 0
+                w: 12
+                h: 1
+              14a0c8bb4c7a5a3e:
+                x: 0
+                y: 1
+                w: 12
+                h: 1
+            mobile:
+              56c5134b852f8253:
+                x: 0
+                y: 0
+                w: 12
+                h: 1
+              14a0c8bb4c7a5a3e:
+                x: 0
+                y: 1
+                w: 12
+                h: 1
+          gap: normal
+          paddingX: normal
+          paddingY: normal
+        sections:
+          56c5134b852f8253:
+            id: 56c5134b852f8253
+            name: RichTextTitle
+            component: custom-component
+            config:
+              componentId: xoHu0J44322kDYc-
+              useCache: true
+          14a0c8bb4c7a5a3e:
+            id: 14a0c8bb4c7a5a3e
+            name: RichTextDescription
+            component: custom-component
+            config:
+              componentId: xoHu0J44322kDYc-
+              useCache: true
+        sectionIds:
+          - 56c5134b852f8253
+          - 14a0c8bb4c7a5a3e
+      44391b0fe8376926:
+        id: 44391b0fe8376926
+        component: layout-block
+        name: TitleDescription
+        config:
+          gridSettings:
+            desktop:
+              2e8e9e3344daa1b9:
+                x: 0
+                y: 0
+                w: 12
+                h: 1
+              7ea2ff0872a569e7:
+                x: 0
+                y: 1
+                w: 12
+                h: 1
+            mobile:
+              2e8e9e3344daa1b9:
+                x: 0
+                y: 0
+                w: 12
+                h: 1
+              7ea2ff0872a569e7:
+                x: 0
+                y: 1
+                w: 12
+                h: 1
+          gap: normal
+          paddingX: normal
+          paddingY: normal
+        sections:
+          2e8e9e3344daa1b9:
+            id: 2e8e9e3344daa1b9
+            name: RichTextTitle
+            component: custom-component
+            config:
+              componentId: xoHu0J44322kDYc-
+              useCache: true
+          7ea2ff0872a569e7:
+            id: 7ea2ff0872a569e7
+            name: RichTextDescription
+            component: custom-component
+            config:
+              componentId: xoHu0J44322kDYc-
+              useCache: true
+        sectionIds:
+          - 2e8e9e3344daa1b9
+          - 7ea2ff0872a569e7
+      c3e2467aafc66e9c:
+        id: c3e2467aafc66e9c
+        component: layout-block
+        name: TitleDescription
+        config:
+          gridSettings:
+            desktop:
+              e628c8bbc2561000:
+                x: 0
+                y: 0
+                w: 12
+                h: 1
+              357b857d22d74a46:
+                x: 0
+                y: 1
+                w: 12
+                h: 1
+            mobile:
+              e628c8bbc2561000:
+                x: 0
+                y: 0
+                w: 12
+                h: 1
+              357b857d22d74a46:
+                x: 0
+                y: 1
+                w: 12
+                h: 1
+          gap: normal
+          paddingX: normal
+          paddingY: normal
+        sections:
+          e628c8bbc2561000:
+            id: e628c8bbc2561000
+            name: RichTextTitle
+            component: custom-component
+            config:
+              componentId: xoHu0J44322kDYc-
+              useCache: true
+          357b857d22d74a46:
+            id: 357b857d22d74a46
+            name: RichTextDescription
+            component: custom-component
+            config:
+              componentId: xoHu0J44322kDYc-
+              useCache: true
+        sectionIds:
+          - e628c8bbc2561000
+          - 357b857d22d74a46
+      3c37a2cae5c16de4:
+        id: 3c37a2cae5c16de4
+        component: layout-block
+        name: TitleDescription
+        config:
+          gridSettings:
+            desktop:
+              103f45a1c4a2a78c:
+                x: 0
+                y: 0
+                w: 12
+                h: 1
+              8e811aaa662287ad:
+                x: 0
+                y: 1
+                w: 12
+                h: 1
+            mobile:
+              103f45a1c4a2a78c:
+                x: 0
+                y: 0
+                w: 12
+                h: 1
+              8e811aaa662287ad:
+                x: 0
+                y: 1
+                w: 12
+                h: 1
+          gap: normal
+          paddingX: normal
+          paddingY: normal
+        sections:
+          103f45a1c4a2a78c:
+            id: 103f45a1c4a2a78c
+            name: RichTextTitle
+            component: custom-component
+            config:
+              componentId: xoHu0J44322kDYc-
+              useCache: true
+          8e811aaa662287ad:
+            id: 8e811aaa662287ad
+            name: RichTextDescription
+            component: custom-component
+            config:
+              componentId: xoHu0J44322kDYc-
+              useCache: true
+        sectionIds:
+          - 103f45a1c4a2a78c
+          - 8e811aaa662287ad
+      2dab0495d47afe15:
+        id: 2dab0495d47afe15
+        component: layout-block
+        name: TitleDescription
+        config:
+          gridSettings:
+            desktop:
+              32a506556a0e7808:
+                x: 0
+                y: 0
+                w: 12
+                h: 1
+              12516ebaa733dc28:
+                x: 0
+                y: 1
+                w: 12
+                h: 1
+            mobile:
+              32a506556a0e7808:
+                x: 0
+                y: 0
+                w: 12
+                h: 1
+              12516ebaa733dc28:
+                x: 0
+                y: 1
+                w: 12
+                h: 1
+          gap: normal
+          paddingX: normal
+          paddingY: normal
+        sections:
+          32a506556a0e7808:
+            id: 32a506556a0e7808
+            name: RichTextTitle
+            component: custom-component
+            config:
+              componentId: xoHu0J44322kDYc-
+              useCache: true
+          12516ebaa733dc28:
+            id: 12516ebaa733dc28
+            name: RichTextDescription
+            component: custom-component
+            config:
+              componentId: xoHu0J44322kDYc-
+              useCache: true
+        sectionIds:
+          - 32a506556a0e7808
+          - 12516ebaa733dc28
+    sectionIds:
+      - 8ea0140d35b5440f
+      - b2af08a8b4c1e97f
+      - 44391b0fe8376926
+      - c3e2467aafc66e9c
+      - 3c37a2cae5c16de4
+      - 2dab0495d47afe15
+  08d2dcdf82606bbd:
+    id: 08d2dcdf82606bbd
+    component: layout-block
+    name: developerToolkit
+    config:
+      gridSettings:
+        desktop:
+          624449424bb975bc:
+            x: 0
+            y: 0
+            w: 12
+            h: 1
+          f277b4bfe40825dd:
+            x: 0
+            y: 1
+            w: 4
+            h: 1
+          1d2621839a318585:
+            x: 4
+            y: 1
+            w: 4
+            h: 1
+          4bc7530670e532b9:
+            x: 8
+            y: 1
+            w: 4
+            h: 1
+        mobile:
+          624449424bb975bc:
+            x: 0
+            y: 0
+            w: 12
+            h: 1
+          f277b4bfe40825dd:
+            x: 0
+            y: 1
+            w: 12
+            h: 1
+          1d2621839a318585:
+            x: 0
+            y: 2
+            w: 12
+            h: 1
+          4bc7530670e532b9:
+            x: 0
+            y: 3
+            w: 12
+            h: 1
+      gap: normal
+      paddingX: normal
+      paddingY: large
+    sections:
+      624449424bb975bc:
+        id: 624449424bb975bc
+        name: RichTextTitle
+        component: custom-component
+        config:
+          componentId: xoHu0J44322kDYc-
+          useCache: true
+      f277b4bfe40825dd:
+        id: f277b4bfe40825dd
+        component: layout-block
+        name: HeroSection
+        config:
+          gridSettings:
+            desktop:
+              e943d7d964904e44:
+                x: 0
+                y: 0
+                w: 8
+                h: 1
+              80d9ec7f1e3c2879:
+                x: 0
+                y: 1
+                w: 8
+                h: 1
+              4ae4ce3108438eb9:
+                x: 0
+                y: 2
+                w: 4
+                h: 1
+            mobile:
+              e943d7d964904e44:
+                x: 0
+                y: 0
+                w: 12
+                h: 1
+              80d9ec7f1e3c2879:
+                x: 0
+                y: 1
+                w: 12
+                h: 1
+              4ae4ce3108438eb9:
+                x: 0
+                y: 2
+                w: 12
+                h: 1
+          gap: normal
+          paddingX: normal
+          paddingY: large
+          alignContent: center
+          justifyContent: center
+        sections:
+          e943d7d964904e44:
+            id: e943d7d964904e44
+            name: RichTextTitle
+            component: custom-component
+            config:
+              componentId: xoHu0J44322kDYc-
+              useCache: true
+          80d9ec7f1e3c2879:
+            id: 80d9ec7f1e3c2879
+            name: RichTextDescription
+            component: custom-component
+            config:
+              componentId: xoHu0J44322kDYc-
+              useCache: true
+          4ae4ce3108438eb9:
+            id: 4ae4ce3108438eb9
+            name: ActionButton
+            component: custom-component
+            config:
+              componentId: a44r0SiGV9AFn2Fj
+              useCache: true
+        sectionIds:
+          - e943d7d964904e44
+          - 80d9ec7f1e3c2879
+          - 4ae4ce3108438eb9
+      1d2621839a318585:
+        id: 1d2621839a318585
+        component: layout-block
+        name: HeroSection
+        config:
+          gridSettings:
+            desktop:
+              b84d38a5fba35cab:
+                x: 0
+                y: 0
+                w: 8
+                h: 1
+              ba5c8fb8d89a6407:
+                x: 0
+                y: 1
+                w: 8
+                h: 1
+              8461c5330e95aa3d:
+                x: 0
+                y: 2
+                w: 4
+                h: 1
+            mobile:
+              b84d38a5fba35cab:
+                x: 0
+                y: 0
+                w: 12
+                h: 1
+              ba5c8fb8d89a6407:
+                x: 0
+                y: 1
+                w: 12
+                h: 1
+              8461c5330e95aa3d:
+                x: 0
+                y: 2
+                w: 12
+                h: 1
+          gap: normal
+          paddingX: normal
+          paddingY: large
+          alignContent: center
+          justifyContent: center
+        sections:
+          b84d38a5fba35cab:
+            id: b84d38a5fba35cab
+            name: RichTextTitle
+            component: custom-component
+            config:
+              componentId: xoHu0J44322kDYc-
+              useCache: true
+          ba5c8fb8d89a6407:
+            id: ba5c8fb8d89a6407
+            name: RichTextDescription
+            component: custom-component
+            config:
+              componentId: xoHu0J44322kDYc-
+              useCache: true
+          8461c5330e95aa3d:
+            id: 8461c5330e95aa3d
+            name: ActionButton
+            component: custom-component
+            config:
+              componentId: a44r0SiGV9AFn2Fj
+              useCache: true
+        sectionIds:
+          - b84d38a5fba35cab
+          - ba5c8fb8d89a6407
+          - 8461c5330e95aa3d
+      4bc7530670e532b9:
+        id: 4bc7530670e532b9
+        component: layout-block
+        name: HeroSection
+        config:
+          gridSettings:
+            desktop:
+              75f0831720dae7b3:
+                x: 0
+                y: 0
+                w: 8
+                h: 1
+              343ed6740ef7db03:
+                x: 0
+                y: 1
+                w: 8
+                h: 1
+              6fb034b17bd5cd40:
+                x: 0
+                y: 2
+                w: 4
+                h: 1
+            mobile:
+              75f0831720dae7b3:
+                x: 0
+                y: 0
+                w: 12
+                h: 1
+              343ed6740ef7db03:
+                x: 0
+                y: 1
+                w: 12
+                h: 1
+              6fb034b17bd5cd40:
+                x: 0
+                y: 2
+                w: 12
+                h: 1
+          gap: normal
+          paddingX: normal
+          paddingY: large
+          alignContent: center
+          justifyContent: center
+        sections:
+          75f0831720dae7b3:
+            id: 75f0831720dae7b3
+            name: RichTextTitle
+            component: custom-component
+            config:
+              componentId: xoHu0J44322kDYc-
+              useCache: true
+          343ed6740ef7db03:
+            id: 343ed6740ef7db03
+            name: RichTextDescription
+            component: custom-component
+            config:
+              componentId: xoHu0J44322kDYc-
+              useCache: true
+          6fb034b17bd5cd40:
+            id: 6fb034b17bd5cd40
+            name: ActionButton
+            component: custom-component
+            config:
+              componentId: a44r0SiGV9AFn2Fj
+              useCache: true
+        sectionIds:
+          - 75f0831720dae7b3
+          - 343ed6740ef7db03
+          - 6fb034b17bd5cd40
+    sectionIds:
+      - 624449424bb975bc
+      - f277b4bfe40825dd
+      - 1d2621839a318585
+      - 4bc7530670e532b9
+  59f823abcdcb5738:
+    id: 59f823abcdcb5738
+    component: layout-block
+    name: finalCta
+    config:
+      gridSettings:
+        desktop:
+          69cbe16be1867a6c:
+            x: 0
+            y: 0
+            w: 8
+            h: 1
+          03e0c30ff074976f:
+            x: 0
+            y: 1
+            w: 8
+            h: 1
+          1590fe4c39f914f6:
+            x: 0
+            y: 2
+            w: 4
+            h: 1
+        mobile:
+          69cbe16be1867a6c:
+            x: 0
+            y: 0
+            w: 12
+            h: 1
+          03e0c30ff074976f:
+            x: 0
+            y: 1
+            w: 12
+            h: 1
+          1590fe4c39f914f6:
+            x: 0
+            y: 2
+            w: 12
+            h: 1
+      gap: normal
+      paddingX: normal
+      paddingY: large
+      alignContent: center
+      justifyContent: center
+    sections:
+      69cbe16be1867a6c:
+        id: 69cbe16be1867a6c
+        name: RichTextTitle
+        component: custom-component
+        config:
+          componentId: xoHu0J44322kDYc-
+          useCache: true
+      03e0c30ff074976f:
+        id: 03e0c30ff074976f
+        name: RichTextDescription
+        component: custom-component
+        config:
+          componentId: xoHu0J44322kDYc-
+          useCache: true
+      1590fe4c39f914f6:
+        id: 1590fe4c39f914f6
+        name: ActionButton
+        component: custom-component
+        config:
+          componentId: a44r0SiGV9AFn2Fj
+          useCache: true
+    sectionIds:
+      - 69cbe16be1867a6c
+      - 03e0c30ff074976f
+      - 1590fe4c39f914f6
+sectionIds:
+  - 82242c237be7bc6a
+  - f5867f5f715daadd
+  - b38024eccec532c9
+  - 55a04171b66f26e9
+  - 08d2dcdf82606bbd
+  - 59f823abcdcb5738
+dataSource:
+  e12a52130347da02:
+    en:
+      properties:
+        gs1rn5jmxfvpxptx:
+          value:
+            text: "AIGNE Hub: The Unified Gateway for All LLM Providers"
+            style:
+              color: text.primary
+        v5utpm7bu9yvdpnq:
+          value: center
+        e8f3k7m2n9p4q1s5:
+          value: false
+        kyg0hdy5uqq4gc1o:
+          value: center
+  6b809366c82a0ae8:
+    en:
+      properties:
+        gs1rn5jmxfvpxptx:
+          value:
+            text: Connect your applications to today’s leading Large Language Models (LLMs)
+              through one API, one security model, and one intuitive dashboard.
+              Say goodbye to juggling API keys, fragmented billing systems, and
+              inconsistent integrations.
+            style:
+              color: text.secondary
+              variant: body1
+              fontSize: 18
+        v5utpm7bu9yvdpnq:
+          value: center
+        e8f3k7m2n9p4q1s5:
+          value: false
+        kyg0hdy5uqq4gc1o:
+          value: center
+  56ce298ac921359e:
+    en:
+      properties:
+        7m5pz8nefl5j9hqq:
+          value:
+            url: mediakit://overview.png
+            mediaKitUrl: ""
+            width: 100%
+            height: auto
+        70d4dvbqgjal3z6j:
+          value: transparent
+        x8beiec3fxx5des1:
+          value: 100%
+        5fjm8opvqth7wk71:
+          value: auto
+        dxn6zvv5bn6dn3mr:
+          value: cover
+        02dp1e6zfq2xwkt3:
+          value: auto
+  b2765b982789c1e8:
+    en:
+      properties:
+        b8x4m3n9kp7qtw5r:
+          value:
+            - id: ""
+              type: link
+              text: Explore on GitHub
+              url: https://github.com/AIGNE-io/aigne-hub
+              variant: contained
+              size: medium
+              target: _self
+              needLogin: false
+        v5utpm7bu9yvdpnq:
+          value: center
+        h4g7j2k8l9m5n3p6:
+          value: row
+        r8t5y6u7i1o2p3a4:
+          value: 1
+        jjq9864c7hqkr0uj:
+          value: nowrap
+        v9979xeclpsbvn0n:
+          value: center
+  d9ed72f6c019fdf2:
+    en:
+      properties:
+        gs1rn5jmxfvpxptx:
+          value:
+            text: Why AIGNE Hub?
+            style:
+              color: text.primary
+        v5utpm7bu9yvdpnq:
+          value: center
+        e8f3k7m2n9p4q1s5:
+          value: false
+        kyg0hdy5uqq4gc1o:
+          value: center
+  d8a9c07716beff46:
+    en:
+      properties:
+        gs1rn5jmxfvpxptx:
+          value:
+            text: One API, All Providers
+            style:
+              color: text.primary
+        v5utpm7bu9yvdpnq:
+          value: center
+        e8f3k7m2n9p4q1s5:
+          value: false
+        kyg0hdy5uqq4gc1o:
+          value: center
+  8f868a0bbe526786:
+    en:
+      properties:
+        gs1rn5jmxfvpxptx:
+          value:
+            text: Integrate with OpenAI, Claude, Gemini, Bedrock, and more using a single,
+              OpenAI-compatible endpoint, eliminating the need for
+              provider-specific SDKs.
+            style:
+              color: text.secondary
+              variant: body1
+              fontSize: 18
+        v5utpm7bu9yvdpnq:
+          value: center
+        e8f3k7m2n9p4q1s5:
+          value: false
+        kyg0hdy5uqq4gc1o:
+          value: center
+  4094222647d56f7e:
+    en:
+      properties:
+        gs1rn5jmxfvpxptx:
+          value:
+            text: Self-Hosted & Secure
+            style:
+              color: text.primary
+        v5utpm7bu9yvdpnq:
+          value: center
+        e8f3k7m2n9p4q1s5:
+          value: false
+        kyg0hdy5uqq4gc1o:
+          value: center
+  9916622dce190015:
+    en:
+      properties:
+        gs1rn5jmxfvpxptx:
+          value:
+            text: Deploy on your own infrastructure for complete data control. All API
+              credentials are AES-encrypted with built-in role-based access
+              controls.
+            style:
+              color: text.secondary
+              variant: body1
+              fontSize: 18
+        v5utpm7bu9yvdpnq:
+          value: center
+        e8f3k7m2n9p4q1s5:
+          value: false
+        kyg0hdy5uqq4gc1o:
+          value: center
+  04d2de18399bc7ac:
+    en:
+      properties:
+        gs1rn5jmxfvpxptx:
+          value:
+            text: Unified Dashboard
+            style:
+              color: text.primary
+        v5utpm7bu9yvdpnq:
+          value: center
+        e8f3k7m2n9p4q1s5:
+          value: false
+        kyg0hdy5uqq4gc1o:
+          value: center
+  f9739fe393cb3a79:
+    en:
+      properties:
+        gs1rn5jmxfvpxptx:
+          value:
+            text: Monitor usage, cost, and performance across all models and users in one
+              centralized location. Gain full visibility into your AI
+              operations.
+            style:
+              color: text.secondary
+              variant: body1
+              fontSize: 18
+        v5utpm7bu9yvdpnq:
+          value: center
+        e8f3k7m2n9p4q1s5:
+          value: false
+        kyg0hdy5uqq4gc1o:
+          value: center
+  e11fae49b61deb9e:
+    en:
+      properties:
+        gs1rn5jmxfvpxptx:
+          value:
+            text: Advanced Analytics & Billing
+            style:
+              color: text.primary
+        v5utpm7bu9yvdpnq:
+          value: center
+        e8f3k7m2n9p4q1s5:
+          value: false
+        kyg0hdy5uqq4gc1o:
+          value: center
+  b8336d0b0b6a6514:
+    en:
+      properties:
+        gs1rn5jmxfvpxptx:
+          value:
+            text: Track detailed usage and cost data. Implement an optional credit-based
+              billing system with custom pricing rules for monetization.
+            style:
+              color: text.secondary
+              variant: body1
+              fontSize: 18
+        v5utpm7bu9yvdpnq:
+          value: center
+        e8f3k7m2n9p4q1s5:
+          value: false
+        kyg0hdy5uqq4gc1o:
+          value: center
+  744427bda4f4b326:
+    en:
+      properties:
+        gs1rn5jmxfvpxptx:
+          value:
+            text: Unified API in Action
+            style:
+              color: text.primary
+        v5utpm7bu9yvdpnq:
+          value: center
+        e8f3k7m2n9p4q1s5:
+          value: false
+        kyg0hdy5uqq4gc1o:
+          value: center
+  dc7e567342ab9d8f:
+    en:
+      properties:
+        gs1rn5jmxfvpxptx:
+          value:
+            text: AIGNE Hub provides OpenAI-compatible endpoints for core AI tasks like Chat
+              Completions, Image Generation, and Embeddings. Integrate complex
+              multi-provider logic with simple, familiar API calls.
+            style:
+              color: text.secondary
+              variant: body1
+              fontSize: 18
+        v5utpm7bu9yvdpnq:
+          value: center
+        e8f3k7m2n9p4q1s5:
+          value: false
+        kyg0hdy5uqq4gc1o:
+          value: center
+  21e44fa3a1e79c89:
+    en:
+      properties:
+        a7frn5jmx5vpxpt3:
+          value: |
+            # Chat completion using a single endpoint for any provider
+            curl -X POST "https://your-hub.com/api/v2/chat" \
+              -H "Authorization: Bearer YOUR_ACCESS_KEY" \
+              -H "Content-Type: application/json" \
+              -d '{
+                "model": "openai/gpt-4",
+                "messages": [{"role": "user", "content": "Hello!"}]
+              }'
+        b2jrz12ik7esf93z:
+          value: api-request.sh
+        c4kvf6b7zyskk8m:
+          value: true
+  8ea0140d35b5440f:
+    en:
+      properties:
+        gs1rn5jmxfvpxptx:
+          value:
+            text: Connect to the Entire AI Ecosystem
+            style:
+              color: text.primary
+        v5utpm7bu9yvdpnq:
+          value: center
+        e8f3k7m2n9p4q1s5:
+          value: false
+        kyg0hdy5uqq4gc1o:
+          value: center
+  56c5134b852f8253:
+    en:
+      properties:
+        gs1rn5jmxfvpxptx:
+          value:
+            text: OpenAI
+            style:
+              color: text.primary
+        v5utpm7bu9yvdpnq:
+          value: center
+        e8f3k7m2n9p4q1s5:
+          value: false
+        kyg0hdy5uqq4gc1o:
+          value: center
+  14a0c8bb4c7a5a3e:
+    en:
+      properties:
+        gs1rn5jmxfvpxptx:
+          value:
+            text: Access GPT-4, GPT-4o, DALL·E 3, and embedding models for cutting-edge text
+              and image generation.
+            style:
+              color: text.secondary
+              variant: body1
+              fontSize: 18
+        v5utpm7bu9yvdpnq:
+          value: center
+        e8f3k7m2n9p4q1s5:
+          value: false
+        kyg0hdy5uqq4gc1o:
+          value: center
+  2e8e9e3344daa1b9:
+    en:
+      properties:
+        gs1rn5jmxfvpxptx:
+          value:
+            text: Anthropic
+            style:
+              color: text.primary
+        v5utpm7bu9yvdpnq:
+          value: center
+        e8f3k7m2n9p4q1s5:
+          value: false
+        kyg0hdy5uqq4gc1o:
+          value: center
+  7ea2ff0872a569e7:
+    en:
+      properties:
+        gs1rn5jmxfvpxptx:
+          value:
+            text: Leverage the Claude 3 model family (Haiku, Sonnet, Opus) for advanced
+              reasoning and long context tasks.
+            style:
+              color: text.secondary
+              variant: body1
+              fontSize: 18
+        v5utpm7bu9yvdpnq:
+          value: center
+        e8f3k7m2n9p4q1s5:
+          value: false
+        kyg0hdy5uqq4gc1o:
+          value: center
+  e628c8bbc2561000:
+    en:
+      properties:
+        gs1rn5jmxfvpxptx:
+          value:
+            text: Google Gemini
+            style:
+              color: text.primary
+        v5utpm7bu9yvdpnq:
+          value: center
+        e8f3k7m2n9p4q1s5:
+          value: false
+        kyg0hdy5uqq4gc1o:
+          value: center
+  357b857d22d74a46:
+    en:
+      properties:
+        gs1rn5jmxfvpxptx:
+          value:
+            text: Utilize Gemini Pro and Gemini Vision for powerful multimodal text and
+              image understanding capabilities.
+            style:
+              color: text.secondary
+              variant: body1
+              fontSize: 18
+        v5utpm7bu9yvdpnq:
+          value: center
+        e8f3k7m2n9p4q1s5:
+          value: false
+        kyg0hdy5uqq4gc1o:
+          value: center
+  103f45a1c4a2a78c:
+    en:
+      properties:
+        gs1rn5jmxfvpxptx:
+          value:
+            text: Amazon Bedrock
+            style:
+              color: text.primary
+        v5utpm7bu9yvdpnq:
+          value: center
+        e8f3k7m2n9p4q1s5:
+          value: false
+        kyg0hdy5uqq4gc1o:
+          value: center
+  8e811aaa662287ad:
+    en:
+      properties:
+        gs1rn5jmxfvpxptx:
+          value:
+            text: Integrate with enterprise-grade models like Claude, Titan, and Jurassic
+              through your AWS infrastructure.
+            style:
+              color: text.secondary
+              variant: body1
+              fontSize: 18
+        v5utpm7bu9yvdpnq:
+          value: center
+        e8f3k7m2n9p4q1s5:
+          value: false
+        kyg0hdy5uqq4gc1o:
+          value: center
+  32a506556a0e7808:
+    en:
+      properties:
+        gs1rn5jmxfvpxptx:
+          value:
+            text: Ollama
+            style:
+              color: text.primary
+        v5utpm7bu9yvdpnq:
+          value: center
+        e8f3k7m2n9p4q1s5:
+          value: false
+        kyg0hdy5uqq4gc1o:
+          value: center
+  12516ebaa733dc28:
+    en:
+      properties:
+        gs1rn5jmxfvpxptx:
+          value:
+            text: Run open-source models like Llama, Mistral, and CodeLlama locally for full
+              privacy and customization.
+            style:
+              color: text.secondary
+              variant: body1
+              fontSize: 18
+        v5utpm7bu9yvdpnq:
+          value: center
+        e8f3k7m2n9p4q1s5:
+          value: false
+        kyg0hdy5uqq4gc1o:
+          value: center
+  624449424bb975bc:
+    en:
+      properties:
+        gs1rn5jmxfvpxptx:
+          value:
+            text: Developer Toolkit
+            style:
+              color: text.primary
+        v5utpm7bu9yvdpnq:
+          value: center
+        e8f3k7m2n9p4q1s5:
+          value: false
+        kyg0hdy5uqq4gc1o:
+          value: center
+  e943d7d964904e44:
+    en:
+      properties:
+        gs1rn5jmxfvpxptx:
+          value:
+            text: Official Website
+            style:
+              color: text.primary
+        v5utpm7bu9yvdpnq:
+          value: center
+        e8f3k7m2n9p4q1s5:
+          value: false
+        kyg0hdy5uqq4gc1o:
+          value: center
+  80d9ec7f1e3c2879:
+    en:
+      properties:
+        gs1rn5jmxfvpxptx:
+          value:
+            text: Visit the official AIGNE Hub website for more information and product
+              updates.
+            style:
+              color: text.secondary
+              variant: body1
+              fontSize: 18
+        v5utpm7bu9yvdpnq:
+          value: center
+        e8f3k7m2n9p4q1s5:
+          value: false
+        kyg0hdy5uqq4gc1o:
+          value: center
+  4ae4ce3108438eb9:
+    en:
+      properties:
+        b8x4m3n9kp7qtw5r:
+          value:
+            - id: ""
+              type: link
+              text: Visit aigne.io
+              url: https://www.aigne.io/hub
+              variant: contained
+              size: medium
+              target: _self
+              needLogin: false
+        v5utpm7bu9yvdpnq:
+          value: center
+        h4g7j2k8l9m5n3p6:
+          value: row
+        r8t5y6u7i1o2p3a4:
+          value: 1
+        jjq9864c7hqkr0uj:
+          value: nowrap
+        v9979xeclpsbvn0n:
+          value: center
+  b84d38a5fba35cab:
+    en:
+      properties:
+        gs1rn5jmxfvpxptx:
+          value:
+            text: GitHub Repo
+            style:
+              color: text.primary
+        v5utpm7bu9yvdpnq:
+          value: center
+        e8f3k7m2n9p4q1s5:
+          value: false
+        kyg0hdy5uqq4gc1o:
+          value: center
+  ba5c8fb8d89a6407:
+    en:
+      properties:
+        gs1rn5jmxfvpxptx:
+          value:
+            text: Explore the source code, track issues, and check the project's progress.
+            style:
+              color: text.secondary
+              variant: body1
+              fontSize: 18
+        v5utpm7bu9yvdpnq:
+          value: center
+        e8f3k7m2n9p4q1s5:
+          value: false
+        kyg0hdy5uqq4gc1o:
+          value: center
+  8461c5330e95aa3d:
+    en:
+      properties:
+        b8x4m3n9kp7qtw5r:
+          value:
+            - id: ""
+              type: link
+              text: View on GitHub
+              url: https://github.com/AIGNE-io/aigne-hub
+              variant: contained
+              size: medium
+              target: _self
+              needLogin: false
+        v5utpm7bu9yvdpnq:
+          value: center
+        h4g7j2k8l9m5n3p6:
+          value: row
+        r8t5y6u7i1o2p3a4:
+          value: 1
+        jjq9864c7hqkr0uj:
+          value: nowrap
+        v9979xeclpsbvn0n:
+          value: center
+  75f0831720dae7b3:
+    en:
+      properties:
+        gs1rn5jmxfvpxptx:
+          value:
+            text: Community Forum
+            style:
+              color: text.primary
+        v5utpm7bu9yvdpnq:
+          value: center
+        e8f3k7m2n9p4q1s5:
+          value: false
+        kyg0hdy5uqq4gc1o:
+          value: center
+  343ed6740ef7db03:
+    en:
+      properties:
+        gs1rn5jmxfvpxptx:
+          value:
+            text: Join the conversation, ask questions, and connect with other developers.
+            style:
+              color: text.secondary
+              variant: body1
+              fontSize: 18
+        v5utpm7bu9yvdpnq:
+          value: center
+        e8f3k7m2n9p4q1s5:
+          value: false
+        kyg0hdy5uqq4gc1o:
+          value: center
+  6fb034b17bd5cd40:
+    en:
+      properties:
+        b8x4m3n9kp7qtw5r:
+          value:
+            - id: ""
+              type: link
+              text: Join Community
+              url: https://community.arcblock.io/discussions/boards/aigne
+              variant: contained
+              size: medium
+              target: _self
+              needLogin: false
+        v5utpm7bu9yvdpnq:
+          value: center
+        h4g7j2k8l9m5n3p6:
+          value: row
+        r8t5y6u7i1o2p3a4:
+          value: 1
+        jjq9864c7hqkr0uj:
+          value: nowrap
+        v9979xeclpsbvn0n:
+          value: center
+  69cbe16be1867a6c:
+    en:
+      properties:
+        gs1rn5jmxfvpxptx:
+          value:
+            text: Ready to Unify Your AI Stack?
+            style:
+              color: text.primary
+        v5utpm7bu9yvdpnq:
+          value: center
+        e8f3k7m2n9p4q1s5:
+          value: false
+        kyg0hdy5uqq4gc1o:
+          value: center
+  03e0c30ff074976f:
+    en:
+      properties:
+        gs1rn5jmxfvpxptx:
+          value:
+            text: AIGNE Hub is your all-in-one gateway to the modern AI stack. Launch it
+              today and start shipping smarter, faster.
+            style:
+              color: text.secondary
+              variant: body1
+              fontSize: 18
+        v5utpm7bu9yvdpnq:
+          value: center
+        e8f3k7m2n9p4q1s5:
+          value: false
+        kyg0hdy5uqq4gc1o:
+          value: center
+  1590fe4c39f914f6:
+    en:
+      properties:
+        b8x4m3n9kp7qtw5r:
+          value:
+            - id: ""
+              type: link
+              text: Launch on Blocklet Store
+              url: https://store.blocklet.dev
+              variant: contained
+              size: medium
+              target: _self
+              needLogin: false
+        v5utpm7bu9yvdpnq:
+          value: center
+        h4g7j2k8l9m5n3p6:
+          value: row
+        r8t5y6u7i1o2p3a4:
+          value: 1
+        jjq9864c7hqkr0uj:
+          value: nowrap
+        v9979xeclpsbvn0n:
+          value: center

@@ -1,0 +1,80 @@
+meta:
+  title: "AIGNE Hub: The Unified Gateway for All LLM Providers"
+  description: "Simplify AI development with AIGNE Hub. Connect to OpenAI, Claude, Gemini, and more through a single API, dashboard, and security model. Self-host for full control."
+  image: "mediakit://overview.png"
+sections:
+  - name: "hero"
+    summary: "Introduces AIGNE Hub with its primary value proposition, a compelling tagline, and a clear call-to-action. An architectural image provides a high-level overview of its role in the ecosystem."
+    title: "AIGNE Hub: The Unified Gateway for All LLM Providers"
+    description: "Connect your applications to today’s leading Large Language Models (LLMs) through one API, one security model, and one intuitive dashboard. Say goodbye to juggling API keys, fragmented billing systems, and inconsistent integrations."
+    image: "mediakit://overview.png"
+    action:
+      text: "Explore on GitHub"
+      link: "https://github.com/AIGNE-io/aigne-hub"
+  - name: "keyFeatures"
+    summary: "Highlights the core benefits of AIGNE Hub in a scannable grid format, focusing on the unified API, centralized management, flexible hosting, and robust security."
+    title: "Why AIGNE Hub?"
+    list:
+      - title: "One API, All Providers"
+        description: "Integrate with OpenAI, Claude, Gemini, Bedrock, and more using a single, OpenAI-compatible endpoint, eliminating the need for provider-specific SDKs."
+      - title: "Self-Hosted & Secure"
+        description: "Deploy on your own infrastructure for complete data control. All API credentials are AES-encrypted with built-in role-based access controls."
+      - title: "Unified Dashboard"
+        description: "Monitor usage, cost, and performance across all models and users in one centralized location. Gain full visibility into your AI operations."
+      - title: "Advanced Analytics & Billing"
+        description: "Track detailed usage and cost data. Implement an optional credit-based billing system with custom pricing rules for monetization."
+  - name: "coreCapabilities"
+    summary: "Demonstrates the practical application of AIGNE Hub with a code example for a primary use case—Chat Completions. This section provides developers with a clear, actionable example of API interaction."
+    title: "Unified API in Action"
+    description: "AIGNE Hub provides OpenAI-compatible endpoints for core AI tasks like Chat Completions, Image Generation, and Embeddings. Integrate complex multi-provider logic with simple, familiar API calls."
+    code:
+      filename: "api-request.sh"
+      content: |
+        # Chat completion using a single endpoint for any provider
+        curl -X POST "https://your-hub.com/api/v2/chat" \
+          -H "Authorization: Bearer YOUR_ACCESS_KEY" \
+          -H "Content-Type: application/json" \
+          -d '{
+            "model": "openai/gpt-4",
+            "messages": [{"role": "user", "content": "Hello!"}]
+          }'
+  - name: "supportedProviders"
+    summary: "Showcases the extensive and growing list of supported AI providers, building confidence by demonstrating the platform's wide compatibility and commitment to staying current."
+    title: "Connect to the Entire AI Ecosystem"
+    list:
+      - title: "OpenAI"
+        description: "Access GPT-4, GPT-4o, DALL·E 3, and embedding models for cutting-edge text and image generation."
+      - title: "Anthropic"
+        description: "Leverage the Claude 3 model family (Haiku, Sonnet, Opus) for advanced reasoning and long context tasks."
+      - title: "Google Gemini"
+        description: "Utilize Gemini Pro and Gemini Vision for powerful multimodal text and image understanding capabilities."
+      - title: "Amazon Bedrock"
+        description: "Integrate with enterprise-grade models like Claude, Titan, and Jurassic through your AWS infrastructure."
+      - title: "Ollama"
+        description: "Run open-source models like Llama, Mistral, and CodeLlama locally for full privacy and customization."
+  - name: "developerToolkit"
+    summary: "Provides essential resources for developers to explore the project further, including links to the official website, source code repository, and community forum."
+    title: "Developer Toolkit"
+    list:
+      - title: "Official Website"
+        description: "Visit the official AIGNE Hub website for more information and product updates."
+        action:
+          text: "Visit aigne.io"
+          link: "https://www.aigne.io/hub"
+      - title: "GitHub Repo"
+        description: "Explore the source code, track issues, and check the project's progress."
+        action:
+          text: "View on GitHub"
+          link: "https://github.com/AIGNE-io/aigne-hub"
+      - title: "Community Forum"
+        description: "Join the conversation, ask questions, and connect with other developers."
+        action:
+          text: "Join Community"
+          link: "https://community.arcblock.io/discussions/boards/aigne"
+  - name: "finalCta"
+    summary: "A final, strong call-to-action at the bottom of the page to encourage visitors to take the next step after reviewing all the information."
+    title: "Ready to Unify Your AI Stack?"
+    description: "AIGNE Hub is your all-in-one gateway to the modern AI stack. Launch it today and start shipping smarter, faster."
+    action:
+      text: "Launch on Blocklet Store"
+      link: "https://store.blocklet.dev"
