@@ -73,3 +73,7 @@ appUrl: https://staging.docsmith.aigne.io
 boardId: ai-kit
 # Checkout ID for document deployment service
 checkoutId: ""
+translateLanguages:
+  - zh
+  - zh-TW
+  - ja
