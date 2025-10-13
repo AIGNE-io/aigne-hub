@@ -1,93 +1,205 @@
-# AI Providers and Credentials
+# AI Providers
 
-Properly configuring AI providers and their credentials is the foundational step to making AIGNE Hub operational. This section guides you through adding and managing connections to various AI services via the administrative interface. Each provider entry, combined with valid credentials, enables the Hub to route API requests to the corresponding AI models.
+The AI Providers API is the central management layer for integrating and configuring various external Artificial Intelligence services. It acts as an abstraction layer, providing a unified interface for managing credentials, defining model pricing, and monitoring the health of different AI providers. This system is designed for scalability and resilience, incorporating features like encrypted credential storage and load balancing across multiple API keys.
 
-## Managing AI Providers
+## Core Concepts
 
-A provider represents a specific AI service you want to integrate with, such as OpenAI, Google Gemini, or AWS Bedrock. You must configure at least one provider for the Hub to function.
+Understanding these core concepts is essential for operating and maintaining the AI provider integrations.
 
-### Adding a New Provider
+### Providers
 
-To connect a new AI service, you need to add it as a provider in the admin dashboard. This involves specifying its type and connection details.
+A **Provider** represents an external AI service, such as OpenAI, Google Gemini, or Amazon Bedrock. Each provider is configured with essential details that allow the system to interact with its API.
 
-1.  Navigate to the **Providers** section in the admin interface.
-2.  Click on the **Add Provider** button.
-3.  Fill in the provider's configuration details in the dialog box.
+- **`name`**: A unique identifier for the provider (e.g., `openai`, `bedrock`).
+- **`displayName`**: A human-readable name for the provider.
+- **`baseUrl`**: The base endpoint for the provider's API. For some services like Amazon Bedrock, this may not be required.
+- **`region`**: The specific cloud region for services that require it (e.g., `us-east-1` for AWS).
+- **`enabled`**: A boolean flag to enable or disable the provider system-wide.
 
-![Adding a new AI Provider](https://d037b6b6b092765ccbfa58706c241622.png)
+### Credentials
 
-<x-field-group>
-  <x-field data-name="name" data-type="string" data-required="true">
-    <x-field-desc markdown>The type of the AI provider. This must be one of the supported values from the dropdown list (e.g., `openai`, `gemini`, `bedrock`).</x-field-desc>
-  </x-field>
-  <x-field data-name="displayName" data-type="string" data-required="true">
-    <x-field-desc markdown>A user-friendly name for this provider instance (e.g., `OpenAI-ProjectX`, `AWS-US-East-Bedrock`).</x-field-desc>
-  </x-field>
-  <x-field data-name="baseUrl" data-type="string" data-required="true">
-    <x-field-desc markdown>The base URL for the provider's API endpoint. For `bedrock`, this field is optional.</x-field-desc>
-  </x-field>
-  <x-field data-name="region" data-type="string" data-required="false">
-    <x-field-desc markdown>The specific cloud region for the provider, primarily required for services like AWS Bedrock.</x-field-desc>
-  </x-field>
-  <x-field data-name="enabled" data-type="boolean" data-default="true" data-required="false">
-    <x-field-desc markdown>Toggles the provider's status. If disabled, the Hub will not use this provider to serve requests.</x-field-desc>
-  </x-field>
-</x-field-group>
+Credentials are used to authenticate requests to the AI providers. The system is designed to manage multiple credentials for a single provider, enhancing reliability and throughput.
 
-### Updating and Deleting Providers
+#### Security and Encryption
 
-Once a provider is added, you can manage it from the provider list. The list displays all configured providers and their status.
+To ensure security, sensitive parts of a credential, such as the `api_key` or `secret_access_key`, are encrypted at rest using the blocklet's native `security.encrypt` function. Only non-sensitive identifiers like `access_key_id` are stored in plaintext. When credentials are retrieved via the API for display, sensitive values are masked to prevent accidental exposure.
 
-![List of configured AI Providers](https://c29f08420df8ea9a199fcb5ffe06febe.png)
+#### Credential Types
 
--   **To Update**: Click the edit icon next to a provider to modify its `displayName`, `baseUrl`, `region`, or `enabled` status.
--   **To Delete**: Click the delete icon. Note that deleting a provider will also remove all associated credentials and model rate configurations.
+- **`api_key`**: A single secret key for authentication.
+- **`access_key_pair`**: A pair of keys, typically an `access_key_id` and a `secret_access_key`.
+- **`custom`**: A flexible object structure for providers with unique authentication schemes.
 
-## Managing Credentials
+#### Load Balancing
 
-Credentials are the authentication keys required to access a provider's API. Each provider must have at least one active and valid credential.
+The system implements a smooth weighted round-robin algorithm for providers with multiple active credentials. This mechanism distributes API requests across the available keys based on their assigned weight, ensuring that no single credential becomes a bottleneck.
 
-### Adding Credentials
+- Each credential has a `weight` (defaulting to 100).
+- The algorithm selects the credential that has the highest current effective weight, then reduces its effective weight for subsequent selections.
+- This approach provides a balanced distribution of load over time, improving fault tolerance. If a credential fails, it is marked as inactive and temporarily removed from the rotation until it is re-validated.
 
-After creating a provider, you must add one or more credentials to it.
+### Model Rates
 
-1.  In the provider list, find the desired provider and click on its management options.
-2.  Select the option to add a new credential.
-3.  Enter the credential details.
+Model Rates define the cost of using a specific AI model from a provider, forming the foundation of the credit-based billing system.
 
-![Adding a new credential](https://fc46e9461382f0be7541af17ef13f632.png)
+- Each rate links a `model` (e.g., `gpt-4-turbo`) to a `providerId`.
+- It specifies the `inputRate` and `outputRate`, which represent the number of credits charged per token (or other unit).
+- Rates can also include `unitCosts` (the actual cost from the provider in USD) and `modelMetadata` such as maximum tokens and supported features (`tools`, `vision`, etc.).
 
-Upon submission, the system performs a validation check to ensure the credential is valid and can connect to the provider's service. Invalid credentials will be rejected.
+---
 
-<x-field-group>
-  <x-field data-name="name" data-type="string" data-required="true" data-desc="A descriptive name for the credential (e.g., `Team-A-Key`)."></x-field>
-  <x-field data-name="credentialType" data-type="string" data-default="api_key" data-required="true">
-    <x-field-desc markdown>The type of credential. Supported types are:
-- `api_key`: A single secret key (most common).
-- `access_key_pair`: An ID/secret pair, used by services like AWS.</x-field-desc>
-  </x-field>
-  <x-field data-name="value" data-type="string or object" data-required="true">
-    <x-field-desc markdown>The credential value(s). This will be a single string for an `api_key` or an object with `access_key_id` and `secret_access_key` for an `access_key_pair`.</x-field-desc>
-  </x-field>
-</x-field-group>
+## API Endpoints
 
-### Credential Security
+The following section details the RESTful API for managing AI providers, credentials, and model rates.
 
-AIGNE Hub ensures that all sensitive credential information is stored securely. 
+### Provider Management
 
--   **Encryption at Rest**: All secret keys (`api_key`, `secret_access_key`) are encrypted using AES before being stored in the database.
--   **Value Masking**: When credentials are displayed in the admin interface, their values are masked to prevent accidental exposure. For example, an API key `sk-abc...xyz` will be shown as `sk-a...xyz`.
+Endpoints for creating, retrieving, updating, and deleting AI providers.
 
-### Load Balancing
+- **List Providers**
+  - `GET /api/ai-providers`
+  - Retrieves a list of all configured AI providers, including their associated credentials and model rates.
 
-If you add multiple credentials to a single provider, AIGNE Hub automatically performs load balancing across them. It uses a weighted round-robin algorithm to distribute requests, selecting the least recently used, active credential. This strategy enhances both reliability and throughput.
+- **Create Provider**
+  - `POST /api/ai-providers`
+  - Creates a new AI provider. The provider `name` must be unique.
+  - **Body:**
+    ```json
+    {
+      "name": "openai",
+      "displayName": "OpenAI",
+      "baseUrl": "https://api.openai.com/v1",
+      "enabled": true
+    }
+    ```
 
-### Checking Credential Status
+- **Update Provider**
+  - `PUT /api/ai-providers/:id`
+  - Updates an existing provider's configuration.
 
-You can manually trigger a health check on any credential from the admin interface. This action re-validates the key against the provider's API and updates its `active` status. If a credential check fails, it will be marked as inactive and temporarily removed from the load-balancing pool until it is updated and passes a check.
+- **Delete Provider**
+  - `DELETE /api/ai-providers/:id`
+  - Deletes a provider and all its associated credentials and model rates.
 
-## Summary
+### Credential Management
 
-Configuring providers and their credentials is the essential first step in setting up AIGNE Hub. A correct setup ensures that the gateway can securely and reliably connect to your chosen AI services. Once your providers are configured, you can proceed to set up model-specific pricing.
+Endpoints for managing credentials for a specific provider.
 
-For the next step, see how to configure the [Credit-Based Billing](./configuration-credit-based-billing.md) system.
+- **Create Credential**
+  - `POST /api/ai-providers/:providerId/credentials`
+  - Adds a new credential to a provider. The system validates the credential against the provider's API before saving it.
+  - **Body:**
+    ```json
+    {
+      "name": "My API Key",
+      "value": "sk-...",
+      "credentialType": "api_key"
+    }
+    ```
+
+- **Update Credential**
+  - `PUT /api/ai-providers/:providerId/credentials/:credentialId`
+  - Updates an existing credential. This also triggers a re-validation.
+
+- **Delete Credential**
+  - `DELETE /api/ai-providers/:providerId/credentials/:credentialId`
+  - Removes a credential from a provider.
+
+- **Check Credential Status**
+  - `GET /api/ai-providers/:providerId/credentials/:credentialId/check`
+  - Manually triggers a validation check for a specific credential. This is useful for troubleshooting and re-activating a key that was previously marked as inactive.
+
+### Model Rate Management
+
+Endpoints for managing the pricing of AI models.
+
+- **List All Model Rates**
+  - `GET /api/ai-providers/model-rates`
+  - Retrieves a paginated and searchable list of all model rates across all providers. Supports filtering by `providerId` and `model`.
+
+- **Batch Create Model Rate**
+  - `POST /api/ai-providers/model-rates`
+  - Creates the same model rate for multiple providers simultaneously.
+  - **Body:**
+    ```json
+    {
+      "model": "claude-3-sonnet",
+      "type": "chatCompletion",
+      "inputRate": 3,
+      "outputRate": 15,
+      "providers": ["provider-id-1", "provider-id-2"]
+    }
+    ```
+
+- **Update Model Rate**
+  - `PUT /api/ai-providers/:providerId/model-rates/:rateId`
+  - Updates the rates, description, or metadata for a specific model.
+
+- **Bulk Update Rates**
+  - `POST /api/ai-providers/bulk-rate-update`
+  - Updates all model rates that have `unitCosts` defined. The new rates are calculated based on the specified `profitMargin` and `creditPrice`. This endpoint is designed for system-wide price adjustments.
+  - **Body:**
+    ```json
+    {
+      "profitMargin": 20,
+      "creditPrice": 0.001
+    }
+    ```
+
+### Model Discovery
+
+Publicly accessible endpoints used by client applications to fetch available models.
+
+- **Get Available Models**
+  - `GET /api/ai-providers/models`
+  - Returns a flattened list of all available and enabled models in LiteLLM format. This is the primary endpoint for services that need to discover models.
+
+- **Get Chat Models**
+  - `GET /api/ai-providers/chat/models`
+  - Returns a list of models grouped by model name, showing which providers support each model. This is primarily used by the UI.
+
+### System Operations
+
+Endpoints for system monitoring and maintenance tasks.
+
+- **Health Check**
+  - `GET /api/ai-providers/health`
+  - Provides a snapshot of the operational status of all credentials for all providers. It returns a JSON object indicating whether each credential is `running`. This endpoint is critical for monitoring and alerting.
+  - **Example Response:**
+    ```json
+    {
+      "providers": {
+        "openai": {
+          "Primary Key": { "running": true },
+          "Secondary Key": { "running": false }
+        }
+      },
+      "timestamp": "2023-10-27T10:00:00.000Z"
+    }
+    ```
+
+- **Test Models**
+  - `GET /api/ai-providers/test-models`
+  - Triggers an asynchronous job to test the validity and status of models associated with configured rates. This endpoint is rate-limited to prevent abuse.
+
+---
+
+## Operational Guide
+
+### Monitoring
+
+The primary endpoint for monitoring the AI provider integration is `GET /api/ai-providers/health`. This should be integrated into your existing monitoring and alerting infrastructure.
+
+- **Action:** Periodically poll the `/health` endpoint.
+- **Alert Condition:** Trigger an alert if any credential has its `running` status set to `false`.
+- **Example Check:**
+  ```bash
+  curl -s http://localhost:3030/api/ai-providers/health | jq '.providers[].[] | select(.running == false)'
+  ```
+  An alert should be triggered if the above command produces any output.
+
+### Troubleshooting
+
+- **Credential Failure:** When an API call to a provider fails due to an authentication error, the responsible credential is automatically marked as inactive (`active: false`) and an error message is stored. It is removed from the load balancing rotation.
+- **Re-activating Credentials:** To re-activate a credential, first update it with the correct key via `PUT /api/ai-providers/:providerId/credentials/:credentialId`. The system will re-validate it. Alternatively, you can use the `GET .../check` endpoint to manually trigger validation.
+- **Rate Limit on Testing:** The `GET /api/ai-providers/test-models` endpoint has a strict rate limit (5 requests per 10 minutes per user) to prevent overwhelming the downstream AI provider APIs. If you receive a `429 Too Many Requests` error, wait for the specified `retryAfter` period.

@@ -1,133 +1,85 @@
 # Data Persistence
 
-AIGNE Hub's data persistence layer is designed for simplicity, reliability, and ease of deployment. It leverages a combination of SQLite as its database engine and Sequelize as the Object-Relational Mapper (ORM). This stack provides a self-contained, serverless, and zero-configuration database solution that is ideal for a blocklet-based architecture.
+The system's data persistence layer is built upon [Sequelize](https://sequelize.org/), a promise-based Node.js ORM, and uses [SQLite](https://www.sqlite.org/index.html) as its database engine. This design choice prioritizes simplicity, ease of deployment, and minimal external dependencies, making the system self-contained and straightforward to manage.
 
-All data is stored in a single database file, `aikit.db`, located within the blocklet's data directory, ensuring data portability and straightforward backup procedures.
+## Database Configuration
 
-## Database Configuration and Optimization
+The core database configuration is managed within `blocklets/core/api/src/store/sequelize.ts`. The system connects to a single SQLite database file, ensuring all persistent data is stored in a predictable location.
 
-The Sequelize ORM connects to the SQLite database and applies several performance-enhancing PRAGMA settings to optimize for concurrency and write performance:
+-   **Connection URL**: `sqlite:${Config.dataDir}/aikit.db`
+-   **Database File**: `aikit.db` located in the configured data directory.
 
-- `pragma journal_mode = WAL`: Enables Write-Ahead Logging, which allows for higher concurrency by permitting readers to continue operating while another process is writing to the database.
-- `pragma synchronous = normal`: In WAL mode, this setting ensures that writes are still durable and synced to disk at critical checkpoints, offering a good balance between performance and data safety.
-- `pragma journal_size_limit = 67108864`: Sets a limit on the size of the WAL file to prevent it from growing indefinitely.
+### Performance & Concurrency Tuning
 
-## Core Data Models
+To optimize for concurrent read/write operations and enhance performance, several SQLite PRAGMA directives are set upon initialization. These settings are critical for maintaining system responsiveness under load.
 
-The database schema is organized into several core models that manage providers, credentials, API calls, and usage statistics. Below is a detailed breakdown of each major model.
+-   `pragma journal_mode = WAL;`: The Write-Ahead Logging (WAL) mode allows for higher concurrency by enabling readers to continue operating while another process is writing to the database. This significantly reduces reader-writer contention.
+-   `pragma synchronous = normal;`: In WAL mode, this setting ensures that write transactions are committed to the WAL file before returning, but the OS is responsible for the timing of the actual disk sync. This offers a good balance between performance and durability.
+-   `pragma journal_size_limit = 67108864;`: Sets a limit on the size of the WAL file (64 MB), preventing it from growing indefinitely and consuming excessive disk space.
 
-### Entity-Relationship Diagram
+## Schema Management & Migrations
 
-The following diagram illustrates the primary relationships between the core data models:
+Database schema migrations are handled by [Umzug](https://github.com/sequelize/umzug), ensuring that database changes are applied in a controlled, versioned, and repeatable manner. The migration logic resides in `blocklets/core/api/src/store/migrate.ts`.
 
-```d2
-direction: down
+-   **Migration Files**: Migrations are defined as `.ts` or `.js` files located within `**/migrations/` directories. Umzug automatically discovers and executes pending migrations on application startup.
+-   **Safe Schema Updates**: The system includes helper functions like `safeApplyColumnChanges` and `createIndexIfNotExists` to prevent common deployment errors. These helpers ensure that schema modifications (like adding a column or index) are only applied if they don't already exist, making migration scripts idempotent and safe to re-run.
 
-AiProvider: {
-  shape: rectangle
-  label: "AiProvider\n(e.g., OpenAI, Anthropic)"
-}
+## Data Models
 
-AiCredential: {
-  shape: rectangle
-  label: "AiCredential\n(API Keys, encrypted)"
-}
+The database schema is organized into several interconnected models that represent the core entities of the system.
 
-AiModelRate: {
-  shape: rectangle
-  label: "AiModelRate\n(Model Pricing & Metadata)"
-}
+### Overview of Core Models
 
-ModelCall: {
-  shape: rectangle
-  label: "ModelCall\n(API Call Transaction Log)"
-}
+-   **AiProvider**: Represents an external AI service provider (e.g., OpenAI, AWS Bedrock). It stores configuration details like base URL, region, and display name.
+-   **AiCredential**: Securely stores the authentication credentials for each `AiProvider`. It includes features for load balancing across multiple credentials for a single provider.
+-   **AiModelRate**: Defines the cost structure and metadata for specific AI models offered by a provider. This is used for calculating the credit cost of each API call.
+-   **ModelCall**: Acts as the primary audit and transaction log. Every AI request is recorded here, capturing details about the user, provider, model, usage metrics, and final status (success/failure).
+-   **ModelCallStat**: A performance-optimization model that stores pre-aggregated hourly and daily usage statistics derived from the `ModelCall` table. This is used to accelerate dashboard and analytics queries.
+-   **App**: Stores information about applications that are authorized to use the system, including their public keys for authentication.
+-   **Usage**: An auxiliary model for tracking token usage and credit consumption, primarily used for reporting to external payment systems.
 
-AiProvider -> AiCredential: "1..*"
-AiProvider -> AiModelRate: "1..*"
-ModelCall -> AiProvider: "belongs to"
-ModelCall -> AiCredential: "uses"
+### `AiCredential`: Security and Load Balancing
+
+The `AiCredential` model is critical for both security and system reliability.
+
+#### Credential Encryption
+
+To protect sensitive information, credential values like `api_key` and `secret_access_key` are not stored in plaintext. They are encrypted before being persisted to the database using the `@blocklet/sdk/lib/security` module. The model provides `encryptCredentialValue` and `decryptCredentialValue` methods to handle this process transparently. From an operational perspective, this means the raw database file does not expose sensitive keys, but the application's runtime environment must be secure.
+
+#### Credential Load Balancing
+
+The `getNextAvailableCredential` static method implements a smooth weighted round-robin algorithm. This allows administrators to configure multiple credentials for a single provider and distribute the API load across them based on assigned weights. This is useful for:
+
+-   **Rate Limit Distribution**: Spreading requests across multiple keys to avoid hitting provider rate limits.
+-   **High Availability**: If one credential becomes invalid, the system can continue operating with the remaining active credentials.
+-   **Usage Quota Management**: Distributing usage across different accounts or billing tiers.
+
+The algorithm maintains the current weight of each credential in memory to select the most appropriate one for the next request, ensuring an efficient and balanced distribution of traffic.
+
+### `ModelCall` and `ModelCallStat`: Analytics & Performance
+
+The system is designed to provide detailed analytics on AI model usage while maintaining a responsive user interface. This is achieved through a two-tiered data model design.
+
+1.  **Raw Data Logging (`ModelCall`)**: Every API request is recorded as a single entry in the `ModelCalls` table. This provides a granular, unabridged history for auditing, detailed analysis, and troubleshooting specific requests. However, querying this large table for aggregate statistics (e.g., daily usage trends) can be slow and resource-intensive.
+
+2.  **Pre-aggregated Caching (`ModelCallStat`)**: To solve the performance issue, the `ModelCallStat` model stores pre-computed hourly and daily summaries of the data in `ModelCall`. When analytics data is requested for a past period, the system reads from this summary table, which is significantly faster. For the current, ongoing period (e.g., today or the current hour), statistics are computed in real-time from the `ModelCall` table to ensure freshness. This caching strategy is a key architectural decision that balances data accuracy with query performance.
+
+## Operational Considerations
+
+### Backup and Restore
+
+The entire state of the system is stored in the `aikit.db` SQLite file. Backing up this single file is sufficient to preserve all data.
+
+However, due to the use of `WAL` mode, a direct file copy (`cp`) while the application is running is **not recommended**, as it can lead to a corrupt backup. The recommended procedure for creating a live backup is to use the SQLite CLI's `.backup` command:
+
+```bash
+sqlite3 /path/to/your/data/aikit.db ".backup '/path/to/your/backup/aikit.db.backup'"
 ```
 
-### AiProvider
+This command safely copies the database contents to a new file, ensuring a consistent snapshot even while the database is in use. Restoring is as simple as replacing the `aikit.db` file with the backup file while the application is stopped.
 
-This model represents an AI service provider, such as OpenAI, Google, or Anthropic. It stores configuration details for connecting to the provider's API.
+### Data Growth Management
 
-<x-field-group>
-  <x-field data-name="id" data-type="string" data-required="true" data-desc="Unique identifier for the provider."></x-field>
-  <x-field data-name="name" data-type="AIProviderType" data-required="true" data-desc="A unique string identifying the provider type (e.g., 'openai')."></x-field>
-  <x-field data-name="displayName" data-type="string" data-required="true" data-desc="The user-friendly name of the provider."></x-field>
-  <x-field data-name="baseUrl" data-type="string" data-desc="The base URL for the provider's API, allowing for custom or proxy endpoints."></x-field>
-  <x-field data-name="enabled" data-type="boolean" data-default="true" data-desc="A flag to enable or disable the provider."></x-field>
-  <x-field data-name="config" data-type="object" data-desc="A JSON object for storing provider-specific configurations."></x-field>
-</x-field-group>
+The `ModelCalls` table is designed to grow indefinitely as it logs every API transaction. For long-running deployments, this can lead to significant disk space usage and a potential decline in query performance for detailed historical searches.
 
-### AiCredential
-
-This model securely stores the credentials required to authenticate with AI providers. It supports multiple credentials per provider to enable load balancing and key rotation.
-
-<x-field-group>
-  <x-field data-name="id" data-type="string" data-required="true" data-desc="Unique identifier for the credential."></x-field>
-  <x-field data-name="providerId" data-type="string" data-required="true" data-desc="Foreign key linking to the AiProvider model."></x-field>
-  <x-field data-name="name" data-type="string" data-required="true" data-desc="A user-defined name for the credential."></x-field>
-  <x-field data-name="credentialValue" data-type="object" data-required="true">
-    <x-field-desc markdown>A JSON object containing the credential values (e.g., `api_key`). Sensitive fields within this object are automatically encrypted at rest using AES encryption.</x-field-desc>
-  </x-field>
-  <x-field data-name="active" data-type="boolean" data-default="true" data-desc="Indicates if the credential is active and can be used for API calls."></x-field>
-  <x-field data-name="weight" data-type="number" data-default="100" data-desc="A weight used for smooth weighted round-robin load balancing across multiple active credentials for the same provider."></x-field>
-  <x-field data-name="usageCount" data-type="number" data-default="0" data-desc="A counter for the number of times this credential has been used."></x-field>
-  <x-field data-name="lastUsedAt" data-type="Date" data-desc="Timestamp of the last time the credential was used."></x-field>
-</x-field-group>
-
-### AiModelRate
-
-This model defines the pricing rates and metadata for each specific AI model offered by a provider. This information is crucial for the credit-based billing system.
-
-<x-field-group>
-  <x-field data-name="id" data-type="string" data-required="true" data-desc="Unique identifier for the model rate entry."></x-field>
-  <x-field data-name="providerId" data-type="string" data-required="true" data-desc="Foreign key linking to the AiProvider model."></x-field>
-  <x-field data-name="model" data-type="string" data-required="true" data-desc="The unique identifier for the model (e.g., 'gpt-4-turbo')."></x-field>
-  <x-field data-name="modelDisplay" data-type="string" data-required="true" data-desc="A user-friendly display name for the model."></x-field>
-  <x-field data-name="type" data-type="RateType" data-required="true" data-desc="The type of service, such as 'chatCompletion', 'embedding', or 'imageGeneration'."></x-field>
-  <x-field data-name="inputRate" data-type="number" data-default="0" data-desc="The cost in credits per 1,000 input tokens (or other unit)."></x-field>
-  <x-field data-name="outputRate" data-type="number" data-default="0" data-desc="The cost in credits per 1,000 output tokens (or other unit)."></x-field>
-  <x-field data-name="modelMetadata" data-type="ModelMetadata" data-desc="A JSON object containing additional model capabilities, such as max tokens or supported features."></x-field>
-</x-field-group>
-
-### ModelCall
-
-As the central transaction log, this model records every API call made through AIGNE Hub. It captures detailed information about usage, cost, status, and context for auditing and analytics.
-
-<x-field-group>
-  <x-field data-name="id" data-type="string" data-required="true" data-desc="Unique identifier for the API call record."></x-field>
-  <x-field data-name="providerId" data-type="string" data-required="true" data-desc="The provider that handled the call."></x-field>
-  <x-field data-name="credentialId" data-type="string" data-required="true" data-desc="The specific credential used for the call."></x-field>
-  <x-field data-name="model" data-type="string" data-required="true" data-desc="The AI model invoked."></x-field>
-  <x-field data-name="totalUsage" data-type="number" data-default="0" data-desc="The total usage units for the call (e.g., total tokens)."></x-field>
-  <x-field data-name="credits" data-type="number" data-default="0" data-desc="The number of credits consumed by the call."></x-field>
-  <x-field data-name="status" data-type="CallStatus" data-required="true" data-desc="The final status of the call ('processing', 'success', or 'failed')."></x-field>
-  <x-field data-name="duration" data-type="number" data-desc="The duration of the API call in milliseconds."></x-field>
-  <x-field data-name="userDid" data-type="string" data-required="true" data-desc="The DID of the user who initiated the call."></x-field>
-  <x-field data-name="appDid" data-type="string" data-desc="The DID of the application that initiated the call."></x-field>
-  <x-field data-name="callTime" data-type="number" data-required="true" data-desc="The Unix timestamp when the call was made."></x-field>
-</x-field-group>
-
-### ModelCallStat
-
-To optimize the performance of dashboards and analytics, this model stores pre-aggregated usage statistics. Data is aggregated on both an hourly and daily basis, reducing the need for expensive real-time computations on the raw `ModelCall` log.
-
-<x-field-group>
-  <x-field data-name="id" data-type="string" data-required="true" data-desc="Unique identifier for the statistics record."></x-field>
-  <x-field data-name="userDid" data-type="string" data-required="true" data-desc="The user DID for whom the stats are aggregated."></x-field>
-  <x-field data-name="timestamp" data-type="number" data-required="true" data-desc="The Unix timestamp for the beginning of the aggregation period (hour or day)."></x-field>
-  <x-field data-name="timeType" data-type="'day' | 'hour'" data-required="true" data-desc="The granularity of the aggregation."></x-field>
-  <x-field data-name="stats" data-type="DailyStats" data-required="true" data-desc="A JSON object containing aggregated metrics like total calls, total usage, and total credits."></x-field>
-</x-field-group>
-
-## Schema Migrations
-
-Database schema evolution is managed programmatically using **Umzug**, a robust migration framework for Node.js. This ensures that database changes are applied consistently and automatically whenever the application is updated. Migration scripts are located in the `migrations` directory and are executed during the blocklet's startup process.
-
-## Summary
-
-The data persistence layer of AIGNE Hub, built on SQLite and Sequelize, provides a simple yet powerful foundation for the system. The well-structured schema effectively tracks providers, credentials, and every API call, while encrypted storage protects sensitive data. Aggregation tables ensure that monitoring and reporting remain fast and efficient, even with a large volume of transactions.
+System administrators should monitor the size of the `aikit.db` file. While the application does not have a built-in data pruning or archiving mechanism, a strategy may need to be implemented depending on usage volume. Potential strategies could involve periodically archiving `ModelCall` records older than a certain date to cold storage and then deleting them from the live database.

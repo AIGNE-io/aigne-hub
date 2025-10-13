@@ -1,240 +1,107 @@
-# V2 Endpoints (Recommended)
+# API Architecture and Endpoints (v2)
 
-The V2 API is the current and recommended interface for interacting with AIGNE Hub. These endpoints are designed to be largely compatible with the OpenAI API format while incorporating enhanced features like user-level authentication, credit-based billing, and detailed usage tracking.
+This document provides a detailed overview of the v2 API architecture, designed for DevOps, SRE, and infrastructure teams responsible for deploying, monitoring, and maintaining the system. It focuses on the internal workings, design rationale, and operational aspects of the API.
 
-All V2 endpoints require authentication. For details on how to acquire and use API tokens, please see the [Authentication](./api-reference-authentication.md) section. For backward compatibility with older integrations, refer to the [V1 Endpoints (Legacy)](./api-reference-v1-endpoints.md).
+## 1. System Architecture Overview
 
-## Status Check
+The v2 API is a robust, scalable interface for interacting with various AI models. Its design prioritizes dynamic provider management, resiliency, and comprehensive usage tracking, making it suitable for production environments.
 
-This endpoint allows you to verify the operational status of the AIGNE Hub service and check if a specific model is available and configured correctly.
+### 1.1. Request Lifecycle
 
-`GET /api/v2/status`
+A typical API request follows a structured lifecycle, enforced by a series of Express.js middlewares:
 
-### Query Parameters
+1.  **Authentication**: The `sessionMiddleware` authenticates the user via an access key, attaching the user's context (`req.user`) to the request object.
+2.  **Billing and Credit Check**: If credit-based billing is enabled (`Config.creditBasedBillingEnabled`), the `checkCreditBasedBillingMiddleware` verifies that the payment system is operational and the user has a sufficient credit balance (`checkUserCreditBalance`).
+3.  **Model Call Tracking**: A dedicated middleware (`createModelCallMiddleware`) initiates a record in the system to track the entire lifecycle of the AI model interaction. This is crucial for logging, debugging, and analytics.
+4.  **Input Validation**: Incoming request bodies are rigorously validated against predefined Joi schemas to ensure data integrity and prevent malformed requests from reaching the core logic.
+5.  **Dynamic Model and Credential Selection**: The system dynamically selects an appropriate AI provider and credential. It queries the `AiProvider` and `AiCredential` tables to find an active, enabled credential for the requested model, implementing a round-robin or similar strategy (`AiCredential.getNextAvailableCredential`) to distribute load.
+6.  **AI Model Invocation**: The request is processed by the core logic, which uses the `AIGNE` SDK to interact with the selected AI model. This abstracts the complexities of different provider APIs.
+7.  **Usage and Billing Record Finalization**: Upon successful completion or failure, a hook (`onEnd` or `onError`) is triggered. The `createUsageAndCompleteModelCall` function is called to finalize the model call record, calculate the cost in credits, and log detailed usage metrics.
+8.  **Response Generation**: The system sends the response back to the client. For chat completions, this can be a standard JSON object or a `text/event-stream` for real-time streaming.
 
-<x-field-group>
-  <x-field data-name="model" data-type="string" data-required="false" data-desc="The full model name (e.g., openai/gpt-4) to check for availability. If omitted, checks for any available provider."></x-field>
-</x-field-group>
+### 1.2. Dynamic Provider and Credential Management
 
-### Example Request
+A key design decision was to decouple the API from specific AI providers. The system uses a database-driven approach to manage providers (`AiProvider`) and their associated API keys (`AiCredential`).
 
-```bash Shell icon=mdi:bash
-# Check general service availability
-curl -X GET 'https://your-hub-url/api/v2/status' \
-  -H 'Authorization: Bearer YOUR_API_TOKEN'
+-   **How it Works**: When a request specifies a model (e.g., `openai/gpt-4o`), the system first identifies the provider (`openai`). It then queries the database for an active credential associated with that provider. This allows for credentials to be added, removed, or rotated without any service downtime.
+-   **Rationale**: This architecture provides high availability and flexibility. If one credential or provider experiences issues, the system can be configured to failover to another. It also simplifies the management of API keys and centralizes control over AI model access. The `getProviderCredentials` function encapsulates this logic, ensuring that every model call uses a valid, active credential.
 
-# Check availability for a specific model
-curl -X GET 'https://your-hub-url/api/v2/status?model=openai/gpt-4' \
-  -H 'Authorization: Bearer YOUR_API_TOKEN'
-```
+### 1.3. Resiliency and Error Handling
 
-### Example Response
+To ensure stability in a distributed environment, the API incorporates an automatic retry mechanism for transient failures.
 
-A successful response indicates that at least one AI provider is enabled and has active credentials.
+-   **Retry Handler**: The `createRetryHandler` wraps the core endpoint logic. It is configured to retry requests that fail with specific HTTP status codes (e.g., `429 Too Many Requests`, `500 Internal Server Error`, `502 Bad Gateway`). The number of retries is configurable via `Config.maxRetries`.
+-   **Failure Logging**: In case of non-retriable errors or after exhausting all retries, the `onError` hook ensures that the failure is logged and the associated model call record is marked as failed. This prevents orphaned records and provides clear data for troubleshooting.
 
-```json Response icon=mdi:code-json
-{
-  "available": true
-}
-```
+## 2. API Endpoints
 
-If the service or a specific model is unavailable, the response will indicate so, potentially with an error message.
+The following sections detail the primary v2 API endpoints, their purpose, and operational characteristics.
 
-```json Error Response icon=mdi:code-json
-{
-  "available": false,
-  "error": "Model rate not available"
-}
-```
+### GET /status
 
-## Chat Completions
+-   **Purpose**: A health check endpoint used to determine if the service is available and ready to accept requests for a specific model.
+-   **Process Flow**:
+    1.  Authenticates the user.
+    2.  If `Config.creditBasedBillingEnabled` is true, it checks that the payment service is running and the user has a positive credit balance.
+    3.  It queries the `AiProvider` database to ensure there is at least one enabled provider with active credentials that can serve the requested model.
+    4.  If a specific model is queried, it also checks if a rate is defined for it in the `AiModelRate` table.
+-   **Operational Notes**: This endpoint is critical for client-side service discovery. Clients should call `/status` before attempting to make a model call to avoid sending requests that are guaranteed to fail.
 
-Creates a model response for the given chat conversation. This endpoint is compatible with the OpenAI Chat Completions API.
+### POST /chat and /chat/completions
 
-`POST /api/v2/chat/completions`
+-   **Purpose**: Provides access to language models for chat-based interactions.
+-   **Endpoint Variants**:
+    -   `/chat/completions`: An OpenAI-compatible endpoint that accepts standard `messages` arrays and supports streaming via `text/event-stream`.
+    -   `/chat`: The native AIGNE Hub endpoint which uses a slightly different input structure but provides the same core functionality.
+-   **Process Flow**:
+    1.  The request lifecycle (authentication, billing check, etc.) is executed.
+    2.  The `processChatCompletion` function handles the core logic. It validates the input against `completionsRequestSchema`.
+    3.  `getModel` is called to dynamically load the specified model instance and select credentials.
+    4.  The `AIGNE` engine invokes the model. If `stream: true` is requested, it returns an async generator that yields response chunks.
+    5.  For streaming responses, chunks are written to the response stream as they arrive.
+    6.  The `onEnd` hook calculates token usage (`promptTokens`, `completionTokens`) and calls `createUsageAndCompleteModelCall` to record the transaction.
 
-### Request Body
+### POST /image and /image/generations
 
-<x-field-group>
-  <x-field data-name="model" data-type="string" data-required="true" data-desc="ID of the model to use (e.g., `openai/gpt-4`)."></x-field>
-  <x-field data-name="messages" data-type="array" data-required="true">
-    <x-field-desc markdown>An array of message objects representing the conversation history.</x-field-desc>
-    <x-field data-name="role" data-type="string" data-required="true" data-desc="The role of the message author. Can be `system`, `user`, `assistant`, or `tool`."></x-field>
-    <x-field data-name="content" data-type="string | array" data-required="true" data-desc="The content of the message. Can be a string or an array for multi-modal inputs."></x-field>
-  </x-field>
-  <x-field data-name="stream" data-type="boolean" data-default="false" data-required="false" data-desc="If set, partial message deltas will be sent as server-sent events. The stream terminates with a `data: [DONE]` message."></x-field>
-  <x-field data-name="temperature" data-type="number" data-default="1" data-required="false" data-desc="Controls randomness. Higher values like 0.8 make the output more random, while lower values like 0.2 make it more deterministic. Range: 0.0 to 2.0."></x-field>
-  <x-field data-name="max_tokens" data-type="integer" data-required="false" data-desc="The maximum number of tokens to generate in the completion."></x-field>
-  <x-field data-name="tools" data-type="array" data-required="false" data-desc="A list of tools the model may call."></x-field>
-  <x-field data-name="tool_choice" data-type="string | object" data-required="false" data-desc="Controls if and how the model uses tools."></x-field>
-</x-field-group>
+-   **Purpose**: Generates images from text prompts using models like DALL-E.
+-   **Endpoint Variants**:
+    -   `/image/generations`: OpenAI-compatible endpoint.
+    -   `/image`: Native AIGNE Hub endpoint.
+-   **Process Flow**:
+    1.  The standard request lifecycle is followed.
+    2.  The input is validated against `imageGenerationRequestSchema` or `imageModelInputSchema`.
+    3.  `getImageModel` is called to load the appropriate image model provider (e.g., OpenAI, Gemini) and select credentials.
+    4.  The `AIGNE` engine invokes the model with the prompt and parameters (size, quality, etc.).
+    5.  The `onEnd` hook records the usage. For images, billing is typically based on the number of images generated, their size, and quality, which is captured in `createUsageAndCompleteModelCall`.
+    6.  The response contains the generated images, either as URLs or Base64-encoded JSON data (`b64_json`).
 
-### Example Request
+### POST /embeddings
 
-```bash Shell icon=mdi:bash
-curl -X POST 'https://your-hub-url/api/v2/chat/completions' \
-  -H 'Authorization: Bearer YOUR_API_TOKEN' \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "model": "openai/gpt-4",
-    "messages": [
-      {
-        "role": "system",
-        "content": "You are a helpful assistant."
-      },
-      {
-        "role": "user",
-        "content": "Hello!"
-      }
-    ]
-  }'
-```
+-   **Purpose**: Converts input text into numerical vector representations (embeddings).
+-   **Process Flow**:
+    1.  The standard request lifecycle is executed.
+    2.  The request body is validated by `embeddingsRequestSchema`.
+    3.  `processEmbeddings` calls the underlying provider's embeddings endpoint.
+    4.  Usage is calculated based on the number of input tokens and recorded via `createUsageAndCompleteModelCall`.
 
-### Example Response (Non-Streaming)
+### POST /audio/transcriptions and /audio/speech
 
-If credit-based billing is enabled, the `usage` object will include the cost of the call in `aigneHubCredits`.
+-   **Purpose**: Provides speech-to-text and text-to-speech functionalities.
+-   **Architecture**: These endpoints are currently implemented as secure proxies to the OpenAI API.
+-   **Process Flow**:
+    1.  The user is authenticated.
+    2.  The request is forwarded directly to the OpenAI API.
+    3.  The `proxyReqOptDecorator` function dynamically retrieves the appropriate OpenAI API key from the credential store and injects it into the `Authorization` header of the outgoing request.
+-   **Operational Notes**: As these are proxies, their performance and availability are directly tied to the upstream OpenAI service. Note that credit-based billing is marked as a "TODO" for these endpoints in the source code, meaning usage may not be tracked through the AIGNE Hub billing system.
 
-```json Response icon=mdi:code-json
-{
-  "id": "chatcmpl-xxxx",
-  "object": "chat.completion",
-  "created": 1677652288,
-  "model": "gpt-4-0613",
-  "choices": [
-    {
-      "index": 0,
-      "message": {
-        "role": "assistant",
-        "content": "Hello there! How can I assist you today?"
-      },
-      "finish_reason": "stop"
-    }
-  ],
-  "usage": {
-    "prompt_tokens": 19,
-    "completion_tokens": 9,
-    "total_tokens": 28,
-    "aigneHubCredits": 0.00075,
-    "modelCallId": "mc_xxxx"
-  }
-}
-```
+## 3. Troubleshooting and Monitoring
 
-## Embeddings
-
-Creates a vector embedding representing the given input text.
-
-`POST /api/v2/embeddings`
-
-### Request Body
-
-<x-field-group>
-  <x-field data-name="model" data-type="string" data-required="true" data-desc="ID of the embedding model to use."></x-field>
-  <x-field data-name="input" data-type="string | array" data-required="true" data-desc="The input text or tokens to embed, encoded as a string or an array of strings/tokens."></x-field>
-</x-field-group>
-
-### Example Request
-
-```bash Shell icon=mdi:bash
-curl -X POST 'https://your-hub-url/api/v2/embeddings' \
-  -H 'Authorization: Bearer YOUR_API_TOKEN' \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "model": "openai/text-embedding-ada-002",
-    "input": "The quick brown fox jumps over the lazy dog"
-  }'
-```
-
-### Example Response
-
-```json Response icon=mdi:code-json
-{
-  "object": "list",
-  "data": [
-    {
-      "object": "embedding",
-      "embedding": [
-        -0.006929283495992422,
-        -0.005336422007530928,
-        // ... more embedding values
-        -0.024047505110502243
-      ],
-      "index": 0
-    }
-  ],
-  "model": "text-embedding-ada-002-v2",
-  "usage": {
-    "prompt_tokens": 8,
-    "total_tokens": 8
-  }
-}
-```
-
-## Image Generation
-
-Creates an image given a textual prompt.
-
-`POST /api/v2/image/generations`
-
-### Request Body
-
-<x-field-group>
-  <x-field data-name="model" data-type="string" data-required="true" data-desc="The model to use for image generation (e.g., `openai/dall-e-3`)."></x-field>
-  <x-field data-name="prompt" data-type="string" data-required="true" data-desc="A text description of the desired image(s)."></x-field>
-  <x-field data-name="n" data-type="integer" data-default="1" data-required="false" data-desc="The number of images to generate. Must be between 1 and 10."></x-field>
-  <x-field data-name="size" data-type="string" data-default="1024x1024" data-required="false" data-desc="The size of the generated images (e.g., `1024x1024`, `1792x1024`)."></x-field>
-  <x-field data-name="quality" data-type="string" data-default="standard" data-required="false" data-desc="The quality of the image. `hd` creates more detailed images."></x-field>
-  <x-field data-name="style" data-type="string" data-default="vivid" data-required="false" data-desc="The style of the generated images. Can be `vivid` or `natural`."></x-field>
-  <x-field data-name="response_format" data-type="string" data-default="url" data-required="false" data-desc="The format in which the generated images are returned. Must be `url` or `b64_json`."></x-field>
-</x-field-group>
-
-### Example Request
-
-```bash Shell icon=mdi:bash
-curl -X POST 'https://your-hub-url/api/v2/image/generations' \
-  -H 'Authorization: Bearer YOUR_API_TOKEN' \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "model": "openai/dall-e-3",
-    "prompt": "A cute corgi wearing a space helmet",
-    "n": 1,
-    "size": "1024x1024"
-  }'
-```
-
-### Example Response
-
-```json Response icon=mdi:code-json
-{
-  "created": 1689623456,
-  "data": [
-    {
-      "url": "https://..."
-    }
-  ],
-  "model": "dall-e-3",
-  "usage": {
-    "aigneHubCredits": 0.04
-  }
-}
-```
-
-## Audio Endpoints
-
-AIGNE Hub provides proxy endpoints for audio services. These endpoints require user authentication but currently do not support credit-based billing. The request is forwarded directly to the underlying provider (e.g., OpenAI).
-
-### Audio Transcriptions
-
-Transcribes audio into the input language.
-
-`POST /api/v2/audio/transcriptions`
-
-This endpoint proxies to OpenAI's `/v1/audio/transcriptions` endpoint. Please refer to the official OpenAI documentation for request parameters.
-
-### Text-to-Speech
-
-Generates audio from the input text.
-
-`POST /api/v2/audio/speech`
-
-This endpoint proxies to OpenAI's `/v1/audio/speech` endpoint. Please refer to the official OpenAI documentation for request parameters.
+-   **Log Analysis**: The system uses a centralized logger. Key events to monitor are:
+    -   `Create usage and complete model call error`: Indicates a problem with writing usage data to the database after a model call, which can affect billing.
+    -   `ai route retry`: Signals that transient network or provider errors are occurring. A high frequency of retries may point to underlying infrastructure instability.
+    -   `Failed to mark incomplete model call as failed`: A critical error that could lead to inconsistent state in the model call tracking system.
+-   **Common Errors**:
+    -   `400 Validation error`: The client sent a malformed request. Check the error message for details on which Joi validation failed.
+    -   `401 User not authenticated`: The access key is missing or invalid.
+    -   `404 Provider ... not found`: The requested model or provider is not configured or enabled in the database.
+    -   `502 Payment kit is not Running`: The billing service is down or unreachable. This is a critical dependency when `creditBasedBillingEnabled` is true.

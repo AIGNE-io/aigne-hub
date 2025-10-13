@@ -1,223 +1,195 @@
-# V1 Endpoints (Legacy)
+# API Reference
 
-This section provides documentation for the legacy V1 API endpoints. These endpoints are maintained for backward compatibility with older integrations. For all new projects, we strongly recommend using the more feature-rich and robust [V2 Endpoints](./api-reference-v2-endpoints.md).
+This document provides a detailed reference for the AIGNE Hub API, focusing on its architecture, endpoints, and operational behavior. It is intended for DevOps, SRE, and infrastructure teams responsible for deploying and managing the service.
 
-The V1 endpoints are designed primarily for server-to-server or component-to-component communication and require administrative privileges for access.
+## System Architecture
 
-## Status
+The AIGNE Hub API is designed as a robust, multi-provider gateway for various AI services. It provides a unified interface for chat completions, embeddings, and image generation, while abstracting the complexity of managing different underlying AI providers.
 
-Checks the availability and configuration status of the AI providers.
+### Provider Abstraction and Credential Management
 
-`GET /api/v1/status`
+A core design principle of the API is its ability to connect with multiple AI providers (e.g., OpenAI, Bedrock) seamlessly. This is achieved through a provider abstraction layer.
 
-**Description**
+-   **Dynamic Credential Loading**: The system dynamically loads credentials for different providers from a secure store. When a request specifies a model (e.g., `openai/gpt-4`), the API identifies the provider (`openai`) and retrieves the necessary credentials.
+-   **Credential Rotation**: The API supports multiple credentials for a single provider and automatically rotates them. It uses a `getNextAvailableCredential` strategy to cycle through active credentials, enhancing both security and availability. This allows for rate limit distribution and zero-downtime key rotation.
+-   **Configuration**: AI providers and their credentials are managed within the system's database via the `AiProvider` and `AiCredential` models. This allows administrators to add, disable, or update provider details without code changes.
 
-This endpoint verifies if there are any configured and active OpenAI API keys in the system. It's a simple way to health-check the service's connection to the underlying AI provider.
+### Resiliency and Error Handling
 
-**Authentication**
+To ensure high availability, the API incorporates an automatic retry mechanism for upstream provider requests.
 
-This endpoint requires an authenticated request from a component with admin privileges.
+-   **Retry Logic**: The system uses a `createRetryHandler` for critical endpoints. If a request to an underlying AI provider fails with a retryable status code (`429 Too Many Requests`, `500 Internal Server Error`, `502 Bad Gateway`), the API will automatically retry the request.
+-   **Configurability**: The maximum number of retries is configurable via the `maxRetries` environment variable, allowing operators to tune the system's resiliency according to their needs.
 
-**Example Request**
+### Authentication
 
-```bash Requesting Status icon=lucide:terminal
-curl -X GET 'https://your-aigne-hub-instance.com/api/v1/status' \
---header 'Authorization: Bearer YOUR_COMPONENT_TOKEN'
+API endpoints are protected by a component-based authentication mechanism (`ensureRemoteComponentCall` and `ensureComponentCall`). This ensures that only authorized services or components within the ecosystem can access the API, typically using a public key-based verification system.
+
+## Endpoints
+
+The following sections detail the available API endpoints. All endpoints are prefixed with `/v1`.
+
+---
+
+### Chat Completions
+
+This endpoint generates a response for a given chat conversation or prompt. It supports both standard and streaming responses.
+
+`POST /v1/chat/completions`
+`POST /v1/completions`
+
+**Request Body**
+
+| Field | Type | Description | Required |
+| :--- | :--- | :--- | :--- |
+| `model` | string | The ID of the model to use (e.g., `openai/gpt-4`, `google/gemini-pro`). | Yes |
+| `messages` | array | An array of message objects representing the conversation history. See object structure below. | Yes (or `prompt`) |
+| `prompt` | string | A single prompt string. Shorthand for `messages: [{ "role": "user", "content": "..." }]`. | Yes (or `messages`) |
+| `stream` | boolean | If `true`, the response will be sent as a server-sent event stream. | No |
+| `temperature` | number | Controls randomness. A value between 0 and 2. Higher values make the output more random. | No |
+| `topP` | number | Nucleus sampling. A value between 0.1 and 1. The model considers tokens with `topP` probability mass. | No |
+| `maxTokens` | integer | The maximum number of tokens to generate in the completion. | No |
+| `presencePenalty` | number | A value between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far. | No |
+| `frequencyPenalty` | number | A value between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far. | No |
+| `tools` | array | A list of tools the model may call. | No |
+| `toolChoice` | string or object | Controls which tool the model should use. Can be "none", "auto", "required", or specify a function. | No |
+| `responseFormat` | object | Specifies the output format. For JSON mode, use `{ "type": "json_object" }`. | No |
+
+**Message Object Structure** (`messages` array)
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `role` | string | The role of the message author. One of `system`, `user`, `assistant`, or `tool`. |
+| `content` | string or array | The content of the message. Can be a string or an array for multi-modal input (e.g., text and images). |
+| `toolCalls` | array | For `assistant` roles, a list of tool calls made by the model. |
+| `toolCallId` | string | For `tool` roles, the ID of the tool call this message is a response to. |
+
+**Response (Non-Streaming)**
+
+-   `Content-Type: application/json`
+-   The response is a JSON object containing the assistant's reply.
+
+```json
+{
+  "role": "assistant",
+  "content": "This is the generated response.",
+  "text": "This is the generated response.",
+  "toolCalls": [],
+  "usage": {
+    "promptTokens": 5,
+    "completionTokens": 10,
+    "totalTokens": 15,
+    "aigneHubCredits": 0.00015
+  }
+}
 ```
 
-**Example Response**
+**Response (Streaming)**
 
-```json Response Body
+-   `Content-Type: text/event-stream`
+-   The response is a stream of server-sent events. Each event is a JSON object representing a chunk of the completion. The final event may contain usage statistics.
+
+---
+
+### Embeddings
+
+This endpoint creates a vector representation of a given input, which can be used for semantic search, clustering, and other machine learning tasks.
+
+`POST /v1/embeddings`
+
+**Request Body**
+
+| Field | Type | Description | Required |
+| :--- | :--- | :--- | :--- |
+| `model` | string | The ID of the embedding model to use (e.g., `openai/text-embedding-ada-002`). | Yes |
+| `input` | string or array | The input text or tokens to embed. Can be a single string or an array of strings/tokens. | Yes |
+
+**Response**
+
+-   `Content-Type: application/json`
+-   The response contains the embedding data and usage information.
+
+```json
+{
+  "data": [
+    {
+      "embedding": [ -0.00692, -0.0053, ... ],
+      "index": 0,
+      "object": "embedding"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 8,
+    "total_tokens": 8
+  }
+}
+```
+
+---
+
+### Image Generation
+
+This endpoint generates images from a text prompt.
+
+`POST /v1/image/generations`
+
+**Request Body**
+
+| Field | Type | Description | Required |
+| :--- | :--- | :--- | :--- |
+| `model` | string | The ID of the image generation model to use (e.g., `dall-e-2`, `dall-e-3`). | Yes |
+| `prompt` | string | A text description of the desired image(s). | Yes |
+| `n` | integer | The number of images to generate. Must be between 1 and 10. Defaults to 1. | No |
+| `size` | string | The size of the generated images (e.g., `1024x1024`, `1792x1024`). | No |
+| `responseFormat` | string | The format in which the generated images are returned. Can be `url` or `b64_json`. Defaults to `url`. | No |
+| `quality` | string | The quality of the image to generate. Can be `standard` or `hd`. | No |
+
+**Response**
+
+-   `Content-Type: application/json`
+-   The response contains URLs or base64-encoded JSON for the generated images, along with usage data.
+
+```json
+{
+  "images": [
+    { "url": "https://..." },
+    { "b64Json": "..." }
+  ],
+  "data": [ /* same as images */ ],
+  "model": "dall-e-3",
+  "usage": {
+    "aigneHubCredits": 0.04
+  }
+}
+```
+
+---
+
+### Audio Services (Proxy)
+
+The audio transcription and speech synthesis endpoints are direct proxies to the OpenAI v1 API. The AIGNE Hub API handles authentication by injecting the appropriate API key from its managed credential store before forwarding the request.
+
+For request and response formats, please refer to the official OpenAI API documentation.
+
+-   **Audio Transcriptions**: `POST /v1/audio/transcriptions`
+-   **Audio Speech**: `POST /v1/audio/speech`
+
+---
+
+### System Status
+
+This endpoint provides a simple health check to verify that the service is running and has at least one AI provider API key configured.
+
+`GET /v1/status`
+
+**Response**
+
+-   `Content-Type: application/json`
+
+```json
 {
   "available": true
 }
 ```
 
-## Chat Completions
-
-Generates a response for the given conversation.
-
-`POST /api/v1/chat/completions`
-
-**Description**
-
-This endpoint processes chat completion requests, forwarding them to the appropriate AI model. It supports both standard and streaming responses. For V1, it performs a subscription check if an `appId` is associated with the request.
-
-**Request Body**
-
-<x-field-group>
-  <x-field data-name="model" data-type="string" data-default="gpt-3.5-turbo" data-desc="The ID of the model to use for the completion."></x-field>
-  <x-field data-name="messages" data-type="array" data-desc="A list of messages comprising the conversation so far. Either `messages` or `prompt` must be provided.">
-    <x-field data-name="role" data-type="string" data-required="true" data-desc="The role of the message author. Can be `system`, `user`, `assistant`, or `tool`."></x-field>
-    <x-field data-name="content" data-type="string | array" data-required="true" data-desc="The content of the message."></x-field>
-  </x-field>
-  <x-field data-name="prompt" data-type="string" data-desc="A string prompt, as an alternative to `messages`. This will be treated as a single user message."></x-field>
-  <x-field data-name="stream" data-type="boolean" data-default="false" data-desc="If set to true, partial message deltas will be sent as server-sent events."></x-field>
-  <x-field data-name="temperature" data-type="number" data-default="1" data-desc="Controls randomness. Lower values make the model more deterministic."></x-field>
-  <x-field data-name="topP" data-type="number" data-default="1" data-desc="Nucleus sampling parameter."></x-field>
-  <x-field data-name="maxTokens" data-type="number" data-desc="The maximum number of tokens to generate in the completion."></x-field>
-  <x-field data-name="presencePenalty" data-type="number" data-default="0" data-desc="Penalizes new tokens based on whether they appear in the text so far."></x-field>
-  <x-field data-name="frequencyPenalty" data-type="number" data-default="0" data-desc="Penalizes new tokens based on their existing frequency in the text so far."></x-field>
-</x-field-group>
-
-**Example Request**
-
-```bash Chat Completions Request icon=lucide:terminal
-curl -X POST 'https://your-aigne-hub-instance.com/api/v1/chat/completions' \
---header 'Authorization: Bearer YOUR_COMPONENT_TOKEN' \
---header 'Content-Type: application/json' \
---data-raw '{
-  "model": "gpt-3.5-turbo",
-  "messages": [
-    {
-      "role": "user",
-      "content": "Hello, what is AIGNE Hub?"
-    }
-  ]
-}'
-```
-
-**Example Response (Non-Streaming)**
-
-The `usage` object in the response is augmented with `aigneHubCredits`, which reflects the cost calculated by the Hub's billing system.
-
-```json Response Body
-{
-  "role": "assistant",
-  "content": "AIGNE Hub is a unified AI gateway designed to centralize access to various AI models, manage credentials, track usage, and handle billing.",
-  "text": "AIGNE Hub is a unified AI gateway designed to centralize access to various AI models, manage credentials, track usage, and handle billing.",
-  "usage": {
-    "inputTokens": 15,
-    "outputTokens": 30,
-    "aigneHubCredits": 0.00006
-  }
-}
-```
-
-## Embeddings
-
-Creates an embedding vector representing the input text.
-
-`POST /api/v1/embeddings`
-
-**Description**
-
-This endpoint generates vector embeddings for a given input string or array of tokens. These embeddings can be used for tasks like semantic search, clustering, and classification.
-
-**Request Body**
-
-<x-field-group>
-  <x-field data-name="model" data-type="string" data-required="true" data-desc="The ID of the model to use for creating embeddings."></x-field>
-  <x-field data-name="input" data-type="string | array" data-required="true" data-desc="The input text or tokens to embed."></x-field>
-</x-field-group>
-
-**Example Request**
-
-```bash Embeddings Request icon=lucide:terminal
-curl -X POST 'https://your-aigne-hub-instance.com/api/v1/embeddings' \
---header 'Authorization: Bearer YOUR_COMPONENT_TOKEN' \
---header 'Content-Type: application/json' \
---data-raw '{
-  "model": "text-embedding-ada-002",
-  "input": "AIGNE Hub is a unified AI gateway."
-}'
-```
-
-**Example Response**
-
-```json Response Body
-{
-  "data": [
-    {
-      "object": "embedding",
-      "embedding": [
-        -0.006929283495992422,
-        -0.005336422007530928,
-        // ... more embedding values
-        -0.024047505110502243
-      ],
-      "index": 0
-    }
-  ]
-}
-```
-
-## Image Generation
-
-Creates an image given a prompt.
-
-`POST /api/v1/image/generations`
-
-**Description**
-
-This endpoint generates images based on a textual description. It supports various models and parameters to control the output.
-
-**Request Body**
-
-<x-field-group>
-  <x-field data-name="model" data-type="string" data-default="dall-e-2" data-desc="The model to use for image generation."></x-field>
-  <x-field data-name="prompt" data-type="string" data-required="true" data-desc="A text description of the desired image(s)."></x-field>
-  <x-field data-name="n" data-type="number" data-default="1" data-desc="The number of images to generate (1-10)."></x-field>
-  <x-field data-name="size" data-type="string" data-desc="The size of the generated images (e.g., '1024x1024', '512x512')."></x-field>
-  <x-field data-name="responseFormat" data-type="string" data-desc="The format in which the generated images are returned. Can be `url` or `b64_json`."></x-field>
-</x-field-group>
-
-**Example Request**
-
-```bash Image Generation Request icon=lucide:terminal
-curl -X POST 'https://your-aigne-hub-instance.com/api/v1/image/generations' \
---header 'Authorization: Bearer YOUR_COMPONENT_TOKEN' \
---header 'Content-Type: application/json' \
---data-raw '{
-  "model": "dall-e-2",
-  "prompt": "A cute robot mascot for an AI gateway",
-  "n": 1,
-  "size": "512x512",
-  "responseFormat": "url"
-}'
-```
-
-**Example Response**
-
-```json Response Body
-{
-  "images": [
-    {
-      "url": "https://oaidalleapiprodscus.blob.core.windows.net/private/...."
-    }
-  ],
-  "data": [
-    {
-      "url": "https://oaidalleapiprodscus.blob.core.windows.net/private/...."
-    }
-  ],
-  "model": "dall-e-2",
-  "usage": {
-    "aigneHubCredits": 160
-  }
-}
-```
-
-## Audio Transcriptions
-
-Transcribes audio into the input language.
-
-`POST /api/v1/audio/transcriptions`
-
-**Description**
-
-This endpoint is a direct proxy to the OpenAI `/v1/audio/transcriptions` API. AIGNE Hub forwards the request after injecting the appropriate API key. The request body and response format are identical to the official OpenAI API.
-
-Refer to the [OpenAI API documentation](https://platform.openai.com/docs/api-reference/audio/createTranscription) for detailed information on parameters and responses.
-
-## Audio Speech
-
-Generates audio from the input text.
-
-`POST /api/v1/audio/speech`
-
-**Description**
-
-This endpoint is a direct proxy to the OpenAI `/v1/audio/speech` API. AIGNE Hub forwards the request after injecting the appropriate API key. The request body and response format are identical to the official OpenAI API.
-
-Refer to the [OpenAI API documentation](https://platform.openai.com/docs/api-reference/audio/createSpeech) for detailed information on parameters and responses.
+-   `available`: A boolean indicating if one or more API keys are configured and available for use.

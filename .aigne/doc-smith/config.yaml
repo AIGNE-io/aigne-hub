@@ -68,7 +68,7 @@ sourcesPath:  # Source code paths to analyze
   - ./blocklets/core/src/
   - ./overview.png
   - ./blocklets/core/screenshots
-lastGitHead: 8794e0eaa8316a750c81df1d20968c3b481821c5
+lastGitHead: 8446e2e464ba4dc7e056494a1932694abcb4d603
 appUrl: https://staging.docsmith.aigne.io
 boardId: ai-kit
 # Checkout ID for document deployment service

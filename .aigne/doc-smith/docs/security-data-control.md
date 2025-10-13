@@ -1,91 +1,107 @@
-# Self-Hosted Data Control
+# Getting Started with AIGNE Hub
 
-One of the fundamental security principles of AIGNE Hub is its self-hosted architecture. Unlike third-party SaaS AI gateways that require you to entrust them with your data and API credentials, AIGNE Hub is designed to be deployed entirely within your own infrastructure. This model provides complete control and privacy over your AI operations, making it a cornerstone of a secure and compliant AI strategy.
+This guide provides a comprehensive walkthrough for deploying, configuring, and verifying your AIGNE Hub instance. It is designed for operations and infrastructure teams responsible for managing the system.
 
-By running AIGNE Hub on your own servers—whether on-premises or in your private cloud—you create a secure perimeter where you dictate the rules. This eliminates the risks associated with multi-tenant environments and third-party data handling.
+## Prerequisites
 
-```d2 Self-Hosted vs. SaaS Data Control icon=graph-ql:comparison
-direction: down
+Before proceeding with the installation, ensure your environment meets the following requirements:
 
-SaaS-Gateway-Model: {
-  label: "SaaS AI Gateway Model"
-  style: {
-    stroke-dash: 2
+- **Blocklet Server**: A running instance of Blocklet Server is required to host AIGNE Hub. For installation and management instructions, refer to the official [Blocklet Server documentation](https://docs.blocklet.io/docs/en/getting-started).
+- **Node.js**: AIGNE Hub requires Node.js version 18 or higher. Blocklet Server manages the Node.js runtime, so ensure your server environment is up-to-date.
+- **AI Provider Accounts**: You will need active accounts and API keys for the AI providers you intend to integrate (e.g., OpenAI, Anthropic, Google Gemini).
+
+The system utilizes an integrated SQLite database, managed via the Sequelize ORM, which is automatically configured during the installation process. No external database setup is required for a standard deployment.
+
+## Installation
+
+AIGNE Hub is deployed as a Blocklet from the official Blocklet Store.
+
+1.  **Navigate to Blocklet Store**: Access your Blocklet Server dashboard and go to the "Store" section.
+2.  **Find AIGNE Hub**: Use the search bar to find "AIGNE Hub".
+3.  **Launch the Blocklet**: Click the "Launch" button on the AIGNE Hub page. The installation wizard will guide you through the process, which typically involves confirming the blocklet name and URL.
+
+Once the installation is complete, the AIGNE Hub instance will be running and accessible at the URL you configured.
+
+![AIGNE Hub Dashboard](https://raw.githubusercontent.com/AIGNE-io/aigne-hub/main/blocklets/core/screenshots/d037b6b6b092765ccbfa58706c241622.png)
+
+## Initial Configuration
+
+After installation, the first step is to configure the AI providers you wish to make available through the hub.
+
+1.  **Access the Admin Panel**: Open your AIGNE Hub instance and navigate to the admin dashboard.
+2.  **Go to AI Providers**: In the admin panel, find the configuration section and select **AI Providers**.
+3.  **Add Provider Keys**: Select an AI provider from the list and enter your API key and any other required credentials. The hub encrypts and stores these keys securely. You can add multiple providers.
+
+![Configure AI Providers](https://raw.githubusercontent.com/AIGNE-io/aigne-hub/main/blocklets/core/screenshots/fc46e9461382f0be7541af17ef13f632.png)
+
+## Deployment Models
+
+AIGNE Hub supports two primary operational models. Choose the one that aligns with your organization's needs.
+
+### 1. Internal Use (Enterprise Self-Hosting)
+
+This is the default and simplest deployment model, ideal for internal development teams.
+
+-   **Operation**: Once AI providers are configured, the hub is ready to serve requests.
+-   **Authentication**: Access can be managed via direct API access or by integrating with an OAuth provider for secure, centralized authentication.
+-   **Billing**: Your organization is billed directly by the AI providers based on usage. AIGNE Hub provides the tools to track this consumption internally.
+
+### 2. Service Provider Mode
+
+This model is for organizations that want to offer AI services to external customers.
+
+-   **Enable Billing**: To enable this mode, install the **Payment Kit** Blocklet and integrate it with AIGNE Hub.
+-   **Set Custom Pricing**: Configure your own pricing rates for different models, allowing you to set profit margins.
+-   **Credit System**: Users purchase credits through the Payment Kit to pay for their AI usage. The system automatically manages credit deduction and user onboarding.
+
+## Verifying the Installation
+
+After configuration, verify that the hub is functioning correctly by using the built-in AI Playground.
+
+1.  **Open the Playground**: Navigate to the "Playground" section within the AIGNE Hub UI.
+2.  **Select a Model**: Choose one of the AI models you configured (e.g., `openai/gpt-4`).
+3.  **Send a Request**: Type a prompt in the input box and send a request.
+
+If you receive a successful response from the model, your AIGNE Hub instance is correctly configured and fully operational.
+
+![AI Playground](https://raw.githubusercontent.com/AIGNE-io/aigne-hub/main/blocklets/core/screenshots/c29f08420df8ea9a199fcb5ffe06febe.png)
+
+## Basic Usage Example
+
+Applications can interact with AIGNE Hub via its RESTful API. When using the AIGNE Framework, the `AIGNEHubChatModel` provides a seamless integration point.
+
+The following TypeScript example demonstrates how to invoke a chat model through the hub.
+
+```typescript
+import { AIGNEHubChatModel } from "@aigne/aigne-hub";
+
+// Initialize the model with your Hub's configuration
+const model = new AIGNEHubChatModel({
+  // URL of your AIGNE Hub API endpoint
+  url: "https://your-aigne-hub-url/api/v2/chat",
+
+  // Secure access key obtained via OAuth or generated for an application
+  accessKey: "your-oauth-access-key",
+
+  // Specify the provider and model to use
+  model: "openai/gpt-3.5-turbo",
+});
+
+async function getCompletion() {
+  try {
+    const result = await model.invoke({
+      messages: "Hello, AIGNE Hub!",
+    });
+
+    console.log("AI Response:", result);
+  } catch (error) {
+    console.error("Error invoking model:", error);
   }
-
-  Your-Infrastructure: {
-    label: "Your Infrastructure"
-    Your-Apps: {}
-  }
-
-  SaaS-Provider-Infrastructure: {
-    label: "SaaS Provider Infrastructure"
-    Gateway: {}
-    Database: {
-      label: "Database\n(Your Data & Keys)"
-      shape: cylinder
-    }
-    Gateway -> Database
-  }
-
-  Your-Infrastructure.Your-Apps -> SaaS-Provider-Infrastructure.Gateway: "API Calls & Data"
 }
 
-AIGNE-Hub-Self-Hosted-Model: {
-  label: "AIGNE Hub Self-Hosted Model"
-  style: {
-    stroke-dash: 2
-  }
-
-  Your-Infrastructure-2: {
-    label: "Your Infrastructure"
-    Your-Apps-2: {
-      label: "Your Apps"
-    }
-    AIGNE-Hub: {
-      label: "AIGNE Hub"
-    }
-    Database-2: {
-      label: "Database\n(Your Data & Keys)"
-      shape: cylinder
-    }
-
-    Your-Apps-2 -> AIGNE-Hub
-    AIGNE-Hub -> Database-2
-  }
-}
-
-AI-Providers: {
-  shape: cylinder
-}
-
-SaaS-Gateway-Model.SaaS-Provider-Infrastructure.Gateway -> AI-Providers: "Proxied Requests"
-AIGNE-Hub-Self-Hosted-Model.Your-Infrastructure-2.AIGNE-Hub -> AI-Providers: "Proxied Requests"
-
+getCompletion();
 ```
 
-### Key Advantages of Self-Hosting
-
-#### Complete Data Sovereignty
-
-When you self-host AIGNE Hub, all data—including prompts, AI-generated responses, usage logs, and analytics—remains within your network boundaries. This is crucial for organizations that handle sensitive, proprietary, or regulated data, as it ensures compliance with data protection regulations like GDPR, HIPAA, and others. Your data is never processed or stored on external servers beyond your control.
-
-#### Secure Credential Isolation
-
-Your valuable AI provider API keys are one of your most sensitive assets. In a self-hosted environment, these credentials are encrypted and stored within the AIGNE Hub instance running on your servers. They are never exposed to or shared with any third-party, mitigating the risk of credential leakage from an external provider's security breach.
-
-#### Customizable Security Policies
-
-A self-hosted deployment allows you to integrate AIGNE Hub seamlessly into your existing security framework. You can apply your organization's specific security measures, such as:
-
-- **Network Policies**: Restrict access using firewalls, VPCs, and IP whitelisting.
-- **Access Control**: Integrate with your corporate identity and access management (IAM) systems.
-- **Monitoring**: Channel logs and metrics into your established observability and SIEM tools.
-
-This ensures that access to the AI gateway adheres to the same rigorous security standards applied to your other critical infrastructure.
-
-### Summary
-
-The decision to build AIGNE Hub as a self-hosted platform is a deliberate architectural choice designed to provide maximum security and control. By deploying the gateway within your own infrastructure, you retain full ownership of your data, secure your credentials, and enforce your own security policies. This approach is fundamental for any enterprise seeking to build a robust, secure, and compliant AI ecosystem.
-
-For more details on specific security features, see [Credential Management](./security-credential-management.md) and [Access Control](./security-access-control.md).
+-   `url`: The full URL to your AIGNE Hub's chat completions API endpoint.
+-   `accessKey`: An access key for authentication. For production systems, this should be a secure token obtained through the OAuth flow.
+-   `model`: A string identifying the provider and model, formatted as `provider/model-name`.

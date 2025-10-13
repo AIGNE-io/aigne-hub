@@ -1,39 +1,79 @@
-# Authentication
+# Getting Started
 
-All API requests to AIGNE Hub must be authenticated to ensure secure access to resources. The system uses a straightforward token-based authentication mechanism where each request must include a valid access key.
+This guide provides the essential steps to deploy, configure, and start using AIGNE Hub. It is designed for operations and infrastructure teams who need to get the system running efficiently.
 
-This section explains how to properly format your API requests for authentication. For information on specific endpoints, please see the [V2 Endpoints (Recommended)](./api-reference-v2-endpoints.md) and [V1 Endpoints (Legacy)](./api-reference-v1-endpoints.md) sections.
+## Overview
 
-## Bearer Token Authentication
+AIGNE Hub acts as a unified AI gateway, centralizing the management of multiple Large Language Model (LLM) and AIGC providers. It simplifies API key management, usage tracking, and billing, providing a single point of access for all AI services within your ecosystem. Built on the AIGNE framework and deployed as a Blocklet, it offers robust solutions for both internal enterprise use and public-facing service provider models.
 
-AIGNE Hub uses the Bearer Token scheme. You must provide your API access key in the `Authorization` header of every request. The access key is typically an OAuth 2.0 token obtained through the platform's authentication flow.
+![AIGNE Hub Dashboard](https://arcblock.oss-cn-shanghai.aliyuncs.com/images/doc-hub/c29f08420df8ea9a199fcb5ffe06febe.png)
 
-The header should be formatted as follows:
+## 1. Deployment
 
-```text
-Authorization: Bearer YOUR_ACCESS_KEY
+AIGNE Hub is designed to run on Blocklet Server, which provides the underlying orchestration, scaling, and management capabilities.
+
+### Prerequisites
+
+- A running Blocklet Server instance.
+- Administrative access to the Blocklet Server to install and manage applications.
+
+### Installation Steps
+
+1.  **Navigate to the Blocklet Store**: Access your Blocklet Server dashboard and go to the "Store" section.
+2.  **Find AIGNE Hub**: Use the search bar to find "AIGNE Hub".
+3.  **Launch the Application**: Click the "Launch" button on the AIGNE Hub page. The installation wizard will guide you through the initial setup process.
+
+Once the installation is complete, AIGNE Hub will be running as a service on your Blocklet Server.
+
+## 2. Provider Configuration
+
+After deployment, the first step is to connect AIGNE Hub to one or more AI providers. This involves adding the necessary API keys for the services you intend to use.
+
+1.  **Access the Admin Panel**: Open your AIGNE Hub instance and navigate to the administrative dashboard.
+2.  **Go to AI Providers**: In the admin panel, find the configuration section and select **Config → AI Providers**.
+3.  **Add API Keys**: Select your desired AI provider from the list (e.g., OpenAI, Anthropic, Google Gemini) and enter your API key. The credentials are encrypted and stored securely.
+
+![Provider Configuration](https://arcblock.oss-cn-shanghai.aliyuncs.com/images/doc-hub/d037b6b6b092765ccbfa58706c241622.png)
+
+## 3. Basic Usage
+
+With providers configured, AIGNE Hub is ready to process AI requests. Applications can interact with the hub's unified API endpoint. Access is typically secured via OAuth or a generated API access key.
+
+The following TypeScript example demonstrates how to invoke a chat model using the `@aigne/aigne-hub` client library.
+
+```typescript
+// Using AIGNE Framework with AIGNE Hub
+import { AIGNEHubChatModel } from "@aigne/aigne-hub";
+
+// Configure the client to point to your AIGNE Hub instance
+const model = new AIGNEHubChatModel({
+  // The full URL to your AIGNE Hub's chat API endpoint
+  url: "https://your-aigne-hub-url/api/v2/chat",
+
+  // Your OAuth access key for authentication
+  accessKey: "your-oauth-access-key",
+
+  // Specify the provider and model to use, e.g., "openai/gpt-3.5-turbo"
+  model: "openai/gpt-3.5-turbo",
+});
+
+// Send a request to the model
+const result = await model.invoke({
+  messages: "Hello, AIGNE Hub!",
+});
+
+console.log(result);
 ```
 
-Replace `YOUR_ACCESS_KEY` with the actual token provided to you. Requests made without a valid `Authorization` header will be rejected with an authentication error.
+### Key Parameters:
 
-### Example Request
+*   `url`: The endpoint of your self-hosted AIGNE Hub instance.
+*   `accessKey`: The security token obtained from AIGNE Hub's authentication system, granting the application permission to make API calls.
+*   `model`: A string identifier specifying both the provider and the model (e.g., `provider/model-name`). AIGNE Hub routes the request to the corresponding provider based on this value.
 
-Here is an example of how to authenticate a `curl` request to the chat completion endpoint. This demonstrates the correct placement and format of the `Authorization` header.
+## Next Steps
 
-```bash Chat Completion Request icon=mdi:api
-curl -X POST "https://your-hub.com/api/v2/chat" \
-  -H "Authorization: Bearer YOUR_ACCESS_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "openai/gpt-4",
-    "messages": [{"role": "user", "content": "Hello!"}]
-  }'
-```
+With the basic setup complete, you can now explore more advanced configurations based on your deployment scenario:
 
-### Security Note
-
-Your access key is sensitive and should be treated like a password. Keep it secure and do not expose it in client-side code or public repositories. If you suspect your key has been compromised, you should revoke it and generate a new one immediately.
-
-## Summary
-
-To interact with the AIGNE Hub API, you must include a valid Bearer token in the `Authorization` header of every request. With a clear understanding of the authentication process, you can now explore the available API endpoints to integrate AIGNE Hub into your applications.
+*   **For Enterprise Use**: Integrate the Hub with your internal applications and manage team access using its built-in user management and security features.
+*   **For Service Providers**: If you plan to offer AIGNE Hub as a public service, the next step is to install the **Payment Kit** Blocklet, configure billing rates, and set up customer payment flows.

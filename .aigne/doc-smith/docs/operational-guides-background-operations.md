@@ -1,54 +1,125 @@
-# Background Operations
+# Cron Jobs
 
-AIGNE Hub relies on a set of automated background tasks, or cron jobs, to ensure system health, data accuracy, and operational efficiency. These tasks run on a predefined schedule to perform essential maintenance and data processing without manual intervention.
+The system utilizes a scheduled job manager (`@abtnode/cron`) to automate essential background tasks. These jobs handle data aggregation, system maintenance, and status monitoring. The cron system is designed to be cluster-aware, ensuring that tasks are executed by a single instance in a multi-node environment to prevent redundant operations.
 
-## Key Scheduled Tasks
+## Cron Job Initialization
 
-The system utilizes a cron scheduler to manage the following core background operations:
+Cron jobs are initialized in the `index.ts` file. The system defines a series of jobs, each with a specific name, schedule, and function. An error handling mechanism is in place to log any failures during job execution.
 
-### 1. Usage Statistics Aggregation (`model.call.stats`)
+A key design consideration for a distributed environment is ensuring that scheduled tasks run on only one node at a time. This is managed by the `shouldExecuteTask` function, which determines if the current instance is the designated "master" for executing a given task. This prevents race conditions and redundant processing across the cluster.
 
-This is one of the most critical background jobs, responsible for processing raw model call data into aggregated hourly statistics. This pre-calculated data is essential for powering the monitoring dashboards and ensuring fast API responses for usage queries.
+```typescript
+// sourceId: blocklets/core/api/src/crons/index.ts
+function init() {
+  Cron.init({
+    context: {},
+    jobs: [
+      // Job definitions...
+    ],
+    onError: (error: Error, name: string) => {
+      logger.error('run job failed', { name, error });
+    },
+  });
+}
+```
 
-**How it works:**
+---
 
-1.  **Identify Gaps**: The job first checks the timestamp of the most recently aggregated statistics. It then identifies all the hourly intervals between that last point and the most recent hour that need processing.
-2.  **Find Active Users**: To optimize the process, it fetches a list of all users who have made at least one API call in the last 7 days.
-3.  **Process in Batches**: For each identified hour and each active user, the system calculates and stores the total token usage, credit consumption, and other relevant metrics.
-4.  **Catch-Up Mechanism**: If the system has been offline or the job has failed to run, it will automatically process all missed hours upon the next successful run, ensuring data integrity.
+## Core Jobs
 
-This job ensures that usage data is consistently up-to-date, providing operators with near real-time insights into consumption patterns.
+### 1. Model Call Statistics (`model.call.stats`)
 
-### 2. Stale Call Cleanup (`cleanup.stale.model.calls`)
+This job is responsible for aggregating model call data into hourly statistical records. These statistics are crucial for monitoring usage, analyzing trends, and potentially for billing purposes.
 
-To maintain system stability, this job identifies and resolves API calls that have become stuck in a `processing` state. This can happen if a client disconnects unexpectedly or if an unhandled error occurs during a request lifecycle.
+**Scheduling:**
+The execution schedule is determined by the `MODEL_CALL_STATS_CRON_TIME` environment variable.
 
-**How it works:**
+**Mechanism:**
+1.  **Identify Processing Gaps:** The job first determines which hours require statistical processing. It finds the timestamp of the last processed hourly stat and creates a list of all subsequent hours up to the most recently completed hour. This "warm-up" mechanism ensures that no data is missed, even if the cron job was inactive for a period. If no prior stats exist, it starts with the previous hour.
+2.  **Fetch Active Users:** It retrieves a list of all unique users who have made at least one model call in the last 7 days. This focuses processing on relevant, active users.
+3.  **Aggregate Data:** For each identified hour and each active user, the job invokes `ModelCallStat.getHourlyStats` to calculate and store the aggregated data. This includes metrics like token counts, image generations, and credits consumed.
 
-1.  **Define Stale**: A call is considered stale if it has been in the `processing` state for longer than a predefined timeout period (e.g., 30 minutes).
-2.  **Query and Update**: The job queries the database for all records matching these criteria.
-3.  **Mark as Failed**: Each stale call is updated to a `failed` status, with an error reason indicating that it timed out. This action frees up resources and ensures that these calls are not left in an indeterminate state.
+The process is designed to be idempotent and resilient, capable of backfilling data and ensuring consistent, up-to-date hourly analytics.
 
-This cleanup routine is vital for preventing orphaned records and maintaining an accurate history of API call statuses.
+```typescript
+// sourceId: blocklets/core/api/src/crons/model-call-stats.ts
+export async function createModelCallStats(hourTimestamp?: number) {
+  const hours = hourTimestamp ? [hourTimestamp] : await getHoursToWarmup();
 
-### 3. Model Status Check (`check.model.status`)
+  // Get all active users (users with calls in the last 7 days)
+  const activeUsers = (await sequelize.query(
+    `
+    SELECT DISTINCT "userDid" 
+    FROM "ModelCalls" 
+    WHERE "callTime" >= :sevenDaysAgo
+  `,
+    {
+      type: 'SELECT',
+      replacements: {
+        sevenDaysAgo: getCurrentUnixTimestamp() - 7 * 24 * 60 * 60,
+      },
+    }
+  )) as any[];
 
-This scheduled task is designed to periodically check the health and availability of the configured AI models. However, this feature is currently reserved for future implementation and is not active in the current version.
+  await Promise.all(
+    hours.map(async (hourTimestamp) => {
+      await Promise.all(
+        activeUsers.map(async (user) => {
+          try {
+            await ModelCallStat.getHourlyStats(user.userDid, hourTimestamp);
+            // ... logging
+          } catch (error) {
+            // ... error logging
+          }
+        })
+      );
+    })
+  );
+}
+```
 
-## Configuration
+### 2. Stale Model Call Cleanup (`cleanup.stale.model.calls`)
 
-The schedule for each cron job is defined using standard cron syntax and can be configured via environment variables. This allows operators to adjust the frequency of these tasks based on their specific operational needs and system load.
+This is a critical maintenance job that ensures the system remains robust by handling orphaned or stuck model call records. A model call might get stuck in a "processing" state if a server instance crashes or an unhandled error occurs before the call can be marked as "success" or "failed".
 
-| Environment Variable                  | Default Schedule | Description                                            |
-| ------------------------------------- | ---------------- | ------------------------------------------------------ |
-| `MODEL_CALL_STATS_CRON_TIME`          | `0 * * * *`      | Runs at the beginning of every hour.                   |
-| `CLEANUP_STALE_MODEL_CALLS_CRON_TIME` | `*/5 * * * *`    | Runs every 5 minutes.                                  |
-| `CHECK_MODEL_STATUS_CRON_TIME`        | `0 */6 * * *`    | Runs every 6 hours (currently inactive).               |
+**Scheduling:**
+The execution schedule is configured via the `CLEANUP_STALE_MODEL_CALLS_CRON_TIME` environment variable.
 
-## Cluster-Aware Execution
+**Mechanism:**
+1.  **Identify Stale Calls:** The job queries the database for `ModelCall` records that have a `status` of `processing` and a `callTime` older than a specified timeout (defaulting to 30 minutes).
+2.  **Mark as Failed:** Each stale call is updated to a `status` of `failed`. The `errorReason` is set to indicate a timeout, and the `duration` is calculated from its start time to the cleanup time.
 
-In a multi-instance or clustered deployment, AIGNE Hub ensures that these background tasks do not run concurrently on multiple nodes, which could lead to data corruption or race conditions. The system includes a leadership election mechanism (`shouldExecuteTask()`) that designates a single instance as the primary or master instance. Only this designated instance is permitted to execute the scheduled jobs, guaranteeing that each task runs exactly once per scheduled interval.
+This automated cleanup prevents an accumulation of invalid "processing" records, ensuring the integrity of system metrics and preventing downstream issues with analytics or user-facing state.
 
-## Summary
+```typescript
+// sourceId: blocklets/core/api/src/middlewares/model-call-tracker.ts
+export async function cleanupStaleProcessingCalls(timeoutMinutes: number = 30): Promise<number> {
+  try {
+    const cutoffTime = getCurrentUnixTimestamp() - timeoutMinutes * 60;
 
-These automated background operations are fundamental to the reliability and accuracy of AIGNE Hub. They handle routine data aggregation and system cleanup, allowing the platform to operate smoothly and provide precise, up-to-date information for monitoring and billing purposes. Understanding these processes is key for operators responsible for maintaining the system.
+    const staleCalls = await ModelCall.findAll({
+      where: {
+        status: 'processing',
+        callTime: { [Op.lt]: cutoffTime },
+      },
+    });
+
+    // ... update logic to mark calls as failed
+    
+    return results.length;
+  } catch (error) {
+    logger.error('Failed to cleanup stale processing calls', { error });
+    return 0;
+  }
+}
+```
+
+### 3. Check Model Status (`check.model.status`)
+
+This job is intended to periodically check the status of all available AI models.
+
+**Scheduling:**
+The schedule is defined by the `CHECK_MODEL_STATUS_CRON_TIME` environment variable.
+
+**Current Status:**
+As of the current implementation, the function associated with this job is commented out. Therefore, this cron job **performs no action**. It exists as a placeholder for future functionality.

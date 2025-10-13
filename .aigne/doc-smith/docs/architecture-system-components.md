@@ -1,115 +1,81 @@
-# System Components
+# System Architecture
 
-AIGNE Hub is designed with a modular architecture, comprising several key functional blocks that work together to provide a centralized, secure, and governable AI gateway. Understanding these components is essential for operating and integrating with the system effectively.
+AIGNE Hub is engineered as a robust, scalable, and secure gateway to the world of generative AI. Built upon the AIGNE Blocklet framework, it provides a unified interface for a multitude of AI providers, while managing critical operational aspects such as billing, usage tracking, and security. This document details the architectural components and design principles of the AIGNE Hub system, with a focus on operational concerns for DevOps and SRE teams.
 
-![AIGNE Hub Architecture Overview](https://arcblock.oss-cn-shanghai.aliyuncs.com/images/doc-site/b0683a48-43d9-4ca7-99e0-f0e7552de445.png)
+---
 
-### Core Functional Blocks
+### Core Architectural Principles
 
-The system is primarily composed of four major components:
+- **Modularity:** The system is designed as a [Blocklet](https://blocklet.io), ensuring it can be deployed, managed, and scaled independently within a Blocklet Server environment. It integrates with other specialized blocklets, such as Payment Kit and Observability, to handle concerns outside its core domain.
+- **Scalability:** The architecture supports both single-instance, self-hosted deployments for enterprises and multi-tenant service provider models, capable of handling numerous users and applications.
+- **Unified Interface:** It abstracts the complexity of diverse AI provider APIs, presenting a single, consistent set of endpoints for developers and applications.
 
-1.  **API Gateway**: The unified entry point for all AI model requests.
-2.  **Authentication System**: Secures access to the gateway and its resources.
-3.  **Usage Tracker**: Monitors and records every API call for analytics and auditing.
-4.  **Billing Module**: An optional credit-based system for managing costs and monetization.
+---
 
-```d2
-direction: down
+## Architectural Components
 
-Client-App: {
-  label: "Client Application"
-  shape: rectangle
-}
+The AIGNE Hub architecture can be broken down into several key components that work in concert:
 
-AIGNE-Hub: {
-  label: "AIGNE Hub"
-  shape: rectangle
-  grid-columns: 2
+![AIGNE Hub System Architecture Diagram](../../../blocklets/core/screenshots/8014a0b1d561114d9948214c4929d5df.png)
 
-  API-Gateway: {
-    label: "API Gateway"
-    shape: rectangle
-  }
+### 1. API Gateway & Routing
 
-  Authentication: {
-    label: "Authentication"
-    shape: rectangle
-  }
+The heart of AIGNE Hub is its API Gateway, built using Node.js and Express. It is responsible for request ingestion, authentication, versioning, and routing to the appropriate internal services.
 
-  Usage-Tracker: {
-    label: "Usage Tracker"
-    shape: rectangle
-  }
+#### API Versioning
 
-  Billing-Module: {
-    label: "Billing Module (Optional)"
-    shape: rectangle
-    style: {
-      stroke-dash: 4
-    }
-  }
-}
+The gateway exposes two distinct API versions, reflecting the evolution of the platform and catering to different use cases:
 
-AI-Providers: {
-  label: "AI Providers"
-  shape: cylinder
-}
+-   **V1 API (`/api/v1`)**: This is the legacy API, primarily designed for server-to-server or component-to-component communication within the AIGNE ecosystem.
+    -   **Authentication**: Relies on cryptographic signature verification (`ensureComponentCall`) to authorize requests from trusted blocklet components.
+    -   **Billing Model**: Integrated with a **subscription-based** model via the Payment Kit. It checks for an active subscription for the calling application (`checkSubscription`). This model is ideal for internal enterprise deployments where usage is not metered per-call.
 
+-   **V2 API (`/api/v2`)**: The current, user-centric API designed for both end-user applications and modern services.
+    -   **Authentication**: Utilizes DID Connect for decentralized, wallet-based user authentication (`sessionMiddleware`). This provides a secure and user-managed identity layer.
+    -   **Billing Model**: Employs a flexible **credit-based** system. Before processing a request, it verifies the user's credit balance (`checkUserCreditBalance`). This is the foundation of the Service Provider mode.
+    -   **Endpoint Support**: Provides both OpenAI-compatible endpoints (e.g., `/v2/chat/completions`) for drop-in compatibility and AIGNE-native endpoints (e.g., `/v2/chat`) for enhanced features.
 
-Client-App -> AIGNE-Hub.API-Gateway: "1. API Request"
-AIGNE-Hub.API-Gateway -> AIGNE-Hub.Authentication: "2. Verify Token"
-AIGNE-Hub.Authentication -> AIGNE-Hub.Usage-Tracker: "3. Start Call Tracking"
-AIGNE-Hub.Usage-Tracker -> AIGNE-Hub.Billing-Module: "4. Check Credits"
-AIGNE-Hub.Billing-Module -> AIGNE-Hub.API-Gateway: "5. Authorize"
-AIGNE-Hub.API-Gateway -> AI-Providers: "6. Proxy to Provider"
-AI-Providers -> AIGNE-Hub.API-Gateway: "7. AI Response"
-AIGNE-Hub.API-Gateway -> AIGNE-Hub.Usage-Tracker: "8. Log Usage"
-AIGNE-Hub.Usage-Tracker -> AIGNE-Hub.Billing-Module: "9. Deduct Credits"
-AIGNE-Hub.Billing-Module -> Client-App: "10. Return Response"
-```
+### 2. AI Provider Integration Layer
 
-### API Gateway
+This layer is the orchestration engine that connects to various third-party AI models. It normalizes requests from the API gateway and translates them into the specific format required by the downstream AI provider (e.g., OpenAI, Anthropic, Google Gemini). It also normalizes the responses, providing a consistent output structure to the client regardless of the underlying model provider.
 
-The API Gateway, built on Express.js, serves as the central nervous system of AIGNE Hub. It exposes a set of RESTful endpoints that abstract the complexities of interacting with various underlying AI providers. All incoming requests from client applications are routed through this gateway.
+API keys and provider credentials are encrypted and stored securely, managed through the AIGNE Hub's administrative interface.
 
-Key responsibilities include:
-- **Request Routing**: Directs incoming requests to the appropriate internal services based on the endpoint (e.g., `/v2/chat`, `/v2/images`).
-- **Version Management**: Supports both legacy (`/v1`) and current (`/v2`) API versions to ensure backward compatibility for older integrations.
-- **Middleware Orchestration**: Chains together middlewares for authentication, usage tracking, and billing checks before processing a request.
-- **Load Balancing and Failover**: Manages requests across multiple credentials for the same provider to enhance reliability and performance.
+### 3. Billing & Usage Tracking
 
-### Authentication System
+For SREs and operators, the billing and usage tracking system is a critical component for monitoring and financial management.
 
-The authentication system ensures that only authorized clients and users can access the AI models. It employs a robust, DID-based mechanism using `@arcblock/did-connect`.
+-   **Model Call Tracking**: Every incoming AI request initiates a record in the `ModelCall` database table with a `processing` status. This tracker, implemented as an Express middleware (`createModelCallMiddleware`), is the source of truth for all usage. It captures the user DID, application DID, requested model, and request timestamps.
 
-- **User Authentication (V2 API)**: The recommended V2 endpoints are protected by user-level authentication. Clients must present a valid Bearer token (JWT) obtained through an OAuth 2.0 flow. This allows for fine-grained, per-user tracking and billing.
-- **Component Authentication (V1 API)**: The legacy V1 endpoints use component-to-component authentication, where a calling Blocklet must present a signed request. This method is suitable for server-to-server integrations within the Blocklet Server ecosystem.
-- **Role-Based Access Control (RBAC)**: Administrative functions and configurations are protected by RBAC, ensuring that only users with `owner` or `admin` roles can make system-level changes.
+-   **Usage Data Collection**: Upon successful completion of an AI call, the tracker is updated with detailed usage metrics, including:
+    -   Prompt and completion token counts
+    -   Number of generated images
+    -   Model parameters (e.g., image size, quality)
+    -   Calculated credit cost
+    -   Call duration
+    -   Trace ID for observability
 
-### Usage Tracker
+-   **Resilience**: The system includes a cleanup mechanism (`cleanupStaleProcessingCalls`) to handle orphaned calls. If a request record remains in the `processing` state for an extended period (e.g., due to a server crash), it is automatically marked as `failed`, ensuring system stability and accurate accounting.
 
-Comprehensive usage tracking is a core feature of AIGNE Hub, providing the data necessary for analytics, auditing, and billing. This is managed by the `ModelCall` tracking middleware.
+-   **Payment Kit Integration**: For credit-based billing, AIGNE Hub integrates deeply with the Payment Kit blocklet.
+    -   When a model call completes, the calculated credit cost is reported to the Payment Kit as a "meter event" (`createMeterEvent`).
+    -   The Payment Kit is responsible for debiting the user's credit balance, managing credit purchases, and handling all financial transactions. This separation of concerns ensures that AIGNE Hub focuses on AI orchestration while the Payment Kit handles the complexities of payments.
 
-For every API request, the tracker:
-1.  **Creates a Record**: A `ModelCall` record is created in the database with a `processing` status the moment a request is received.
-2.  **Tracks Lifecycle**: The system monitors the request as it's forwarded to the AI provider.
-3.  **Updates on Completion**: Once the AI provider responds, the record is updated to `success` or `failed`.
-4.  **Records Metrics**: Key data points are stored, including:
-    -   Prompt and completion tokens.
-    -   User DID and client application DID.
-    -   Request duration.
-    -   Model used and provider credentials.
-    -   Error reasons, if any.
+### 4. Security & Authentication
 
-To maintain system health, a background job (`cleanupStaleProcessingCalls`) periodically runs to mark any long-running `processing` calls as failed, preventing orphaned records.
+Security is managed at multiple levels, accommodating different types of clients.
 
-### Billing Module
+-   **User Authentication (DID Connect)**: As detailed in `blocklets/core/api/src/libs/auth.ts`, end-user authentication for v2 APIs is handled by DID Connect. Users authenticate using their DID Wallet, providing a passwordless and highly secure session. Session tokens are managed by the `walletHandler`.
 
-AIGNE Hub includes an optional, but powerful, credit-based billing system that integrates with the ArcBlock Payment Kit blocklet. When enabled, this module allows operators to monetize AI usage.
+-   **Component Authentication**: For automated, inter-service communication (primarily v1), the system uses a challenge-response mechanism with public-key cryptography. The calling component signs the request, and AIGNE Hub verifies the signature (`verify(data, sig)`), ensuring the request originates from a trusted, registered component.
 
-- **Credit-Based System**: Users consume credits for making API calls. The cost of each call is determined by pre-configured rates for different models.
-- **Balance Check**: Before processing a request on a billable endpoint, the system checks if the user has a sufficient credit balance via the `checkUserCreditBalance` function.
-- **Metered Events**: After a successful API call, the `createMeterEvent` function is triggered to deduct the calculated cost from the user's balance. All consumption is recorded against a specific meter (`AIGNE Hub AI Meter`).
-- **Payment Links**: The system provides payment links for users to purchase more credits, creating a self-service model for topping up their accounts.
+-   **Role-Based Access Control (RBAC)**: Administrative endpoints are protected by `ensureAdmin` middleware, which restricts access to users with `owner` or `admin` roles, preventing unauthorized configuration changes.
 
-This module is disabled by default but can be configured to provide detailed cost control and create new revenue streams.
+### 5. Data Storage
+
+-   **Primary Database**: The `README.md` specifies SQLite with the Sequelize ORM for core application data, including provider configurations, usage rates, and model call logs. For enterprise deployments with high throughput, operators should consider migrating to a more robust database like PostgreSQL, which Sequelize supports.
+-   **Authentication Storage**: DID Connect session data is stored in a separate NeDB database (`auth.db`), as configured in `auth.ts`.
+
+### 6. Observability
+
+The system is designed for operational visibility. As seen in the main router (`blocklets/core/api/src/routes/index.ts`), AIGNE Hub integrates with the `AIGNEObserver` library. This allows it to capture and export detailed trace data (spans) for each request to a dedicated Observability Blocklet. This provides operators with deep insights into request latency, error sources, and performance bottlenecks across the entire request lifecycle, from the gateway to the AI provider and back.

@@ -1,112 +1,188 @@
-# Viewing Call History
+# User Service API
 
-AIGNE Hub maintains a detailed log of every model API call made through the gateway. This history is invaluable for auditing, debugging integration issues, and performing in-depth analysis of AI model usage. You can access this data programmatically via the API or export it as a CSV file for offline analysis.
+## Overview
 
-## Accessing Call History via API
+The User Service API is a foundational component of the system, designed to manage all user-related operations. Its responsibilities include handling user authentication, tracking AI model usage, managing credit-based billing, and providing detailed analytics and reporting. This service is critical for both the end-user experience and for administrative oversight and system maintenance.
 
-To retrieve a paginated list of model calls, you can use the `GET /api/user/model-calls` endpoint. This provides a flexible way to query the call history with various filters.
+From an operational perspective, this service directly interfaces with the database to store and retrieve user data and model call logs. It exposes a set of RESTful endpoints that are consumed by front-end applications and other backend services.
 
-### Request Parameters
+## Architecture and Key Concepts
 
-You can refine your query using the following parameters:
+### Data Models
 
-<x-field-group>
-  <x-field data-name="page" data-type="number" data-default="1" data-desc="The page number for pagination."></x-field>
-  <x-field data-name="pageSize" data-type="number" data-default="50" data-desc="The number of records to return per page (max 100)."></x-field>
-  <x-field data-name="startTime" data-type="string" data-desc="The start of the time range as a Unix timestamp (in seconds)."></x-field>
-  <x-field data-name="endTime" data-type="string" data-desc="The end of the time range as a Unix timestamp (in seconds)."></x-field>
-  <x-field data-name="search" data-type="string" data-desc="A search term to filter calls by model name, app DID, or user DID."></x-field>
-  <x-field data-name="status" data-type="string" data-desc="Filter calls by status. Can be 'success', 'failed', or 'all'."></x-field>
-  <x-field data-name="model" data-type="string" data-desc="Filter calls by a specific model name (supports partial matching)."></x-field>
-  <x-field data-name="providerId" data-type="string" data-desc="Filter calls by the ID of the AI provider."></x-field>
-  <x-field data-name="appDid" data-type="string" data-desc="Filter calls originating from a specific application DID."></x-field>
-  <x-field data-name="allUsers" data-type="boolean" data-default="false">
-    <x-field-desc markdown>Set to `true` to view calls for all users. This requires **admin** or **owner** privileges.</x-field-desc>
-  </x-field>
-</x-field-group>
+The service relies on several key data models to function. Understanding these is essential for troubleshooting and maintenance.
 
-### Example Request
+*   **`ModelCall`**: This is the central data model for tracking usage. Each record in the `ModelCall` table represents a single, discrete interaction with an AI model. It stores comprehensive details about the call, including:
+    *   **Provider and Model**: Which AI provider and specific model was used (e.g., OpenAI, gpt-4).
+    *   **Usage Metrics**: Token counts (input/output) or other relevant units of consumption.
+    *   **Cost**: The calculated cost in credits for the call.
+    *   **Status**: Whether the call was successful, failed, or is still processing.
+    *   **Timestamps & Duration**: When the call occurred and how long it took.
+    *   **Identifiers**: Links to the user (`userDid`) and application (`appDid`) that initiated the call.
 
-Here is an example of how to retrieve the first page of up to 10 failed calls within a specific time range.
+*   **`ModelCallStat`**: To optimize performance for analytics queries, the system pre-aggregates data from the `ModelCall` table into `ModelCallStat`. These records contain summarized statistics for specific time intervals (e.g., hourly, daily), reducing the need for expensive real-time calculations when serving dashboard data. The administrative endpoints for recalculating and cleaning stats operate on this table.
 
-```bash Requesting Failed Calls icon=lucide:terminal
-curl -X GET 'https://your-hub-url/api/user/model-calls?pageSize=10&status=failed&startTime=1672531200&endTime=1675209600' \
-  -H 'Authorization: Bearer <YOUR_API_TOKEN>'
-```
+### Authentication & Authorization
 
-### Response Body
+Security is managed at the middleware level within the Express.js framework.
 
-The API returns a JSON object containing the total count, the list of call records, and pagination details.
+*   **Session Middleware**: Most endpoints are protected by a `sessionMiddleware`. This middleware inspects incoming requests for a valid session token, authenticates the user, and attaches the user's information (like `userDid` and `role`) to the request object. Unauthenticated requests are rejected with a `401 Unauthorized` status.
+*   **Admin Middleware**: Certain endpoints that provide system-wide data or perform sensitive maintenance tasks are further protected by an `ensureAdmin` middleware. This check ensures that the authenticated user has a role of `admin` or `owner`, returning a `403 Forbidden` error if the permissions are insufficient.
 
-<x-field-group>
-  <x-field data-name="count" data-type="number" data-desc="Total number of records matching the query."></x-field>
-  <x-field data-name="list" data-type="array" data-desc="An array of model call objects.">
-    <x-field data-name="id" data-type="string" data-desc="Unique identifier for the call record."></x-field>
-    <x-field data-name="providerId" data-type="string" data-desc="ID of the AI provider used."></x-field>
-    <x-field data-name="model" data-type="string" data-desc="The specific model that was called."></x-field>
-    <x-field data-name="type" data-type="string" data-desc="The type of call (e.g., 'chatCompletion', 'embedding')."></x-field>
-    <x-field data-name="status" data-type="string" data-desc="The final status of the call ('success' or 'failed')."></x-field>
-    <x-field data-name="totalUsage" data-type="number" data-desc="Total usage units (e.g., tokens) for the call."></x-field>
-    <x-field data-name="credits" data-type="number" data-desc="The number of credits charged for the call."></x-field>
-    <x-field data-name="duration" data-type="number" data-desc="The duration of the API call in milliseconds."></x-field>
-    <x-field data-name="userDid" data-type="string" data-desc="The DID of the user who made the call."></x-field>
-    <x-field data-name="appDid" data-type="string" data-desc="The DID of the application that initiated the call."></x-field>
-    <x-field data-name="callTime" data-type="number" data-desc="Unix timestamp of when the call was made."></x-field>
-    <x-field data-name="errorReason" data-type="string" data-desc="Details of the error if the call failed."></x-field>
-    <x-field data-name="appInfo" data-type="object" data-desc="Information about the calling application (if available).">
-      <x-field data-name="appName" data-type="string" data-desc="Name of the application."></x-field>
-      <x-field data-name="appLogo" data-type="string" data-desc="URL to the application's logo."></x-field>
-      <x-field data-name="appUrl" data-type="string" data-desc="URL of the application."></x-field>
-    </x-field>
-    <x-field data-name="userInfo" data-type="object" data-desc="Information about the user who made the call.">
-      <x-field data-name="did" data-type="string" data-desc="User's DID."></x-field>
-      <x-field data-name="fullName" data-type="string" data-desc="User's full name."></x-field>
-      <x-field data-name="email" data-type="string" data-desc="User's email address."></x-field>
-      <x-field data-name="avatar" data-type="string" data-desc="URL to the user's avatar."></x-field>
-    </x-field>
-  </x-field>
-  <x-field data-name="paging" data-type="object" data-desc="Pagination information.">
-    <x-field data-name="page" data-type="number" data-desc="The current page number."></x-field>
-    <x-field data-name="pageSize" data-type="number" data-desc="The number of items per page."></x-field>
-  </x-field>
-</x-field-group>
+## API Endpoints
 
-## Exporting Call History
+This section provides a detailed reference for all endpoints exposed by the User Service.
 
-For bulk analysis or reporting, you can export the call history to a CSV file using the `GET /api/user/model-calls/export` endpoint. This endpoint accepts the same filtering parameters as the `/model-calls` endpoint, excluding `page` and `pageSize`.
+### User Information
 
-### Example Export Request
+#### GET /info
 
-This command exports all successful calls for the 'gpt-4' model and saves them to a local file.
+Retrieves comprehensive information for the currently authenticated user, including their profile and, if enabled, their credit balance.
 
-```bash Exporting Call History icon=lucide:terminal
-curl -X GET 'https://your-hub-url/api/user/model-calls/export?status=success&model=gpt-4' \
-  -H 'Authorization: Bearer <YOUR_API_TOKEN>' \
-  -o model-calls-export.csv
-```
+*   **Permissions**: Authenticated User
+*   **Response Body**:
+    *   `user`: Object containing user details (`did`, `fullName`, `email`, `avatar`).
+    *   `creditBalance`: Object with credit details (`balance`, `total`, `grantCount`, `pendingCredit`). This is `null` if credit-based billing is disabled.
+    *   `paymentLink`: A pre-generated short URL for the user to purchase more credits.
+    *   `currency`: The currency configuration for payments.
+    *   `enableCredit`: A boolean flag indicating if credit-based billing is active.
+    *   `profileLink`: A pre-generated short URL to the user's credit usage dashboard.
 
-### CSV File Format
+### Credit Management
 
-The exported CSV file contains a comprehensive set of fields for each call record. The columns are as follows:
+These endpoints are only functional when `Config.creditBasedBillingEnabled` is `true`.
 
-| Column         | Description                                                              |
-|----------------|--------------------------------------------------------------------------|
-| `Timestamp`    | The date and time when the call was created.                             |
-| `Request ID`   | The unique identifier for the call record.                               |
-| `User DID`     | The DID of the user who made the call.                                   |
-| `User Name`    | The full name of the user.                                               |
-| `User Email`   | The email address of the user.                                           |
-| `Model`        | The AI model that was called.                                            |
-| `Provider`     | The display name of the AI provider.                                     |
-| `Type`         | The type of call (e.g., `chatCompletion`).                               |
-| `Status`       | The final status of the call (`success` or `failed`).                    |
-| `Input Tokens` | The number of input tokens consumed.                                     |
-| `Output Tokens`| The number of output tokens generated.                                   |
-| `Total Usage`  | The total usage units for the call (e.g., total tokens).                 |
-| `Credits`      | The number of credits charged for the call.                              |
-| `Duration(ms)` | The duration of the API call in milliseconds.                            |
-| `App DID`      | The DID of the application that initiated the call, if applicable.       |
+#### GET /credit/grants
 
-## Summary
+Fetches a paginated list of credit grants for the user. Grants are additions of credits to a user's account, often from promotional offers or initial sign-ups.
 
-The call history endpoints provide powerful tools for operators to monitor, audit, and debug AI model interactions within the system. For a higher-level, aggregated view of this data, see the [Monitoring Usage and Costs](./operational-guides-monitoring.md) guide.
+*   **Permissions**: Authenticated User
+*   **Query Parameters**:
+    *   `page` (number, optional): The page number for pagination.
+    *   `pageSize` (number, optional): The number of items per page (max 100).
+    *   `start` (number, optional): The start timestamp for the query range.
+    *   `end` (number, optional): The end timestamp for the query range.
+
+#### GET /credit/transactions
+
+Fetches a paginated list of credit transactions, such as purchases.
+
+*   **Permissions**: Authenticated User
+*   **Query Parameters**:
+    *   `page` (number, optional): The page number for pagination.
+    *   `pageSize` (number, optional): The number of items per page (max 100).
+    *   `start` (number, optional): The start timestamp for the query range.
+    *   `end` (number, optional): The end timestamp for the query range.
+
+#### GET /credit/balance
+
+Retrieves the current credit balance for the authenticated user.
+
+*   **Permissions**: Authenticated User
+
+#### GET /credit/payment-link
+
+Generates and returns a short URL that directs the user to a payment page to purchase credits.
+
+*   **Permissions**: Authenticated User
+
+### Model Call History
+
+#### GET /model-calls
+
+Retrieves a paginated history of AI model calls. This is a primary endpoint for displaying usage logs to users and administrators.
+
+*   **Permissions**: Authenticated User. Admin or owner role is required if `allUsers=true`.
+*   **Query Parameters**:
+    *   `page` (number, optional, default: 1): The page number for pagination.
+    *   `pageSize` (number, optional, default: 50): The number of items per page (max 100).
+    *   `startTime` (string, optional): The start timestamp (Unix time) for the query range.
+    *   `endTime` (string, optional): The end timestamp (Unix time) for the query range.
+    *   `search` (string, optional): A search term to filter by model, `appDid`, or `userDid`.
+    *   `status` (string, optional): Filter by call status. Can be `success`, `failed`, or `all`.
+    *   `model` (string, optional): Filter by a specific model name.
+    *   `providerId` (string, optional): Filter by a specific AI provider ID.
+    *   `appDid` (string, optional): Filter by a specific application DID.
+    *   `allUsers` (boolean, optional): If `true`, retrieves calls for all users. **Requires admin privileges.**
+
+#### GET /model-calls/export
+
+Exports the model call history to a CSV file. This endpoint supports the same filtering capabilities as `GET /model-calls` but is designed for bulk data export and offline analysis.
+
+*   **Permissions**: Authenticated User. Admin or owner role is required if `allUsers=true`.
+*   **Query Parameters**: Same as `GET /model-calls`, excluding pagination (`page`, `pageSize`). The export limit is hardcoded to 10,000 records.
+*   **Response**: A `text/csv` file with a `Content-Disposition` header to trigger a file download.
+
+### Usage Statistics
+
+#### GET /usage-stats
+
+Provides aggregated usage statistics for a specified time range for the authenticated user. This endpoint powers user-facing analytics dashboards.
+
+*   **Permissions**: Authenticated User
+*   **Query Parameters**:
+    *   `startTime` (string, required): The start timestamp for the query range.
+    *   `endTime` (string, required): The end timestamp for the query range.
+*   **Response Body**:
+    *   `summary`: An object containing top-level statistics like total calls, total credits consumed, and usage broken down by call type (e.g., `chatCompletion`, `embedding`).
+    *   `dailyStats`: An array of objects, each representing a day in the time range with its own summary of usage and credits.
+    *   `modelStats`: A list of the most frequently used models in the period.
+    *   `trendComparison`: Data comparing the specified period with the preceding period to show growth or decline in usage.
+
+#### GET /weekly-comparison
+
+Calculates and returns a comparison of usage metrics between the current week (to date) and the previous full week.
+
+*   **Permissions**: Authenticated User
+*   **Response Body**:
+    *   `current`: An object with `totalUsage`, `totalCredits`, and `totalCalls` for the current week.
+    *   `previous`: The same metrics for the previous week.
+    *   `growth`: The percentage change for each metric.
+
+#### GET /monthly-comparison
+
+Calculates and returns a comparison of usage metrics between the current month (to date) and the previous full month.
+
+*   **Permissions**: Authenticated User
+*   **Response Body**:
+    *   `current`: An object with `totalUsage`, `totalCredits`, and `totalCalls` for the current month.
+    *   `previous`: The same metrics for the previous month.
+    *   `growth`: The percentage change for each metric.
+
+### Administrative Endpoints
+
+These endpoints are intended for system maintenance, monitoring, and troubleshooting. Access is restricted to users with `admin` or `owner` roles.
+
+#### GET /admin/user-stats
+
+Provides aggregated usage statistics across all users for a specified time range. This is the administrator's equivalent of `GET /usage-stats`.
+
+*   **Permissions**: Admin or Owner
+*   **Query Parameters**:
+    *   `startTime` (string, required): The start timestamp for the query range.
+    *   `endTime` (string, required): The end timestamp for the query range.
+
+#### POST /recalculate-stats
+
+Manually triggers a recalculation of the aggregated `ModelCallStat` data for a specific user within a given time frame. This is a critical tool for correcting data inconsistencies that may arise from processing failures or bugs.
+
+*   **Permissions**: Admin or Owner
+*   **Request Body**:
+    *   `userDid` (string, required): The DID of the user whose stats need recalculation.
+    *   `startTime` (string, required): The start timestamp for the recalculation window.
+    *   `endTime` (string, required): The end timestamp for the recalculation window.
+    *   `dryRun` (boolean, optional): If `true`, the endpoint will report the actions it would take (e.g., number of records to delete and hours to recalculate) without actually performing them. This is highly recommended for verifying the scope of an operation before execution.
+*   **Operation**:
+    1.  Identifies all hourly `ModelCallStat` records for the user within the time range.
+    2.  If not a `dryRun`, it deletes these records.
+    3.  It then iterates through each hour in the range and re-triggers the aggregation logic to create fresh `ModelCallStat` records from the raw `ModelCall` data.
+
+#### POST /cleanup-daily-stats
+
+Deletes daily aggregated statistics (`ModelCallStat` records where `timeType` is 'day') for a specific user within a time range. This can be used for data lifecycle management or to clear out corrupted daily summaries before a recalculation.
+
+*   **Permissions**: Admin or Owner
+*   **Request Body**:
+    *   `userDid` (string, required): The DID of the user to perform the cleanup for.
+    *   `startTime` (string, required): The start timestamp of the cleanup window.
+    *   `endTime` (string, required): The end timestamp of the cleanup window.

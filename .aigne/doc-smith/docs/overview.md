@@ -1,74 +1,35 @@
-# Overview
+# Blocklet Store Deployment
 
-AIGNE Hub is the central AI gateway of the AIGNE ecosystem, built on the robust AIGNE Framework and deployed as a Blocklet on the ArcBlock platform. It serves as a unified entry point for accessing over 10 leading AI providers, eliminating the complexity of managing multiple API keys, fragmented billing systems, and inconsistent usage tracking across different services.
+Deploying AIGNE Hub via the Blocklet Store is the recommended method for most operational scenarios. This approach leverages a one-click installation process, which significantly simplifies the initial setup and ensures that the system is configured correctly on a running Blocklet Server instance.
 
-By providing a single, secure, and self-hosted interface, AIGNE Hub is designed for enterprises seeking centralized AI governance, developers building multi-model applications, and service providers offering AI capabilities to their customers.
+This method is ideal for teams who want to get AIGNE Hub running quickly without the complexities of manual source code compilation and dependency management.
 
-```d2
-direction: down
+## Step-by-Step Installation Guide
 
-Client-Apps: {
-  label: "Client Apps\n• Web Apps\n• Mobile Apps\n• CLI Tools\n• APIs"
-  shape: rectangle
-}
+Follow these steps to deploy and configure AIGNE Hub from the Blocklet Store.
 
-AIGNE-Hub: {
-  label: "AIGNE Hub\n• Load Balancer\n• Auth System\n• Usage Tracker\n• Billing"
-  shape: rectangle
-}
+### Step 1: Locate AIGNE Hub in the Blocklet Store
 
-AI-Providers: {
-  label: "AI Providers\n• OpenAI\n• Anthropic\n• Google\n• Amazon"
-  shape: rectangle
-}
+Navigate to the official [Blocklet Store](https://store.blocklet.dev) and use the search functionality to find "AIGNE Hub". The store provides detailed information about the blocklet, including its features, version history, and system requirements.
 
-Client-Apps -> AIGNE-Hub
-AIGNE-Hub -> AI-Providers
-```
+### Step 2: Launch the Installation
 
-## Core Purpose
+Once on the AIGNE Hub page, click the "Launch" button. This will initiate the installation process on your connected Blocklet Server.
 
-The primary goal of AIGNE Hub is to streamline the integration and management of large language models (LLMs). It provides a unified API, a centralized security model, and an intuitive dashboard to give operators full visibility and control over AI usage, costs, and performance.
+![AIGNE Hub in Blocklet Store](../../../blocklets/core/screenshots/c29f08420df8ea9a199fcb5ffe06febe.png)
 
-As a core component of the AIGNE ecosystem, the hub works seamlessly with:
-- **AIGNE Framework**: Provides foundational AI abstractions and model adapters for application development.
-- **AIGNE Observability**: Monitors performance, usage, and system health for operational excellence.
-- **ArcBlock Blocklet Platform**: Enables secure, scalable deployment and management on your own infrastructure.
+### Step 3: Follow the Installation Wizard
 
-## Key Features
+The system will guide you through an installation wizard. Follow the on-screen prompts to complete the setup. The wizard handles the deployment of all necessary components and dependencies automatically.
 
-<x-cards data-columns="2">
-  <x-card data-title="Self-Hosted & Secure" data-icon="lucide:shield-check">
-    Deploy on your own infrastructure for complete data control. All API credentials are AES-encrypted at rest, with role-based access controls and comprehensive audit logging.
-  </x-card>
-  <x-card data-title="Multi-Provider Integration" data-icon="lucide:plug-zap">
-    Connect to 10+ AI providers through a single endpoint. The system supports weight-based load balancing, automatic failover, and real-time model health checks.
-  </x-card>
-  <x-card data-title="Advanced Analytics & Billing" data-icon="lucide:bar-chart-3">
-    Gain full visibility with detailed usage tracking and cost analysis. An optional credit-based billing system allows for monetization with custom pricing rules.
-  </x-card>
-  <x-card data-title="Developer-Friendly Experience" data-icon="lucide:code-2">
-    Utilize a built-in AI Playground for testing, integrate with a comprehensive RESTful API, and leverage seamless AIGNE Framework integration for rapid development.
-  </x-card>
-</x-cards>
+### Step 4: Initial Configuration
 
-## Supported Providers
+After the installation is complete, the final step is to configure the AI providers you intend to use.
 
-AIGNE Hub connects to a growing list of the industry's leading AI providers through a unified interface.
+1.  Access the AIGNE Hub administrative panel.
+2.  Navigate to the **Config** section and select **AI Providers**.
+3.  Add the necessary API keys and credentials for each AI service you wish to connect. All credentials are AES-encrypted at rest to ensure security.
 
-| Provider | Models Supported | Features |
-|----------|------------------|----------|
-| **OpenAI** | GPT-3.5, GPT-4, GPT-4o, DALL-E | Chat, Embeddings, Image Generation |
-| **Anthropic** | Claude 3 (Haiku, Sonnet, Opus) | Advanced reasoning, Long context |
-| **Google Gemini** | Gemini Pro, Gemini Vision | Multimodal capabilities |
-| **Amazon Bedrock** | Claude, Titan, Jurassic | Enterprise AWS integration |
-| **DeepSeek** | DeepSeek-V2, DeepSeek-Coder | Advanced reasoning models |
-| **xAI** | Grok-1, Grok-2 | Real-time information access |
-| **Doubao** | Doubao models | Image generation, Chat |
-| **OpenRouter** | 100+ models | Access to multiple providers |
-| **Ollama** | Llama, Mistral, CodeLlama | Local model deployment |
-| **Poe** | Claude, GPT, Gemini | Unified model access |
+![Configure AI Providers](../../../blocklets/core/screenshots/d037b6b6b092765ccbfa58706c241622.png)
 
-> The list of supported providers is actively expanding. New providers are auto-discovered and available for connection as soon as they're supported.
-
-This overview provides a high-level understanding of AIGNE Hub's purpose and capabilities. For a deeper technical dive into its internal workings, refer to the [Architecture](./architecture.md) section.
+Once your providers are configured, your AIGNE Hub instance is fully operational and ready to serve API requests for your internal teams or, if configured, external customers.

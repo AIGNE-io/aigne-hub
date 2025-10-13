@@ -1,77 +1,67 @@
-# Architecture
+# Technical Architecture
 
-AIGNE Hub is designed as a robust, self-hosted AI gateway that provides a unified interface to multiple AI providers. This section offers a deep dive into its system architecture, detailing the core components, the technology stack it's built upon, and the data persistence layer. Understanding this architecture is key to deploying, managing, and scaling the system effectively.
+This document provides a detailed overview of the AIGNE Hub's technical architecture, designed for DevOps, SRE, and infrastructure teams responsible for deployment, monitoring, and maintenance.
 
-For more detailed information on specific areas, please refer to the following sub-sections:
-- [System Components](./architecture-system-components.md): An in-depth look at the functional blocks like the API gateway, authentication, and billing.
-- [Technology Stack](./architecture-technology-stack.md): A complete list of the frameworks and technologies used.
-- [Data Persistence](./architecture-data-persistence.md): Details on the database schema and data models.
+## Core Philosophy
 
-## High-Level System Design
+The architecture of AIGNE Hub is built on principles of modularity, scalability, and ease of deployment. It operates as a self-contained, cloud-native application packaged as a Blocklet. This design choice simplifies installation, management, and integration into existing infrastructures. The system is centered around a unified API gateway that abstracts the complexity of interacting with multiple downstream AI providers.
 
-At its core, AIGNE Hub acts as a central intermediary between client applications and various external AI service providers. This design decouples applications from specific AI provider APIs, enabling centralized control over security, billing, and usage monitoring.
+## System Components
 
-```d2
-direction: right
+AIGNE Hub consists of several key components that work together to deliver its functionality.
 
-Client-Apps: {
-  label: "Client Apps"
-  shape: rectangle
-  grid-columns: 1
+![AIGNE Hub Logo](../../../blocklets/core/screenshots/logo.png)
 
-  "Web Apps"
-  "Mobile Apps"
-  "CLI Tools"
-  "APIs"
-}
+### 1. API Server (Express.js)
 
-AIGNE-Hub: {
-  label: "AIGNE Hub"
-  shape: rectangle
-  grid-columns: 1
+The backbone of the application is a robust API server built with Node.js and [Express.js](https://expressjs.com/). It handles all incoming requests, authentication, and routing.
 
-  "Load Balancer"
-  "Auth System"
-  "Usage Tracker"
-  "Billing"
-}
+-   **Runtime**: Node.js (>=18), providing an efficient, event-driven environment suitable for I/O-heavy operations like proxying API calls.
+-   **Framework**: Express.js is used for its minimalist and flexible approach to building web applications and APIs.
+-   **Type Safety**: The entire backend is written in TypeScript, ensuring code quality, maintainability, and fewer runtime errors.
+-   **API Structure**: The system exposes a versioned RESTful API (e.g., `/api/v1`, `/api/v2`) for interacting with AI models and managing the Hub. This ensures backward compatibility as the platform evolves.
+-   **Middleware**: Core functionalities are implemented using standard middleware, including:
+    -   `cors` for cross-origin resource sharing.
+    -   `cookie-parser` for handling HTTP cookies.
+    -   Custom logging middleware for capturing access logs.
+    -   A robust error-handling mechanism that formats and logs exceptions, returning appropriate HTTP status codes.
 
-AI-Providers: {
-  label: "AI Providers"
-  shape: rectangle
-  grid-columns: 1
+### 2. Data Persistence (SQLite & Sequelize)
 
-  "OpenAI"
-  "Anthropic"
-  "Google"
-  "Amazon"
-}
+For data storage, AIGNE Hub utilizes a lightweight yet powerful combination of SQLite and the Sequelize ORM.
 
-Client-Apps -> AIGNE-Hub: "Unified API Requests"
-AIGNE-Hub -> AI-Providers: "Proxied Requests"
-```
+-   **Database**: SQLite is the chosen database engine. This decision was made to optimize for simplicity and portability. By embedding the database within the Blocklet's data directory (`/data/aikit.db`), AIGNE Hub eliminates the need for external database dependencies, making deployment and data backups straightforward.
+-   **Performance**: To enhance performance under load, the system configures SQLite with specific PRAGMA directives:
+    -   `journal_mode = WAL`: Write-Ahead Logging allows for higher concurrency by enabling readers to continue operating while writes are in progress.
+    -   `synchronous = normal`: Provides a good balance between performance and data integrity.
+-   **ORM**: [Sequelize](https://sequelize.org/) is used as the Object-Relational Mapper. It provides a clear, model-based structure for interacting with the database and managing relationships. Key data models include:
+    -   `AiProvider`: Stores configurations for supported AI providers (e.g., OpenAI, Anthropic).
+    -   `AiCredential`: Securely stores encrypted API keys and other credentials for each provider.
+    -   `App`: Manages applications that are authorized to use the Hub.
+    -   `ModelCall`: Logs every individual API call for auditing and analytics.
+    -   `Usage`: Aggregates usage data for billing and tracking purposes.
+-   **Migrations**: Database schema changes are managed by `umzug`. This ensures that database updates are applied reliably and version-controlled, which is critical for smooth upgrades during maintenance cycles.
 
-The diagram above illustrates the primary data flow:
-1.  **Client Applications** (web apps, CLIs, backend services, etc.) send requests to AIGNE Hub's unified API endpoints.
-2.  **AIGNE Hub** authenticates the request, applies any load-balancing or billing logic, and forwards the request to the appropriate downstream AI Provider.
-3.  The response is routed back through the Hub, where usage data is logged for analytics and billing before being sent back to the client.
+### 3. AI Provider Gateway
 
-## Technology Stack Overview
+The core functionality of AIGNE Hub lies in its intelligent gateway for routing requests to various AI providers.
 
-AIGNE Hub is built on a modern, reliable technology stack chosen for performance, security, and ease of maintenance. The core backend is powered by Node.js and TypeScript with the Express framework, while the frontend utilizes React. The entire application is designed for containerized deployment using the ArcBlock Blocklet platform, ensuring consistency across environments. For a complete list of technologies, see the [Technology Stack](./architecture-technology-stack.md) page.
+-   **Dynamic Model Loading**: The system dynamically loads the appropriate SDK or model handler based on the `model` parameter in an API request (e.g., `openai/gpt-4o`). This is handled by the `@aigne/core` and `@aigne/aigne-hub` libraries, which provide a standardized interface for different AI services.
+-   **Credential Management**: When a request is received, the `getProviderCredentials` function retrieves the necessary credentials from the `AiProvider` and `AiCredential` tables. It includes logic to cycle through available keys (`getNextAvailableCredential`), providing a basic mechanism for load balancing and failover if multiple keys are configured for a single provider.
+-   **Extensibility**: The architecture is designed to be extensible. Adding a new AI provider involves implementing its specific logic within the framework and adding its configuration to the database, without requiring major changes to the core application.
 
-## Data Persistence Overview
+### 4. Observability and Monitoring
 
-The system's state is managed through a local SQLite database, which is lightweight and ideal for a self-hosted, single-node deployment. The database is located at `DATA_DIR/aikit.db`. Data access is handled by the Sequelize ORM, which provides a structured way to interact with the database and manage schema migrations.
+For operational insight, AIGNE Hub integrates with the AIGNE ecosystem's observability tools.
 
-The core data models include:
-- **AiProvider**: Stores configuration for each connected AI provider.
-- **AiCredential**: Securely stores encrypted API keys for each provider.
-- **ModelCall**: Records detailed logs for every API call made through the hub.
-- **Usage**: Aggregates usage statistics for billing and analytics.
+-   **Distributed Tracing**: The `AIGNEObserver` module captures trace data (spans) for API calls. This data is then exported to a dedicated Observability Blocklet.
+-   **Troubleshooting**: This integration allows operators to trace the lifecycle of a request from the initial API call through the Hub to the downstream AI provider and back. It is invaluable for diagnosing latency issues, identifying errors, and understanding system performance.
 
-This architecture ensures that all sensitive data, including provider credentials and usage logs, remains within your own infrastructure, providing a high degree of security and data privacy. For a detailed breakdown, refer to the [Data Persistence](./architecture-data-persistence.md) section.
+## Deployment and Operations
 
----
+AIGNE Hub is designed for deployment as a [Blocklet](https://blocklet.io), a cloud-native application package that simplifies its lifecycle management.
 
-With this architectural overview, you have a foundational understanding of how AIGNE Hub operates. Explore the detailed sections to gain deeper insights into each component.
+-   **Containerization**: As a Blocklet, the application runs in a containerized environment, ensuring consistency across different deployment targets.
+-   **Configuration**: Environment-specific configurations are managed through `.env` files, facilitated by the `dotenv-flow` library. This allows for distinct settings for development, testing, and production environments.
+-   **Static Assets**: In a production environment, the compiled React frontend is served directly by the same Express.js server, creating a self-contained unit that is easy to manage and deploy behind a reverse proxy or load balancer.
+-   **Billing System**: The Hub includes a credit-based billing system that integrates with the Payment Kit blocklet. The `paymentClient` and `ensureMeter` functions handle the communication, enabling the Hub to operate in a service provider mode where usage is metered and billed against user credits.
