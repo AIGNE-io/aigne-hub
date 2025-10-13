@@ -40,3 +40,75 @@ e313ecfe479d3a8cdd1a05bf75f9331c63fff66e96999601c47b701c85caabbe:
     https://staging.docsmith.aigne.io:
       url: https://staging.docsmith.aigne.io/image-bin/uploads/468398853db82532.svg
       upload_time: 2025-09-20T07:07:57.340Z
+b0be4ea5888064498b856198e33fd25a44dfa6b92b24e8cffd55582297cab129:
+  local_path: blocklets/core/screenshots/logo.png
+  sites:
+    https://www.arcblock.io:
+      url: https://www.arcblock.io/image-bin/uploads/b0be4ea588806449.png
+      upload_time: 2025-10-13T08:22:27.528Z
+    https://docsmith.aigne.io:
+      url: https://docsmith.aigne.io/image-bin/uploads/b0be4ea588806449.png
+      upload_time: 2025-10-13T08:22:44.932Z
+467a43898fb97a9606a417fbc7df4baab51565591547bb3dca8c564923f4f34a:
+  local_path: blocklets/core/screenshots/c29f08420df8ea9a199fcb5ffe06febe.png
+  sites:
+    https://www.arcblock.io:
+      url: https://www.arcblock.io/image-bin/uploads/467a43898fb97a96.png
+      upload_time: 2025-10-13T08:22:27.928Z
+    https://docsmith.aigne.io:
+      url: https://docsmith.aigne.io/image-bin/uploads/467a43898fb97a96.png
+      upload_time: 2025-10-13T08:22:44.901Z
+84151b07ec025b9fa454fdb0210eb2cb47da88cf607bb832e666c74f13af2f1a:
+  local_path: blocklets/core/screenshots/d037b6b6b092765ccbfa58706c241622.png
+  sites:
+    https://www.arcblock.io:
+      url: https://www.arcblock.io/image-bin/uploads/84151b07ec025b9f.png
+      upload_time: 2025-10-13T08:22:28.290Z
+    https://docsmith.aigne.io:
+      url: https://docsmith.aigne.io/image-bin/uploads/84151b07ec025b9f.png
+      upload_time: 2025-10-13T08:22:44.956Z
+ea664bc1d0d2ea1a3a1524b561279859f50ff43a7b31d7917060f1648055bcda:
+  local_path: blocklets/core/src/icons/icon-image.svg
+  sites:
+    https://www.arcblock.io:
+      url: https://www.arcblock.io/image-bin/uploads/ea664bc1d0d2ea1a.svg
+      upload_time: 2025-10-13T08:22:28.567Z
+    https://docsmith.aigne.io:
+      url: https://docsmith.aigne.io/image-bin/uploads/ea664bc1d0d2ea1a.svg
+      upload_time: 2025-10-13T08:22:45.808Z
+6995c82e2bea046ee91b0b3a25354fbbfeabc1c6b331768d2fd7b01f7c5a8810:
+  local_path: blocklets/core/src/logo.svg
+  sites:
+    https://www.arcblock.io:
+      url: https://www.arcblock.io/image-bin/uploads/6995c82e2bea046e.svg
+      upload_time: 2025-10-13T08:22:28.781Z
+    https://docsmith.aigne.io:
+      url: https://docsmith.aigne.io/image-bin/uploads/6995c82e2bea046e.svg
+      upload_time: 2025-10-13T08:22:45.836Z
+a4381f1b70efa48fe13a0c9eca2fa260d40d598b8dafad06a7f6e0923a7cee1b:
+  local_path: blocklets/core/src/icons/icon-text.svg
+  sites:
+    https://www.arcblock.io:
+      url: https://www.arcblock.io/image-bin/uploads/a4381f1b70efa48f.svg
+      upload_time: 2025-10-13T08:22:28.912Z
+    https://docsmith.aigne.io:
+      url: https://docsmith.aigne.io/image-bin/uploads/a4381f1b70efa48f.svg
+      upload_time: 2025-10-13T08:22:45.812Z
+16987843ade6e65b32bc9efa9c16ff2ae1cb3da20bd26a57d7e8e75caefb9c31:
+  local_path: blocklets/core/src/icons/icon-embedding.svg
+  sites:
+    https://www.arcblock.io:
+      url: https://www.arcblock.io/image-bin/uploads/16987843ade6e65b.svg
+      upload_time: 2025-10-13T08:22:28.969Z
+    https://docsmith.aigne.io:
+      url: https://docsmith.aigne.io/image-bin/uploads/16987843ade6e65b.svg
+      upload_time: 2025-10-13T08:22:45.968Z
+3c965b1fec89be97eb755e6007805414a739d9377f3fb8f49ee5f5b0cf513f99:
+  local_path: blocklets/core/screenshots/8014a0b1d561114d9948214c4929d5df.png
+  sites:
+    https://www.arcblock.io:
+      url: https://www.arcblock.io/image-bin/uploads/3c965b1fec89be97.png
+      upload_time: 2025-10-13T08:22:29.333Z
+    https://docsmith.aigne.io:
+      url: https://docsmith.aigne.io/image-bin/uploads/3c965b1fec89be97.png
+      upload_time: 2025-10-13T08:22:45.844Z
