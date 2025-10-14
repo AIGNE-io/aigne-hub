@@ -15,6 +15,8 @@ import {
   ListItemText,
   TextField,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import { useMemo, useState } from 'react';
 import { joinURL } from 'ufo';
@@ -29,6 +31,8 @@ interface ModelSelectorProps {
   modelGroups: ModelGroup[];
   selectedModel: string;
   onModelSelect: (modelValue: string) => void;
+  selectedType?: string;
+  onTypeChange?: (type: string) => void;
 }
 
 export default function ModelSelector({
@@ -37,10 +41,14 @@ export default function ModelSelector({
   modelGroups,
   selectedModel,
   onModelSelect,
+  selectedType = 'all',
+  onTypeChange = () => {},
 }: ModelSelectorProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [providerFilter, setProviderFilter] = useState<string>('all');
-  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const typeFilter = selectedType; // Use the external selectedType
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   // Get unique providers for filtering (based on current type filter)
   const availableProviders = useMemo(() => {
@@ -51,7 +59,7 @@ export default function ModelSelector({
       filtered = filtered
         .map((group) => ({
           ...group,
-          models: group.models.filter((model) => model.type === typeFilter),
+          models: group.models.filter((model) => model.types?.includes(typeFilter)),
         }))
         .filter((group) => group.models.length > 0);
     }
@@ -72,12 +80,12 @@ export default function ModelSelector({
       filtered = filtered.filter((group) => group.provider === providerFilter);
     }
 
-    // Apply type filter
+    // Apply type filter - check if model's types array includes the selected type
     if (typeFilter !== 'all') {
       filtered = filtered
         .map((group) => ({
           ...group,
-          models: group.models.filter((model) => model.type === typeFilter),
+          models: group.models.filter((model) => model.types?.includes(typeFilter)),
         }))
         .filter((group) => group.models.length > 0);
     }
@@ -109,10 +117,12 @@ export default function ModelSelector({
       onClose={onClose}
       maxWidth="md"
       fullWidth
-      PaperProps={{
-        sx: {
-          borderRadius: 3,
-          maxHeight: '80vh',
+      fullScreen={isMobile}
+      slotProps={{
+        paper: {
+          sx: {
+            m: { xs: 0, sm: 2 },
+          },
         },
       }}>
       <DialogTitle
@@ -120,11 +130,17 @@ export default function ModelSelector({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          pb: 2,
+          pb: { xs: 1.5, sm: 2 },
+          px: { xs: 2, sm: 3 },
           borderBottom: '1px solid',
           borderColor: 'divider',
         }}>
-        <Typography variant="h6" sx={{ fontWeight: 600 }}>
+        <Typography
+          variant="h6"
+          sx={{
+            fontWeight: 600,
+            fontSize: { xs: '1.1rem', sm: '1.25rem' },
+          }}>
           Select AI Model
         </Typography>
         <IconButton onClick={onClose} size="small">
@@ -134,7 +150,7 @@ export default function ModelSelector({
 
       <DialogContent sx={{ p: 0 }}>
         {/* Search Bar */}
-        <Box sx={{ p: 2, borderColor: 'divider' }}>
+        <Box sx={{ p: { xs: 1.5, sm: 2 }, borderColor: 'divider' }}>
           <TextField
             fullWidth
             placeholder="Search models..."
@@ -167,18 +183,26 @@ export default function ModelSelector({
         <Box
           sx={{
             display: 'flex',
-            gap: 1,
-            px: 2,
-            py: 1.5,
+            gap: { xs: 0.75, sm: 1 },
+            px: { xs: 1.5, sm: 2 },
+            py: { xs: 1, sm: 1.5 },
             overflowX: 'auto',
             borderBottom: '1px solid',
             borderColor: 'divider',
+            // Desktop scrollbar
             '&::-webkit-scrollbar': {
-              height: 6,
+              height: { xs: 4, sm: 10 }, // Smaller on mobile
+            },
+            '&::-webkit-scrollbar-track': {
+              bgcolor: 'background.default',
+              borderRadius: 5,
             },
             '&::-webkit-scrollbar-thumb': {
-              bgcolor: 'divider',
-              borderRadius: 3,
+              bgcolor: 'action.disabled',
+              borderRadius: 5,
+              '&:hover': {
+                bgcolor: 'action.active',
+              },
             },
           }}>
           {[
@@ -209,7 +233,7 @@ export default function ModelSelector({
                   </Typography>
                 </Box>
               }
-              onClick={() => setTypeFilter(option.key)}
+              onClick={() => onTypeChange?.(option.key)}
               variant={typeFilter === option.key ? 'filled' : 'outlined'}
               sx={{
                 fontWeight: typeFilter === option.key ? 600 : 400,
@@ -229,18 +253,26 @@ export default function ModelSelector({
           sx={{
             display: 'flex',
             gap: 0.75,
-            px: 2,
-            py: 1,
+            px: { xs: 1.5, sm: 2 },
+            py: { xs: 0.75, sm: 1 },
             overflowX: 'auto',
             borderBottom: '1px solid',
             borderColor: 'divider',
             bgcolor: 'background.default',
+            // Desktop scrollbar
             '&::-webkit-scrollbar': {
-              height: 6,
+              height: { xs: 4, sm: 10 }, // Smaller on mobile
+            },
+            '&::-webkit-scrollbar-track': {
+              bgcolor: 'background.paper',
+              borderRadius: 5,
             },
             '&::-webkit-scrollbar-thumb': {
-              bgcolor: 'divider',
-              borderRadius: 3,
+              bgcolor: 'action.disabled',
+              borderRadius: 5,
+              '&:hover': {
+                bgcolor: 'action.active',
+              },
             },
           }}>
           <Chip
@@ -296,7 +328,7 @@ export default function ModelSelector({
         {/* Models List */}
         <List
           sx={{
-            maxHeight: 'calc(80vh - 280px)',
+            maxHeight: { xs: 'calc(100vh - 230px)', sm: 'calc(80vh - 280px)' },
             overflow: 'auto',
             py: 0,
           }}>
@@ -323,8 +355,8 @@ export default function ModelSelector({
                   selected={selectedModel === model.value}
                   onClick={() => handleModelClick(model.value)}
                   sx={{
-                    py: 1.5,
-                    px: 3,
+                    py: { xs: 1.25, sm: 1.5 },
+                    px: { xs: 2, sm: 3 },
                     borderBottom: '1px solid',
                     borderColor: 'divider',
                     '&.Mui-selected': {
@@ -350,55 +382,67 @@ export default function ModelSelector({
                           justifyContent: 'space-between',
                           width: '100%',
                         }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.75, sm: 1 }, flexWrap: 'wrap' }}>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              fontWeight: 500,
+                              fontSize: { xs: '0.875rem', sm: '0.875rem' },
+                            }}>
                             {model.label}
                           </Typography>
-                          {model.type && (
-                            <Box
-                              sx={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 0.5,
-                                px: 1,
-                                py: 0.5,
-                                border: '1px solid',
-                                borderColor: 'divider',
-                                borderRadius: 1,
-                                bgcolor: 'background.paper',
-                              }}>
+                          {/* Display all supported types as tags */}
+                          {model.types &&
+                            model.types.map((modelType) => (
                               <Box
+                                key={modelType}
                                 sx={{
-                                  width: 12,
-                                  height: 12,
-                                  svg: { width: '100%', height: '100%' },
                                   display: 'flex',
                                   alignItems: 'center',
-                                  justifyContent: 'center',
+                                  gap: { xs: 0.4, sm: 0.5 },
+                                  px: { xs: 0.75, sm: 1 },
+                                  py: { xs: 0.4, sm: 0.5 },
+                                  border: '1px solid',
+                                  borderColor: 'divider',
+                                  borderRadius: 1,
+                                  bgcolor: 'background.paper',
                                 }}>
-                                {model.type === 'chatCompletion' && <ChatIcon viewBox="0 0 12 12" />}
-                                {model.type === 'imageGeneration' && <ImageIcon viewBox="0 0 12 12" />}
-                                {model.type === 'embedding' && <EmbeddingIcon viewBox="0 0 12 12" />}
+                                <Box
+                                  sx={{
+                                    width: { xs: 10, sm: 12 },
+                                    height: { xs: 10, sm: 12 },
+                                    svg: { width: '100%', height: '100%' },
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                  }}>
+                                  {modelType === 'chatCompletion' && <ChatIcon viewBox="0 0 12 12" />}
+                                  {modelType === 'imageGeneration' && <ImageIcon viewBox="0 0 12 12" />}
+                                  {modelType === 'embedding' && <EmbeddingIcon viewBox="0 0 12 12" />}
+                                </Box>
+                                <Typography
+                                  variant="caption"
+                                  sx={{
+                                    fontSize: { xs: 9, sm: 10 },
+                                    color: 'text.secondary',
+                                    lineHeight: 1,
+                                  }}>
+                                  {modelType === 'chatCompletion'
+                                    ? 'Chat'
+                                    : modelType === 'imageGeneration'
+                                      ? 'Image'
+                                      : 'Embedding'}
+                                </Typography>
                               </Box>
-                              <Typography
-                                variant="caption"
-                                sx={{ fontSize: 10, color: 'text.secondary', lineHeight: 1 }}>
-                                {model.type === 'chatCompletion'
-                                  ? 'Chat'
-                                  : model.type === 'imageGeneration'
-                                    ? 'Image'
-                                    : 'Embedding'}
-                              </Typography>
-                            </Box>
-                          )}
+                            ))}
                           {selectedModel === model.value && (
                             <Chip
                               label="Selected"
                               size="small"
                               color="primary"
                               sx={{
-                                height: 20,
-                                fontSize: '10px',
+                                height: { xs: 18, sm: 20 },
+                                fontSize: { xs: '9px', sm: '10px' },
                                 fontWeight: 600,
                               }}
                             />
@@ -406,16 +450,16 @@ export default function ModelSelector({
                         </Box>
 
                         {/* Provider Tag */}
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.4, sm: 0.5 } }}>
                           <Avatar
                             src={joinURL(getPrefix(), `/logo/${group.provider}.png`)}
-                            sx={{ width: 16, height: 16 }}
+                            sx={{ width: { xs: 14, sm: 16 }, height: { xs: 14, sm: 16 } }}
                             alt={group.provider}
                           />
                           <Typography
                             variant="caption"
                             sx={{
-                              fontSize: 10,
+                              fontSize: { xs: 9, sm: 10 },
                               color: 'text.secondary',
                               fontWeight: 500,
                             }}>

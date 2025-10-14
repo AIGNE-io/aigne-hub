@@ -193,7 +193,7 @@ export default function Conversation({
           />
           <Box
             sx={{
-              pb: 4,
+              pb: { xs: 3, md: 4 },
               bgcolor: 'background.paper',
             }}>
             <Prompt onSubmit={onSubmit} {...promptProps} />
