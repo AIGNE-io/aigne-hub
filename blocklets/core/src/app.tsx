@@ -103,7 +103,7 @@ function AppRoutes({ basename }: { basename: string }) {
                 maxWidth={null}
                 addons={(exists: ReactNode[]) => [<CreditButton />, ...exists]}
               />
-              <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
+              <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'auto', pt: 4 }}>
                 <ChatLazy />
               </Box>
             </Box>
