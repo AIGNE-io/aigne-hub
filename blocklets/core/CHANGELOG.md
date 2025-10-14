@@ -1,3 +1,7 @@
+## 0.4.45 (2025-10-14)
+
+- feat(ui): refine UI and improve mobile layout
+
 ## 0.4.44 (2025-10-11)
 
 - feat: enhance chat playground with internationalization support and improved UI components
