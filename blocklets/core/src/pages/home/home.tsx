@@ -73,14 +73,14 @@ const result = await model.invoke({
             startIcon={<Assessment />}>
             {t('creditUsage')}
           </Button>
-          <Button variant="text" startIcon={<Code />} onClick={() => setShowCodeModal(true)}>
-            {t('integration')}
-          </Button>
           {showGuestPlayground && (
             <Button component={Link} to="/playground" variant="outlined">
               {t('playground')}
             </Button>
           )}
+          <Button variant="text" startIcon={<Code />} onClick={() => setShowCodeModal(true)}>
+            {t('integration')}
+          </Button>
         </>
       );
     }

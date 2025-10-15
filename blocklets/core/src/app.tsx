@@ -97,13 +97,19 @@ function AppRoutes({ basename }: { basename: string }) {
           element={
             <Box
               component="main"
-              sx={{ overflow: 'hidden', height: '100vh', display: 'flex', flexDirection: 'column', pb: 2 }}>
+              sx={{
+                overflow: 'hidden',
+                height: '100vh',
+                display: 'flex',
+                flexDirection: 'column',
+                pb: { xs: 0.5, md: 2 },
+              }}>
               <Header
                 // @ts-ignore
                 maxWidth={null}
                 addons={(exists: ReactNode[]) => [<CreditButton />, ...exists]}
               />
-              <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
+              <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'auto', pt: 4 }}>
                 <ChatLazy />
               </Box>
             </Box>

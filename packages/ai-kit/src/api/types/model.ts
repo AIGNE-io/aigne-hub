@@ -4,6 +4,7 @@ export interface ModelOption {
   label: string;
   description?: string;
   type?: string;
+  types?: string[]; // All supported types for multi-capability models
 }
 
 export interface ModelGroup {

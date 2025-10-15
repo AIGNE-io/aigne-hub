@@ -264,6 +264,7 @@ export default function Message({
       display="flex"
       className={cx(isLeftRight && isUser && 'user-message', isLeftRight && !isUser && 'ai-message')}
       sx={{
+        pl: { xs: 1.5, md: 0 },
         mb: 2.5,
         '&:hover .message-meta': {
           opacity: 1,
@@ -281,6 +282,7 @@ export default function Message({
       <Box
         className="avatar"
         sx={{
+          display: { xs: 'none', md: 'block' },
           pt: 0.625,
           flexShrink: 0,
           mr: isLeftRight && !isUser ? 1 : isLeftRight && isUser ? 0 : 1,
@@ -298,7 +300,7 @@ export default function Message({
         sx={{
           display: 'flex',
           flexDirection: 'column',
-          maxWidth: '80%',
+          maxWidth: { xs: '90%', md: '80%' },
           minWidth: 'auto',
           position: 'relative',
         }}>

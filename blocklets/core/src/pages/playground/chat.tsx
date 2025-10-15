@@ -58,16 +58,14 @@ function formatModelsData(apiModels: ApiModel[]): ModelGroup[] {
         // Get all unique types from rates for this model
         const uniqueTypes = [...new Set(apiModel.rates?.map((rate) => rate.type) || [])];
 
-        // If model has multiple types, create separate entries for each type
+        // Each model appears only once, but stores all its types
         if (uniqueTypes.length > 0) {
-          uniqueTypes.forEach((modelType) => {
-            const suffix = uniqueTypes.length > 1 ? ` (${modelType})` : '';
-            existingModels.push({
-              value: uniqueTypes.length > 1 ? `${modelValue}-${modelType}` : modelValue,
-              label: modelLabel + suffix,
-              description: apiModel.description,
-              type: modelType,
-            });
+          existingModels.push({
+            value: modelValue,
+            label: modelLabel,
+            description: apiModel.description,
+            type: uniqueTypes[0], // Primary type (will be used for default behavior)
+            types: uniqueTypes, // All supported types
           });
         } else {
           // Fallback to chatCompletion if no rates
@@ -76,6 +74,7 @@ function formatModelsData(apiModels: ApiModel[]): ModelGroup[] {
             label: modelLabel,
             description: apiModel.description,
             type: 'chatCompletion',
+            types: ['chatCompletion'],
           });
         }
       }
@@ -104,6 +103,7 @@ export default function Chat() {
   const ref = useRef<ConversationRef>(null);
   const [modelGroups, setModelGroups] = useState<ModelGroup[]>([]);
   const [model, setModel] = useState<string>('');
+  const [selectedType, setSelectedType] = useState<string>('all'); // Track the selected type filter
   const [loading, setLoading] = useState(true);
   const [selectorOpen, setSelectorOpen] = useState(false);
   const [scrollContainer, setScrollContainer] = useState<HTMLElement | null>(null);
@@ -193,12 +193,25 @@ export default function Chat() {
     return selectedModel?.label || model.split('/').pop() || 'Select Model';
   }, [model, modelGroups]);
 
-  // Get current model type
+  // Get current model type based on selected type filter
   const currentModelType = useMemo(() => {
     const allModels = modelGroups.flatMap((g) => g.models);
     const selectedModel = allModels.find((m) => m.value === model);
-    return selectedModel?.type || 'chatCompletion';
-  }, [model, modelGroups]);
+
+    if (!selectedModel) return 'chatCompletion';
+
+    // If a specific type is selected (not "all"), use it if the model supports it
+    if (selectedType !== 'all' && selectedModel.types?.includes(selectedType)) {
+      return selectedType;
+    }
+
+    // Otherwise, default to chatCompletion if supported, or the first available type
+    if (selectedModel.types?.includes('chatCompletion')) {
+      return 'chatCompletion';
+    }
+
+    return selectedModel.type || 'chatCompletion';
+  }, [model, modelGroups, selectedType]);
 
   // Helper function to process image response
   const processImageResponse = (images: any[]) => {
@@ -361,6 +374,9 @@ export default function Chat() {
       }}
       customActions={customActions}
       promptProps={{
+        sx: {
+          pl: { xs: 1.5, md: 0 },
+        },
         placeholder:
           currentModelType === 'imageGeneration'
             ? t('chat.placeholders.imageGeneration')
@@ -433,6 +449,8 @@ export default function Chat() {
               modelGroups={modelGroups}
               selectedModel={model}
               onModelSelect={handleModelChange}
+              selectedType={selectedType}
+              onTypeChange={setSelectedType}
             />
           </>
         ),
