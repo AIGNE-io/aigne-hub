@@ -1,3 +1,7 @@
+## 0.4.46 (2025-10-16)
+
+- chore: update aigne deps
+
 ## 0.4.45 (2025-10-14)
 
 - feat(ui): refine UI and improve mobile layout
