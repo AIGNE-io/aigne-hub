@@ -1,3 +1,7 @@
+## 0.4.47 (2025-10-16)
+
+- chore: update aigne deps
+
 ## 0.4.46 (2025-10-16)
 
 - chore: update aigne deps
@@ -9,7 +13,7 @@
 ## 0.4.44 (2025-10-11)
 
 - feat: enhance chat playground with internationalization support and improved UI components
-- feat: implement embeddings API integration and model capabilities detection system  
+- feat: implement embeddings API integration and model capabilities detection system
 - refactor: modernize conversation components with theme-based styling and remove styled-components
 
 ## 0.4.43 (2025-10-11)
