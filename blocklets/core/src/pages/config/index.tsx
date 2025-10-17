@@ -1,16 +1,18 @@
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import Tabs from '@arcblock/ux/lib/Tabs';
-import { Stack } from '@mui/material';
+import { Box, Stack } from '@mui/material';
 import React, { useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import Layout from '../../components/layout/admin';
 import ProgressBar, { useTransitionContext } from '../../components/loading/progress-bar';
-import { useSessionContext } from '../../contexts/session';
+import { useIsRole, useSessionContext } from '../../contexts/session';
 
-const pages = {
+const pages: Record<string, React.LazyExoticComponent<React.ComponentType>> = {
   overview: React.lazy(() => import('./overview')),
   'ai-config': React.lazy(() => import('./ai-config')),
+  usage: React.lazy(() => import('../admin/usage')),
+  playground: React.lazy(() => import('../playground/chat')),
 };
 
 function Integrations() {
@@ -18,23 +20,27 @@ function Integrations() {
   const { t } = useLocaleContext();
   const { group = 'overview' } = useParams();
   const { isPending, startTransition } = useTransitionContext();
+  const isAdmin = useIsRole('owner', 'admin');
 
   const onTabChange = (newTab: string) => {
-    startTransition(() => {
-      navigate(`/config/${newTab}`);
-    });
+    startTransition(() => navigate(`/config/${newTab}`));
   };
 
-  // @ts-ignore
-  const TabComponent = pages[group] || pages.overview;
+  const TabComponent = pages[group] || pages.overview!;
   const tabs = [
     { label: t('quickStarts'), value: 'overview' },
     { label: t('aiConfig'), value: 'ai-config' },
   ];
 
+  if (isAdmin) {
+    tabs.push({ label: t('usage'), value: 'usage' });
+    tabs.push({ label: t('playground'), value: 'playground' });
+  }
+
   return (
     <>
       <ProgressBar pending={isPending} />
+
       <Stack
         direction="row"
         spacing={1}
@@ -42,8 +48,6 @@ function Integrations() {
           alignItems: 'center',
           justifyContent: 'end',
           flexWrap: 'wrap',
-          mt: 1,
-          pb: 2,
         }}>
         <Tabs
           tabs={tabs}
@@ -52,6 +56,8 @@ function Integrations() {
           scrollButtons="auto"
           variant="scrollable"
           sx={{
+            py: 2,
+            px: 3,
             flex: '1 0 auto',
             maxWidth: '100%',
             '.MuiTab-root': {
@@ -68,7 +74,10 @@ function Integrations() {
           }}
         />
       </Stack>
-      <div className="page-content">{React.isValidElement(TabComponent) ? TabComponent : <TabComponent />}</div>
+
+      <Box component="main" sx={{ flex: 1, overflow: 'auto', px: 3 }}>
+        {React.isValidElement(TabComponent) ? TabComponent : <TabComponent />}
+      </Box>
     </>
   );
 }
@@ -80,8 +89,8 @@ export default function WrappedIntegrations() {
     if (session.user && ['owner', 'admin'].includes(session.user.role) === false) {
       navigate('/');
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.user]);
+
   return (
     <Layout>
       <Integrations />

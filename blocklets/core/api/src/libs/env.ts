@@ -21,6 +21,7 @@ export const DEFAULT_CREDIT_PAYMENT_LINK_KEY = 'DEFAULT_AHC_PACKS_LINK';
 
 export const MODEL_CALL_STATS_CRON_TIME = process.env.MODEL_CALL_STATS_CRON_TIME || '0 1 * * * *'; // every hour at 1 minute past the hour
 export const CLEANUP_STALE_MODEL_CALLS_CRON_TIME = process.env.CLEANUP_STALE_MODEL_CALLS_CRON_TIME || '*/10 * * * *'; // every 10 minutes
+export const CHECK_MODEL_STATUS_CRON_TIME = process.env.CHECK_MODEL_STATUS_CRON_TIME || '0 0 0 * * *'; // every day at 00:00:00
 
 export const MODEL_RATE_TYPE = {
   Text: 'text',

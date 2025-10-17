@@ -11,6 +11,7 @@ import {
   Avatar,
   Box,
   Button,
+  CircularProgress,
   FormControl,
   FormHelperText,
   IconButton,
@@ -68,6 +69,7 @@ const PROVIDER_OPTIONS = [
 ];
 
 interface Props {
+  loading: boolean;
   provider?: any;
   onSubmit: (data: ProviderFormData) => void;
   onCancel: () => void;
@@ -77,7 +79,7 @@ function isValidCredentialType(value: any): value is 'api_key' | 'access_key_pai
   return ['api_key', 'access_key_pair', 'custom'].includes(value);
 }
 
-export default function ProviderForm({ provider = null, onSubmit, onCancel }: Props) {
+export default function ProviderForm({ loading, provider = null, onSubmit, onCancel }: Props) {
   const { t } = useLocaleContext();
   const [credentials, setCredentials] = useState<CredentialData[]>(
     provider?.credentials?.map((cred: any) => ({
@@ -235,86 +237,96 @@ export default function ProviderForm({ provider = null, onSubmit, onCancel }: Pr
     );
   };
 
+  function renderProviderInfo() {
+    return (
+      <Stack spacing={2}>
+        <FormInput
+          name="name"
+          type="custom"
+          label={t('providerName')}
+          required
+          rules={{ required: t('providerNameRequired') }}
+          render={({ field, error, hasError }) => (
+            <FormControl fullWidth error={hasError}>
+              <Select
+                {...field}
+                size="small"
+                disabled={!!provider}
+                onChange={(e) => {
+                  field.onChange(e);
+                  handleProviderNameChange(e.target.value as string);
+                }}>
+                {PROVIDER_OPTIONS.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                      <Avatar
+                        src={joinURL(getPrefix(), `/logo/${option.value}.png`)}
+                        sx={{ width: 24, height: 24 }}
+                        alt={option.label}
+                      />
+                      <Typography variant="body2">{option.label}</Typography>
+                    </Stack>
+                  </MenuItem>
+                ))}
+              </Select>
+              {hasError && <FormHelperText>{error}</FormHelperText>}
+            </FormControl>
+          )}
+        />
+
+        {/* 非bedrock时显示baseUrl */}
+        {watchedName !== 'bedrock' && <FormInput name="baseUrl" label={t('baseUrl')} required />}
+
+        {watchedName === 'bedrock' && (
+          <Stack spacing={1}>
+            <FormInput
+              name="region"
+              label={t('region')}
+              placeholder="us-east-1"
+              required
+              rules={{ required: t('regionRequired') }}
+            />
+            <Typography
+              variant="caption"
+              sx={{
+                color: 'text.secondary',
+
+                a: {
+                  textDecoration: 'none',
+                },
+              }}>
+              <Link href="https://docs.aws.amazon.com/general/latest/gr/bedrock.html" target="_blank">
+                {t('awsRegionDesc')}
+              </Link>
+            </Typography>
+          </Stack>
+        )}
+      </Stack>
+    );
+  }
+
   return (
     <FormProvider {...methods}>
       <Box>
         <Stack spacing={3}>
-          <Collapse
-            expanded={expandedSection === 'provider'}
-            value="provider"
-            onChange={(_, expanded) => {
-              if (expanded) {
-                setExpandedSection('provider');
-              }
-            }}
-            card
-            trigger={t('providerInfo')}>
-            <Paper elevation={0} sx={{ boxShadow: 'none' }}>
-              <Stack spacing={2}>
-                <FormInput
-                  name="name"
-                  type="custom"
-                  label={t('providerName')}
-                  required
-                  rules={{ required: t('providerNameRequired') }}
-                  render={({ field, error, hasError }) => (
-                    <FormControl fullWidth error={hasError}>
-                      <Select
-                        {...field}
-                        size="small"
-                        disabled={!!provider}
-                        onChange={(e) => {
-                          field.onChange(e);
-                          handleProviderNameChange(e.target.value as string);
-                        }}>
-                        {PROVIDER_OPTIONS.map((option) => (
-                          <MenuItem key={option.value} value={option.value}>
-                            <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                              <Avatar
-                                src={joinURL(getPrefix(), `/logo/${option.value}.png`)}
-                                sx={{ width: 24, height: 24 }}
-                                alt={option.label}
-                              />
-                              <Typography variant="body2">{option.label}</Typography>
-                            </Stack>
-                          </MenuItem>
-                        ))}
-                      </Select>
-                      {hasError && <FormHelperText>{error}</FormHelperText>}
-                    </FormControl>
-                  )}
-                />
-
-                {/* 非bedrock时显示baseUrl */}
-                {watchedName !== 'bedrock' && <FormInput name="baseUrl" label={t('baseUrl')} required />}
-
-                {watchedName === 'bedrock' && (
-                  <Stack spacing={1}>
-                    <FormInput
-                      name="region"
-                      label={t('region')}
-                      placeholder="us-east-1"
-                      required
-                      rules={{ required: t('regionRequired') }}
-                    />
-                    <Typography
-                      variant="caption"
-                      sx={{
-                        color: 'text.secondary',
-
-                        a: {
-                          textDecoration: 'none',
-                        },
-                      }}>
-                      <Link href="https://docs.aws.amazon.com/general/latest/gr/bedrock.html" target="_blank">
-                        {t('awsRegionDesc')}
-                      </Link>
-                    </Typography>
-                  </Stack>
-                )}
-              </Stack>
-            </Paper>
-          </Collapse>
+          {provider ? (
+            renderProviderInfo()
+          ) : (
+            <Collapse
+              expanded={expandedSection === 'provider'}
+              value="provider"
+              onChange={(_, expanded) => {
+                if (expanded) {
+                  setExpandedSection('provider');
+                }
+              }}
+              card
+              trigger={t('providerInfo')}>
+              <Paper elevation={0} sx={{ boxShadow: 'none' }}>
+                {renderProviderInfo()}
+              </Paper>
+            </Collapse>
+          )}
 
           {/* 只在添加模式下显示凭证部分 */}
           {!provider && (
@@ -376,8 +388,10 @@ export default function ProviderForm({ provider = null, onSubmit, onCancel }: Pr
               justifyContent: 'flex-end',
             }}>
             <Button onClick={onCancel}>{t('cancel')}</Button>
-            <Button variant="contained" onClick={handleSubmit(handleFormSubmit)}>
-              {provider ? t('update') : t('create')}
+            <Button variant="contained" onClick={handleSubmit(handleFormSubmit)} disabled={loading}>
+              {loading && <CircularProgress size={16} />}
+              {loading && t('loading')}
+              {!loading && (provider ? t('update') : t('create'))}
             </Button>
           </Stack>
         </Stack>

@@ -1,20 +1,60 @@
+import checkCredentials from '@api/libs/ai-credentials';
 import { getModelNameWithProvider } from '@api/libs/ai-provider';
-import { AI_PROVIDER_VALUES } from '@api/libs/constants';
+import { AIProviderType, AI_PROVIDER_VALUES } from '@api/libs/constants';
 import { Config } from '@api/libs/env';
 import logger from '@api/libs/logger';
 import modelRegistry from '@api/libs/model-registry';
 import { ensureAdmin } from '@api/libs/security';
 import { createListParamSchema, getWhereFromKvQuery } from '@api/libs/validate';
+import { checkModelIsValid } from '@api/providers/models';
 import AiCredential, { CredentialValue } from '@api/store/models/ai-credential';
 import AiModelRate from '@api/store/models/ai-model-rate';
+import AiModelStatus from '@api/store/models/ai-model-status';
 import AiProvider from '@api/store/models/ai-provider';
+import { formatError } from '@blocklet/error';
 import sessionMiddleware from '@blocklet/sdk/lib/middlewares/session';
 import BigNumber from 'bignumber.js';
-import { Router } from 'express';
+import { NextFunction, Request, Response, Router } from 'express';
 import Joi from 'joi';
 import pick from 'lodash/pick';
 import pAll from 'p-all';
 import { Op } from 'sequelize';
+
+import { modelStatusQueue, typeFilterMap, typeMap } from '../libs/status';
+
+const testModelsRateLimit = new Map<string, { count: number; startTime: number }>();
+const TEST_MODELS_RATE_LIMIT_TIME = 10 * 60 * 1000; // 10 minutes
+const TEST_MODELS_RATE_LIMIT_COUNT = 5;
+
+const rateLimitMiddleware = (req: Request, res: Response, next: NextFunction): void => {
+  if (req.user?.did) {
+    const now = Date.now();
+    const userLimit = testModelsRateLimit.get(req.user.did);
+
+    if (userLimit) {
+      if (now - userLimit.startTime < TEST_MODELS_RATE_LIMIT_TIME) {
+        if (userLimit.count >= TEST_MODELS_RATE_LIMIT_COUNT) {
+          const remainingTime = Math.ceil((TEST_MODELS_RATE_LIMIT_TIME - (now - userLimit.startTime)) / 1000);
+
+          res.status(429).json({
+            error: 'Rate limit exceeded',
+            message: `Too many requests. Please try again in ${remainingTime} seconds.`,
+            retryAfter: remainingTime,
+          });
+          return;
+        }
+
+        userLimit.count++;
+      } else {
+        testModelsRateLimit.set(req.user.did, { count: 1, startTime: now });
+      }
+    } else {
+      testModelsRateLimit.set(req.user.did, { count: 1, startTime: now });
+    }
+  }
+
+  next();
+};
 
 const router = Router();
 
@@ -171,7 +211,6 @@ router.get('/', user, async (req, res) => {
 
     const credentials = await AiCredential.findAll({
       where: {
-        active: true,
         providerId: {
           [Op.in]: providers.map((provider) => provider.id),
         },
@@ -195,9 +234,7 @@ router.get('/', user, async (req, res) => {
     return res.json(providersWithMaskedCredentials);
   } catch (error) {
     logger.error('Failed to get providers:', error);
-    return res.status(500).json({
-      error: 'Failed to get providers',
-    });
+    return res.status(500).json({ error: formatError(error) || 'Failed to get providers' });
   }
 });
 
@@ -227,9 +264,7 @@ router.post('/', ensureAdmin, async (req, res) => {
     return res.json(provider.toJSON());
   } catch (error) {
     logger.error('Failed to create provider:', error);
-    return res.status(500).json({
-      error: 'Failed to create provider',
-    });
+    return res.status(500).json({ error: formatError(error) || 'Failed to create provider' });
   }
 });
 
@@ -256,9 +291,7 @@ router.put('/:id', ensureAdmin, async (req, res) => {
     return res.json(provider.toJSON());
   } catch (error) {
     logger.error('Failed to update provider:', error);
-    return res.status(500).json({
-      error: 'Failed to update provider',
-    });
+    return res.status(500).json({ error: formatError(error) || 'Failed to update provider' });
   }
 });
 
@@ -279,9 +312,7 @@ router.delete('/:id', ensureAdmin, async (req, res) => {
     });
   } catch (error) {
     logger.error('Failed to delete provider:', error);
-    return res.status(500).json({
-      error: 'Failed to delete provider',
-    });
+    return res.status(500).json({ error: formatError(error) || 'Failed to delete provider' });
   }
 });
 
@@ -292,18 +323,19 @@ router.post('/:providerId/credentials', ensureAdmin, async (req, res) => {
       stripUnknown: true,
     });
     if (error) {
-      return res.status(400).json({
-        error: error.details[0]?.message || 'Validation error',
-      });
+      return res.status(400).json({ error: error.details[0]?.message || 'Validation error' });
     }
 
-    // 验证provider是否存在
     const provider = await AiProvider.findByPk(req.params.providerId);
     if (!provider) {
-      return res.status(404).json({
-        error: 'Provider not found',
-      });
+      return res.status(404).json({ error: 'Provider not found' });
     }
+
+    await checkModelIsValid(provider.name, {
+      apiKey: rawValue.credentialType === 'api_key' ? rawValue.value : undefined,
+      accessKeyId: rawValue.credentialType === 'access_key_pair' ? rawValue.value.access_key_id : undefined,
+      secretAccessKey: rawValue.credentialType === 'access_key_pair' ? rawValue.value.secret_access_key : undefined,
+    });
 
     // 处理凭证值
     let credentialValue: CredentialValue;
@@ -340,9 +372,7 @@ router.post('/:providerId/credentials', ensureAdmin, async (req, res) => {
     return res.json(credentialJson);
   } catch (error) {
     logger.error('Failed to create credential:', error);
-    return res.status(500).json({
-      error: 'Failed to create credential',
-    });
+    return res.status(500).json({ error: formatError(error) || 'Failed to create credential' });
   }
 });
 
@@ -351,9 +381,7 @@ router.put('/:providerId/credentials/:credentialId', ensureAdmin, async (req, re
   try {
     const { error, value } = createCredentialSchema.validate(req.body);
     if (error) {
-      return res.status(400).json({
-        error: error.details[0]?.message || 'Validation error',
-      });
+      return res.status(400).json({ error: error.details[0]?.message || 'Validation error' });
     }
 
     const credential = await AiCredential.findOne({
@@ -364,10 +392,19 @@ router.put('/:providerId/credentials/:credentialId', ensureAdmin, async (req, re
     });
 
     if (!credential) {
-      return res.status(404).json({
-        error: 'Credential not found',
-      });
+      return res.status(404).json({ error: 'Credential not found' });
     }
+
+    const provider = await AiProvider.findByPk(req.params.providerId);
+    if (!provider) {
+      return res.status(404).json({ error: 'Provider not found' });
+    }
+
+    await checkModelIsValid(provider.name, {
+      apiKey: value.credentialType === 'api_key' ? value.value : undefined,
+      accessKeyId: value.credentialType === 'access_key_pair' ? value.value.access_key_id : undefined,
+      secretAccessKey: value.credentialType === 'access_key_pair' ? value.value.secret_access_key : undefined,
+    });
 
     // 处理凭证值
     let credentialValue: CredentialValue;
@@ -390,6 +427,8 @@ router.put('/:providerId/credentials/:credentialId', ensureAdmin, async (req, re
       name: value.name,
       credentialValue: encryptedCredentialValue,
       credentialType: value.credentialType,
+      active: true,
+      error: null,
     });
 
     // 返回时包含显示文本
@@ -401,9 +440,7 @@ router.put('/:providerId/credentials/:credentialId', ensureAdmin, async (req, re
     return res.json(credentialJson);
   } catch (error) {
     logger.error('Failed to update credential:', error);
-    return res.status(500).json({
-      error: 'Failed to update credential',
-    });
+    return res.status(500).json({ error: formatError(error) || 'Failed to update credential' });
   }
 });
 
@@ -430,9 +467,29 @@ router.delete('/:providerId/credentials/:credentialId', ensureAdmin, async (req,
     });
   } catch (error) {
     logger.error('Failed to delete credential:', error);
-    return res.status(500).json({
-      error: 'Failed to delete credential',
-    });
+    return res.status(500).json({ error: formatError(error) || 'Failed to delete credential' });
+  }
+});
+
+router.get('/:providerId/credentials/:credentialId/check', ensureAdmin, async (req, res) => {
+  const { credentialId, providerId } = req.params;
+
+  try {
+    if (!credentialId || !providerId) {
+      throw new Error('Credential ID and provider ID are required');
+    }
+
+    const credential = await checkCredentials(credentialId, providerId);
+    const credentialJson = {
+      ...credential.toJSON(),
+      displayText: credential.getDisplayText(),
+      maskedValue: credential.getMaskedValue(),
+      credentialValue: '',
+    };
+
+    return res.json(credentialJson);
+  } catch (err) {
+    return res.status(400).json({ error: 'Invalid credentials', detail: err.message });
   }
 });
 
@@ -457,9 +514,7 @@ router.get('/:providerId/model-rates', user, async (req, res) => {
     return res.json(modelRates);
   } catch (error) {
     logger.error('Failed to get model rates:', error);
-    return res.status(500).json({
-      error: 'Failed to get model rates',
-    });
+    return res.status(500).json({ error: formatError(error) || 'Failed to get model rates' });
   }
 });
 
@@ -510,12 +565,16 @@ router.post('/:providerId/model-rates', ensureAdmin, async (req, res) => {
       unitCosts: value.unitCosts,
     });
 
+    modelStatusQueue.push({
+      model: modelRate.model,
+      type: typeMap[modelRate.type as keyof typeof typeMap] || 'chat',
+      providerId: modelRate.providerId,
+    });
+
     return res.json(modelRate.toJSON());
   } catch (error) {
     logger.error('Failed to create model rate:', error);
-    return res.status(500).json({
-      error: 'Failed to create model rate',
-    });
+    return res.status(500).json({ error: formatError(error) || 'Failed to create model rate' });
   }
 });
 
@@ -549,9 +608,7 @@ router.put('/:providerId/model-rates/:rateId', ensureAdmin, async (req, res) => 
     return res.json(modelRate.toJSON());
   } catch (error) {
     logger.error('Failed to update model rate:', error);
-    return res.status(500).json({
-      error: 'Failed to update model rate',
-    });
+    return res.status(500).json({ error: formatError(error) || 'Failed to update model rate' });
   }
 });
 
@@ -578,9 +635,7 @@ router.delete('/:providerId/model-rates/:rateId', ensureAdmin, async (req, res) 
     });
   } catch (error) {
     logger.error('Failed to delete model rate:', error);
-    return res.status(500).json({
-      error: 'Failed to delete model rate',
-    });
+    return res.status(500).json({ error: formatError(error) || 'Failed to delete model rate' });
   }
 });
 
@@ -688,6 +743,14 @@ router.post('/model-rates', ensureAdmin, async (req, res) => {
       })
     );
 
+    createdRates.forEach((rate) => {
+      modelStatusQueue.push({
+        model: rate.model,
+        type: typeMap[rate.type as keyof typeof typeMap] || 'chat',
+        providerId: rate.providerId,
+      });
+    });
+
     return res.json({
       message: `Successfully created ${createdRates.length} model rates`,
       data: createdRates,
@@ -697,9 +760,7 @@ router.post('/model-rates', ensureAdmin, async (req, res) => {
     });
   } catch (error) {
     logger.error('Failed to batch create model rates:', error);
-    return res.status(500).json({
-      error: 'Failed to batch create model rates',
-    });
+    return res.status(500).json({ error: formatError(error) || 'Failed to batch create model rates' });
   }
 });
 
@@ -766,6 +827,12 @@ async function getDefaultModelsFromProviders(typeFilter?: string) {
             if (typeFilter && typeFilter !== modelOption.mode) {
               return;
             }
+
+            modelOption.name =
+              providerJson.name === 'google'
+                ? (modelOption.name.replace('gemini/', '') as AIProviderType)
+                : modelOption.name;
+
             models.push({
               model: modelOption.name,
               modelDisplay: modelOption.displayName,
@@ -804,6 +871,11 @@ async function getDefaultModelsFromProviders(typeFilter?: string) {
 
 router.get('/chat/models', user, async (req, res) => {
   try {
+    if (!Config.creditBasedBillingEnabled) {
+      const defaultModels = await getDefaultModelsFromProviders(req.query.type as string);
+      return res.json(defaultModels);
+    }
+
     const where: any = {};
     if (req.query.type) {
       const requestedType = req.query.type as string;
@@ -818,6 +890,7 @@ router.get('/chat/models', user, async (req, res) => {
       const mappedType = typeFilterMap[requestedType] || requestedType;
       where.type = mappedType;
     }
+
     const modelRates = await AiModelRate.findAll({
       where,
       include: [
@@ -835,11 +908,6 @@ router.get('/chat/models', user, async (req, res) => {
         ['type', 'ASC'],
       ],
     });
-
-    if (!Config.creditBasedBillingEnabled) {
-      const defaultModels = await getDefaultModelsFromProviders(req.query.type as string);
-      return res.json(defaultModels);
-    }
 
     // Group by model name
     const modelsMap = new Map();
@@ -882,9 +950,7 @@ router.get('/chat/models', user, async (req, res) => {
     return res.json(models);
   } catch (error) {
     logger.error('Failed to get models:', error);
-    return res.status(500).json({
-      error: 'Failed to get models',
-    });
+    return res.status(500).json({ error: formatError(error) || 'Failed to get models' });
   }
 });
 
@@ -897,11 +963,13 @@ router.get('/model-rates', user, async (req, res) => {
         [Op.in]: Array.isArray(query.providerId) ? query.providerId : query.providerId.split(','),
       };
     }
+
     if (query.model) {
       where.model = {
         [Op.like]: `%${query.model}%`,
       };
     }
+
     const { rows: modelRates, count } = await AiModelRate.findAndCountAll({
       where,
       include: [
@@ -915,9 +983,19 @@ router.get('/model-rates', user, async (req, res) => {
       offset: (page - 1) * pageSize,
       limit: pageSize,
     });
+
+    const list = await Promise.all(
+      modelRates.map(async (rate) => {
+        const modelStatus = await AiModelStatus.findOne({
+          where: { providerId: rate.providerId, model: rate.model },
+        });
+        return { ...rate.toJSON(), status: modelStatus };
+      })
+    );
+
     return res.json({
       count,
-      list: modelRates,
+      list,
       paging: {
         page,
         pageSize,
@@ -925,7 +1003,7 @@ router.get('/model-rates', user, async (req, res) => {
     });
   } catch (error) {
     logger.error('Failed to fetch model rates:', error);
-    return res.status(400).json({ error: error.message });
+    return res.status(400).json({ error: formatError(error) });
   }
 });
 
@@ -933,20 +1011,7 @@ router.get('/model-rates', user, async (req, res) => {
 router.get('/models', async (req, res) => {
   try {
     const where: any = {};
-    const typeFilterMap: Record<string, string> = {
-      chatCompletion: 'chatCompletion',
-      imageGeneration: 'imageGeneration',
-      embedding: 'embedding',
-      chat: 'chatCompletion',
-      image_generation: 'imageGeneration',
-      image: 'imageGeneration',
-    };
-    // type mapping
-    const typeMap = {
-      chatCompletion: 'chat',
-      imageGeneration: 'image_generation',
-      embedding: 'embedding',
-    };
+
     if (req.query.type) {
       const requestedType = req.query.type as string;
       const mappedType = typeFilterMap[requestedType] || requestedType;
@@ -1040,6 +1105,7 @@ router.get('/models', async (req, res) => {
         model: modelName,
         type: typeMap[rateJson.type as keyof typeof typeMap] || 'chat',
         provider: providerName,
+        providerId: rateJson.provider.id,
         input_credits_per_token: rateJson.inputRate || 0,
         output_credits_per_token: rateJson.outputRate || 0,
         modelMetadata: rateJson.modelMetadata,
@@ -1048,12 +1114,93 @@ router.get('/models', async (req, res) => {
       });
     });
 
-    return res.json(result);
+    const list = await Promise.all(
+      result.map(async (item) => {
+        const modelStatus = await AiModelStatus.findOne({
+          where: { providerId: item.providerId, model: item.model },
+        });
+        return { ...item, status: modelStatus };
+      })
+    );
+
+    return res.json(list);
   } catch (error) {
     logger.error('Failed to get available models:', error);
-    return res.status(500).json({
-      error: 'Failed to get available models',
+    return res.status(500).json({ error: formatError(error) });
+  }
+});
+
+const inputSchema = createListParamSchema({
+  page: Joi.number().integer().optional(),
+  pageSize: Joi.number().integer().optional(),
+});
+
+router.get('/test-models', user, ensureAdmin, rateLimitMiddleware, async (req, res) => {
+  try {
+    const { page, pageSize, providerId, model, type } = req.query || {};
+
+    const where: any = {};
+    const params: any = {};
+
+    const { value } = inputSchema.validate({
+      page: page ? Number(page) : undefined,
+      pageSize: pageSize ? Number(pageSize) : undefined,
     });
+
+    if (value.page && value.pageSize) {
+      params.offset = (value.page - 1) * value.pageSize;
+      params.limit = value.pageSize;
+    } else if (value.pageSize) {
+      params.limit = value.pageSize;
+    }
+
+    if (providerId) {
+      where.providerId = {
+        [Op.in]: Array.isArray(providerId) ? providerId : String(providerId).split(','),
+      };
+    }
+
+    if (model) {
+      where.model = {
+        [Op.like]: `%${model}%`,
+      };
+    }
+
+    if (type) {
+      const requestedType = req.query.type as string;
+      const mappedType = typeFilterMap[requestedType] || requestedType;
+      where.type = mappedType;
+    }
+
+    const providers = await AiProvider.getEnabledProviders();
+    if (providers.length === 0) {
+      return res.json({ error: 'No providers found' });
+    }
+
+    if (!Config.creditBasedBillingEnabled) {
+      return res.json({ error: 'No credit billing enabled' });
+    }
+
+    const modelRates = await AiModelRate.findAll({
+      where,
+      order: [['createdAt', req.query.o === 'asc' ? 'ASC' : 'DESC']],
+      ...params,
+    });
+
+    modelRates.forEach((rate) => {
+      modelStatusQueue.push({
+        model: rate.model,
+        type: typeMap[rate.type as keyof typeof typeMap] || 'chat',
+        providerId: rate.providerId,
+      });
+    });
+
+    return res.json({
+      message: 'syncing models...',
+    });
+  } catch (error) {
+    logger.error('Failed to get available models:', error);
+    return res.status(500).json({ error: formatError(error) });
   }
 });
 
@@ -1136,10 +1283,33 @@ router.post('/bulk-rate-update', ensureAdmin, async (req, res) => {
     });
   } catch (error) {
     logger.error('Failed to bulk update model rates:', error);
-    return res.status(500).json({
-      error: 'Failed to bulk update model rates',
-    });
+    return res.status(500).json({ error: formatError(error) || 'Failed to bulk update model rates' });
   }
+});
+
+router.get('/health', async (_req, res) => {
+  const credentials = (await AiCredential.findAll({
+    attributes: ['id', 'name', 'active', 'providerId'],
+    include: [
+      {
+        model: AiProvider,
+        as: 'provider',
+        attributes: ['id', 'name', 'displayName'],
+      },
+    ],
+  })) as (AiCredential & { provider: AiProvider })[];
+
+  const providers = credentials.reduce<Record<string, Record<string, { running: boolean }>>>((acc, credential) => {
+    const providerName = credential.provider.name;
+    if (!acc[providerName]) acc[providerName] = {};
+    acc[providerName][credential.name] = { running: credential.active };
+    return acc;
+  }, {});
+
+  res.json({
+    providers,
+    timestamp: new Date().toISOString(),
+  });
 });
 
 export default router;

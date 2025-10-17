@@ -1,6 +1,6 @@
-# AIGNE Hub Lib
+# AIGNE Hub Library
 
-AIGNE Hub common UX component
+Common UX components for AIGNE Hub
 
 ## Usage
 
@@ -13,17 +13,15 @@ function App() {
 }
 ```
 
-## Develop
+## Development
 
-```
-
-# develop with @blocklet/aigne-hub and storybook
+```bash
+# Develop with @blocklet/aigne-hub and Storybook
 npm run dev
 
-# only develop with @blocklet/aigne-hub
+# Develop with @blocklet/aigne-hub only
 npm run watch
 
-# only develop with storybook
+# Develop with Storybook only
 npm run storybook
-
 ```

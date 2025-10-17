@@ -22,6 +22,20 @@
             "x-designable-id": "doc1z1uo846",
             "x-index": 0,
             "properties": {
+              "guestPlaygroundEnabled": {
+                "type": "boolean",
+                "title": "Enable Guest Playground",
+                "x-decorator": "FormItem",
+                "x-component": "Switch",
+                "x-validator": [],
+                "x-component-props": {},
+                "x-decorator-props": {},
+                "name": "guestPlaygroundEnabled",
+                "default": false,
+                "x-designable-id": "1chplbavzv0",
+                "x-index": 0,
+                "description": "Allow guests to use the playground"
+              },
               "rfnqchxbwb4": {
                 "type": "void",
                 "x-component": "FormCollapse",
@@ -30,7 +44,7 @@
                   "bordered": false
                 },
                 "x-designable-id": "rfnqchxbwb4",
-                "x-index": 0,
+                "x-index": 1,
                 "properties": {
                   "d4bm9ro1vnh": {
                     "type": "void",
@@ -219,7 +233,7 @@
                   "bordered": false
                 },
                 "x-designable-id": "thosupmsgla",
-                "x-index": 1,
+                "x-index": 2,
                 "properties": {
                   "q5xpu8g3ptd": {
                     "type": "void",
@@ -273,6 +287,53 @@
                   }
                 }
               },
+              "vjyq5moqu3a": {
+                "type": "void",
+                "x-component": "FormCollapse",
+                "x-component-props": {
+                  "style": {
+                    "margin": "8px 0px 0px 0px"
+                  },
+                  "collapsible": "header",
+                  "ghost": false,
+                  "bordered": false
+                },
+                "x-designable-id": "vjyq5moqu3a",
+                "x-index": 3,
+                "properties": {
+                  "i28uz5lqm5h": {
+                    "type": "void",
+                    "x-component": "FormCollapse.CollapsePanel",
+                    "x-component-props": {
+                      "header": "Credentials Settings"
+                    },
+                    "x-designable-id": "i28uz5lqm5h",
+                    "x-index": 0,
+                    "properties": {
+                      "checkCredentialsMaxTime": {
+                        "type": "number",
+                        "title": "Check Credentials Max Time",
+                        "x-decorator": "FormItem",
+                        "x-component": "NumberPicker",
+                        "x-validator": [
+                          {
+                            "triggerType": "onInput",
+                            "min": 0
+                          }
+                        ],
+                        "x-component-props": {},
+                        "x-decorator-props": {},
+                        "name": "checkCredentialsMaxTime",
+                        "default": 10800,
+                        "required": true,
+                        "x-designable-id": "17eqqginx4i",
+                        "x-index": 0,
+                        "description": "If credentials are invalid, a check will be performed in the queue, taking a time of seconds."
+                      }
+                    }
+                  }
+                }
+              },
               "4y906v0wdpt": {
                 "type": "void",
                 "x-component": "FormCollapse",
@@ -285,7 +346,7 @@
                   "bordered": false
                 },
                 "x-designable-id": "4y906v0wdpt",
-                "x-index": 2,
+                "x-index": 4,
                 "properties": {
                   "hp63pfovl7s": {
                     "type": "void",
@@ -602,6 +663,6 @@
         }
       }
     },
-    "x-designable-id": "nfh0hwwcasv"
+    "x-designable-id": "4d8rlspayft"
   }
 }

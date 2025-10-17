@@ -10,13 +10,13 @@ import { Global, css } from '@emotion/react';
 import { Box, CircularProgress, CssBaseline } from '@mui/material';
 import { ReactNode, Suspense, lazy } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
-import { Navigate, Route, RouterProvider, createBrowserRouter, createRoutesFromElements } from 'react-router-dom';
+import { Route, RouterProvider, createBrowserRouter, createRoutesFromElements } from 'react-router-dom';
 
 import NotFoundView from './components/error/not-found';
 import UserLayout from './components/layout/user';
 import Loading from './components/loading';
 import { TransitionProvider } from './components/loading/progress-bar';
-import { SessionProvider, useIsRole } from './contexts/session';
+import { SessionProvider } from './contexts/session';
 import { translations } from './locales';
 import { HomeLazy } from './pages/home';
 import { ChatLazy } from './pages/playground';
@@ -71,20 +71,16 @@ export default function App() {
 }
 
 function AppRoutes({ basename }: { basename: string }) {
-  const isAdmin = useIsRole('owner', 'admin');
-
   const router = createBrowserRouter(
     createRoutesFromElements(
       <Route>
         <Route index element={<HomeLazy />} />
-        <Route path="playground" element={isAdmin ? undefined : <Navigate to="/" />}>
-          <Route index element={<Navigate to="/playground/chat" replace />} />
-          <Route path="chat" element={<ChatLazy />} />
+        <Route path="/config">
+          <Route index element={<ConfigPage />} />
+          <Route path=":group" element={<ConfigPage />} />
+          <Route path=":group/:page" element={<ConfigPage />} />
+          <Route path="*" element={<ConfigPage />} />
         </Route>
-        <Route key="config-index" path="/config" element={<ConfigPage />} />
-        <Route key="config-tabs" path="/config/:group" element={<ConfigPage />} />
-        <Route key="config-sub" path="/config/:group/:page" element={<ConfigPage />} />
-        <Route key="config-fallback" path="/config/*" element={<ConfigPage />} />
         <Route
           key="credit-board"
           path="/credit-usage"
@@ -95,6 +91,30 @@ function AppRoutes({ basename }: { basename: string }) {
           }
         />
         <Route key="pricing" path="/pricing" element={<PricingPage />} />
+        <Route
+          key="playground"
+          path="/playground"
+          element={
+            <Box
+              component="main"
+              sx={{
+                overflow: 'hidden',
+                height: '100vh',
+                display: 'flex',
+                flexDirection: 'column',
+                pb: { xs: 0.5, md: 2 },
+              }}>
+              <Header
+                // @ts-ignore
+                maxWidth={null}
+                addons={(exists: ReactNode[]) => [<CreditButton />, ...exists]}
+              />
+              <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'auto', pt: 4 }}>
+                <ChatLazy />
+              </Box>
+            </Box>
+          }
+        />
         {/* <Route path="billing/*" element={<BillingRoutes />} /> */}
         <Route
           path="*"
