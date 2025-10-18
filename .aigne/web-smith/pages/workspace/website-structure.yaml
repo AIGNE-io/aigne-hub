@@ -1,0 +1,10 @@
+- title: AIGNE Hub - Unified AI Gateway
+  description: "A single-page landing site for AIGNE Hub, showcasing its value
+    proposition for developers. Sections include: Hero with a primary
+    call-to-action, Key Features, Core Capabilities with code examples, a list
+    of Supported Providers, and a Developer Toolkit."
+  path: /home
+  sourceIds:
+    - blocklets/core/blocklet.md
+    - README.md
+  parentId: "null"

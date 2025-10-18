@@ -1,0 +1,77 @@
+name: publish docs
+
+env: 
+  AIGNE_HUB_API_KEY: ${{ secrets.AIGNE_HUB_API_KEY }}
+
+permissions:
+  contents: write
+
+on:
+  push:
+    branches:
+      - master
+      - main
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - edited
+      - synchronize
+    branches:
+      - master
+      - main
+      - dev
+
+jobs:
+  publish-docs:
+    runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ github.head_ref || github.ref_name }}
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+          cache: true
+
+      - name: Install @aigne/cli
+        run: |
+          bun install -g @aigne/cli@beta
+
+      - name: Publish docs to arcblock.io
+        env:
+          DOC_DISCUSS_KIT_ACCESS_TOKEN: ${{ secrets.DOC_PUBLISH_API_KEY_ARCBLOCK }}
+        run: |
+          set -e
+          aigne doc publish --appUrl https://www.arcblock.io
+
+      - name: Publish docs to prod docsmith
+        env:
+          DOC_DISCUSS_KIT_ACCESS_TOKEN: ${{ secrets.DOC_PUBLISH_API_KEY_DOCSMITH }}
+        run: |
+          set -e
+          aigne doc publish --appUrl https://docsmith.aigne.io
+
+      - name: Commit and push changes
+        run: |
+          git config --local user.name "bot"
+          git config --local user.email "bot@arcblock.io"
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "Changes detected. Committing and pushing..."
+            git add -A
+            git commit -m "chore(docs): push doc smith cache [skip ci]"
+            BRANCH="${{ github.head_ref || github.ref_name }}"
+            git push origin HEAD:refs/heads/"${BRANCH}"
+          else
+            echo "No changes to commit."
+          fi
