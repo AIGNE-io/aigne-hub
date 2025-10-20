@@ -264,7 +264,7 @@ export default function Message({
       display="flex"
       className={cx(isLeftRight && isUser && 'user-message', isLeftRight && !isUser && 'ai-message')}
       sx={{
-        pl: { xs: 1.5, md: 0 },
+        px: { xs: 1.5, md: 0 },
         mb: 2.5,
         '&:hover .message-meta': {
           opacity: 1,

@@ -9,7 +9,19 @@ import {
   useConversation,
 } from '@blocklet/aigne-hub/components';
 import { ArrowDropDown, DeleteOutline, HighlightOff } from '@mui/icons-material';
-import { Box, Button, CircularProgress, IconButton, Tooltip, Typography } from '@mui/material';
+import {
+  Box,
+  Button,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  IconButton,
+  Tooltip,
+  Typography,
+} from '@mui/material';
 import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -106,6 +118,7 @@ export default function Chat() {
   const [selectedType, setSelectedType] = useState<string>('all'); // Track the selected type filter
   const [loading, setLoading] = useState(true);
   const [selectorOpen, setSelectorOpen] = useState(false);
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [scrollContainer, setScrollContainer] = useState<HTMLElement | null>(null);
   const isAdmin = useIsRole('owner', 'admin');
   const navigate = useNavigate();
@@ -329,11 +342,17 @@ export default function Chat() {
   });
 
   const handleClearHistory = useCallback(() => {
-    // eslint-disable-next-line no-alert
-    if (window.confirm(t('chat.clearHistoryConfirm'))) {
-      clearHistory();
-    }
-  }, [clearHistory, t]);
+    setConfirmDialogOpen(true);
+  }, []);
+
+  const handleConfirmClear = useCallback(() => {
+    setConfirmDialogOpen(false);
+    clearHistory();
+  }, [clearHistory]);
+
+  const handleCancelClear = useCallback(() => {
+    setConfirmDialogOpen(false);
+  }, []);
 
   const customActions = useCallback(
     (msg: MessageItem): Array<ReactNode[]> => {
@@ -355,106 +374,127 @@ export default function Chat() {
   );
 
   return (
-    <Conversation
-      ref={ref}
-      scrollContainer={scrollContainer || undefined}
-      sx={{
-        maxWidth: 1000,
-        mx: 'auto',
-        width: '100%',
-        height: '100%',
-        overflow: 'initial',
-        '.conversation-container': {
-          m: 0,
-        },
-      }}
-      messages={messages}
-      onSubmit={(prompt) => {
-        add(prompt);
-      }}
-      customActions={customActions}
-      promptProps={{
-        sx: {
-          pl: { xs: 1.5, md: 0 },
-        },
-        placeholder:
-          currentModelType === 'imageGeneration'
-            ? t('chat.placeholders.imageGeneration')
-            : currentModelType === 'embedding'
-              ? t('chat.placeholders.embedding')
-              : t('chat.placeholders.chat'),
-        topAdornment: (
-          <>
-            {/* Left side: Model selector */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1 }}>
-              {/* Model selector as text with dropdown icon */}
-              <Box
-                onClick={() => !loading && modelGroups.length > 0 && setSelectorOpen(true)}
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 0.5,
-                  cursor: loading || modelGroups.length === 0 ? 'not-allowed' : 'pointer',
-                  color: loading || modelGroups.length === 0 ? 'text.disabled' : 'text.primary',
-                  transition: 'color 0.2s ease',
-                  '&:hover': {
-                    color: loading || modelGroups.length === 0 ? 'text.disabled' : 'primary.main',
-                  },
-                }}>
-                <Typography
-                  variant="body2"
+    <>
+      <Conversation
+        ref={ref}
+        scrollContainer={scrollContainer || undefined}
+        sx={{
+          maxWidth: 1000,
+          mx: 'auto',
+          width: '100%',
+          height: '100%',
+          overflow: 'initial',
+          '.conversation-container': {
+            m: 0,
+          },
+        }}
+        messages={messages}
+        onSubmit={(prompt) => {
+          add(prompt);
+        }}
+        customActions={customActions}
+        promptProps={{
+          sx: {
+            px: { xs: 1.5, md: 0 },
+          },
+          placeholder:
+            currentModelType === 'imageGeneration'
+              ? t('chat.placeholders.imageGeneration')
+              : currentModelType === 'embedding'
+                ? t('chat.placeholders.embedding')
+                : t('chat.placeholders.chat'),
+          topAdornment: (
+            <>
+              {/* Left side: Model selector */}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1 }}>
+                {/* Model selector as text with dropdown icon */}
+                <Box
+                  onClick={() => !loading && modelGroups.length > 0 && setSelectorOpen(true)}
                   sx={{
-                    fontWeight: 500,
-                    fontSize: '14px',
-                  }}>
-                  {loading
-                    ? t('chat.loading')
-                    : `${selectedModelDisplay} (${t(`chat.modelTypes.${currentModelType}`)})`}
-                </Typography>
-                <ArrowDropDown sx={{ fontSize: 20 }} />
-              </Box>
-            </Box>
-
-            {/* Right side: Cache info and Clear history button */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              {/* Loading indicator */}
-              {isLoadingHistory && <CircularProgress size={16} sx={{ color: 'text.secondary' }} />}
-
-              {/* Clear history button */}
-              <Tooltip title={t('chat.clearHistory')} placement="top">
-                <IconButton
-                  onClick={handleClearHistory}
-                  size="small"
-                  disabled={messages.length <= 1}
-                  sx={{
-                    color: 'text.secondary',
-                    transition: 'all 0.2s ease',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 0.5,
+                    cursor: loading || modelGroups.length === 0 ? 'not-allowed' : 'pointer',
+                    color: loading || modelGroups.length === 0 ? 'text.disabled' : 'text.primary',
+                    transition: 'color 0.2s ease',
                     '&:hover': {
-                      color: 'error.main',
-                      bgcolor: 'error.light',
-                      transform: 'scale(1.05)',
-                    },
-                    '&.Mui-disabled': {
-                      color: 'action.disabled',
+                      color: loading || modelGroups.length === 0 ? 'text.disabled' : 'primary.main',
                     },
                   }}>
-                  <DeleteOutline fontSize="small" />
-                </IconButton>
-              </Tooltip>
-            </Box>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontWeight: 500,
+                      fontSize: '14px',
+                    }}>
+                    {loading
+                      ? t('chat.loading')
+                      : `${selectedModelDisplay} (${t(`chat.modelTypes.${currentModelType}`)})`}
+                  </Typography>
+                  <ArrowDropDown sx={{ fontSize: 20 }} />
+                </Box>
+              </Box>
 
-            <ModelSelector
-              open={selectorOpen}
-              onClose={() => setSelectorOpen(false)}
-              modelGroups={modelGroups}
-              selectedModel={model}
-              onModelSelect={handleModelChange}
-              selectedType={selectedType}
-              onTypeChange={setSelectedType}
-            />
-          </>
-        ),
-      }}
-    />
+              {/* Right side: Cache info and Clear history button */}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                {/* Loading indicator */}
+                {isLoadingHistory && <CircularProgress size={16} sx={{ color: 'text.secondary' }} />}
+
+                {/* Clear history button */}
+                <Tooltip title={t('chat.clearHistory')} placement="top">
+                  <IconButton
+                    onClick={handleClearHistory}
+                    size="small"
+                    disabled={messages.length <= 1}
+                    sx={{
+                      color: 'text.secondary',
+                      transition: 'all 0.2s ease',
+                      '&:hover': {
+                        color: 'error.main',
+                        transform: 'scale(1.05)',
+                      },
+                      '&.Mui-disabled': {
+                        color: 'action.disabled',
+                      },
+                    }}>
+                    <DeleteOutline fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              </Box>
+
+              <ModelSelector
+                open={selectorOpen}
+                onClose={() => setSelectorOpen(false)}
+                modelGroups={modelGroups}
+                selectedModel={model}
+                onModelSelect={handleModelChange}
+                selectedType={selectedType}
+                onTypeChange={setSelectedType}
+              />
+            </>
+          ),
+        }}
+      />
+
+      {/* Clear History Confirmation Dialog */}
+      <Dialog
+        open={confirmDialogOpen}
+        onClose={handleCancelClear}
+        aria-labelledby="clear-dialog-title"
+        aria-describedby="clear-dialog-description">
+        <DialogTitle id="clear-dialog-title">{t('chat.clearHistory')}</DialogTitle>
+        <DialogContent>
+          <DialogContentText id="clear-dialog-description">{t('chat.clearHistoryConfirm')}</DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancelClear} color="primary">
+            {t('cancel')}
+          </Button>
+          <Button onClick={handleConfirmClear} color="error" variant="contained" autoFocus>
+            {t('confirm')}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
   );
 }
