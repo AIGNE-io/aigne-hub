@@ -1,3 +1,7 @@
+## 0.4.49 (2025-10-20)
+
+- feat(chat): add confirmation dialog for clearing chat history and improve UI layout
+
 ## 0.4.48 (2025-10-17)
 
 - chore: update aigne deps
