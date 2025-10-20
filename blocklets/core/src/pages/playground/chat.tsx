@@ -1,3 +1,4 @@
+import Dialog from '@arcblock/ux/lib/Dialog';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import { AI_PROVIDER_DISPLAY_NAMES } from '@blocklet/aigne-hub/api';
 import type { ModelGroup, ModelOption } from '@blocklet/aigne-hub/api/types';
@@ -9,19 +10,7 @@ import {
   useConversation,
 } from '@blocklet/aigne-hub/components';
 import { ArrowDropDown, DeleteOutline, HighlightOff } from '@mui/icons-material';
-import {
-  Box,
-  Button,
-  CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
-  IconButton,
-  Tooltip,
-  Typography,
-} from '@mui/material';
+import { Box, Button, CircularProgress, IconButton, Stack, Tooltip, Typography } from '@mui/material';
 import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -480,20 +469,19 @@ export default function Chat() {
       <Dialog
         open={confirmDialogOpen}
         onClose={handleCancelClear}
-        aria-labelledby="clear-dialog-title"
-        aria-describedby="clear-dialog-description">
-        <DialogTitle id="clear-dialog-title">{t('chat.clearHistory')}</DialogTitle>
-        <DialogContent>
-          <DialogContentText id="clear-dialog-description">{t('chat.clearHistoryConfirm')}</DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCancelClear} color="primary">
-            {t('cancel')}
-          </Button>
-          <Button onClick={handleConfirmClear} color="error" variant="contained" autoFocus>
-            {t('confirm')}
-          </Button>
-        </DialogActions>
+        title={t('chat.clearHistory')}
+        fullScreen={false}
+        PaperProps={{ style: { minHeight: '100px' } }}
+        slotProps={{ content: { style: { paddintTop: 0 } } }}
+        actions={
+          <Stack direction="row" spacing={2}>
+            <Button onClick={handleCancelClear}>{t('cancel')}</Button>
+            <Button onClick={handleConfirmClear} color="error" variant="contained">
+              {t('confirm')}
+            </Button>
+          </Stack>
+        }>
+        <Typography variant="body2">{t('chat.clearHistoryConfirm')}</Typography>
       </Dialog>
     </>
   );

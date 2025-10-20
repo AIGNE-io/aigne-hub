@@ -265,7 +265,7 @@ export default function Message({
       className={cx(isLeftRight && isUser && 'user-message', isLeftRight && !isUser && 'ai-message')}
       sx={{
         px: { xs: 1.5, md: 0 },
-        mb: 2.5,
+        mb: { xs: 0, md: 2 },
         '&:hover .message-meta': {
           opacity: 1,
         },
@@ -300,9 +300,10 @@ export default function Message({
         sx={{
           display: 'flex',
           flexDirection: 'column',
-          maxWidth: { xs: '90%', md: '80%' },
-          minWidth: 'auto',
+          flex: 1,
+          minWidth: 0,
           position: 'relative',
+          alignItems: isLeftRight && isUser ? 'flex-end' : 'flex-start',
         }}>
         <Box
           className={cx('content')}
@@ -310,14 +311,16 @@ export default function Message({
             minHeight: 40,
             overflow: 'hidden',
             wordBreak: 'break-word',
-            padding: 1.75,
-            borderRadius: 2,
+            padding: { xs: 1.25, md: 1.75 },
+            borderRadius: { xs: 1.5, md: 2 },
             position: 'relative',
             backgroundColor: 'transparent',
             border: 'none',
             transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
             display: 'flex',
             flexDirection: 'column',
+            maxWidth: { xs: '90%', md: '80%' },
+            width: 'fit-content',
           }}>
           {text && (
             <Box component={ReactMarkdown} className={cx('message', loading && 'cursor')}>
@@ -335,7 +338,7 @@ export default function Message({
             display: 'flex',
             alignItems: 'center',
             gap: 1,
-            mt: 0.5,
+            mt: { xs: 0, md: 0.5 },
             opacity: 0,
             transition: 'opacity 0.2s ease',
             justifyContent: isLeftRight && isUser ? 'flex-end' : 'flex-start',

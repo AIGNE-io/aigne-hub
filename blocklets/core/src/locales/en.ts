@@ -392,7 +392,7 @@ export default flatten({
     clearHistory: 'Clear conversation history',
     clearHistoryConfirm: 'Are you sure you want to clear all conversation history?',
     placeholders: {
-      chat: 'Type your message... (Shift+Enter for new line)',
+      chat: 'Type your message...',
       imageGeneration: 'Describe the image you want to generate...',
       embedding: 'Enter text to convert to embedding vector...',
     },

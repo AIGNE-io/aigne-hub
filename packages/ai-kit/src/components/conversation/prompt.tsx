@@ -20,7 +20,7 @@ export default function Prompt({
   onSubmit,
   slotProps = {},
   sx = {},
-  placeholder = 'Type your message... (Shift+Enter for new line)',
+  placeholder = 'Type your message...',
   ...props
 }: PromptProps) {
   const [prompt, setPrompt] = useState('');
@@ -47,7 +47,7 @@ export default function Prompt({
   return (
     <Box
       {...props}
-      sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, ...sx }}
+      sx={{ display: 'flex', flexDirection: 'column', gap: { sx: 0.5, md: 1.5 }, ...sx }}
       component="form"
       onSubmit={(e: React.FormEvent<HTMLFormElement>) => e.preventDefault()}>
       {/* Toolbar above input */}
@@ -58,7 +58,7 @@ export default function Prompt({
             alignItems: 'center',
             justifyContent: 'space-between',
             gap: 2,
-            px: 1,
+            pl: 1,
           }}>
           {topAdornment}
         </Box>
@@ -99,7 +99,7 @@ export default function Prompt({
           sx={{
             py: 0,
             px: 0,
-            fontSize: '15px',
+            fontSize: { xs: '14px', md: '15px' },
             border: 'none',
             boxShadow: 'none',
             '&:hover': {
@@ -133,15 +133,13 @@ export default function Prompt({
         />
         <IconButton
           onClick={submit}
-          size="medium"
+          size="small"
           type="submit"
           disabled={!prompt.trim()}
           sx={{
             bgcolor: prompt.trim() ? 'primary.main' : 'action.disabledBackground',
             color: prompt.trim() ? 'primary.contrastText' : 'action.disabled',
             transition: 'all 0.2s ease',
-            width: 44,
-            height: 44,
             alignSelf: 'flex-end',
             flexShrink: 0,
             '&:hover': {
