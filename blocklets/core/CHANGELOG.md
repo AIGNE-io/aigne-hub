@@ -1,3 +1,7 @@
+## 0.4.50 (2025-10-21)
+
+- fix: update openai api url for audio apis
+
 ## 0.4.49 (2025-10-20)
 
 - feat(chat): add confirmation dialog for clearing chat history and improve UI layout

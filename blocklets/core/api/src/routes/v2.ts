@@ -470,7 +470,7 @@ router.post(
     https: true,
     limit: '10mb',
     proxyReqPathResolver() {
-      return '/v2/audio/transcriptions';
+      return '/v1/audio/transcriptions';
     },
     parseReqBody: false,
     async proxyReqOptDecorator(proxyReqOpts, srcReq) {
@@ -489,7 +489,7 @@ router.post(
     https: true,
     limit: '10mb',
     proxyReqPathResolver() {
-      return '/v2/audio/speech';
+      return '/v1/audio/speech';
     },
     async proxyReqOptDecorator(proxyReqOpts, srcReq) {
       const { apiKey } = await getOpenAIV2(srcReq);
