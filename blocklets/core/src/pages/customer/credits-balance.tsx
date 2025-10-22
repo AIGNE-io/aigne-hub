@@ -309,7 +309,7 @@ export function CreditsBalance({ data = undefined as UserInfoResult | undefined 
             size="small"
             startIcon={<Receipt />}
             onClick={() => {
-              window.open(getPaymentUrl('/customer?creditTab=grants'), '_self');
+              window.open(getPaymentUrl('/customer?creditTab=grants', false), '_self');
             }}
             sx={{
               borderRadius: 2,
