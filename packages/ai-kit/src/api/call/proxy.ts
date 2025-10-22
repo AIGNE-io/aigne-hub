@@ -38,34 +38,37 @@ export function proxyToAIKit(
 ) {
   const parseReqBody = path !== '/api/v1/audio/transcriptions';
 
-  return (req: Request, res: Response, next: NextFunction) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
     const url = parseURL(
       withQuery(joinURL(useAIKitService ? AI_KIT_BASE_URL : getComponentWebEndpoint('ai-kit'), path), req.query)
     );
 
     const userDid = req.user?.did || req?.get('x-app-user-did');
+
+    let additionalHeaders: Record<string, any> = {};
+    if (useAIKitService) {
+      additionalHeaders = await getRemoteComponentCallHeaders(req.body || {}, userDid);
+    } else {
+      const { iat, exp, sig, version } = await getSignData({
+        data: req.body,
+        params: req.query,
+        method: req.method,
+        url: stringifyParsedURL(url),
+      });
+      additionalHeaders = {
+        'x-component-sig': sig,
+        'x-component-sig-iat': iat,
+        'x-component-sig-exp': exp,
+        'x-component-sig-version': version,
+      };
+    }
+
     const proxyReq = (url.protocol === 'https:' ? https : http).request(
       stringifyParsedURL(url),
       {
         headers: {
           ...pick(req.headers, ...proxyReqHeaders),
-          ...(useAIKitService
-            ? getRemoteComponentCallHeaders(req.body || {}, userDid)
-            : (() => {
-                const { iat, exp, sig, version } = getSignData({
-                  data: req.body,
-                  params: req.query,
-                  method: req.method,
-                  url: stringifyParsedURL(url),
-                });
-
-                return {
-                  'x-component-sig': sig,
-                  'x-component-sig-iat': iat,
-                  'x-component-sig-exp': exp,
-                  'x-component-sig-version': version,
-                };
-              })()),
+          ...additionalHeaders,
         },
         method: req.method,
       },

@@ -176,8 +176,8 @@ const handleUserUpdated = async (user: any) => {
   }
 };
 
-export function subscribeEvents() {
-  subscribe((event: any) => {
+export async function subscribeEvents() {
+  await subscribe((event: any) => {
     if (!shouldExecuteTask(`subscribeEvents:${event.type}`)) {
       return;
     }

@@ -6,10 +6,10 @@ import { NextFunction, Request, Response } from 'express';
 export const ensureAdmin = auth({ roles: ['owner', 'admin'] });
 
 export function ensureComponentCall(fallback?: (req: Request, res: Response, next: NextFunction) => any) {
-  return (req: Request, res: Response, next: NextFunction) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { data, sig } = getVerifyData(req);
-      const verified = verify(data, sig);
+      const verified = await verify(data, sig);
       if (!verified) throw new CustomError(401, 'verify sig failed');
     } catch (error) {
       if (!fallback) throw error;
