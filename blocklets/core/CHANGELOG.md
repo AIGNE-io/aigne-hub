@@ -1,3 +1,7 @@
+## 0.4.51 (2025-10-22)
+
+- fix(core): allow payment URL access when blocklet not running
+
 ## 0.4.50 (2025-10-21)
 
 - fix: update openai api url for audio apis
