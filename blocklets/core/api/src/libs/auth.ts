@@ -1,20 +1,20 @@
 import path from 'path';
 
 import AuthStorage from '@arcblock/did-connect-storage-nedb';
-import env from '@blocklet/sdk/lib/env';
-import AuthService from '@blocklet/sdk/lib/service/blocklet';
-import getWallet from '@blocklet/sdk/lib/wallet';
-import WalletAuthenticator from '@blocklet/sdk/lib/wallet-authenticator';
-import WalletHandler from '@blocklet/sdk/lib/wallet-handler';
+import { env } from '@blocklet/sdk/lib/env';
+import { BlockletService } from '@blocklet/sdk/lib/service/blocklet';
+import { getWallet } from '@blocklet/sdk/lib/wallet';
+import { WalletAuthenticator } from '@blocklet/sdk/lib/wallet-authenticator';
+import { WalletHandlers } from '@blocklet/sdk/lib/wallet-handler';
 
 import { Config } from './env';
 
-export const blocklet = new AuthService();
+export const blocklet = new BlockletService();
 
 export const wallet = getWallet();
 
 export const authenticator = new WalletAuthenticator();
-export const walletHandler = new WalletHandler({
+export const walletHandler = new WalletHandlers({
   authenticator,
   tokenStorage: new AuthStorage({
     dbPath: path.join(Config.dataDir, 'auth.db'),

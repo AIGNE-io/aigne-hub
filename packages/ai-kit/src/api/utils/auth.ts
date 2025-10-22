@@ -2,10 +2,9 @@
 
 import { DidType, fromPublicKey } from '@arcblock/did';
 import { auth } from '@blocklet/sdk/lib/middlewares';
-import getWallet from '@blocklet/sdk/lib/wallet';
+import { getWallet } from '@blocklet/sdk/lib/wallet';
 import { getHasher, getSigner, types } from '@ocap/mcrypto';
 import type { BytesType } from '@ocap/util';
-import type { WalletObject } from '@ocap/wallet';
 import type { NextFunction, Request, Response } from 'express';
 import stringify from 'json-stable-stringify';
 
@@ -13,7 +12,7 @@ import { StatusCodeError } from '../error';
 
 const TOKEN_EXPIRES_IN_SECONDS = 60 * 10;
 
-export const wallet: WalletObject = getWallet();
+export const wallet = getWallet();
 
 const ADMIN_ROLES = ['owner', 'admin'];
 
@@ -43,7 +42,7 @@ export function appIdFromPublicKey(publicKey: BytesType) {
   );
 }
 
-export function verifyRemoteComponentCall({
+export async function verifyRemoteComponentCall({
   appId,
   timestamp,
   data,
@@ -67,7 +66,7 @@ export function verifyRemoteComponentCall({
   return signer.verify(hashData({ appId, timestamp, data, userDid }), sig, pk);
 }
 
-export function signRemoteComponentCall({ data, userDid }: { data: object; userDid?: string }) {
+export async function signRemoteComponentCall({ data, userDid }: { data: object; userDid?: string }) {
   const appId = wallet.address;
   const timestamp = Math.round(Date.now() / 1000);
 
@@ -79,8 +78,8 @@ export function signRemoteComponentCall({ data, userDid }: { data: object; userD
   };
 }
 
-export function getRemoteComponentCallHeaders(data: object, userDid?: string) {
-  const { appId, timestamp, sig } = signRemoteComponentCall({ data, userDid });
+export async function getRemoteComponentCallHeaders(data: object, userDid?: string) {
+  const { appId, timestamp, sig } = await signRemoteComponentCall({ data, userDid });
   return {
     'x-app-id': appId,
     'x-timestamp': timestamp.toString(),
@@ -110,14 +109,14 @@ export function ensureRemoteComponentCall(
       }
 
       if (
-        !verifyRemoteComponentCall({
+        !(await verifyRemoteComponentCall({
           appId,
           sig,
           timestamp: parseInt(timestamp, 10),
           data: req.body,
           pk,
           userDid,
-        })
+        }))
       ) {
         throw new StatusCodeError(401, 'Validate signature error');
       }
