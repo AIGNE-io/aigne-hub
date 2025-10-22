@@ -7,6 +7,16 @@ import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
 
 const router = Router();
 
+let securityKey: string | null = null;
+
+async function getSecurityKey(): Promise<string> {
+  if (!securityKey) {
+    securityKey = await wallet.sign('ai-kit/api/meilisearch/embeddings');
+  }
+
+  return securityKey;
+}
+
 export interface CallbackPayload extends Event {}
 
 const embeddingsBodySchema = Joi.object<{
@@ -22,7 +32,7 @@ const embeddingsBodySchema = Joi.object<{
 });
 
 router.post('/embeddings', async (req, res) => {
-  const securityKey = await wallet.sign('ai-kit/api/meilisearch/embeddings');
+  const securityKey = await getSecurityKey();
 
   if (req.get('authorization')?.replace(/^bearer\s+/i, '') !== securityKey) {
     return res.status(401).json({ message: 'Unauthorized' });
