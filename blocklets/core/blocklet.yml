@@ -24,7 +24,7 @@ repository:
   type: git
   url: git+https://github.com/AIGNE-io/aigne-hub.git
 specVersion: 1.2.8
-version: 0.4.51
+version: 0.4.52
 logo: screenshots/logo.png
 files:
   - dist
@@ -45,7 +45,6 @@ interfaces:
           ignoreUrls:
             - /api/meilisearch/embeddings
             - /api/ai-providers/models
-    proxyBehavior: service
 community: https://community.arcblock.io/discussions/boards/aigne
 documentation: https://github.com/AIGNE-io/aigne-hub
 homepage: https://www.aigne.io/hub
