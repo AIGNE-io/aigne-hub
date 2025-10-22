@@ -94,7 +94,7 @@ async function signRemoteComponentCall({ data, userDid }: { data: object; userDi
   };
 }
 
-export async function getRemoteComponentCallHeaders(data: object, userDid?: string) {
+export async function getRemoteComponentCallHeaders(data: object = {}, userDid?: string) {
   const { appId, timestamp, sig } = await signRemoteComponentCall({ data, userDid });
 
   return {
