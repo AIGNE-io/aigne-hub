@@ -23,7 +23,7 @@ const embeddingsBodySchema = Joi.object<{
 });
 
 const securityKey = createHash('sha256')
-  .update(`${process.env.BLOCKLET_APP_ASK}:/ai-kit/api/meilisearch/embeddings`)
+  .update(`${process.env.BLOCKLET_APP_ASK || process.env.BLOCKLET_APP_SK}:/ai-kit/api/meilisearch/embeddings`)
   .digest('hex');
 
 router.post('/embeddings', async (req, res) => {
