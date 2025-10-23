@@ -106,12 +106,12 @@ app.use(<ErrorRequestHandler>((error, req, res, _next) => {
 
 const port = parseInt(process.env.BLOCKLET_PORT!, 10);
 
-const server = app.listen(port, (err?: any) => {
+const server = app.listen(port, async (err?: any) => {
   if (err) throw err;
   logger.info(`> ${name} v${version} ready on ${port}`);
 
   autoUpdateSubscriptionMeta();
-  subscribeEvents();
+  await subscribeEvents();
   crons.init();
   if (Config.creditBasedBillingEnabled) {
     paymentClient.ensureStart(async () => {

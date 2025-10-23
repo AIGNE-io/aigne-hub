@@ -1,6 +1,5 @@
 import { createHash } from 'crypto';
 
-import { wallet } from '@api/libs/auth';
 import { Event } from '@blocklet/payment-js';
 import { call } from '@blocklet/sdk/lib/component';
 import { Router } from 'express';
@@ -23,7 +22,9 @@ const embeddingsBodySchema = Joi.object<{
   }).required(),
 });
 
-const securityKey = createHash('sha256').update(`${wallet.secretKey}:/ai-kit/api/meilisearch/embeddings`).digest('hex');
+const securityKey = createHash('sha256')
+  .update(`${process.env.BLOCKLET_APP_ASK || process.env.BLOCKLET_APP_SK}:/ai-kit/api/meilisearch/embeddings`)
+  .digest('hex');
 
 router.post('/embeddings', async (req, res) => {
   if (req.get('authorization')?.replace(/^bearer\s+/i, '') !== securityKey) {

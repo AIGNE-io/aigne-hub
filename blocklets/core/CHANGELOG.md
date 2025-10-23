@@ -1,3 +1,7 @@
+## 0.4.52 (2025-10-22)
+
+- fix: update package
+
 ## 0.4.51 (2025-10-22)
 
 - fix(core): allow payment URL access when blocklet not running

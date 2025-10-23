@@ -12,7 +12,7 @@ import AiModelRate from '@api/store/models/ai-model-rate';
 import AiModelStatus from '@api/store/models/ai-model-status';
 import AiProvider from '@api/store/models/ai-provider';
 import { formatError } from '@blocklet/error';
-import sessionMiddleware from '@blocklet/sdk/lib/middlewares/session';
+import { sessionMiddleware } from '@blocklet/sdk/lib/middlewares/session';
 import BigNumber from 'bignumber.js';
 import { NextFunction, Request, Response, Router } from 'express';
 import Joi from 'joi';

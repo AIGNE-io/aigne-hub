@@ -20,7 +20,7 @@ import AiCredential from '@api/store/models/ai-credential';
 import AiModelRate from '@api/store/models/ai-model-rate';
 import AiProvider from '@api/store/models/ai-provider';
 import { CustomError } from '@blocklet/error';
-import sessionMiddleware from '@blocklet/sdk/lib/middlewares/session';
+import { sessionMiddleware } from '@blocklet/sdk/lib/middlewares/session';
 import compression from 'compression';
 import { NextFunction, Request, Response, Router } from 'express';
 import proxy from 'express-http-proxy';

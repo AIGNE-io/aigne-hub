@@ -36,3 +36,6 @@ lerna-debug.log*
 .idea
 node-compile-cache
 .cursor
+
+# Breaking change documentation
+BREAKING_CHANGE.MD

@@ -2,10 +2,9 @@
 
 import { DidType, fromPublicKey } from '@arcblock/did';
 import { auth } from '@blocklet/sdk/lib/middlewares';
-import getWallet from '@blocklet/sdk/lib/wallet';
+import { getWallet } from '@blocklet/sdk/lib/wallet';
 import { getHasher, getSigner, types } from '@ocap/mcrypto';
 import type { BytesType } from '@ocap/util';
-import type { WalletObject } from '@ocap/wallet';
 import type { NextFunction, Request, Response } from 'express';
 import stringify from 'json-stable-stringify';
 
@@ -13,13 +12,27 @@ import { StatusCodeError } from '../error';
 
 const TOKEN_EXPIRES_IN_SECONDS = 60 * 10;
 
-export const wallet: WalletObject = getWallet();
+export const wallet = getWallet();
 
 const ADMIN_ROLES = ['owner', 'admin'];
 
 export const ensureAdmin = auth({ roles: ADMIN_ROLES });
 
 const signer = getSigner(DidType('default').pk!);
+
+const getStringify = ({
+  appId,
+  timestamp,
+  data,
+  userDid,
+}: {
+  appId: string;
+  timestamp: number;
+  data: object;
+  userDid?: string;
+}) => {
+  return stringify({ appId, timestamp, data: data || {}, userDid });
+};
 
 function hashData({
   appId,
@@ -33,7 +46,7 @@ function hashData({
   userDid?: string;
 }) {
   const hasher = getHasher(DidType('default').hash!);
-  return hasher(stringify({ appId, timestamp, data: data || {}, userDid }), 1);
+  return hasher(getStringify({ appId, timestamp, data, userDid }), 1);
 }
 
 export function appIdFromPublicKey(publicKey: BytesType) {
@@ -43,7 +56,7 @@ export function appIdFromPublicKey(publicKey: BytesType) {
   );
 }
 
-export function verifyRemoteComponentCall({
+async function verifyRemoteComponentCall({
   appId,
   timestamp,
   data,
@@ -67,20 +80,23 @@ export function verifyRemoteComponentCall({
   return signer.verify(hashData({ appId, timestamp, data, userDid }), sig, pk);
 }
 
-export function signRemoteComponentCall({ data, userDid }: { data: object; userDid?: string }) {
+async function signRemoteComponentCall({ data, userDid }: { data: object; userDid?: string }) {
   const appId = wallet.address;
   const timestamp = Math.round(Date.now() / 1000);
+
+  const sig = await wallet.sign(getStringify({ appId, timestamp, data, userDid }));
 
   return {
     appId,
     timestamp,
     userDid,
-    sig: signer.sign(hashData({ appId, timestamp, data, userDid }), wallet.secretKey),
+    sig,
   };
 }
 
-export function getRemoteComponentCallHeaders(data: object, userDid?: string) {
-  const { appId, timestamp, sig } = signRemoteComponentCall({ data, userDid });
+export async function getRemoteComponentCallHeaders(data: object = {}, userDid?: string) {
+  const { appId, timestamp, sig } = await signRemoteComponentCall({ data, userDid });
+
   return {
     'x-app-id': appId,
     'x-timestamp': timestamp.toString(),
@@ -110,14 +126,14 @@ export function ensureRemoteComponentCall(
       }
 
       if (
-        !verifyRemoteComponentCall({
+        !(await verifyRemoteComponentCall({
           appId,
           sig,
           timestamp: parseInt(timestamp, 10),
           data: req.body,
           pk,
           userDid,
-        })
+        }))
       ) {
         throw new StatusCodeError(401, 'Validate signature error');
       }

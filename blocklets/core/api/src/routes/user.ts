@@ -24,7 +24,7 @@ import { isValid as isValidDid } from '@arcblock/did';
 import { proxyToAIKit } from '@blocklet/aigne-hub/api/call';
 import { CustomError } from '@blocklet/error';
 import config from '@blocklet/sdk/lib/config';
-import sessionMiddleware from '@blocklet/sdk/lib/middlewares/session';
+import { sessionMiddleware } from '@blocklet/sdk/lib/middlewares/session';
 import { fromUnitToToken } from '@ocap/util';
 import { Router } from 'express';
 import Joi from 'joi';

@@ -45,7 +45,7 @@ export async function status({
       ? aiKitApi
           .get('/api/v1/status', {
             responseType: options.responseType,
-            headers: { ...getRemoteComponentCallHeaders({}) },
+            headers: { ...(await getRemoteComponentCallHeaders({})) },
           })
           .then((res) => res.data)
       : call({ name: 'ai-kit', method: 'GET', path: '/api/v1/status', responseType: options?.responseType! }).then(
@@ -77,7 +77,7 @@ export async function chatCompletions(
           method: 'POST',
           data: stringify(input),
           headers: {
-            ...getRemoteComponentCallHeaders(input),
+            ...(await getRemoteComponentCallHeaders(input)),
             Accept: 'text/event-stream',
             'Content-Type': 'application/json',
           },
@@ -139,7 +139,7 @@ export async function imageGenerations(
     useAIKitService
       ? aiKitApi.post('/api/v1/image/generations', input, {
           responseType: options.responseType,
-          headers: { ...getRemoteComponentCallHeaders(input) },
+          headers: { ...(await getRemoteComponentCallHeaders(input)) },
         })
       : // @ts-ignore
         call({
@@ -172,7 +172,7 @@ export async function embeddings(
     useAIKitService
       ? aiKitApi.post('/api/v1/embeddings', input, {
           responseType: options.responseType,
-          headers: { ...getRemoteComponentCallHeaders(input) },
+          headers: { ...(await getRemoteComponentCallHeaders(input)) },
         })
       : call({
           name: 'ai-kit',
@@ -208,10 +208,10 @@ export async function audioTranscriptions(
     useAIKitService
       ? aiKitApi.post('/api/v1/audio/transcriptions', form, {
           responseType: options.responseType,
-          headers: { ...getRemoteComponentCallHeaders({}) },
+          headers: { ...(await getRemoteComponentCallHeaders({})) },
         })
-      : (() => {
-          const { iat, exp, sig, version } = getSignData({
+      : (async () => {
+          const { iat, exp, sig, version } = await getSignData({
             data: {},
             params: {},
             method: 'post',
@@ -243,7 +243,7 @@ export async function audioSpeech(
     useAIKitService
       ? aiKitApi.post('/api/v1/audio/speech', input, {
           responseType: 'stream',
-          headers: { ...getRemoteComponentCallHeaders(input) },
+          headers: { ...(await getRemoteComponentCallHeaders(input)) },
         })
       : call({
           name: 'ai-kit',
