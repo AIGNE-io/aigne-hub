@@ -1,81 +1,105 @@
-# 系统架构
+# 系统组件
 
-AIGNE Hub 旨在成为一个强大、可扩展且安全的生成式 AI 网关。它基于 AIGNE Blocklet 框架构建，为众多 AI 提供商提供统一的接口，同时管理计费、用量追踪和安全等关键运营方面。本文档详细介绍了 AIGNE Hub 系统的架构组件和设计原则，重点关注 DevOps 和 SRE 团队的运营问题。
+AIGNE Hub 采用模块化架构设计，确保系统中的每个部分都具有明确且定义清晰的职责。这种关注点分离的设计增强了系统的可维护性、可扩展性和安全性。主要的功能模块包括 API 网关、身份验证系统、用量追踪器和可选的计费模块。这些组件协同工作，以高效、安全地处理 AI 请求。
 
----
+下图展示了这些核心组件之间的高层交互，从接收客户端请求到从 AI 提供商返回响应的整个过程。
 
-### 核心架构原则
+```d2
+direction: down
 
-- **模块化：** 该系统被设计为一个 [Blocklet](https://blocklet.io)，确保其可以在 Blocklet Server 环境中独立部署、管理和扩展。它与其他专门的 Blocklet（如 Payment Kit 和 Observability）集成，以处理其核心领域之外的事务。
-- **可扩展性：** 该架构支持面向企业的单实例、自托管部署和多租户服务提供商模型，能够处理大量用户和应用。
-- **统一接口：** 它抽象了不同 AI 提供商 API 的复杂性，为开发者和应用程序提供了一套单一、一致的端点。
+Client-Applications: {
+  label: "客户端应用程序"
+  shape: rectangle
+}
 
----
+AIGNE-Hub: {
+  label: "AIGNE Hub"
+  shape: rectangle
 
-## 架构组件
+  API-Gateway: {
+    label: "API 网关"
+    shape: rectangle
+  }
 
-AIGNE Hub 架构可分解为几个协同工作的关键组件：
+  Authentication-System: {
+    label: "身份验证系统"
+    shape: rectangle
+  }
 
-![AIGNE Hub 系统架构图](../../../blocklets/core/screenshots/8014a0b1d561114d9948214c4929d5df.png)
+  AI-Provider-Handler: {
+    label: "AI 提供商处理器"
+    shape: rectangle
+  }
 
-### 1. API 网关与路由
+  Usage-Tracker: {
+    label: "用量追踪器"
+    shape: rectangle
+  }
 
-AIGNE Hub 的核心是其 API 网关，它使用 Node.js 和 Express 构建，负责请求接收、身份验证、版本控制以及路由到相应的内部服务。
+  Billing-Module: {
+    label: "计费模块"
+    shape: rectangle
+  }
 
-#### API 版本控制
+  Database: {
+    label: "数据库"
+    shape: cylinder
+  }
+}
 
-该网关提供两个不同的 API 版本，反映了平台的演进并满足不同的用例需求：
+External-AI-Provider: {
+  label: "外部 AI 提供商\n（例如 OpenAI）"
+  shape: rectangle
+}
 
--   **V1 API (`/api/v1`)**：这是旧版 API，主要为 AIGNE 生态系统内的服务器到服务器或组件到组件通信而设计。
-    -   **身份验证**：依靠加密签名验证（`ensureComponentCall`）来授权来自受信任的 Blocklet 组件的请求。
-    -   **计费模型**：通过 Payment Kit 集成**基于订阅**的模型。它会检查调用应用程序的有效订阅（`checkSubscription`）。此模型非常适合按次计费不适用的企业内部部署场景。
+Client-Applications -> AIGNE-Hub.API-Gateway: "1. API 请求"
+AIGNE-Hub.API-Gateway -> AIGNE-Hub.Authentication-System: "2. 验证身份"
+AIGNE-Hub.Authentication-System -> AIGNE-Hub.API-Gateway: "3. 身份验证通过"
+AIGNE-Hub.API-Gateway -> AIGNE-Hub.AI-Provider-Handler: "4. 路由请求"
+AIGNE-Hub.API-Gateway -> AIGNE-Hub.Usage-Tracker: "5. 记录请求详情"
+AIGNE-Hub.Usage-Tracker -> AIGNE-Hub.Billing-Module: "6. 发送用量数据"
+AIGNE-Hub.Billing-Module -> AIGNE-Hub.Database: "7. 更新额度"
+AIGNE-Hub.Usage-Tracker -> AIGNE-Hub.Database: "存储日志"
+AIGNE-Hub.AI-Provider-Handler -> External-AI-Provider: "8. 转发请求"
+External-AI-Provider -> AIGNE-Hub.API-Gateway: "9. AI 响应"
+AIGNE-Hub.API-Gateway -> Client-Applications: "10. 最终响应"
+```
 
--   **V2 API (`/api/v2`)**：当前以用户为中心的 API，专为最终用户应用程序和现代服务设计。
-    -   **身份验证**：利用 DID Connect 进行基于钱包的去中心化用户身份验证（`sessionMiddleware`）。这提供了一个安全且由用户管理的身份层。
-    -   **计费模型**：采用灵活的**基于点数**的系统。在处理请求前，它会验证用户的点数余额（`checkUserCreditBalance`）。这是服务提供商模式的基础。
-    -   **端点支持**：提供 OpenAI 兼容端点（例如 `/v2/chat/completions`）以实现直接兼容，以及 AIGNE 原生端点（例如 `/v2/chat`）以提供增强功能。
+## API 网关
 
-### 2. AI 提供商集成层
+API 网关是所有进入 AIGNE Hub 请求的单一、统一入口点。它负责根据请求路径将流量路由到相应的内部服务。这种集中式方法简化了客户端的集成，因为无论底层 AI 提供商是哪家，开发者都只需与一个单一、一致的 API 端点进行交互。
 
-该层是连接各种第三方 AI 模型的编排引擎。它将来自 API 网关的请求规范化，并将其转换为下游 AI 提供商（如 OpenAI、Anthropic、Google Gemini）所需的特定格式。它还会对响应进行规范化，无论底层模型提供商是谁，都为客户端提供一致的输出结构。
+该网关主要在 `/api/v2/` 路径下暴露了一组 RESTful 端点，用于实现聊天补全、图像生成和嵌入等功能。请求在通过身份验证和其他中间件后，网关会将其定向到相关的处理器进行处理。
 
-API 密钥和提供商凭证经过加密并安全存储，通过 AIGNE Hub 的管理界面进行管理。
+## 身份验证系统
 
-### 3. 计费与用量追踪
+安全性由一个强大的身份验证系统管理，该系统保护所有端点。它利用中间件来验证发起请求的用户或应用程序的身份。
 
-对于 SRE 和运营人员来说，计费和用量追踪系统是监控和财务管理的关键组件。
+-   **用户身份验证**：对于面向用户的交互，例如使用管理仪表盘或内置的 playground，系统采用由 Blocklet SDK 管理的基于会话的身份验证机制。
+-   **API 身份验证**：所有 API 请求都需要一个 Bearer 令牌进行授权。该令牌与特定用户或应用程序相关联，确保只有经过身份验证的客户端才能访问 AI 模型。
 
--   **模型调用追踪**：每个传入的 AI 请求都会在 `ModelCall` 数据库表中创建一条状态为 `processing` 的记录。该追踪器作为 Express 中间件（`createModelCallMiddleware`）实现，是所有用量的唯一可信源。它捕获用户 DID、应用 DID、请求的模型和请求时间戳。
+系统设计为拒绝任何未经身份验证的请求，并返回 `401 Unauthorized` 错误，以防止对底层 AI 服务和数据的未经授权的访问。
 
--   **用量数据收集**：AI 调用成功完成后，追踪器会更新详细的用量指标，包括：
-    -   提示和完成的 token 数量
-    -   生成的图片数量
-    -   模型参数（例如，图片尺寸、质量）
-    -   计算出的点数成本
-    -   调用时长
-    -   用于可观测性的追踪 ID
+## 用量追踪器
 
--   **弹性**：系统包含一个清理机制（`cleanupStaleProcessingCalls`）来处理孤立调用。如果一条请求记录长时间（例如，由于服务器崩溃）保持在 `processing` 状态，它将被自动标记为 `failed`，从而确保系统稳定性和准确的记账。
+用量追踪器是用于监控和审计的关键组件。它会精确记录通过网关的每一次 API 调用。一个名为 `createModelCallMiddleware` 的中间件会拦截传入的请求，以便在数据库中创建一个状态为 `processing` 的 `ModelCall` 记录。
 
--   **Payment Kit 集成**：对于基于点数的计费，AIGNE Hub 与 Payment Kit blocklet 深度集成。
-    -   当模型调用完成时，计算出的点数成本会作为“计量事件”（`createMeterEvent`）报告给 Payment Kit。
-    -   Payment Kit 负责扣除用户的点数余额、管理点数购买以及处理所有金融交易。这种关注点分离确保了 AIGNE Hub 专注于 AI 编排，而 Payment Kit 则处理复杂的支付事务。
+该记录捕获了交易的关键细节，包括：
+-   用户 DID 和应用程序 DID
+-   请求的 AI 模型和调用类型（例如 `chatCompletion`、`imageGeneration`）
+-   请求和响应的时间戳
+-   输入和输出的令牌数
+-   调用的状态（例如 `success`、`failed`）
 
-### 4. 安全与身份验证
+API 调用完成或失败后，该中间件会更新 `ModelCall` 记录，包含最终状态、持续时间和任何错误详情。这为调试、分析和计费提供了完整的审计追踪。
 
-安全性在多个层面上进行管理，以适应不同类型的客户端。
+## 计费模块
 
--   **用户身份验证 (DID Connect)**：如 `blocklets/core/api/src/libs/auth.ts` 中所述，v2 API 的最终用户身份验证由 DID Connect 处理。用户使用其 DID 钱包进行身份验证，提供无密码且高度安全的会话。会话令牌由 `walletHandler` 管理。
+在“服务提供商模式”下运行时，AIGNE Hub 会激活其可选的计费模块。该组件与用量追踪器和 **Payment Kit** blocklet 无缝集成，以管理一个基于额度的计费系统。
 
--   **组件身份验证**：对于自动化的服务间通信（主要用于 v1），系统使用基于公钥密码学的挑战-响应机制。调用组件对请求进行签名，AIGNE Hub 验证签名（`verify(data, sig)`），确保请求源自受信任的已注册组件。
+工作流程如下：
+1.  **检查余额**：在处理请求之前，系统会检查用户是否有足够的额度余额。如果余额为零或负数，请求将被拒绝，并返回 `402 Payment Required` 错误。
+2.  **计算成本**：API 调用成功后，用量追踪器会提供最终的令牌数或图像生成指标。计费模块使用这些数据以及针对特定模型预先配置的费率（`AiModelRate`），来计算以额度为单位的总成本。
+3.  **扣除额度**：然后通过 Payment Kit API 创建一个计量事件，从用户余额中扣除计算出的金额。
 
--   **基于角色的访问控制 (RBAC)**：管理端点受 `ensureAdmin` 中间件保护，该中间件将访问权限限制为具有 `owner` 或 `admin` 角色的用户，以防止未经授权的配置更改。
-
-### 5. 数据存储
-
--   **主数据库**：`README.md` 文件指定使用 SQLite 和 Sequelize ORM 存储核心应用数据，包括提供商配置、使用费率和模型调用日志。对于高吞吐量的企业部署，运营人员应考虑迁移到更强大的数据库，如 PostgreSQL，Sequelize 对其提供支持。
--   **身份验证存储**：根据 `auth.ts` 中的配置，DID Connect 会话数据存储在单独的 NeDB 数据库（`auth.db`）中。
-
-### 6. 可观测性
-
-该系统为运营可见性而设计。从主路由（`blocklets/core/api/src/routes/index.ts`）中可以看出，AIGNE Hub 与 `AIGNEObserver` 库集成。这使其能够捕获每个请求的详细追踪数据（span），并将其导出到专门的 Observability Blocklet。这为运营人员提供了深入洞察整个请求生命周期（从网关到 AI 提供商再返回）的请求延迟、错误来源和性能瓶颈的能力。
+这个自动化流程使运营商能够将 AIGNE Hub 作为一项付费服务来提供，所有用量和计费都得到透明化管理。

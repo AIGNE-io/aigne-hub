@@ -1,81 +1,105 @@
-# 系統架構
+# 系統元件
 
-AIGNE Hub 被設計為一個強固、可擴展且安全的生成式 AI 世界入口。它建立在 AIGNE Blocklet 框架之上，為眾多 AI 供應商提供統一的介面，同時管理帳務、用量追蹤和安全性等關鍵營運層面。本文件詳細介紹 AIGNE Hub 系統的架構元件和設計原則，並著重於 DevOps 和 SRE 團隊所關注的營運問題。
+AIGNE Hub 採用模組化架構設計，確保系統的每個部分都有明確且定義清晰的職責。這種關注點分離的設計提升了可維護性、可擴展性和安全性。主要的功能區塊包括 API 閘道、驗證系統、用量追蹤器和一個可選的計費模組。這些元件協同運作，以高效且安全地處理 AI 請求。
 
----
+下圖說明了這些核心元件之間的高層級互動，從接收客戶端請求到從 AI 供應商返回回應的整個過程。
 
-### 核心架構原則
+```d2
+direction: down
 
-- **模組化：** 該系統被設計為一個 [Blocklet](https://blocklet.io)，確保其可以在 Blocklet Server 環境中獨立部署、管理和擴展。它與其他專業化的 blocklet（例如 Payment Kit 和 Observability）整合，以處理其核心領域之外的問題。
-- **可擴展性：** 此架構支援企業的單一實例、自架部署，以及能夠處理大量使用者和應用程式的多租戶服務供應商模型。
-- **統一介面：** 它將不同 AI 供應商 API 的複雜性抽象化，為開發者和應用程式提供一組單一、一致的端點。
+Client-Applications: {
+  label: "客戶端應用程式"
+  shape: rectangle
+}
 
----
+AIGNE-Hub: {
+  label: "AIGNE Hub"
+  shape: rectangle
 
-## 架構元件
+  API-Gateway: {
+    label: "API 閘道"
+    shape: rectangle
+  }
 
-AIGNE Hub 架構可分解為幾個協同運作的關鍵元件：
+  Authentication-System: {
+    label: "驗證系統"
+    shape: rectangle
+  }
 
-![AIGNE Hub System Architecture Diagram](../../../blocklets/core/screenshots/8014a0b1d561114d9948214c4929d5df.png)
+  AI-Provider-Handler: {
+    label: "AI 供應商處理器"
+    shape: rectangle
+  }
 
-### 1. API 閘道與路由
+  Usage-Tracker: {
+    label: "用量追蹤器"
+    shape: rectangle
+  }
 
-AIGNE Hub 的核心是其 API 閘道，使用 Node.js 和 Express 建構。它負責請求的接收、身份驗證、版本控制，以及路由到適當的內部服務。
+  Billing-Module: {
+    label: "計費模組"
+    shape: rectangle
+  }
 
-#### API 版本控制
+  Database: {
+    label: "資料庫"
+    shape: cylinder
+  }
+}
 
-該閘道公開了兩個不同的 API 版本，反映了平台的演進並滿足不同的使用案例：
+External-AI-Provider: {
+  label: "外部 AI 供應商\n(例如 OpenAI)"
+  shape: rectangle
+}
 
--   **V1 API (`/api/v1`)**：這是舊版 API，主要為 AIGNE 生態系統內的伺服器對伺服器或元件對元件通訊而設計。
-    -   **身份驗證**：依靠密碼學簽章驗證（`ensureComponentCall`）來授權來自受信任 blocklet 元件的請求。
-    -   **帳務模型**：透過 Payment Kit 整合了**訂閱制**模型。它會檢查呼叫應用程式是否有有效的訂閱（`checkSubscription`）。此模型非常適合內部企業部署，因為其用量不是按次計費。
+Client-Applications -> AIGNE-Hub.API-Gateway: "1. API 請求"
+AIGNE-Hub.API-Gateway -> AIGNE-Hub.Authentication-System: "2. 驗證身份"
+AIGNE-Hub.Authentication-System -> AIGNE-Hub.API-Gateway: "3. 已驗證"
+AIGNE-Hub.API-Gateway -> AIGNE-Hub.AI-Provider-Handler: "4. 路由請求"
+AIGNE-Hub.API-Gateway -> AIGNE-Hub.Usage-Tracker: "5. 記錄請求詳情"
+AIGNE-Hub.Usage-Tracker -> AIGNE-Hub.Billing-Module: "6. 傳送用量資料"
+AIGNE-Hub.Billing-Module -> AIGNE-Hub.Database: "7. 更新點數"
+AIGNE-Hub.Usage-Tracker -> AIGNE-Hub.Database: "儲存日誌"
+AIGNE-Hub.AI-Provider-Handler -> External-AI-Provider: "8. 轉發請求"
+External-AI-Provider -> AIGNE-Hub.API-Gateway: "9. AI 回應"
+AIGNE-Hub.API-Gateway -> Client-Applications: "10. 最終回應"
+```
 
--   **V2 API (`/api/v2`)**：這是當前以使用者為中心的 API，專為終端使用者應用程式和現代服務設計。
-    -   **身份驗證**：利用 DID Connect 進行去中心化、基於錢包的使用者身份驗證（`sessionMiddleware`）。這提供了一個安全且由使用者管理的身份層。
-    -   **帳務模型**：採用彈性的**點數制**系統。在處理請求之前，它會驗證使用者的點數餘額（`checkUserCreditBalance`）。這是服務供應商模式的基礎。
-    -   **端點支援**：提供 OpenAI 相容端點（例如 `/v2/chat/completions`）以實現直接相容性，以及 AIGNE 原生端點（例如 `/v2/chat`）以提供增強功能。
+## API 閘道
 
-### 2. AI 供應商整合層
+API 閘道是所有進入 AIGNE Hub 的請求的單一、統一入口點。它負責根據請求路徑將流量路由到適當的內部服務。這種集中式的方法簡化了客戶端的整合，因為無論底層的 AI 供應商是誰，開發者都只需要與一個單一、一致的 API 端點互動。
 
-此層是連接各種第三方 AI 模型的協調引擎。它會將來自 API 閘道的請求正規化，並將其轉換為下游 AI 供應商（例如 OpenAI、Anthropic、Google Gemini）所需的特定格式。它也會將回應正規化，無論底層模型供應商為何，都為客戶端提供一致的輸出結構。
+該閘道公開了一組 RESTful 端點，主要位於 `/api/v2/` 路徑下，用於聊天完成、圖片生成和嵌入等功能。在請求通過驗證和其他中介軟體後，它會將請求導向相關的處理器進行處理。
 
-API 金鑰和供應商憑證會被加密並安全儲存，並透過 AIGNE Hub 的管理介面進行管理。
+## 驗證系統
 
-### 3. 帳務與用量追蹤
+安全性由一個強大的驗證系統管理，該系統保護所有端點。它利用中介軟體來驗證發出請求的使用者或應用程式的身份。
 
-對於 SRE 和維運人員來說，帳務與用量追蹤系統是監控和財務管理的關鍵元件。
+-   **使用者驗證**：對於面向使用者的互動，例如使用管理儀表板或內建的遊樂場，系統會使用由 Blocklet SDK 管理的基於會話的驗證機制。
+-   **API 驗證**：所有 API 請求都需要一個 Bearer 權杖進行授權。此權杖與特定使用者或應用程式相關聯，確保只有經過驗證的客戶端才能存取 AI 模型。
 
--   **模型呼叫追蹤**：每個傳入的 AI 請求都會在 `ModelCall` 資料庫表中啟動一筆狀態為 `processing` 的記錄。這個追蹤器是作為 Express 中介軟體（`createModelCallMiddleware`）實現的，是所有用量的真實來源。它會擷取使用者 DID、應用程式 DID、請求的模型和請求時間戳。
+該系統設計為拒絕任何未經驗證的請求，並回傳 `401 Unauthorized` 錯誤，以防止未經授權存取底層的 AI 服務和資料。
 
--   **用量資料收集**：成功完成 AI 呼叫後，追蹤器會更新詳細的用量指標，包括：
-    -   提示和完成的 token 數量
-    -   生成圖片的數量
-    -   模型參數（例如，圖片尺寸、品質）
-    -   計算出的點數成本
-    -   呼叫持續時間
-    -   用於可觀測性的追蹤 ID
+## 用量追蹤器
 
--   **韌性**：系統包含一個清理機制（`cleanupStaleProcessingCalls`）來處理孤立的呼叫。如果一筆請求記錄長時間保持在 `processing` 狀態（例如，由於伺服器崩潰），它會被自動標記為 `failed`，以確保系統穩定性和準確的帳務。
+用量追蹤器是監控和稽核的關鍵元件。它會仔細記錄通過閘道的每一次 API 呼叫。一個名為 `createModelCallMiddleware` 的中介軟體會攔截傳入的請求，在資料庫中建立一個狀態為 `processing` 的 `ModelCall` 記錄。
 
--   **Payment Kit 整合**：對於點數制帳務，AIGNE Hub 與 Payment Kit blocklet 深度整合。
-    -   當模型呼叫完成時，計算出的點數成本會作為一個「meter event」（`createMeterEvent`）報告給 Payment Kit。
-    -   Payment Kit 負責扣除使用者的點數餘額、管理點數購買以及處理所有金融交易。這種關注點分離確保了 AIGNE Hub 專注於 AI 協調，而 Payment Kit 則處理複雜的支付事宜。
+此記錄會擷取交易的關鍵細節，包括：
+-   使用者 DID 和應用程式 DID
+-   請求的 AI 模型和呼叫類型 (例如 `chatCompletion`、`imageGeneration`)
+-   請求和回應的時間戳
+-   輸入和輸出的權杖數量
+-   呼叫的狀態 (例如 `success`、`failed`)
 
-### 4. 安全性與身份驗證
+API 呼叫完成或失敗後，中介軟體會更新 `ModelCall` 記錄，包括最終狀態、持續時間和任何錯誤詳情。這為偵錯、分析和計費提供了完整的稽核軌跡。
 
-安全性在多個層級上進行管理，以適應不同類型的客戶端。
+## 計費模組
 
--   **使用者身份驗證 (DID Connect)**：如 `blocklets/core/api/src/libs/auth.ts` 中詳述，v2 API 的終端使用者身份驗證由 DID Connect 處理。使用者使用他們的 DID 錢包進行驗證，提供無密碼且高度安全的會話。會話 token 由 `walletHandler` 管理。
+在「服務供應商模式」下運作時，AIGNE Hub 會啟用其可選的計費模組。此元件與用量追蹤器和 **Payment Kit** blocklet 無縫整合，以管理一個基於點數的計費系統。
 
--   **元件身份驗證**：對於自動化的服務間通訊（主要為 v1），系統使用帶有公開金鑰密碼學的挑戰-回應機制。呼叫元件對請求進行簽章，AIGNE Hub 則驗證簽章（`verify(data, sig)`），確保請求源自受信任的註冊元件。
+工作流程如下：
+1.  **檢查餘額**：在處理請求之前，系統會檢查使用者是否有足夠的點數餘額。如果餘額為零或負數，請求將被拒絕，並回傳 `402 Payment Required` 錯誤。
+2.  **計算成本**：在 API 成功呼叫後，用量追蹤器會提供最終的權杖數量或圖片生成指標。計費模組使用這些資料，以及針對特定模型預先配置的費率 (`AiModelRate`)，來計算以點數為單位的總成本。
+3.  **扣除點數**：接著，系統會透過 Payment Kit API 建立一個計量事件，從使用者的餘額中扣除計算出的金額。
 
--   **角色型存取控制 (RBAC)**：管理端點受到 `ensureAdmin` 中介軟體的保護，該中介軟體限制了只有具備 `owner` 或 `admin` 角色的使用者才能存取，以防止未經授權的配置變更。
-
-### 5. 資料儲存
-
--   **主要資料庫**：`README.md` 中指定使用 SQLite 搭配 Sequelize ORM 來儲存核心應用程式資料，包括供應商配置、使用費率和模型呼叫日誌。對於高吞吐量的企業部署，維運人員應考慮遷移到更穩健的資料庫，如 PostgreSQL，Sequelize 也支援該資料庫。
--   **身份驗證儲存**：DID Connect 的會話資料儲存在一個獨立的 NeDB 資料庫（`auth.db`）中，如 `auth.ts` 所配置。
-
-### 6. 可觀測性
-
-該系統為營運可視性而設計。如主路由器（`blocklets/core/api/src/routes/index.ts`）中所示，AIGNE Hub 與 `AIGNEObserver` 函式庫整合。這使其能夠為每個請求擷取詳細的追蹤資料（spans），並將其匯出到一個專用的 Observability Blocklet。這為維運人員提供了從閘道到 AI 供應商再返回的整個請求生命週期中，關於請求延遲、錯誤來源和效能瓶頸的深入洞察。
+這個自動化流程讓營運商能夠將 AIGNE Hub 作為付費服務提供，所有用量和計費都以透明的方式進行管理。

@@ -48,7 +48,10 @@ readerKnowledgeLevel: experiencedUsers
 documentationDepth: balancedCoverage
 
 # Custom Rules: Define specific documentation generation rules and requirements
-rules: "Do not generate any content about how to contribute to the project, do not include any content that you are not sure"
+rules: | 
+  - 不要生成任何关于如何为该项目做贡献的内容
+  - 不要包含任何你不确定的内容
+  - 移除关于 v1 版本的描述, v1的接口后面都会被移除。请你展示 v2 版本相关的信息和接口，并且不要声明这是哪个版本
 
 # Target Audience: Describe your specific target audience and their characteristics
 targetAudience: ""
@@ -70,10 +73,12 @@ sourcesPath:  # Source code paths to analyze
   - ./blocklets/core/screenshots
 lastGitHead: 8446e2e464ba4dc7e056494a1932694abcb4d603
 appUrl: https://docsmith.aigne.io
-boardId: ai-kit
+boardId: aigne-hub
 # Checkout ID for document deployment service
 checkoutId: ""
 translateLanguages:
   - zh
   - zh-TW
   - ja
+# Should sync branding for documentation
+shouldSyncBranding: ""

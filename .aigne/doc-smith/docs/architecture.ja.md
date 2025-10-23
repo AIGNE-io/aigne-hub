@@ -1,67 +1,145 @@
-# 技術アーキテクチャ
+# アーキテクチャ
 
-このドキュメントは、AIGNE Hub の技術アーキテクチャに関する詳細な概要を提供します。デプロイ、モニタリング、およびメンテナンスを担当する DevOps、SRE、およびインフラストラクチャチームを対象としています。
+AIGNE Hubは、モジュール性とスケーラビリティを考慮して設計された、堅牢な自己ホスト型AIゲートウェイです。AIGNEフレームワーク上に構築され、Blockletとしてデプロイされることで、複数のAIプロバイダーを管理するための一元化された安全なインターフェースを提供します。このアーキテクチャは、APIリクエストの処理、セキュリティの管理、使用状況の追跡、データの効率的な永続化を行うように構成されています。
 
-## コアフィロソフィー
+以下の図は、システムの構造と主要コンポーネント間の相互作用の概要を示しています。
 
-AIGNE Hub のアーキテクチャは、モジュール性、スケーラビリティ、およびデプロイの容易さという原則に基づいて構築されています。Blocklet としてパッケージ化された、自己完結型のクラウドネイティブアプリケーションとして動作します。この設計の選択により、インストール、管理、および既存のインフラストラクチャへの統合が簡素化されます。システムは、複数のダウンストリーム AI プロバイダーとの対話の複雑さを抽象化する、統一された API ゲートウェイを中心に構築されています。
+```d2
+direction: down
+
+AI-Model-Request: { 
+  label: "AIモデルリクエスト"
+}
+
+Blocklet-Server: {
+  label: "Blocklet Server"
+  icon: "https://www.arcblock.io/image-bin/uploads/eb1cf5d60cd85c42362920c49e3768cb.svg"
+}
+
+AIGNE-Hub: {
+  label: "AIGNE Hub (自己ホスト型AIゲートウェイ)"
+  shape: rectangle
+  grid-gap: 100
+
+  System-Components: {
+    label: "システムコンポーネント"
+    shape: rectangle
+
+    API-Gateway: {
+      label: "APIゲートウェイ"
+    }
+    Authentication-System: {
+      label: "認証システム"
+    }
+    Usage-Tracker: {
+      label: "使用状況トラッカー"
+    }
+    Billing-Module: {
+      label: "課金モジュール (オプション)"
+    }
+  }
+
+  Technology-Stack: {
+    label: "技術スタック"
+    shape: rectangle
+
+    Backend: {
+      label: "バックエンド\nNode.js, Express.js, TypeScript"
+    }
+    Frontend: {
+      label: "フロントエンド\nReact"
+    }
+  }
+
+  Data-Persistence: {
+    label: "データ永続化"
+    shape: rectangle
+
+    Sequelize-ORM: {
+      label: "Sequelize ORM"
+    }
+
+    SQLite-Database: {
+      label: "SQLiteデータベース"
+      shape: cylinder
+      
+      AI-Providers: {
+        label: "AIプロバイダー"
+      }
+      AI-Credentials: {
+        label: "AI認証情報"
+      }
+      Model-Calls: {
+        label: "モデル呼び出し"
+      }
+      Usage-Statistics: {
+        label: "使用統計"
+      }
+    }
+  }
+}
+
+AI-Model-Request -> AIGNE-Hub.System-Components.API-Gateway: "エントリーポイント"
+AIGNE-Hub.System-Components.API-Gateway -> AIGNE-Hub.System-Components.Authentication-System: "1. 検証"
+AIGNE-Hub.System-Components.Authentication-System -> AIGNE-Hub.Data-Persistence.SQLite-Database: "認証情報の読み取り"
+AIGNE-Hub.System-Components.API-Gateway -> AIGNE-Hub.System-Components.Usage-Tracker: "2. 使用状況の記録"
+AIGNE-Hub.System-Components.Usage-Tracker -> AIGNE-Hub.Data-Persistence.SQLite-Database: "統計の書き込み"
+AIGNE-Hub.System-Components.API-Gateway -> AIGNE-Hub.System-Components.Billing-Module: "3. クレジットの差し引き"
+AIGNE-Hub.System-Components.Billing-Module -> AIGNE-Hub.Data-Persistence.SQLite-Database: "クレジットの更新"
+AIGNE-Hub.Data-Persistence.Sequelize-ORM -> AIGNE-Hub.Data-Persistence.SQLite-Database: "管理"
+AIGNE-Hub -> Blocklet-Server: "デプロイ先"
+
+```
+
+このドキュメントでは、アーキテクチャの概要を説明します。各分野をより深く理解するには、以下の詳細セクションを参照してください。
+
+<x-cards data-columns="3">
+  <x-card data-title="システムコンポーネント" data-icon="lucide:blocks" data-href="/architecture/system-components">
+    APIゲートウェイ、認証システム、使用状況トラッカーなど、主要な機能ブロックについて詳述します。
+  </x-card>
+  <x-card data-title="技術スタック" data-icon="lucide:layers" data-href="/architecture/technology-stack">
+    Node.js、React、Sequelizeなど、システムの構築に使用される主要な技術とフレームワークをリストアップします。
+  </x-card>
+  <x-card data-title="データ永続化" data-icon="lucide:database" data-href="/architecture/data-persistence">
+    SQLiteを使用したデータベース設定と、プロバイダー、認証情報、使用統計のデータモデルについて説明します。
+  </x-card>
+</x-cards>
 
 ## システムコンポーネント
 
-AIGNE Hub は、その機能を提供するために連携して動作するいくつかの主要コンポーネントで構成されています。
+このシステムは、統合されたAIゲートウェイ体験を提供するために連携して動作する、いくつかの主要な機能ブロックで構成されています。各コンポーネントは、受信リクエストの処理からデータやセキュリティの管理まで、特定の目的のために設計されています。
 
-![AIGNE Hub ロゴ](../../../blocklets/core/screenshots/logo.png)
+-   **APIゲートウェイ**: すべてのAIモデルリクエストの中心的なエントリーポイントです。Express.jsで構築されており、受信トラフィックを適切なバックエンドサービスやAIプロバイダーにルーティングします。
+-   **認証システム**: アクセス制御を管理し、すべての受信APIリクエストの認証情報を検証することで、ゲートウェイを保護します。Blocklet Serverのユーザー管理と統合されています。
+-   **使用状況トラッカー**: すべてのAPI呼び出しについて、トークン消費量、リクエスト数、その他のメトリクスを監視・記録し、分析や課金のためのデータを提供します。
+-   **課金モジュール**: Payment Kitと統合してクレジットベースのシステムを管理するオプションのコンポーネントで、AIゲートウェイのサービスとしての収益化を可能にします。
 
-### 1. API サーバー (Express.js)
+各コンポーネントの詳細については、[システムコンポーネント](./architecture-system-components.md)のドキュメントを参照してください。
 
-アプリケーションのバックボーンは、Node.js と [Express.js](https://expressjs.com/) で構築された堅牢な API サーバーです。すべての受信リクエスト、認証、およびルーティングを処理します。
+## 技術スタック
 
--   **ランタイム**: Node.js (>=18) は、API コールのプロキシのような I/O 負荷の高い操作に適した、効率的なイベント駆動型環境を提供します。
--   **フレームワーク**: Express.js は、Web アプリケーションや API を構築するための最小限で柔軟なアプローチのために使用されます。
--   **型安全性**: バックエンド全体が TypeScript で書かれており、コードの品質、保守性を確保し、ランタイムエラーを削減します。
--   **API 構造**: システムは、AI モデルとの対話や Hub の管理のために、バージョン管理された RESTful API (例: `/api/v1`, `/api/v2`) を公開します。これにより、プラットフォームが進化する際の下位互換性が保証されます。
--   **ミドルウェア**: 主要な機能は、以下を含む標準的なミドルウェアを使用して実装されています。
-    -   `cors`：オリジン間リソース共有のため。
-    -   `cookie-parser`：HTTP クッキーの処理のため。
-    -   カスタムロギングミドルウェア：アクセスログの取得のため。
-    -   堅牢なエラー処理メカニズム：例外をフォーマットしてログに記録し、適切な HTTP ステータスコードを返します。
+AIGNE Hubは、パフォーマンス、型安全性、保守性を考慮して選ばれた、モダンで信頼性の高い技術スタックを使用して構築されています。
 
-### 2. データ永続化 (SQLite & Sequelize)
+-   **バックエンド**: コアロジックは **Node.js** と **Express.js** フレームワークで構築されています。バックエンド全体で **TypeScript** を使用し、型安全性とコード品質を確保しています。
+-   **フロントエンド**: 管理用およびユーザー向けのダッシュボードは **React** を使用して開発されています。
+-   **データベースORM**: **Sequelize** がObject-Relational Mapper (ORM)として利用され、データベースとの対話を簡素化し、データアクセスと管理を容易にしています。
+-   **デプロイ**: アプリケーション全体が **Blocklet** としてパッケージ化されており、Blocklet Serverインスタンス上での簡単なデプロイと管理を可能にしています。
 
-データストレージには、AIGNE Hub は軽量でありながら強力な SQLite と Sequelize ORM の組み合わせを利用しています。
+詳細については、[技術スタック](./architecture-technology-stack.md)のセクションで確認できます。
 
--   **データベース**: SQLite が選択されたデータベースエンジンです。この決定は、シンプルさと可搬性を最適化するために行われました。Blocklet のデータディレクトリ (`/data/aikit.db`) 内にデータベースを埋め込むことで、AIGNE Hub は外部データベースへの依存をなくし、デプロイとデータバックアップを簡単にします。
--   **パフォーマンス**: 負荷時のパフォーマンスを向上させるため、システムは特定の PRAGMA ディレクティブで SQLite を構成します。
-    -   `journal_mode = WAL`: 先行書き込みログは、書き込みが進行中であってもリーダーが操作を継続できるようにすることで、より高い同時実行性を可能にします。
-    -   `synchronous = normal`: パフォーマンスとデータ整合性の良好なバランスを提供します。
--   **ORM**: [Sequelize](https://sequelize.org/) がオブジェクトリレーショナルマッパーとして使用されます。これにより、データベースとの対話やリレーションシップの管理のための、明確なモデルベースの構造が提供されます。主要なデータモデルは次のとおりです。
-    -   `AiProvider`: サポートされている AI プロバイダー (例: OpenAI, Anthropic) の構成を保存します。
-    -   `AiCredential`: 各プロバイダーの暗号化された API キーやその他の認証情報を安全に保存します。
-    -   `App`: Hub の使用を許可されたアプリケーションを管理します。
-    -   `ModelCall`: 監査と分析のために、個々の API コールをすべてログに記録します。
-    -   `Usage`: 請求および追跡目的で利用状況データを集計します。
--   **マイグレーション**: データベーススキーマの変更は `umzug` によって管理されます。これにより、データベースの更新が確実に適用され、バージョン管理されることが保証され、これはメンテナンスサイクル中のスムーズなアップグレードに不可欠です。
+## データ永続化
 
-### 3. AI プロバイダーゲートウェイ
+システムは、すべてのデータ永続化のニーズに対してローカルの **SQLite** データベースに依存しており、これはSequelize ORMを介して管理されます。この自己完結型のセットアップにより、すべてのデータがホスティング環境内に留まり、外部データベースサーバーの必要性を回避することでデプロイが簡素化されます。データベースのジャーナルモードは、同時実行性とパフォーマンスを向上させるためにWAL (Write-Ahead Logging)に設定されています。
 
-AIGNE Hub の中核機能は、様々な AI プロバイダーへのリクエストをルーティングするためのインテリジェントなゲートウェイにあります。
+主なデータモデルは次のとおりです。
 
--   **動的モデル読み込み**: システムは、API リクエストの `model` パラメータ (例: `openai/gpt-4o`) に基づいて、適切な SDK またはモデルハンドラを動的に読み込みます。これは `@aigne/core` および `@aigne/aigne-hub` ライブラリによって処理され、異なる AI サービスに対する標準化されたインターフェースを提供します。
--   **認証情報管理**: リクエストを受信すると、`getProviderCredentials` 関数が `AiProvider` および `AiCredential` テーブルから必要な認証情報を取得します。これには、利用可能なキーを順番に使用するロジック (`getNextAvailableCredential`) が含まれており、単一プロバイダーに複数のキーが設定されている場合の基本的な負荷分散とフェイルオーバーのメカニズムを提供します。
--   **拡張性**: このアーキテクチャは拡張可能に設計されています。新しい AI プロバイダーを追加するには、その特定のロジックをフレームワーク内に実装し、その構成をデータベースに追加するだけで、コアアプリケーションに大きな変更を加える必要はありません。
+-   **AiProvider**: エンドポイントやサポートされているモデルなど、接続されている各AIサービスプロバイダーの構成を保存します。
+-   **AiCredential**: AIプロバイダーのAPIにアクセスするために必要な、暗号化されたAPIキーやその他の機密性の高い認証情報を安全に保存します。
+-   **ModelCall**: ゲートウェイを介して行われた個々のAPI呼び出しをすべて記録し、監査、デバッグ、詳細な使用状況の追跡に利用します。
+-   **ModelCallStat & Usage**: パフォーマンス監視やコスト分析ダッシュボードのために、生の呼び出しデータを定期的な統計に集計します。
 
-### 4. オブザーバビリティとモニタリング
+データベーススキーマとモデルに関する詳細については、[データ永続化](./architecture-data-persistence.md)のドキュメントを参照してください。
 
-運用上の洞察を得るために、AIGNE Hub は AIGNE エコシステムのオブザーバビリティツールと統合されています。
+---
 
--   **分散トレーシング**: `AIGNEObserver` モジュールは、API コールのトレースデータ (スパン) をキャプチャします。このデータは、専用のオブザーバビリティ Blocklet にエクスポートされます。
--   **トラブルシューティング**: この統合により、オペレーターは最初 の API コールから Hub を経由してダウンストリームの AI プロバイダーに至り、そして戻ってくるまでのリクエストのライフサイクルを追跡できます。これは、遅延問題の診断、エラーの特定、およびシステムパフォーマンスの理解に非常に価値があります。
-
-## デプロイと運用
-
-AIGNE Hub は、ライフサイクル管理を簡素化するクラウドネイティブアプリケーションパッケージである [Blocklet](https://blocklet.io) としてデプロイされるように設計されています。
-
--   **コンテナ化**: Blocklet として、アプリケーションはコンテナ化された環境で実行され、異なるデプロイターゲット間での一貫性を保証します。
--   **構成**: 環境固有の構成は `.env` ファイルを通じて管理され、`dotenv-flow` ライブラリによって容易になります。これにより、開発、テスト、および本番環境ごとに異なる設定が可能になります。
--   **静的アセット**: 本番環境では、コンパイルされた React フロントエンドは同じ Express.js サーバーによって直接提供され、リバースプロキシやロードバランサーの背後で管理・デプロイが容易な自己完結型ユニットを作成します。
--   **請求システム**: Hub には、Payment Kit blocklet と統合されたクレジットベースの請求システムが含まれています。`paymentClient` と `ensureMeter` 関数が通信を処理し、Hub がサービスプロバイダーモードで動作できるようにします。このモードでは、使用量が計測され、ユーザーのクレジットに対して請求されます。
+このアーキテクチャ概要は、AIGNE Hubがどのように構築されているかについての基本的な理解を提供します。以降のセクションでは、システムの各側面についてより詳細に説明します。
