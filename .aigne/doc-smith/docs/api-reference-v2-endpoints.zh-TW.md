@@ -1,107 +1,233 @@
-# API 架構與端點 (v2)
+# V2 端點（推薦）
 
-本文件詳細介紹 v2 API 架構，專為負責部署、監控和維護系統的 DevOps、SRE 及基礎架構團隊所設計。本文將著重於 API 的內部運作、設計理念及操作層面。
+V2 API 提供了一套全面的端點，可透過 AIGNE Hub 與各種 AI 模型互動。這些端點是目前的標準，建議所有新的整合都使用。它們的設計穩健且功能豐富，提供使用者層級的驗證、選用的基於點數的計費檢查以及詳細的使用情況追蹤。
 
-## 1. 系統架構概覽
+這些端點作為一個統一的閘道，抽象化了與不同 AI 供應商互動的複雜性。透過 AIGNE Hub 路由請求，即可對 AI 模型的使用情況進行集中化的控制、監控和安全管理。
 
-v2 API 是一個強大且可擴展的介面，用於與各種 AI 模型互動。其設計優先考量動態提供者管理、彈性恢復能力及全面的用量追蹤，使其適用於生產環境。
+關於 API 驗證的詳細資訊，請參閱 [驗證](./api-reference-authentication.md) 指南。關於舊版端點的資訊，請參閱 [V1 端點（舊版）](./api-reference-v1-endpoints.md) 文件。
 
-### 1.1. 請求生命週期
+## API 端點參考
 
-一個典型的 API 請求會遵循一個結構化的生命週期，由一系列 Express.js 中介軟體強制執行：
-
-1.  **身份驗證**：`sessionMiddleware` 透過存取金鑰驗證使用者身份，並將使用者情境 (`req.user`) 附加到請求物件上。
-2.  **計費與額度檢查**：若啟用以額度為基礎的計費方式 (`Config.creditBasedBillingEnabled`)，`checkCreditBasedBillingMiddleware` 會驗證支付系統是否正常運作，且使用者擁有足夠的信用額度餘額 (`checkUserCreditBalance`)。
-3.  **模型呼叫追蹤**：一個專門的中介軟體 (`createModelCallMiddleware`) 會在系統中啟動一筆記錄，以追蹤 AI 模型互動的整個生命週期。這對於日誌記錄、偵錯及分析至關重要。
-4.  **輸入驗證**：傳入的請求主體會根據預先定義的 Joi 結構描述進行嚴格驗證，以確保資料完整性，並防止格式錯誤的請求進入核心邏輯。
-5.  **動態模型與憑證選擇**：系統會動態選擇合適的 AI 提供者和憑證。它會查詢 `AiProvider` 和 `AiCredential` 資料表，為請求的模型找到一個啟用中的有效憑證，並實作輪詢（round-robin）或類似策略 (`AiCredential.getNextAvailableCredential`) 來分配負載。
-6.  **AI 模型調用**：請求由核心邏輯處理，該邏輯使用 `AIGNE` SDK 與選定的 AI 模型進行互動。這一步驟抽象化了不同提供者 API 的複雜性。
-7.  **用量與計費記錄定案**：成功完成或失敗時，會觸發一個掛鉤（hook）(`onEnd` 或 `onError`)。系統會呼叫 `createUsageAndCompleteModelCall` 函式來完成模型呼叫記錄的最終處理、計算以額度為單位的成本，並記錄詳細的用量指標。
-8.  **回應生成**：系統將回應傳回給客戶端。對於聊天完成（chat completions），回應可以是標準的 JSON 物件，也可以是 `text/event-stream` 格式以進行即時串流。
-
-### 1.2. 動態提供者與憑證管理
-
-一個關鍵的設計決策是將 API 與特定的 AI 提供者解耦。系統使用資料庫驅動的方法來管理提供者 (`AiProvider`) 及其相關的 API 金鑰 (`AiCredential`)。
-
--   **運作方式**：當請求指定一個模型（例如 `openai/gpt-4o`）時，系統首先會識別其提供者 (`openai`)。接著，它會查詢資料庫，尋找與該提供者關聯的有效憑證。這使得新增、移除或輪換憑證時，無須中斷任何服務。
--   **設計理念**：此架構提供了高可用性與靈活性。如果某個憑證或提供者出現問題，系統可以設定為容錯轉移（failover）到另一個。它也簡化了 API 金鑰的管理，並集中控制對 AI 模型的存取。`getProviderCredentials` 函式封裝了此邏輯，確保每次模型呼叫都使用有效且啟用中的憑證。
-
-### 1.3. 彈性恢復與錯誤處理
-
-為確保在分散式環境中的穩定性，API 整合了一套針對暫時性故障的自動重試機制。
-
--   **重試處理器**：`createRetryHandler` 包裝了核心端點邏輯。它被設定為對因特定 HTTP 狀態碼（例如 `429 Too Many Requests`、`500 Internal Server Error`、`502 Bad Gateway`）而失敗的請求進行重試。重試次數可透過 `Config.maxRetries` 進行設定。
--   **失敗記錄**：若發生不可重試的錯誤或在用盡所有重試次數後，`onError` 掛鉤會確保該失敗被記錄下來，且相關的模型呼叫記錄會被標記為失敗。這可以防止出現孤立的記錄，並為故障排除提供清晰的資料。
-
-## 2. API 端點
-
-以下章節詳細說明主要的 v2 API 端點、其用途及操作特性。
+以下各節提供每個可用 V2 端點的詳細規格。所有請求都需要一個 `Authorization: Bearer <TOKEN>` 標頭進行驗證。
 
 ### GET /status
 
--   **用途**：一個健康檢查端點，用於判斷服務是否可用，並準備好接受特定模型的請求。
--   **處理流程**：
-    1.  驗證使用者身份。
-    2.  如果 `Config.creditBasedBillingEnabled` 為 true，則檢查支付服務是否正在運行，且使用者有正數的信用額度餘額。
-    3.  查詢 `AiProvider` 資料庫，以確保至少有一個已啟用且具備有效憑證的提供者可以服務請求的模型。
-    4.  如果查詢特定模型，它還會檢查 `AiModelRate` 資料表中是否為該模型定義了費率。
--   **操作說明**：此端點對於客戶端的服務發現至關重要。客戶端應在嘗試進行模型呼叫前先呼叫 `/status`，以避免發送注定會失敗的請求。
+此端點檢查 AIGNE Hub 服務的可用性，並可選擇性地檢查特定模型的可用性。它會驗證所需的 AI 供應商是否已設定、已啟用且具有有效的憑證。如果啟用了基於點數的計費，它還會檢查使用者的餘額和模型的費率設定。
 
-### POST /chat and /chat/completions
+**查詢參數**
 
--   **用途**：提供對語言模型的存取，以進行聊天互動。
--   **端點變體**：
-    -   `/chat/completions`：一個與 OpenAI 相容的端點，可接受標準的 `messages` 陣列，並支援透過 `text/event-stream` 進行串流。
-    -   `/chat`：AIGNE Hub 的原生端點，其輸入結構略有不同，但提供相同的核心功能。
--   **處理流程**：
-    1.  執行請求的生命週期（身份驗證、計費檢查等）。
-    2.  `processChatCompletion` 函式處理核心邏輯。它會根據 `completionsRequestSchema` 驗證輸入。
-    3.  呼叫 `getModel` 以動態載入指定的模型實例並選擇憑證。
-    4.  `AIGNE` 引擎會調用模型。如果請求中包含 `stream: true`，它會回傳一個非同步產生器（async generator），該產生器會產出回應的區塊（chunks）。
-    5.  對於串流回應，區塊會在到達時被寫入回應串流。
-    6.  `onEnd` 掛鉤會計算權杖（token）用量 (`promptTokens`, `completionTokens`) 並呼叫 `createUsageAndCompleteModelCall` 來記錄交易。
+<x-field-group>
+  <x-field data-name="model" data-type="string" data-required="false" data-desc="要檢查可用性的特定模型，格式為 provider/model-name（例如：openai/gpt-4o-mini）。"></x-field>
+</x-field-group>
 
-### POST /image and /image/generations
+**請求範例**
 
--   **用途**：使用像 DALL-E 這類的模型，根據文字提示生成圖片。
--   **端點變體**：
-    -   `/image/generations`：與 OpenAI 相容的端點。
-    -   `/image`：AIGNE Hub 的原生端點。
--   **處理流程**：
-    1.  遵循標準的請求生命週期。
-    2.  輸入會根據 `imageGenerationRequestSchema` 或 `imageModelInputSchema` 進行驗證。
-    3.  呼叫 `getImageModel` 以載入適當的圖片模型提供者（例如 OpenAI、Gemini）並選擇憑證。
-    4.  `AIGNE` 引擎會使用提示和參數（尺寸、品質等）調用模型。
-    5.  `onEnd` 掛鉤會記錄用量。對於圖片，計費通常基於生成的圖片數量、其尺寸和品質，這些資訊會在 `createUsageAndCompleteModelCall` 中被擷取。
-    6.  回應中包含生成的圖片，格式可以是 URL 或 Base64 編碼的 JSON 資料 (`b64_json`)。
+```bash 檢查特定模型的可用性 icon=lucide:terminal
+curl --location --request GET 'https://your-aigne-hub-instance.com/api/v2/status?model=openai/gpt-4o-mini' \
+--header 'Authorization: Bearer <YOUR_API_TOKEN>'
+```
+
+**成功回應範例**
+
+```json icon=lucide:braces
+{
+  "available": true
+}
+```
+
+**失敗回應範例**
+
+```json icon=lucide:braces
+{
+  "available": false,
+  "error": "Model rate not available"
+}
+```
+
+### POST /chat/completions
+
+此端點根據一系列訊息從聊天模型生成回應。其設計與 OpenAI Chat Completions API 格式相容，使其成為直接 OpenAI 整合的直接替代方案。它支援標準和串流兩種回應方式。
+
+**請求主體**
+
+<x-field-group>
+  <x-field data-name="model" data-type="string" data-required="true" data-desc="要使用的模型的識別碼（例如：openai/gpt-4o-mini、google/gemini-1.5-pro-latest）。"></x-field>
+  <x-field data-name="messages" data-type="array" data-required="true" data-desc="代表對話歷史的訊息物件陣列。">
+    <x-field data-name="role" data-type="string" data-required="true" data-desc="訊息作者的角色。可以是 'system'、'user'、'assistant' 或 'tool'。"></x-field>
+    <x-field data-name="content" data-type="string | array" data-required="true" data-desc="訊息的內容。可以是字串或用於多部分訊息（例如文字和圖片）的陣列。"></x-field>
+  </x-field>
+  <x-field data-name="stream" data-type="boolean" data-default="false" data-required="false" data-desc="若設定為 true，回應將在生成時以區塊（chunks）的形式串流回傳。"></x-field>
+  <x-field data-name="maxTokens" data-type="integer" data-required="false" data-desc="在完成中生成的最大 token 數。"></x-field>
+  <x-field data-name="temperature" data-type="number" data-default="1" data-required="false" data-desc="控制隨機性。較低的值會使模型更具確定性。範圍：0.0 到 2.0。"></x-field>
+  <x-field data-name="topP" data-type="number" data-default="1" data-required="false" data-desc="核心取樣參數。模型會考慮機率質量為 topP 的 token。範圍：0.0 到 1.0。"></x-field>
+  <x-field data-name="presencePenalty" data-type="number" data-default="0" data-required="false" data-desc="根據新 token 是否已在目前文本中出現來對其進行懲罰。範圍：-2.0 到 2.0。"></x-field>
+  <x-field data-name="frequencyPenalty" data-type="number" data-default="0" data-required="false" data-desc="根據新 token 在目前文本中的現有頻率對其進行懲罰。範圍：-2.0 到 2.0。"></x-field>
+  <x-field data-name="tools" data-type="array" data-required="false" data-desc="模型可能呼叫的工具列表。目前僅支援函式。"></x-field>
+  <x-field data-name="toolChoice" data-type="string | object" data-required="false" data-desc="控制模型呼叫哪個工具。可以是 'none'、'auto'、'required' 或特定函式。"></x-field>
+</x-field-group>
+
+**請求範例**
+
+```bash icon=lucide:terminal
+curl --location --request POST 'https://your-aigne-hub-instance.com/api/v2/chat/completions' \
+--header 'Authorization: Bearer <YOUR_API_TOKEN>' \
+--header 'Content-Type: application/json' \
+--data '{
+    "model": "openai/gpt-4o-mini",
+    "messages": [
+        {
+            "role": "system",
+            "content": "You are a helpful assistant."
+        },
+        {
+            "role": "user",
+            "content": "Hello! What is the capital of France?"
+        }
+    ],
+    "stream": false
+}'
+```
+
+**回應範例（非串流）**
+
+```json icon=lucide:braces
+{
+  "role": "assistant",
+  "text": "The capital of France is Paris.",
+  "content": "The capital of France is Paris."
+}
+```
+
+**回應範例（串流）**
+
+當 `stream` 為 `true` 時，伺服器會以 `text/event-stream` 格式回應。
+
+```text 伺服器發送事件 icon=lucide:file-text
+data: {"id":"chatcmpl-xxxxx","object":"chat.completion.chunk","created":1719543621,"model":"gpt-4o-mini-2024-07-18","choices":[{"index":0,"delta":{"role":"assistant","content":""},"logprobs":null,"finish_reason":null}]}
+
+data: {"id":"chatcmpl-xxxxx","object":"chat.completion.chunk","created":1719543621,"model":"gpt-4o-mini-2024-07-18","choices":[{"index":0,"delta":{"content":"The"},"logprobs":null,"finish_reason":null}]}
+
+data: {"id":"chatcmpl-xxxxx","object":"chat.completion.chunk","created":1719543621,"model":"gpt-4o-mini-2024-07-18","choices":[{"index":0,"delta":{"content":" capital"},"logprobs":null,"finish_reason":null}]}
+
+data: {"id":"chatcmpl-xxxxx","object":"chat.completion.chunk","created":1719543621,"model":"gpt-4o-mini-2024-07-18","choices":[{"index":0,"delta":{"content":" of"},"logprobs":null,"finish_reason":null}]}
+
+data: {"id":"chatcmpl-xxxxx","object":"chat.completion.chunk","created":1719543621,"model":"gpt-4o-mini-2024-07-18","choices":[{"index":0,"delta":{"content":" France"},"logprobs":null,"finish_reason":null}]}
+
+data: {"id":"chatcmpl-xxxxx","object":"chat.completion.chunk","created":1719543621,"model":"gpt-4o-mini-2024-07-18","choices":[{"index":0,"delta":{"content":" is"},"logprobs":null,"finish_reason":null}]}
+
+data: {"id":"chatcmpl-xxxxx","object":"chat.completion.chunk","created":1719543621,"model":"gpt-4o-mini-2024-07-18","choices":[{"index":0,"delta":{"content":" Paris"},"logprobs":null,"finish_reason":null}]}
+
+data: {"id":"chatcmpl-xxxxx","object":"chat.completion.chunk","created":1719543621,"model":"gpt-4o-mini-2024-07-18","choices":[{"index":0,"delta":{"content":"."},"logprobs":null,"finish_reason":null}]}
+
+data: {"object":"chat.completion.usage","usage":{"promptTokens":23,"completionTokens":7,"totalTokens":30,"aigneHubCredits":0.00000485,"modelCallId":"mca_..."},"model":"openai/gpt-4o-mini"}
+
+data: [DONE]
+```
 
 ### POST /embeddings
 
--   **用途**：將輸入的文字轉換為數值向量表示（embeddings）。
--   **處理流程**：
-    1.  執行標準的請求生命週期。
-    2.  請求主體由 `embeddingsRequestSchema` 進行驗證。
-    3.  `processEmbeddings` 呼叫底層提供者的 embeddings 端點。
-    4.  用量根據輸入的權杖數量計算，並透過 `createUsageAndCompleteModelCall` 記錄。
+此端點為給定的輸入文字建立向量嵌入，可用於語意搜尋、分群和分類等任務。
 
-### POST /audio/transcriptions and /audio/speech
+**請求主體**
 
--   **用途**：提供語音轉文字及文字轉語音功能。
--   **架構**：這些端點目前是作為 OpenAI API 的安全代理（secure proxies）來實作。
--   **處理流程**：
-    1.  驗證使用者身份。
-    2.  請求被直接轉發到 OpenAI API。
-    3.  `proxyReqOptDecorator` 函式會從憑證儲存庫中動態擷取適當的 OpenAI API 金鑰，並將其注入到傳出請求的 `Authorization` 標頭中。
--   **操作說明**：由於這些是代理端點，其效能與可用性直接取決於上游的 OpenAI 服務。請注意，在原始碼中，以額度為基礎的計費方式在這些端點上被標記為「TODO」，這意味著其用量可能不會透過 AIGNE Hub 的計費系統進行追蹤。
+<x-field-group>
+  <x-field data-name="model" data-type="string" data-required="true" data-desc="要使用的嵌入模型的識別碼（例如：openai/text-embedding-3-small）。"></x-field>
+  <x-field data-name="input" data-type="string | array" data-required="true" data-desc="要嵌入的輸入文字。可以是一個字串或一個字串陣列。"></x-field>
+</x-field-group>
 
-## 3. 故障排除與監控
+**請求範例**
 
--   **日誌分析**：系統使用一個集中式的日誌記錄器。需要監控的關鍵事件包括：
-    -   `Create usage and complete model call error`：表示在模型呼叫後將用量資料寫入資料庫時發生問題，這可能會影響計費。
-    -   `ai route retry`：表示正在發生暫時性的網路或提供者錯誤。高頻率的重試可能指向潛在的基礎架構不穩定問題。
-    -   `Failed to mark incomplete model call as failed`：一個嚴重錯誤，可能導致模型呼叫追蹤系統中的狀態不一致。
--   **常見錯誤**：
-    -   `400 Validation error`：客戶端發送了格式錯誤的請求。請檢查錯誤訊息以了解哪個 Joi 驗證失敗的詳細資訊。
-    -   `401 User not authenticated`：存取金鑰遺失或無效。
-    -   `404 Provider ... not found`：請求的模型或提供者未在資料庫中設定或啟用。
-    -   `502 Payment kit is not Running`：計費服務已關閉或無法連線。當 `creditBasedBillingEnabled` 為 true 時，這是一個關鍵的相依服務。
+```bash icon=lucide:terminal
+curl --location --request POST 'https://your-aigne-hub-instance.com/api/v2/embeddings' \
+--header 'Authorization: Bearer <YOUR_API_TOKEN>' \
+--header 'Content-Type: application/json' \
+--data '{
+    "model": "openai/text-embedding-3-small",
+    "input": "AIGNE Hub is a unified AI gateway."
+}'
+```
+
+**回應範例**
+
+```json icon=lucide:braces
+{
+  "data": [
+    {
+      "object": "embedding",
+      "embedding": [
+        -0.008922631,
+        0.011883527,
+        // ... 更多浮點數
+        -0.013459821
+      ],
+      "index": 0
+    }
+  ]
+}
+```
+
+### POST /image/generations
+
+此端點使用指定的圖像模型，根據文字提示生成圖像。
+
+**請求主體**
+
+<x-field-group>
+  <x-field data-name="model" data-type="string" data-required="true" data-desc="要使用的圖像生成模型的識別碼（例如：openai/dall-e-3）。"></x-field>
+  <x-field data-name="prompt" data-type="string" data-required="true" data-desc="所需圖像的詳細文字描述。"></x-field>
+  <x-field data-name="n" data-type="integer" data-default="1" data-required="false" data-desc="要生成的圖像數量。必須介於 1 到 10 之間。"></x-field>
+  <x-field data-name="size" data-type="string" data-required="false" data-desc="生成圖像的尺寸。支援的值取決於模型（例如：'1024x1024'、'1792x1024'）。"></x-field>
+  <x-field data-name="quality" data-type="string" data-default="standard" data-required="false" data-desc="圖像的品質。支援的值為 'standard' 和 'hd'。"></x-field>
+  <x-field data-name="style" data-type="string" data-default="vivid" data-required="false" data-desc="生成圖像的風格。支援的值為 'vivid' 和 'natural'。"></x-field>
+  <x-field data-name="responseFormat" data-type="string" data-default="url" data-required="false" data-desc="生成圖像回傳的格式。必須是 'url' 或 'b64_json' 之一。"></x-field>
+</x-field-group>
+
+**請求範例**
+
+```bash icon=lucide:terminal
+curl --location --request POST 'https://your-aigne-hub-instance.com/api/v2/image/generations' \
+--header 'Authorization: Bearer <YOUR_API_TOKEN>' \
+--header 'Content-Type: application/json' \
+--data '{
+    "model": "openai/dall-e-3",
+    "prompt": "A cute cat astronaut floating in space, digital art",
+    "n": 1,
+    "size": "1024x1024",
+    "responseFormat": "url"
+}'
+```
+
+**回應範例**
+
+```json icon=lucide:braces
+{
+  "images": [
+    {
+      "url": "https://oaidalleapiprodscus.blob.core.windows.net/private/..."
+    }
+  ],
+  "data": [
+    {
+      "url": "https://oaidalleapiprodscus.blob.core.windows.net/private/..."
+    }
+  ],
+  "model": "dall-e-3",
+  "usage": {
+    "aigneHubCredits": 0.04
+  }
+}
+```
+
+### 音訊端點
+
+AIGNE Hub 提供用於音訊處理的端點，目前會將請求代理到 OpenAI API。這些端點與基於點數的計費系統的完全整合正在開發中。
+
+#### POST /audio/transcriptions
+
+將音訊轉錄為輸入語言的文字。
+
+#### POST /audio/speech
+
+從輸入文字生成音訊。
+
+對於這兩個音訊端點，請求和回應格式與 OpenAI V1 API 的音訊轉錄和語音生成完全相同。有關必要參數的詳細資訊，請參閱 OpenAI 官方文件。AIGNE Hub 會在轉發請求前，安全地為供應商注入必要的 API 金鑰。

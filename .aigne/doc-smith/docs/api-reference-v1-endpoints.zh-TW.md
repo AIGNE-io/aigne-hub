@@ -1,161 +1,207 @@
-# API 參考
+# V1 端點 (舊版)
 
-本文件為 AIGNE Hub API 提供了詳細的參考資料，重點介紹其架構、端點和操作行為。本文件適用於負責部署和管理該服務的 DevOps、SRE 和基礎架構團隊。
+本節提供舊版 V1 API 端點的文件。維護這些端點是為了支援較舊的整合並確保向後相容性。對於所有新開發，強烈建議使用 [V2 端點](./api-reference-v2-endpoints.md)，其提供增強功能，包括使用者級別的身份驗證和基於點數的計費。
 
-## 系統架構
-
-AIGNE Hub API 被設計為一個強固的、適用於各種 AI 服務的多供應商閘道。它為聊天完成、嵌入和圖像生成提供了一個統一的介面，同時也將管理不同底層 AI 供應商的複雜性抽象化。
-
-### 供應商抽象化與憑證管理
-
-此 API 的一個核心設計原則是其能夠與多個 AI 供應商（例如 OpenAI、Bedrock）無縫連接。這是透過一個供應商抽象層來實現的。
-
--   **動態憑證載入**：系統會從一個安全的儲存區中動態載入不同供應商的憑證。當一個請求指定一個模型（例如 `openai/gpt-4`）時，API 會識別出供應商（`openai`）並擷取必要的憑證。
--   **憑證輪換**：API 支援單一供應商的多個憑證，並會自動輪換它們。它使用 `getNextAvailableCredential` 策略來循環使用有效的憑證，從而提高安全性與可用性。這允許速率限制分發和零停機時間的金鑰輪換。
--   **設定**：AI 供應商及其憑證是透過 `AiProvider` 和 `AiCredential` 模型在系統的資料庫中進行管理。這使得管理員可以在不變動程式碼的情況下新增、停用或更新供應商的詳細資訊。
-
-### 彈性與錯誤處理
-
-為確保高可用性，API 為上游供應商的請求整合了自動重試機制。
-
--   **重試邏輯**：系統為關鍵端點使用 `createRetryHandler`。如果對底層 AI 供應商的請求因可重試的狀態碼（`429 Too Many Requests`、`500 Internal Server Error`、`502 Bad Gateway`）而失敗，API 將自動重試該請求。
--   **可設定性**：最大重試次數可透過 `maxRetries` 環境變數進行設定，讓操作員能夠根據自身需求調整系統的彈性。
-
-### 身份驗證
-
-API 端點受到基於元件的身份驗證機制（`ensureRemoteComponentCall` 和 `ensureComponentCall`）的保護。這確保只有生態系統內經授權的服務或元件才能存取 API，通常是使用基於公鑰的驗證系統。
-
-## 端點
-
-以下各節詳細介紹了可用的 API 端點。所有端點都以 `/v1` 為前綴。
+所有 V1 端點都需要身份驗證。請求必須包含一個帶有 Bearer 權杖的 `Authorization` 標頭。
 
 ---
 
-### 聊天完成
+## 聊天完成項
 
-此端點為給定的聊天對話或提示生成回應。它支援標準和串流兩種回應方式。
+此端點為給定的對話生成回應。它支援串流和非串流模式。
 
-`POST /v1/chat/completions`
-`POST /v1/completions`
+**端點**
 
-**請求主體**
+```
+POST /api/v1/chat/completions
+```
 
-| 欄位 | 類型 | 描述 | 必要 |
-| :--- | :--- | :--- | :--- |
-| `model` | string | 要使用的模型 ID（例如 `openai/gpt-4`、`google/gemini-pro`）。 | 是 |
-| `messages` | array | 代表對話歷史的訊息物件陣列。請參閱下方的物件結構。 | 是（或 `prompt`） |
-| `prompt` | string | 單一的提示字串。是 `messages: [{ "role": "user", "content": "..." }]` 的簡寫。 | 是（或 `messages`） |
-| `stream` | boolean | 若為 `true`，回應將以伺服器發送事件流的形式發送。 | 否 |
-| `temperature` | number | 控制隨機性。值介於 0 和 2 之間。值越高，輸出越隨機。 | 否 |
-| `topP` | number | 核心取樣。值介於 0.1 和 1 之間。模型會考慮具有 `topP` 機率質量的詞元。 | 否 |
-| `maxTokens` | integer | 在完成中生成的最大詞元數。 | 否 |
-| `presencePenalty` | number | 值介於 -2.0 和 2.0 之間。正值會根據新詞元是否已出現在文本中來懲罰它們。 | 否 |
-| `frequencyPenalty` | number | 值介於 -2.0 和 2.0 之間。正值會根據新詞元在文本中已有的頻率來懲罰它們。 | 否 |
-| `tools` | array | 模型可能呼叫的工具列表。 | 否 |
-| `toolChoice` | string or object | 控制模型應使用哪個工具。可以是 "none"、"auto"、"required"，或指定一個函式。 | 否 |
-| `responseFormat` | object | 指定輸出格式。對於 JSON 模式，請使用 `{ "type": "json_object" }`。 | 否 |
+### 請求主體
 
-**訊息物件結構** (`messages` 陣列)
+請求主體必須是包含以下參數的 JSON 物件。
 
-| 欄位 | 類型 | 描述 |
-| :--- | :--- | :--- |
-| `role` | string | 訊息作者的角色。`system`、`user`、`assistant` 或 `tool` 其中之一。 |
-| `content` | string or array | 訊息的內容。可以是字串或用於多模態輸入（如文字和圖像）的陣列。 |
-| `toolCalls` | array | 對於 `assistant` 角色，為模型所做的工具呼叫列表。 |
-| `toolCallId` | string | 對於 `tool` 角色，此訊息所回應的工具呼叫 ID。 |
+<x-field-group>
+  <x-field data-name="model" data-type="string" data-required="false" data-default="gpt-3.5-turbo">
+    <x-field-desc markdown>要使用的模型 ID。有關哪些模型適用於聊天 API 的詳細資訊，請參閱模型端點相容性表。</x-field-desc>
+  </x-field>
+  <x-field data-name="messages" data-type="array" data-required="true">
+    <x-field-desc markdown>構成迄今為止對話的訊息列表。</x-field-desc>
+    <x-field data-name="role" data-type="string" data-required="true">
+       <x-field-desc markdown>訊息作者的角色。必須是 `system`、`user`、`assistant` 或 `tool` 之一。</x-field-desc>
+    </x-field>
+    <x-field data-name="content" data-type="string" data-required="true">
+       <x-field-desc markdown>訊息的內容。</x-field-desc>
+    </x-field>
+  </x-field>
+  <x-field data-name="stream" data-type="boolean" data-required="false" data-default="false">
+    <x-field-desc markdown>如果設定，將會發送部分訊息增量，類似於 ChatGPT。權杖將在可用時作為僅包含資料的伺服器發送事件 (server-sent events) 發送，串流由一則 `data: [DONE]` 訊息終止。</x-field-desc>
+  </x-field>
+  <x-field data-name="temperature" data-type="number" data-required="false" data-default="1">
+    <x-field-desc markdown>要使用的取樣溫度，介于 0 和 2 之間。較高的值（如 0.8）會使輸出更隨機，而較低的值（如 0.2）會使其更集中和確定。</x-field-desc>
+  </x-field>
+  <x-field data-name="maxTokens" data-type="integer" data-required="false">
+    <x-field-desc markdown>在聊天完成項中生成的最大權杖數。</x-field-desc>
+  </x-field>
+  <x-field data-name="topP" data-type="number" data-required="false" data-default="1">
+    <x-field-desc markdown>一種替代溫度取樣的方法，稱為核心取樣 (nucleus sampling)，模型會考慮具有 top_p 機率品質的權杖結果。因此，0.1 表示只考慮構成前 10% 機率品質的權杖。</x-field-desc>
+  </x-field>
+  <x-field data-name="presencePenalty" data-type="number" data-required="false" data-default="0">
+    <x-field-desc markdown>介於 -2.0 和 2.0 之間的數字。正值會根據新權杖是否已在文本中出現來進行懲罰，從而增加模型談論新主題的可能性。</x-field-desc>
+  </x-field>
+  <x-field data-name="frequencyPenalty" data-type="number" data-required="false" data-default="0">
+    <x-field-desc markdown>介於 -2.0 和 2.0 之間的數字。正值會根據新權杖在文本中現有的頻率來進行懲罰，從而降低模型逐字重複相同行的可能性。</x-field-desc>
+  </x-field>
+</x-field-group>
 
-**回應 (非串流)**
+### 請求範例
 
--   `Content-Type: application/json`
--   回應是一個包含助理回覆的 JSON 物件。
+```bash 請求範例
+curl -X POST \
+  https://your-hub-url.com/api/v1/chat/completions \
+  -H "Authorization: Bearer <YOUR_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{
+        "model": "gpt-4o-mini",
+        "messages": [
+            {
+                "role": "user",
+                "content": "Hello, who are you?"
+            }
+        ]
+      }'
+```
 
-```json
+### 回應範例 (非串流)
+
+```json 回應
 {
   "role": "assistant",
-  "content": "This is the generated response.",
-  "text": "This is the generated response.",
-  "toolCalls": [],
+  "text": "I am a large language model, trained by Google.",
+  "content": "I am a large language model, trained by Google.",
   "usage": {
-    "promptTokens": 5,
-    "completionTokens": 10,
-    "totalTokens": 15,
-    "aigneHubCredits": 0.00015
+    "inputTokens": 8,
+    "outputTokens": 9,
+    "aigneHubCredits": 0.00012
   }
 }
 ```
 
-**回應 (串流)**
-
--   `Content-Type: text/event-stream`
--   回應是一個伺服器發送事件流。每個事件都是一個 JSON 物件，代表完成的一部分。最後一個事件可能包含用量統計。
-
 ---
 
-### 嵌入
+## 嵌入
 
-此端點為給定的輸入創建一個向量表示，可用於語意搜尋、分群和其他機器學習任務。
+此端點創建一個代表輸入文本的嵌入向量。
 
-`POST /v1/embeddings`
+**端點**
 
-**請求主體**
+```
+POST /api/v1/embeddings
+```
 
-| 欄位 | 類型 | 描述 | 必要 |
-| :--- | :--- | :--- | :--- |
-| `model` | string | 要使用的嵌入模型 ID（例如 `openai/text-embedding-ada-002`）。 | 是 |
-| `input` | string or array | 要嵌入的輸入文字或詞元。可以是一個字串，或是一個字串/詞元陣列。 | 是 |
+### 請求主體
 
-**回應**
+<x-field-group>
+  <x-field data-name="model" data-type="string" data-required="true">
+    <x-field-desc markdown>用於創建嵌入的模型 ID。</x-field-desc>
+  </x-field>
+  <x-field data-name="input" data-type="string or array" data-required="true">
+    <x-field-desc markdown>要嵌入的輸入文本，編碼為字串或權杖陣列。若要在單一請求中嵌入多個輸入，請傳遞一個字串陣列。</x-field-desc>
+  </x-field>
+</x-field-group>
 
--   `Content-Type: application/json`
--   回應包含嵌入資料和用量資訊。
+### 請求範例
 
-```json
+```bash 請求範例
+curl -X POST \
+  https://your-hub-url.com/api/v1/embeddings \
+  -H "Authorization: Bearer <YOUR_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{
+        "model": "text-embedding-ada-002",
+        "input": "The food was delicious and the waiter..."
+      }'
+```
+
+### 回應範例
+
+```json 回應
 {
   "data": [
     {
-      "embedding": [ -0.00692, -0.0053, ... ],
-      "index": 0,
-      "object": "embedding"
+      "object": "embedding",
+      "embedding": [
+        -0.006929283495992422,
+        -0.005336422473192215,
+        ...
+        -4.547132266452536e-05
+      ],
+      "index": 0
     }
-  ],
-  "usage": {
-    "prompt_tokens": 8,
-    "total_tokens": 8
-  }
+  ]
 }
 ```
 
 ---
 
-### 圖像生成
+## 圖像生成
 
-此端點根據文字提示生成圖像。
+此端點根據文本提示生成圖像。
 
-`POST /v1/image/generations`
+**端點**
 
-**請求主體**
+```
+POST /api/v1/image/generations
+```
 
-| 欄位 | 類型 | 描述 | 必要 |
-| :--- | :--- | :--- | :--- |
-| `model` | string | 要使用的圖像生成模型 ID（例如 `dall-e-2`、`dall-e-3`）。 | 是 |
-| `prompt` | string | 所需圖像的文字描述。 | 是 |
-| `n` | integer | 要生成的圖像數量。必須介於 1 和 10 之間。預設為 1。 | 否 |
-| `size` | string | 生成圖像的尺寸（例如 `1024x1024`、`1792x1024`）。 | 否 |
-| `responseFormat` | string | 返回生成圖像的格式。可以是 `url` 或 `b64_json`。預設為 `url`。 | 否 |
-| `quality` | string | 要生成的圖像品質。可以是 `standard` 或 `hd`。 | 否 |
+### 請求主體
 
-**回應**
+<x-field-group>
+  <x-field data-name="model" data-type="string" data-required="false" data-default="dall-e-2">
+    <x-field-desc markdown>用於圖像生成的模型。</x-field-desc>
+  </x-field>
+  <x-field data-name="prompt" data-type="string" data-required="true">
+    <x-field-desc markdown>所需圖像的文本描述。最大長度取決於模型。</x-field-desc>
+  </x-field>
+  <x-field data-name="n" data-type="integer" data-required="false" data-default="1">
+    <x-field-desc markdown>要生成的圖像數量。必須介於 1 和 10 之間。</x-field-desc>
+  </x-field>
+  <x-field data-name="size" data-type="string" data-required="false">
+    <x-field-desc markdown>生成圖像的尺寸。對於 DALL·E 2，必須是 `256x256`、`512x512` 或 `1024x1024` 之一。對於 DALL·E 3 模型，必須是 `1024x1024`、`1792x1024` 或 `1024x1792` 之一。</x-field-desc>
+  </x-field>
+  <x-field data-name="response_format" data-type="string" data-required="false">
+    <x-field-desc markdown>返回生成圖像的格式。必須是 `url` 或 `b64_json` 之一。</x-field-desc>
+  </x-field>
+</x-field-group>
 
--   `Content-Type: application/json`
--   回應包含生成圖像的 URL 或 base64 編碼的 JSON，以及用量資料。
+### 請求範例
 
-```json
+```bash 請求範例
+curl -X POST \
+  https://your-hub-url.com/api/v1/image/generations \
+  -H "Authorization: Bearer <YOUR_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{
+        "model": "dall-e-3",
+        "prompt": "A cute corgi wearing a space suit",
+        "n": 1,
+        "size": "1024x1024"
+      }'
+```
+
+### 回應範例
+
+```json 回應
 {
   "images": [
-    { "url": "https://..." },
-    { "b64Json": "..." }
+    {
+      "url": "https://oaidalleapiprodscus.blob.core.windows.net/private/..."
+    }
   ],
-  "data": [ /* same as images */ ],
+  "data": [
+    {
+      "url": "https://oaidalleapiprodscus.blob.core.windows.net/private/..."
+    }
+  ],
   "model": "dall-e-3",
   "usage": {
     "aigneHubCredits": 0.04
@@ -165,31 +211,72 @@ API 端點受到基於元件的身份驗證機制（`ensureRemoteComponentCall` 
 
 ---
 
-### 音訊服務 (代理)
+## 音訊轉錄
 
-音訊轉錄和語音合成端點是 OpenAI v1 API 的直接代理。AIGNE Hub API 透過在轉發請求前從其管理的憑證儲存庫中注入適當的 API 金鑰來處理身份驗證。
+此端點將音訊轉錄為輸入語言。它作為上游供應商服務的代理。
 
-有關請求和回應格式，請參閱 OpenAI 官方 API 文件。
+**端點**
 
--   **音訊轉錄**：`POST /v1/audio/transcriptions`
--   **音訊語音**：`POST /v1/audio/speech`
+```
+POST /api/v1/audio/transcriptions
+```
+
+### 請求主體
+
+請求主體應為一個包含音訊檔案和模型名稱的 `multipart/form-data` 物件。此端點直接代理到 `api.openai.com/v1/audio/transcriptions`，您應參考 [OpenAI 官方文件](https://platform.openai.com/docs/api-reference/audio/createTranscription) 以獲取詳細的參數規格。
+
+### 請求範例
+
+```bash 請求範例
+curl -X POST \
+  https://your-hub-url.com/api/v1/audio/transcriptions \
+  -H "Authorization: Bearer <YOUR_TOKEN>" \
+  -H "Content-Type: multipart/form-data" \
+  -F file="@/path/to/your/audio.mp3" \
+  -F model="whisper-1"
+```
+
+### 回應
+
+回應格式將與 OpenAI 音訊 API 為轉錄所返回的格式完全相同。
 
 ---
 
-### 系統狀態
+## 音訊語音合成
 
-此端點提供一個簡單的健康檢查，以驗證服務是否正在執行，並且至少設定了一個 AI 供應商 API 金鑰。
+此端點從輸入文本生成音訊。它作為上游供應商服務的代理。
 
-`GET /v1/status`
+**端點**
 
-**回應**
-
--   `Content-Type: application/json`
-
-```json
-{
-  "available": true
-}
+```
+POST /api/v1/audio/speech
 ```
 
--   `available`：一個布林值，表示是否已設定一個或多個 API 金鑰並可供使用。
+### 請求主體
+
+請求主體應為一個 JSON 物件。此端點直接代理到 `api.openai.com/v1/audio/speech`，您應參考 [OpenAI 官方文件](https://platform.openai.com/docs/api-reference/audio/createSpeech) 以獲取詳細的參數規格。
+
+### 請求範例
+
+```bash 請求範例
+curl -X POST \
+  https://your-hub-url.com/api/v1/audio/speech \
+  -H "Authorization: Bearer <YOUR_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{
+        "model": "tts-1",
+        "input": "The quick brown fox jumped over the lazy dog.",
+        "voice": "alloy"
+      }' \
+  --output speech.mp3
+```
+
+### 回應
+
+回應將是根據請求指定的格式（例如 MP3）生成的音訊檔案。
+
+---
+
+## 總結
+
+本指南詳細介紹了 AIGNE Hub 中可用的舊版 V1 API 端點。雖然這些端點功能正常，但可能不會再獲得新功能。我們鼓勵您遷移到 [V2 端點](./api-reference-v2-endpoints.md)，以利用最新的改進並確保長期相容性。有關 API 安全性和身份驗證的詳細資訊，請參閱 [身份驗證](./api-reference-authentication.md) 部分。

@@ -1,51 +1,94 @@
-![AIGNE Hub Logo](../../../blocklets/core/screenshots/logo.png)
+# 部署與安裝
 
-# 總覽
+本節提供部署 AIGNE Hub 的完整說明。內容涵蓋透過 Blocklet Store 進行的建議一鍵安裝方法，以及為開發者和自訂環境設計的從原始碼手動安裝的流程。
 
-AIGNE Hub 是一個統一的 AI 閘道，旨在管理和簡化與眾多大型語言模型（LLM）和 AIGC 供應商的連接。它作為一個中央代理，抽象化了處理不同 API 金鑰、追蹤用量以及管理多個 AI 服務計費的複雜性。它作為 AIGNE 框架內的一個 [Blocklet](https://blocklet.io) 而設計，是整個 AIGNE 生態系統的營運骨幹，包括 AIGNE 框架、AIGNE Studio 和 AIGNE CLI。
+在繼續之前，請務必檢閱系統先決條件，以確保您的環境已正確設定。無論您的目標是快速啟動還是自訂安裝，正確的設定對於成功部署至關重要。
 
-AIGNE Hub 背後的主要設計理念是為 AI 操作提供一個單一、一致的介面，從而減少營運開銷並增強安全性。透過集中管理 API 金鑰並透過單點路由請求，它實現了強大的安全性、詳細的分析功能和靈活的計費模型，適用於企業內部使用和面向公眾的服務產品。
+```d2
+direction: down
 
-### 關鍵架構概念
+Start: {
+  label: "開始部署"
+  shape: oval
+}
 
-- **🏠 自主託管優先**：該系統專為自主託管而設計，使組織能夠部署自己的實例，從而對資料、安全和基礎設施擁有絕對的控制權。這對於有嚴格資料隱私和合規性要求的企業至關重要。
-- **🔌 可插拔的供應商模型**：AIGNE Hub 透過統一介面連接超過八家 AI 供應商。這種模組化架構允許輕鬆添加新的供應商，而無需更改核心應用程式，從而避免了供應商鎖定並提供了最大的靈活性。
-- **🔐 統一的安全性**：所有供應商的 API 金鑰都經過加密並集中儲存。存取由細粒度的控制項管理，確保金鑰不會在客戶端應用程式中暴露或散佈在各種服務中。
-- **📊 集中式分析與計費**：透過將所有 AI 請求路由到 Hub，系統可以捕獲詳細的用量資料。這使得全面的成本分析、資源追蹤以及適用於多租戶部署的靈活的基於點數的計費系統成為可能。
+Prerequisites: {
+  label: "檢閱系統\n先決條件"
+  shape: rectangle
+}
 
-## 部署場景
+Decision: {
+  label: "選擇部署\n方法"
+  shape: diamond
+}
 
-AIGNE Hub 的架構支援兩種主要的部署模型，以滿足不同的營運需求。
+One-Click-Install: {
+  label: "Blocklet Store：\n一鍵安裝"
+  shape: rectangle
+}
 
-### 🏢 企業自主託管
+Clone-Repo: {
+  label: "手動：複製\n原始碼"
+  shape: rectangle
+}
 
-此模型針對需要最大控制權和資料隱私的內部團隊和組織進行了優化。
+Install-Deps: {
+  label: "手動：安裝\n依賴套件"
+  shape: rectangle
+}
 
-- **基礎設施**：完全部署在組織自己的基礎設施內（本地部署或私有雲）。
-- **計費**：無中介計費。組織直接向 AI 供應商付款，Hub 用於內部成本追蹤和分配。
-- **資料安全**：所有資料，包括提示、回應和 API 金鑰，都保留在組織的安全邊界內。
-- **使用案例**：非常適合企業 AI 計畫、內部開發平台，以及需要提供對 AI 模型的集中、安全存取而又不暴露憑證的團隊。
+Run-App: {
+  label: "手動：執行\n應用程式"
+  shape: rectangle
+}
 
-### 🚀 服務供應商模式
+End: {
+  label: "AIGNE Hub 已部署"
+  shape: oval
+}
 
-此模型將 AIGNE Hub 轉變為一個多租戶、面向客戶的 AI 閘道服務。
+Start -> Prerequisites
+Prerequisites -> Decision
+Decision -> One-Click-Install: "建議"
+Decision -> Clone-Repo: "適用於開發者"
 
-- **計費**：與 Payment Kit 整合，以啟用基於點數的計費系統。服務供應商可以設定自訂定價、應用利潤空間，並透過初始點數自動化使用者入門流程。
-- **多租戶**：管理多個使用者或組織，並提供隔離的用量追蹤和計費。
-- **自動化**：具備自動化使用者入門流程和用於計費與用量的全面管理工具。
-- **使用案例**：非常適合 AI 服務供應商、整合 AI 功能的 SaaS 平台，以及希望透過單一平台轉售各種 AI 模型存取權的企業。
+One-Click-Install -> End
 
-## 支援的 AI 供應商
+Clone-Repo -> Install-Deps
+Install-Deps -> Run-App
+Run-App -> End
 
-AIGNE Hub 為各種領先的 AI 模型和供應商提供統一的 API：
+```
 
-- **OpenAI**：GPT 系列模型、用於圖像生成的 DALL-E，以及 Embeddings。
-- **Anthropic**：Claude 系列模型。
-- **Amazon Bedrock**：存取託管在 AWS 上的各種模型。
-- **Google Gemini**：Gemini Pro 和 Vision 模型。
-- **DeepSeek**：專注於進階推理的模型。
-- **Ollama**：支援本地模型部署和管理。
-- **OpenRouter**：一個元供應商，提供對眾多模型的存取。
-- **xAI**：Grok 模型。
-- **Doubao**：Doubao AI 模型。
-- **Poe**：Poe AI 平台。
+## 部署方法
+
+部署 AIGNE Hub 主要有兩種方法。請選擇最符合您技術需求和營運環境的方法。
+
+<x-cards data-columns="2">
+  <x-card data-title="透過 Blocklet Store 部署 (建議)" data-icon="lucide:store">
+    這是最快、最直接的方法。它允許一鍵安裝，並在 Blocklet Server 環境中自動處理所有依賴套件和初始設定。此方法適合大多數使用者。
+  </x-card>
+  <x-card data-title="從原始碼手動安裝" data-icon="lucide:file-code-2">
+    此方法適用於需要自訂安裝、為專案做出貢獻，或在非 Blocklet Server 環境中部署 AIGNE Hub 的開發者。它涉及複製原始碼並手動管理依賴套件。
+  </x-card>
+</x-cards>
+
+## 詳細指南
+
+有關詳細的逐步說明，請前往相關子章節。在開始安裝流程前，請確保您已滿足所有先決條件。
+
+<x-cards data-columns="1">
+  <x-card data-title="先決條件" data-icon="lucide:clipboard-list" data-href="/deployment-and-installation/prerequisites" data-horizontal="true">
+    在開始安裝前，請檢閱所需的軟體和環境設定，例如 Node.js 和 Blocklet Server。
+  </x-card>
+  <x-card data-title="透過 Blocklet Store 部署" data-icon="lucide:rocket" data-href="/deployment-and-installation/blocklet-store" data-horizontal="true">
+    請遵循一鍵安裝指南，以獲得最簡單的部署體驗。
+  </x-card>
+  <x-card data-title="手動安裝" data-icon="lucide:terminal" data-href="/deployment-and-installation/manual-installation" data-horizontal="true">
+    存取從原始碼儲存庫進行安裝的逐步說明。
+  </x-card>
+</x-cards>
+
+## 總結
+
+本節概述了部署 AIGNE Hub 的可用途徑。對於大多數營運情境，因其簡單性和可靠性，建議採用 [透過 Blocklet Store 部署](./deployment-and-installation-blocklet-store.md)。對於開發或特殊環境，[手動安裝](./deployment-and-installation-manual-installation.md) 指南提供了必要的詳細說明。成功部署後，下一步是設定系統，詳情請參閱 [設定](./configuration.md) 章節。

@@ -1,64 +1,36 @@
-# Overview
+# Blocklet Store Deployment
 
-AIGNE Hub serves as a unified AI gateway engineered to streamline the management of connections to a diverse array of Large Language Model (LLM) and AI Generated Content (AIGC) providers. It abstracts the complexities associated with handling disparate API keys, tracking usage metrics, and managing billing across multiple AI services. As a core component of the AIGNE ecosystem, it provides essential AI capabilities for applications built with the AIGNE framework, AIGNE Studio, and the AIGNE CLI.
+Deploying AIGNE Hub from the Blocklet Store is the most straightforward and recommended method. This approach leverages the Blocklet Server environment to provide a one-click installation experience, handling dependencies and initial setup automatically. It is the ideal choice for operators who prioritize speed and simplicity.
 
-The system is designed for robust, production-grade environments, focusing on centralized control, security, and operational transparency for infrastructure teams.
+Before proceeding, ensure you have a running Blocklet Server instance. For detailed requirements, please refer to the [Prerequisites](./deployment-and-installation-prerequisites.md) document.
 
-![logo.png](../../../blocklets/core/screenshots/logo.png)
+## Installation Process
 
-### Core Architectural Benefits
+The installation is managed through a guided wizard within the Blocklet Server dashboard.
 
-AIGNE Hub is architected to provide significant operational advantages, particularly for teams managing AI infrastructure.
+1.  **Navigate to the Blocklet Store**
+    Access your Blocklet Server dashboard and open the "Store" section from the navigation menu.
 
--   **Self-Hosting Capability**: Deploy AIGNE Hub within your own infrastructure for complete control over data, security, and compliance. This model eliminates reliance on third-party services for gateway functionality, ensuring all data remains within your security perimeter.
--   **Centralized Provider Management**: It offers a single interface to connect with and manage over eight AI providers, standardizing access and reducing the overhead of integrating with multiple APIs.
--   **Unified Security Model**: API keys are stored in an encrypted format, with fine-grained access controls to regulate usage. This centralizes security management and reduces the risk of key exposure.
--   **Comprehensive Usage Analytics**: The system provides detailed tracking of AI service consumption and in-depth cost analysis, enabling precise budget management and resource allocation.
--   **Flexible Billing Systems**: AIGNE Hub can be operated purely for internal use, billing directly to your corporate accounts with providers. Alternatively, it can be configured as a service provider, utilizing a built-in credit system to bill end-users or other business units.
--   **Seamless Ecosystem Integration**: Designed to work out-of-the-box with applications developed using the AIGNE framework, ensuring a low-friction adoption process.
+2.  **Search for AIGNE Hub**
+    Use the search bar within the store to find the "AIGNE Hub" application.
 
-### Supported AI Providers
+3.  **Launch the Installation**
+    Click the "Launch" button on the AIGNE Hub application page. This will initiate the installation wizard.
 
-AIGNE Hub provides a standardized interface for a wide range of AI models and services. This allows for flexibility in choosing the best model for a specific task without requiring separate integrations for each provider.
+4.  **Follow the On-Screen Wizard**
+    The wizard will guide you through the necessary configuration steps. You will be prompted to confirm the installation settings. Once confirmed, Blocklet Server will automatically download, install, and start the AIGNE Hub instance.
 
--   **OpenAI**: GPT models, DALL-E, Embeddings
--   **Anthropic**: Claude model family
--   **Amazon Bedrock**: Access to various models hosted on AWS
--   **Google Gemini**: Gemini Pro and Vision models
--   **DeepSeek**: Models focused on advanced reasoning
--   **Ollama**: Support for local model deployment and management
--   **OpenRouter**: A meta-provider offering access to a wide range of models
--   **xAI**: Grok models
--   **Doubao**: Doubao AI models
--   **Poe**: Poe AI platform
+5.  **Access Your Instance**
+    Upon successful installation, you will be redirected to the AIGNE Hub's main dashboard. The instance is now running and ready for configuration.
 
-## Deployment Scenarios
+![AIGNE Hub Dashboard](https://raw.githubusercontent.com/AIGNE-ab/doc-assets/main/images/fc46e9461382f0be7541af17ef13f632.png)
 
-AIGNE Hub supports two primary deployment models, catering to different operational needs. The choice of scenario determines how billing, user management, and data governance are handled.
+## Post-Installation Configuration
 
-### Enterprise Self-Hosting
+After the deployment is complete, the next critical step is to configure the service. This includes adding AI provider credentials and setting up billing if required.
 
-This model is optimized for internal use within an organization, prioritizing data control, security, and simplified cost management.
+For detailed instructions on configuring providers and other settings, please proceed to the [Configuration](./configuration.md) section.
 
--   **Infrastructure**: Deployed entirely within an organization's private infrastructure (e.g., VPC, on-premises data center). This ensures that no data leaves the security perimeter.
--   **Billing**: All AI provider costs are billed directly to the organization's accounts. AIGNE Hub tracks usage per user or team, facilitating internal cost allocation and showback/chargeback processes without handling actual financial transactions.
--   **Security**: This scenario provides maximum control over data privacy and compliance. It is the ideal choice for organizations with stringent regulatory requirements or those handling sensitive proprietary data.
--   **Use Case**: Suited for corporate R&D, internal development teams, and any scenario where employees need access to AI models without exposing the organization to the complexities of public-facing service management.
+## Summary
 
-### Service Provider Mode
-
-This model transforms AIGNE Hub into a multi-tenant, customer-facing service, enabling you to offer managed AI gateway access to external users.
-
--   **Infrastructure**: While it can still be self-hosted, the architecture is designed to handle multiple tenants (customers) with segregated billing and usage data.
--   **Billing**: This mode activates a credit-based billing system, which integrates with the Payment Kit. Administrators can set custom pricing for each AI model, establishing profit margins over the base provider costs. End-users purchase credits to consume AI services.
--   **Onboarding**: Features automated user onboarding, often including an initial grant of starter credits to encourage adoption.
--   **Use Case**: Ideal for SaaS companies, AI service providers, or businesses looking to monetize access to a curated set of AI models under their own brand.
-
-## Technical Architecture
-
-AIGNE Hub is constructed using a modern, robust technology stack designed for scalability, reliability, and maintainability.
-
--   **Backend**: Built with **Node.js** and **TypeScript**, providing a strongly-typed, high-performance foundation. It leverages the **AIGNE Framework** for seamless integration with the broader AIGNE ecosystem.
--   **Frontend**: The administrative and user-facing interfaces are developed with **React 19**, utilizing its latest features for a modern and responsive user experience.
--   **Database**: **SQLite** is used for local data storage, managed through the **Sequelize ORM**. This provides a lightweight yet powerful solution for storing configuration, user data, and usage analytics. For larger-scale deployments, the ORM allows for straightforward migration to other SQL databases like PostgreSQL.
--   **Deployment**: As a **Blocklet**, AIGNE Hub is designed for cloud-native deployment. It can be easily installed and scaled on a Blocklet Server, simplifying infrastructure management and maintenance operations.
+Using the Blocklet Store simplifies the deployment of AIGNE Hub to a few clicks. This method ensures a consistent, reliable setup and is the recommended path for most users. For developers or operators who require more control over the installation process, a [Manual Installation](./deployment-and-installation-manual-installation.md) guide is also available.

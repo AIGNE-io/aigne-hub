@@ -1,180 +1,107 @@
-# 5. モデルレート管理
+# クレジットベースの課金
 
-このセクションでは、プラットフォームのクレジットベースの課金システムの基本であるAIモデルレートの設定と管理について詳しく説明します。運用者は、価格設定の定義、モデルの管理、および課金の不正確さに関するトラブルシューティングに必要な情報を見つけることができます。
+AIGNE Hubには、AIモデルの使用状況とコストを詳細に制御するために設計された、堅牢なクレジットベースの課金システム（オプション）が含まれています。このシステムを有効にすると、オペレーターはさまざまなAIモデルに特定のクレジットレートを定義し、ユーザーごとの消費量を追跡し、クレジットを再チャージするための決済システムと統合できます。このアプローチは、プロバイダーのコストを直接転嫁する方式から、管理された内部エコノミーへと移行させ、一貫した価格設定、コストの抽象化、そして潜在的な収益性を可能にします。
 
-## 5.1. コアコンセプト
+このガイドでは、クレジットベースの課金システムを有効化し、設定するプロセスについて詳述します。これには、さまざまなAIモデルに特定の利用レートを設定する方法や、ユーザークレジットの管理方法が含まれます。
 
-**モデルレート**は、特定のプロバイダーから特定のAIモデルを使用するコストを定義するレコードです。各レートは、入力トークンごとおよび出力トークンごとに請求されるクレジット数を指定します。この詳細な価格設定構造が、すべての使用量計算と課金の基礎となります。
+これらのモデルが属するAIプロバイダーの管理に関する情報については、[AIプロバイダーと認証情報](./configuration-ai-providers-and-credentials.md)のドキュメントをご覧ください。
 
-主要なコンポーネントは以下の通りです：
+## クレジットベースの課金の有効化
 
-*   **プロバイダー**: AIサービスプロバイダー（例：OpenAI、Google、Bedrock）。
-*   **モデル**: 特定のモデル識別子（例：`gpt-4`、`gemini-1.5-pro-latest`）。
-*   **タイプ**: モデルのモダリティ。`chatCompletion`、`imageGeneration`、`embedding`など。
-*   **レート**:
-    *   `inputRate`: 1,000入力トークンあたりのクレジットコスト。
-    *   `outputRate`: 1,000出力トークンあたり、または生成された画像あたりのクレジットコスト。
-*   **ユニットコスト**: 法定通貨（例：USD）での100万トークンあたりのモデルの実際のコスト。これは、自動化された一括価格調整に使用されます。
+クレジットベースの課金システムは、デフォルトでは無効になっています。これを有効にするには、AIGNE Hubの設定で `CREDIT_BASED_BILLING_ENABLED` 環境変数を `true` に設定する必要があります。有効化されると、システムはすべてのAPI呼び出しに対してクレジットチェックを強制し、ユーザー残高に対する使用状況の追跡を開始します。
 
-正確で完全なモデルレート設定は非常に重要です。ユーザーが呼び出そうとするモデルのレートが存在しない場合、システムは使用コストを計算できないため、APIリクエストは失敗します。
+このモードが有効な場合、「モデルレート」設定で明示的にレートが定義されたモデルのみが、APIを通じて利用可能になります。
 
-![モデルレート管理UI](d037b6b6b092765ccbfa58706c241622.png)
+## モデルレートの設定
 
-## 5.2. APIによるモデルレートの管理
+モデルレートは、クレジットベースの課金システムの基盤です。レートは、特定のAIモデルを使用するために消費されるクレジット数を定義します。レートは通常、入力（例：プロンプトトークン）と出力（例：完了トークンや生成された画像）に基づいて定義されます。
 
-モデルレートは、一連のRESTful APIエンドポイントを通じて管理されます。すべての作成、更新、削除操作には管理者権限が必要です。
+これらのレートは、管理ダッシュボードの **AI Config > Model Rates** で設定できます。
 
-### 5.2.1. モデルレートの作成
+![このスクリーンショットは、AIGNE HubのAI Configセクション内にある「モデルレート」設定ページを示しており、ユーザーがAIモデルの価格をどのように管理するかの概要を提供します。ChatGPTやClaudeなどのさまざまなAIモデル、そのプロバイダー、コンテンツタイプ（画像、テキスト）、および関連する入力・出力の価格レートを一覧表示する詳細なテーブルが示されています。このインターフェースでは、新しいモデルレートの編集、削除、追加が可能で、AIサービスのコストに対する包括的な管理制御を提供します。](https://raw.githubusercontent.com/blocklet/aigne/main/blocklets/core/screenshots/8014a0b1d561114d9948214c4929d5df.png)
 
-このエンドポイントは、単一のプロバイダー上の特定のモデルに対する新しいレートを登録します。
+### モデルレートの追加
 
-*   **エンドポイント**: `POST /api/ai-providers/:providerId/model-rates`
-*   **権限**: 管理者
-*   **ボディ**:
-    *   `model` (string, required): モデル識別子。
-    *   `type` (string, required): モデルタイプ。`chatCompletion`、`imageGeneration`、`embedding`のいずれかである必要があります。
-    *   `inputRate` (number, required): 入力のクレジットコスト。
-    *   `outputRate` (number, required): 出力のクレジットコスト。
-    *   `modelDisplay` (string, optional): ユーザーフレンドリーな表示名。
-    *   `description` (string, optional): モデルの簡単な説明。
-    *   `unitCosts` (object, optional): プロバイダーからの基礎となるコスト。
-        *   `input` (number, required): 100万入力トークンあたりのコスト。
-        *   `output` (number, required): 100万出力トークンあたりのコスト。
-    *   `modelMetadata` (object, optional): 追加のモデル機能。
+新しいレートを追加するには、「モデルレートの追加」ボタンをクリックし、必要な詳細情報を入力します。複数のプロバイダーにまたがる特定のモデルに対して、レートを同時に作成できます。
 
-**リクエスト例**:
+![このスクリーンショットは、「AIGNE / Hub」プラットフォームのユーザーインターフェースを描写しており、特にAIモデルのレート設定に焦点を当てています。右側には目立つ「モデルレートの追加」モーダルウィンドウが開いており、モデル名、レートタイプ、プロバイダー、モデルコスト、AIGNE Hubのクレジットレート設定、説明、および詳細オプションの入力フィールドが表示されています。背景には、「設定」ページの「モデルレート」セクションの下に、ChatGPT、Claude、Geminiなどの既存のAIモデルのリストと、そのプロバイダーおよびタイプが表示されています。](https://raw.githubusercontent.com/blocklet/aigne/main/blocklets/core/screenshots/c29f08420df8ea9a199fcb5ffe06febe.png)
 
-```bash
-curl -X POST \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <ADMIN_TOKEN>" \
-  -d '{
-    "model": "gpt-4o",
-    "type": "chatCompletion",
-    "inputRate": 10,
-    "outputRate": 30,
-    "modelDisplay": "GPT-4 Omni",
-    "unitCosts": {
-      "input": 5.0,
-      "output": 15.0
-    },
-    "modelMetadata": {
-      "maxTokens": 128000,
-      "features": ["tools", "vision"]
-    }
-  }' \
-  https://<your-domain>/api/ai-providers/prv_xxxxxxxx/model-rates
+モデルレートを定義するには、以下のパラメータが必要です。
+
+<x-field-group>
+  <x-field data-name="model" data-type="string" data-required="true" data-desc="プロバイダーによって認識されるモデルの正確な名前（例：gpt-4o、claude-3-opus-20240229）。"></x-field>
+  <x-field data-name="modelDisplay" data-type="string" data-required="false" data-desc="ユーザーインターフェースに表示される、モデルの分かりやすい名前。空のままにすると、モデルIDから整形された名前が生成されます。"></x-field>
+  <x-field data-name="type" data-type="string" data-required="true">
+    <x-field-desc markdown>AIタスクのタイプ。これにより、どのレートが適用されるかが決まります。指定可能な値は `chatCompletion`、`imageGeneration`、または `embedding` です。</x-field-desc>
+  </x-field>
+  <x-field data-name="providers" data-type="array" data-required="true" data-desc="このレートが適用されるプロバイダーIDの配列。これにより、複数のプラットフォームで利用可能な単一のモデルがレートを共有できます。"></x-field>
+  <x-field data-name="inputRate" data-type="number" data-required="true" data-default="0">
+    <x-field-desc markdown>入力単位ごとに請求されるクレジット数（例：プロンプトトークン1,000ごと）。`imageGeneration` の場合、これは通常 `0` です。</x-field-desc>
+  </x-field>
+  <x-field data-name="outputRate" data-type="number" data-required="true" data-default="0">
+    <x-field-desc markdown>出力単位ごとに請求されるクレジット数（例：完了トークン1,000ごと、または生成された画像1枚ごと）。</x-field-desc>
+  </x-field>
+  <x-field data-name="unitCosts" data-type="object" data-required="false">
+    <x-field-desc markdown>AIプロバイダーからの実際のコストで、通常は100万トークンあたりのUSDで表されます。これは自動レート計算に使用され、ユーザーに直接請求されるものではありません。</x-field-desc>
+    <x-field data-name="input" data-type="number" data-required="true" data-desc="プロバイダーの入力単位あたりのコスト。"></x-field>
+    <x-field data-name="output" data-type="number" data-required="true" data-desc="プロバイダーの出力単位あたりのコスト。"></x-field>
+  </x-field>
+  <x-field data-name="modelMetadata" data-type="object" data-required="false" data-desc="モデルの能力に関する追加のメタデータ。">
+    <x-field data-name="maxTokens" data-type="number" data-required="false" data-desc="モデルが単一のコンテキストで処理できる最大トークン数。"></x-field>
+    <x-field data-name="features" data-type="array" data-required="false" data-desc="モデルがサポートする特別な機能のリスト（例：`tools`、`thinking`、`vision`）。"></x-field>
+    <x-field data-name="imageGeneration" data-type="object" data-required="false" data-desc="画像生成モデルに関する詳細。">
+      <x-field data-name="max" data-type="number" data-required="false" data-desc="リクエストあたりの最大画像数。"></x-field>
+      <x-field data-name="quality" data-type="array" data-required="false" data-desc="サポートされている画質オプション（例：['standard', 'hd']）。"></x-field>
+      <x-field data-name="size" data-type="array" data-required="false" data-desc="サポートされている画像サイズ（例：['1024x1024', '1792x1024']）。"></x-field>
+      <x-field data-name="style" data-type="array" data-required="false" data-desc="サポートされている画像スタイル（例：['vivid', 'natural']）。"></x-field>
+    </x-field>
+  </x-field>
+</x-field-group>
+
+## レートの一括更新
+
+レート管理を簡素化するため、AIGNE Hubは、基礎となるコストと希望する利益率に基づいてすべてのモデルレートを一括更新するメカニズムを提供します。これは、プロバイダーが価格を変更した場合や、クレジットの価格体系を調整したい場合に特に便利です。
+
+この機能は、各モデルに定義された `unitCosts` を使用し、簡単な式を適用して新しい `inputRate` と `outputRate` を計算します。
+
+```
+レート = (ユニットコスト * (1 + 利益率 / 100)) / クレジット価格
 ```
 
-### 5.2.2. モデルレートの一括作成
+ここで：
+*   `UnitCost`: プロバイダーからの生のコスト（例：100万トークンあたりのUSD）。
+*   `ProfitMargin`: あなたが定義するパーセンテージ。
+*   `CreditPrice`: ユーザーに1クレジットを販売する価格。
 
-このエンドポイントは、複数のプロバイダーにわたって同じモデルレートを同時に作成することができます。これは、いくつかのベンダーから利用可能なモデルに便利です。
+この計算は、`unitCosts` が定義されているすべてのモデルの入力レートと出力レートの両方に対して実行されます。
 
-*   **エンドポイント**: `POST /api/ai-providers/model-rates`
-*   **権限**: 管理者
-*   **ボディ**: 単一作成エンドポイントと同じですが、追加の`providers`配列があります。
-    *   `providers` (array of strings, required): このレートを作成すべきプロバイダーIDのリスト。
+## ユーザークレジットの管理
 
-**リクエスト例**:
+課金が有効になると、すべてのユーザーはクレジット残高を持ちます。AIGNE Hubは、これらの残高を管理するために決済コンポーネントと統合されています。
 
-```bash
-curl -X POST \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <ADMIN_TOKEN>" \
-  -d '{
-    "model": "claude-3-sonnet",
-    "type": "chatCompletion",
-    "inputRate": 6,
-    "outputRate": 30,
-    "providers": ["prv_bedrock_xxxx", "prv_anthropic_yyyy"],
-    "unitCosts": {
-      "input": 3.0,
-      "output": 15.0
-    }
-  }' \
-  https://<your-domain>/api/ai-providers/model-rates
-```
+### 新規ユーザーへのクレジット付与
 
-システムは、指定されたすべてのプロバイダーが存在すること、および重複を防ぐために、指定されたモデルとタイプのレートが対象プロバイダーのいずれにもまだ存在しないことを検証します。
+AIGNE Hubを設定して、新規ユーザーに初期残高を自動的に付与することができます。これにより、試用と導入が促進されます。以下の環境変数がこの機能を制御します。
 
-### 5.2.3. モデルレートの更新
+*   `NEW_USER_CREDIT_GRANT_ENABLED`: 付与を有効にするには `true` に設定します。
+*   `NEW_USER_CREDIT_GRANT_AMOUNT`: 各新規ユーザーに付与するクレジット数。
+*   `CREDIT_EXPIRATION_DAYS`: プロモーションクレジットが失効するまでの日数。有効期限をなくすには `0` に設定します。
 
-このエンドポイントは、既存のモデルレートを変更します。
+### クレジットの購入
 
-*   **エンドポイント**: `PUT /api/ai-providers/:providerId/model-rates/:rateId`
-*   **権限**: 管理者
-*   **ボディ**: 作成フィールドのサブセットを提供できます。
-    *   `modelDisplay`, `inputRate`, `outputRate`, `description`, `unitCosts`, `modelMetadata`.
+ユーザーはクレジットを購入して残高を追加できます。システムは、ユーザーをチェックアウトページに誘導する支払いリンクで設定できます。デフォルトでは、AIGNE Hubは統合されたPaymentKit blockletを通じて支払いリンクを作成・管理しようとしますが、`CREDIT_PAYMENT_LINK` 環境変数を介してカスタムURLを指定することもできます。
 
-**リクエスト例**:
+## 使用状況の追跡と計測
 
-```bash
-curl -X PUT \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <ADMIN_TOKEN>" \
-  -d '{
-    "inputRate": 12,
-    "outputRate": 35
-  }' \
-  https://<your-domain>/api/ai-providers/prv_xxxxxxxx/model-rates/rate_zzzzzzzz
-```
+すべてのAPI呼び出しにおいて、AIGNE Hubは正確なクレジット消費とレポートを保証するための一連のステップを実行します。このプロセスは回復力があり効率的に設計されており、少額の課金をバッチ処理してオーバーヘッドを削減します。
 
-### 5.2.4. モデルレートの削除
+ワークフローは以下の通りです。
 
-このエンドポイントは、モデルレートを恒久的に削除します。一度削除されると、対応するモデルは課金対象外となり、使用できなくなります。
+1.  **ユーザー残高の確認**: ユーザーが十分なクレジット残高を持っているかを確認します。残高がゼロ以下の場合は、リクエストは `402 Payment Required` エラーで拒否されます。
+2.  **コストの計算**: AIプロバイダーがリクエストを正常に処理した後、AIGNE Hubはプロンプトと完了トークン（または画像数）に設定された `inputRate` と `outputRate` を乗じてクレジットでのコストを計算します。
+3.  **使用状況の記録**: 使用されたトークン、消費されたクレジット、関連するユーザーとモデルを詳述する使用記録がデータベースに作成されます。
+4.  **決済システムへの報告**: 消費されたクレジットはメーターイベントとして決済システムに報告され、その後ユーザーの残高から金額が差し引かれます。この報告は、複数の小さなリクエストを一つの更新にまとめるために調整（スロットリング）され、パフォーマンスを最適化します。
 
-*   **エンドポイント**: `DELETE /api/ai-providers/:providerId/model-rates/:rateId`
-*   **権限**: 管理者
+## まとめ
 
-## 5.3. 一括価格更新
-
-簡素化され一貫性のある価格調整のために、システムは定義された利益率に基づく一括更新メカニズムを提供します。この機能は、基礎となるプロバイダーのコストやクレジット評価の変更に応じて、グローバルに価格を調整する場合に特に便利です。
-
-*   **エンドポイント**: `POST /api/ai-providers/bulk-rate-update`
-*   **権限**: 管理者
-*   **ボディ**:
-    *   `profitMargin` (number, required): 希望する利益率をパーセンテージで指定（例：20%の場合は`20`）。
-    *   `creditPrice` (number, required): `unitCosts`と同じ通貨での単一クレジットユニットの実効価格（例：1クレジット = $0.000005の場合、`0.000005`）。
-
-**ワークフロー**:
-
-1.  システムは、`unitCosts`フィールドが設定されているすべての`AiModelRate`レコードを取得します。**このフィールドがないレートはスキップされます。**
-2.  各有効なレートについて、次の式を使用して新しい`inputRate`と`outputRate`を計算します：
-    `newRate = (unitCost / 1,000,000) * (1 + profitMargin / 100) / creditPrice`
-3.  計算されたレートがレコードに適用されます。
-
-これにより、運用者は各レートを手動で再計算するのではなく、ビジネスロジックに基づいて価格設定を維持できます。
-
-## 5.4. モデルの同期とヘルスチェック
-
-システムには、設定されたモデルの可用性とステータスをテストする機能が含まれています。
-
-*   **エンドポイント**: `GET /api/ai-providers/test-models`
-*   **権限**: 管理者
-*   **機能**: このエンドポイントは、設定された各モデルレートに対して非同期ジョブをトリガーします。ジョブは、保存された認証情報を使用してプロバイダーでモデルを検証しようとします。結果（成功または失敗）は`AiModelStatus`テーブルに保存され、モデルがエンドユーザーに利用可能であるべきかどうかを判断するために使用できます。
-
-**レート制限**: 乱用や下流のプロバイダーAPIへの過剰な負荷を防ぐため、このエンドポイントはレート制限されています。デフォルトでは、管理者は10分以内に最大5回までこのプロセスをトリガーできます。
-
-## 5.5. データモデル (`AiModelRate`)
-
-高度なトラブルシューティングのために、運用者はデータベースの`ai_model_rates`テーブルを直接検査する必要がある場合があります。
-
-| Column | Type | Description |
-| :--- | :--- | :--- |
-| `id` | String | レートレコードの一意の識別子（例：`rate_xxxxxxxx`）。 |
-| `providerId` | String | `AiProvider`レコードにリンクする外部キー。 |
-| `model` | String(100) | モデルの一意の識別子（例：`gpt-4o`）。 |
-| `modelDisplay` | String(100) | 人間が読めるモデル名（例：`GPT-4 Omni`）。 |
-| `type` | Enum | モデルのタイプ (`chatCompletion`, `embedding`, `imageGeneration`)。 |
-| `inputRate` | Decimal(10, 4) | 入力トークンのクレジットコスト。 |
-| `outputRate` | Decimal(10, 4) | 出力トークンまたは画像あたりのクレジットコスト。 |
-| `unitCosts` | JSON | プロバイダーからの基礎となるコストを保存します（例：`{ "input": 5.0, "output": 15.0 }`）。 |
-| `modelMetadata` | JSON | モデルの機能に関するメタデータを保存します（例：`maxTokens`, `features`）。 |
-
-## 5.6. 運用上の考慮事項
-
-*   **`unitCosts`の欠落**: 一括レート更新機能は、完全に`unitCosts`フィールドに依存しています。特定のモデルレートでこのフィールドが設定されていない場合、そのレートは一括更新中にスキップされます。利益率ベースの価格設定ツールを使用する予定がある場合、運用者はこのデータが正確に入力されていることを確認する必要があります。
-
-*   **価格設定のトラブルシューティング**: ユーザーがAPI呼び出しで予期しない金額を請求された場合、最初のステップは`ai_model_rates`テーブルで、使用された正確なモデルとプロバイダーをクエリすることです。`inputRate`と`outputRate`が期待値と一致することを確認してください。手動更新や一括更新が意図しない結果を生んだ場合に不一致が発生することがあります。
-
-*   **モデルの利用不可**: あるモデルがユーザーに対して一貫して失敗する場合、運用者は`GET /test-models`エンドポイントを使用してヘルスチェックをトリガーできます。`ai_model_status`テーブルで確認できる結果は、問題がモデル自体、プロバイダー、または保存された認証情報にあるのかを診断するのに役立ちます。
+クレジットベースの課金システムは、AIGNE Hubを包括的なAIリソース管理プラットフォームへと変えます。これにより、オペレーターは複雑なプロバイダーの価格設定を抽象化し、安定した内部エコノミーを構築し、明確な使用量ベースの指標に基づいてユーザーアクセスを管理するためのツールを手に入れることができます。モデルレートとユーザークレジットポリシーを慎重に設定することで、AIゲートウェイの持続可能で制御された運用を保証できます。

@@ -1,63 +1,94 @@
-# Getting Started
+# Authentication
 
-This guide provides the essential steps to deploy, configure, and start using AIGNE Hub. It is designed for operations and infrastructure teams who need to get the system running efficiently.
+All API requests to AIGNE Hub must be authenticated to ensure secure access to the gateway and its integrated AI services. This document outlines the token-based authentication mechanism required for all API interactions.
 
-## Overview
+Access to the API is controlled via Bearer tokens. A valid token must be included in the `Authorization` header of every request. Unauthenticated requests or requests with invalid credentials will result in an error.
 
-AIGNE Hub acts as a unified AI gateway, centralizing the management of multiple Large Language Model (LLM) and AIGC providers. It simplifies API key management, usage tracking, and billing, providing a single point of access for all AI services within your ecosystem. Built on the AIGNE framework and deployed as a Blocklet, it offers robust solutions for both internal enterprise use and public-facing service provider models.
+Further details on the available endpoints can be found in the [V2 Endpoints (Recommended)](./api-reference-v2-endpoints.md) section.
 
-![AIGNE Hub Dashboard](https://arcblock.oss-cn-shanghai.aliyuncs.com/images/doc-hub/c29f08420df8ea9a199fcb5ffe06febe.png)
+## Authentication Flow
 
-## 1. Deployment
+The process begins with an administrator generating an access token through the AIGNE Hub's user interface. This token is then provided to the client application, which includes it in the header of each API request. The AIGNE Hub API validates this token before processing the request.
 
-AIGNE Hub is designed to run on Blocklet Server, which provides the underlying orchestration, scaling, and management capabilities.
+```d2
+shape: sequence_diagram
 
-### Prerequisites
+Admin: {
+  shape: c4-person
+}
 
-- A running Blocklet Server instance.
-- Administrative access to the Blocklet Server to install and manage applications.
+AIGNE-Hub-Admin-UI: {
+  label: "AIGNE Hub\nAdmin UI"
+}
 
-### Installation Steps
+Client-Application: {
+  label: "Client Application"
+}
 
-1.  **Navigate to the Blocklet Store**: Access your Blocklet Server dashboard and go to the "Store" section.
-2.  **Find AIGNE Hub**: Use the search bar to find "AIGNE Hub".
-3.  **Launch the Application**: Click the "Launch" button on the AIGNE Hub page. The installation wizard will guide you through the initial setup process.
+AIGNE-Hub-API: {
+  label: "AIGNE Hub API"
+}
 
-Once the installation is complete, AIGNE Hub will be running as a service on your Blocklet Server.
+Admin -> AIGNE-Hub-Admin-UI: "1. Generate Access Token"
+AIGNE-Hub-Admin-UI -> Admin: "2. Provides Token"
+Admin -> Client-Application: "3. Configure with Token"
 
-## 2. Provider Configuration
+Client-Application -> AIGNE-Hub-API: "4. API Request\n(Authorization: Bearer <token>)"
+AIGNE-Hub-API -> AIGNE-Hub-API: "5. Validate Token & Permissions"
 
-After deployment, the first step is to connect AIGNE Hub to one or more AI providers. This involves adding the necessary API keys for the services you intend to use.
+"If Authorized" {
+  AIGNE-Hub-API -> Client-Application: "6a. 200 OK Response"
+}
 
-1.  **Access the Admin Panel**: Open your AIGNE Hub instance and navigate to the administrative dashboard.
-2.  **Go to AI Providers**: In the admin panel, find the configuration section and select **Config → AI Providers**.
-3.  **Add API Keys**: Select your desired AI provider from the list (e.g., OpenAI, Anthropic, Google Gemini) and enter your API key. The credentials are encrypted and stored securely.
+"If Unauthorized" {
+  AIGNE-Hub-API -> Client-Application: "6b. 401 Unauthorized Error"
+}
+```
 
-![Provider Configuration](https://arcblock.oss-cn-shanghai.aliyuncs.com/images/doc-hub/d037b6b6b092765ccbfa58706c241622.png)
+## Making Authenticated Requests
 
-## 3. Basic Usage
+To authenticate an API request, you must include an `Authorization` header containing your Bearer token.
 
-With providers configured, AIGNE Hub is ready to process AI requests. Applications can interact with the hub's unified API endpoint. Access is typically secured via OAuth or a generated API access key.
+**Header Format:**
 
-The following TypeScript example demonstrates how to invoke a chat model using the `@aigne/aigne-hub` client library.
+```
+Authorization: Bearer <YOUR_ACCESS_TOKEN>
+```
 
-```typescript
-// Using AIGNE Framework with AIGNE Hub
+Replace `<YOUR_ACCESS_TOKEN>` with the actual OAuth access key generated from the AIGNE Hub administrative interface.
+
+### Example: cURL Request
+
+This example demonstrates how to make a request to the chat completions endpoint using `curl`.
+
+```bash API Request with cURL icon=cib:curl
+curl -X POST 'https://your-aigne-hub-url/api/v2/chat/completions' \
+-H 'Authorization: Bearer your-oauth-access-key' \
+-H 'Content-Type: application/json' \
+-d '{
+  "model": "openai/gpt-3.5-turbo",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Hello, AIGNE Hub!"
+    }
+  ]
+}'
+```
+
+### Example: Node.js Client
+
+When using the official AIGNE Hub client library, the authentication headers are managed automatically.
+
+```typescript AIGNE Hub Client icon=logos:nodejs
 import { AIGNEHubChatModel } from "@aigne/aigne-hub";
 
-// Configure the client to point to your AIGNE Hub instance
 const model = new AIGNEHubChatModel({
-  // The full URL to your AIGNE Hub's chat API endpoint
   url: "https://your-aigne-hub-url/api/v2/chat",
-
-  // Your OAuth access key for authentication
   accessKey: "your-oauth-access-key",
-
-  // Specify the provider and model to use, e.g., "openai/gpt-3.5-turbo"
   model: "openai/gpt-3.5-turbo",
 });
 
-// Send a request to the model
 const result = await model.invoke({
   messages: "Hello, AIGNE Hub!",
 });
@@ -65,15 +96,31 @@ const result = await model.invoke({
 console.log(result);
 ```
 
-### Key Parameters:
+## Error Handling
 
-*   `url`: The endpoint of your self-hosted AIGNE Hub instance.
-*   `accessKey`: The security token obtained from AIGNE Hub's authentication system, granting the application permission to make API calls.
-*   `model`: A string identifier specifying both the provider and the model (e.g., `provider/model-name`). AIGNE Hub routes the request to the corresponding provider based on this value.
+If authentication fails, the API will respond with an HTTP `401 Unauthorized` status code. This indicates a problem with the credentials provided in the request.
 
-## Next Steps
+Common causes for a `401` error include:
 
-With the basic setup complete, you can now explore more advanced configurations based on your deployment scenario:
+| Cause | Description |
+| :--- | :--- |
+| **Missing Token** | The `Authorization` header was not included in the request. |
+| **Invalid Token** | The provided token is malformed, expired, or has been revoked. |
+| **Insufficient Permissions** | The token is valid, but the associated user or application lacks the necessary permissions for the requested resource. |
 
-*   **For Enterprise Use**: Integrate the Hub with your internal applications and manage team access using its built-in user management and security features.
-*   **For Service Providers**: If you plan to offer AIGNE Hub as a public service, the next step is to install the **Payment Kit** Blocklet, configure billing rates, and set up customer payment flows.
+### Example Error Response
+
+A failed authentication attempt will return a JSON object containing error details.
+
+```json Unauthorized Response icon=mdi:code-json
+{
+  "error": "Unauthorized",
+  "message": "Authentication token is invalid or missing."
+}
+```
+
+If you receive this response, verify that your access token is correct, has not expired, and possesses the required permissions before retrying the request.
+
+## Summary
+
+This section detailed the Bearer token authentication mechanism for the AIGNE Hub API. All requests must include a valid token in the `Authorization` header. For specific endpoint details, please proceed to the [V2 Endpoints (Recommended)](./api-reference-v2-endpoints.md) documentation.

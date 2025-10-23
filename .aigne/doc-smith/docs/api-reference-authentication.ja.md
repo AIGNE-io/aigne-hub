@@ -1,63 +1,94 @@
-# はじめに
+# 認証
 
-このガイドでは、AIGNE Hubをデプロイ、設定し、使用を開始するための基本的な手順を説明します。これは、システムを効率的に稼働させる必要がある運用およびインフラストラクチャチーム向けに設計されています。
+AIGNE Hub へのすべての API リクエストは、ゲートウェイとその統合 AI サービスへの安全なアクセスを確保するために認証される必要があります。このドキュメントでは、すべての API インタラクションに必要なトークンベースの認証メカニズムについて概説します。
 
-## 概要
+API へのアクセスは、Bearer トークンを介して制御されます。有効なトークンは、すべてのリクエストの `Authorization` ヘッダーに含める必要があります。認証されていないリクエストや、無効な認証情報を持つリクエストはエラーになります。
 
-AIGNE Hubは、統合AIゲートウェイとして機能し、複数の大規模言語モデル（LLM）およびAIGCプロバイダーの管理を一元化します。APIキー管理、使用状況の追跡、請求を簡素化し、エコシステム内のすべてのAIサービスに対する単一のアクセスポイントを提供します。AIGNEフレームワーク上に構築され、Blockletとしてデプロイされるため、社内エンタープライズ利用と公開サービスプロバイダーモデルの両方に対して堅牢なソリューションを提供します。
+利用可能なエンドポイントの詳細については、[V2 エンドポイント (推奨)](./api-reference-v2-endpoints.md) セクションをご覧ください。
 
-![AIGNE Hub ダッシュボード](https://arcblock.oss-cn-shanghai.aliyuncs.com/images/doc-hub/c29f08420df8ea9a199fcb5ffe06febe.png)
+## 認証フロー
 
-## 1. デプロイ
+このプロセスは、管理者が AIGNE Hub のユーザーインターフェースを通じてアクセストークンを生成することから始まります。このトークンはクライアントアプリケーションに提供され、クライアントアプリケーションは各 API リクエストのヘッダーにそれを含めます。AIGNE Hub API は、リクエストを処理する前にこのトークンを検証します。
 
-AIGNE HubはBlocklet Server上で実行されるように設計されており、Blocklet Serverが基盤となるオーケストレーション、スケーリング、および管理機能を提供します。
+```d2
+shape: sequence_diagram
 
-### 前提条件
+Admin: {
+  shape: c4-person
+}
 
-- 実行中のBlocklet Serverインスタンス。
-- アプリケーションをインストールおよび管理するためのBlocklet Serverへの管理者アクセス権。
+AIGNE-Hub-Admin-UI: {
+  label: "AIGNE Hub\n管理 UI"
+}
 
-### インストール手順
+Client-Application: {
+  label: "クライアントアプリケーション"
+}
 
-1.  **Blockletストアに移動**: Blocklet Serverのダッシュボードにアクセスし、「ストア」セクションに移動します。
-2.  **AIGNE Hubを検索**: 検索バーを使用して「AIGNE Hub」を検索します。
-3.  **アプリケーションを起動**: AIGNE Hubページの「起動」ボタンをクリックします。インストールウィザードが初期設定プロセスを案内します。
+AIGNE-Hub-API: {
+  label: "AIGNE Hub API"
+}
 
-インストールが完了すると、AIGNE HubはBlocklet Server上でサービスとして実行されます。
+Admin -> AIGNE-Hub-Admin-UI: "1. アクセストークンを生成"
+AIGNE-Hub-Admin-UI -> Admin: "2. トークンを提供"
+Admin -> Client-Application: "3. トークンで設定"
 
-## 2. プロバイダーの設定
+Client-Application -> AIGNE-Hub-API: "4. API リクエスト\n(Authorization: Bearer <token>)"
+AIGNE-Hub-API -> AIGNE-Hub-API: "5. トークンと権限を検証"
 
-デプロイ後の最初のステップは、AIGNE Hubを1つ以上のAIプロバイダーに接続することです。これには、使用するサービスに必要なAPIキーを追加する作業が含まれます。
+"認証された場合" {
+  AIGNE-Hub-API -> Client-Application: "6a. 200 OK レスポンス"
+}
 
-1.  **管理パネルにアクセス**: AIGNE Hubインスタンスを開き、管理ダッシュボードに移動します。
-2.  **AIプロバイダーに移動**: 管理パネルで設定セクションを見つけ、**設定 → AIプロバイダー** を選択します。
-3.  **APIキーを追加**: リストから希望のAIプロバイダー（例：OpenAI, Anthropic, Google Gemini）を選択し、APIキーを入力します。認証情報は暗号化され、安全に保存されます。
+"認証されなかった場合" {
+  AIGNE-Hub-API -> Client-Application: "6b. 401 Unauthorized エラー"
+}
+```
 
-![プロバイダー設定](https://arcblock.oss-cn-shanghai.aliyuncs.com/images/doc-hub/d037b6b6b092765ccbfa58706c241622.png)
+## 認証済みリクエストの実行
 
-## 3. 基本的な使用方法
+API リクエストを認証するには、Bearer トークンを含む `Authorization` ヘッダーを含める必要があります。
 
-プロバイダーが設定されると、AIGNE HubはAIリクエストを処理する準備が整います。アプリケーションはハブの統合APIエンドポイントと対話できます。アクセスは通常、OAuthまたは生成されたAPIアクセスキーによって保護されます。
+**ヘッダーの形式:**
 
-次のTypeScriptの例は、`@aigne/aigne-hub`クライアントライブラリを使用してチャットモデルを呼び出す方法を示しています。
+```
+Authorization: Bearer <YOUR_ACCESS_TOKEN>
+```
 
-```typescript
-// AIGNE HubでAIGNEフレームワークを使用
+`<YOUR_ACCESS_TOKEN>` を、AIGNE Hub 管理インターフェースから生成された実際の OAuth アクセスキーに置き換えてください。
+
+### 例: cURL リクエスト
+
+この例では、`curl` を使用してチャット補完エンドポイントにリクエストを行う方法を示します。
+
+```bash cURL を使用した API リクエスト icon=cib:curl
+curl -X POST 'https://your-aigne-hub-url/api/v2/chat/completions' \
+-H 'Authorization: Bearer your-oauth-access-key' \
+-H 'Content-Type: application/json' \
+-d '{
+  "model": "openai/gpt-3.5-turbo",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Hello, AIGNE Hub!"
+    }
+  ]
+}'
+```
+
+### 例: Node.js クライアント
+
+公式の AIGNE Hub クライアントライブラリを使用する場合、認証ヘッダーは自動的に管理されます。
+
+```typescript AIGNE Hub クライアント icon=logos:nodejs
 import { AIGNEHubChatModel } from "@aigne/aigne-hub";
 
-// クライアントがAIGNE Hubインスタンスを指すように設定
 const model = new AIGNEHubChatModel({
-  // AIGNE HubのチャットAPIエンドポイントの完全なURL
   url: "https://your-aigne-hub-url/api/v2/chat",
-
-  // 認証用のOAuthアクセスキー
   accessKey: "your-oauth-access-key",
-
-  // 使用するプロバイダーとモデルを指定します（例：「openai/gpt-3.5-turbo」）
   model: "openai/gpt-3.5-turbo",
 });
 
-// モデルにリクエストを送信
 const result = await model.invoke({
   messages: "Hello, AIGNE Hub!",
 });
@@ -65,15 +96,31 @@ const result = await model.invoke({
 console.log(result);
 ```
 
-### 主なパラメータ：
+## エラーハンドリング
 
-*   `url`: セルフホストされたAIGNE Hubインスタンスのエンドポイント。
-*   `accessKey`: AIGNE Hubの認証システムから取得したセキュリティトークン。アプリケーションにAPIコールを行う権限を付与します。
-*   `model`: プロバイダーとモデルの両方を指定する文字列識別子（例：`provider/model-name`）。AIGNE Hubは、この値に基づいてリクエストを対応するプロバイダーにルーティングします。
+認証に失敗した場合、API は HTTP `401 Unauthorized` ステータスコードで応答します。これは、リクエストで提供された認証情報に問題があることを示します。
 
-## 次のステップ
+`401` エラーの一般的な原因は次のとおりです。
 
-基本的な設定が完了したので、次にデプロイシナリオに基づいてより高度な設定を検討できます。
+| 原因 | 説明 |
+| :--- | :--- |
+| **トークンの欠落** | リクエストに `Authorization` ヘッダーが含まれていませんでした。 |
+| **無効なトークン** | 提供されたトークンが不正、期限切れ、または失効しています。 |
+| **権限不足** | トークンは有効ですが、関連付けられたユーザーまたはアプリケーションには、要求されたリソースに対する必要な権限がありません。 |
 
-*   **エンタープライズ利用の場合**: ハブを社内アプリケーションと統合し、組み込みのユーザー管理およびセキュリティ機能を使用してチームのアクセスを管理します。
-*   **サービスプロバイダーの場合**: AIGNE Hubを公開サービスとして提供する予定がある場合、次のステップは**Payment Kit** Blockletをインストールし、請求レートを設定し、顧客の支払いフローをセットアップすることです。
+### エラーレスポンスの例
+
+認証試行が失敗すると、エラー詳細を含む JSON オブジェクトが返されます。
+
+```json Unauthorized レスポンス icon=mdi:code-json
+{
+  "error": "Unauthorized",
+  "message": "Authentication token is invalid or missing."
+}
+```
+
+このレスポンスを受け取った場合は、リクエストを再試行する前に、アクセストークンが正しく、有効期限が切れておらず、必要な権限を持っていることを確認してください。
+
+## まとめ
+
+このセクションでは、AIGNE Hub API の Bearer トークン認証メカニズムについて詳しく説明しました。すべてのリクエストには、`Authorization` ヘッダーに有効なトークンを含める必要があります。特定のエンドポイントの詳細については、[V2 エンドポイント (推奨)](./api-reference-v2-endpoints.md) のドキュメントに進んでください。

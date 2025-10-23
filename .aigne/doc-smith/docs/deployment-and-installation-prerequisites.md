@@ -1,29 +1,70 @@
-# Technical Architecture
+# Prerequisites
 
-AIGNE Hub is engineered as a cloud-native application, optimized for reliability, scalability, and ease of maintenance. The architecture leverages a modern technology stack, with each component selected to meet the specific demands of a high-performance AI gateway. The system is designed to be deployed as a self-contained unit, minimizing external dependencies and simplifying operational management.
+Before deploying AIGNE Hub, it is essential to ensure that the target environment meets the specified software and system requirements. This section outlines the necessary dependencies for a successful installation and smooth operation. Adhering to these prerequisites will prevent compatibility issues and facilitate the deployment process.
 
-![logo.png](../../../blocklets/core/screenshots/logo.png)
+## Software Requirements
 
-### Core Components
+The following software components must be installed and correctly configured on the host system.
 
-The architecture is composed of several key layers:
+### Node.js
 
-| Component | Technology | Rationale |
-| :--- | :--- | :--- |
-| **Application Framework** | AIGNE Framework | Provides the foundational structure for the backend service, including dependency injection, configuration management, and lifecycle hooks. It standardizes development and ensures seamless integration within the AIGNE ecosystem. |
-| **Backend Runtime** | Node.js & TypeScript | Node.js is used for its non-blocking, event-driven I/O model, which is highly efficient for handling numerous concurrent API requests to external LLM providers. TypeScript adds static typing, improving code quality, maintainability, and reducing runtime errors—a critical feature for a core infrastructure service. |
-| **Frontend Interface** | React 19 | The administrative dashboard and model playground are built with the latest version of React. This provides a modern, responsive, and high-performance user interface for configuration, monitoring, and testing. |
-| **Data Storage** | SQLite with Sequelize ORM | SQLite is employed as the default embedded database, which simplifies deployment by eliminating the need for an external database server. This design choice makes AIGNE Hub lightweight and easy to install. The Sequelize ORM abstracts database interactions and provides the flexibility to switch to other SQL databases like PostgreSQL for larger-scale deployments if necessary. |
-| **Deployment & Packaging**| Blocklet | The entire application is packaged as a Blocklet. This cloud-native containerization approach encapsulates the application, its runtime, and all dependencies into a single, deployable unit. For operations teams, this significantly simplifies installation, upgrades, and scaling on any Blocklet Server instance. |
+AIGNE Hub is a Node.js application and requires a specific version of the runtime to function correctly.
 
-### System Design and Data Flow
+*   **Requirement**: Node.js is the JavaScript runtime environment that executes the AIGNE Hub backend services.
+*   **Required Version**: `18.0.0` or higher.
+*   **Verification**: To check your installed version, execute the following command in your terminal:
+    ```bash Node.js Version Check icon=logos:nodejs-icon
+    node -v
+    ```
+*   **Installation**: If you do not have Node.js installed or need to upgrade, it is recommended to use a version manager like [nvm](https://github.com/nvm-sh/nvm) (for Linux/macOS) or [nvm-windows](https://github.com/coreybutler/nvm-windows) to manage multiple Node.js versions. Official installers are also available on the [Node.js website](https://nodejs.org/).
 
-1.  **Request Ingestion**: Client applications (e.g., those built with AIGNE Framework, AIGNE Studio, or custom scripts) send API requests to AIGNE Hub's RESTful endpoints (e.g., `/api/v2/chat`). These requests are secured via OAuth access keys.
-2.  **Authentication & Authorization**: The Hub's gateway layer intercepts the request, validates the access key, and checks associated permissions and user credit balances (if in service provider mode).
-3.  **Provider Routing**: Based on the request parameters (e.g., `model: "openai/gpt-3.5-turbo"`), the Hub's routing logic selects the appropriate downstream AI provider.
-4.  **Credential Injection**: The Hub securely retrieves the corresponding provider's API key from its encrypted storage and injects it into the request.
-5.  **API Call & Response**: The Hub forwards the transformed request to the target AI provider's API. Upon receiving the response, it normalizes the output into a standardized format.
-6.  **Logging & Analytics**: Before returning the response to the client, the Hub logs the transaction details, including token usage, cost, and latency. This data powers the usage analytics and billing systems.
-7.  **Response to Client**: The final, standardized response is sent back to the client application.
+### pnpm
 
-This architecture ensures that AIGNE Hub acts as a robust and transparent intermediary, centralizing control, security, and observability for all AI operations within an organization. The use of Blocklet technology abstracts away underlying infrastructure complexities, allowing DevOps and SRE teams to manage the Hub as a predictable, versioned, and scalable service.
+For manual installations from source or for development purposes, `pnpm` is the specified package manager. It is required for efficient dependency management.
+
+*   **Requirement**: `pnpm` is a fast, disk space-efficient package manager. It is used to install and manage the project's dependencies.
+*   **Required Version**: `9.0.0` or higher.
+*   **Verification**: To check your installed version, run this command:
+    ```bash pnpm Version Check icon=logos:pnpm
+    pnpm -v
+    ```
+*   **Installation**: `pnpm` can be installed via npm (which is included with Node.js) or other methods. The recommended approach is to use their standalone script. For detailed instructions, please refer to the [official pnpm installation guide](https://pnpm.io/installation).
+
+    ```bash Install pnpm icon=logos:pnpm
+    npm install -g pnpm
+    ```
+
+## Deployment Environment
+
+AIGNE Hub is designed and packaged as a [Blocklet](https://www.blocklet.io/), which runs on the Blocklet Server.
+
+### Blocklet Server
+
+Blocklet Server is the cloud-native application server that manages the lifecycle, configuration, and operation of Blocklets like AIGNE Hub.
+
+*   **Requirement**: Blocklet Server provides the necessary runtime environment, including reverse proxying, automatic HTTPS, and user authentication, which are essential for AIGNE Hub's operation.
+*   **Installation**: Blocklet Server can be installed on various platforms. The recommended and simplest method is using the `blocklet-cli`.
+    ```bash Install Blocklet CLI icon=lucide:terminal
+    npm install -g @blocklet/cli
+    ```
+    Once the CLI is installed, you can initialize and start the server.
+    ```bash Initialize Blocklet Server icon=lucide:server
+    blocklet server init
+    blocklet server start
+    ```
+*   **Further Information**: For comprehensive installation and management instructions, please consult the [Blocklet Server documentation](https://docs.blocklet.io/docs/en/getting-started).
+
+## Summary
+
+To summarize, a compliant deployment environment for AIGNE Hub requires:
+
+| Component        | Minimum Version | Purpose                                     |
+| ---------------- | --------------- | ------------------------------------------- |
+| Node.js          | `>= 18.0.0`     | JavaScript runtime environment              |
+| pnpm             | `>= 9.0.0`      | Package management (for manual builds)      |
+| Blocklet Server  | Latest          | Application server and runtime environment  |
+
+Ensuring these prerequisites are met is the first and most critical step for a stable and secure AIGNE Hub deployment. Once your environment is correctly set up, you can proceed to the installation guides.
+
+- For the recommended one-click deployment, see [Blocklet Store Deployment](./deployment-and-installation-blocklet-store.md).
+- For developers and advanced users, follow the [Manual Installation](./deployment-and-installation-manual-installation.md) guide.

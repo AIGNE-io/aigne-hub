@@ -1,161 +1,207 @@
-# API リファレンス
+# V1エンドポイント（レガシー）
 
-このドキュメントでは、AIGNE Hub API のアーキテクチャ、エンドポイント、および運用上の動作に焦点を当て、詳細なリファレンスを提供します。これは、サービスのデプロイと管理を担当する DevOps、SRE、およびインフラストラクチャチームを対象としています。
+このセクションでは、レガシー V1 API エンドポイントに関するドキュメントを提供します。これらのエンドポイントは、古いインテグレーションをサポートし、後方互換性を確保するために維持されています。すべての新規開発においては、ユーザーレベルの認証やクレジットベースの課金など、強化された機能を提供する [V2エンドポイント](./api-reference-v2-endpoints.md) の使用を強く推奨します。
 
-## システムアーキテクチャ
-
-AIGNE Hub API は、さまざまな AI サービスのための堅牢なマルチプロバイダーゲートウェイとして設計されています。チャット補完、埋め込み、画像生成のための統一されたインターフェースを提供し、異なる基盤となる AI プロバイダーの管理の複雑さを抽象化します。
-
-### プロバイダーの抽象化と認証情報管理
-
-API の中心的な設計原則は、複数の AI プロバイダー（例：OpenAI、Bedrock）とシームレスに接続できる能力です。これはプロバイダー抽象化レイヤーを通じて実現されます。
-
--   **動的な認証情報読み込み**: システムは、安全なストアからさまざまなプロバイダーの認証情報を動的に読み込みます。リクエストがモデル（例：`openai/gpt-4`）を指定すると、API はプロバイダー（`openai`）を特定し、必要な認証情報を取得します。
--   **認証情報のローテーション**: API は単一のプロバイダーに対して複数の認証情報をサポートし、自動的にローテーションします。アクティブな認証情報を循環させるために `getNextAvailableCredential` 戦略を使用し、セキュリティと可用性の両方を向上させます。これにより、レートリミットの分散とゼロダウンタイムでのキーローテーションが可能になります。
--   **設定**: AI プロバイダーとその認証情報は、システムのデータベース内で `AiProvider` および `AiCredential` モデルを介して管理されます。これにより、管理者はコードを変更することなく、プロバイダーの詳細を追加、無効化、または更新できます。
-
-### 回復性とエラーハンドリング
-
-高可用性を確保するため、API はアップストリームのプロバイダーリクエストに対する自動リトライメカニズムを組み込んでいます。
-
--   **リトライロジック**: システムは、重要なエンドポイントに対して `createRetryHandler` を使用します。基盤となる AI プロバイダーへのリクエストがリトライ可能なステータスコード（`429 Too Many Requests`、`500 Internal Server Error`、`502 Bad Gateway`）で失敗した場合、API は自動的にリクエストを再試行します。
--   **設定可能性**: 最大リトライ回数は `maxRetries` 環境変数を介して設定可能であり、運用者はニーズに応じてシステムの回復性を調整できます。
-
-### 認証
-
-API エンドポイントは、コンポーネントベースの認証メカニズム（`ensureRemoteComponentCall` および `ensureComponentCall`）によって保護されています。これにより、エコシステム内の承認されたサービスまたはコンポーネントのみが API にアクセスできることが保証され、通常は公開鍵ベースの検証システムが使用されます。
-
-## エンドポイント
-
-以下のセクションでは、利用可能な API エンドポイントについて詳しく説明します。すべてのエンドポイントには `/v1` というプレフィックスが付きます。
+すべての V1 エンドポイントには認証が必要です。リクエストには、Bearer トークンを含む `Authorization` ヘッダーを含める必要があります。
 
 ---
 
-### チャット補完
+## チャット補完
 
-このエンドポイントは、与えられたチャットの会話やプロンプトに対する応答を生成します。標準レスポンスとストリーミングレスポンスの両方をサポートしています。
+このエンドポイントは、指定された会話に対する応答を生成します。ストリーミングモードと非ストリーミングモードの両方をサポートしています。
 
-`POST /v1/chat/completions`
-`POST /v1/completions`
+**エンドポイント**
 
-**リクエストボディ**
+```
+POST /api/v1/chat/completions
+```
 
-| フィールド | タイプ | 説明 | 必須 |
-| :--- | :--- | :--- | :--- |
-| `model` | string | 使用するモデルの ID（例：`openai/gpt-4`、`google/gemini-pro`）。 | はい |
-| `messages` | array | 会話履歴を表すメッセージオブジェクトの配列。以下のオブジェクト構造を参照してください。 | はい（または `prompt`） |
-| `prompt` | string | 単一のプロンプト文字列。`messages: [{ "role": "user", "content": "..." }]` の省略形です。 | はい（または `messages`） |
-| `stream` | boolean | `true` の場合、レスポンスはサーバー送信イベントストリームとして送信されます。 | いいえ |
-| `temperature` | number | ランダム性を制御します。0 から 2 の間の値。値が高いほど出力がランダムになります。 | いいえ |
-| `topP` | number | ニュークリアスサンプリング。0.1 から 1 の間の値。モデルは `topP` の確率質量を持つトークンを考慮します。 | いいえ |
-| `maxTokens` | integer | 補完で生成するトークンの最大数。 | いいえ |
-| `presencePenalty` | number | -2.0 から 2.0 の間の値。正の値は、これまでのテキストに出現したかどうかに基づいて新しいトークンにペナルティを与えます。 | いいえ |
-| `frequencyPenalty` | number | -2.0 から 2.0 の間の値。正の値は、これまでのテキストにおける既存の頻度に基づいて新しいトークンにペナルティを与えます。 | いいえ |
-| `tools` | array | モデルが呼び出す可能性のあるツールのリスト。 | いいえ |
-| `toolChoice` | string or object | モデルがどのツールを使用すべきかを制御します。"none"、"auto"、"required"、または関数を指定できます。 | いいえ |
-| `responseFormat` | object | 出力形式を指定します。JSON モードの場合、`{ "type": "json_object" }` を使用します。 | いいえ |
+### リクエストボディ
 
-**メッセージオブジェクトの構造** (`messages` 配列)
+リクエストボディは、以下のパラメータを持つ JSON オブジェクトである必要があります。
 
-| フィールド | タイプ | 説明 |
-| :--- | :--- | :--- |
-| `role` | string | メッセージ作成者の役割。`system`、`user`、`assistant`、または `tool` のいずれか。 |
-| `content` | string or array | メッセージの内容。文字列、またはマルチモーダル入力（例：テキストと画像）用の配列にすることができます。 |
-| `toolCalls` | array | `assistant` ロールの場合、モデルによって行われたツールコールのリスト。 |
-| `toolCallId` | string | `tool` ロールの場合、このメッセージが応答するツールコールの ID。 |
+<x-field-group>
+  <x-field data-name="model" data-type="string" data-required="false" data-default="gpt-3.5-turbo">
+    <x-field-desc markdown>使用するモデルのID。どのモデルがチャットAPIで動作するかの詳細については、モデルエンドポイントの互換性テーブルを参照してください。</x-field-desc>
+  </x-field>
+  <x-field data-name="messages" data-type="array" data-required="true">
+    <x-field-desc markdown>これまでの会話を構成するメッセージのリスト。</x-field-desc>
+    <x-field data-name="role" data-type="string" data-required="true">
+       <x-field-desc markdown>メッセージ作成者の役割。`system`、`user`、`assistant`、`tool` のいずれかである必要があります。</x-field-desc>
+    </x-field>
+    <x-field data-name="content" data-type="string" data-required="true">
+       <x-field-desc markdown>メッセージの内容。</x-field-desc>
+    </x-field>
+  </x-field>
+  <x-field data-name="stream" data-type="boolean" data-required="false" data-default="false">
+    <x-field-desc markdown>設定した場合、ChatGPTのように部分的なメッセージ差分が送信されます。トークンは利用可能になり次第、データのみのサーバー送信イベントとして送信され、ストリームは `data: [DONE]` メッセージで終了します。</x-field-desc>
+  </x-field>
+  <x-field data-name="temperature" data-type="number" data-required="false" data-default="1">
+    <x-field-desc markdown>使用するサンプリング温度。0から2の間の値を指定します。0.8のような高い値は出力をよりランダムにし、0.2のような低い値はより焦点を絞った決定論的な出力にします。</x-field-desc>
+  </x-field>
+  <x-field data-name="maxTokens" data-type="integer" data-required="false">
+    <x-field-desc markdown>チャット補完で生成するトークンの最大数。</x-field-desc>
+  </x-field>
+  <x-field data-name="topP" data-type="number" data-required="false" data-default="1">
+    <x-field-desc markdown>温度（temperature）によるサンプリングの代替手法で、ニュークリアスサンプリングと呼ばれます。この方法では、モデルは top_p の確率質量を持つトークンの結果を考慮します。したがって、0.1 は、上位 10% の確率質量を構成するトークンのみが考慮されることを意味します。</x-field-desc>
+  </x-field>
+  <x-field data-name="presencePenalty" data-type="number" data-required="false" data-default="0">
+    <x-field-desc markdown>-2.0から2.0の間の数値。正の値は、これまでのテキストに既出かどうかに基づいて新しいトークンにペナルティを課し、モデルが新しいトピックについて話す可能性を高めます。</x-field-desc>
+  </x-field>
+  <x-field data-name="frequencyPenalty" data-type="number" data-required="false" data-default="0">
+    <x-field-desc markdown>-2.0から2.0の間の数値。正の値は、これまでのテキストにおける既存の頻度に基づいて新しいトークンにペナルティを課し、モデルが同じ行を逐語的に繰り返す可能性を低くします。</x-field-desc>
+  </x-field>
+</x-field-group>
 
-**レスポンス（非ストリーミング）**
+### リクエストの例
 
--   `Content-Type: application/json`
--   レスポンスは、アシスタントの返信を含む JSON オブジェクトです。
+```bash リクエスト例
+curl -X POST \
+  https://your-hub-url.com/api/v1/chat/completions \
+  -H "Authorization: Bearer <YOUR_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{
+        "model": "gpt-4o-mini",
+        "messages": [
+            {
+                "role": "user",
+                "content": "Hello, who are you?"
+            }
+        ]
+      }'
+```
 
-```json
+### レスポンスの例（非ストリーミング）
+
+```json レスポンス
 {
   "role": "assistant",
-  "content": "This is the generated response.",
-  "text": "This is the generated response.",
-  "toolCalls": [],
+  "text": "I am a large language model, trained by Google.",
+  "content": "I am a large language model, trained by Google.",
   "usage": {
-    "promptTokens": 5,
-    "completionTokens": 10,
-    "totalTokens": 15,
-    "aigneHubCredits": 0.00015
+    "inputTokens": 8,
+    "outputTokens": 9,
+    "aigneHubCredits": 0.00012
   }
 }
 ```
 
-**レスポンス（ストリーミング）**
-
--   `Content-Type: text/event-stream`
--   レスポンスはサーバー送信イベントのストリームです。各イベントは、補完のチャンクを表す JSON オブジェクトです。最後のイベントには使用状況の統計が含まれる場合があります。
-
 ---
 
-### 埋め込み
+## 埋め込み
 
-このエンドポイントは、与えられた入力のベクトル表現を作成します。これは、セマンティック検索、クラスタリング、その他の機械学習タスクに使用できます。
+このエンドポイントは、入力テキストを表す埋め込みベクトルを作成します。
 
-`POST /v1/embeddings`
+**エンドポイント**
 
-**リクエストボディ**
+```
+POST /api/v1/embeddings
+```
 
-| フィールド | タイプ | 説明 | 必須 |
-| :--- | :--- | :--- | :--- |
-| `model` | string | 使用する埋め込みモデルの ID（例：`openai/text-embedding-ada-002`）。 | はい |
-| `input` | string or array | 埋め込む入力テキストまたはトークン。単一の文字列、または文字列/トークンの配列にすることができます。 | はい |
+### リクエストボディ
 
-**レスポンス**
+<x-field-group>
+  <x-field data-name="model" data-type="string" data-required="true">
+    <x-field-desc markdown>埋め込みを作成するために使用するモデルのID。</x-field-desc>
+  </x-field>
+  <x-field data-name="input" data-type="string or array" data-required="true">
+    <x-field-desc markdown>埋め込む入力テキスト。文字列またはトークンの配列としてエンコードされます。単一のリクエストで複数の入力を埋め込むには、文字列の配列を渡します。</x-field-desc>
+  </x-field>
+</x-field-group>
 
--   `Content-Type: application/json`
--   レスポンスには、埋め込みデータと使用状況情報が含まれます。
+### リクエストの例
 
-```json
+```bash リクエスト例
+curl -X POST \
+  https://your-hub-url.com/api/v1/embeddings \
+  -H "Authorization: Bearer <YOUR_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{
+        "model": "text-embedding-ada-002",
+        "input": "The food was delicious and the waiter..."
+      }'
+```
+
+### レスポンスの例
+
+```json レスポンス
 {
   "data": [
     {
-      "embedding": [ -0.00692, -0.0053, ... ],
-      "index": 0,
-      "object": "embedding"
+      "object": "embedding",
+      "embedding": [
+        -0.006929283495992422,
+        -0.005336422473192215,
+        ...
+        -4.547132266452536e-05
+      ],
+      "index": 0
     }
-  ],
-  "usage": {
-    "prompt_tokens": 8,
-    "total_tokens": 8
-  }
+  ]
 }
 ```
 
 ---
 
-### 画像生成
+## 画像生成
 
-このエンドポイントは、テキストプロンプトから画像を生成します。
+このエンドポイントは、テキストプロンプトに基づいて画像を生成します。
 
-`POST /v1/image/generations`
+**エンドポイント**
 
-**リクエストボディ**
+```
+POST /api/v1/image/generations
+```
 
-| フィールド | タイプ | 説明 | 必須 |
-| :--- | :--- | :--- | :--- |
-| `model` | string | 使用する画像生成モデルの ID（例：`dall-e-2`、`dall-e-3`）。 | はい |
-| `prompt` | string | 希望する画像のテキスト説明。 | はい |
-| `n` | integer | 生成する画像の数。1 から 10 の間でなければなりません。デフォルトは 1 です。 | いいえ |
-| `size` | string | 生成される画像のサイズ（例：`1024x1024`、`1792x1024`）。 | いいえ |
-| `responseFormat` | string | 生成された画像が返される形式。`url` または `b64_json` が指定できます。デフォルトは `url` です。 | いいえ |
-| `quality` | string | 生成する画像の品質。`standard` または `hd` が指定できます。 | いいえ |
+### リクエストボディ
 
-**レスポンス**
+<x-field-group>
+  <x-field data-name="model" data-type="string" data-required="false" data-default="dall-e-2">
+    <x-field-desc markdown>画像生成に使用するモデル。</x-field-desc>
+  </x-field>
+  <x-field data-name="prompt" data-type="string" data-required="true">
+    <x-field-desc markdown>希望する画像についてのテキスト説明。最大長はモデルに依存します。</x-field-desc>
+  </x-field>
+  <x-field data-name="n" data-type="integer" data-required="false" data-default="1">
+    <x-field-desc markdown>生成する画像の数。1から10の間である必要があります。</x-field-desc>
+  </x-field>
+  <x-field data-name="size" data-type="string" data-required="false">
+    <x-field-desc markdown>生成される画像のサイズ。DALL·E 2 の場合は `256x256`、`512x512`、`1024x1024` のいずれかである必要があります。DALL·E 3 モデルの場合は `1024x1024`、`1792x1024`、`1024x1792` のいずれかである必要があります。</x-field-desc>
+  </x-field>
+  <x-field data-name="response_format" data-type="string" data-required="false">
+    <x-field-desc markdown>生成された画像が返される形式。`url` または `b64_json` のいずれかである必要があります。</x-field-desc>
+  </x-field>
+</x-field-group>
 
--   `Content-Type: application/json`
--   レスポンスには、生成された画像の URL または base64 エンコードされた JSON と、使用状況データが含まれます。
+### リクエストの例
 
-```json
+```bash リクエスト例
+curl -X POST \
+  https://your-hub-url.com/api/v1/image/generations \
+  -H "Authorization: Bearer <YOUR_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{
+        "model": "dall-e-3",
+        "prompt": "A cute corgi wearing a space suit",
+        "n": 1,
+        "size": "1024x1024"
+      }'
+```
+
+### レスポンスの例
+
+```json レスポンス
 {
   "images": [
-    { "url": "https://..." },
-    { "b64Json": "..." }
+    {
+      "url": "https://oaidalleapiprodscus.blob.core.windows.net/private/..."
+    }
   ],
-  "data": [ /* same as images */ ],
+  "data": [
+    {
+      "url": "https://oaidalleapiprodscus.blob.core.windows.net/private/..."
+    }
+  ],
   "model": "dall-e-3",
   "usage": {
     "aigneHubCredits": 0.04
@@ -165,31 +211,72 @@ API エンドポイントは、コンポーネントベースの認証メカニ�
 
 ---
 
-### 音声サービス（プロキシ）
+## 音声文字起こし
 
-音声文字起こしと音声合成のエンドポイントは、OpenAI v1 API への直接のプロキシです。AIGNE Hub API は、リクエストを転送する前に、管理下の認証情報ストアから適切な API キーを挿入して認証を処理します。
+このエンドポイントは、音声を元の言語に文字起こしします。アップストリームプロバイダーのサービスへのプロキシとして機能します。
 
-リクエストとレスポンスの形式については、公式の OpenAI API ドキュメントを参照してください。
+**エンドポイント**
 
--   **音声文字起こし**: `POST /v1/audio/transcriptions`
--   **音声合成**: `POST /v1/audio/speech`
+```
+POST /api/v1/audio/transcriptions
+```
+
+### リクエストボディ
+
+リクエストボディは、オーディオファイルとモデル名を含む `multipart/form-data` オブジェクトである必要があります。このエンドポイントは `api.openai.com/v1/audio/transcriptions` に直接プロキシされるため、詳細なパラメータ仕様については [OpenAI の公式ドキュメント](https://platform.openai.com/docs/api-reference/audio/createTranscription) を参照してください。
+
+### リクエストの例
+
+```bash リクエスト例
+curl -X POST \
+  https://your-hub-url.com/api/v1/audio/transcriptions \
+  -H "Authorization: Bearer <YOUR_TOKEN>" \
+  -H "Content-Type: multipart/form-data" \
+  -F file="@/path/to/your/audio.mp3" \
+  -F model="whisper-1"
+```
+
+### レスポンス
+
+レスポンス形式は、OpenAI Audio API が文字起こしのために返すものと同一になります。
 
 ---
 
-### システムステータス
+## 音声合成
 
-このエンドポイントは、サービスが実行中であり、少なくとも 1 つの AI プロバイダーの API キーが設定されていることを確認するための簡単なヘルスチェックを提供します。
+このエンドポイントは、入力テキストから音声を生成します。アップストリームプロバイダーのサービスへのプロキシとして機能します。
 
-`GET /v1/status`
+**エンドポイント**
 
-**レスポンス**
-
--   `Content-Type: application/json`
-
-```json
-{
-  "available": true
-}
+```
+POST /api/v1/audio/speech
 ```
 
--   `available`: 1 つ以上の API キーが設定され、使用可能かどうかを示すブール値。
+### リクエストボディ
+
+リクエストボディは JSON オブジェクトである必要があります。このエンドポイントは `api.openai.com/v1/audio/speech` に直接プロキシされるため、詳細なパラメータ仕様については [OpenAI の公式ドキュメント](https://platform.openai.com/docs/api-reference/audio/createSpeech) を参照してください。
+
+### リクエストの例
+
+```bash リクエスト例
+curl -X POST \
+  https://your-hub-url.com/api/v1/audio/speech \
+  -H "Authorization: Bearer <YOUR_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{
+        "model": "tts-1",
+        "input": "The quick brown fox jumped over the lazy dog.",
+        "voice": "alloy"
+      }' \
+  --output speech.mp3
+```
+
+### レスポンス
+
+レスポンスは、リクエストで指定された形式（例：MP3）で生成されたオーディオファイルになります。
+
+---
+
+## まとめ
+
+このガイドでは、AIGNE Hub で利用可能なレガシー V1 API エンドポイントについて詳しく説明しました。これらのエンドポイントは機能しますが、新しい機能が追加されない可能性があります。最新の改善点を活用し、長期的な互換性を確保するために、[V2エンドポイント](./api-reference-v2-endpoints.md) への移行をお勧めします。API のセキュリティと認証に関する詳細については、[認証](./api-reference-authentication.md) のセクションを参照してください。

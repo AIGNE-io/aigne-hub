@@ -1,161 +1,207 @@
-# API Reference
+# V1 Endpoints (Legacy)
 
-This document provides a detailed reference for the AIGNE Hub API, focusing on its architecture, endpoints, and operational behavior. It is intended for DevOps, SRE, and infrastructure teams responsible for deploying and managing the service.
+This section provides documentation for the legacy V1 API endpoints. These endpoints are maintained to support older integrations and ensure backward compatibility. For all new development, it is strongly recommended to use the [V2 Endpoints](./api-reference-v2-endpoints.md), which offer enhanced features, including user-level authentication and credit-based billing.
 
-## System Architecture
-
-The AIGNE Hub API is designed as a robust, multi-provider gateway for various AI services. It provides a unified interface for chat completions, embeddings, and image generation, while abstracting the complexity of managing different underlying AI providers.
-
-### Provider Abstraction and Credential Management
-
-A core design principle of the API is its ability to connect with multiple AI providers (e.g., OpenAI, Bedrock) seamlessly. This is achieved through a provider abstraction layer.
-
--   **Dynamic Credential Loading**: The system dynamically loads credentials for different providers from a secure store. When a request specifies a model (e.g., `openai/gpt-4`), the API identifies the provider (`openai`) and retrieves the necessary credentials.
--   **Credential Rotation**: The API supports multiple credentials for a single provider and automatically rotates them. It uses a `getNextAvailableCredential` strategy to cycle through active credentials, enhancing both security and availability. This allows for rate limit distribution and zero-downtime key rotation.
--   **Configuration**: AI providers and their credentials are managed within the system's database via the `AiProvider` and `AiCredential` models. This allows administrators to add, disable, or update provider details without code changes.
-
-### Resiliency and Error Handling
-
-To ensure high availability, the API incorporates an automatic retry mechanism for upstream provider requests.
-
--   **Retry Logic**: The system uses a `createRetryHandler` for critical endpoints. If a request to an underlying AI provider fails with a retryable status code (`429 Too Many Requests`, `500 Internal Server Error`, `502 Bad Gateway`), the API will automatically retry the request.
--   **Configurability**: The maximum number of retries is configurable via the `maxRetries` environment variable, allowing operators to tune the system's resiliency according to their needs.
-
-### Authentication
-
-API endpoints are protected by a component-based authentication mechanism (`ensureRemoteComponentCall` and `ensureComponentCall`). This ensures that only authorized services or components within the ecosystem can access the API, typically using a public key-based verification system.
-
-## Endpoints
-
-The following sections detail the available API endpoints. All endpoints are prefixed with `/v1`.
+All V1 endpoints require authentication. Requests must include an `Authorization` header with a Bearer token.
 
 ---
 
-### Chat Completions
+## Chat Completions
 
-This endpoint generates a response for a given chat conversation or prompt. It supports both standard and streaming responses.
+This endpoint generates a response for the given conversation. It supports both streaming and non-streaming modes.
 
-`POST /v1/chat/completions`
-`POST /v1/completions`
+**Endpoint**
 
-**Request Body**
+```
+POST /api/v1/chat/completions
+```
 
-| Field | Type | Description | Required |
-| :--- | :--- | :--- | :--- |
-| `model` | string | The ID of the model to use (e.g., `openai/gpt-4`, `google/gemini-pro`). | Yes |
-| `messages` | array | An array of message objects representing the conversation history. See object structure below. | Yes (or `prompt`) |
-| `prompt` | string | A single prompt string. Shorthand for `messages: [{ "role": "user", "content": "..." }]`. | Yes (or `messages`) |
-| `stream` | boolean | If `true`, the response will be sent as a server-sent event stream. | No |
-| `temperature` | number | Controls randomness. A value between 0 and 2. Higher values make the output more random. | No |
-| `topP` | number | Nucleus sampling. A value between 0.1 and 1. The model considers tokens with `topP` probability mass. | No |
-| `maxTokens` | integer | The maximum number of tokens to generate in the completion. | No |
-| `presencePenalty` | number | A value between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far. | No |
-| `frequencyPenalty` | number | A value between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far. | No |
-| `tools` | array | A list of tools the model may call. | No |
-| `toolChoice` | string or object | Controls which tool the model should use. Can be "none", "auto", "required", or specify a function. | No |
-| `responseFormat` | object | Specifies the output format. For JSON mode, use `{ "type": "json_object" }`. | No |
+### Request Body
 
-**Message Object Structure** (`messages` array)
+The request body must be a JSON object with the following parameters.
 
-| Field | Type | Description |
-| :--- | :--- | :--- |
-| `role` | string | The role of the message author. One of `system`, `user`, `assistant`, or `tool`. |
-| `content` | string or array | The content of the message. Can be a string or an array for multi-modal input (e.g., text and images). |
-| `toolCalls` | array | For `assistant` roles, a list of tool calls made by the model. |
-| `toolCallId` | string | For `tool` roles, the ID of the tool call this message is a response to. |
+<x-field-group>
+  <x-field data-name="model" data-type="string" data-required="false" data-default="gpt-3.5-turbo">
+    <x-field-desc markdown>ID of the model to use. See the model endpoint compatibility table for details on which models work with the Chat API.</x-field-desc>
+  </x-field>
+  <x-field data-name="messages" data-type="array" data-required="true">
+    <x-field-desc markdown>A list of messages comprising the conversation so far.</x-field-desc>
+    <x-field data-name="role" data-type="string" data-required="true">
+       <x-field-desc markdown>The role of the messages author. Must be one of `system`, `user`, `assistant`, or `tool`.</x-field-desc>
+    </x-field>
+    <x-field data-name="content" data-type="string" data-required="true">
+       <x-field-desc markdown>The contents of the message.</x-field-desc>
+    </x-field>
+  </x-field>
+  <x-field data-name="stream" data-type="boolean" data-required="false" data-default="false">
+    <x-field-desc markdown>If set, partial message deltas will be sent, like in ChatGPT. Tokens will be sent as data-only server-sent events as they become available, with the stream terminated by a `data: [DONE]` message.</x-field-desc>
+  </x-field>
+  <x-field data-name="temperature" data-type="number" data-required="false" data-default="1">
+    <x-field-desc markdown>What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.</x-field-desc>
+  </x-field>
+  <x-field data-name="maxTokens" data-type="integer" data-required="false">
+    <x-field-desc markdown>The maximum number of tokens to generate in the chat completion.</x-field-desc>
+  </x-field>
+  <x-field data-name="topP" data-type="number" data-required="false" data-default="1">
+    <x-field-desc markdown>An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens comprising the top 10% probability mass are considered.</x-field-desc>
+  </x-field>
+  <x-field data-name="presencePenalty" data-type="number" data-required="false" data-default="0">
+    <x-field-desc markdown>Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.</x-field-desc>
+  </x-field>
+  <x-field data-name="frequencyPenalty" data-type="number" data-required="false" data-default="0">
+    <x-field-desc markdown>Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.</x-field-desc>
+  </x-field>
+</x-field-group>
 
-**Response (Non-Streaming)**
+### Example Request
 
--   `Content-Type: application/json`
--   The response is a JSON object containing the assistant's reply.
+```bash Request Example
+curl -X POST \
+  https://your-hub-url.com/api/v1/chat/completions \
+  -H "Authorization: Bearer <YOUR_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{
+        "model": "gpt-4o-mini",
+        "messages": [
+            {
+                "role": "user",
+                "content": "Hello, who are you?"
+            }
+        ]
+      }'
+```
 
-```json
+### Example Response (Non-streaming)
+
+```json Response
 {
   "role": "assistant",
-  "content": "This is the generated response.",
-  "text": "This is the generated response.",
-  "toolCalls": [],
+  "text": "I am a large language model, trained by Google.",
+  "content": "I am a large language model, trained by Google.",
   "usage": {
-    "promptTokens": 5,
-    "completionTokens": 10,
-    "totalTokens": 15,
-    "aigneHubCredits": 0.00015
+    "inputTokens": 8,
+    "outputTokens": 9,
+    "aigneHubCredits": 0.00012
   }
 }
 ```
 
-**Response (Streaming)**
-
--   `Content-Type: text/event-stream`
--   The response is a stream of server-sent events. Each event is a JSON object representing a chunk of the completion. The final event may contain usage statistics.
-
 ---
 
-### Embeddings
+## Embeddings
 
-This endpoint creates a vector representation of a given input, which can be used for semantic search, clustering, and other machine learning tasks.
+This endpoint creates an embedding vector representing the input text.
 
-`POST /v1/embeddings`
+**Endpoint**
 
-**Request Body**
+```
+POST /api/v1/embeddings
+```
 
-| Field | Type | Description | Required |
-| :--- | :--- | :--- | :--- |
-| `model` | string | The ID of the embedding model to use (e.g., `openai/text-embedding-ada-002`). | Yes |
-| `input` | string or array | The input text or tokens to embed. Can be a single string or an array of strings/tokens. | Yes |
+### Request Body
 
-**Response**
+<x-field-group>
+  <x-field data-name="model" data-type="string" data-required="true">
+    <x-field-desc markdown>ID of the model to use for creating embeddings.</x-field-desc>
+  </x-field>
+  <x-field data-name="input" data-type="string or array" data-required="true">
+    <x-field-desc markdown>Input text to embed, encoded as a string or array of tokens. To embed multiple inputs in a single request, pass an array of strings.</x-field-desc>
+  </x-field>
+</x-field-group>
 
--   `Content-Type: application/json`
--   The response contains the embedding data and usage information.
+### Example Request
 
-```json
+```bash Request Example
+curl -X POST \
+  https://your-hub-url.com/api/v1/embeddings \
+  -H "Authorization: Bearer <YOUR_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{
+        "model": "text-embedding-ada-002",
+        "input": "The food was delicious and the waiter..."
+      }'
+```
+
+### Example Response
+
+```json Response
 {
   "data": [
     {
-      "embedding": [ -0.00692, -0.0053, ... ],
-      "index": 0,
-      "object": "embedding"
+      "object": "embedding",
+      "embedding": [
+        -0.006929283495992422,
+        -0.005336422473192215,
+        ...
+        -4.547132266452536e-05
+      ],
+      "index": 0
     }
-  ],
-  "usage": {
-    "prompt_tokens": 8,
-    "total_tokens": 8
-  }
+  ]
 }
 ```
 
 ---
 
-### Image Generation
+## Image Generation
 
-This endpoint generates images from a text prompt.
+This endpoint generates an image based on a text prompt.
 
-`POST /v1/image/generations`
+**Endpoint**
 
-**Request Body**
+```
+POST /api/v1/image/generations
+```
 
-| Field | Type | Description | Required |
-| :--- | :--- | :--- | :--- |
-| `model` | string | The ID of the image generation model to use (e.g., `dall-e-2`, `dall-e-3`). | Yes |
-| `prompt` | string | A text description of the desired image(s). | Yes |
-| `n` | integer | The number of images to generate. Must be between 1 and 10. Defaults to 1. | No |
-| `size` | string | The size of the generated images (e.g., `1024x1024`, `1792x1024`). | No |
-| `responseFormat` | string | The format in which the generated images are returned. Can be `url` or `b64_json`. Defaults to `url`. | No |
-| `quality` | string | The quality of the image to generate. Can be `standard` or `hd`. | No |
+### Request Body
 
-**Response**
+<x-field-group>
+  <x-field data-name="model" data-type="string" data-required="false" data-default="dall-e-2">
+    <x-field-desc markdown>The model to use for image generation.</x-field-desc>
+  </x-field>
+  <x-field data-name="prompt" data-type="string" data-required="true">
+    <x-field-desc markdown>A text description of the desired image(s). The maximum length is model-dependent.</x-field-desc>
+  </x-field>
+  <x-field data-name="n" data-type="integer" data-required="false" data-default="1">
+    <x-field-desc markdown>The number of images to generate. Must be between 1 and 10.</x-field-desc>
+  </x-field>
+  <x-field data-name="size" data-type="string" data-required="false">
+    <x-field-desc markdown>The size of the generated images. Must be one of `256x256`, `512x512`, or `1024x1024` for DALL·E 2. Must be one of `1024x1024`, `1792x1024`, or `1024x1792` for DALL·E 3 models.</x-field-desc>
+  </x-field>
+  <x-field data-name="response_format" data-type="string" data-required="false">
+    <x-field-desc markdown>The format in which the generated images are returned. Must be one of `url` or `b64_json`.</x-field-desc>
+  </x-field>
+</x-field-group>
 
--   `Content-Type: application/json`
--   The response contains URLs or base64-encoded JSON for the generated images, along with usage data.
+### Example Request
 
-```json
+```bash Request Example
+curl -X POST \
+  https://your-hub-url.com/api/v1/image/generations \
+  -H "Authorization: Bearer <YOUR_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{
+        "model": "dall-e-3",
+        "prompt": "A cute corgi wearing a space suit",
+        "n": 1,
+        "size": "1024x1024"
+      }'
+```
+
+### Example Response
+
+```json Response
 {
   "images": [
-    { "url": "https://..." },
-    { "b64Json": "..." }
+    {
+      "url": "https://oaidalleapiprodscus.blob.core.windows.net/private/..."
+    }
   ],
-  "data": [ /* same as images */ ],
+  "data": [
+    {
+      "url": "https://oaidalleapiprodscus.blob.core.windows.net/private/..."
+    }
+  ],
   "model": "dall-e-3",
   "usage": {
     "aigneHubCredits": 0.04
@@ -165,31 +211,72 @@ This endpoint generates images from a text prompt.
 
 ---
 
-### Audio Services (Proxy)
+## Audio Transcriptions
 
-The audio transcription and speech synthesis endpoints are direct proxies to the OpenAI v1 API. The AIGNE Hub API handles authentication by injecting the appropriate API key from its managed credential store before forwarding the request.
+This endpoint transcribes audio into the input language. It acts as a proxy to the upstream provider's service.
 
-For request and response formats, please refer to the official OpenAI API documentation.
+**Endpoint**
 
--   **Audio Transcriptions**: `POST /v1/audio/transcriptions`
--   **Audio Speech**: `POST /v1/audio/speech`
+```
+POST /api/v1/audio/transcriptions
+```
+
+### Request Body
+
+The request body should be a `multipart/form-data` object containing the audio file and model name. This endpoint proxies directly to `api.openai.com/v1/audio/transcriptions`, and you should refer to the [official OpenAI documentation](https://platform.openai.com/docs/api-reference/audio/createTranscription) for detailed parameter specifications.
+
+### Example Request
+
+```bash Request Example
+curl -X POST \
+  https://your-hub-url.com/api/v1/audio/transcriptions \
+  -H "Authorization: Bearer <YOUR_TOKEN>" \
+  -H "Content-Type: multipart/form-data" \
+  -F file="@/path/to/your/audio.mp3" \
+  -F model="whisper-1"
+```
+
+### Response
+
+The response format will be identical to the one returned by the OpenAI Audio API for transcriptions.
 
 ---
 
-### System Status
+## Audio Speech
 
-This endpoint provides a simple health check to verify that the service is running and has at least one AI provider API key configured.
+This endpoint generates audio from an input text. It acts as a proxy to the upstream provider's service.
 
-`GET /v1/status`
+**Endpoint**
 
-**Response**
-
--   `Content-Type: application/json`
-
-```json
-{
-  "available": true
-}
+```
+POST /api/v1/audio/speech
 ```
 
--   `available`: A boolean indicating if one or more API keys are configured and available for use.
+### Request Body
+
+The request body should be a JSON object. This endpoint proxies directly to `api.openai.com/v1/audio/speech`, and you should refer to the [official OpenAI documentation](https://platform.openai.com/docs/api-reference/audio/createSpeech) for detailed parameter specifications.
+
+### Example Request
+
+```bash Request Example
+curl -X POST \
+  https://your-hub-url.com/api/v1/audio/speech \
+  -H "Authorization: Bearer <YOUR_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{
+        "model": "tts-1",
+        "input": "The quick brown fox jumped over the lazy dog.",
+        "voice": "alloy"
+      }' \
+  --output speech.mp3
+```
+
+### Response
+
+The response will be the generated audio file in the format specified by the request (e.g., MP3).
+
+---
+
+## Summary
+
+This guide has detailed the legacy V1 API endpoints available in AIGNE Hub. While functional, these endpoints may not receive new features. We encourage you to migrate to the [V2 Endpoints](./api-reference-v2-endpoints.md) to take advantage of the latest improvements and ensure long-term compatibility. For details on API security and authentication, please refer to the [Authentication](./api-reference-authentication.md) section.

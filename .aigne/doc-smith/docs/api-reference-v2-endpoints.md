@@ -1,107 +1,233 @@
-# API Architecture and Endpoints (v2)
+# V2 Endpoints (Recommended)
 
-This document provides a detailed overview of the v2 API architecture, designed for DevOps, SRE, and infrastructure teams responsible for deploying, monitoring, and maintaining the system. It focuses on the internal workings, design rationale, and operational aspects of the API.
+The V2 API provides a comprehensive set of endpoints for interacting with various AI models through AIGNE Hub. These endpoints are the current standard and are recommended for all new integrations. They are designed to be robust and feature-rich, offering user-level authentication, optional credit-based billing checks, and detailed usage tracking.
 
-## 1. System Architecture Overview
+These endpoints act as a unified gateway, abstracting the complexities of interacting with different AI providers. By routing requests through AIGNE Hub, you gain centralized control, monitoring, and security over your AI model usage.
 
-The v2 API is a robust, scalable interface for interacting with various AI models. Its design prioritizes dynamic provider management, resiliency, and comprehensive usage tracking, making it suitable for production environments.
+For details on authenticating with the API, please refer to the [Authentication](./api-reference-authentication.md) guide. For information on legacy endpoints, see the [V1 Endpoints (Legacy)](./api-reference-v1-endpoints.md) documentation.
 
-### 1.1. Request Lifecycle
+## API Endpoint Reference
 
-A typical API request follows a structured lifecycle, enforced by a series of Express.js middlewares:
-
-1.  **Authentication**: The `sessionMiddleware` authenticates the user via an access key, attaching the user's context (`req.user`) to the request object.
-2.  **Billing and Credit Check**: If credit-based billing is enabled (`Config.creditBasedBillingEnabled`), the `checkCreditBasedBillingMiddleware` verifies that the payment system is operational and the user has a sufficient credit balance (`checkUserCreditBalance`).
-3.  **Model Call Tracking**: A dedicated middleware (`createModelCallMiddleware`) initiates a record in the system to track the entire lifecycle of the AI model interaction. This is crucial for logging, debugging, and analytics.
-4.  **Input Validation**: Incoming request bodies are rigorously validated against predefined Joi schemas to ensure data integrity and prevent malformed requests from reaching the core logic.
-5.  **Dynamic Model and Credential Selection**: The system dynamically selects an appropriate AI provider and credential. It queries the `AiProvider` and `AiCredential` tables to find an active, enabled credential for the requested model, implementing a round-robin or similar strategy (`AiCredential.getNextAvailableCredential`) to distribute load.
-6.  **AI Model Invocation**: The request is processed by the core logic, which uses the `AIGNE` SDK to interact with the selected AI model. This abstracts the complexities of different provider APIs.
-7.  **Usage and Billing Record Finalization**: Upon successful completion or failure, a hook (`onEnd` or `onError`) is triggered. The `createUsageAndCompleteModelCall` function is called to finalize the model call record, calculate the cost in credits, and log detailed usage metrics.
-8.  **Response Generation**: The system sends the response back to the client. For chat completions, this can be a standard JSON object or a `text/event-stream` for real-time streaming.
-
-### 1.2. Dynamic Provider and Credential Management
-
-A key design decision was to decouple the API from specific AI providers. The system uses a database-driven approach to manage providers (`AiProvider`) and their associated API keys (`AiCredential`).
-
--   **How it Works**: When a request specifies a model (e.g., `openai/gpt-4o`), the system first identifies the provider (`openai`). It then queries the database for an active credential associated with that provider. This allows for credentials to be added, removed, or rotated without any service downtime.
--   **Rationale**: This architecture provides high availability and flexibility. If one credential or provider experiences issues, the system can be configured to failover to another. It also simplifies the management of API keys and centralizes control over AI model access. The `getProviderCredentials` function encapsulates this logic, ensuring that every model call uses a valid, active credential.
-
-### 1.3. Resiliency and Error Handling
-
-To ensure stability in a distributed environment, the API incorporates an automatic retry mechanism for transient failures.
-
--   **Retry Handler**: The `createRetryHandler` wraps the core endpoint logic. It is configured to retry requests that fail with specific HTTP status codes (e.g., `429 Too Many Requests`, `500 Internal Server Error`, `502 Bad Gateway`). The number of retries is configurable via `Config.maxRetries`.
--   **Failure Logging**: In case of non-retriable errors or after exhausting all retries, the `onError` hook ensures that the failure is logged and the associated model call record is marked as failed. This prevents orphaned records and provides clear data for troubleshooting.
-
-## 2. API Endpoints
-
-The following sections detail the primary v2 API endpoints, their purpose, and operational characteristics.
+The following sections provide detailed specifications for each available V2 endpoint. All requests require an `Authorization: Bearer <TOKEN>` header for authentication.
 
 ### GET /status
 
--   **Purpose**: A health check endpoint used to determine if the service is available and ready to accept requests for a specific model.
--   **Process Flow**:
-    1.  Authenticates the user.
-    2.  If `Config.creditBasedBillingEnabled` is true, it checks that the payment service is running and the user has a positive credit balance.
-    3.  It queries the `AiProvider` database to ensure there is at least one enabled provider with active credentials that can serve the requested model.
-    4.  If a specific model is queried, it also checks if a rate is defined for it in the `AiModelRate` table.
--   **Operational Notes**: This endpoint is critical for client-side service discovery. Clients should call `/status` before attempting to make a model call to avoid sending requests that are guaranteed to fail.
+This endpoint checks the availability of the AIGNE Hub service and, optionally, a specific model. It verifies that the required AI providers are configured, enabled, and have active credentials. If credit-based billing is enabled, it also checks the user's balance and the model's rate configuration.
 
-### POST /chat and /chat/completions
+**Query Parameters**
 
--   **Purpose**: Provides access to language models for chat-based interactions.
--   **Endpoint Variants**:
-    -   `/chat/completions`: An OpenAI-compatible endpoint that accepts standard `messages` arrays and supports streaming via `text/event-stream`.
-    -   `/chat`: The native AIGNE Hub endpoint which uses a slightly different input structure but provides the same core functionality.
--   **Process Flow**:
-    1.  The request lifecycle (authentication, billing check, etc.) is executed.
-    2.  The `processChatCompletion` function handles the core logic. It validates the input against `completionsRequestSchema`.
-    3.  `getModel` is called to dynamically load the specified model instance and select credentials.
-    4.  The `AIGNE` engine invokes the model. If `stream: true` is requested, it returns an async generator that yields response chunks.
-    5.  For streaming responses, chunks are written to the response stream as they arrive.
-    6.  The `onEnd` hook calculates token usage (`promptTokens`, `completionTokens`) and calls `createUsageAndCompleteModelCall` to record the transaction.
+<x-field-group>
+  <x-field data-name="model" data-type="string" data-required="false" data-desc="The specific model to check availability for, in the format provider/model-name (e.g., openai/gpt-4o-mini)."></x-field>
+</x-field-group>
 
-### POST /image and /image/generations
+**Example Request**
 
--   **Purpose**: Generates images from text prompts using models like DALL-E.
--   **Endpoint Variants**:
-    -   `/image/generations`: OpenAI-compatible endpoint.
-    -   `/image`: Native AIGNE Hub endpoint.
--   **Process Flow**:
-    1.  The standard request lifecycle is followed.
-    2.  The input is validated against `imageGenerationRequestSchema` or `imageModelInputSchema`.
-    3.  `getImageModel` is called to load the appropriate image model provider (e.g., OpenAI, Gemini) and select credentials.
-    4.  The `AIGNE` engine invokes the model with the prompt and parameters (size, quality, etc.).
-    5.  The `onEnd` hook records the usage. For images, billing is typically based on the number of images generated, their size, and quality, which is captured in `createUsageAndCompleteModelCall`.
-    6.  The response contains the generated images, either as URLs or Base64-encoded JSON data (`b64_json`).
+```bash Check availability for a specific model icon=lucide:terminal
+curl --location --request GET 'https://your-aigne-hub-instance.com/api/v2/status?model=openai/gpt-4o-mini' \
+--header 'Authorization: Bearer <YOUR_API_TOKEN>'
+```
+
+**Example Response (Success)**
+
+```json icon=lucide:braces
+{
+  "available": true
+}
+```
+
+**Example Response (Failure)**
+
+```json icon=lucide:braces
+{
+  "available": false,
+  "error": "Model rate not available"
+}
+```
+
+### POST /chat/completions
+
+This endpoint generates a response from a chat model based on a sequence of messages. It is designed to be compatible with the OpenAI Chat Completions API format, making it a straightforward replacement for direct OpenAI integrations. It supports both standard and streaming responses.
+
+**Request Body**
+
+<x-field-group>
+  <x-field data-name="model" data-type="string" data-required="true" data-desc="The identifier for the model to use (e.g., openai/gpt-4o-mini, google/gemini-1.5-pro-latest)."></x-field>
+  <x-field data-name="messages" data-type="array" data-required="true" data-desc="An array of message objects representing the conversation history.">
+    <x-field data-name="role" data-type="string" data-required="true" data-desc="The role of the message author. Can be 'system', 'user', 'assistant', or 'tool'."></x-field>
+    <x-field data-name="content" data-type="string | array" data-required="true" data-desc="The content of the message. This can be a string or an array for multi-part messages (e.g., text and images)."></x-field>
+  </x-field>
+  <x-field data-name="stream" data-type="boolean" data-default="false" data-required="false" data-desc="If set to true, the response will be streamed back in chunks as they are generated."></x-field>
+  <x-field data-name="maxTokens" data-type="integer" data-required="false" data-desc="The maximum number of tokens to generate in the completion."></x-field>
+  <x-field data-name="temperature" data-type="number" data-default="1" data-required="false" data-desc="Controls randomness. Lower values make the model more deterministic. Range: 0.0 to 2.0."></x-field>
+  <x-field data-name="topP" data-type="number" data-default="1" data-required="false" data-desc="Nucleus sampling parameter. The model considers tokens with topP probability mass. Range: 0.0 to 1.0."></x-field>
+  <x-field data-name="presencePenalty" data-type="number" data-default="0" data-required="false" data-desc="Penalizes new tokens based on whether they appear in the text so far. Range: -2.0 to 2.0."></x-field>
+  <x-field data-name="frequencyPenalty" data-type="number" data-default="0" data-required="false" data-desc="Penalizes new tokens based on their existing frequency in the text so far. Range: -2.0 to 2.0."></x-field>
+  <x-field data-name="tools" data-type="array" data-required="false" data-desc="A list of tools the model may call. Currently, only functions are supported."></x-field>
+  <x-field data-name="toolChoice" data-type="string | object" data-required="false" data-desc="Controls which tool is called by the model. Can be 'none', 'auto', 'required', or a specific function."></x-field>
+</x-field-group>
+
+**Example Request**
+
+```bash icon=lucide:terminal
+curl --location --request POST 'https://your-aigne-hub-instance.com/api/v2/chat/completions' \
+--header 'Authorization: Bearer <YOUR_API_TOKEN>' \
+--header 'Content-Type: application/json' \
+--data '{
+    "model": "openai/gpt-4o-mini",
+    "messages": [
+        {
+            "role": "system",
+            "content": "You are a helpful assistant."
+        },
+        {
+            "role": "user",
+            "content": "Hello! What is the capital of France?"
+        }
+    ],
+    "stream": false
+}'
+```
+
+**Example Response (Non-Streaming)**
+
+```json icon=lucide:braces
+{
+  "role": "assistant",
+  "text": "The capital of France is Paris.",
+  "content": "The capital of France is Paris."
+}
+```
+
+**Example Response (Streaming)**
+
+When `stream` is `true`, the server responds with a `text/event-stream`.
+
+```text Server-Sent Events icon=lucide:file-text
+data: {"id":"chatcmpl-xxxxx","object":"chat.completion.chunk","created":1719543621,"model":"gpt-4o-mini-2024-07-18","choices":[{"index":0,"delta":{"role":"assistant","content":""},"logprobs":null,"finish_reason":null}]}
+
+data: {"id":"chatcmpl-xxxxx","object":"chat.completion.chunk","created":1719543621,"model":"gpt-4o-mini-2024-07-18","choices":[{"index":0,"delta":{"content":"The"},"logprobs":null,"finish_reason":null}]}
+
+data: {"id":"chatcmpl-xxxxx","object":"chat.completion.chunk","created":1719543621,"model":"gpt-4o-mini-2024-07-18","choices":[{"index":0,"delta":{"content":" capital"},"logprobs":null,"finish_reason":null}]}
+
+data: {"id":"chatcmpl-xxxxx","object":"chat.completion.chunk","created":1719543621,"model":"gpt-4o-mini-2024-07-18","choices":[{"index":0,"delta":{"content":" of"},"logprobs":null,"finish_reason":null}]}
+
+data: {"id":"chatcmpl-xxxxx","object":"chat.completion.chunk","created":1719543621,"model":"gpt-4o-mini-2024-07-18","choices":[{"index":0,"delta":{"content":" France"},"logprobs":null,"finish_reason":null}]}
+
+data: {"id":"chatcmpl-xxxxx","object":"chat.completion.chunk","created":1719543621,"model":"gpt-4o-mini-2024-07-18","choices":[{"index":0,"delta":{"content":" is"},"logprobs":null,"finish_reason":null}]}
+
+data: {"id":"chatcmpl-xxxxx","object":"chat.completion.chunk","created":1719543621,"model":"gpt-4o-mini-2024-07-18","choices":[{"index":0,"delta":{"content":" Paris"},"logprobs":null,"finish_reason":null}]}
+
+data: {"id":"chatcmpl-xxxxx","object":"chat.completion.chunk","created":1719543621,"model":"gpt-4o-mini-2024-07-18","choices":[{"index":0,"delta":{"content":"."},"logprobs":null,"finish_reason":null}]}
+
+data: {"object":"chat.completion.usage","usage":{"promptTokens":23,"completionTokens":7,"totalTokens":30,"aigneHubCredits":0.00000485,"modelCallId":"mca_..."},"model":"openai/gpt-4o-mini"}
+
+data: [DONE]
+```
 
 ### POST /embeddings
 
--   **Purpose**: Converts input text into numerical vector representations (embeddings).
--   **Process Flow**:
-    1.  The standard request lifecycle is executed.
-    2.  The request body is validated by `embeddingsRequestSchema`.
-    3.  `processEmbeddings` calls the underlying provider's embeddings endpoint.
-    4.  Usage is calculated based on the number of input tokens and recorded via `createUsageAndCompleteModelCall`.
+This endpoint creates vector embeddings for a given input text, which can be used for tasks like semantic search, clustering, and classification.
 
-### POST /audio/transcriptions and /audio/speech
+**Request Body**
 
--   **Purpose**: Provides speech-to-text and text-to-speech functionalities.
--   **Architecture**: These endpoints are currently implemented as secure proxies to the OpenAI API.
--   **Process Flow**:
-    1.  The user is authenticated.
-    2.  The request is forwarded directly to the OpenAI API.
-    3.  The `proxyReqOptDecorator` function dynamically retrieves the appropriate OpenAI API key from the credential store and injects it into the `Authorization` header of the outgoing request.
--   **Operational Notes**: As these are proxies, their performance and availability are directly tied to the upstream OpenAI service. Note that credit-based billing is marked as a "TODO" for these endpoints in the source code, meaning usage may not be tracked through the AIGNE Hub billing system.
+<x-field-group>
+  <x-field data-name="model" data-type="string" data-required="true" data-desc="The identifier for the embedding model to use (e.g., openai/text-embedding-3-small)."></x-field>
+  <x-field data-name="input" data-type="string | array" data-required="true" data-desc="The input text to embed. It can be a single string or an array of strings."></x-field>
+</x-field-group>
 
-## 3. Troubleshooting and Monitoring
+**Example Request**
 
--   **Log Analysis**: The system uses a centralized logger. Key events to monitor are:
-    -   `Create usage and complete model call error`: Indicates a problem with writing usage data to the database after a model call, which can affect billing.
-    -   `ai route retry`: Signals that transient network or provider errors are occurring. A high frequency of retries may point to underlying infrastructure instability.
-    -   `Failed to mark incomplete model call as failed`: A critical error that could lead to inconsistent state in the model call tracking system.
--   **Common Errors**:
-    -   `400 Validation error`: The client sent a malformed request. Check the error message for details on which Joi validation failed.
-    -   `401 User not authenticated`: The access key is missing or invalid.
-    -   `404 Provider ... not found`: The requested model or provider is not configured or enabled in the database.
-    -   `502 Payment kit is not Running`: The billing service is down or unreachable. This is a critical dependency when `creditBasedBillingEnabled` is true.
+```bash icon=lucide:terminal
+curl --location --request POST 'https://your-aigne-hub-instance.com/api/v2/embeddings' \
+--header 'Authorization: Bearer <YOUR_API_TOKEN>' \
+--header 'Content-Type: application/json' \
+--data '{
+    "model": "openai/text-embedding-3-small",
+    "input": "AIGNE Hub is a unified AI gateway."
+}'
+```
+
+**Example Response**
+
+```json icon=lucide:braces
+{
+  "data": [
+    {
+      "object": "embedding",
+      "embedding": [
+        -0.008922631,
+        0.011883527,
+        // ... more floating point numbers
+        -0.013459821
+      ],
+      "index": 0
+    }
+  ]
+}
+```
+
+### POST /image/generations
+
+This endpoint generates images from a text prompt using a specified image model.
+
+**Request Body**
+
+<x-field-group>
+  <x-field data-name="model" data-type="string" data-required="true" data-desc="The identifier for the image generation model to use (e.g., openai/dall-e-3)."></x-field>
+  <x-field data-name="prompt" data-type="string" data-required="true" data-desc="A detailed text description of the desired image(s)."></x-field>
+  <x-field data-name="n" data-type="integer" data-default="1" data-required="false" data-desc="The number of images to generate. Must be between 1 and 10."></x-field>
+  <x-field data-name="size" data-type="string" data-required="false" data-desc="The size of the generated images. Supported values depend on the model (e.g., '1024x1024', '1792x1024')."></x-field>
+  <x-field data-name="quality" data-type="string" data-default="standard" data-required="false" data-desc="The quality of the image. Supported values are 'standard' and 'hd'."></x-field>
+  <x-field data-name="style" data-type="string" data-default="vivid" data-required="false" data-desc="The style of the generated images. Supported values are 'vivid' and 'natural'."></x-field>
+  <x-field data-name="responseFormat" data-type="string" data-default="url" data-required="false" data-desc="The format in which the generated images are returned. Must be one of 'url' or 'b64_json'."></x-field>
+</x-field-group>
+
+**Example Request**
+
+```bash icon=lucide:terminal
+curl --location --request POST 'https://your-aigne-hub-instance.com/api/v2/image/generations' \
+--header 'Authorization: Bearer <YOUR_API_TOKEN>' \
+--header 'Content-Type: application/json' \
+--data '{
+    "model": "openai/dall-e-3",
+    "prompt": "A cute cat astronaut floating in space, digital art",
+    "n": 1,
+    "size": "1024x1024",
+    "responseFormat": "url"
+}'
+```
+
+**Example Response**
+
+```json icon=lucide:braces
+{
+  "images": [
+    {
+      "url": "https://oaidalleapiprodscus.blob.core.windows.net/private/..."
+    }
+  ],
+  "data": [
+    {
+      "url": "https://oaidalleapiprodscus.blob.core.windows.net/private/..."
+    }
+  ],
+  "model": "dall-e-3",
+  "usage": {
+    "aigneHubCredits": 0.04
+  }
+}
+```
+
+### Audio Endpoints
+
+AIGNE Hub provides endpoints for audio processing, which currently proxy requests to the OpenAI API. Full integration with the credit-based billing system for these endpoints is under development.
+
+#### POST /audio/transcriptions
+
+Transcribes audio into the input language.
+
+#### POST /audio/speech
+
+Generates audio from an input text.
+
+For both audio endpoints, the request and response formats are identical to the OpenAI V1 API for audio transcriptions and speech. Please refer to the official OpenAI documentation for details on the required parameters. The AIGNE Hub will securely inject the necessary API key for the provider before forwarding the request.

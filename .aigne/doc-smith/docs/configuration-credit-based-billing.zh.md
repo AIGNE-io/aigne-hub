@@ -1,180 +1,107 @@
-# 5. 模型费率管理
+# 基于积分的计费
 
-本节详细介绍 AI 模型费率的配置和管理，这是平台基于积分的计费系统的基础。运营商将在此找到定义定价、管理模型以及排查计费不准确问题所需的信息。
+AIGNE Hub 包含一个可选的、强大的基于积分的计费系统，旨在对 AI 模型的使用和成本进行精细控制。启用后，该系统允许运营者为各种 AI 模型定义具体的积分费率，跟踪每个用户的消耗情况，并与支付系统集成以进行积分充值。这种方法从直接转嫁提供商成本的模式转变为一种受控的内部经济体系，从而实现统一定价、成本抽象和潜在的盈利能力。
 
-## 5.1. 核心概念
+本指南详细介绍了启用和配置基于积分的计费系统的过程，包括如何为不同的 AI 模型设置具体的使用费率以及如何管理用户积分。
 
-**模型费率**是定义使用特定提供商的特定 AI 模型所需成本的记录。每条费率都规定了每个输入 token 和每个输出 token 收取的积分数量。这种精细的定价结构是所有用量计算和计费的基础。
+有关管理这些模型所属的 AI 提供商的信息，请参阅 [AI 提供商和凭证](./configuration-ai-providers-and-credentials.md) 文档。
 
-关键组成部分包括：
+## 启用基于积分的计费
 
-*   **Provider**：AI 服务提供商（例如 OpenAI、Google、Bedrock）。
-*   **Model**：具体的模型标识符（例如 `gpt-4`、`gemini-1.5-pro-latest`）。
-*   **Type**：模型的模式，例如 `chatCompletion`、`imageGeneration` 或 `embedding`。
-*   **Rates**：
-    *   `inputRate`：每 1,000 个输入 token 的积分成本。
-    *   `outputRate`：每 1,000 个输出 token 或每张生成图像的积分成本。
-*   **Unit Costs**：模型以法定货币（例如美元）计价的实际成本，单位是每百万 token。这用于自动化的批量价格调整。
+基于积分的计费系统默认是禁用的。要激活它，您必须在您的 AIGNE Hub 配置中将 `CREDIT_BASED_BILLING_ENABLED` 环境变量设置为 `true`。启用后，系统将开始对所有 API 调用强制执行积分检查，并根据用户余额跟踪使用情况。
 
-准确和完整的模型费率配置至关重要。如果用户尝试调用的模型缺少费率，API 请求将会失败，因为系统无法计算使用成本。
+当此模式激活时，只有在“模型费率”配置中明确定义了费率的模型才能通过 API 使用。
 
-![模型费率管理界面](d037b6b6b092765ccbfa58706c241622.png)
+## 配置模型费率
 
-## 5.2. 通过 API 管理模型费率
+模型费率是基于积分的计费系统的基石。费率定义了使用特定 AI 模型消耗多少积分。费率通常根据输入（例如，提示词 token）和输出（例如，补全 token 或生成的图像）来定义。
 
-模型费率通过一组 RESTful API 端点进行管理。所有创建、更新和删除操作都需要管理员权限。
+您可以通过管理仪表盘在 **AI 配置 > 模型费率** 下配置这些费率。
 
-### 5.2.1. 创建模型费率
+![此屏幕截图展示了 AIGNE Hub 的 AI 配置部分中的“模型费率”配置页面，概述了用户如何管理 AI 模型定价。它展示了一个详细的表格，列出了各种 AI 模型，如 ChatGPT 和 Claude，它们的提供商、内容类型（图像、文本）以及相关的输入和输出定价费率。该界面允许编辑、删除和添加新的模型费率，为 AI 服务成本提供了全面的管理控制。](https://raw.githubusercontent.com/blocklet/aigne/main/blocklets/core/screenshots/8014a0b1d561114d9948214c4929d5df.png)
 
-此端点为单个提供商上的特定模型注册新费率。
+### 添加模型费率
 
-*   **Endpoint**: `POST /api/ai-providers/:providerId/model-rates`
-*   **Permissions**: Admin
-*   **Body**:
-    *   `model` (string, required)：模型标识符。
-    *   `type` (string, required)：模型类型。必须是 `chatCompletion`、`imageGeneration`、`embedding` 之一。
-    *   `inputRate` (number, required)：输入的积分成本。
-    *   `outputRate` (number, required)：输出的积分成本。
-    *   `modelDisplay` (string, optional)：一个用户友好的显示名称。
-    *   `description` (string, optional)：模型的简要描述。
-    *   `unitCosts` (object, optional)：来自提供商的底层成本。
-        *   `input` (number, required)：每百万输入 token 的成本。
-        *   `output` (number, required)：每百万输出 token 的成本。
-    *   `modelMetadata` (object, optional)：额外的模型能力。
+要添加新费率，请单击“添加模型费率”按钮并提供必要的详细信息。您可以同时为多个提供商的特定模型创建一个费率。
 
-**请求示例**：
+![此屏幕截图展示了“AIGNE / Hub”平台的用户界面，特别关注 AI 模型费率配置。右侧打开了一个显眼的“添加模型费率”模态窗口，显示了用于输入模型名称、费率类型、提供商、模型成本、AIGNE Hub 积分费率配置、描述和高级选项的输入字段。在背景中，“配置”页面的“模型费率”部分下可以看到现有 AI 模型（如 ChatGPT、Claude 和 Gemini）及其提供商和类型的列表。](https://raw.githubusercontent.com/blocklet/aigne/main/blocklets/core/screenshots/c29f08420df8ea9a199fcb5ffe06febe.png)
 
-```bash
-curl -X POST \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <ADMIN_TOKEN>" \
-  -d '{
-    "model": "gpt-4o",
-    "type": "chatCompletion",
-    "inputRate": 10,
-    "outputRate": 30,
-    "modelDisplay": "GPT-4 Omni",
-    "unitCosts": {
-      "input": 5.0,
-      "output": 15.0
-    },
-    "modelMetadata": {
-      "maxTokens": 128000,
-      "features": ["tools", "vision"]
-    }
-  }' \
-  https://<your-domain>/api/ai-providers/prv_xxxxxxxx/model-rates
+定义模型费率需要以下参数：
+
+<x-field-group>
+  <x-field data-name="model" data-type="string" data-required="true" data-desc="提供商识别出的模型的精确名称（例如，gpt-4o、claude-3-opus-20240229）。"></x-field>
+  <x-field data-name="modelDisplay" data-type="string" data-required="false" data-desc="模型的用户友好名称，将显示在用户界面中。如果留空，将从模型 ID 生成一个格式化的名称。"></x-field>
+  <x-field data-name="type" data-type="string" data-required="true">
+    <x-field-desc markdown>AI 任务的类型。这决定了应用哪个费率。可能的值为 `chatCompletion`、`imageGeneration` 或 `embedding`。</x-field-desc>
+  </x-field>
+  <x-field data-name="providers" data-type="array" data-required="true" data-desc="此费率将应用到的提供商 ID 数组。这允许多个平台上的同一个模型共享一个费率。"></x-field>
+  <x-field data-name="inputRate" data-type="number" data-required="true" data-default="0">
+    <x-field-desc markdown>每个输入单位收取的积分数（例如，每 1000 个提示词 token）。对于 `imageGeneration`，此值通常为 `0`。</x-field-desc>
+  </x-field>
+  <x-field data-name="outputRate" data-type="number" data-required="true" data-default="0">
+    <x-field-desc markdown>每个输出单位收取的积分数（例如，每 1000 个补全 token 或每个生成的图像）。</x-field-desc>
+  </x-field>
+  <x-field data-name="unitCosts" data-type="object" data-required="false">
+    <x-field-desc markdown>来自 AI 提供商的实际成本，通常以美元/百万 token 为单位。这用于自动计算费率，不会直接向用户收费。</x-field-desc>
+    <x-field data-name="input" data-type="number" data-required="true" data-desc="提供商的输入单位成本。"></x-field>
+    <x-field data-name="output" data-type="number" data-required="true" data-desc="提供商的输出单位成本。"></x-field>
+  </x-field>
+  <x-field data-name="modelMetadata" data-type="object" data-required="false" data-desc="关于模型功能的附加元数据。">
+    <x-field data-name="maxTokens" data-type="number" data-required="false" data-desc="模型在单个上下文中可以处理的最大 token 数。"></x-field>
+    <x-field data-name="features" data-type="array" data-required="false" data-desc="模型支持的特殊功能列表，例如 `tools`、`thinking` 或 `vision`。"></x-field>
+    <x-field data-name="imageGeneration" data-type="object" data-required="false" data-desc="图像生成模型的具体信息。">
+      <x-field data-name="max" data-type="number" data-required="false" data-desc="每个请求的最大图像数。"></x-field>
+      <x-field data-name="quality" data-type="array" data-required="false" data-desc="支持的图像质量选项（例如，['standard', 'hd']）。"></x-field>
+      <x-field data-name="size" data-type="array" data-required="false" data-desc="支持的图像尺寸（例如，['1024x1024', '1792x1024']）。"></x-field>
+      <x-field data-name="style" data-type="array" data-required="false" data-desc="支持的图像样式（例如，['vivid', 'natural']）。"></x-field>
+    </x-field>
+  </x-field>
+</x-field-group>
+
+## 批量费率更新
+
+为了简化费率管理，AIGNE Hub 提供了一种根据您的基础成本和期望的利润率批量更新所有模型费率的机制。当提供商更改其定价或您希望调整积分定价结构时，此功能特别有用。
+
+此功能使用为每个模型定义的 `unitCosts`，并应用一个简单的公式来计算新的 `inputRate` 和 `outputRate`：
+
+```
+费率 = (单位成本 * (1 + 利润率 / 100)) / 积分价格
 ```
 
-### 5.2.2. 批量创建模型费率
+其中：
+*   `UnitCost`：来自提供商的原始成本（例如，美元/百万 token）。
+*   `ProfitMargin`：您定义的百分比。
+*   `CreditPrice`：您向用户出售一个积分的价格。
 
-此端点允许同时在多个提供商中创建相同的模型费率。这对于可从多个供应商处获得的模型很有用。
+此计算会为每个定义了 `unitCosts` 的模型的输入和输出费率执行。
 
-*   **Endpoint**: `POST /api/ai-providers/model-rates`
-*   **Permissions**: Admin
-*   **Body**: 与单个创建端点相同，但增加了一个 `providers` 数组。
-    *   `providers` (array of strings, required)：应创建此费率的提供商 ID 列表。
+## 用户积分管理
 
-**请求示例**：
+启用计费后，每个用户都有一个积分余额。AIGNE Hub 与支付组件集成来管理这些余额。
 
-```bash
-curl -X POST \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <ADMIN_TOKEN>" \
-  -d '{
-    "model": "claude-3-sonnet",
-    "type": "chatCompletion",
-    "inputRate": 6,
-    "outputRate": 30,
-    "providers": ["prv_bedrock_xxxx", "prv_anthropic_yyyy"],
-    "unitCosts": {
-      "input": 3.0,
-      "output": 15.0
-    }
-  }' \
-  https://<your-domain>/api/ai-providers/model-rates
-```
+### 新用户积分赠送
 
-系统会验证所有指定的提供商是否存在，并且该费率在任何目标提供商上对于给定的模型和类型尚未存在，以防止重复。
+您可以配置 AIGNE Hub 自动向新用户赠送初始余额。这有助于鼓励试用和采用。以下环境变量控制此功能：
 
-### 5.2.3. 更新模型费率
+*   `NEW_USER_CREDIT_GRANT_ENABLED`：设置为 `true` 以启用赠送。
+*   `NEW_USER_CREDIT_GRANT_AMOUNT`：赠送给每个新用户的积分数量。
+*   `CREDIT_EXPIRATION_DAYS`：促销积分过期的天数。设置为 `0` 表示永不过期。
 
-此端点修改现有的模型费率。
+### 购买积分
 
-*   **Endpoint**: `PUT /api/ai-providers/:providerId/model-rates/:rateId`
-*   **Permissions**: Admin
-*   **Body**: 可以提供创建字段的子集。
-    *   `modelDisplay`, `inputRate`, `outputRate`, `description`, `unitCosts`, `modelMetadata`.
+用户可以通过购买积分来增加其余额。系统可以配置一个支付链接，将用户引导至结账页面。默认情况下，AIGNE Hub 会尝试通过集成的 PaymentKit blocklet 创建和管理支付链接，但也可以通过 `CREDIT_PAYMENT_LINK` 环境变量指定自定义 URL。
 
-**请求示例**：
+## 使用量跟踪与计量
 
-```bash
-curl -X PUT \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <ADMIN_TOKEN>" \
-  -d '{
-    "inputRate": 12,
-    "outputRate": 35
-  }' \
-  https://<your-domain>/api/ai-providers/prv_xxxxxxxx/model-rates/rate_zzzzzzzz
-```
+对于每次 API 调用，AIGNE Hub 都会执行一系列步骤，以确保准确的积分消耗和报告。该过程设计得既有弹性又高效，通过批量处理小额费用来减少开销。
 
-### 5.2.4. 删除模型费率
+工作流程如下：
 
-此端点永久删除一个模型费率。一旦删除，相应的模型将不再可计费或使用。
+1.  **验证用户余额**：检查用户是否有足够的积分余额。如果余额为零或更少，请求将被拒绝，并返回 `402 Payment Required` 错误。
+2.  **计算成本**：在 AI 提供商成功处理请求后，AIGNE Hub 通过将提示词和补全 token（或图像数量）乘以配置的 `inputRate` 和 `outputRate` 来计算积分成本。
+3.  **记录使用情况**：在数据库中创建一条使用记录，详细说明使用的 token、消耗的积分以及相关的用户和模型。
+4.  **向支付系统报告**：消耗的积分作为计量事件报告给支付系统，然后支付系统会从用户余额中扣除相应金额。此报告过程会进行节流控制，将多个小请求批量处理为一次更新，以优化性能。
 
-*   **Endpoint**: `DELETE /api/ai-providers/:providerId/model-rates/:rateId`
-*   **Permissions**: Admin
+## 总结
 
-## 5.3. 批量价格更新
-
-为简化和统一价格调整，系统提供了一种基于预定义利润率的批量更新机制。当底层提供商成本或积分估值发生变化时，此功能对于全局调整价格特别有用。
-
-*   **Endpoint**: `POST /api/ai-providers/bulk-rate-update`
-*   **Permissions**: Admin
-*   **Body**:
-    *   `profitMargin` (number, required)：期望的利润率百分比（例如，`20` 代表 20%）。
-    *   `creditPrice` (number, required)：单个积分单位的有效价格，其货币与 `unitCosts` 中的货币相同（例如，`0.000005`，如果 1 积分 = $0.000005）。
-
-**工作流程**：
-
-1.  系统获取所有已填充 `unitCosts` 字段的 `AiModelRate` 记录。**没有此字段的费率将被跳过。**
-2.  对于每个有效的费率，它使用以下公式计算新的 `inputRate` 和 `outputRate`：
-    `newRate = (unitCost / 1,000,000) * (1 + profitMargin / 100) / creditPrice`
-3.  计算出的费率将应用于这些记录。
-
-这使运营商能够根据业务逻辑来维护定价，而无需手动重新计算每个费率。
-
-## 5.4. 模型同步与健康状况
-
-系统包含测试已配置模型的可用性和状态的功能。
-
-*   **Endpoint**: `GET /api/ai-providers/test-models`
-*   **Permissions**: Admin
-*   **Functionality**: 此端点为每个已配置的模型费率触发一个异步作业。该作业尝试使用存储的凭据向提供商验证模型。结果（成功或失败）存储在 `AiModelStatus` 表中，可用于确定模型是否应对最终用户可用。
-
-**速率限制**：为防止滥用和对下游提供商 API 造成过大负载，此端点受到速率限制。默认情况下，管理员在 10 分钟内最多可以触发此过程 5 次。
-
-## 5.5. 数据模型 (`AiModelRate`)
-
-对于高级故障排查，运营商可能需要直接检查数据库中的 `ai_model_rates` 表。
-
-| Column | Type | Description |
-| :--- | :--- | :--- |
-| `id` | String | 费率记录的唯一标识符（例如 `rate_xxxxxxxx`）。 |
-| `providerId` | String | 链接到 `AiProvider` 记录的外键。 |
-| `model` | String(100) | 模型的唯一标识符（例如 `gpt-4o`）。 |
-| `modelDisplay` | String(100) | 模型的人类可读名称（例如 `GPT-4 Omni`）。 |
-| `type` | Enum | 模型类型（`chatCompletion`、`embedding`、`imageGeneration`）。 |
-| `inputRate` | Decimal(10, 4) | 输入 token 的积分成本。 |
-| `outputRate` | Decimal(10, 4) | 输出 token 或每张图像的积分成本。 |
-| `unitCosts` | JSON | 存储来自提供商的底层成本（例如 `{ "input": 5.0, "output": 15.0 }`）。 |
-| `modelMetadata` | JSON | 存储有关模型能力的元数据（例如 `maxTokens`、`features`）。 |
-
-## 5.6. 运营注意事项
-
-*   **缺少 `unitCosts`**：批量费率更新功能完全依赖于 `unitCosts` 字段。如果某个模型费率未填充此字段，该费率将在批量更新期间被跳过。如果运营商打算使用基于利润率的定价工具，应确保准确输入此数据。
-
-*   **定价问题排查**：如果用户对某次 API 调用的收费金额感到意外，第一步是查询 `ai_model_rates` 表中使用的确切模型和提供商。验证 `inputRate` 和 `outputRate` 是否与预期值匹配。如果手动更新或批量更新产生了意外结果，就可能出现差异。
-
-*   **模型不可用**：如果某个模型持续对用户失败，运营商可以使用 `GET /test-models` 端点触发健康检查。检查结果可在 `ai_model_status` 表中查看，有助于诊断问题是出在模型本身、提供商还是存储的凭据上。
+基于积分的计费系统将 AIGNE Hub 转变为一个全面的 AI 资源管理平台。它为运营者提供了工具，可以将复杂的提供商定价抽象化，创建一个稳定的内部经济体系，并根据一个基于使用量的明确指标来管理用户访问。通过仔细配置模型费率和用户积分策略，您可以确保您的 AI 网关的可持续和可控运营。

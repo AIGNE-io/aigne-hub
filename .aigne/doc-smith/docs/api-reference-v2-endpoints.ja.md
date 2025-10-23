@@ -1,107 +1,233 @@
-# APIアーキテクチャとエンドポイント (v2)
+# V2エンドポイント（推奨）
 
-このドキュメントは、システムのデプロイ、監視、保守を担当するDevOps、SRE、およびインフラストラクチャチーム向けに設計されたv2 APIアーキテクチャの詳細な概要を提供します。APIの内部動作、設計理論、および運用面に焦点を当てています。
+V2 APIは、AIGNEハブを介してさまざまなAIモデルとやり取りするための包括的なエンドポイント群を提供します。これらのエンドポイントは現在の標準であり、すべての新規インテグレーションで推奨されます。堅牢で機能豊富に設計されており、ユーザーレベルの認証、オプションのクレジットベースの課金チェック、詳細な使用状況の追跡機能を提供します。
 
-## 1. システムアーキテクチャ概要
+これらのエンドポイントは統一されたゲートウェイとして機能し、さまざまなAIプロバイダーとのやり取りの複雑さを抽象化します。AIGNEハブを介してリクエストをルーティングすることで、AIモデルの使用に対する一元的な制御、監視、セキュリティを実現できます。
 
-v2 APIは、さまざまなAIモデルと対話するための堅牢でスケーラブルなインターフェースです。その設計は、動的なプロバイダー管理、回復性、および包括的な使用状況追跡を優先しており、本番環境に適しています。
+APIでの認証の詳細については、[認証](./api-reference-authentication.md)ガイドを参照してください。レガシーエンドポイントに関する情報については、[V1エンドポイント（レガシー）](./api-reference-v1-endpoints.md)のドキュメントをご覧ください。
 
-### 1.1. リクエストのライフサイクル
+## APIエンドポイントリファレンス
 
-典型的なAPIリクエストは、一連のExpress.jsミドルウェアによって強制される構造化されたライフサイクルに従います。
-
-1.  **認証**: `sessionMiddleware` がアクセスキーを介してユーザーを認証し、リクエストオブジェクトにユーザーのコンテキスト (`req.user`) を添付します。
-2.  **課金とクレジットチェック**: クレジットベースの課金が有効な場合 (`Config.creditBasedBillingEnabled`)、`checkCreditBasedBillingMiddleware` が決済システムが稼働しており、ユーザーが十分なクレジット残高を持っていることを確認します (`checkUserCreditBalance`)。
-3.  **モデル呼び出しの追跡**: 専用のミドルウェア (`createModelCallMiddleware`) が、AIモデルとの対話のライフサイクル全体を追跡するためのレコードをシステム内で開始します。これは、ロギング、デバッグ、分析にとって非常に重要です。
-4.  **入力の検証**: 受信したリクエストボディは、事前に定義されたJoiスキーマに対して厳密に検証され、データの整合性を確保し、不正な形式のリクエストがコアロジックに到達するのを防ぎます。
-5.  **動的なモデルと認証情報の選択**: システムは、適切なAIプロバイダーと認証情報を動的に選択します。`AiProvider` と `AiCredential` テーブルをクエリして、リクエストされたモデルに対して有効でアクティブな認証情報を見つけ、ラウンドロビンまたは同様の戦略 (`AiCredential.getNextAvailableCredential`) を実装して負荷を分散します。
-6.  **AIモデルの呼び出し**: リクエストはコアロジックによって処理され、`AIGNE` SDKを使用して選択されたAIモデルと対話します。これにより、さまざまなプロバイダーAPIの複雑さが抽象化されます。
-7.  **使用状況と課金記録の確定**: 成功または失敗時に、フック (`onEnd` または `onError`) がトリガーされます。`createUsageAndCompleteModelCall` 関数が呼び出され、モデル呼び出しレコードを確定し、クレジット単位のコストを計算し、詳細な使用状況メトリクスを記録します。
-8.  **レスポンスの生成**: システムはクライアントにレスポンスを返します。チャット補完の場合、これは標準のJSONオブジェクトまたはリアルタイムストリーミング用の `text/event-stream` になります。
-
-### 1.2. 動的なプロバイダーと認証情報の管理
-
-主要な設計上の決定は、APIを特定のAIプロバイダーから切り離すことでした。システムは、データベース駆動のアプローチを使用してプロバイダー (`AiProvider`) とそれに関連するAPIキー (`AiCredential`) を管理します。
-
--   **仕組み**: リクエストがモデル (例: `openai/gpt-4o`) を指定すると、システムはまずプロバイダー (`openai`) を特定します。次に、そのプロバイダーに関連付けられたアクティブな認証情報をデータベースでクエリします。これにより、サービスのダウンタイムなしで認証情報を追加、削除、またはローテーションできます。
--   **理論的根拠**: このアーキテクチャは、高い可用性と柔軟性を提供します。ある認証情報やプロバイダーで問題が発生した場合、システムを別のものにフェイルオーバーするように設定できます。また、APIキーの管理を簡素化し、AIモデルへのアクセス制御を集中化します。`getProviderCredentials` 関数がこのロジックをカプセル化し、すべてのモデル呼び出しが有効でアクティブな認証情報を使用することを保証します。
-
-### 1.3. 回復性とエラーハンドリング
-
-分散環境での安定性を確保するため、APIは一時的な障害に対する自動リトライメカニズムを組み込んでいます。
-
--   **リトライハンドラ**: `createRetryHandler` がコアエンドポイントロジックをラップします。特定のエラーハンドリングHTTPステータスコード (例: `429 Too Many Requests`, `500 Internal Server Error`, `502 Bad Gateway`) で失敗したリクエストをリトライするように設定されています。リトライ回数は `Config.maxRetries` で設定可能です。
--   **障害ロギング**: リトライ不可能なエラーの場合、またはすべてのリトライを使い果たした後、`onError` フックが障害を確実にログに記録し、関連するモデル呼び出しレコードに失敗のマークを付けます。これにより、孤立したレコードを防ぎ、トラブルシューティングのための明確なデータを提供します。
-
-## 2. APIエンドポイント
-
-以下のセクションでは、主要なv2 APIエンドポイント、その目的、および運用上の特性について詳しく説明します。
+以下のセクションでは、利用可能な各V2エンドポイントの詳細な仕様を説明します。すべてのリクエストには、認証のために`Authorization: Bearer <TOKEN>`ヘッダーが必要です。
 
 ### GET /status
 
--   **目的**: サービスが利用可能で、特定のモデルに対するリクエストを受け入れる準備ができているかどうかを判断するために使用されるヘルスチェックエンドポイント。
--   **プロセスフロー**:
-    1.  ユーザーを認証します。
-    2.  `Config.creditBasedBillingEnabled` が true の場合、決済サービスが実行中であり、ユーザーがプラスのクレジット残高を持っていることを確認します。
-    3.  `AiProvider` データベースをクエリして、リクエストされたモデルを提供できるアクティブな認証情報を持つ有効なプロバイダーが少なくとも1つ存在することを確認します。
-    4.  特定のモデルがクエリされた場合、`AiModelRate` テーブルでそのモデルのレートが定義されているかも確認します。
--   **運用上の注意**: このエンドポイントは、クライアント側のサービスディスカバリにとって重要です。クライアントは、確実に失敗するリクエストを送信するのを避けるために、モデル呼び出しを試みる前に `/status` を呼び出すべきです。
+このエンドポイントは、AIGNEハブサービスの可用性、およびオプションで特定のモデルの可用性をチェックします。必要なAIプロバイダーが設定され、有効化され、アクティブな認証情報を持っていることを検証します。クレジットベースの課金が有効な場合、ユーザーの残高とモデルの料金設定もチェックします。
 
-### POST /chat and /chat/completions
+**クエリパラメータ**
 
--   **目的**: チャットベースの対話のために言語モデルへのアクセスを提供します。
--   **エンドポイントのバリエーション**:
-    -   `/chat/completions`: 標準の `messages` 配列を受け入れ、`text/event-stream` を介したストリーミングをサポートするOpenAI互換のエンドポイント。
-    -   `/chat`: 若干異なる入力構造を使用するが、同じコア機能を提供するネイティブのAIGNE Hubエンドポイント。
--   **プロセスフロー**:
-    1.  リクエストのライフサイクル (認証、課金チェックなど) が実行されます。
-    2.  `processChatCompletion` 関数がコアロジックを処理します。入力を `completionsRequestSchema` に対して検証します。
-    3.  指定されたモデルインスタンスを動的にロードし、認証情報を選択するために `getModel` が呼び出されます。
-    4.  `AIGNE` エンジンがモデルを呼び出します。`stream: true` がリクエストされた場合、レスポンスのチャンクを生成する非同期ジェネレータを返します。
-    5.  ストリーミングレスポンスの場合、チャンクは到着次第レスポンスストリームに書き込まれます。
-    6.  `onEnd` フックがトークン使用量 (`promptTokens`, `completionTokens`) を計算し、`createUsageAndCompleteModelCall` を呼び出してトランザクションを記録します。
+<x-field-group>
+  <x-field data-name="model" data-type="string" data-required="false" data-desc="可用性をチェックする特定のモデル。provider/model-nameの形式で指定します（例：openai/gpt-4o-mini）。"></x-field>
+</x-field-group>
 
-### POST /image and /image/generations
+**リクエストの例**
 
--   **目的**: DALL-Eなどのモデルを使用して、テキストプロンプトから画像を生成します。
--   **エンドポイントのバリエーション**:
-    -   `/image/generations`: OpenAI互換のエンドポイント。
-    -   `/image`: ネイティブのAIGNE Hubエンドポイント。
--   **プロセスフロー**:
-    1.  標準のリクエストライフサイクルが実行されます。
-    2.  入力は `imageGenerationRequestSchema` または `imageModelInputSchema` に対して検証されます。
-    3.  適切な画像モデルプロバイダー (例: OpenAI, Gemini) をロードし、認証情報を選択するために `getImageModel` が呼び出されます。
-    4.  `AIGNE` エンジンがプロンプトとパラメータ (サイズ、品質など) を使用してモデルを呼び出します。
-    5.  `onEnd` フックが使用状況を記録します。画像の場合、課金は通常、生成された画像の数、そのサイズ、品質に基づいており、これは `createUsageAndCompleteModelCall` でキャプチャされます。
-    6.  レスポンスには、URLまたはBase64エンコードされたJSONデータ (`b64_json`) として生成された画像が含まれます。
+```bash 特定のモデルの可用性をチェック icon=lucide:terminal
+curl --location --request GET 'https://your-aigne-hub-instance.com/api/v2/status?model=openai/gpt-4o-mini' \
+--header 'Authorization: Bearer <YOUR_API_TOKEN>'
+```
+
+**レスポンスの例（成功）**
+
+```json icon=lucide:braces
+{
+  "available": true
+}
+```
+
+**レスポンスの例（失敗）**
+
+```json icon=lucide:braces
+{
+  "available": false,
+  "error": "Model rate not available"
+}
+```
+
+### POST /chat/completions
+
+このエンドポイントは、一連のメッセージに基づいてチャットモデルから応答を生成します。OpenAI Chat Completions API形式と互換性があるように設計されており、OpenAIとの直接的な統合の簡単な代替となります。標準応答とストリーミング応答の両方をサポートしています。
+
+**リクエストボディ**
+
+<x-field-group>
+  <x-field data-name="model" data-type="string" data-required="true" data-desc="使用するモデルの識別子（例：openai/gpt-4o-mini、google/gemini-1.5-pro-latest）。"></x-field>
+  <x-field data-name="messages" data-type="array" data-required="true" data-desc="会話履歴を表すメッセージオブジェクトの配列。">
+    <x-field data-name="role" data-type="string" data-required="true" data-desc="メッセージ作成者の役割。「system」、「user」、「assistant」、または「tool」のいずれかです。"></x-field>
+    <x-field data-name="content" data-type="string | array" data-required="true" data-desc="メッセージの内容。文字列、またはマルチパートメッセージ（例：テキストと画像）の場合は配列になります。"></x-field>
+  </x-field>
+  <x-field data-name="stream" data-type="boolean" data-default="false" data-required="false" data-desc="trueに設定すると、応答は生成されるたびにチャンクでストリーミングされます。"></x-field>
+  <x-field data-name="maxTokens" data-type="integer" data-required="false" data-desc="補完で生成するトークンの最大数。"></x-field>
+  <x-field data-name="temperature" data-type="number" data-default="1" data-required="false" data-desc="ランダム性を制御します。値が低いほど、モデルはより決定論的になります。範囲：0.0から2.0。"></x-field>
+  <x-field data-name="topP" data-type="number" data-default="1" data-required="false" data-desc="Nucleusサンプリングパラメータ。モデルはtopPの確率質量を持つトークンを考慮します。範囲：0.0から1.0。"></x-field>
+  <x-field data-name="presencePenalty" data-type="number" data-default="0" data-required="false" data-desc="これまでのテキストに出現したかどうかに基づいて新しいトークンにペナルティを課します。範囲：-2.0から2.0。"></x-field>
+  <x-field data-name="frequencyPenalty" data-type="number" data-default="0" data-required="false" data-desc="これまでのテキストにおける既存の頻度に基づいて新しいトークンにペナルティを課します。範囲：-2.0から2.0。"></x-field>
+  <x-field data-name="tools" data-type="array" data-required="false" data-desc="モデルが呼び出す可能性のあるツールのリスト。現在、関数のみがサポートされています。"></x-field>
+  <x-field data-name="toolChoice" data-type="string | object" data-required="false" data-desc="モデルによってどのツールが呼び出されるかを制御します。「none」、「auto」、「required」、または特定の関数を指定できます。"></x-field>
+</x-field-group>
+
+**リクエストの例**
+
+```bash icon=lucide:terminal
+curl --location --request POST 'https://your-aigne-hub-instance.com/api/v2/chat/completions' \
+--header 'Authorization: Bearer <YOUR_API_TOKEN>' \
+--header 'Content-Type: application/json' \
+--data '{
+    "model": "openai/gpt-4o-mini",
+    "messages": [
+        {
+            "role": "system",
+            "content": "You are a helpful assistant."
+        },
+        {
+            "role": "user",
+            "content": "Hello! What is the capital of France?"
+        }
+    ],
+    "stream": false
+}'
+```
+
+**レスポンスの例（非ストリーミング）**
+
+```json icon=lucide:braces
+{
+  "role": "assistant",
+  "text": "The capital of France is Paris.",
+  "content": "The capital of France is Paris."
+}
+```
+
+**レスポンスの例（ストリーミング）**
+
+`stream`が`true`の場合、サーバーは`text/event-stream`で応答します。
+
+```text サーバー送信イベント icon=lucide:file-text
+data: {"id":"chatcmpl-xxxxx","object":"chat.completion.chunk","created":1719543621,"model":"gpt-4o-mini-2024-07-18","choices":[{"index":0,"delta":{"role":"assistant","content":""},"logprobs":null,"finish_reason":null}]}
+
+data: {"id":"chatcmpl-xxxxx","object":"chat.completion.chunk","created":1719543621,"model":"gpt-4o-mini-2024-07-18","choices":[{"index":0,"delta":{"content":"The"},"logprobs":null,"finish_reason":null}]}
+
+data: {"id":"chatcmpl-xxxxx","object":"chat.completion.chunk","created":1719543621,"model":"gpt-4o-mini-2024-07-18","choices":[{"index":0,"delta":{"content":" capital"},"logprobs":null,"finish_reason":null}]}
+
+data: {"id":"chatcmpl-xxxxx","object":"chat.completion.chunk","created":1719543621,"model":"gpt-4o-mini-2024-07-18","choices":[{"index":0,"delta":{"content":" of"},"logprobs":null,"finish_reason":null}]}
+
+data: {"id":"chatcmpl-xxxxx","object":"chat.completion.chunk","created":1719543621,"model":"gpt-4o-mini-2024-07-18","choices":[{"index":0,"delta":{"content":" France"},"logprobs":null,"finish_reason":null}]}
+
+data: {"id":"chatcmpl-xxxxx","object":"chat.completion.chunk","created":1719543621,"model":"gpt-4o-mini-2024-07-18","choices":[{"index":0,"delta":{"content":" is"},"logprobs":null,"finish_reason":null}]}
+
+data: {"id":"chatcmpl-xxxxx","object":"chat.completion.chunk","created":1719543621,"model":"gpt-4o-mini-2024-07-18","choices":[{"index":0,"delta":{"content":" Paris"},"logprobs":null,"finish_reason":null}]}
+
+data: {"id":"chatcmpl-xxxxx","object":"chat.completion.chunk","created":1719543621,"model":"gpt-4o-mini-2024-07-18","choices":[{"index":0,"delta":{"content":"."},"logprobs":null,"finish_reason":null}]}
+
+data: {"object":"chat.completion.usage","usage":{"promptTokens":23,"completionTokens":7,"totalTokens":30,"aigneHubCredits":0.00000485,"modelCallId":"mca_..."},"model":"openai/gpt-4o-mini"}
+
+data: [DONE]
+```
 
 ### POST /embeddings
 
--   **目的**: 入力テキストを数値ベクトル表現 (埋め込み) に変換します。
--   **プロセスフロー**:
-    1.  標準のリクエストライフサイクルが実行されます。
-    2.  リクエストボディは `embeddingsRequestSchema` によって検証されます。
-    3.  `processEmbeddings` が、基盤となるプロバイダーの埋め込みエンドポイントを呼び出します。
-    4.  使用量は入力トークンの数に基づいて計算され、`createUsageAndCompleteModelCall` を介して記録されます。
+このエンドポイントは、与えられた入力テキストに対してベクトル埋め込みを作成します。これは、セマンティック検索、クラスタリング、分類などのタスクに使用できます。
 
-### POST /audio/transcriptions and /audio/speech
+**リクエストボディ**
 
--   **目的**: 音声テキスト変換およびテキスト音声合成機能を提供します。
--   **アーキテクチャ**: これらのエンドポイントは現在、OpenAI APIへのセキュアなプロキシとして実装されています。
--   **プロセスフロー**:
-    1.  ユーザーが認証されます。
-    2.  リクエストは直接OpenAI APIに転送されます。
-    3.  `proxyReqOptDecorator` 関数が、認証情報ストアから適切なOpenAI APIキーを動的に取得し、送信リクエストの `Authorization` ヘッダーにそれを挿入します。
--   **運用上の注意**: これらはプロキシであるため、そのパフォーマンスと可用性はアップストリームのOpenAIサービスに直接依存します。ソースコードでは、これらのエンドポイントに対するクレジットベースの課金は「TODO」とマークされているため、使用状況がAIGNE Hubの課金システムを通じて追跡されない可能性があることに注意してください。
+<x-field-group>
+  <x-field data-name="model" data-type="string" data-required="true" data-desc="使用する埋め込みモデルの識別子（例：openai/text-embedding-3-small）。"></x-field>
+  <x-field data-name="input" data-type="string | array" data-required="true" data-desc="埋め込む入力テキスト。単一の文字列または文字列の配列を指定できます。"></x-field>
+</x-field-group>
 
-## 3. トラブルシューティングと監視
+**リクエストの例**
 
--   **ログ分析**: システムは集中ロガーを使用しています。監視すべき主要なイベントは次のとおりです。
-    -   `Create usage and complete model call error`: モデル呼び出し後に使用状況データをデータベースに書き込む際の問題を示しており、課金に影響を与える可能性があります。
-    -   `ai route retry`: 一時的なネットワークエラーやプロバイダーエラーが発生していることを示します。リトライの頻度が高い場合は、基盤となるインフラストラクチャの不安定性を示している可能性があります。
-    -   `Failed to mark incomplete model call as failed`: モデル呼び出し追跡システムで不整合な状態を引き起こす可能性のある重大なエラー。
--   **一般的なエラー**:
-    -   `400 Validation error`: クライアントが不正な形式のリクエストを送信しました。どのJoi検証が失敗したかの詳細については、エラーメッセージを確認してください。
-    -   `401 User not authenticated`: アクセスキーがないか、無効です。
-    -   `404 Provider ... not found`: リクエストされたモデルまたはプロバイダーがデータベースで設定されていないか、有効になっていません。
-    -   `502 Payment kit is not Running`: 課金サービスがダウンしているか、到達不能です。これは `creditBasedBillingEnabled` が true の場合の重大な依存関係です。
+```bash icon=lucide:terminal
+curl --location --request POST 'https://your-aigne-hub-instance.com/api/v2/embeddings' \
+--header 'Authorization: Bearer <YOUR_API_TOKEN>' \
+--header 'Content-Type: application/json' \
+--data '{
+    "model": "openai/text-embedding-3-small",
+    "input": "AIGNE Hub is a unified AI gateway."
+}'
+```
+
+**レスポンスの例**
+
+```json icon=lucide:braces
+{
+  "data": [
+    {
+      "object": "embedding",
+      "embedding": [
+        -0.008922631,
+        0.011883527,
+        // ... さらに浮動小数点数が続く
+        -0.013459821
+      ],
+      "index": 0
+    }
+  ]
+}
+```
+
+### POST /image/generations
+
+このエンドポイントは、指定された画像モデルを使用して、テキストプロンプトから画像を生成します。
+
+**リクエストボディ**
+
+<x-field-group>
+  <x-field data-name="model" data-type="string" data-required="true" data-desc="使用する画像生成モデルの識別子（例：openai/dall-e-3）。"></x-field>
+  <x-field data-name="prompt" data-type="string" data-required="true" data-desc="希望する画像の詳細なテキスト記述。"></x-field>
+  <x-field data-name="n" data-type="integer" data-default="1" data-required="false" data-desc="生成する画像の数。1から10の間でなければなりません。"></x-field>
+  <x-field data-name="size" data-type="string" data-required="false" data-desc="生成される画像のサイズ。サポートされる値はモデルによって異なります（例：「1024x1024」、「1792x1024」）。"></x-field>
+  <x-field data-name="quality" data-type="string" data-default="standard" data-required="false" data-desc="画像の品質。サポートされる値は「standard」と「hd」です。"></x-field>
+  <x-field data-name="style" data-type="string" data-default="vivid" data-required="false" data-desc="生成される画像のスタイル。サポートされる値は「vivid」と「natural」です。"></x-field>
+  <x-field data-name="responseFormat" data-type="string" data-default="url" data-required="false" data-desc="生成された画像が返される形式。「url」または「b64_json」のいずれかでなければなりません。"></x-field>
+</x-field-group>
+
+**リクエストの例**
+
+```bash icon=lucide:terminal
+curl --location --request POST 'https://your-aigne-hub-instance.com/api/v2/image/generations' \
+--header 'Authorization: Bearer <YOUR_API_TOKEN>' \
+--header 'Content-Type: application/json' \
+--data '{
+    "model": "openai/dall-e-3",
+    "prompt": "A cute cat astronaut floating in space, digital art",
+    "n": 1,
+    "size": "1024x1024",
+    "responseFormat": "url"
+}'
+```
+
+**レスポンスの例**
+
+```json icon=lucide:braces
+{
+  "images": [
+    {
+      "url": "https://oaidalleapiprodscus.blob.core.windows.net/private/..."
+    }
+  ],
+  "data": [
+    {
+      "url": "https://oaidalleapiprodscus.blob.core.windows.net/private/..."
+    }
+  ],
+  "model": "dall-e-3",
+  "usage": {
+    "aigneHubCredits": 0.04
+  }
+}
+```
+
+### オーディオエンドポイント
+
+AIGNEハブはオーディオ処理用のエンドポイントを提供します。これらは現在、OpenAI APIへのリクエストをプロキシします。これらのエンドポイントに対するクレジットベースの課金システムとの完全な統合は開発中です。
+
+#### POST /audio/transcriptions
+
+オーディオを入力言語に文字起こしします。
+
+#### POST /audio/speech
+
+入力テキストからオーディオを生成します。
+
+両方のオーディオエンドポイントについて、リクエストとレスポンスの形式は、オーディオの文字起こしと音声合成に関するOpenAI V1 APIと同一です。必要なパラメータの詳細については、公式のOpenAIドキュメントを参照してください。AIGNEハブは、リクエストを転送する前に、プロバイダーに必要なAPIキーを安全に注入します。

@@ -1,29 +1,70 @@
-# 技術架構
+# 先決條件
 
-AIGNE Hub 被設計為一個雲原生應用程式，為可靠性、可擴展性和易於維護進行了優化。該架構利用了現代化的技術堆疊，每個元件都經過精心挑選，以滿足高效能 AI 閘道的特定需求。該系統被設計為一個自足的單元進行部署，從而最大限度地減少了外部依賴，並簡化了營運管理。
+在部署 AIGNE Hub 之前，確保目標環境符合指定的軟體和系統需求至關重要。本節概述了成功安裝和順暢運作所必需的依賴項目。遵循這些先決條件將能防止相容性問題並簡化部署過程。
 
-![logo.png](../../../blocklets/core/screenshots/logo.png)
+## 軟體需求
 
-### 核心元件
+主機系統上必須安裝並正確設定以下軟體元件。
 
-此架構由幾個關鍵層組成：
+### Node.js
 
-| 元件 | 技術 | 理由 |
-| :--- | :--- | :--- |
-| **應用程式框架** | AIGNE 框架 | 為後端服務提供基礎結構，包括依賴注入、組態管理和生命週期掛鉤。它標準化了開發流程，並確保在 AIGNE 生態系統內的無縫整合。 |
-| **後端執行環境** | Node.js & TypeScript | Node.js 因其非阻塞、事件驅動的 I/O 模型而被採用，這對於處理大量對外部 LLM 供應商的並行 API 請求非常高效。TypeScript 增加了靜態型別，提高了程式碼品質、可維護性，並減少了執行階段錯誤——這對於核心基礎設施服務而言是一項至關重要的特性。 |
-| **前端介面** | React 19 | 管理儀表板和模型遊樂場是使用最新版本的 React 構建的。這為組態、監控和測試提供了一個現代化、響應式且高效能的使用者介面。 |
-| **資料儲存** | SQLite 搭配 Sequelize ORM | SQLite 被用作預設的嵌入式資料庫，這無需外部資料庫伺服器，從而簡化了部署。這一設計選擇使得 AIGNE Hub 輕量且易於安裝。Sequelize ORM 抽象化了資料庫互動，並提供了在必要時為更大規模部署切換到其他 SQL 資料庫（如 PostgreSQL）的靈活性。 |
-| **部署與打包**| Blocklet | 整個應用程式被打包為一個 Blocklet。這種雲原生的容器化方法將應用程式、其執行環境和所有依賴項封裝到一個單一、可部署的單元中。對於營運團隊而言，這極大地簡化了在任何 Blocklet Server 實例上的安裝、升級和擴展。 |
+AIGNE Hub 是一個 Node.js 應用程式，需要特定版本的執行環境才能正常運作。
 
-### 系統設計與資料流程
+*   **需求**：Node.js 是執行 AIGNE Hub 後端服務的 JavaScript 執行環境。
+*   **要求版本**：`18.0.0` 或更高版本。
+*   **驗證**：若要檢查您已安裝的版本，請在您的終端機中執行以下指令：
+    ```bash Node.js 版本檢查 icon=logos:nodejs-icon
+    node -v
+    ```
+*   **安裝**：如果您尚未安裝 Node.js 或需要升級，建議使用版本管理器，如 [nvm](https://github.com/nvm-sh/nvm)（適用於 Linux/macOS）或 [nvm-windows](https://github.com/coreybutler/nvm-windows) 來管理多個 Node.js 版本。官方安裝程式也可在 [Node.js 網站](https://nodejs.org/)上取得。
 
-1.  **請求接收**：客戶端應用程式（例如，使用 AIGNE 框架、AIGNE Studio 或自訂腳本構建的應用程式）向 AIGNE Hub 的 RESTful 端點（例如 `/api/v2/chat`）發送 API 請求。這些請求透過 OAuth 存取金鑰進行保護。
-2.  **驗證與授權**：Hub 的閘道層攔截請求，驗證存取金鑰，並檢查相關權限和使用者信用餘額（如果在服務供應商模式下）。
-3.  **供應商路由**：根據請求參數（例如 `model: "openai/gpt-3.5-turbo"`），Hub 的路由邏輯會選擇適當的下游 AI 供應商。
-4.  **憑證注入**：Hub 從其加密儲存中安全地擷取相應供應商的 API 金鑰，並將其注入到請求中。
-5.  **API 呼叫與回應**：Hub 將轉換後的請求轉發給目標 AI 供應商的 API。在收到回應後，它會將輸出正規化為標準化格式。
-6.  **日誌記錄與分析**：在將回應返回給客戶端之前，Hub 會記錄交易詳情，包括 token 用量、成本和延遲。這些資料為用量分析和計費系統提供支援。
-7.  **回應客戶端**：最終的標準化回應會被發送回客戶端應用程式。
+### pnpm
 
-此架構確保了 AIGNE Hub 作為一個強大且透明的中介，為組織內的所有 AI 操作集中了控制、安全性和可觀測性。Blocklet 技術的使用抽象化了底層基礎設施的複雜性，讓 DevOps 和 SRE 團隊能夠將 Hub 作為一個可預測、版本化且可擴展的服務進行管理。
+對於從原始碼手動安裝或出於開發目的，`pnpm` 是指定的套件管理器。它是高效管理依賴項目所必需的。
+
+*   **需求**：`pnpm` 是一個快速、節省磁碟空間的套件管理器。它用於安裝和管理專案的依賴項目。
+*   **要求版本**：`9.0.0` 或更高版本。
+*   **驗證**：若要檢查您已安裝的版本，請執行此指令：
+    ```bash pnpm 版本檢查 icon=logos:pnpm
+    pnpm -v
+    ```
+*   **安裝**：`pnpm` 可以透過 npm（隨 Node.js 一併提供）或其他方法安裝。建議的方法是使用其獨立的腳本。詳細說明請參閱[官方 pnpm 安裝指南](https://pnpm.io/installation)。
+
+    ```bash 安裝 pnpm icon=logos:pnpm
+    npm install -g pnpm
+    ```
+
+## 部署環境
+
+AIGNE Hub 被設計和封裝為一個 [Blocklet](https://www.blocklet.io/)，運行在 Blocklet Server 上。
+
+### Blocklet Server
+
+Blocklet Server 是一個雲原生應用程式伺服器，負責管理像 AIGNE Hub 這樣的 Blocklet 的生命週期、設定和運作。
+
+*   **需求**：Blocklet Server 提供了必要的執行環境，包括反向代理、自動 HTTPS 和使用者驗證，這些都是 AIGNE Hub 運作所必需的。
+*   **安裝**：Blocklet Server 可以安裝在各種平台上。建議且最簡單的方法是使用 `blocklet-cli`。
+    ```bash 安裝 Blocklet CLI icon=lucide:terminal
+    npm install -g @blocklet/cli
+    ```
+    一旦 CLI 安裝完成，您就可以初始化並啟動伺服器。
+    ```bash 初始化 Blocklet Server icon=lucide:server
+    blocklet server init
+    blocklet server start
+    ```
+*   **更多資訊**：有關完整的安裝和管理說明，請參閱 [Blocklet Server 文件](https://docs.blocklet.io/docs/en/getting-started)。
+
+## 總結
+
+總結來說，一個符合 AIGNE Hub 部署要求的環境需要：
+
+| 元件            | 最低版本        | 用途                                        |
+| ---------------- | --------------- | ------------------------------------------- |
+| Node.js          | `>= 18.0.0`     | JavaScript 執行環境                         |
+| pnpm             | `>= 9.0.0`      | 套件管理（用於手動建置）                    |
+| Blocklet Server  | 最新版本        | 應用程式伺服器與執行環境                    |
+
+確保滿足這些先決條件是實現穩定且安全的 AIGNE Hub 部署的第一步，也是最關鍵的一步。一旦您的環境設定正確，您就可以繼續進行安裝指南。
+
+- 對於建議的一鍵部署，請參閱[Blocklet Store 部署](./deployment-and-installation-blocklet-store.md)。
+- 對於開發者和進階使用者，請遵循[手動安裝](./deployment-and-installation-manual-installation.md)指南。
