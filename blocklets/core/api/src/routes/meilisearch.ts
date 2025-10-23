@@ -1,4 +1,5 @@
-import { wallet } from '@api/libs/auth';
+import { createHash } from 'crypto';
+
 import { Event } from '@blocklet/payment-js';
 import { call } from '@blocklet/sdk/lib/component';
 import { Router } from 'express';
@@ -6,16 +7,6 @@ import Joi from 'joi';
 import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
 
 const router = Router();
-
-let securityKey: string | null = null;
-
-async function getSecurityKey(): Promise<string> {
-  if (!securityKey) {
-    securityKey = await wallet.sign('ai-kit/api/meilisearch/embeddings');
-  }
-
-  return securityKey;
-}
 
 export interface CallbackPayload extends Event {}
 
@@ -31,9 +22,11 @@ const embeddingsBodySchema = Joi.object<{
   }).required(),
 });
 
-router.post('/embeddings', async (req, res) => {
-  const securityKey = await getSecurityKey();
+const securityKey = createHash('sha256')
+  .update(`${process.env.BLOCKLET_APP_ASK}:/ai-kit/api/meilisearch/embeddings`)
+  .digest('hex');
 
+router.post('/embeddings', async (req, res) => {
   if (req.get('authorization')?.replace(/^bearer\s+/i, '') !== securityKey) {
     return res.status(401).json({ message: 'Unauthorized' });
   }
