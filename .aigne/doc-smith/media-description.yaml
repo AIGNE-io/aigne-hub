@@ -1,0 +1,61 @@
+descriptions:
+  b0be4ea5888064498b856198e33fd25a44dfa6b92b24e8cffd55582297cab129:
+    path: ../../../blocklets/core/screenshots/logo.png
+    description: This icon depicts a light peach rounded square background,
+      featuring a prominent orange rounded rectangular outline centered within
+      it. Inside the orange rectangle, two small orange oval dots are
+      horizontally aligned, creating a minimalist graphic suitable for use as a
+      UI element or generic placeholder in documentation.
+    generatedAt: 2025-10-23T13:13:23.015Z
+  a9cd09be56bd25027aff8b1c54917d95e70717a59d61312295edb42cfe861e8e:
+    path: ../../../blocklets/core/screenshots/fc46e9461382f0be7541af17ef13f632.png
+    description: This is a screenshot of a web application dashboard for "AIGNE
+      Hub," displaying a clean user interface with a left sidebar navigation and
+      a main content area. The "Quick Starts" tab is active, showcasing three
+      distinct cards for "AI Provider Settings," "Configure Credits Billing,"
+      and "Usage Analytics," each with an icon and brief description. The image
+      provides an overview of the initial configuration and management options
+      available within the AIGNE Hub.
+    generatedAt: 2025-10-23T13:13:23.016Z
+  467a43898fb97a9606a417fbc7df4baab51565591547bb3dca8c564923f4f34a:
+    path: ../../../blocklets/core/screenshots/c29f08420df8ea9a199fcb5ffe06febe.png
+    description: This screenshot depicts the "AIGNE / Hub" platform's user
+      interface, specifically focusing on AI model rate configuration. A
+      prominent "Add Model Rate" modal window is open on the right, displaying
+      input fields for model name, rate type, providers, model cost, AIGNE Hub
+      credit rate configuration, description, and advanced options. In the
+      background, a list of existing AI models like ChatGPT, Claude, and Gemini,
+      along with their providers and types, is visible under the "Model Rates"
+      section of the "Config" page.
+    generatedAt: 2025-10-23T13:13:23.016Z
+  759f20b4abfeccdfa295baa5f1c587628a1c4c3fc7ccc8f3aa31596a6b595b87:
+    path: ../../../blocklets/core/screenshots/6fff77ec3c1fbefb780b2b79c61a36f7.png
+    description: This screenshot displays the "AI Config" page within a web
+      application, illustrating a management interface for various AI service
+      providers. It features a table detailing providers like OpenAI, Google,
+      and AWS Bedrock, alongside their endpoints, credential status, connection
+      status, and an enable/disable toggle. Users can also see options to edit
+      or configure credentials, with a prominent "+ Add Provider" button
+      available for expanding integrated services.
+    generatedAt: 2025-10-23T13:13:23.016Z
+  3c965b1fec89be97eb755e6007805414a739d9377f3fb8f49ee5f5b0cf513f99:
+    path: ../../../blocklets/core/screenshots/8014a0b1d561114d9948214c4929d5df.png
+    description: This screenshot depicts the "Model Rates" configuration page within
+      the AIGNE Hub's AI Config section, providing an overview of how users
+      manage AI model pricing. It showcases a detailed table listing various AI
+      models like ChatGPT and Claude, their providers, content types (Image,
+      Text), and associated input and output pricing rates. The interface allows
+      for editing, deleting, and adding new model rates, offering comprehensive
+      administrative control over AI service costs.
+    generatedAt: 2025-10-23T13:13:23.016Z
+  84151b07ec025b9fa454fdb0210eb2cb47da88cf607bb832e666c74f13af2f1a:
+    path: ../../../blocklets/core/screenshots/d037b6b6b092765ccbfa58706c241622.png
+    description: This screenshot displays the AIGNE Hub web application's user
+      interface, with the "Playground" section highlighted in the left
+      navigation sidebar. The main content area features a conversational AI
+      providing an overview of AIGNE Hub's capabilities, including its
+      integration features and a list of supported AI providers like OpenAI and
+      Google Gemini. At the bottom, a chat input field allows users to select an
+      AI model, such as 'gpt-4o-mini,' and interact with the system.
+    generatedAt: 2025-10-23T13:13:23.016Z
+lastUpdated: 2025-10-23T13:13:23.016Z

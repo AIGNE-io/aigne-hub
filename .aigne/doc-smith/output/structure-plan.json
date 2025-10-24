@@ -1,0 +1,278 @@
+[
+  {
+    "title": "Overview",
+    "description": "Explains the core purpose of AIGNE Hub as a unified AI gateway, its key features, and its role within the larger AIGNE ecosystem for centralized AI governance.",
+    "path": "/overview",
+    "sourceIds": [
+      "README.md",
+      "blocklets/core/blocklet.md"
+    ],
+    "parentId": ""
+  },
+  {
+    "title": "Architecture",
+    "description": "Provides a deep dive into the system's architecture, covering the main components, the technology stack, and the data persistence layer to understand how the system is built and operates.",
+    "path": "/architecture",
+    "sourceIds": [
+      "README.md",
+      "blocklets/core/api/src/index.ts",
+      "blocklets/core/api/src/store/sequelize.ts",
+      "blocklets/core/api/src/store/models/index.ts",
+      "blocklets/core/api/src/routes/index.ts",
+      "blocklets/core/api/src/providers/models.ts",
+      "blocklets/core/api/src/store/migrate.ts"
+    ],
+    "parentId": ""
+  },
+  {
+    "title": "System Components",
+    "description": "Details the primary functional blocks of AIGNE Hub, including the API gateway, authentication system, usage tracker, and billing module.",
+    "path": "/architecture/system-components",
+    "sourceIds": [
+      "README.md",
+      "blocklets/core/api/src/routes/index.ts",
+      "blocklets/core/api/src/routes/v1.ts",
+      "blocklets/core/api/src/routes/v2.ts",
+      "blocklets/core/api/src/libs/auth.ts",
+      "blocklets/core/api/src/libs/security.ts",
+      "blocklets/core/api/src/middlewares/model-call-tracker.ts",
+      "blocklets/core/api/src/libs/payment.ts"
+    ],
+    "parentId": "/architecture"
+  },
+  {
+    "title": "Technology Stack",
+    "description": "Lists the key technologies and frameworks used to build AIGNE Hub, such as Node.js, TypeScript, React, Express, and Sequelize.",
+    "path": "/architecture/technology-stack",
+    "sourceIds": [
+      "README.md",
+      "blocklets/core/api/src/index.ts"
+    ],
+    "parentId": "/architecture"
+  },
+  {
+    "title": "Data Persistence",
+    "description": "Explains the database setup using SQLite and Sequelize ORM, detailing the data models for providers, credentials, model calls, and usage statistics.",
+    "path": "/architecture/data-persistence",
+    "sourceIds": [
+      "blocklets/core/api/src/store/sequelize.ts",
+      "blocklets/core/api/src/store/migrate.ts",
+      "blocklets/core/api/src/store/models/index.ts",
+      "blocklets/core/api/src/store/models/ai-provider.ts",
+      "blocklets/core/api/src/store/models/ai-credential.ts",
+      "blocklets/core/api/src/store/models/ai-model-rate.ts",
+      "blocklets/core/api/src/store/models/model-call.ts",
+      "blocklets/core/api/src/store/models/usage.ts",
+      "blocklets/core/api/src/store/models/app.ts",
+      "blocklets/core/api/src/store/models/model-call-stat.ts"
+    ],
+    "parentId": "/architecture"
+  },
+  {
+    "title": "Deployment and Installation",
+    "description": "Provides comprehensive instructions for deploying AIGNE Hub, from prerequisites to recommended one-click methods and manual installation from source.",
+    "path": "/deployment-and-installation",
+    "sourceIds": [
+      "README.md"
+    ],
+    "parentId": ""
+  },
+  {
+    "title": "Prerequisites",
+    "description": "Outlines the necessary software and environment requirements, such as Node.js, pnpm, and Blocklet Server, needed before installing AIGNE Hub.",
+    "path": "/deployment-and-installation/prerequisites",
+    "sourceIds": [
+      "README.md"
+    ],
+    "parentId": "/deployment-and-installation"
+  },
+  {
+    "title": "Blocklet Store Deployment",
+    "description": "Details the recommended and simplest method for deploying AIGNE Hub via a one-click installation from the Blocklet Store.",
+    "path": "/deployment-and-installation/blocklet-store",
+    "sourceIds": [
+      "README.md"
+    ],
+    "parentId": "/deployment-and-installation"
+  },
+  {
+    "title": "Manual Installation",
+    "description": "Offers a step-by-step guide for developers and operators who need to install and deploy AIGNE Hub manually from the source code repository.",
+    "path": "/deployment-and-installation/manual-installation",
+    "sourceIds": [
+      "README.md"
+    ],
+    "parentId": "/deployment-and-installation"
+  },
+  {
+    "title": "Configuration",
+    "description": "Covers the essential post-deployment configuration steps, focusing on connecting to AI providers, managing credentials, and setting up the credit-based billing system.",
+    "path": "/configuration",
+    "sourceIds": [
+      "README.md",
+      "blocklets/core/api/src/routes/ai-providers.ts",
+      "blocklets/core/api/src/libs/payment.ts",
+      "blocklets/core/api/src/libs/env.ts"
+    ],
+    "parentId": ""
+  },
+  {
+    "title": "AI Providers and Credentials",
+    "description": "Explains how to add, manage, and configure various AI providers and their corresponding API keys and credentials through the administrative interface.",
+    "path": "/configuration/ai-providers-and-credentials",
+    "sourceIds": [
+      "blocklets/core/api/src/routes/ai-providers.ts",
+      "blocklets/core/api/src/store/models/ai-provider.ts",
+      "blocklets/core/api/src/store/models/ai-credential.ts",
+      "blocklets/core/api/src/libs/ai-credentials.ts"
+    ],
+    "parentId": "/configuration"
+  },
+  {
+    "title": "Credit-Based Billing",
+    "description": "Details the process for enabling and configuring the optional credit-based billing system, including how to set specific usage rates for different AI models.",
+    "path": "/configuration/credit-based-billing",
+    "sourceIds": [
+      "blocklets/core/api/src/routes/ai-providers.ts",
+      "blocklets/core/api/src/store/models/ai-model-rate.ts",
+      "blocklets/core/api/src/libs/payment.ts",
+      "blocklets/core/api/src/libs/usage.ts",
+      "blocklets/core/api/src/listeners/listen.ts"
+    ],
+    "parentId": "/configuration"
+  },
+  {
+    "title": "Operational Guides",
+    "description": "Provides practical guides for day-to-day operations, including monitoring system usage, analyzing costs, viewing detailed call histories, and understanding background processes.",
+    "path": "/operational-guides",
+    "sourceIds": [
+      "blocklets/core/api/src/routes/user.ts",
+      "blocklets/core/api/src/libs/usage.ts",
+      "blocklets/core/api/src/middlewares/model-call-tracker.ts",
+      "blocklets/core/api/src/crons/index.ts",
+      "blocklets/core/api/src/store/models/model-call.ts",
+      "blocklets/core/api/src/store/models/model-call-stat.ts"
+    ],
+    "parentId": ""
+  },
+  {
+    "title": "Monitoring Usage and Costs",
+    "description": "Explains how operators can use the user-facing and admin APIs to monitor token consumption, credit usage, and associated costs across all users and applications.",
+    "path": "/operational-guides/monitoring",
+    "sourceIds": [
+      "blocklets/core/api/src/routes/user.ts",
+      "blocklets/core/api/src/libs/user/index.ts",
+      "blocklets/core/api/src/store/models/model-call-stat.ts"
+    ],
+    "parentId": "/operational-guides"
+  },
+  {
+    "title": "Viewing Call History",
+    "description": "Details how to access and export the complete history of model API calls, which is essential for auditing, debugging, and detailed analysis.",
+    "path": "/operational-guides/call-history",
+    "sourceIds": [
+      "blocklets/core/api/src/routes/user.ts",
+      "blocklets/core/api/src/store/models/model-call.ts"
+    ],
+    "parentId": "/operational-guides"
+  },
+  {
+    "title": "Background Operations",
+    "description": "Describes the automated background tasks and cron jobs, such as usage statistics aggregation and stale call cleanup, that ensure system health and data accuracy.",
+    "path": "/operational-guides/background-operations",
+    "sourceIds": [
+      "blocklets/core/api/src/crons/index.ts",
+      "blocklets/core/api/src/crons/model-call-stats.ts",
+      "blocklets/core/api/src/middlewares/model-call-tracker.ts"
+    ],
+    "parentId": "/operational-guides"
+  },
+  {
+    "title": "API Reference",
+    "description": "Offers a detailed technical reference for the AIGNE Hub API, covering authentication, available endpoints, and request/response specifications for integration.",
+    "path": "/api-reference",
+    "sourceIds": [
+      "README.md",
+      "blocklets/core/api/src/routes/v1.ts",
+      "blocklets/core/api/src/routes/v2.ts",
+      "blocklets/core/api/src/libs/ai-routes.ts"
+    ],
+    "parentId": ""
+  },
+  {
+    "title": "Authentication",
+    "description": "Explains the API authentication mechanism, which requires a Bearer token for all requests to secure access to the gateway.",
+    "path": "/api-reference/authentication",
+    "sourceIds": [
+      "README.md",
+      "blocklets/core/api/src/libs/security.ts",
+      "blocklets/core/api/src/libs/auth.ts"
+    ],
+    "parentId": "/api-reference"
+  },
+  {
+    "title": "V2 Endpoints (Recommended)",
+    "description": "Documents the current and recommended V2 API endpoints, which support user-level authentication, credit-based billing checks, and advanced features.",
+    "path": "/api-reference/v2-endpoints",
+    "sourceIds": [
+      "blocklets/core/api/src/routes/v2.ts",
+      "blocklets/core/api/src/libs/ai-routes.ts",
+      "blocklets/core/api/src/providers/models.ts"
+    ],
+    "parentId": "/api-reference"
+  },
+  {
+    "title": "V1 Endpoints (Legacy)",
+    "description": "Provides documentation for the legacy V1 API endpoints to support older integrations and ensure backward compatibility.",
+    "path": "/api-reference/v1-endpoints",
+    "sourceIds": [
+      "blocklets/core/api/src/routes/v1.ts",
+      "blocklets/core/api/src/libs/ai-routes.ts",
+      "blocklets/core/api/src/providers/models.ts"
+    ],
+    "parentId": "/api-reference"
+  },
+  {
+    "title": "Security",
+    "description": "Covers key security aspects of AIGNE Hub, including the benefits of self-hosting, secure credential management, and access control policies.",
+    "path": "/security",
+    "sourceIds": [
+      "README.md",
+      "blocklets/core/api/src/libs/security.ts",
+      "blocklets/core/api/src/libs/auth.ts",
+      "blocklets/core/api/src/store/models/ai-credential.ts"
+    ],
+    "parentId": ""
+  },
+  {
+    "title": "Self-Hosted Data Control",
+    "description": "Highlights the security advantage of deploying AIGNE Hub on your own infrastructure, which provides complete control and privacy over your data and API credentials.",
+    "path": "/security/data-control",
+    "sourceIds": [
+      "README.md"
+    ],
+    "parentId": "/security"
+  },
+  {
+    "title": "Credential Management",
+    "description": "Explains the system's security measure for handling provider API keys, which are AES-encrypted at rest to protect sensitive information.",
+    "path": "/security/credential-management",
+    "sourceIds": [
+      "README.md",
+      "blocklets/core/api/src/store/models/ai-credential.ts",
+      "blocklets/core/api/src/libs/ai-credentials.ts"
+    ],
+    "parentId": "/security"
+  },
+  {
+    "title": "Access Control",
+    "description": "Describes the built-in access control mechanisms, including role-based access for administrative functions and authentication for all API and component-level calls.",
+    "path": "/security/access-control",
+    "sourceIds": [
+      "blocklets/core/api/src/libs/security.ts",
+      "blocklets/core/api/src/routes/user.ts",
+      "blocklets/core/api/src/routes/ai-providers.ts"
+    ],
+    "parentId": "/security"
+  }
+]
