@@ -9,7 +9,7 @@ import { HttpsProxyAgent } from 'https-proxy-agent';
 import { OpenAI } from 'openai';
 import { Op } from 'sequelize';
 
-import { AIProviderType, SUPPORTED_PROVIDERS_SET } from './constants';
+import { AIProviderType, AI_PROVIDER_VALUES, SUPPORTED_PROVIDERS_SET } from './constants';
 import { Config } from './env';
 import logger from './logger';
 
@@ -27,7 +27,7 @@ class ProviderRotationManager {
   private rotationState = new Map<
     string,
     {
-      providers: Array<{ providerId: string; providerName: string }>;
+      providers: Array<{ providerId: string; providerName: string; modelName: string }>;
       currentIndex: number;
       lastUpdateTime: number;
     }
@@ -81,8 +81,8 @@ class ProviderRotationManager {
   }
 
   private filterAvailableProviders(
-    providers: Array<{ providerId: string; providerName: string }>
-  ): Array<{ providerId: string; providerName: string }> {
+    providers: Array<{ providerId: string; providerName: string; modelName: string }>
+  ): Array<{ providerId: string; providerName: string; modelName: string }> {
     return providers.filter((p) => !this.isProviderInCoolDown(p.providerId));
   }
 
@@ -96,6 +96,19 @@ class ProviderRotationManager {
 
     const { modelName } = getModelNameWithProvider(model);
 
+    const matchModels = [model, modelName];
+
+    for (const provider of AI_PROVIDER_VALUES) {
+      const prefix = `${provider}/`;
+      if (modelName.startsWith(prefix)) {
+        const remaining = modelName.substring(prefix.length);
+        if (remaining && !matchModels.includes(remaining)) {
+          matchModels.push(remaining);
+        }
+        break;
+      }
+    }
+
     const now = Date.now();
     let rotationState = this.rotationState.get(modelName);
     const needsRefresh =
@@ -105,7 +118,7 @@ class ProviderRotationManager {
       const rates = await AiModelRate.findAll({
         where: {
           model: {
-            [Op.in]: [modelName, model],
+            [Op.in]: matchModels,
           },
         },
         include: [
@@ -130,13 +143,14 @@ class ProviderRotationManager {
         return null;
       }
 
-      const providersMap = new Map<string, { providerId: string; providerName: string }>();
+      const providersMap = new Map<string, { providerId: string; providerName: string; modelName: string }>();
       for (const rate of rates) {
         const { provider } = rate as any;
         if (provider && provider.credentials?.length) {
           providersMap.set(provider.id, {
             providerId: provider.id,
             providerName: provider.name,
+            modelName: rate.model,
           });
         }
       }
@@ -170,7 +184,7 @@ class ProviderRotationManager {
         return {
           providerId: preferred.providerId,
           providerName: preferred.providerName,
-          modelName,
+          modelName: preferred.modelName,
         };
       }
     }
@@ -198,7 +212,7 @@ class ProviderRotationManager {
     return {
       providerId: selected.providerId,
       providerName: selected.providerName,
-      modelName,
+      modelName: selected.modelName,
     };
   }
 }
