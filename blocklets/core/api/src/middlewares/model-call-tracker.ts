@@ -35,6 +35,7 @@ export interface ModelCallResult {
   usageMetrics?: Record<string, any>;
   metadata?: Record<string, any>;
   traceId?: string;
+  mediaDuration?: number;
 }
 
 declare global {
@@ -71,11 +72,13 @@ export function createModelCallMiddleware(callType: CallType) {
         imageStyle: req.body?.style,
       };
     }
+
     const appDid = (req.headers['x-aigne-hub-client-did'] as string) || '';
     req.appClient = {
       appId: appDid,
       userDid,
     };
+
     try {
       const context = await createModelCallContext({
         type: callType,
@@ -219,6 +222,8 @@ async function createModelCallContext({
         let totalUsage = 0;
         if (modelCall.type === 'imageGeneration') {
           totalUsage = new BigNumber(result.numberOfImageGeneration || 0).toNumber();
+        } else if (modelCall.type === 'video') {
+          totalUsage = new BigNumber(result.mediaDuration || 0).toNumber();
         } else {
           totalUsage = new BigNumber(result.promptTokens || 0)
             .plus(result.completionTokens || 0)
@@ -258,6 +263,8 @@ async function createModelCallContext({
         let totalUsage = 0;
         if (modelCall.type === 'imageGeneration') {
           totalUsage = new BigNumber(partialUsage?.numberOfImageGeneration || 0).toNumber();
+        } else if (modelCall.type === 'video') {
+          totalUsage = new BigNumber(partialUsage?.mediaDuration || 0).toNumber();
         } else {
           totalUsage = new BigNumber(partialUsage?.promptTokens || 0)
             .plus(partialUsage?.completionTokens || 0)

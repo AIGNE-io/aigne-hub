@@ -520,6 +520,7 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
                           {t('config.modelRates.form.rateType.options.imageGeneration')}
                         </MenuItem>
                         <MenuItem value="embedding">{t('config.modelRates.form.rateType.options.embedding')}</MenuItem>
+                        <MenuItem value="video">{t('config.modelRates.form.rateType.options.video')}</MenuItem>
                       </Select>
                       {hasError && <FormHelperText>{error}</FormHelperText>}
                     </FormControl>

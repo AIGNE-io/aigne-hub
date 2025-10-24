@@ -1,5 +1,5 @@
-import { findImageModel, parseModel } from '@aigne/aigne-hub';
-import { AIGNE, ChatModelOutput, Message, imageModelInputSchema } from '@aigne/core';
+import { findImageModel, findVideoModel, parseModel } from '@aigne/aigne-hub';
+import { AIGNE, ChatModelOutput, Message, imageModelInputSchema, videoModelInputSchema } from '@aigne/core';
 import { checkArguments, pick } from '@aigne/core/utils/type-utils';
 import { AIGNEHTTPServer, invokePayloadSchema } from '@aigne/transport/http-server/index';
 import { getModelNameWithProvider, getOpenAIV2, getReqModel } from '@api/libs/ai-provider';
@@ -80,6 +80,7 @@ const user = sessionMiddleware({ accessKey: true });
 const chatCallTracker = createModelCallMiddleware('chatCompletion');
 const embeddingCallTracker = createModelCallMiddleware('embedding');
 const imageCallTracker = createModelCallMiddleware('imageGeneration');
+const videoCallTracker = createModelCallMiddleware('video');
 
 router.get('/status', user, async (req, res) => {
   const userDid = req.user?.did;
@@ -279,7 +280,6 @@ router.post(
 );
 
 const DEFAULT_IMAGE_MODEL = 'openai/dall-e-2';
-
 router.post(
   '/image',
   user,
@@ -360,6 +360,85 @@ router.post(
       res.json({ ...response, usage: { ...response.usage, aigneHubCredits } });
     })
   )
+);
+
+const DEFAULT_VIDEO_MODEL = 'openai/sora-2';
+router.post(
+  '/video',
+  user,
+  checkCreditBasedBillingMiddleware,
+  videoCallTracker,
+  withModelStatus(async (req, res) => {
+    const body = checkArguments('Check video generation payload', invokePayloadSchema, req.body);
+    const input = checkArguments('Check video model input', videoModelInputSchema.passthrough(), body.input);
+    const modelOptions = input.modelOptions as { model?: string };
+
+    const userDid = req.user?.did;
+
+    if (userDid && Config.creditBasedBillingEnabled) {
+      await checkUserCreditBalance({ userDid });
+    }
+
+    const m = input.model || modelOptions?.model || DEFAULT_VIDEO_MODEL;
+
+    const { provider, model } = parseModel(m);
+    if (!provider || !model) throw new CustomError(400, `Invalid model format: ${m}, should be {provider}/{model}`);
+
+    await checkModelRateAvailable(m);
+
+    const { match: M } = findVideoModel(provider);
+    if (!M) throw new CustomError(400, `Video model provider ${provider} not found`);
+    const credential = await getProviderCredentials(provider, { modelCallContext: req.modelCallContext, model });
+    const modelInstance = M.create(credential);
+
+    let traceId;
+
+    const aigne = new AIGNE();
+    const response = await aigne.invoke(
+      modelInstance,
+      { ...input, model, modelOptions: { ...modelOptions, model } },
+      {
+        userContext: { ...body.options?.userContext, userId: req.user?.did },
+        hooks: {
+          onEnd: async (data) => {
+            traceId = data?.context?.id;
+            return data;
+          },
+          onError: async (data) => {
+            onError(data, req);
+          },
+        },
+      }
+    );
+
+    let aigneHubCredits: number | undefined;
+
+    if (response.usage && userDid) {
+      aigneHubCredits = await createUsageAndCompleteModelCall({
+        req,
+        type: 'video',
+        model: m,
+        modelParams: input,
+        promptTokens: response.usage.inputTokens,
+        completionTokens: response.usage.outputTokens,
+        numberOfImageGeneration: response.videos.length,
+        mediaDuration: response.seconds,
+        appId: req.headers['x-aigne-hub-client-did'] as string,
+        userDid: userDid!,
+        creditBasedBillingEnabled: Config.creditBasedBillingEnabled,
+        additionalMetrics: {
+          totalTokens: (response.usage?.inputTokens || 0) + (response.usage?.outputTokens || 0),
+        },
+        metadata: {
+          endpoint: req.path,
+          numberOfVideos: response.videos.length,
+        },
+        traceId,
+      });
+    }
+
+    res.json({ ...response, usage: { ...response.usage, aigneHubCredits } });
+  })
 );
 
 // v2 Embeddings endpoint

@@ -643,70 +643,56 @@ router.delete('/:providerId/model-rates/:rateId', ensureAdmin, async (req, res) 
   }
 });
 
+// Schema for batch create (with providers array)
+const batchCreateSchema = Joi.object({
+  model: Joi.string().min(1).max(100).required(),
+  modelDisplay: Joi.string().min(1).max(100).allow('').optional(),
+  type: Joi.string().valid('chatCompletion', 'imageGeneration', 'embedding', 'video').required(),
+  description: Joi.string().allow('').optional(),
+  inputRate: Joi.number().min(0).required(),
+  outputRate: Joi.number().min(0).required(),
+  providers: Joi.array().items(Joi.string()).min(1).required(),
+  unitCosts: Joi.object({
+    input: Joi.number().min(0).required(),
+    output: Joi.number().min(0).required(),
+  }).optional(),
+  modelMetadata: Joi.object({
+    maxTokens: Joi.number().min(1).allow(null).optional(),
+    features: Joi.array()
+      .items(Joi.string().valid('tools', 'thinking', 'vision'))
+      .optional(),
+    imageGeneration: Joi.object({
+      max: Joi.number().min(1).allow(null).optional(),
+      quality: Joi.array().items(Joi.string()).optional(),
+      size: Joi.array().items(Joi.string()).optional(),
+      style: Joi.array().items(Joi.string()).optional(),
+    }).optional(),
+  }).optional(),
+});
+
 // create model rate or batch create across providers
 router.post('/model-rates', ensureAdmin, async (req, res) => {
   try {
-    // Schema for batch create (with providers array)
-    const batchCreateSchema = Joi.object({
-      model: Joi.string().min(1).max(100).required(),
-      modelDisplay: Joi.string().min(1).max(100).allow('').optional(),
-      type: Joi.string().valid('chatCompletion', 'imageGeneration', 'embedding').required(),
-      description: Joi.string().allow('').optional(),
-      inputRate: Joi.number().min(0).required(),
-      outputRate: Joi.number().min(0).required(),
-      providers: Joi.array().items(Joi.string()).min(1).required(),
-      unitCosts: Joi.object({
-        input: Joi.number().min(0).required(),
-        output: Joi.number().min(0).required(),
-      }).optional(),
-      modelMetadata: Joi.object({
-        maxTokens: Joi.number().min(1).allow(null).optional(),
-        features: Joi.array()
-          .items(Joi.string().valid('tools', 'thinking', 'vision'))
-          .optional(),
-        imageGeneration: Joi.object({
-          max: Joi.number().min(1).allow(null).optional(),
-          quality: Joi.array().items(Joi.string()).optional(),
-          size: Joi.array().items(Joi.string()).optional(),
-          style: Joi.array().items(Joi.string()).optional(),
-        }).optional(),
-      }).optional(),
-    });
-
-    const { error, value } = batchCreateSchema.validate(req.body, {
-      stripUnknown: true,
-    });
+    const { error, value } = batchCreateSchema.validate(req.body, { stripUnknown: true });
     if (error) {
-      return res.status(400).json({
-        error: error.details[0]?.message || 'Validation error',
-      });
+      return res.status(400).json({ error: error.details[0]?.message || 'Validation error' });
     }
 
     // Step 1: Validate all providers exist
-    const providers = await AiProvider.findAll({
-      where: {
-        id: {
-          [Op.in]: value.providers,
-        },
-      },
-    });
+    const providers = await AiProvider.findAll({ where: { id: { [Op.in]: value.providers } } });
 
     // Check for missing providers
     const foundProviderIds = providers.map((p) => p.id);
     const missingProviders = value.providers.filter((id: string) => !foundProviderIds.includes(id));
 
     if (missingProviders.length > 0) {
-      return res.status(400).json({
-        error: `Providers not found: ${missingProviders.join(', ')}`,
-      });
+      return res.status(400).json({ error: `Providers not found: ${missingProviders.join(', ')}` });
     }
 
     // Step 2: Check for existing rates
     const existingRates = await AiModelRate.findAll({
       where: {
-        providerId: {
-          [Op.in]: value.providers,
-        },
+        providerId: { [Op.in]: value.providers },
         model: value.model,
         type: value.type,
       },
@@ -890,6 +876,7 @@ router.get('/chat/models', user, async (req, res) => {
         chat: 'chatCompletion',
         image_generation: 'imageGeneration',
         image: 'imageGeneration',
+        video: 'video',
       };
       const mappedType = typeFilterMap[requestedType] || requestedType;
       where.type = mappedType;

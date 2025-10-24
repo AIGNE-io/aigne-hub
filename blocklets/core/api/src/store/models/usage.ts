@@ -2,6 +2,7 @@ import { CreationOptional, DataTypes, InferAttributes, InferCreationAttributes, 
 
 import nextId from '../../libs/next-id';
 import { sequelize } from '../sequelize';
+import { CallType } from './types';
 
 export default class Usage extends Model<InferAttributes<Usage>, InferCreationAttributes<Usage>> {
   declare id: CreationOptional<string>;
@@ -16,9 +17,11 @@ export default class Usage extends Model<InferAttributes<Usage>, InferCreationAt
 
   declare numberOfImageGeneration?: number;
 
+  declare mediaDuration?: number;
+
   declare apiKey?: string;
 
-  declare type?: 'chatCompletion' | 'embedding' | 'imageGeneration';
+  declare type?: Omit<CallType, 'custom' | 'audioGeneration'>;
 
   declare model?: string;
 
@@ -122,6 +125,9 @@ Usage.init(
     },
     userDid: {
       type: DataTypes.STRING,
+    },
+    mediaDuration: {
+      type: DataTypes.INTEGER,
     },
   },
   { sequelize }

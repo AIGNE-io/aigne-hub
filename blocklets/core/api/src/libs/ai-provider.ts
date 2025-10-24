@@ -302,8 +302,10 @@ export function getModelNameWithProvider(model: string, defaultProviderName: str
   };
 }
 
-export function getReqModel(req: { body: { model?: string; input?: { modelOptions?: { model?: string } } } }): string {
-  return req.body?.model || req.body?.input?.modelOptions?.model || '';
+export function getReqModel(req: {
+  body: { model?: string; input?: { model?: string; modelOptions?: { model?: string } } };
+}): string {
+  return req.body?.model || req.body?.input?.model || req.body?.input?.modelOptions?.model || '';
 }
 
 export function markProviderAsFailed(providerId: string, providerName: string): void {

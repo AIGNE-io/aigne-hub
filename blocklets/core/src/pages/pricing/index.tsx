@@ -86,6 +86,7 @@ const TYPE_MAPPING: Record<string, string> = {
   image_generation: 'imageGeneration',
   embedding: 'embedding',
   audio_transcription: 'audioTranscription',
+  video: 'video',
 };
 const listKey = 'pricing-models';
 export default function PricingPage() {

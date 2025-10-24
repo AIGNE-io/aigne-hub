@@ -252,6 +252,8 @@ export default function AIModelRates() {
         return t('modelTypes.imageGeneration');
       case 'embedding':
         return t('modelTypes.embedding');
+      case 'video':
+        return t('modelTypes.video');
       default:
         return type;
     }

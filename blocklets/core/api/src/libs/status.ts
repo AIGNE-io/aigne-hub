@@ -25,12 +25,14 @@ export const typeFilterMap: Record<string, string> = {
   chat: 'chatCompletion',
   image_generation: 'imageGeneration',
   image: 'imageGeneration',
+  video: 'video',
 };
 
 export const typeMap = {
   chatCompletion: 'chat',
   imageGeneration: 'image_generation',
   embedding: 'embedding',
+  video: 'video',
 };
 
 interface ProviderWithCredentials extends AiProvider {
@@ -243,8 +245,8 @@ export function withModelStatus(handler: (req: Request, res: Response) => Promis
   return async (req: Request, res: Response) => {
     const start = Date.now();
 
-    if (!req.body.model && req.body.input?.modelOptions?.model) {
-      req.body.model = req.body.input.modelOptions.model;
+    if (!req.body.model && (req.body.input?.modelOptions?.model || req.body.input?.model)) {
+      req.body.model = req.body.input.modelOptions?.model || req.body.input.model;
     }
 
     try {
@@ -354,6 +356,9 @@ const checkImageModelStatus = async ({ provider, model }: { provider: string; mo
   });
 };
 
+// TODO
+const checkVideoModelStatus = async () => {};
+
 const checkEmbeddingModelStatus = async ({ provider, model }: { provider: string; model: string }) => {
   await callWithModelStatus({ provider, model }, async ({ provider, model }) => {
     const openai = await getOpenAIV2({ body: { model: `${provider}/${model}` } });
@@ -396,6 +401,8 @@ export const checkModelStatus = async ({
       await checkImageModelStatus({ provider: provider.name, model });
     } else if (type === 'embedding') {
       await checkEmbeddingModelStatus({ provider: provider.name, model });
+    } else if (type === 'video') {
+      await checkVideoModelStatus();
     } else {
       logger.error('Invalid model type', type);
       throw new CustomError(500, 'Invalid model type');
