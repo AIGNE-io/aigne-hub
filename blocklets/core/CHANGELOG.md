@@ -1,3 +1,7 @@
+## 0.4.53 (2025-10-24)
+
+- fix(core): implement provider rotation and failure handling for AI model requests
+
 ## 0.4.52 (2025-10-24)
 
 - chore: update aigne deps
