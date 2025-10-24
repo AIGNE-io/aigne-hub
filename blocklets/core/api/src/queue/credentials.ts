@@ -20,16 +20,22 @@ const credentialsQueue = getQueue({
     time?: number;
     isWeightRecovery?: boolean;
   }) => {
-    logger.info('start check credentials', data);
+    logger.info('Starting credential validation check', {
+      credentialId: data.credentialId,
+      providerId: data.providerId,
+      isWeightRecovery: data.isWeightRecovery,
+    });
 
     if (data.isWeightRecovery) {
       try {
         const credential = await AiCredential.findByPk(data.credentialId);
         if (credential && credential.weight !== AIGNE_HUB_DEFAULT_WEIGHT) {
           await credential.update({ weight: AIGNE_HUB_DEFAULT_WEIGHT });
-          logger.info('Credential weight auto-recovered after 429 cooldown', {
+          logger.info('Credential weight auto-recovered after rate limit cooldown', {
             credentialId: data.credentialId,
-            weight: AIGNE_HUB_DEFAULT_WEIGHT,
+            providerId: data.providerId,
+            originalWeight: credential?.weight,
+            newWeight: AIGNE_HUB_DEFAULT_WEIGHT,
           });
         }
       } catch (err) {
