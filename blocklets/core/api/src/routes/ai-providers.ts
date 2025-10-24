@@ -200,13 +200,17 @@ router.get('/', user, async (req, res) => {
     const providers = await AiProvider.findAll({
       where,
       order: [['createdAt', 'ASC']],
-      include: [
-        {
-          model: AiModelRate,
-          as: 'modelRates',
-          required: false,
-        },
-      ],
+      ...(req.query.includeModelRates
+        ? {
+            include: [
+              {
+                model: AiModelRate,
+                as: 'modelRates',
+                required: false,
+              },
+            ],
+          }
+        : {}),
     });
 
     const credentials = await AiCredential.findAll({
