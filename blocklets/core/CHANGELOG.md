@@ -1,3 +1,8 @@
+## 0.4.54 (2025-10-24)
+
+- fix(payment): adjust balance and pending credit calculation in getUserCredits function
+- chore: update pnpm and node versions in workflows
+
 ## 0.4.53 (2025-10-24)
 
 - fix(core): implement provider rotation and failure handling for AI model requests
