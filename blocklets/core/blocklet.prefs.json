@@ -535,6 +535,11 @@
                               "children": [],
                               "label": "ImageGeneration",
                               "value": "imageGeneration"
+                            },
+                            {
+                              "children": [],
+                              "label": "Video",
+                              "value": "video"
                             }
                           ],
                           "default": "chatCompletion",
@@ -663,6 +668,6 @@
         }
       }
     },
-    "x-designable-id": "4d8rlspayft"
+    "x-designable-id": "1ohg9glz0te"
   }
 }

@@ -97,7 +97,13 @@ export default function useConversation({
     prompt: string | ChatCompletionMessageParam[],
     options: { meta?: any }
   ) => Promise<
-    ReadableStream<string | Uint8Array | { type: 'text'; text: string } | { type: 'images'; images: { url: string }[] }>
+    ReadableStream<
+      | string
+      | Uint8Array
+      | { type: 'text'; text: string }
+      | { type: 'images'; images: { url: string }[] }
+      | { type: 'video'; videos: string[] }
+    >
   >;
   imageGenerations?: (
     prompt: { prompt: string; n: number; size: string },
@@ -199,6 +205,7 @@ export default function useConversation({
 
         const isText = (i: any): i is { type: 'text'; text: string } => i.type === 'text';
         const isImages = (i: any): i is { type: 'images'; images: { url: string }[] } => i.type === 'images';
+        const isVideo = (i: any): i is { type: 'video'; videos: string[] } => i.type === 'video';
 
         const reader = result.getReader();
         const decoder = new TextDecoder();
@@ -216,7 +223,9 @@ export default function useConversation({
             } else if (isText(value)) {
               response = value.text;
             } else if (isImages(value)) {
-              response = { images: value.images } as any;
+              response = { images: value.images };
+            } else if (isVideo(value)) {
+              response = { videos: value.videos };
             } else {
               delta = decoder.decode(value);
             }

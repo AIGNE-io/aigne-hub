@@ -60,6 +60,29 @@ export const imageGenerationsV2Image = async (input: {
   return response.data;
 };
 
+export const videoGenerationsV2 = async (input: { prompt: string; model: string }) => {
+  const response = await axios.post(
+    '/api/v2/video',
+    {
+      agent: input.model, // Use model as agent name
+      input: {
+        prompt: input.prompt,
+        outputFileType: 'file',
+        model: input.model,
+        modelOptions: {
+          model: input.model,
+        },
+      },
+    },
+    {
+      headers: { 'x-aigne-hub-client-did': window.blocklet?.appPid },
+      timeout: 5 * 60 * 1000,
+    }
+  );
+
+  return response.data;
+};
+
 // Embeddings API using /api/v2/embeddings endpoint
 export const embeddingsV2Direct = async (
   input: string | Array<string>,

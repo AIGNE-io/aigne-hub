@@ -16,7 +16,7 @@ import { useNavigate } from 'react-router-dom';
 
 import ModelSelector from '../../components/model-selector';
 import { useIsRole, useSessionContext } from '../../contexts/session';
-import { embeddingsV2Direct, imageGenerationsV2Image, textCompletionsV2 } from '../../libs/ai';
+import { embeddingsV2Direct, imageGenerationsV2Image, textCompletionsV2, videoGenerationsV2 } from '../../libs/ai';
 
 interface ApiModel {
   model: string;
@@ -231,10 +231,12 @@ export default function Chat() {
     scrollToBottom: (o) => ref.current?.scrollToBottom(o),
     textCompletions: (prompt) => {
       // Route to different APIs based on model type
+      const promptText =
+        typeof prompt === 'string' ? prompt : Array.isArray(prompt) ? (prompt[0] as any)?.content || '' : '';
+
       if (currentModelType === 'imageGeneration') {
         // For image generation models, use image API
-        const promptText =
-          typeof prompt === 'string' ? prompt : Array.isArray(prompt) ? (prompt[0] as any)?.content || '' : '';
+
         return imageGenerationsV2Image({
           prompt: promptText,
           size: '1024x1024',
@@ -316,6 +318,31 @@ export default function Chat() {
           });
       }
 
+      if (currentModelType === 'video') {
+        return videoGenerationsV2({ prompt: promptText, model }).then((res) => {
+          const videos = Array.isArray(res.videos) && res.videos.length > 0 ? res.videos : [];
+
+          if (videos.length === 0) {
+            return new ReadableStream({
+              start(controller) {
+                controller.enqueue({
+                  type: 'text',
+                  text: 'No videos generated. Please check the model configuration or try again.',
+                });
+                controller.close();
+              },
+            });
+          }
+
+          return new ReadableStream({
+            start(controller) {
+              controller.enqueue({ type: 'video', videos });
+              controller.close();
+            },
+          });
+        });
+      }
+
       // Default to chat completion
       return textCompletionsV2({
         ...(typeof prompt === 'string' ? { prompt } : { messages: prompt }),
@@ -387,12 +414,12 @@ export default function Chat() {
           sx: {
             px: { xs: 1.5, md: 0 },
           },
-          placeholder:
-            currentModelType === 'imageGeneration'
-              ? t('chat.placeholders.imageGeneration')
-              : currentModelType === 'embedding'
-                ? t('chat.placeholders.embedding')
-                : t('chat.placeholders.chat'),
+          placeholder: t(`chat.placeholders.${{
+            imageGeneration: 'imageGeneration',
+            embedding: 'embedding',
+            chatCompletion: 'chat',
+            video: 'video'
+          }[currentModelType] || 'chat'}`),
           topAdornment: (
             <>
               {/* Left side: Model selector */}

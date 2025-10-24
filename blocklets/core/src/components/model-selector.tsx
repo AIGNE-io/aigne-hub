@@ -210,7 +210,7 @@ export default function ModelSelector({
             { key: 'chatCompletion', label: 'Chat', icon: <ChatIcon viewBox="0 0 12 12" /> },
             { key: 'imageGeneration', label: 'Image', icon: <ImageIcon viewBox="0 0 12 12" /> },
             { key: 'embedding', label: 'Embedding', icon: <EmbeddingIcon viewBox="0 0 12 12" /> },
-            { key: 'video', label: 'Video', icon: <ChatIcon viewBox="0 0 12 12" /> },
+            { key: 'video', label: 'Video', icon: <ImageIcon viewBox="0 0 12 12" /> },
           ].map((option) => (
             <Chip
               key={option.key}
@@ -420,7 +420,7 @@ export default function ModelSelector({
                                   {modelType === 'chatCompletion' && <ChatIcon viewBox="0 0 12 12" />}
                                   {modelType === 'imageGeneration' && <ImageIcon viewBox="0 0 12 12" />}
                                   {modelType === 'embedding' && <EmbeddingIcon viewBox="0 0 12 12" />}
-                                  {modelType === 'video' && <ChatIcon viewBox="0 0 12 12" />}
+                                  {modelType === 'video' && <ImageIcon viewBox="0 0 12 12" />}
                                 </Box>
                                 <Typography
                                   variant="caption"
@@ -429,13 +429,12 @@ export default function ModelSelector({
                                     color: 'text.secondary',
                                     lineHeight: 1,
                                   }}>
-                                  {modelType === 'chatCompletion'
-                                    ? 'Chat'
-                                    : modelType === 'imageGeneration'
-                                      ? 'Image'
-                                      : modelType === 'video'
-                                        ? 'Video'
-                                        : 'Embedding'}
+                                  {{
+                                    chatCompletion: 'Chat',
+                                    imageGeneration: 'Image',
+                                    video: 'Video',
+                                    embedding: 'Embedding'
+                                  }[modelType] || 'Chat'}
                                 </Typography>
                               </Box>
                             ))}

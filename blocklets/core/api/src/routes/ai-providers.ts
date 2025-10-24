@@ -113,7 +113,7 @@ const createCredentialSchema = Joi.object({
 const createModelRateSchema = Joi.object({
   model: Joi.string().min(1).max(100).required(),
   modelDisplay: Joi.string().min(1).max(100).allow('').optional(),
-  type: Joi.string().valid('chatCompletion', 'imageGeneration', 'embedding').required(),
+  type: Joi.string().valid('chatCompletion', 'imageGeneration', 'embedding', 'video').required(),
   description: Joi.string().allow('').optional(),
   inputRate: Joi.number().min(0).required(),
   outputRate: Joi.number().min(0).required(),

@@ -30,6 +30,8 @@ import onError from '../libs/on-error';
 import { getModel, getProviderCredentials } from '../providers/models';
 
 const DEFAULT_MODEL = 'openai/gpt-5-mini';
+const DEFAULT_IMAGE_MODEL = 'openai/dall-e-2';
+const DEFAULT_VIDEO_MODEL = 'openai/sora-2';
 
 const router = Router();
 
@@ -279,7 +281,6 @@ router.post(
   )
 );
 
-const DEFAULT_IMAGE_MODEL = 'openai/dall-e-2';
 router.post(
   '/image',
   user,
@@ -362,7 +363,6 @@ router.post(
   )
 );
 
-const DEFAULT_VIDEO_MODEL = 'openai/sora-2';
 router.post(
   '/video',
   user,

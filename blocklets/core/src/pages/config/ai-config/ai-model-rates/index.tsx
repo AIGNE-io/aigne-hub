@@ -239,6 +239,8 @@ export default function AIModelRates() {
         return 'secondary';
       case 'embedding':
         return 'success';
+      case 'video':
+        return 'secondary';
       default:
         return 'default';
     }

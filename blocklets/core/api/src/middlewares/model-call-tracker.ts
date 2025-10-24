@@ -25,6 +25,7 @@ export interface UsageData {
   credits: number;
   usageMetrics: Record<string, any>;
   metadata?: Record<string, any>;
+  mediaDuration?: number;
 }
 
 export interface ModelCallResult {

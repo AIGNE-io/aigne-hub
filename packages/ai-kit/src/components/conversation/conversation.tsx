@@ -5,13 +5,14 @@ import { ReactNode, RefObject, useCallback, useEffect, useImperativeHandle, useR
 
 import CreditErrorAlert from '../credit/alert';
 import ImagePreview from '../image-preview';
+import VideoPreview from '../video-preview';
 import Message from './message';
 import Prompt, { PromptProps } from './prompt';
 
 export interface MessageItem {
   id: string;
   prompt?: string | ChatCompletionMessageParam[];
-  response?: string | { url: string }[];
+  response?: string | { url: string }[] | { videos: { data?: string; path?: string, type?: string }[] } | { images: { url?: string }[] };
   loading?: boolean;
   error?: { message: string; [key: string]: unknown };
   meta?: any;
@@ -109,7 +110,7 @@ export default function Conversation({
                                 dataSource={msg.response.images
                                   .filter((img) => img.url && img.url.startsWith('data:'))
                                   .map(({ url }) => ({
-                                    src: url,
+                                    src: url!,
                                     onLoad: () => scrollToBottom(),
                                   }))}
                               />
@@ -153,6 +154,59 @@ export default function Conversation({
                             )}
                           </>
                         )}
+
+                      {msg.response &&
+                        typeof msg.response === 'object' &&
+                        'videos' in msg.response &&
+                        Array.isArray(msg.response.videos) &&
+                        msg.response.videos.length > 0 && (
+                          <>
+                            {/* Show actual videos if they have real data URLs */}
+                            {msg.response.videos.some((video) => video.data && video.data.startsWith('data:')) && (
+                              <VideoPreview
+                                itemWidth={300}
+                                borderRadius={12}
+                                dataSource={msg.response.videos
+                                  .filter((video) => video.data && video.data.startsWith('data:'))
+                                  .map(({ data }) => ({
+                                    src: data!,
+                                    onLoad: () => scrollToBottom(),
+                                  }))}
+                              />
+                            )}
+
+                            {/* Show placeholder for images without real data */}
+                            {msg.response.videos.some((video) => video.path ) && (
+                              <Box
+                                sx={{
+                                  margin: '8px 0',
+                                  minHeight: '200px',
+                                  background: '#f5f5f5',
+                                  borderRadius: '8px',
+                                  padding: '16px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  flexDirection: 'column',
+                                  gap: '12px',
+                                  border: '2px dashed #ddd',
+                                }}>
+                                <Box sx={{ fontSize: '48px', opacity: 0.4 }}>🖼️</Box>
+                                <Box
+                                  sx={{
+                                    fontSize: '14px',
+                                    color: '#666',
+                                    textAlign: 'center',
+                                    fontWeight: 500,
+                                    minWidth: 200,
+                                  }}>
+                                  Video (Not Cached)
+                                </Box>
+                              </Box>
+                            )}
+                          </>
+                        )}
+
                       {msg.error ? (
                         // @ts-ignore
                         <CreditErrorAlert error={msg.error} />

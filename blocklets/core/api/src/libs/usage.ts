@@ -143,6 +143,8 @@ export async function createAndReportUsageV2({
     if (price) {
       if (type === 'imageGeneration') {
         usedCredits = new BigNumber(numberOfImageGeneration).multipliedBy(price.outputRate).decimalPlaces(2).toNumber();
+      } else if (type === 'video') {
+        usedCredits = new BigNumber(mediaDuration || 0).multipliedBy(price.outputRate).decimalPlaces(2).toNumber();
       } else {
         const input = new BigNumber(promptTokens).multipliedBy(price.inputRate);
         const output = new BigNumber(completionTokens).multipliedBy(price.outputRate);

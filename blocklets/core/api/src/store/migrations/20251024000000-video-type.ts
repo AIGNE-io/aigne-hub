@@ -7,10 +7,10 @@ export const up: Migration = async ({ context: queryInterface }) => {
     Usages: [{ name: 'mediaDuration', field: { type: DataTypes.INTEGER, allowNull: true } }],
   });
 
-  await queryInterface.changeColumn('AiModelRates', 'type', {
-    type: DataTypes.ENUM('chatCompletion', 'embedding', 'imageGeneration', 'video'),
-    allowNull: false,
-  });
+  // await queryInterface.changeColumn('AiModelRates', 'type', {
+  //   type: DataTypes.ENUM('chatCompletion', 'embedding', 'imageGeneration', 'video'),
+  //   allowNull: false,
+  // });
 
   await queryInterface.changeColumn('ModelCalls', 'type', {
     type: DataTypes.ENUM('chatCompletion', 'embedding', 'imageGeneration', 'audioGeneration', 'video', 'custom'),
@@ -20,10 +20,7 @@ export const up: Migration = async ({ context: queryInterface }) => {
 
 export const down: Migration = async ({ context: queryInterface }) => {
   await queryInterface.removeColumn('Usages', 'mediaDuration');
-  await queryInterface.changeColumn('AiModelRates', 'type', {
-    type: DataTypes.ENUM('chatCompletion', 'embedding', 'imageGeneration', 'video'),
-    allowNull: false,
-  });
+
   await queryInterface.changeColumn('ModelCalls', 'type', {
     type: DataTypes.ENUM('chatCompletion', 'embedding', 'imageGeneration', 'audioGeneration', 'video', 'custom'),
     allowNull: false,

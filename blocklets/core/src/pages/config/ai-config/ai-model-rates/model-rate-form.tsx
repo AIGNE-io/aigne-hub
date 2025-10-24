@@ -513,14 +513,16 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
                   render={({ field, error, hasError }) => (
                     <FormControl error={hasError} disabled={!!rate} fullWidth>
                       <Select {...field} size="small">
-                        <MenuItem value="chatCompletion">
-                          {t('config.modelRates.form.rateType.options.chatCompletion')}
-                        </MenuItem>
-                        <MenuItem value="imageGeneration">
-                          {t('config.modelRates.form.rateType.options.imageGeneration')}
-                        </MenuItem>
-                        <MenuItem value="embedding">{t('config.modelRates.form.rateType.options.embedding')}</MenuItem>
-                        <MenuItem value="video">{t('config.modelRates.form.rateType.options.video')}</MenuItem>
+                        {[
+                          { value: 'chatCompletion', key: 'chatCompletion' },
+                          { value: 'imageGeneration', key: 'imageGeneration' },
+                          { value: 'embedding', key: 'embedding' },
+                          { value: 'video', key: 'video' }
+                        ].map(({ value, key }) => (
+                          <MenuItem key={value} value={value}>
+                            {t(`config.modelRates.form.rateType.options.${key}`)}
+                          </MenuItem>
+                        ))}
                       </Select>
                       {hasError && <FormHelperText>{error}</FormHelperText>}
                     </FormControl>
