@@ -5,6 +5,8 @@ import ModelCallStat from '@api/store/models/model-call-stat';
 
 import { sequelize } from '../store/sequelize';
 
+const HOUR_IN_SECONDS = 3600;
+
 export async function getHoursToWarmup(): Promise<number[]> {
   const item = await ModelCallStat.findOne({
     order: [['timestamp', 'DESC']],
@@ -13,19 +15,18 @@ export async function getHoursToWarmup(): Promise<number[]> {
     attributes: ['timestamp'],
   });
 
-  const hourInSeconds = 60 * 60;
   const now = dayjs.utc().unix();
-  const currentHour = Math.floor(now / hourInSeconds) * hourInSeconds;
-  const previousHour = currentHour - hourInSeconds;
+  const currentHour = Math.floor(now / HOUR_IN_SECONDS) * HOUR_IN_SECONDS;
+  const previousHour = currentHour - HOUR_IN_SECONDS;
 
   if (item) {
     const hours: number[] = [];
-    let current = item.timestamp + hourInSeconds;
+    let current = item.timestamp + HOUR_IN_SECONDS;
 
     // Include all missing hours up to the previous hour
     while (current <= previousHour) {
       hours.push(current);
-      current += hourInSeconds;
+      current += HOUR_IN_SECONDS;
     }
 
     // Always include previous hour to ensure it's updated with final data
@@ -70,7 +71,7 @@ export async function createModelCallStats(hourTimestamp?: number) {
               userDid: user.userDid,
             });
           } catch (error) {
-            logger.warn('Failed to process hourly stats', {
+            logger.error('Failed to process hourly stats', {
               hour: new Date(hourTimestamp * 1000).toISOString(),
               userDid: user.userDid,
               error,

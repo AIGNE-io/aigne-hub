@@ -1,3 +1,4 @@
+import { ensureModelWithProvider, getReqModel } from '@api/libs/ai-provider';
 import logger from '@api/libs/logger';
 import { getCurrentUnixTimestamp } from '@api/libs/timestamp';
 import { getModelAndProviderId } from '@api/providers/util';
@@ -14,9 +15,10 @@ export interface ModelCallContext {
   complete: (result: ModelCallResult) => Promise<void>;
   fail: (error: string, partialUsage?: Partial<UsageData>) => Promise<void>;
   updateCredentials: (providerId: string, credentialId: string, actualModel?: string) => Promise<void>;
+  update: (updateData: Partial<ModelCall>) => Promise<void>;
 }
 
-interface UsageData {
+export interface UsageData {
   promptTokens: number;
   completionTokens: number;
   numberOfImageGeneration: number;
@@ -25,19 +27,23 @@ interface UsageData {
   metadata?: Record<string, any>;
 }
 
-interface ModelCallResult {
+export interface ModelCallResult {
   promptTokens?: number;
   completionTokens?: number;
   numberOfImageGeneration?: number;
   credits?: number;
   usageMetrics?: Record<string, any>;
   metadata?: Record<string, any>;
+  traceId?: string;
 }
 
 declare global {
   namespace Express {
     interface Request {
       modelCallContext?: ModelCallContext;
+      credentialId?: string;
+      provider?: string;
+      model?: string;
     }
   }
 }
@@ -45,9 +51,14 @@ declare global {
 export function createModelCallMiddleware(callType: CallType) {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const userDid = req.user?.did;
-    const model = req.body?.model;
+
+    // Ensure model has provider before processing
+    await ensureModelWithProvider(req);
+
+    const model = getReqModel(req);
 
     if (!userDid || !model) {
+      logger.error('Model call middleware error', { error: 'User did or model is required', userDid, model });
       next();
       return;
     }
@@ -137,14 +148,18 @@ async function createModelCallContext({
   metadata?: Record<string, any>;
   usageMetrics?: Record<string, any>;
 }): Promise<ModelCallContext | null> {
+  let p = '';
+  let m = '';
+  const startTime = getCurrentUnixTimestamp();
   try {
-    const startTime = getCurrentUnixTimestamp();
     const { providerId, modelName } = await getModelAndProviderId(model);
+    p = providerId;
+    m = modelName;
 
     // Create ModelCall record without provider/credential info initially
-    const modelCall = await ModelCall.create({
+    const params = {
       providerId: providerId || '',
-      model: modelName,
+      model: modelName || model,
       credentialId: '',
       type,
       totalUsage: 0,
@@ -161,6 +176,11 @@ async function createModelCallContext({
         originalModel: model,
       },
       callTime: startTime,
+    } as const;
+
+    const modelCall = await ModelCall.create(params).catch((error) => {
+      logger.error('Failed to create model call record', { error, params });
+      throw error;
     });
 
     logger.info('Created processing model call record', {
@@ -221,6 +241,7 @@ async function createModelCallContext({
               completedAt: getCurrentUnixTimestamp(),
               ...(result.metadata || {}),
             },
+            traceId: result.traceId,
           },
           { where: { id: modelCall.id } }
         );
@@ -270,14 +291,34 @@ async function createModelCallContext({
           errorReason: errorReason.substring(0, 200),
         });
       },
+      update: async (updateData: Partial<ModelCall>) => {
+        await ModelCall.update(
+          {
+            traceId: updateData?.traceId,
+          },
+          { where: { id: modelCall.id } }
+        );
+      },
     };
   } catch (error) {
-    logger.error('Failed to create model call context', { error, model, userDid });
+    logger.error('Failed to create model call context', {
+      error,
+      model,
+      r: {
+        providerId: p,
+        model: m,
+        userDid,
+        requestId,
+        metadata,
+        usageMetrics,
+        callTime: startTime,
+      },
+    });
     return null;
   }
 }
 
-// 清理长时间处于processing状态的记录
+// Cleanup model call records that have been stuck in processing state beyond the specified timeout
 export async function cleanupStaleProcessingCalls(timeoutMinutes: number = 30): Promise<number> {
   try {
     const cutoffTime = getCurrentUnixTimestamp() - timeoutMinutes * 60;

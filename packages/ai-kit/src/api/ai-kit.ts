@@ -15,6 +15,7 @@ export interface TextCompletions {
 export interface TextCompletionOptions {
   model?: string;
   temperature?: number;
+  fixedProvider?: boolean;
 }
 
 export interface TextCompletionFn<P extends {}> {

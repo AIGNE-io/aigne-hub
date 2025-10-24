@@ -113,7 +113,7 @@ async function isWelcomeCredit(creditGrant: any, userDid: string): Promise<boole
       hasMetadata: !!creditGrant.metadata?.welcomeCredit,
     });
   } catch (error) {
-    logger.warn('Failed to check existing credit grants for welcome credit detection', {
+    logger.error('Failed to check existing credit grants for welcome credit detection', {
       error,
       userDid,
       creditGrantId: creditGrant.id,

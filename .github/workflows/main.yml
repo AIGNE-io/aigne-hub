@@ -17,18 +17,25 @@ jobs:
 
       - uses: pnpm/action-setup@v3
         with:
-          version: 9
+          version: 10
 
       - name: Setup node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
+
       - name: Install dependencies
         run: pnpm install
 
+      - name: Setup bun
+        uses: oven-sh/setup-bun@v2
+
       - name: Build libs
         run: pnpm build:libs
+
+      - name: Test
+        run: pnpm test:coverage
 
       - name: Publish to NPM
         if: "! contains(toJSON(github.event.commits.*.message), '[skip npm]')"
@@ -56,5 +63,5 @@ jobs:
           abtnode-endpoint: ${{ secrets.STAGING_NODE_ENDPOINT }}
           access-key: ${{ secrets.STAGING_NODE_ACCESS_KEY }}
           access-secret: ${{ secrets.STAGING_NODE_ACCESS_SECRET }}
-          deploy-app-did: zNKq56yExCXmaQpir9nFRu9aPFSYvSoKQr1e
-          deploy-mount-point: /ai-kit
+          deploy-app-did: zNKXNiDZ3k7i64hKrwEasm2ojZSZDCsR3r7v
+          deploy-mount-point: /

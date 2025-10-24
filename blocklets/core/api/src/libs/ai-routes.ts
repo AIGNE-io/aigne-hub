@@ -1,4 +1,4 @@
-import { ChatModelOutput } from '@aigne/core';
+import { AIGNE } from '@aigne/core';
 import { camelize } from '@aigne/core/utils/camelize';
 import { checkModelRateAvailable } from '@api/providers';
 import { chatCompletionByFrameworkModel, getImageModel } from '@api/providers/models';
@@ -20,10 +20,11 @@ import Joi from 'joi';
 import pick from 'lodash/pick';
 import { ImageEditParams, ImagesResponse } from 'openai/resources/images';
 
-import { getOpenAIV2 } from './ai-provider';
+import { DEFAULT_MODEL, getModelNameWithProvider, getOpenAIV2 } from './ai-provider';
 import { Config } from './env';
 import { processImageUrl } from './image';
 import logger from './logger';
+import { InvokeOptions } from './on-error';
 
 // Common Joi Schemas
 export const completionsRequestSchema = Joi.object<
@@ -160,8 +161,10 @@ export const imageGenerationRequestSchema = Joi.object<
 });
 
 // Common retry helper
-export const createRetryHandler = (callback: (req: Request, res: Response) => Promise<void>): any => {
-  const options = { maxRetries: Config.maxRetries, retryCodes: [429, 500, 502] };
+export const createRetryHandler = (
+  callback: (req: Request, res: Response) => Promise<void>
+): ((req: Request, res: Response) => Promise<void>) => {
+  const options = { maxRetries: Config.maxRetries, retryCodes: [500, 502] };
 
   function canRetry(code: number, retries: number) {
     return options.retryCodes.includes(code) && retries < options.maxRetries;
@@ -191,10 +194,8 @@ export async function processChatCompletion(
   req: Request,
   res: Response,
   version: 'v1' | 'v2' = 'v1',
-  options?: {
-    onEnd?: (data?: { output?: ChatModelOutput }) => Promise<{ output?: ChatModelOutput } | undefined>;
-  }
-): Promise<{ promptTokens: number; completionTokens: number; model: string; modelParams: any } | null> {
+  options?: InvokeOptions
+): Promise<{ promptTokens: number; completionTokens: number; model: string; modelParams: Record<string, any> } | null> {
   const { error, value: body } = completionsRequestSchema.validate(req.body, { stripUnknown: true });
   if (error) {
     throw new CustomError(400, error.message);
@@ -214,10 +215,7 @@ export async function processChatCompletion(
 
   const isEventStream = req.accepts().some((i) => i.startsWith('text/event-stream'));
 
-  const result = await chatCompletionByFrameworkModel(input, req.user?.did, {
-    ...options,
-    req,
-  });
+  const result = await chatCompletionByFrameworkModel(input, req.user?.did, { ...options, req });
 
   let content = '';
   const toolCalls: NonNullable<ChatCompletionChunk['delta']['toolCalls']> = [];
@@ -269,7 +267,7 @@ export async function processChatCompletion(
       res.flush();
     }
     res.end();
-    return null;
+    throw error;
   }
 
   if (!input.stream && !isEventStream) {
@@ -320,8 +318,12 @@ export async function processEmbeddings(
   await checkModelRateAvailable(input.model);
 
   const openai = await getOpenAIV2(req);
+  const { modelName } = getModelNameWithProvider(input.model || DEFAULT_MODEL);
 
-  const { data, usage } = await openai.embeddings.create(input);
+  const { data, usage } = await openai.embeddings.create({
+    ...input,
+    model: modelName,
+  });
 
   res.json({ data });
 
@@ -332,18 +334,24 @@ export async function processEmbeddings(
 }
 
 // Core image generation logic - returns usage data for caller to handle
-export async function processImageGeneration({
-  req,
-  version,
-  inputBody,
-}: {
-  inputBody: ImageGenerationInput & Required<Pick<ImageGenerationInput, 'model' | 'n'>>;
-  req: Request;
-  res: Response;
-  version: 'v1' | 'v2';
-}): Promise<{
+export async function processImageGeneration(
+  {
+    req,
+    version,
+    inputBody,
+  }: {
+    inputBody: ImageGenerationInput & Required<Pick<ImageGenerationInput, 'model' | 'n'>>;
+    req: Request;
+    res: Response;
+    version: 'v1' | 'v2';
+  },
+  options?: {
+    userContext?: Record<string, any>;
+    hooks?: InvokeOptions;
+  }
+): Promise<{
   model: string;
-  modelParams: any;
+  modelParams: Record<string, any>;
   numberOfImageGeneration: number;
   images: { url?: string; b64Json?: string; b64_json?: string }[];
   modelName: string;
@@ -387,23 +395,33 @@ export async function processImageGeneration({
   } else {
     const formatParams = () => {
       if (input.model.includes('google')) {
-        return { ...input, response_format: 'b64_json' as const };
+        return { ...inputBody, response_format: 'b64_json' as const };
       }
 
-      return input;
+      return inputBody;
     };
 
-    const model = await getImageModel(input, { req });
-    const params: any = camelize({ ...formatParams(), model: modelName });
-    logger.info('invoke image generation params', { params });
-
-    const result = await model.invoke({
-      ...params,
-      responseFormat: params.responseFormat === 'b64_json' ? 'base64' : params.responseFormat || 'base64',
+    const { modelInstance } = await getImageModel(input, { req });
+    const params: { prompt: string; [key: string]: any } = camelize({
+      ...formatParams(),
+      model: modelName,
+      modelOptions: { model: modelName },
     });
+    const aigne = new AIGNE();
+    const result = await aigne.invoke(
+      modelInstance,
+      {
+        ...params,
+        responseFormat: params.responseFormat === 'b64_json' ? 'base64' : params.responseFormat || 'base64',
+      },
+      options
+    );
 
     response = {
-      data: result.images.map((i: any) => ({ b64_json: i.base64, url: i.url })),
+      data: result.images.map((i) => ({
+        b64_json: i.type === 'file' ? i.data : undefined,
+        url: i.type === 'url' ? i.url : undefined,
+      })),
       created: Date.now(),
     };
   }

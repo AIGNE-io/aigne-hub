@@ -2,6 +2,7 @@ import AiModelRate from '@api/store/models/ai-model-rate';
 import AiProvider from '@api/store/models/ai-provider';
 import { CallType } from '@api/store/models/types';
 import Usage from '@api/store/models/usage';
+import { sequelize } from '@api/store/sequelize';
 import { CustomError } from '@blocklet/error';
 import payment from '@blocklet/payment-js';
 import BigNumber from 'bignumber.js';
@@ -43,7 +44,7 @@ export async function createAndReportUsage({
       }
     }
 
-    await Usage.create({
+    const params = {
       type,
       model,
       modelParams,
@@ -52,6 +53,11 @@ export async function createAndReportUsage({
       numberOfImageGeneration,
       appId,
       usedCredits,
+    };
+
+    await Usage.create(params).catch((error) => {
+      logger.error('Failed to create usage record', { error, params });
+      throw error;
     });
 
     await reportUsage({ appId });
@@ -113,7 +119,7 @@ async function getPrice(type: Usage['type'], model: string) {
 // v2 version with userDid support for proper credit tracking
 export async function createAndReportUsageV2({
   type,
-  model,
+  model, // model is in the format of provider/model
   modelParams,
   promptTokens = 0,
   completionTokens = 0,
@@ -138,7 +144,7 @@ export async function createAndReportUsageV2({
       }
     }
 
-    await Usage.create({
+    const params = {
       type,
       model,
       modelParams,
@@ -148,6 +154,11 @@ export async function createAndReportUsageV2({
       appId,
       usedCredits,
       userDid,
+    };
+
+    await Usage.create(params).catch((error) => {
+      logger.error('Failed to create usage record', { error, params });
+      throw error;
     });
 
     await reportUsageV2({ appId, userDid });
@@ -216,52 +227,183 @@ const tasksV2: { [key: string]: DebouncedFunc<(options: { appId: string; userDid
 
 async function reportUsageV2({ appId, userDid }: { appId: string; userDid: string }) {
   const taskKey = `${appId}-${userDid}`;
+
   tasksV2[taskKey] ??= throttle(
     async ({ appId, userDid }: { appId: string; userDid: string }) => {
-      try {
-        if (!isPaymentRunning()) return;
-
-        const { pricing } = Config;
-        if (!pricing) throw new CustomError(400, 'Missing required preference `pricing`');
-
-        const start = await Usage.findOne({
-          where: { appId, userDid, usageReportStatus: { [Op.not]: null } },
-          order: [['id', 'desc']],
-          limit: 1,
-        });
-        const end = await Usage.findOne({
-          where: { appId, userDid, id: { [Op.gt]: start?.id || '' } },
-          order: [['id', 'desc']],
-          limit: 1,
-        });
-
-        if (!end) return;
-
-        const quantity = await Usage.sum('usedCredits', {
-          where: { appId, userDid, id: { [Op.gt]: start?.id || '', [Op.lte]: end.id } },
-        });
-
-        await end.update({ usageReportStatus: 'counted' });
-
-        logger.info('create meter event', { quantity });
-        await createMeterEvent({
-          userDid,
-          amount: new BigNumber(quantity).decimalPlaces(2).toNumber(),
-          metadata: {
-            appId,
-          },
-        });
-
-        await end.update({ usageReportStatus: 'reported' });
-      } catch (error) {
-        logger.error('report usage v2 error', { error });
-      }
+      await executeOriginalReportLogicWithProtection({ appId, userDid });
     },
     Config.usageReportThrottleTime,
     { leading: false, trailing: true }
   );
 
   tasksV2[taskKey]!({ appId, userDid });
+}
+
+async function executeOriginalReportLogicWithProtection({ appId, userDid }: { appId: string; userDid: string }) {
+  try {
+    if (!isPaymentRunning()) return;
+
+    const { pricing } = Config;
+    if (!pricing) throw new CustomError(400, 'Missing required preference `pricing`');
+
+    const start = await Usage.findOne({
+      where: { appId, userDid, usageReportStatus: { [Op.not]: null } },
+      order: [['id', 'desc']],
+      limit: 1,
+    });
+    const end = await Usage.findOne({
+      where: { appId, userDid, id: { [Op.gt]: start?.id || '' } },
+      order: [['id', 'desc']],
+      limit: 1,
+    });
+
+    if (!end) return;
+
+    const usageRangeConditions = {
+      appId,
+      userDid,
+      id: { [Op.gt]: start?.id || '', [Op.lte]: end.id },
+    };
+    // Step 2: Atomic range claim - prevent concurrent processing of the same batch
+    const [updatedRows] = await Usage.update(
+      { usageReportStatus: 'counted' },
+      {
+        where: {
+          ...usageRangeConditions,
+          usageReportStatus: null, // Only claim unclaimed records
+        },
+      }
+    );
+
+    if (updatedRows === 0) {
+      // No records were claimed - another process already processed this range
+      logger.debug('Usage range already claimed by another process', {
+        appId,
+        userDid,
+        startId: start?.id,
+        endId: end.id,
+        processId: process.pid,
+      });
+      return;
+    }
+
+    // Step 3: Process the claimed batch with one aggregate query
+    const sums = (await Usage.findOne({
+      attributes: [
+        [sequelize.fn('COALESCE', sequelize.fn('SUM', sequelize.col('usedCredits')), 0), 'usedCredits'],
+        [sequelize.fn('COALESCE', sequelize.fn('SUM', sequelize.col('promptTokens')), 0), 'promptTokens'],
+        [sequelize.fn('COALESCE', sequelize.fn('SUM', sequelize.col('completionTokens')), 0), 'completionTokens'],
+        [
+          sequelize.fn('COALESCE', sequelize.fn('SUM', sequelize.col('numberOfImageGeneration')), 0),
+          'numberOfImageGeneration',
+        ],
+      ],
+      where: {
+        ...usageRangeConditions,
+        usageReportStatus: 'counted',
+      },
+      raw: true,
+    })) as unknown as {
+      usedCredits: string | number | null;
+      promptTokens: string | number | null;
+      completionTokens: string | number | null;
+      numberOfImageGeneration: string | number | null;
+    };
+    const quantity = sums?.usedCredits ?? 0;
+    const inputTokens = sums?.promptTokens ?? 0;
+    const outputTokens = sums?.completionTokens ?? 0;
+    const imagesGenerated = sums?.numberOfImageGeneration ?? 0;
+
+    logger.info('create meter event', {
+      quantity,
+      processId: process.pid,
+      userDid,
+      startId: start?.id,
+      endId: end.id,
+      recordCount: updatedRows,
+    });
+
+    const reportQuantity = new BigNumber(quantity || 0).decimalPlaces(2).toNumber();
+    const imagesGeneratedNum = Number(imagesGenerated) || 0;
+    try {
+      await createMeterEvent({
+        userDid,
+        amount: reportQuantity,
+        metadata: {
+          appId,
+        },
+        sourceData: [
+          {
+            key: 'source',
+            label: { en: 'Source', zh: '来源' },
+            value: 'AIGNE Hub',
+          },
+          {
+            key: 'record_count',
+            label: { en: 'API Calls', zh: 'API 调用数' },
+            value: `${updatedRows}`,
+          },
+          {
+            key: 'total_tokens',
+            label: { en: 'Total Tokens', zh: 'Token数量' },
+            value: `${new BigNumber(inputTokens || 0).plus(new BigNumber(outputTokens || 0)).toNumber()}`,
+          },
+          ...(imagesGeneratedNum > 0
+            ? [
+                {
+                  key: 'images_generated',
+                  label: { en: 'Images Generated', zh: '生成图片数' },
+                  value: `${imagesGeneratedNum}`,
+                },
+              ]
+            : []),
+          {
+            key: 'total_credits',
+            label: { en: 'Total Credits', zh: 'Credits 用量' },
+            value: `${reportQuantity}`,
+          },
+        ],
+      });
+
+      // Step 4: Mark the entire range as successfully reported
+      await Usage.update(
+        { usageReportStatus: 'reported' },
+        {
+          where: {
+            appId,
+            userDid,
+            id: { [Op.gt]: start?.id || '', [Op.lte]: end.id },
+            usageReportStatus: 'counted', // Only update records we claimed
+          },
+        }
+      );
+    } catch (apiError) {
+      // Reset entire range to null if API call fails, allowing retry
+      await Usage.update(
+        { usageReportStatus: null },
+        {
+          where: {
+            appId,
+            userDid,
+            id: { [Op.gt]: start?.id || '', [Op.lte]: end.id },
+            usageReportStatus: 'counted', // Only reset records we claimed
+          },
+        }
+      ).catch((resetError) => {
+        logger.error('Failed to reset processing state for range', {
+          resetError,
+          appId,
+          userDid,
+          startId: start?.id,
+          endId: end.id,
+          processId: process.pid,
+        });
+      });
+      throw apiError;
+    }
+  } catch (error) {
+    logger.error('report usage v2 error', { error, processId: process.pid });
+  }
 }
 
 export async function createUsageAndCompleteModelCall({
@@ -277,11 +419,12 @@ export async function createUsageAndCompleteModelCall({
   additionalMetrics = {},
   metadata = {},
   creditBasedBillingEnabled = true,
+  traceId,
 }: {
   req: Request;
   type: CallType;
   model: string;
-  modelParams?: any;
+  modelParams?: Record<string, any>;
   promptTokens?: number;
   completionTokens?: number;
   numberOfImageGeneration?: number;
@@ -290,6 +433,7 @@ export async function createUsageAndCompleteModelCall({
   additionalMetrics?: Record<string, any>;
   metadata?: Record<string, any>;
   creditBasedBillingEnabled?: boolean;
+  traceId?: string;
 }): Promise<number | undefined> {
   try {
     let credits: number | undefined = 0;
@@ -324,6 +468,7 @@ export async function createUsageAndCompleteModelCall({
           ...additionalMetrics,
         },
         metadata,
+        traceId,
       });
     }
 

@@ -106,7 +106,7 @@ Currently, the project uses manual testing. We welcome contributions to add auto
 
 - Unit tests for utility functions
 - Integration tests for API endpoints
-- E2E tests for critical user flows
+- End-to-end tests for critical user flows
 
 ## Submitting Changes
 
@@ -129,7 +129,7 @@ Currently, the project uses manual testing. We welcome contributions to add auto
 When adding new features:
 
 1. **Discuss first** - Create an issue to discuss the feature before implementation
-2. **Follow patterns** - Look at existing code to understand current patterns
+2. **Follow existing patterns** - Look at existing code to understand current patterns
 3. **Update configuration** - Add necessary environment variables and settings
 4. **Document thoroughly** - Update README and create any necessary documentation
 5. **Consider backwards compatibility** - Ensure changes don't break existing deployments

@@ -150,9 +150,9 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for deta
 - **Community**: [ArcBlock Community](https://community.arcblock.io/discussions/boards/aigne)
 - **Issues**: [GitHub Issues](https://github.com/AIGNE-io/aigne-hub/issues)
 
-## License
+## 📄 License
 
-AIGNE Hub is part of the ArcBlock ecosystem. Please refer to our license terms for usage and distribution guidelines.
+This project is licensed under the Elastic License 2.0 License - see the [LICENSE](LICENSE) file for details.
 
 ---
 

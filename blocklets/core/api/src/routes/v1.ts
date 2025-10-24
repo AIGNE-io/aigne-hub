@@ -1,4 +1,4 @@
-import { getOpenAIV2 } from '@api/libs/ai-provider';
+import { getOpenAIV2, getReqModel } from '@api/libs/ai-provider';
 import {
   createRetryHandler,
   processChatCompletion,
@@ -15,6 +15,7 @@ import { Router } from 'express';
 import proxy from 'express-http-proxy';
 
 import { Config } from '../libs/env';
+import onError from '../libs/on-error';
 import { ensureAdmin, ensureComponentCall } from '../libs/security';
 
 const router = Router();
@@ -45,7 +46,7 @@ router.post(
             type: 'chatCompletion',
             promptTokens: (usageData.usage?.inputTokens as number) || 0,
             completionTokens: (usageData.usage?.outputTokens as number) || 0,
-            model: req.body?.model as string,
+            model: getReqModel(req),
             modelParams: req.body?.options?.modelOptions,
           }).catch((err) => {
             logger.error('Create token usage v2 error', { error: err });
@@ -57,6 +58,9 @@ router.post(
         }
 
         return data;
+      },
+      onError: (data) => {
+        onError(data, req);
       },
     });
   })
@@ -141,8 +145,8 @@ router.post(
       return '/v1/audio/transcriptions';
     },
     parseReqBody: false,
-    async proxyReqOptDecorator(proxyReqOpts) {
-      const { apiKey } = await getOpenAIV2();
+    async proxyReqOptDecorator(proxyReqOpts, srcReq) {
+      const { apiKey } = await getOpenAIV2(srcReq);
       proxyReqOpts.headers!.Authorization = `Bearer ${apiKey}`;
       return proxyReqOpts;
     },
@@ -158,8 +162,8 @@ router.post(
     proxyReqPathResolver() {
       return '/v1/audio/speech';
     },
-    async proxyReqOptDecorator(proxyReqOpts) {
-      const { apiKey } = await getOpenAIV2();
+    async proxyReqOptDecorator(proxyReqOpts, srcReq) {
+      const { apiKey } = await getOpenAIV2(srcReq);
       proxyReqOpts.headers!.Authorization = `Bearer ${apiKey}`;
       return proxyReqOpts;
     },

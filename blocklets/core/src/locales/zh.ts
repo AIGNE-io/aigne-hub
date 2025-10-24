@@ -1,7 +1,10 @@
 import { flatten } from 'flat';
 
 export default flatten({
-  usage: '使用情况',
+  common: {
+    redirecting: '跳转中...',
+  },
+  usage: '用量',
   aiProvider: 'AI 提供商',
   aiProviderSubscription: '订阅 AIGNE Hub 服务',
   aiProviderLocalAIKit: '本地 AIGNE Hub 组件',
@@ -59,7 +62,8 @@ export default flatten({
     },
     status: {
       available: '可用',
-      pending: '暂停中',
+      pending: '未使用',
+      warning: '不可用',
     },
   },
 
@@ -67,7 +71,7 @@ export default flatten({
   welcome: '欢迎使用 AIGNE Hub',
   welcomeDesc: '开始使用前，请先配置 AI 提供商来启用 AI 服务。您也可以启用 Credits 计费功能来管理用户使用额度。',
 
-  aiConfig: 'AI 配置',
+  aiConfig: '配置',
   quickStarts: '快速开始',
   // AI Provider features
   aiProviderSettings: 'AI 提供商设置',
@@ -305,20 +309,24 @@ export default flatten({
   baseUrl: 'Base URL',
   region: '区域',
   regionRequired: '请输入区域',
-  endpointRegion: '端点 / 区域',
+  editEndpointTip: '编辑端点',
+  editRegionTip: '编辑区域',
   enabled: '已启用',
   disabled: '已禁用',
   connected: '已连接',
   disconnected: '未连接',
   status: '状态',
-  enableStatus: '启用状态',
+  enableStatus: '启用',
   actions: '操作',
-  configureCredentials: '配置凭证',
 
   // Credentials
   credentials: '凭证',
-  credentialCount: '个凭证',
+  credentialTooltip:
+    '认证服务访问的详细信息（例如，AWS "Access Key + Secret Key" 或 LLM "API Key"）——输入所需敏感信息以进行有效访问。',
+  credentialCount: '{count} 个凭证',
+  credentialCountPlural: '{count} 个凭证',
   addCredential: '添加凭证',
+  addNow: '立即添加',
   editCredential: '编辑凭证',
   deleteCredential: '删除凭证',
   manageCredentials: '管理凭证',
@@ -370,6 +378,25 @@ export default flatten({
   loginToAccess: '登录',
   configuration: '配置管理',
   playground: '沙盒环境',
+
+  // Chat/Conversation related
+  chat: {
+    loading: '加载中...',
+    clearHistory: '清除对话历史',
+    clearHistoryConfirm: '确定要清除所有对话历史吗？',
+    placeholders: {
+      chat: '输入您的消息...（Shift+Enter 换行）',
+      imageGeneration: '描述您想要生成的图片...',
+      embedding: '输入要转换为向量的文本...',
+    },
+    modelTypes: {
+      chatCompletion: '对话',
+      imageGeneration: '图片',
+      embedding: '向量',
+    },
+    cacheInfo: '{count} 张缓存图片（{size} MB）',
+    noModelsAvailable: '暂无可用模型',
+  },
   integration: '集成示例',
   manageCredits: '管理 Credits',
   creditUsage: '额度分析',
@@ -393,7 +420,9 @@ export default flatten({
 
   // Analytics & Credit Board
   analytics: {
+    allCreditsUsage: '额度总览',
     creditUsage: '额度分析',
+    allCreditBoardDescription: '实时监控团队成员的模型使用情况，统一管理 AIGNE Hub Credits',
     creditBoardDescription: '监控您的模型使用情况并管理 AIGNE Hub Credits 额度',
     loadingData: '数据加载中...',
     startDate: '开始日期',
@@ -425,7 +454,7 @@ export default flatten({
     ofTotalUsage: '占总请求数',
     callHistory: '调用历史',
     callHistoryDescription: '所有模型API调用的详细记录',
-    searchPlaceholder: '按模型或者 appDid 搜索...',
+    searchPlaceholder: '按模型 / {did} 搜索...',
     allStatus: '所有状态',
     timestamp: '时间戳',
     noCallsFound: '未找到符合条件的调用记录',
@@ -447,4 +476,8 @@ export default flatten({
   customRange: '自定义范围',
   dataAvailableFrom: '数据可查询近3个月',
   usedBy: '使用者',
+  testStatus: '测试状态',
+  testing: '测试中...',
+  errorConnected: '{errorCount} 个无效凭证',
+  export: '导出',
 });
