@@ -49,6 +49,7 @@ export const imageGenerationsV2Image = async (input: {
           model: input.model,
         },
       },
+      fixedProvider: true,
     },
     {
       headers: { 'x-aigne-hub-client-did': window.blocklet?.appPid },
@@ -67,8 +68,9 @@ export const embeddingsV2Direct = async (
   const response = await axios.post(
     '/api/v2/embeddings',
     {
-      model: model.replace(/^openai\//, ''),
+      model,
       input,
+      fixedProvider: true,
     },
     {
       headers: { 'x-aigne-hub-client-did': window.blocklet?.appPid },

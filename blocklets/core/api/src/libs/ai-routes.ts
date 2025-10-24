@@ -20,7 +20,7 @@ import Joi from 'joi';
 import pick from 'lodash/pick';
 import { ImageEditParams, ImagesResponse } from 'openai/resources/images';
 
-import { getOpenAIV2 } from './ai-provider';
+import { DEFAULT_MODEL, getModelNameWithProvider, getOpenAIV2 } from './ai-provider';
 import { Config } from './env';
 import { processImageUrl } from './image';
 import logger from './logger';
@@ -164,7 +164,7 @@ export const imageGenerationRequestSchema = Joi.object<
 export const createRetryHandler = (
   callback: (req: Request, res: Response) => Promise<void>
 ): ((req: Request, res: Response) => Promise<void>) => {
-  const options = { maxRetries: Config.maxRetries, retryCodes: [429, 500, 502] };
+  const options = { maxRetries: Config.maxRetries, retryCodes: [500, 502] };
 
   function canRetry(code: number, retries: number) {
     return options.retryCodes.includes(code) && retries < options.maxRetries;
@@ -318,8 +318,12 @@ export async function processEmbeddings(
   await checkModelRateAvailable(input.model);
 
   const openai = await getOpenAIV2(req);
+  const { modelName } = getModelNameWithProvider(input.model || DEFAULT_MODEL);
 
-  const { data, usage } = await openai.embeddings.create(input);
+  const { data, usage } = await openai.embeddings.create({
+    ...input,
+    model: modelName,
+  });
 
   res.json({ data });
 

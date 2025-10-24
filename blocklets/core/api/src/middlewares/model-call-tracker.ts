@@ -1,4 +1,4 @@
-import { getReqModel } from '@api/libs/ai-provider';
+import { ensureModelWithProvider, getReqModel } from '@api/libs/ai-provider';
 import logger from '@api/libs/logger';
 import { getCurrentUnixTimestamp } from '@api/libs/timestamp';
 import { getModelAndProviderId } from '@api/providers/util';
@@ -41,6 +41,9 @@ declare global {
   namespace Express {
     interface Request {
       modelCallContext?: ModelCallContext;
+      credentialId?: string;
+      provider?: string;
+      model?: string;
     }
   }
 }
@@ -48,6 +51,10 @@ declare global {
 export function createModelCallMiddleware(callType: CallType) {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const userDid = req.user?.did;
+
+    // Ensure model has provider before processing
+    await ensureModelWithProvider(req);
+
     const model = getReqModel(req);
 
     if (!userDid || !model) {

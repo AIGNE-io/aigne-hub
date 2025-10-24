@@ -321,6 +321,7 @@ export default function Chat() {
         ...(typeof prompt === 'string' ? { prompt } : { messages: prompt }),
         stream: true,
         model,
+        fixedProvider: true,
       });
     },
     imageGenerations: (prompt) =>

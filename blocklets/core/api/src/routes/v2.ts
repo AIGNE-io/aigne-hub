@@ -306,6 +306,7 @@ router.post(
       const { match: M } = findImageModel(provider);
       if (!M) throw new CustomError(400, `Image model provider ${provider} not found`);
       const credential = await getProviderCredentials(provider, { modelCallContext: req.modelCallContext, model });
+      req.credentialId = credential.id;
       const modelInstance = M.create(credential);
 
       let traceId;
@@ -334,7 +335,7 @@ router.post(
         aigneHubCredits = await createUsageAndCompleteModelCall({
           req,
           type: 'imageGeneration',
-          model: response.model || model,
+          model: m,
           modelParams: pick(input as Message, 'size', 'responseFormat', 'style', 'quality'),
           promptTokens: response.usage.inputTokens,
           completionTokens: response.usage.outputTokens,
