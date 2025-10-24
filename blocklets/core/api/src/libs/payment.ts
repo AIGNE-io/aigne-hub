@@ -157,12 +157,24 @@ export async function getUserCredits({ userDid }: { userDid: string }) {
   const pendingCredit = await payment.meterEvents.pendingAmount({
     customer_id: customer.id,
   });
+
+  let balance = creditBalance?.[meter.currency_id!]?.remainingAmount ?? '0';
+  let pending = pendingCredit?.[meter.currency_id!] ?? '0';
+  if (pending && toBN(pending).gt(toBN(0))) {
+    if (toBN(balance).lte(toBN(pending))) {
+      pending = toBN(pending).sub(toBN(balance)).toString();
+      balance = '0';
+    } else {
+      balance = toBN(balance).sub(toBN(pending)).toString();
+      pending = '0';
+    }
+  }
   return {
-    balance: creditBalance?.[meter.currency_id!]?.remainingAmount ?? '0',
+    balance,
     currency: meter.paymentCurrency,
     total: creditBalance?.[meter.currency_id!]?.totalAmount ?? '0',
     grantCount: creditBalance?.[meter.currency_id!]?.grantCount ?? 0,
-    pendingCredit: pendingCredit?.[meter.currency_id!] ?? '0',
+    pendingCredit: pending,
   };
 }
 
