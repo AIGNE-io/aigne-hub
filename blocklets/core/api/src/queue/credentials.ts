@@ -1,6 +1,8 @@
 import checkCredentials from '@api/libs/ai-credentials';
+import AiCredential from '@api/store/models/ai-credential';
 import config from '@blocklet/sdk/lib/config';
 
+import { AIGNE_HUB_DEFAULT_WEIGHT } from '../libs/constants';
 import logger from '../libs/logger';
 import { NotificationManager } from '../libs/notifications/manager';
 import { CredentialValidNotificationTemplate } from '../libs/notifications/templates/credential';
@@ -11,8 +13,36 @@ const AIGNE_HUB_CREDENTIAL_CHECK_TIMEOUT = 10800; // 3 hours
 const credentialsQueue = getQueue({
   name: 'check-credentials',
   options: { concurrency: 1, maxRetries: 0, enableScheduledJob: true },
-  onJob: async (data: { credentialId: string; providerId: string; delay?: number; time?: number }) => {
-    logger.info('start check credentials', data);
+  onJob: async (data: {
+    credentialId: string;
+    providerId: string;
+    delay?: number;
+    time?: number;
+    isWeightRecovery?: boolean;
+  }) => {
+    logger.info('Starting credential validation check', {
+      credentialId: data.credentialId,
+      providerId: data.providerId,
+      isWeightRecovery: data.isWeightRecovery,
+    });
+
+    if (data.isWeightRecovery) {
+      try {
+        const credential = await AiCredential.findByPk(data.credentialId);
+        if (credential && credential.weight !== AIGNE_HUB_DEFAULT_WEIGHT) {
+          await credential.update({ weight: AIGNE_HUB_DEFAULT_WEIGHT });
+          logger.info('Credential weight auto-recovered after rate limit cooldown', {
+            credentialId: data.credentialId,
+            providerId: data.providerId,
+            originalWeight: credential?.weight,
+            newWeight: AIGNE_HUB_DEFAULT_WEIGHT,
+          });
+        }
+      } catch (err) {
+        logger.error('Failed to auto-recover credential weight', { credentialId: data.credentialId, error: err });
+      }
+      return;
+    }
 
     try {
       const credential = await checkCredentials(data.credentialId, data.providerId);

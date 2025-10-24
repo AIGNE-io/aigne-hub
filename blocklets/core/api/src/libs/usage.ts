@@ -119,7 +119,7 @@ async function getPrice(type: Usage['type'], model: string) {
 // v2 version with userDid support for proper credit tracking
 export async function createAndReportUsageV2({
   type,
-  model,
+  model, // model is in the format of provider/model
   modelParams,
   promptTokens = 0,
   completionTokens = 0,

@@ -12,7 +12,8 @@ import { getModelAndProviderId } from '../providers/util';
 import credentialsQueue from '../queue/credentials';
 import { getQueue } from '../queue/queue';
 import wsServer from '../ws';
-import { getOpenAIV2 } from './ai-provider';
+import { getOpenAIV2, markProviderAsFailed } from './ai-provider';
+import { AIGNE_HUB_DEFAULT_WEIGHT } from './constants';
 import logger from './logger';
 import { NotificationManager } from './notifications/manager';
 import { CredentialInvalidNotificationTemplate } from './notifications/templates/credential';
@@ -183,13 +184,18 @@ const sendCredentialInvalidNotification = async ({
       }
     }
 
-    // 如果请求频率过高，降低权重
     if (credentialId && [429].includes(Number(error.status))) {
       await AiCredential.update({ weight: 10 }, { where: { id: credentialId } });
+      logger.info('Credential weight reduced due to 429, will auto-recover in 3 minutes', {
+        credentialId,
+      });
 
       const credential = await AiCredential.findOne({ where: { id: credentialId } });
       if (credential) {
-        credentialsQueue.push({ job: { credentialId, providerId: credential.providerId }, delay: 5 });
+        credentialsQueue.push({
+          job: { credentialId, providerId: credential.providerId, isWeightRecovery: true },
+          delay: 3 * 60,
+        });
       }
     }
   } catch (error) {
@@ -249,13 +255,26 @@ export function withModelStatus(handler: (req: Request, res: Response) => Promis
         success: true,
         duration: Date.now() - start,
       });
+
+      const { credentialId } = req;
+      if (credentialId) {
+        const credential = await AiCredential.findOne({ where: { id: credentialId } });
+        if (credential) {
+          if (credential.active === false) {
+            await credential.update({ active: true });
+          }
+          if (credential.weight !== AIGNE_HUB_DEFAULT_WEIGHT) {
+            await credential.update({ weight: AIGNE_HUB_DEFAULT_WEIGHT });
+          }
+        }
+      }
     } catch (error) {
       logger.error('Failed to call with model status', error.message);
 
       const { model, provider, credentialId } = req;
       await sendCredentialInvalidNotification({ model, provider, credentialId, error });
 
-      if (error.status && [401, 403, 404, 429, 500, 501, 503].includes(Number(error.status))) {
+      if (error.status && [401, 403, 404, 500, 501, 503].includes(Number(error.status))) {
         await updateModelStatus({
           model: req.body.model,
           success: false,
@@ -264,6 +283,13 @@ export function withModelStatus(handler: (req: Request, res: Response) => Promis
         }).catch((error) => {
           logger.error('Failed to update model status', error);
         });
+      }
+
+      if (error.status && [429].includes(Number(error.status))) {
+        const providerRecord = await AiProvider.findOne({ where: { name: provider } }).catch(() => null);
+        if (providerRecord) {
+          markProviderAsFailed(providerRecord.id, providerRecord.name);
+        }
       }
 
       handleModelCallError(req, error);
