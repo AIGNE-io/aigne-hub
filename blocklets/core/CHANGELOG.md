@@ -1,3 +1,7 @@
+## 0.4.55 (2025-10-26)
+
+- chore: update aigne deps
+
 ## 0.4.54 (2025-10-24)
 
 - fix(payment): adjust balance and pending credit calculation in getUserCredits function
