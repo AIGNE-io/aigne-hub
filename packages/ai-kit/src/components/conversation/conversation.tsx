@@ -173,8 +173,8 @@ export default function Conversation({
                                 itemWidth={300}
                                 borderRadius={12}
                                 dataSource={msg.response.videos
-                                  .map(({ data, url }) => ({
-                                    src: data ? data : url!,
+                                  .map(({ data, url, type }) => ({
+                                    src: type === 'file' ? data! : url!,
                                     onLoad: () => scrollToBottom(),
                                   }))}
                               />

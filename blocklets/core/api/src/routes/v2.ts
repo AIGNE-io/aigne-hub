@@ -497,7 +497,7 @@ router.post(
         })
       );
 
-      response.images = list;
+      response.videos = list;
     }
 
     res.json({ ...response, usage: { ...response.usage, aigneHubCredits } });
