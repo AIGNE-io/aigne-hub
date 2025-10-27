@@ -44,7 +44,7 @@ const router = Router();
 const getFileExtension = (type: string) => mime.getExtension(type) || 'png';
 const getMediaKitUrl = () => joinURL(config.env.appUrl, getComponentMountPoint(MEDIA_KIT_DID));
 
-async function uploadMediaToKit(data: string, mimeType: string): Promise<{ type: 'url'; url: string }> {
+async function convertMediaToOnlineUrl(data: string, mimeType: string): Promise<{ type: 'url'; url: string }> {
   const mountPoint = getComponentMountPoint(MEDIA_KIT_DID);
   if (!mountPoint) {
     throw new CustomError(500, 'MediaKit is not available');
@@ -392,7 +392,7 @@ router.post(
           response.images.map(async (image) => {
             if (image.type === 'file' && image.data) {
               try {
-                return await uploadMediaToKit(image.data, image?.mimeType || 'image/png');
+                return await convertMediaToOnlineUrl(image.data, image?.mimeType || 'image/png');
               } catch (err) {
                 logger.error('Failed to upload image to MediaKit', { error: err });
                 return image;
@@ -490,7 +490,7 @@ router.post(
         response.videos.map(async (video) => {
           if (video.type === 'file' && video.data) {
             try {
-              return await uploadMediaToKit(video.data, video?.mimeType || 'video/mp4');
+              return await convertMediaToOnlineUrl(video.data, video?.mimeType || 'video/mp4');
             } catch (err) {
               logger.error('Failed to upload video to MediaKit', { error: err });
               return video;
