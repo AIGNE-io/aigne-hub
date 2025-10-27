@@ -12,7 +12,7 @@ import Prompt, { PromptProps } from './prompt';
 export interface MessageItem {
   id: string;
   prompt?: string | ChatCompletionMessageParam[];
-  response?: string | { url: string }[] | { videos: { data?: string; path?: string, type?: string }[] } | { images: { url?: string }[] };
+  response?: string | { url: string }[] | { videos: { data?: string; path?: string; type?: string }[] } | { images: { url?: string }[] };
   loading?: boolean;
   error?: { message: string; [key: string]: unknown };
   meta?: any;
@@ -162,14 +162,14 @@ export default function Conversation({
                         msg.response.videos.length > 0 && (
                           <>
                             {/* Show actual videos if they have real data URLs */}
-                            {msg.response.videos.some((video) => video.data && video.data.startsWith('data:')) && (
+                            {msg.response.videos.some((video) => video.type ==='file' && video.data) && (
                               <VideoPreview
                                 itemWidth={300}
                                 borderRadius={12}
                                 dataSource={msg.response.videos
-                                  .filter((video) => video.data && video.data.startsWith('data:'))
+                                  .filter((video) => video.data)
                                   .map(({ data }) => ({
-                                    src: data!,
+                                    src: `data:video/mp4;base64,${data}`,
                                     onLoad: () => scrollToBottom(),
                                   }))}
                               />

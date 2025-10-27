@@ -102,7 +102,7 @@ export default function useConversation({
       | Uint8Array
       | { type: 'text'; text: string }
       | { type: 'images'; images: { url: string }[] }
-      | { type: 'video'; videos: string[] }
+      | { type: 'video'; videos: { data?: string; path?: string; type?: string }[] }
     >
   >;
   imageGenerations?: (
@@ -205,7 +205,8 @@ export default function useConversation({
 
         const isText = (i: any): i is { type: 'text'; text: string } => i.type === 'text';
         const isImages = (i: any): i is { type: 'images'; images: { url: string }[] } => i.type === 'images';
-        const isVideo = (i: any): i is { type: 'video'; videos: string[] } => i.type === 'video';
+        const isVideo = (i: any): i is { type: 'video'; videos: { data?: string; path?: string; type?: string }[] } =>
+          i.type === 'video';
 
         const reader = result.getReader();
         const decoder = new TextDecoder();
