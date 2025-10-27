@@ -217,8 +217,8 @@ export function UsageSummary({
         return t('modelUnits.tokens');
       case 'imagegeneration':
         return t('modelUnits.images');
-      case 'videogeneration':
-        return t('modelUnits.minutes');
+      case 'video':
+        return t('modelUnits.seconds');
       default:
         return t('modelUnits.tokens');
     }

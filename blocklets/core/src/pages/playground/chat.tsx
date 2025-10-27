@@ -10,14 +10,15 @@ import {
   useConversation,
 } from '@blocklet/aigne-hub/components';
 import { ArrowDropDown, DeleteOutline, HighlightOff } from '@mui/icons-material';
-import { Box, Button, CircularProgress, IconButton, Stack, Tooltip, Typography } from '@mui/material';
+import { Avatar,Box, Button, CircularProgress, IconButton, Stack, Tooltip, Typography } from '@mui/material';
 import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import ModelSelector from '../../components/model-selector';
 import { useIsRole, useSessionContext } from '../../contexts/session';
 import { embeddingsV2Direct, imageGenerationsV2Image, textCompletionsV2, videoGenerationsV2 } from '../../libs/ai';
-
+import { getPrefix } from '@app/libs/util';
+import { joinURL } from 'ufo';
 interface ApiModel {
   model: string;
   description?: string;
@@ -227,6 +228,16 @@ export default function Chat() {
     });
   };
 
+  const processVideoResponse = (videos: any[]) => {
+    return videos.map((i: any) => {
+      if (i.type === 'file' && i.data) {
+        return { ...i, data: `data:${i.mimeType || 'video/mp4'};base64,${i.data}` };
+      }
+
+      return i
+    });
+  };
+
   const { messages, add, cancel, clearHistory, isLoadingHistory } = useConversation({
     scrollToBottom: (o) => ref.current?.scrollToBottom(o),
     textCompletions: (prompt) => {
@@ -320,7 +331,7 @@ export default function Chat() {
 
       if (currentModelType === 'video') {
         return videoGenerationsV2({ prompt: promptText, model }).then((res) => {
-          const videos = Array.isArray(res.videos) && res.videos.length > 0 ? res.videos : [];
+          const videos = Array.isArray(res.videos) && res.videos.length > 0 ? processVideoResponse(res.videos) : [];
 
           if (videos.length === 0) {
             return new ReadableStream({
@@ -390,6 +401,8 @@ export default function Chat() {
     [cancel]
   );
 
+  const provider = modelGroups.find((g) => g.models.some((m) => m.value === model))?.provider;
+
   return (
     <>
       <Conversation
@@ -438,6 +451,12 @@ export default function Chat() {
                       color: loading || modelGroups.length === 0 ? 'text.disabled' : 'primary.main',
                     },
                   }}>
+                  <Avatar
+                    src={joinURL(getPrefix(), `/logo/${provider}.png`)}
+                    sx={{ width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    alt={model}
+                  />
+
                   <Typography
                     variant="body2"
                     sx={{

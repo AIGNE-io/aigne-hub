@@ -9,10 +9,17 @@ import VideoPreview from '../video-preview';
 import Message from './message';
 import Prompt, { PromptProps } from './prompt';
 
+export interface VideoResponse {
+  data?: string;
+  path?: string;
+  type?: string;
+  url?: string;
+}
+
 export interface MessageItem {
   id: string;
   prompt?: string | ChatCompletionMessageParam[];
-  response?: string | { url: string }[] | { videos: { data?: string; path?: string; type?: string }[] } | { images: { url?: string }[] };
+  response?: string | { url: string }[] | { videos: VideoResponse[] } | { images: { url?: string }[] };
   loading?: boolean;
   error?: { message: string; [key: string]: unknown };
   meta?: any;
@@ -162,21 +169,21 @@ export default function Conversation({
                         msg.response.videos.length > 0 && (
                           <>
                             {/* Show actual videos if they have real data URLs */}
-                            {msg.response.videos.some((video) => video.type ==='file' && video.data) && (
+                            {msg.response.videos.some((video) => (video.data && video.data.startsWith('data:')) || video.url) && (
                               <VideoPreview
                                 itemWidth={300}
                                 borderRadius={12}
                                 dataSource={msg.response.videos
                                   .filter((video) => video.data)
                                   .map(({ data }) => ({
-                                    src: `data:video/mp4;base64,${data}`,
+                                    src: data!,
                                     onLoad: () => scrollToBottom(),
                                   }))}
                               />
                             )}
 
                             {/* Show placeholder for images without real data */}
-                            {msg.response.videos.some((video) => video.path ) && (
+                            {msg.response.videos.some((video) => video.data === '[VIDEO_PLACEHOLDER]' ) && (
                               <Box
                                 sx={{
                                   margin: '8px 0',
@@ -200,7 +207,14 @@ export default function Conversation({
                                     fontWeight: 500,
                                     minWidth: 200,
                                   }}>
-                                  Video (Not Cached)
+                                  {msg.response.videos.filter((video) => !video.url || video.data === '[VIDEO_PLACEHOLDER]')
+                                    .length === 1
+                                    ? 'Video (Not Cached)'
+                                    : `${
+                                        msg.response.videos.filter(
+                                          (video) => !video.url || video.data === '[VIDEO_PLACEHOLDER]'
+                                        ).length
+                                      } Videos (Not Cached)`}
                                 </Box>
                               </Box>
                             )}

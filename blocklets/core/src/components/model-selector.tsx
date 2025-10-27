@@ -24,6 +24,7 @@ import { joinURL } from 'ufo';
 import { ReactComponent as EmbeddingIcon } from '../icons/icon-embedding.svg';
 import { ReactComponent as ImageIcon } from '../icons/icon-image.svg';
 import { ReactComponent as ChatIcon } from '../icons/icon-text.svg';
+import { ReactComponent as VideoIcon } from '../icons/icon-video.svg';
 
 interface ModelSelectorProps {
   open: boolean;
@@ -210,7 +211,7 @@ export default function ModelSelector({
             { key: 'chatCompletion', label: 'Chat', icon: <ChatIcon viewBox="0 0 12 12" /> },
             { key: 'imageGeneration', label: 'Image', icon: <ImageIcon viewBox="0 0 12 12" /> },
             { key: 'embedding', label: 'Embedding', icon: <EmbeddingIcon viewBox="0 0 12 12" /> },
-            { key: 'video', label: 'Video', icon: <ImageIcon viewBox="0 0 12 12" /> },
+            { key: 'video', label: 'Video', icon: <VideoIcon viewBox="0 0 12 12" /> },
           ].map((option) => (
             <Chip
               key={option.key}
@@ -384,6 +385,11 @@ export default function ModelSelector({
                           width: '100%',
                         }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.75, sm: 1 }, flexWrap: 'wrap' }}>
+                          <Avatar
+                            src={joinURL(getPrefix(), `/logo/${group.provider}.png`)}
+                            sx={{ width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            alt={group.provider}
+                          />
                           <Typography
                             variant="body2"
                             sx={{
@@ -420,7 +426,7 @@ export default function ModelSelector({
                                   {modelType === 'chatCompletion' && <ChatIcon viewBox="0 0 12 12" />}
                                   {modelType === 'imageGeneration' && <ImageIcon viewBox="0 0 12 12" />}
                                   {modelType === 'embedding' && <EmbeddingIcon viewBox="0 0 12 12" />}
-                                  {modelType === 'video' && <ImageIcon viewBox="0 0 12 12" />}
+                                  {modelType === 'video' && <VideoIcon viewBox="0 0 12 12" />}
                                 </Box>
                                 <Typography
                                   variant="caption"

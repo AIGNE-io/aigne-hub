@@ -103,8 +103,10 @@ export default flatten({
   modelUnits: {
     tokens: 'tokens',
     images: '张图片',
+    image: '张图片',
     minutes: '分钟',
     characters: '字符',
+    seconds: '秒',
   },
 
   // Configuration section

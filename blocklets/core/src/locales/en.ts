@@ -116,8 +116,10 @@ export default flatten({
   modelUnits: {
     tokens: 'tokens',
     images: 'images',
+    image: 'image',
     minutes: 'minutes',
     characters: 'characters',
+    seconds: 'seconds',
   },
   // Configuration section
   config: {
