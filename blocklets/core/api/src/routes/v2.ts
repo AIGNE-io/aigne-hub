@@ -2,6 +2,7 @@ import { findImageModel, findVideoModel, parseModel } from '@aigne/aigne-hub';
 import { AIGNE, ChatModelOutput, Message, imageModelInputSchema, videoModelInputSchema } from '@aigne/core';
 import { checkArguments, pick } from '@aigne/core/utils/type-utils';
 import { AIGNEHTTPServer, invokePayloadSchema } from '@aigne/transport/http-server/index';
+import { v7 as uuidv7 } from '@aigne/uuid';
 import { getModelNameWithProvider, getOpenAIV2, getReqModel } from '@api/libs/ai-provider';
 import {
   createRetryHandler,
@@ -20,11 +21,16 @@ import AiCredential from '@api/store/models/ai-credential';
 import AiModelRate from '@api/store/models/ai-model-rate';
 import AiProvider from '@api/store/models/ai-provider';
 import { CustomError } from '@blocklet/error';
+import { getComponentMountPoint } from '@blocklet/sdk/lib/component';
+import config from '@blocklet/sdk/lib/config';
 import sessionMiddleware from '@blocklet/sdk/lib/middlewares/session';
+import { uploadToMediaKit } from '@blocklet/uploader-server';
 import compression from 'compression';
 import { NextFunction, Request, Response, Router } from 'express';
 import proxy from 'express-http-proxy';
 import Joi from 'joi';
+import mime from 'mime';
+import { joinURL } from 'ufo';
 
 import onError from '../libs/on-error';
 import { getModel, getProviderCredentials } from '../providers/models';
@@ -32,8 +38,13 @@ import { getModel, getProviderCredentials } from '../providers/models';
 const DEFAULT_MODEL = 'openai/gpt-5-mini';
 const DEFAULT_IMAGE_MODEL = 'openai/dall-e-2';
 const DEFAULT_VIDEO_MODEL = 'openai/sora-2';
+const MEDIA_KIT_DID = 'z8ia1mAXo8ZE7ytGF36L5uBf9kD2kenhqFGp9';
 
 const router = Router();
+const getFileExtension = (type: string) => mime.getExtension(type) || 'png';
+const getMediaKitUrl = () => {
+  return joinURL(config.env.appUrl, getComponentMountPoint(MEDIA_KIT_DID));
+};
 
 const aigneHubModelCallSchema = Joi.object({
   input: Joi.object({
@@ -315,7 +326,7 @@ router.post(
       const aigne = new AIGNE();
       const response = await aigne.invoke(
         modelInstance,
-        { ...input, modelOptions: { ...input.modelOptions, model } },
+        { ...input, outputFileType: 'file', modelOptions: { ...input.modelOptions, model } },
         {
           userContext: { ...body.options?.userContext, userId: req.user?.did },
           hooks: {
@@ -358,6 +369,32 @@ router.post(
         });
       }
 
+      if (input?.outputFileType === 'url' && response.images.length > 0) {
+        const list = await Promise.all(
+          response.images.map(async (image) => {
+            if (image.type === 'file' && image.data) {
+              const mountPoint = getComponentMountPoint(MEDIA_KIT_DID);
+              if (!mountPoint) return image;
+
+              const id = uuidv7();
+              const ext = getFileExtension(image?.mimeType || 'image/png');
+              const fileName = ext ? `${id}.${ext}` : id;
+
+              const { data } = (await uploadToMediaKit({ base64: image.data, fileName })) as any;
+
+              return {
+                type: 'url',
+                url: joinURL(getMediaKitUrl(), '/uploads', data?.filename),
+              } as const;
+            }
+
+            return image;
+          })
+        );
+
+        response.images = list;
+      }
+
       res.json({ ...response, usage: { ...response.usage, aigneHubCredits } });
     })
   )
@@ -396,7 +433,7 @@ router.post(
     const aigne = new AIGNE();
     const response = await aigne.invoke(
       modelInstance,
-      { ...input, model, modelOptions: { ...modelOptions, model } },
+      { ...input, model, outputFileType: 'file', modelOptions: { ...modelOptions, model } },
       {
         userContext: { ...body.options?.userContext, userId: req.user?.did },
         hooks: {
@@ -435,6 +472,32 @@ router.post(
         },
         traceId,
       });
+    }
+
+    if (input?.outputFileType === 'url' && response.videos.length > 0) {
+      const list = await Promise.all(
+        response.videos.map(async (video) => {
+          if (video.type === 'file' && video.data) {
+            const mountPoint = getComponentMountPoint(MEDIA_KIT_DID);
+            if (!mountPoint) return video;
+
+            const id = uuidv7();
+            const ext = getFileExtension(video?.mimeType || 'video/mp4');
+            const fileName = ext ? `${id}.${ext}` : id;
+
+            const { data } = (await uploadToMediaKit({ base64: video.data, fileName })) as any;
+
+            return {
+              type: 'url',
+              url: joinURL(getMediaKitUrl(), '/uploads', data?.filename),
+            } as const;
+          }
+
+          return video;
+        })
+      );
+
+      response.images = list;
     }
 
     res.json({ ...response, usage: { ...response.usage, aigneHubCredits } });
