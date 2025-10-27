@@ -1,3 +1,7 @@
+## 0.4.56 (2025-10-27)
+
+- chore: update aigne deps
+
 ## 0.4.55 (2025-10-26)
 
 - chore: update aigne deps
