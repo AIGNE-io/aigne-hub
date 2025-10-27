@@ -2,7 +2,7 @@ import { findImageModel, findVideoModel, parseModel } from '@aigne/aigne-hub';
 import { AIGNE, ChatModelOutput, Message, imageModelInputSchema, videoModelInputSchema } from '@aigne/core';
 import { checkArguments, pick } from '@aigne/core/utils/type-utils';
 import { AIGNEHTTPServer, invokePayloadSchema } from '@aigne/transport/http-server/index';
-import { v7 as uuidv7 } from '@aigne/uuid';
+import { v7 } from '@aigne/uuid';
 import { getModelNameWithProvider, getOpenAIV2, getReqModel } from '@api/libs/ai-provider';
 import {
   createRetryHandler,
@@ -42,9 +42,27 @@ const MEDIA_KIT_DID = 'z8ia1mAXo8ZE7ytGF36L5uBf9kD2kenhqFGp9';
 
 const router = Router();
 const getFileExtension = (type: string) => mime.getExtension(type) || 'png';
-const getMediaKitUrl = () => {
-  return joinURL(config.env.appUrl, getComponentMountPoint(MEDIA_KIT_DID));
-};
+const getMediaKitUrl = () => joinURL(config.env.appUrl, getComponentMountPoint(MEDIA_KIT_DID));
+
+async function uploadMediaToKit(data: string, mimeType: string): Promise<{ type: 'url'; url: string }> {
+  const mountPoint = getComponentMountPoint(MEDIA_KIT_DID);
+  if (!mountPoint) {
+    throw new CustomError(500, 'MediaKit is not available');
+  }
+
+  const id = v7();
+  const ext = getFileExtension(mimeType);
+  const fileName = ext ? `${id}.${ext}` : id;
+
+  const { data: uploadResult } = (await uploadToMediaKit({ base64: data, fileName })) as unknown as {
+    data: { filename: string };
+  };
+
+  return {
+    type: 'url',
+    url: joinURL(getMediaKitUrl(), '/uploads', uploadResult?.filename),
+  } as const;
+}
 
 const aigneHubModelCallSchema = Joi.object({
   input: Joi.object({
@@ -373,19 +391,12 @@ router.post(
         const list = await Promise.all(
           response.images.map(async (image) => {
             if (image.type === 'file' && image.data) {
-              const mountPoint = getComponentMountPoint(MEDIA_KIT_DID);
-              if (!mountPoint) return image;
-
-              const id = uuidv7();
-              const ext = getFileExtension(image?.mimeType || 'image/png');
-              const fileName = ext ? `${id}.${ext}` : id;
-
-              const { data } = (await uploadToMediaKit({ base64: image.data, fileName })) as any;
-
-              return {
-                type: 'url',
-                url: joinURL(getMediaKitUrl(), '/uploads', data?.filename),
-              } as const;
+              try {
+                return await uploadMediaToKit(image.data, image?.mimeType || 'image/png');
+              } catch (err) {
+                logger.error('Failed to upload image to MediaKit', { error: err });
+                return image;
+              }
             }
 
             return image;
@@ -478,19 +489,12 @@ router.post(
       const list = await Promise.all(
         response.videos.map(async (video) => {
           if (video.type === 'file' && video.data) {
-            const mountPoint = getComponentMountPoint(MEDIA_KIT_DID);
-            if (!mountPoint) return video;
-
-            const id = uuidv7();
-            const ext = getFileExtension(video?.mimeType || 'video/mp4');
-            const fileName = ext ? `${id}.${ext}` : id;
-
-            const { data } = (await uploadToMediaKit({ base64: video.data, fileName })) as any;
-
-            return {
-              type: 'url',
-              url: joinURL(getMediaKitUrl(), '/uploads', data?.filename),
-            } as const;
+            try {
+              return await uploadMediaToKit(video.data, video?.mimeType || 'video/mp4');
+            } catch (err) {
+              logger.error('Failed to upload video to MediaKit', { error: err });
+              return video;
+            }
           }
 
           return video;

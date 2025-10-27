@@ -174,7 +174,7 @@ export default function Conversation({
                                 borderRadius={12}
                                 dataSource={msg.response.videos
                                   .map(({ data, url, type }) => ({
-                                    src: type === 'file' ? data! : url!,
+                                    src: type==='file' && data ? data : url!,
                                     onLoad: () => scrollToBottom(),
                                   }))}
                               />
