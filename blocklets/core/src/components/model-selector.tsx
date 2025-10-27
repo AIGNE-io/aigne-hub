@@ -387,7 +387,13 @@ export default function ModelSelector({
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.75, sm: 1 }, flexWrap: 'wrap' }}>
                           <Avatar
                             src={joinURL(getPrefix(), `/logo/${group.provider}.png`)}
-                            sx={{ width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            sx={{
+                              width: 16,
+                              height: 16,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
                             alt={group.provider}
                           />
                           <Typography
@@ -439,7 +445,7 @@ export default function ModelSelector({
                                     chatCompletion: 'Chat',
                                     imageGeneration: 'Image',
                                     video: 'Video',
-                                    embedding: 'Embedding'
+                                    embedding: 'Embedding',
                                   }[modelType] || 'Chat'}
                                 </Typography>
                               </Box>

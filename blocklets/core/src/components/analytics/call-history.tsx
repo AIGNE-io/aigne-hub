@@ -76,7 +76,7 @@ interface CallHistoryProps {
 
 function formatDuration(duration?: number) {
   if (!duration) return '-';
-  return `${(duration).toFixed(1)}s`;
+  return `${duration.toFixed(1)}s`;
 }
 
 function AppInfo({ appInfo }: { appInfo: { appName: string; appUrl: string; appLogo: string; appDid: string } }) {
@@ -319,7 +319,7 @@ export function CallHistory({
           if (!call) return null;
 
           let unit;
-          const normalizedType = (call.type).toLowerCase();
+          const normalizedType = call.type.toLowerCase();
           switch (normalizedType) {
             case 'chatcompletion':
             case 'completion':
@@ -330,7 +330,7 @@ export function CallHistory({
               unit = t('modelUnits.tokens');
               break;
             case 'imagegeneration':
-              unit = call.totalUsage>1?t('modelUnits.images'):t('modelUnits.image');
+              unit = call.totalUsage > 1 ? t('modelUnits.images') : t('modelUnits.image');
               break;
             case 'video':
               unit = t('modelUnits.seconds');

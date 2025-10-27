@@ -7,11 +7,6 @@ export const up: Migration = async ({ context: queryInterface }) => {
     Usages: [{ name: 'mediaDuration', field: { type: DataTypes.INTEGER, allowNull: true } }],
   });
 
-  // await queryInterface.changeColumn('AiModelRates', 'type', {
-  //   type: DataTypes.ENUM('chatCompletion', 'embedding', 'imageGeneration', 'video'),
-  //   allowNull: false,
-  // });
-
   await queryInterface.changeColumn('ModelCalls', 'type', {
     type: DataTypes.ENUM('chatCompletion', 'embedding', 'imageGeneration', 'audioGeneration', 'video', 'custom'),
     allowNull: false,

@@ -20,7 +20,7 @@ import pick from 'lodash/pick';
 import pAll from 'p-all';
 import { Op } from 'sequelize';
 
-import { modelStatusQueue, typeFilterMap, typeMap } from '../libs/status';
+import { getFormatModelType, modelStatusQueue, typeFilterMap } from '../libs/status';
 
 const testModelsRateLimit = new Map<string, { count: number; startTime: number }>();
 const TEST_MODELS_RATE_LIMIT_TIME = 10 * 60 * 1000; // 10 minutes
@@ -571,7 +571,7 @@ router.post('/:providerId/model-rates', ensureAdmin, async (req, res) => {
 
     modelStatusQueue.push({
       model: modelRate.model,
-      type: typeMap[modelRate.type as keyof typeof typeMap] || 'chat',
+      type: getFormatModelType(modelRate.type),
       providerId: modelRate.providerId,
     });
 
@@ -736,7 +736,7 @@ router.post('/model-rates', ensureAdmin, async (req, res) => {
     createdRates.forEach((rate) => {
       modelStatusQueue.push({
         model: rate.model,
-        type: typeMap[rate.type as keyof typeof typeMap] || 'chat',
+        type: getFormatModelType(rate.type),
         providerId: rate.providerId,
       });
     });
@@ -869,15 +869,6 @@ router.get('/chat/models', user, async (req, res) => {
     const where: any = {};
     if (req.query.type) {
       const requestedType = req.query.type as string;
-      const typeFilterMap: Record<string, string> = {
-        chatCompletion: 'chatCompletion',
-        imageGeneration: 'imageGeneration',
-        embedding: 'embedding',
-        chat: 'chatCompletion',
-        image_generation: 'imageGeneration',
-        image: 'imageGeneration',
-        video: 'video',
-      };
       const mappedType = typeFilterMap[requestedType] || requestedType;
       where.type = mappedType;
     }
@@ -888,9 +879,7 @@ router.get('/chat/models', user, async (req, res) => {
         {
           model: AiProvider,
           as: 'provider',
-          where: {
-            enabled: true,
-          },
+          where: { enabled: true },
           attributes: ['id', 'name', 'displayName', 'baseUrl', 'region', 'enabled'],
         },
       ],
@@ -1045,7 +1034,7 @@ router.get('/models', async (req, res) => {
             result.push({
               key: `${providerJson.name}/${modelOption.name}`,
               model: modelOption.name,
-              type: typeMap[modelOption.mode as keyof typeof typeMap] || 'chat',
+              type: getFormatModelType(modelOption.mode),
               provider: providerJson.name,
               input_credits_per_token: 0,
               output_credits_per_token: 0,
@@ -1087,14 +1076,14 @@ router.get('/models', async (req, res) => {
     const result: any[] = [];
 
     modelRates.forEach((rate) => {
-      const rateJson = rate.toJSON() as any;
+      const rateJson = rate.toJSON() as AiModelRate & { provider: AiProvider };
       const providerName = rateJson.provider.name;
       const modelName = rateJson.model;
 
       result.push({
         key: `${providerName}/${modelName}`,
         model: modelName,
-        type: typeMap[rateJson.type as keyof typeof typeMap] || 'chat',
+        type: getFormatModelType(rate.type),
         provider: providerName,
         providerId: rateJson.provider.id,
         input_credits_per_token: rateJson.inputRate || 0,
@@ -1181,7 +1170,7 @@ router.get('/test-models', user, ensureAdmin, rateLimitMiddleware, async (req, r
     modelRates.forEach((rate) => {
       modelStatusQueue.push({
         model: rate.model,
-        type: typeMap[rate.type as keyof typeof typeMap] || 'chat',
+        type: getFormatModelType(rate.type),
         providerId: rate.providerId,
       });
     });

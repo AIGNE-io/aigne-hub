@@ -1,3 +1,4 @@
+import { getPrefix } from '@app/libs/util';
 import Dialog from '@arcblock/ux/lib/Dialog';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import { AI_PROVIDER_DISPLAY_NAMES } from '@blocklet/aigne-hub/api';
@@ -10,15 +11,15 @@ import {
   useConversation,
 } from '@blocklet/aigne-hub/components';
 import { ArrowDropDown, DeleteOutline, HighlightOff } from '@mui/icons-material';
-import { Avatar,Box, Button, CircularProgress, IconButton, Stack, Tooltip, Typography } from '@mui/material';
+import { Avatar, Box, Button, CircularProgress, IconButton, Stack, Tooltip, Typography } from '@mui/material';
 import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { joinURL } from 'ufo';
 
 import ModelSelector from '../../components/model-selector';
 import { useIsRole, useSessionContext } from '../../contexts/session';
 import { embeddingsV2Direct, imageGenerationsV2Image, textCompletionsV2, videoGenerationsV2 } from '../../libs/ai';
-import { getPrefix } from '@app/libs/util';
-import { joinURL } from 'ufo';
+
 interface ApiModel {
   model: string;
   description?: string;
@@ -234,7 +235,7 @@ export default function Chat() {
         return { ...i, data: `data:${i.mimeType || 'video/mp4'};base64,${i.data}` };
       }
 
-      return i
+      return i;
     });
   };
 
@@ -427,12 +428,16 @@ export default function Chat() {
           sx: {
             px: { xs: 1.5, md: 0 },
           },
-          placeholder: t(`chat.placeholders.${{
-            imageGeneration: 'imageGeneration',
-            embedding: 'embedding',
-            chatCompletion: 'chat',
-            video: 'video'
-          }[currentModelType] || 'chat'}`),
+          placeholder: t(
+            `chat.placeholders.${
+              {
+                imageGeneration: 'imageGeneration',
+                embedding: 'embedding',
+                chatCompletion: 'chat',
+                video: 'video',
+              }[currentModelType] || 'chat'
+            }`
+          ),
           topAdornment: (
             <>
               {/* Left side: Model selector */}

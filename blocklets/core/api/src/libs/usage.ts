@@ -459,9 +459,9 @@ export async function createUsageAndCompleteModelCall({
         promptTokens,
         completionTokens,
         numberOfImageGeneration,
-        mediaDuration,
         appId,
         userDid,
+        mediaDuration,
       });
     }
 

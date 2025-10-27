@@ -28,11 +28,15 @@ export const typeFilterMap: Record<string, string> = {
   video: 'video',
 };
 
-export const typeMap = {
+const typeMap = {
   chatCompletion: 'chat',
   imageGeneration: 'image_generation',
   embedding: 'embedding',
   video: 'video',
+};
+
+export const getFormatModelType = (type: AiModelRate['type']) => {
+  return typeMap[type as keyof typeof typeMap] || 'chat';
 };
 
 interface ProviderWithCredentials extends AiProvider {
@@ -373,7 +377,7 @@ export const checkModelStatus = async ({
 }: {
   providerId: string;
   model: string;
-  type: 'chat' | 'image_generation' | 'embedding';
+  type: 'chat' | 'image_generation' | 'embedding' | 'video';
 }) => {
   const provider = (await AiProvider.findOne({
     where: { id: providerId },
@@ -428,7 +432,7 @@ export const modelStatusQueue = getQueue({
   }: {
     providerId: string;
     model: string;
-    type: 'chat' | 'image_generation' | 'embedding';
+    type: 'chat' | 'image_generation' | 'embedding' | 'video';
   }) => {
     logger.info('check model status', providerId, model, type);
     await checkModelStatus({ providerId, model, type });
@@ -450,7 +454,7 @@ export const checkAllModelStatus = async () => {
   modelRates.forEach((rate) => {
     modelStatusQueue.push({
       model: rate.model,
-      type: typeMap[rate.type as keyof typeof typeMap] || 'chat',
+      type: getFormatModelType(rate.type),
       providerId: rate.providerId,
     });
   });

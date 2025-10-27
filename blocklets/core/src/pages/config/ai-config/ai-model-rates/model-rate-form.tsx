@@ -517,7 +517,7 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
                           { value: 'chatCompletion', key: 'chatCompletion' },
                           { value: 'imageGeneration', key: 'imageGeneration' },
                           { value: 'embedding', key: 'embedding' },
-                          { value: 'video', key: 'video' }
+                          { value: 'video', key: 'video' },
                         ].map(({ value, key }) => (
                           <MenuItem key={value} value={value}>
                             {t(`config.modelRates.form.rateType.options.${key}`)}
