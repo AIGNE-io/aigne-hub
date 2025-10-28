@@ -1,6 +1,6 @@
 ## 0.4.58 (2025-10-28)
 
-- feat: support video model
+- fix: ignore `@blocklet/uploader-server` type declarations.
 
 ## 0.4.57 (2025-10-28)
 

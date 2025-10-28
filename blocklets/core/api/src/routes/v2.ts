@@ -24,7 +24,6 @@ import { CustomError } from '@blocklet/error';
 import { getComponentMountPoint } from '@blocklet/sdk/lib/component';
 import config from '@blocklet/sdk/lib/config';
 import sessionMiddleware from '@blocklet/sdk/lib/middlewares/session';
-// @ts-ignore
 import { uploadToMediaKit } from '@blocklet/uploader-server';
 import compression from 'compression';
 import { NextFunction, Request, Response, Router } from 'express';
