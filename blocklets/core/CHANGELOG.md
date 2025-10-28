@@ -1,3 +1,7 @@
+## 0.4.61 (2025-10-28)
+
+- fix: update the application DID of the staging environment
+
 ## 0.4.60 (2025-10-28)
 
 - chore: bump version
