@@ -133,7 +133,7 @@ export default function UsageStatsBoard() {
               {showStatsSkeleton ? (
                 <UsageChartsSkeleton />
               ) : (
-                <UsageCharts dailyStats={dailyStats} showCredits={isCreditBillingEnabled} />
+                <UsageCharts dailyStats={dailyStats} showCredits={isCreditBillingEnabled} showRequests={false} />
               )}
             </Stack>
 

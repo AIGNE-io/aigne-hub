@@ -1,7 +1,7 @@
 import Empty from '@arcblock/ux/lib/Empty';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import { formatNumber } from '@blocklet/aigne-hub/utils/util';
-import { Box, Card, CardContent, CardHeader, useTheme } from '@mui/material';
+import { Card, CardContent, CardHeader, useTheme } from '@mui/material';
 import dayjs from 'dayjs';
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis } from 'recharts';
 
@@ -35,6 +35,7 @@ export interface UsageChartsProps {
   height?: number;
   // Legacy props for backward compatibility
   showCredits?: boolean;
+  showRequests?: boolean;
 }
 
 // Function to get usage unit based on service type
@@ -70,16 +71,31 @@ const getServiceTypeDisplayName = (type: string, t: any) => {
 interface CustomTooltipProps {
   active?: boolean;
   payload?: any[];
+  label?: string;
+  showCredits: boolean;
+  showRequests: boolean;
   theme: any;
   t: any;
 }
 
-function CustomTooltip({ active = false, payload = [], theme, t }: CustomTooltipProps) {
+function CustomTooltip({
+  active = false,
+  payload = [],
+  label = '',
+  showCredits,
+  showRequests,
+  theme,
+  t,
+}: CustomTooltipProps) {
   if (!active || !payload || !payload.length) {
     return null;
   }
 
   const data = payload[0].payload as DailyStats;
+
+  const formatDateLabel = (label: string) => {
+    return dayjs(label).format('YYYY-MM-DD');
+  };
 
   const tooltipStyle = {
     backgroundColor: theme.palette.background.paper,
@@ -92,34 +108,142 @@ function CustomTooltip({ active = false, payload = [], theme, t }: CustomTooltip
     padding: 0,
   };
 
-  if (!(data.byType && Object.keys(data.byType).length > 0)) {
-    return null;
-  }
-
   return (
-    <Box sx={tooltipStyle}>
-      <Box sx={{ padding: '8px 16px' }}>
+    <div style={tooltipStyle}>
+      {/* Header */}
+      <div
+        style={{
+          padding: '16px 20px 12px 20px',
+          borderBottom: `1px solid ${theme.palette.divider}`,
+          backgroundColor: theme.palette.mode === 'dark' ? theme.palette.grey[100] : theme.palette.grey[50],
+          borderRadius: '12px 12px 0 0',
+        }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            marginBottom: '4px',
+          }}>
+          <span
+            style={{
+              fontSize: '14px',
+              fontWeight: 600,
+              color: theme.palette.text.primary,
+            }}>
+            {formatDateLabel(label!)}
+          </span>
+        </div>
+      </div>
+
+      {/* Main Stats */}
+      <div style={{ padding: '16px 20px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {showCredits ? (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div
+                  style={{
+                    width: '12px',
+                    height: '3px',
+                    borderRadius: '2px',
+                    backgroundColor: theme.palette.primary.main,
+                  }}
+                />
+                <span
+                  style={{
+                    fontSize: '14px',
+                    color: theme.palette.text.primary,
+                    fontWeight: 500,
+                  }}>
+                  {t('analytics.totalCreditsUsed')}
+                </span>
+              </div>
+              <span
+                style={{
+                  fontSize: '14px',
+                  fontWeight: 600,
+                }}>
+                {formatNumber(data.totalCredits)}
+              </span>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div
+                  style={{
+                    width: '12px',
+                    height: '3px',
+                    borderRadius: '2px',
+                    backgroundColor: theme.palette.text.primary,
+                  }}
+                />
+                <span
+                  style={{
+                    fontSize: '14px',
+                    color: theme.palette.text.primary,
+                    fontWeight: 500,
+                  }}>
+                  {t('analytics.totalUsage')}
+                </span>
+              </div>
+              <span
+                style={{
+                  fontSize: '14px',
+                  fontWeight: 600,
+                }}>
+                {formatNumber(data.totalUsage)}
+              </span>
+            </div>
+          )}
+
+          {showRequests && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span
+                style={{
+                  fontSize: '14px',
+                  color: theme.palette.text.primary,
+                  fontWeight: 500,
+                }}>
+                {t('analytics.totalRequests')}
+              </span>
+              <span
+                style={{
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  color: theme.palette.text.secondary,
+                }}>
+                {formatNumber(data.totalCalls)}
+              </span>
+            </div>
+          )}
+        </div>
+
         {/* Model Details */}
         {data.byType && Object.keys(data.byType).length > 0 && (
-          <Box>
-            <Box sx={{}}>
-              <Box
-                sx={{
+          <div style={{ marginTop: '16px' }}>
+            <div
+              style={{
+                borderTop: `1px solid ${theme.palette.divider}`,
+                paddingTop: '16px',
+              }}>
+              <div
+                style={{
                   fontSize: '13px',
                   fontWeight: 600,
                   color: theme.palette.text.primary,
                   marginBottom: '12px',
                 }}>
                 {t('analytics.modelUsageStats')}:
-              </Box>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {Object.entries(data.byType).map(([type, stats]) => {
                   const unit = getUsageUnit(type, t);
                   const displayName = getServiceTypeDisplayName(type, t);
                   return (
-                    <Box
+                    <div
                       key={type}
-                      sx={{
+                      style={{
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
@@ -143,19 +267,25 @@ function CustomTooltip({ active = false, payload = [], theme, t }: CustomTooltip
                         }}>
                         {formatNumber(stats.totalUsage)} {unit}
                       </span>
-                    </Box>
+                    </div>
                   );
                 })}
-              </Box>
-            </Box>
-          </Box>
+              </div>
+            </div>
+          </div>
         )}
-      </Box>
-    </Box>
+      </div>
+    </div>
   );
 }
 
-export function UsageCharts({ dailyStats = [], title = '', height = 220, showCredits = true }: UsageChartsProps) {
+export function UsageCharts({
+  dailyStats = [],
+  title = '',
+  height = 220,
+  showCredits = true,
+  showRequests = false,
+}: UsageChartsProps) {
   const { t, locale } = useLocaleContext();
   const theme = useTheme();
 
@@ -179,7 +309,9 @@ export function UsageCharts({ dailyStats = [], title = '', height = 220, showCre
   const chartContent = (
     <ResponsiveContainer width="100%" height="100%">
       <LineChart data={dailyStats} margin={{ right: 30, left: 20, top: 10 }}>
-        <Tooltip content={<CustomTooltip theme={theme} t={t} />} />
+        <Tooltip
+          content={<CustomTooltip showCredits={showCredits} showRequests={showRequests} theme={theme} t={t} />}
+        />
         <XAxis
           dataKey="date"
           tickFormatter={(value) => formatXAxisLabel(value)}
