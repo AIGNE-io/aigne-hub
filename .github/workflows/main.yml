@@ -63,5 +63,5 @@ jobs:
           abtnode-endpoint: ${{ secrets.STAGING_NODE_ENDPOINT }}
           access-key: ${{ secrets.STAGING_NODE_ACCESS_KEY }}
           access-secret: ${{ secrets.STAGING_NODE_ACCESS_SECRET }}
-          deploy-app-did: zNKXNiDZ3k7i64hKrwEasm2ojZSZDCsR3r7v
+          deploy-app-did: zNKti3S7gEFuvJVbxjtQTQAzUm1fNKPfNzTq
           deploy-mount-point: /
