@@ -296,7 +296,27 @@ router.post(
                 }
               }
 
+              if (value.input?.outputFileType === 'url' && usageData.files && usageData.files?.length > 0) {
+                const list = await Promise.all(
+                  usageData.files.map(async (file) => {
+                    if (file.type === 'file' && file.data) {
+                      try {
+                        return await convertMediaToOnlineUrl(file.data, file?.mimeType || 'image/png');
+                      } catch (err) {
+                        logger.error('Failed to upload image to MediaKit', { error: err });
+                        return file;
+                      }
+                    }
+
+                    return file;
+                  })
+                );
+
+                usageData.files = list;
+              }
+
               resolve(data);
+
               return data;
             },
             onError: async (data) => {
