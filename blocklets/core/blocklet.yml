@@ -100,6 +100,13 @@ components:
       store: https://store.blocklet.dev
       name: z2qa2GCqPJkufzqF98D8o7PWHrRRSHpYkNhEh
       version: latest
+  - name: media-kit
+    title: Media Kit
+    mountPoint: /media-kit
+    required: true
+    source:
+      name: media-kit
+      version: latest
 navigation:
   - id: settings
     title:
