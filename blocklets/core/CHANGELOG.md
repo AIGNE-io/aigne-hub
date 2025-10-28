@@ -1,3 +1,7 @@
+## 0.4.59 (2025-10-28)
+
+- fix: video svg case
+
 ## 0.4.58 (2025-10-28)
 
 - fix: ignore `@blocklet/uploader-server` type declarations.
