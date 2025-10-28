@@ -1,3 +1,4 @@
+import { getPrefix } from '@app/libs/util';
 import Dialog from '@arcblock/ux/lib/Dialog';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import { AI_PROVIDER_DISPLAY_NAMES } from '@blocklet/aigne-hub/api';
@@ -10,13 +11,14 @@ import {
   useConversation,
 } from '@blocklet/aigne-hub/components';
 import { ArrowDropDown, DeleteOutline, HighlightOff } from '@mui/icons-material';
-import { Box, Button, CircularProgress, IconButton, Stack, Tooltip, Typography } from '@mui/material';
+import { Avatar, Box, Button, CircularProgress, IconButton, Stack, Tooltip, Typography } from '@mui/material';
 import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { joinURL } from 'ufo';
 
 import ModelSelector from '../../components/model-selector';
 import { useIsRole, useSessionContext } from '../../contexts/session';
-import { embeddingsV2Direct, imageGenerationsV2Image, textCompletionsV2 } from '../../libs/ai';
+import { embeddingsV2Direct, imageGenerationsV2Image, textCompletionsV2, videoGenerationsV2 } from '../../libs/ai';
 
 interface ApiModel {
   model: string;
@@ -215,15 +217,18 @@ export default function Chat() {
     return selectedModel.type || 'chatCompletion';
   }, [model, modelGroups, selectedType]);
 
-  // Helper function to process image response
-  const processImageResponse = (images: any[]) => {
-    return images.map((i: any) => {
-      // Handle AIGNE framework response format
-      if (i.type === 'file' && i.data) {
-        return { url: `data:${i.mimeType || 'image/png'};base64,${i.data}` };
+  const processMediaResponse = (
+    items: { type: 'file'; data: string; mimeType: string }[],
+    property: 'url' | 'data' = 'url',
+    defaultMimeType = 'image/png'
+  ) => {
+    return items.map((item: any) => {
+      if (item.type === 'file' && item.data) {
+        const dataUrl = `data:${item.mimeType || defaultMimeType};base64,${item.data}`;
+        return property === 'url' ? { ...item, url: dataUrl } : { ...item, data: dataUrl };
       }
-      // Fallback to OpenAI format
-      return { url: `data:image/png;base64,${i.b64_json || i.b64Json}` };
+
+      return item;
     });
   };
 
@@ -231,10 +236,12 @@ export default function Chat() {
     scrollToBottom: (o) => ref.current?.scrollToBottom(o),
     textCompletions: (prompt) => {
       // Route to different APIs based on model type
+      const promptText =
+        typeof prompt === 'string' ? prompt : Array.isArray(prompt) ? (prompt[0] as any)?.content || '' : '';
+
       if (currentModelType === 'imageGeneration') {
         // For image generation models, use image API
-        const promptText =
-          typeof prompt === 'string' ? prompt : Array.isArray(prompt) ? (prompt[0] as any)?.content || '' : '';
+
         return imageGenerationsV2Image({
           prompt: promptText,
           size: '1024x1024',
@@ -243,7 +250,10 @@ export default function Chat() {
           model,
         }).then((res) => {
           // Convert to streaming format
-          const images = Array.isArray(res.images) && res.images.length > 0 ? processImageResponse(res.images) : [];
+          const images =
+            Array.isArray(res.images) && res.images.length > 0
+              ? processMediaResponse(res.images, 'url', 'image/png')
+              : [];
 
           if (images.length === 0) {
             return new ReadableStream({
@@ -316,6 +326,34 @@ export default function Chat() {
           });
       }
 
+      if (currentModelType === 'video') {
+        return videoGenerationsV2({ prompt: promptText, model }).then((res) => {
+          const videos =
+            Array.isArray(res.videos) && res.videos.length > 0
+              ? processMediaResponse(res.videos, 'url', 'video/mp4')
+              : [];
+
+          if (videos.length === 0) {
+            return new ReadableStream({
+              start(controller) {
+                controller.enqueue({
+                  type: 'text',
+                  text: 'No videos generated. Please check the model configuration or try again.',
+                });
+                controller.close();
+              },
+            });
+          }
+
+          return new ReadableStream({
+            start(controller) {
+              controller.enqueue({ type: 'video', videos });
+              controller.close();
+            },
+          });
+        });
+      }
+
       // Default to chat completion
       return textCompletionsV2({
         ...(typeof prompt === 'string' ? { prompt } : { messages: prompt }),
@@ -326,7 +364,7 @@ export default function Chat() {
     },
     imageGenerations: (prompt) =>
       imageGenerationsV2Image({ ...prompt, size: prompt.size, response_format: 'b64_json', model }).then((res) =>
-        processImageResponse(res.images)
+        processMediaResponse(res.images, 'url', 'image/png')
       ),
     enableCache: true, // Enable conversation history caching
   });
@@ -363,6 +401,8 @@ export default function Chat() {
     [cancel]
   );
 
+  const provider = modelGroups.find((g) => g.models.some((m) => m.value === model))?.provider;
+
   return (
     <>
       <Conversation
@@ -387,12 +427,16 @@ export default function Chat() {
           sx: {
             px: { xs: 1.5, md: 0 },
           },
-          placeholder:
-            currentModelType === 'imageGeneration'
-              ? t('chat.placeholders.imageGeneration')
-              : currentModelType === 'embedding'
-                ? t('chat.placeholders.embedding')
-                : t('chat.placeholders.chat'),
+          placeholder: t(
+            `chat.placeholders.${
+              {
+                imageGeneration: 'imageGeneration',
+                embedding: 'embedding',
+                chatCompletion: 'chat',
+                video: 'video',
+              }[currentModelType] || 'chat'
+            }`
+          ),
           topAdornment: (
             <>
               {/* Left side: Model selector */}
@@ -411,6 +455,12 @@ export default function Chat() {
                       color: loading || modelGroups.length === 0 ? 'text.disabled' : 'primary.main',
                     },
                   }}>
+                  <Avatar
+                    src={joinURL(getPrefix(), `/logo/${provider}.png`)}
+                    sx={{ width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    alt={model}
+                  />
+
                   <Typography
                     variant="body2"
                     sx={{

@@ -316,7 +316,7 @@ export const Config = {
         onlyEnableModelsInPricing: Joi.boolean().empty([null, '']),
         list: Joi.array().items(
           Joi.object({
-            type: Joi.string().valid('chatCompletion', 'embedding', 'imageGeneration').required(),
+            type: Joi.string().valid('chatCompletion', 'embedding', 'imageGeneration', 'video').required(),
             model: Joi.string().required(),
             inputRate: Joi.number().min(0).required(),
             outputRate: Joi.number().min(0).required(),

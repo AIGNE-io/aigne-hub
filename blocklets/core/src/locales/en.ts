@@ -43,6 +43,7 @@ export default flatten({
       allModels: 'All Models',
       textGeneration: 'Text Generation',
       imageGeneration: 'Image Generation',
+      video: 'Video Generation',
       embedding: 'Embedding',
       audioTranscription: 'Audio Transcription',
       sortBy: 'Sort By',
@@ -104,7 +105,7 @@ export default flatten({
     chatCompletion: 'Text',
     completion: 'Text',
     imageGeneration: 'Image',
-    videoGeneration: 'Video Generation',
+    video: 'Video',
     audioGeneration: 'Audio Generation',
     embedding: 'Embedding',
     transcription: 'Audio Transcription',
@@ -115,8 +116,10 @@ export default flatten({
   modelUnits: {
     tokens: 'tokens',
     images: 'images',
+    image: 'image',
     minutes: 'minutes',
     characters: 'characters',
+    seconds: 'seconds',
   },
   // Configuration section
   config: {
@@ -167,6 +170,7 @@ export default flatten({
             chatCompletion: 'Text',
             imageGeneration: 'Image',
             embedding: 'Embedding',
+            video: 'Video',
           },
         },
         inputRate: {
@@ -395,11 +399,13 @@ export default flatten({
       chat: 'Type your message...',
       imageGeneration: 'Describe the image you want to generate...',
       embedding: 'Enter text to convert to embedding vector...',
+      video: 'Describe the video you want to generate...',
     },
     modelTypes: {
       chatCompletion: 'Chat',
       imageGeneration: 'Image',
       embedding: 'Embedding',
+      video: 'Video',
     },
     cacheInfo: '{count} cached images ({size} MB)',
     noModelsAvailable: 'No models available',

@@ -26,7 +26,7 @@ export interface ModelRate {
   providerId: string;
   model: string;
   modelDisplay?: string;
-  type: 'chatCompletion' | 'imageGeneration' | 'embedding';
+  type: 'chatCompletion' | 'imageGeneration' | 'embedding' | 'video';
   inputRate: number;
   outputRate: number;
   description?: string;
@@ -70,7 +70,7 @@ export interface ModelWithRates {
 export interface ModelRateFormData {
   model: string;
   modelDisplay?: string;
-  type: 'chatCompletion' | 'imageGeneration' | 'embedding';
+  type: 'chatCompletion' | 'imageGeneration' | 'embedding' | 'video';
   inputRate: number;
   outputRate: number;
   description?: string;

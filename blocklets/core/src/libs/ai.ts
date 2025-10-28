@@ -44,16 +44,35 @@ export const imageGenerationsV2Image = async (input: {
         size: input.size,
         n: input.n || 1,
         responseFormat: input.response_format || 'b64_json',
-        outputFileType: 'file', // Return base64 data instead of file paths
-        modelOptions: {
-          model: input.model,
-        },
+        outputFileType: 'url',
+        modelOptions: { model: input.model },
       },
       fixedProvider: true,
     },
     {
       headers: { 'x-aigne-hub-client-did': window.blocklet?.appPid },
       timeout: 5 * 60 * 1000, // 5 minutes timeout for image generation
+    }
+  );
+
+  return response.data;
+};
+
+export const videoGenerationsV2 = async (input: { prompt: string; model: string }) => {
+  const response = await axios.post(
+    '/api/v2/video',
+    {
+      agent: input.model, // Use model as agent name
+      input: {
+        prompt: input.prompt,
+        model: input.model,
+        outputFileType: 'url',
+        modelOptions: { model: input.model },
+      },
+    },
+    {
+      headers: { 'x-aigne-hub-client-did': window.blocklet?.appPid },
+      timeout: 5 * 60 * 1000,
     }
   );
 

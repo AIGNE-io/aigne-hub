@@ -44,6 +44,7 @@ export default flatten({
       textGeneration: '文本生成',
       imageGeneration: '图像生成',
       embedding: '向量嵌入',
+      video: '视频生成',
       audioTranscription: '语音识别',
       sortBy: '排序方式',
       priceDefault: '按价格排序',
@@ -91,7 +92,7 @@ export default flatten({
     chatCompletion: '文本',
     completion: '文本',
     imageGeneration: '图像',
-    videoGeneration: '视频',
+    video: '视频',
     audioGeneration: '音频',
     embedding: '嵌入',
     transcription: '音频转录',
@@ -102,8 +103,10 @@ export default flatten({
   modelUnits: {
     tokens: 'tokens',
     images: '张图片',
+    image: '张图片',
     minutes: '分钟',
     characters: '字符',
+    seconds: '秒',
   },
 
   // Configuration section
@@ -155,6 +158,7 @@ export default flatten({
             chatCompletion: '文本生成',
             imageGeneration: '图像生成',
             embedding: '文本嵌入',
+            video: '视频生成',
           },
         },
         inputRate: {
@@ -388,11 +392,13 @@ export default flatten({
       chat: '输入您的消息...（Shift+Enter 换行）',
       imageGeneration: '描述您想要生成的图片...',
       embedding: '输入要转换为向量的文本...',
+      video: '描述您想要生成的视频...',
     },
     modelTypes: {
       chatCompletion: '对话',
       imageGeneration: '图片',
       embedding: '向量',
+      video: '视频',
     },
     cacheInfo: '{count} 张缓存图片（{size} MB）',
     noModelsAvailable: '暂无可用模型',

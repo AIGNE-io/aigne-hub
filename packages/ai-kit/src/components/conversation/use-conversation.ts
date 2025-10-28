@@ -3,7 +3,7 @@ import { nanoid } from 'nanoid';
 import { ChatCompletionMessageParam } from 'openai/resources/index';
 import { useCallback, useEffect, useState } from 'react';
 
-import { MessageItem } from './conversation';
+import type { MessageItem, VideoResponse } from './conversation';
 
 const nextId = () => nanoid(16);
 const STORAGE_KEY = 'aigne-hub-conversation-history';
@@ -43,17 +43,27 @@ const saveMessages = async (messages: MessageItem[]) => {
       .slice(-MAX_CACHED_MESSAGES) // Keep only last N messages
       .map((msg) => {
         // Replace image data URLs with placeholders to save storage space
-        const response =
-          msg.response && typeof msg.response === 'object' && 'images' in msg.response
-            ? {
-                ...msg.response,
-                images:
-                  (msg.response as any).images?.map((img: any) => ({
-                    ...img,
-                    url: img.url && img.url.startsWith('data:') ? '[IMAGE_PLACEHOLDER]' : img.url,
-                  })) || [],
-              }
-            : msg.response;
+        let response = msg?.response;
+
+        if (response && typeof response === 'object' && 'images' in response && response.images) {
+          response = {
+            ...response,
+            images: (response.images || []).map((img: any) => ({
+              ...img,
+              url: img?.url && img.url.startsWith('data:') ? '[IMAGE_PLACEHOLDER]' : img.url,
+            })),
+          };
+        }
+
+        if (response && typeof response === 'object' && 'videos' in response && response.videos) {
+          response = {
+            ...response,
+            videos: (response.videos || []).map((video: any) => ({
+              ...video,
+              data: video?.data && video.data.startsWith('data:') ? '[VIDEO_PLACEHOLDER]' : video.data,
+            })),
+          };
+        }
 
         return {
           id: msg.id,
@@ -97,7 +107,13 @@ export default function useConversation({
     prompt: string | ChatCompletionMessageParam[],
     options: { meta?: any }
   ) => Promise<
-    ReadableStream<string | Uint8Array | { type: 'text'; text: string } | { type: 'images'; images: { url: string }[] }>
+    ReadableStream<
+      | string
+      | Uint8Array
+      | { type: 'text'; text: string }
+      | { type: 'images'; images: { url: string }[] }
+      | { type: 'video'; videos: VideoResponse[] }
+    >
   >;
   imageGenerations?: (
     prompt: { prompt: string; n: number; size: string },
@@ -199,6 +215,7 @@ export default function useConversation({
 
         const isText = (i: any): i is { type: 'text'; text: string } => i.type === 'text';
         const isImages = (i: any): i is { type: 'images'; images: { url: string }[] } => i.type === 'images';
+        const isVideo = (i: any): i is { type: 'video'; videos: VideoResponse[] } => i.type === 'video';
 
         const reader = result.getReader();
         const decoder = new TextDecoder();
@@ -216,7 +233,9 @@ export default function useConversation({
             } else if (isText(value)) {
               response = value.text;
             } else if (isImages(value)) {
-              response = { images: value.images } as any;
+              response = { images: value.images };
+            } else if (isVideo(value)) {
+              response = { videos: value.videos };
             } else {
               delta = decoder.decode(value);
             }

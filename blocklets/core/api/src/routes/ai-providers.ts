@@ -20,7 +20,7 @@ import pick from 'lodash/pick';
 import pAll from 'p-all';
 import { Op } from 'sequelize';
 
-import { modelStatusQueue, typeFilterMap, typeMap } from '../libs/status';
+import { getFormatModelType, modelStatusQueue, typeFilterMap } from '../libs/status';
 
 const testModelsRateLimit = new Map<string, { count: number; startTime: number }>();
 const TEST_MODELS_RATE_LIMIT_TIME = 10 * 60 * 1000; // 10 minutes
@@ -113,7 +113,7 @@ const createCredentialSchema = Joi.object({
 const createModelRateSchema = Joi.object({
   model: Joi.string().min(1).max(100).required(),
   modelDisplay: Joi.string().min(1).max(100).allow('').optional(),
-  type: Joi.string().valid('chatCompletion', 'imageGeneration', 'embedding').required(),
+  type: Joi.string().valid('chatCompletion', 'imageGeneration', 'embedding', 'video').required(),
   description: Joi.string().allow('').optional(),
   inputRate: Joi.number().min(0).required(),
   outputRate: Joi.number().min(0).required(),
@@ -571,7 +571,7 @@ router.post('/:providerId/model-rates', ensureAdmin, async (req, res) => {
 
     modelStatusQueue.push({
       model: modelRate.model,
-      type: typeMap[modelRate.type as keyof typeof typeMap] || 'chat',
+      type: getFormatModelType(modelRate.type),
       providerId: modelRate.providerId,
     });
 
@@ -643,70 +643,56 @@ router.delete('/:providerId/model-rates/:rateId', ensureAdmin, async (req, res) 
   }
 });
 
+// Schema for batch create (with providers array)
+const batchCreateSchema = Joi.object({
+  model: Joi.string().min(1).max(100).required(),
+  modelDisplay: Joi.string().min(1).max(100).allow('').optional(),
+  type: Joi.string().valid('chatCompletion', 'imageGeneration', 'embedding', 'video').required(),
+  description: Joi.string().allow('').optional(),
+  inputRate: Joi.number().min(0).required(),
+  outputRate: Joi.number().min(0).required(),
+  providers: Joi.array().items(Joi.string()).min(1).required(),
+  unitCosts: Joi.object({
+    input: Joi.number().min(0).required(),
+    output: Joi.number().min(0).required(),
+  }).optional(),
+  modelMetadata: Joi.object({
+    maxTokens: Joi.number().min(1).allow(null).optional(),
+    features: Joi.array()
+      .items(Joi.string().valid('tools', 'thinking', 'vision'))
+      .optional(),
+    imageGeneration: Joi.object({
+      max: Joi.number().min(1).allow(null).optional(),
+      quality: Joi.array().items(Joi.string()).optional(),
+      size: Joi.array().items(Joi.string()).optional(),
+      style: Joi.array().items(Joi.string()).optional(),
+    }).optional(),
+  }).optional(),
+});
+
 // create model rate or batch create across providers
 router.post('/model-rates', ensureAdmin, async (req, res) => {
   try {
-    // Schema for batch create (with providers array)
-    const batchCreateSchema = Joi.object({
-      model: Joi.string().min(1).max(100).required(),
-      modelDisplay: Joi.string().min(1).max(100).allow('').optional(),
-      type: Joi.string().valid('chatCompletion', 'imageGeneration', 'embedding').required(),
-      description: Joi.string().allow('').optional(),
-      inputRate: Joi.number().min(0).required(),
-      outputRate: Joi.number().min(0).required(),
-      providers: Joi.array().items(Joi.string()).min(1).required(),
-      unitCosts: Joi.object({
-        input: Joi.number().min(0).required(),
-        output: Joi.number().min(0).required(),
-      }).optional(),
-      modelMetadata: Joi.object({
-        maxTokens: Joi.number().min(1).allow(null).optional(),
-        features: Joi.array()
-          .items(Joi.string().valid('tools', 'thinking', 'vision'))
-          .optional(),
-        imageGeneration: Joi.object({
-          max: Joi.number().min(1).allow(null).optional(),
-          quality: Joi.array().items(Joi.string()).optional(),
-          size: Joi.array().items(Joi.string()).optional(),
-          style: Joi.array().items(Joi.string()).optional(),
-        }).optional(),
-      }).optional(),
-    });
-
-    const { error, value } = batchCreateSchema.validate(req.body, {
-      stripUnknown: true,
-    });
+    const { error, value } = batchCreateSchema.validate(req.body, { stripUnknown: true });
     if (error) {
-      return res.status(400).json({
-        error: error.details[0]?.message || 'Validation error',
-      });
+      return res.status(400).json({ error: error.details[0]?.message || 'Validation error' });
     }
 
     // Step 1: Validate all providers exist
-    const providers = await AiProvider.findAll({
-      where: {
-        id: {
-          [Op.in]: value.providers,
-        },
-      },
-    });
+    const providers = await AiProvider.findAll({ where: { id: { [Op.in]: value.providers } } });
 
     // Check for missing providers
     const foundProviderIds = providers.map((p) => p.id);
     const missingProviders = value.providers.filter((id: string) => !foundProviderIds.includes(id));
 
     if (missingProviders.length > 0) {
-      return res.status(400).json({
-        error: `Providers not found: ${missingProviders.join(', ')}`,
-      });
+      return res.status(400).json({ error: `Providers not found: ${missingProviders.join(', ')}` });
     }
 
     // Step 2: Check for existing rates
     const existingRates = await AiModelRate.findAll({
       where: {
-        providerId: {
-          [Op.in]: value.providers,
-        },
+        providerId: { [Op.in]: value.providers },
         model: value.model,
         type: value.type,
       },
@@ -750,7 +736,7 @@ router.post('/model-rates', ensureAdmin, async (req, res) => {
     createdRates.forEach((rate) => {
       modelStatusQueue.push({
         model: rate.model,
-        type: typeMap[rate.type as keyof typeof typeMap] || 'chat',
+        type: getFormatModelType(rate.type),
         providerId: rate.providerId,
       });
     });
@@ -883,14 +869,6 @@ router.get('/chat/models', user, async (req, res) => {
     const where: any = {};
     if (req.query.type) {
       const requestedType = req.query.type as string;
-      const typeFilterMap: Record<string, string> = {
-        chatCompletion: 'chatCompletion',
-        imageGeneration: 'imageGeneration',
-        embedding: 'embedding',
-        chat: 'chatCompletion',
-        image_generation: 'imageGeneration',
-        image: 'imageGeneration',
-      };
       const mappedType = typeFilterMap[requestedType] || requestedType;
       where.type = mappedType;
     }
@@ -901,9 +879,7 @@ router.get('/chat/models', user, async (req, res) => {
         {
           model: AiProvider,
           as: 'provider',
-          where: {
-            enabled: true,
-          },
+          where: { enabled: true },
           attributes: ['id', 'name', 'displayName', 'baseUrl', 'region', 'enabled'],
         },
       ],
@@ -1058,7 +1034,7 @@ router.get('/models', async (req, res) => {
             result.push({
               key: `${providerJson.name}/${modelOption.name}`,
               model: modelOption.name,
-              type: typeMap[modelOption.mode as keyof typeof typeMap] || 'chat',
+              type: getFormatModelType(modelOption.mode),
               provider: providerJson.name,
               input_credits_per_token: 0,
               output_credits_per_token: 0,
@@ -1100,14 +1076,14 @@ router.get('/models', async (req, res) => {
     const result: any[] = [];
 
     modelRates.forEach((rate) => {
-      const rateJson = rate.toJSON() as any;
+      const rateJson = rate.toJSON() as AiModelRate & { provider: AiProvider };
       const providerName = rateJson.provider.name;
       const modelName = rateJson.model;
 
       result.push({
         key: `${providerName}/${modelName}`,
         model: modelName,
-        type: typeMap[rateJson.type as keyof typeof typeMap] || 'chat',
+        type: getFormatModelType(rate.type),
         provider: providerName,
         providerId: rateJson.provider.id,
         input_credits_per_token: rateJson.inputRate || 0,
@@ -1194,7 +1170,7 @@ router.get('/test-models', user, ensureAdmin, rateLimitMiddleware, async (req, r
     modelRates.forEach((rate) => {
       modelStatusQueue.push({
         model: rate.model,
-        type: typeMap[rate.type as keyof typeof typeMap] || 'chat',
+        type: getFormatModelType(rate.type),
         providerId: rate.providerId,
       });
     });

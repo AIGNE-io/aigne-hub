@@ -1,11 +1,5 @@
 export type CallStatus = 'processing' | 'success' | 'failed';
-export type CallType =
-  | 'chatCompletion'
-  | 'embedding'
-  | 'imageGeneration'
-  | 'audioGeneration'
-  | 'videoGeneration'
-  | 'custom';
+export type CallType = 'chatCompletion' | 'embedding' | 'imageGeneration' | 'audioGeneration' | 'video' | 'custom';
 
 export interface UsageMetrics {
   inputTokens?: number;

@@ -74,14 +74,7 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
       allowNull: false,
     },
     type: {
-      type: DataTypes.ENUM(
-        'chatCompletion',
-        'embedding',
-        'imageGeneration',
-        'audioGeneration',
-        'videoGeneration',
-        'custom'
-      ),
+      type: DataTypes.ENUM('chatCompletion', 'embedding', 'imageGeneration', 'audioGeneration', 'video', 'custom'),
       allowNull: false,
       defaultValue: 'chatCompletion',
     },
@@ -422,11 +415,11 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
     const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
 
     const topModelsQuery = `
-      SELECT 
+      SELECT
         "model",
         MIN("providerId") as "providerId",
         COUNT(*) as "totalCalls"
-      FROM "ModelCalls" 
+      FROM "ModelCalls"
       ${whereClause}
       GROUP BY "model"
       ORDER BY COUNT(*) DESC
@@ -435,7 +428,7 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
 
     const totalCountQuery = `
       SELECT COUNT(DISTINCT "model") as "totalModels"
-      FROM "ModelCalls" 
+      FROM "ModelCalls"
       ${whereClause}
     `;
 
@@ -527,10 +520,10 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
     const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
 
     const query = `
-      SELECT 
+      SELECT
         "providerId", "model", "type",
         SUM("totalUsage") as "totalUsage",
-        SUM("credits") as "totalCredits", 
+        SUM("credits") as "totalCredits",
         COUNT(*) as "totalCalls",
         SUM(CASE WHEN "status" = 'success' THEN 1 ELSE 0 END) as "successCalls"
       FROM "ModelCalls"

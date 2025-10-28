@@ -52,7 +52,7 @@ const LITELLM_API_URL = 'https://raw.githubusercontent.com/BerriAI/litellm/main/
 
 // Filter patterns - consistent with frontend
 const TEST_PATTERN = /^ft:|^test-|^dev-|^beta-|^alpha-/i;
-const SUPPORTED_MODES = new Set(['chat', 'image_generation', 'embedding']);
+const SUPPORTED_MODES = new Set(['chat', 'image_generation', 'embedding', 'video']);
 
 class ModelRegistry {
   private cache: CachedModelData | null = null;
@@ -129,6 +129,7 @@ class ModelRegistry {
       chat: 'chatCompletion',
       image_generation: 'imageGeneration',
       embedding: 'embedding',
+      video: 'video',
     };
 
     Object.entries(rawData).forEach(([modelName, options]) => {

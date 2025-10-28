@@ -1,7 +1,8 @@
-import { findImageModel, parseModel } from '@aigne/aigne-hub';
-import { AIGNE, ChatModelOutput, Message, imageModelInputSchema } from '@aigne/core';
+import { findImageModel, findVideoModel, parseModel } from '@aigne/aigne-hub';
+import { AIGNE, ChatModelOutput, Message, imageModelInputSchema, videoModelInputSchema } from '@aigne/core';
 import { checkArguments, pick } from '@aigne/core/utils/type-utils';
 import { AIGNEHTTPServer, invokePayloadSchema } from '@aigne/transport/http-server/index';
+import { v7 } from '@aigne/uuid';
 import { getModelNameWithProvider, getOpenAIV2, getReqModel } from '@api/libs/ai-provider';
 import {
   createRetryHandler,
@@ -20,18 +21,48 @@ import AiCredential from '@api/store/models/ai-credential';
 import AiModelRate from '@api/store/models/ai-model-rate';
 import AiProvider from '@api/store/models/ai-provider';
 import { CustomError } from '@blocklet/error';
+import { getComponentMountPoint } from '@blocklet/sdk/lib/component';
+import config from '@blocklet/sdk/lib/config';
 import sessionMiddleware from '@blocklet/sdk/lib/middlewares/session';
+import { uploadToMediaKit } from '@blocklet/uploader-server';
 import compression from 'compression';
 import { NextFunction, Request, Response, Router } from 'express';
 import proxy from 'express-http-proxy';
 import Joi from 'joi';
+import mime from 'mime';
+import { joinURL } from 'ufo';
 
 import onError from '../libs/on-error';
 import { getModel, getProviderCredentials } from '../providers/models';
 
 const DEFAULT_MODEL = 'openai/gpt-5-mini';
+const DEFAULT_IMAGE_MODEL = 'openai/dall-e-2';
+const DEFAULT_VIDEO_MODEL = 'openai/sora-2';
+const MEDIA_KIT_DID = 'z8ia1mAXo8ZE7ytGF36L5uBf9kD2kenhqFGp9';
 
 const router = Router();
+const getFileExtension = (type: string) => mime.getExtension(type) || 'png';
+const getMediaKitUrl = () => joinURL(config.env.appUrl, getComponentMountPoint(MEDIA_KIT_DID));
+
+async function convertMediaToOnlineUrl(data: string, mimeType: string): Promise<{ type: 'url'; url: string }> {
+  const mountPoint = getComponentMountPoint(MEDIA_KIT_DID);
+  if (!mountPoint) {
+    throw new CustomError(500, 'MediaKit is not available');
+  }
+
+  const id = v7();
+  const ext = getFileExtension(mimeType);
+  const fileName = ext ? `${id}.${ext}` : id;
+
+  const { data: uploadResult } = (await uploadToMediaKit({ base64: data, fileName })) as unknown as {
+    data: { filename: string };
+  };
+
+  return {
+    type: 'url',
+    url: joinURL(getMediaKitUrl(), '/uploads', uploadResult?.filename),
+  } as const;
+}
 
 const aigneHubModelCallSchema = Joi.object({
   input: Joi.object({
@@ -80,6 +111,7 @@ const user = sessionMiddleware({ accessKey: true });
 const chatCallTracker = createModelCallMiddleware('chatCompletion');
 const embeddingCallTracker = createModelCallMiddleware('embedding');
 const imageCallTracker = createModelCallMiddleware('imageGeneration');
+const videoCallTracker = createModelCallMiddleware('video');
 
 router.get('/status', user, async (req, res) => {
   const userDid = req.user?.did;
@@ -264,7 +296,27 @@ router.post(
                 }
               }
 
+              if (value.input?.outputFileType === 'url' && usageData.files && usageData.files?.length > 0) {
+                const list = await Promise.all(
+                  usageData.files.map(async (file) => {
+                    if (file.type === 'file' && file.data) {
+                      try {
+                        return await convertMediaToOnlineUrl(file.data, file?.mimeType || 'image/png');
+                      } catch (err) {
+                        logger.error('Failed to upload image to MediaKit', { error: err });
+                        return file;
+                      }
+                    }
+
+                    return file;
+                  })
+                );
+
+                usageData.files = list;
+              }
+
               resolve(data);
+
               return data;
             },
             onError: async (data) => {
@@ -277,8 +329,6 @@ router.post(
     })
   )
 );
-
-const DEFAULT_IMAGE_MODEL = 'openai/dall-e-2';
 
 router.post(
   '/image',
@@ -314,7 +364,7 @@ router.post(
       const aigne = new AIGNE();
       const response = await aigne.invoke(
         modelInstance,
-        { ...input, modelOptions: { ...input.modelOptions, model } },
+        { ...input, outputFileType: 'file', modelOptions: { ...input.modelOptions, model } },
         {
           userContext: { ...body.options?.userContext, userId: req.user?.did },
           hooks: {
@@ -357,9 +407,125 @@ router.post(
         });
       }
 
+      if (input?.outputFileType === 'url' && response.images.length > 0) {
+        const list = await Promise.all(
+          response.images.map(async (image) => {
+            if (image.type === 'file' && image.data) {
+              try {
+                return await convertMediaToOnlineUrl(image.data, image?.mimeType || 'image/png');
+              } catch (err) {
+                logger.error('Failed to upload image to MediaKit', { error: err });
+                return image;
+              }
+            }
+
+            return image;
+          })
+        );
+
+        response.images = list;
+      }
+
       res.json({ ...response, usage: { ...response.usage, aigneHubCredits } });
     })
   )
+);
+
+router.post(
+  '/video',
+  user,
+  checkCreditBasedBillingMiddleware,
+  videoCallTracker,
+  withModelStatus(async (req, res) => {
+    const body = checkArguments('Check video generation payload', invokePayloadSchema, req.body);
+    const input = checkArguments('Check video model input', videoModelInputSchema.passthrough(), body.input);
+    const modelOptions = input.modelOptions as { model?: string };
+
+    const userDid = req.user?.did;
+
+    if (userDid && Config.creditBasedBillingEnabled) {
+      await checkUserCreditBalance({ userDid });
+    }
+
+    const m = input.model || modelOptions?.model || DEFAULT_VIDEO_MODEL;
+
+    const { provider, model } = parseModel(m);
+    if (!provider || !model) throw new CustomError(400, `Invalid model format: ${m}, should be {provider}/{model}`);
+
+    await checkModelRateAvailable(m);
+
+    const { match: M } = findVideoModel(provider);
+    if (!M) throw new CustomError(400, `Video model provider ${provider} not found`);
+    const credential = await getProviderCredentials(provider, { modelCallContext: req.modelCallContext, model });
+    const modelInstance = M.create(credential);
+
+    let traceId;
+
+    const aigne = new AIGNE();
+    const response = await aigne.invoke(
+      modelInstance,
+      { ...input, model, outputFileType: 'file', modelOptions: { ...modelOptions, model } },
+      {
+        userContext: { ...body.options?.userContext, userId: req.user?.did },
+        hooks: {
+          onEnd: async (data) => {
+            traceId = data?.context?.id;
+            return data;
+          },
+          onError: async (data) => {
+            onError(data, req);
+          },
+        },
+      }
+    );
+
+    let aigneHubCredits: number | undefined;
+
+    if (response.usage && userDid) {
+      aigneHubCredits = await createUsageAndCompleteModelCall({
+        req,
+        type: 'video',
+        model: m,
+        modelParams: input,
+        promptTokens: response.usage.inputTokens,
+        completionTokens: response.usage.outputTokens,
+        numberOfImageGeneration: response.videos.length,
+        mediaDuration: response.seconds,
+        appId: req.headers['x-aigne-hub-client-did'] as string,
+        userDid: userDid!,
+        creditBasedBillingEnabled: Config.creditBasedBillingEnabled,
+        additionalMetrics: {
+          totalTokens: (response.usage?.inputTokens || 0) + (response.usage?.outputTokens || 0),
+        },
+        metadata: {
+          endpoint: req.path,
+          numberOfVideos: response.videos.length,
+        },
+        traceId,
+      });
+    }
+
+    if (input?.outputFileType === 'url' && response.videos.length > 0) {
+      const list = await Promise.all(
+        response.videos.map(async (video) => {
+          if (video.type === 'file' && video.data) {
+            try {
+              return await convertMediaToOnlineUrl(video.data, video?.mimeType || 'video/mp4');
+            } catch (err) {
+              logger.error('Failed to upload video to MediaKit', { error: err });
+              return video;
+            }
+          }
+
+          return video;
+        })
+      );
+
+      response.videos = list;
+    }
+
+    res.json({ ...response, usage: { ...response.usage, aigneHubCredits } });
+  })
 );
 
 // v2 Embeddings endpoint

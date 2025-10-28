@@ -239,6 +239,8 @@ export default function AIModelRates() {
         return 'secondary';
       case 'embedding':
         return 'success';
+      case 'video':
+        return 'secondary';
       default:
         return 'default';
     }
@@ -252,6 +254,8 @@ export default function AIModelRates() {
         return t('modelTypes.imageGeneration');
       case 'embedding':
         return t('modelTypes.embedding');
+      case 'video':
+        return t('modelTypes.video');
       default:
         return type;
     }

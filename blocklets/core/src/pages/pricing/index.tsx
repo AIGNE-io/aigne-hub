@@ -33,6 +33,7 @@ import { useSessionContext } from '../../contexts/session';
 import { ReactComponent as EmbeddingIcon } from '../../icons/icon-embedding.svg';
 import { ReactComponent as ImageIcon } from '../../icons/icon-image.svg';
 import { ReactComponent as ChatIcon } from '../../icons/icon-text.svg';
+import { ReactComponent as VideoIcon } from '../../icons/icon-video.svg';
 
 const ONE_MILLION = new BigNumber(1000000);
 
@@ -86,6 +87,7 @@ const TYPE_MAPPING: Record<string, string> = {
   image_generation: 'imageGeneration',
   embedding: 'embedding',
   audio_transcription: 'audioTranscription',
+  video: 'video',
 };
 const listKey = 'pricing-models';
 export default function PricingPage() {
@@ -247,6 +249,11 @@ export default function PricingPage() {
       key: 'embedding',
       label: t('modelTypes.embedding'),
       icon: <EmbeddingIcon viewBox="0 0 12 12" />,
+    },
+    {
+      key: 'video',
+      label: t('modelTypes.video'),
+      icon: <VideoIcon viewBox="0 0 12 12" />,
     },
     // {
     //   key: 'audio_transcription',

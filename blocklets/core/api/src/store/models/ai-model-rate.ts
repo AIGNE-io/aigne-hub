@@ -2,8 +2,7 @@ import { CreationOptional, DataTypes, InferAttributes, InferCreationAttributes, 
 
 import nextId from '../../libs/next-id';
 import { sequelize } from '../sequelize';
-
-export type RateType = 'chatCompletion' | 'embedding' | 'imageGeneration';
+import { CallType } from './types';
 
 export type ModelMetadata = {
   maxTokens?: number;
@@ -27,7 +26,7 @@ export default class AiModelRate extends Model<InferAttributes<AiModelRate>, Inf
 
   declare description?: string;
 
-  declare type: RateType;
+  declare type: Omit<CallType, 'custom' | 'audioGeneration'>;
 
   declare inputRate: number;
 
@@ -68,7 +67,7 @@ export default class AiModelRate extends Model<InferAttributes<AiModelRate>, Inf
       allowNull: true,
     },
     type: {
-      type: DataTypes.ENUM('text', 'image', 'embedding'),
+      type: DataTypes.ENUM('chatCompletion', 'embedding', 'imageGeneration', 'video'),
       allowNull: false,
     },
     unitCosts: {
@@ -116,7 +115,11 @@ export default class AiModelRate extends Model<InferAttributes<AiModelRate>, Inf
   }
 
   // Get rate for a specific model and type
-  static async getRateForModelType(providerId: string, model: string, type: RateType): Promise<AiModelRate | null> {
+  static async getRateForModelType(
+    providerId: string,
+    model: string,
+    type: Omit<CallType, 'custom' | 'audioGeneration'>
+  ): Promise<AiModelRate | null> {
     return AiModelRate.findOne({
       where: { providerId, model, type },
     });

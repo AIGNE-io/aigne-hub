@@ -11,7 +11,7 @@ const LITELLM_API_URL = 'https://raw.githubusercontent.com/BerriAI/litellm/main/
 const TEST_PATTERN = /^ft:|^test-|^dev-|^beta-|^alpha-/i;
 
 // supported modes
-const SUPPORTED_MODES = new Set(['chat', 'image_generation', 'embedding']);
+const SUPPORTED_MODES = new Set(['chat', 'image_generation', 'embedding', 'video']);
 
 const processModelName = (modelName: string): { processedName: string; displayName: string } => {
   const parts = modelName.split('/');
@@ -170,6 +170,7 @@ export function useModelData() {
         chat: 'chatCompletion',
         image_generation: 'imageGeneration',
         embedding: 'embedding',
+        video: 'video',
       };
 
       filtered.push({

@@ -126,8 +126,14 @@ export async function createAndReportUsageV2({
   numberOfImageGeneration = 0,
   appId = wallet.address,
   userDid,
+  mediaDuration,
 }: Required<Pick<Usage, 'type' | 'model'>> &
-  Partial<Pick<Usage, 'modelParams' | 'promptTokens' | 'completionTokens' | 'appId' | 'numberOfImageGeneration'>> & {
+  Partial<
+    Pick<
+      Usage,
+      'modelParams' | 'promptTokens' | 'completionTokens' | 'appId' | 'numberOfImageGeneration' | 'mediaDuration'
+    >
+  > & {
     userDid: string;
   }): Promise<number | undefined> {
   try {
@@ -137,6 +143,8 @@ export async function createAndReportUsageV2({
     if (price) {
       if (type === 'imageGeneration') {
         usedCredits = new BigNumber(numberOfImageGeneration).multipliedBy(price.outputRate).decimalPlaces(2).toNumber();
+      } else if (type === 'video') {
+        usedCredits = new BigNumber(mediaDuration || 0).multipliedBy(price.outputRate).decimalPlaces(2).toNumber();
       } else {
         const input = new BigNumber(promptTokens).multipliedBy(price.inputRate);
         const output = new BigNumber(completionTokens).multipliedBy(price.outputRate);
@@ -154,6 +162,7 @@ export async function createAndReportUsageV2({
       appId,
       usedCredits,
       userDid,
+      mediaDuration,
     };
 
     await Usage.create(params).catch((error) => {
@@ -420,6 +429,7 @@ export async function createUsageAndCompleteModelCall({
   metadata = {},
   creditBasedBillingEnabled = true,
   traceId,
+  mediaDuration,
 }: {
   req: Request;
   type: CallType;
@@ -434,6 +444,7 @@ export async function createUsageAndCompleteModelCall({
   metadata?: Record<string, any>;
   creditBasedBillingEnabled?: boolean;
   traceId?: string;
+  mediaDuration?: number;
 }): Promise<number | undefined> {
   try {
     let credits: number | undefined = 0;
@@ -450,6 +461,7 @@ export async function createUsageAndCompleteModelCall({
         numberOfImageGeneration,
         appId,
         userDid,
+        mediaDuration,
       });
     }
 
@@ -459,6 +471,7 @@ export async function createUsageAndCompleteModelCall({
         promptTokens,
         completionTokens,
         numberOfImageGeneration,
+        mediaDuration,
         credits: credits || 0,
         usageMetrics: {
           inputTokens: promptTokens,

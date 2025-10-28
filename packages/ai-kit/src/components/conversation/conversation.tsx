@@ -5,13 +5,21 @@ import { ReactNode, RefObject, useCallback, useEffect, useImperativeHandle, useR
 
 import CreditErrorAlert from '../credit/alert';
 import ImagePreview from '../image-preview';
+import VideoPreview from '../video-preview';
 import Message from './message';
 import Prompt, { PromptProps } from './prompt';
+
+export interface VideoResponse {
+  data?: string;
+  path?: string;
+  type?: string;
+  url?: string;
+}
 
 export interface MessageItem {
   id: string;
   prompt?: string | ChatCompletionMessageParam[];
-  response?: string | { url: string }[];
+  response?: string | { url: string }[] | { videos: VideoResponse[] } | { images: { url?: string }[] };
   loading?: boolean;
   error?: { message: string; [key: string]: unknown };
   meta?: any;
@@ -102,16 +110,14 @@ export default function Conversation({
                         msg.response.images.length > 0 && (
                           <>
                             {/* Show actual images if they have real data URLs */}
-                            {msg.response.images.some((img) => img.url && img.url.startsWith('data:')) && (
+                            {msg.response.images.some((img) => img.url && img.url !== '[IMAGE_PLACEHOLDER]') && (
                               <ImagePreview
                                 itemWidth={200}
                                 borderRadius={12}
-                                dataSource={msg.response.images
-                                  .filter((img) => img.url && img.url.startsWith('data:'))
-                                  .map(({ url }) => ({
-                                    src: url,
-                                    onLoad: () => scrollToBottom(),
-                                  }))}
+                                dataSource={msg.response.images.map(({ url }) => ({
+                                  src: url!,
+                                  onLoad: () => scrollToBottom(),
+                                }))}
                               />
                             )}
 
@@ -153,6 +159,67 @@ export default function Conversation({
                             )}
                           </>
                         )}
+
+                      {msg.response &&
+                        typeof msg.response === 'object' &&
+                        'videos' in msg.response &&
+                        Array.isArray(msg.response.videos) &&
+                        msg.response.videos.length > 0 && (
+                          <>
+                            {/* Show actual videos if they have real data URLs */}
+                            {msg.response.videos.some(
+                              (video) => (video.data && video.data.startsWith('data:')) || video.url
+                            ) && (
+                              <VideoPreview
+                                itemWidth={300}
+                                borderRadius={12}
+                                dataSource={msg.response.videos.map(({ data, url, type }) => ({
+                                  src: type === 'file' && data ? data : url!,
+                                  onLoad: () => scrollToBottom(),
+                                }))}
+                              />
+                            )}
+
+                            {/* Show placeholder for images without real data */}
+                            {msg.response.videos.some((video) => video.data === '[VIDEO_PLACEHOLDER]') && (
+                              <Box
+                                sx={{
+                                  margin: '8px 0',
+                                  minHeight: '200px',
+                                  background: '#f5f5f5',
+                                  borderRadius: '8px',
+                                  padding: '16px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  flexDirection: 'column',
+                                  gap: '12px',
+                                  border: '2px dashed #ddd',
+                                }}>
+                                <Box sx={{ fontSize: '48px', opacity: 0.4 }}>🖼️</Box>
+                                <Box
+                                  sx={{
+                                    fontSize: '14px',
+                                    color: '#666',
+                                    textAlign: 'center',
+                                    fontWeight: 500,
+                                    minWidth: 200,
+                                  }}>
+                                  {msg.response.videos.filter(
+                                    (video) => !video.url || video.data === '[VIDEO_PLACEHOLDER]'
+                                  ).length === 1
+                                    ? 'Video (Not Cached)'
+                                    : `${
+                                        msg.response.videos.filter(
+                                          (video) => !video.url || video.data === '[VIDEO_PLACEHOLDER]'
+                                        ).length
+                                      } Videos (Not Cached)`}
+                                </Box>
+                              </Box>
+                            )}
+                          </>
+                        )}
+
                       {msg.error ? (
                         // @ts-ignore
                         <CreditErrorAlert error={msg.error} />

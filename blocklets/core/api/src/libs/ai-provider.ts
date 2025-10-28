@@ -302,8 +302,10 @@ export function getModelNameWithProvider(model: string, defaultProviderName: str
   };
 }
 
-export function getReqModel(req: { body: { model?: string; input?: { modelOptions?: { model?: string } } } }): string {
-  return req.body?.model || req.body?.input?.modelOptions?.model || '';
+export function getReqModel(req: {
+  body: { model?: string; input?: { model?: string; modelOptions?: { model?: string } } };
+}): string {
+  return req.body?.model || req.body?.input?.model || req.body?.input?.modelOptions?.model || '';
 }
 
 export function markProviderAsFailed(providerId: string, providerName: string): void {
@@ -319,10 +321,10 @@ export async function getNextProviderForModel(
 
 export async function ensureModelWithProvider(
   req: {
-    body: { model?: string; input?: { modelOptions?: { model?: string } }; fixedProvider?: boolean };
+    body: { model?: string; input?: { model?: string; modelOptions?: { model?: string } }; fixedProvider?: boolean };
   } & { provider?: string; model?: string }
 ): Promise<void> {
-  const model = req.body?.model || req.body?.input?.modelOptions?.model || '';
+  const model = getReqModel(req);
 
   if (!model || req.body.fixedProvider === true || !Config.creditBasedBillingEnabled) {
     return;
@@ -330,16 +332,14 @@ export async function ensureModelWithProvider(
 
   try {
     const providerInfo = await getNextProviderForModel(model);
-    if (providerInfo) {
-      logger.info(`Selected provider ${providerInfo.providerName} for model ${model}`);
+    if (!providerInfo) return;
 
-      if (req.body?.model) {
-        req.body.model = `${providerInfo.providerName}/${providerInfo.modelName}`;
-      }
-      if (req.body?.input?.modelOptions?.model) {
-        req.body.input.modelOptions.model = `${providerInfo.providerName}/${providerInfo.modelName}`;
-      }
-    }
+    logger.info(`Selected provider ${providerInfo.providerName} for model ${model}`);
+    const modelWithProvider = `${providerInfo.providerName}/${providerInfo.modelName}`;
+
+    if (req.body?.model) req.body.model = modelWithProvider;
+    if (req.body?.input?.model) req.body.input.model = modelWithProvider;
+    if (req.body?.input?.modelOptions?.model) req.body.input.modelOptions.model = modelWithProvider;
   } catch (error) {
     logger.warn(`Failed to get provider for model ${model}:`, error);
   }
