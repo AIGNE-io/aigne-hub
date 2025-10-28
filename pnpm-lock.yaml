@@ -239,7 +239,7 @@ importers:
         version: 17.13.3
       langchain:
         specifier: ^0.2.16
-        version: 0.2.16(@aws-sdk/client-s3@3.917.0)(@aws-sdk/credential-provider-node@3.918.0)(axios@1.7.4)(encoding@0.1.13)(fast-xml-parser@5.2.5)(ignore@5.3.1)(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))(redis@5.5.6)(ws@8.18.0)
+        version: 0.2.16(@aws-sdk/client-s3@3.918.0)(@aws-sdk/credential-provider-node@3.918.0)(axios@1.7.4)(encoding@0.1.13)(fast-xml-parser@5.2.5)(ignore@5.3.1)(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))(redis@5.5.6)(ws@8.18.0)
       lodash:
         specifier: ^4.17.21
         version: 4.17.21
@@ -828,10 +828,6 @@ packages:
     resolution: {integrity: sha512-p1pb4YzdJirCmW66f70KUR3r0/GUN7FtlaGDVqQ9Cc6kjVv1D2E6QyEFyN30LXd7XbYjoGTujXQ6J7vgMKboGA==}
     engines: {node: '>=18.0.0'}
 
-  '@aws-sdk/client-s3@3.917.0':
-    resolution: {integrity: sha512-3L73mDCpH7G0koFv3p3WkkEKqC5wn2EznKtNMrJ6hczPIr2Cu6DJz8VHeTZp9wFZLPrIBmh3ZW1KiLujT5Fd2w==}
-    engines: {node: '>=18.0.0'}
-
   '@aws-sdk/client-s3@3.918.0':
     resolution: {integrity: sha512-25DhKO0QB4QbhbX1t+txCoRNRvchcq9s3lrDrVJLDwpS7e3cTwSOsicyvMpme6Wk/NSln/lWkYazx8MgUbO6RA==}
     engines: {node: '>=18.0.0'}
@@ -876,20 +872,12 @@ packages:
     resolution: {integrity: sha512-ZQWOl4jdLhJHHrHsOfNRjgpP98A5kw4YzkMOUoK+TgSQVLi7wjb957V0htvwpi6KmGr3f2F8J06D6u2OtIc62w==}
     engines: {node: '>=18.0.0'}
 
-  '@aws-sdk/credential-provider-ini@3.917.0':
-    resolution: {integrity: sha512-rvQ0QamLySRq+Okc0ZqFHZ3Fbvj3tYuWNIlzyEKklNmw5X5PM1idYKlOJflY2dvUGkIqY3lUC9SC2WL+1s7KIw==}
-    engines: {node: '>=18.0.0'}
-
   '@aws-sdk/credential-provider-ini@3.918.0':
     resolution: {integrity: sha512-oDViX9z4o8jShY0unX9T7MJqyt+/ojhRB2zoLQVr0Mln7GbXwJ0aUtxgb4PFROG27pJpR11oAaZHzI3LI0jm/A==}
     engines: {node: '>=18.0.0'}
 
   '@aws-sdk/credential-provider-node@3.893.0':
     resolution: {integrity: sha512-NjvDUXciC2+EaQnbL/u/ZuCXj9PZQ/9ciPhI62LGCoJ3ft91lI1Z58Dgut0OFPpV6i16GhpFxzmbuf40wTgDbA==}
-    engines: {node: '>=18.0.0'}
-
-  '@aws-sdk/credential-provider-node@3.917.0':
-    resolution: {integrity: sha512-n7HUJ+TgU9wV/Z46yR1rqD9hUjfG50AKi+b5UXTlaDlVD8bckg40i77ROCllp53h32xQj/7H0yBIYyphwzLtmg==}
     engines: {node: '>=18.0.0'}
 
   '@aws-sdk/credential-provider-node@3.918.0':
@@ -915,11 +903,6 @@ packages:
   '@aws-sdk/credential-provider-web-identity@3.893.0':
     resolution: {integrity: sha512-wWD8r2ot4jf/CoogdPTl13HbwNLW4UheGUCu6gW7n9GoHh1JImYyooPHK8K7kD42hihydIA7OW7iFAf7//JYTw==}
     engines: {node: '>=18.0.0'}
-
-  '@aws-sdk/credential-provider-web-identity@3.917.0':
-    resolution: {integrity: sha512-pZncQhFbwW04pB0jcD5OFv3x2gAddDYCVxyJVixgyhSw7bKCYxqu6ramfq1NxyVpmm+qsw+ijwi/3cCmhUHF/A==}
-    engines: {node: '>=18.0.0'}
-    deprecated: This version contains a compilation TypeScript error https://github.com/aws/aws-sdk-js-v3/issues/7457 - please use @aws-sdk/credential-providers@3.918.0 or higher
 
   '@aws-sdk/credential-provider-web-identity@3.918.0':
     resolution: {integrity: sha512-qQx5qOhSovVF1EEKTc809WsiKzMqEJrlMSOUycDkE+JMgLPIy2pB2LR1crrIeBGgxFUgFsXHvNHbFjRy+AFBdA==}
@@ -11937,68 +11920,6 @@ snapshots:
     transitivePeerDependencies:
       - aws-crt
 
-  '@aws-sdk/client-s3@3.917.0':
-    dependencies:
-      '@aws-crypto/sha1-browser': 5.2.0
-      '@aws-crypto/sha256-browser': 5.2.0
-      '@aws-crypto/sha256-js': 5.2.0
-      '@aws-sdk/core': 3.916.0
-      '@aws-sdk/credential-provider-node': 3.917.0
-      '@aws-sdk/middleware-bucket-endpoint': 3.914.0
-      '@aws-sdk/middleware-expect-continue': 3.917.0
-      '@aws-sdk/middleware-flexible-checksums': 3.916.0
-      '@aws-sdk/middleware-host-header': 3.914.0
-      '@aws-sdk/middleware-location-constraint': 3.914.0
-      '@aws-sdk/middleware-logger': 3.914.0
-      '@aws-sdk/middleware-recursion-detection': 3.914.0
-      '@aws-sdk/middleware-sdk-s3': 3.916.0
-      '@aws-sdk/middleware-ssec': 3.914.0
-      '@aws-sdk/middleware-user-agent': 3.916.0
-      '@aws-sdk/region-config-resolver': 3.914.0
-      '@aws-sdk/signature-v4-multi-region': 3.916.0
-      '@aws-sdk/types': 3.914.0
-      '@aws-sdk/util-endpoints': 3.916.0
-      '@aws-sdk/util-user-agent-browser': 3.914.0
-      '@aws-sdk/util-user-agent-node': 3.916.0
-      '@aws-sdk/xml-builder': 3.914.0
-      '@smithy/config-resolver': 4.4.0
-      '@smithy/core': 3.17.1
-      '@smithy/eventstream-serde-browser': 4.2.3
-      '@smithy/eventstream-serde-config-resolver': 4.3.3
-      '@smithy/eventstream-serde-node': 4.2.3
-      '@smithy/fetch-http-handler': 5.3.4
-      '@smithy/hash-blob-browser': 4.2.4
-      '@smithy/hash-node': 4.2.3
-      '@smithy/hash-stream-node': 4.2.3
-      '@smithy/invalid-dependency': 4.2.3
-      '@smithy/md5-js': 4.2.3
-      '@smithy/middleware-content-length': 4.2.3
-      '@smithy/middleware-endpoint': 4.3.5
-      '@smithy/middleware-retry': 4.4.5
-      '@smithy/middleware-serde': 4.2.3
-      '@smithy/middleware-stack': 4.2.3
-      '@smithy/node-config-provider': 4.3.3
-      '@smithy/node-http-handler': 4.4.3
-      '@smithy/protocol-http': 5.3.3
-      '@smithy/smithy-client': 4.9.1
-      '@smithy/types': 4.8.0
-      '@smithy/url-parser': 4.2.3
-      '@smithy/util-base64': 4.3.0
-      '@smithy/util-body-length-browser': 4.2.0
-      '@smithy/util-body-length-node': 4.2.1
-      '@smithy/util-defaults-mode-browser': 4.3.4
-      '@smithy/util-defaults-mode-node': 4.2.6
-      '@smithy/util-endpoints': 3.2.3
-      '@smithy/util-middleware': 4.2.3
-      '@smithy/util-retry': 4.2.3
-      '@smithy/util-stream': 4.5.4
-      '@smithy/util-utf8': 4.2.0
-      '@smithy/util-waiter': 4.2.3
-      '@smithy/uuid': 1.1.0
-      tslib: 2.8.1
-    transitivePeerDependencies:
-      - aws-crt
-
   '@aws-sdk/client-s3@3.918.0':
     dependencies:
       '@aws-crypto/sha1-browser': 5.2.0
@@ -12285,24 +12206,6 @@ snapshots:
     transitivePeerDependencies:
       - aws-crt
 
-  '@aws-sdk/credential-provider-ini@3.917.0':
-    dependencies:
-      '@aws-sdk/core': 3.916.0
-      '@aws-sdk/credential-provider-env': 3.916.0
-      '@aws-sdk/credential-provider-http': 3.916.0
-      '@aws-sdk/credential-provider-process': 3.916.0
-      '@aws-sdk/credential-provider-sso': 3.916.0
-      '@aws-sdk/credential-provider-web-identity': 3.917.0
-      '@aws-sdk/nested-clients': 3.916.0
-      '@aws-sdk/types': 3.914.0
-      '@smithy/credential-provider-imds': 4.2.3
-      '@smithy/property-provider': 4.2.3
-      '@smithy/shared-ini-file-loader': 4.3.3
-      '@smithy/types': 4.8.0
-      tslib: 2.8.1
-    transitivePeerDependencies:
-      - aws-crt
-
   '@aws-sdk/credential-provider-ini@3.918.0':
     dependencies:
       '@aws-sdk/core': 3.916.0
@@ -12330,23 +12233,6 @@ snapshots:
       '@aws-sdk/credential-provider-sso': 3.893.0
       '@aws-sdk/credential-provider-web-identity': 3.893.0
       '@aws-sdk/types': 3.893.0
-      '@smithy/credential-provider-imds': 4.2.3
-      '@smithy/property-provider': 4.2.3
-      '@smithy/shared-ini-file-loader': 4.3.3
-      '@smithy/types': 4.8.0
-      tslib: 2.8.1
-    transitivePeerDependencies:
-      - aws-crt
-
-  '@aws-sdk/credential-provider-node@3.917.0':
-    dependencies:
-      '@aws-sdk/credential-provider-env': 3.916.0
-      '@aws-sdk/credential-provider-http': 3.916.0
-      '@aws-sdk/credential-provider-ini': 3.917.0
-      '@aws-sdk/credential-provider-process': 3.916.0
-      '@aws-sdk/credential-provider-sso': 3.916.0
-      '@aws-sdk/credential-provider-web-identity': 3.917.0
-      '@aws-sdk/types': 3.914.0
       '@smithy/credential-provider-imds': 4.2.3
       '@smithy/property-provider': 4.2.3
       '@smithy/shared-ini-file-loader': 4.3.3
@@ -12428,18 +12314,6 @@ snapshots:
     transitivePeerDependencies:
       - aws-crt
 
-  '@aws-sdk/credential-provider-web-identity@3.917.0':
-    dependencies:
-      '@aws-sdk/core': 3.916.0
-      '@aws-sdk/nested-clients': 3.916.0
-      '@aws-sdk/types': 3.914.0
-      '@smithy/property-provider': 4.2.3
-      '@smithy/shared-ini-file-loader': 4.3.3
-      '@smithy/types': 4.8.0
-      tslib: 2.8.1
-    transitivePeerDependencies:
-      - aws-crt
-
   '@aws-sdk/credential-provider-web-identity@3.918.0':
     dependencies:
       '@aws-sdk/core': 3.916.0
@@ -12459,9 +12333,9 @@ snapshots:
       '@smithy/types': 4.8.0
       tslib: 2.8.1
 
-  '@aws-sdk/lib-storage@3.918.0(@aws-sdk/client-s3@3.917.0)':
+  '@aws-sdk/lib-storage@3.918.0(@aws-sdk/client-s3@3.918.0)':
     dependencies:
-      '@aws-sdk/client-s3': 3.917.0
+      '@aws-sdk/client-s3': 3.918.0
       '@smithy/abort-controller': 4.2.3
       '@smithy/middleware-endpoint': 4.3.5
       '@smithy/smithy-client': 4.9.1
@@ -14477,13 +14351,13 @@ snapshots:
       string-argv: 0.3.2
       type-detect: 4.0.8
 
-  '@langchain/core@0.2.27(langchain@0.2.16(@aws-sdk/client-s3@3.917.0)(@aws-sdk/credential-provider-node@3.918.0)(axios@1.7.4)(encoding@0.1.13)(fast-xml-parser@5.2.5)(ignore@5.3.1)(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))(redis@5.5.6)(ws@8.18.0))(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))':
+  '@langchain/core@0.2.27(langchain@0.2.16(@aws-sdk/client-s3@3.918.0)(@aws-sdk/credential-provider-node@3.918.0)(axios@1.7.4)(encoding@0.1.13)(fast-xml-parser@5.2.5)(ignore@5.3.1)(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))(redis@5.5.6)(ws@8.18.0))(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))':
     dependencies:
       ansi-styles: 5.2.0
       camelcase: 6.3.0
       decamelize: 1.2.0
       js-tiktoken: 1.0.14
-      langsmith: 0.1.41(@langchain/core@0.2.27(langchain@0.2.16(@aws-sdk/client-s3@3.917.0)(@aws-sdk/credential-provider-node@3.918.0)(axios@1.7.4)(encoding@0.1.13)(fast-xml-parser@5.2.5)(ignore@5.3.1)(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))(redis@5.5.6)(ws@8.18.0))(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5)))(langchain@0.2.16(@aws-sdk/client-s3@3.917.0)(@aws-sdk/credential-provider-node@3.918.0)(axios@1.7.4)(encoding@0.1.13)(fast-xml-parser@5.2.5)(ignore@5.3.1)(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))(redis@5.5.6)(ws@8.18.0))(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))
+      langsmith: 0.1.41(@langchain/core@0.2.27(langchain@0.2.16(@aws-sdk/client-s3@3.918.0)(@aws-sdk/credential-provider-node@3.918.0)(axios@1.7.4)(encoding@0.1.13)(fast-xml-parser@5.2.5)(ignore@5.3.1)(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))(redis@5.5.6)(ws@8.18.0))(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5)))(langchain@0.2.16(@aws-sdk/client-s3@3.918.0)(@aws-sdk/credential-provider-node@3.918.0)(axios@1.7.4)(encoding@0.1.13)(fast-xml-parser@5.2.5)(ignore@5.3.1)(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))(redis@5.5.6)(ws@8.18.0))(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))
       mustache: 4.2.0
       p-queue: 6.6.2
       p-retry: 4.6.2
@@ -14494,9 +14368,9 @@ snapshots:
       - langchain
       - openai
 
-  '@langchain/openai@0.2.7(encoding@0.1.13)(langchain@0.2.16(@aws-sdk/client-s3@3.917.0)(@aws-sdk/credential-provider-node@3.918.0)(axios@1.7.4)(encoding@0.1.13)(fast-xml-parser@5.2.5)(ignore@5.3.1)(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))(redis@5.5.6)(ws@8.18.0))(ws@8.18.0)':
+  '@langchain/openai@0.2.7(encoding@0.1.13)(langchain@0.2.16(@aws-sdk/client-s3@3.918.0)(@aws-sdk/credential-provider-node@3.918.0)(axios@1.7.4)(encoding@0.1.13)(fast-xml-parser@5.2.5)(ignore@5.3.1)(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))(redis@5.5.6)(ws@8.18.0))(ws@8.18.0)':
     dependencies:
-      '@langchain/core': 0.2.27(langchain@0.2.16(@aws-sdk/client-s3@3.917.0)(@aws-sdk/credential-provider-node@3.918.0)(axios@1.7.4)(encoding@0.1.13)(fast-xml-parser@5.2.5)(ignore@5.3.1)(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))(redis@5.5.6)(ws@8.18.0))(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))
+      '@langchain/core': 0.2.27(langchain@0.2.16(@aws-sdk/client-s3@3.918.0)(@aws-sdk/credential-provider-node@3.918.0)(axios@1.7.4)(encoding@0.1.13)(fast-xml-parser@5.2.5)(ignore@5.3.1)(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))(redis@5.5.6)(ws@8.18.0))(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))
       js-tiktoken: 1.0.14
       openai: 4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@3.25.76)
       zod: 3.25.76
@@ -14506,9 +14380,9 @@ snapshots:
       - langchain
       - ws
 
-  '@langchain/textsplitters@0.0.3(langchain@0.2.16(@aws-sdk/client-s3@3.917.0)(@aws-sdk/credential-provider-node@3.918.0)(axios@1.7.4)(encoding@0.1.13)(fast-xml-parser@5.2.5)(ignore@5.3.1)(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))(redis@5.5.6)(ws@8.18.0))(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))':
+  '@langchain/textsplitters@0.0.3(langchain@0.2.16(@aws-sdk/client-s3@3.918.0)(@aws-sdk/credential-provider-node@3.918.0)(axios@1.7.4)(encoding@0.1.13)(fast-xml-parser@5.2.5)(ignore@5.3.1)(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))(redis@5.5.6)(ws@8.18.0))(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))':
     dependencies:
-      '@langchain/core': 0.2.27(langchain@0.2.16(@aws-sdk/client-s3@3.917.0)(@aws-sdk/credential-provider-node@3.918.0)(axios@1.7.4)(encoding@0.1.13)(fast-xml-parser@5.2.5)(ignore@5.3.1)(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))(redis@5.5.6)(ws@8.18.0))(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))
+      '@langchain/core': 0.2.27(langchain@0.2.16(@aws-sdk/client-s3@3.918.0)(@aws-sdk/credential-provider-node@3.918.0)(axios@1.7.4)(encoding@0.1.13)(fast-xml-parser@5.2.5)(ignore@5.3.1)(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))(redis@5.5.6)(ws@8.18.0))(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))
       js-tiktoken: 1.0.14
     transitivePeerDependencies:
       - langchain
@@ -16554,9 +16428,9 @@ snapshots:
 
   '@uppy/companion@4.15.1':
     dependencies:
-      '@aws-sdk/client-s3': 3.917.0
+      '@aws-sdk/client-s3': 3.918.0
       '@aws-sdk/client-sts': 3.918.0
-      '@aws-sdk/lib-storage': 3.918.0(@aws-sdk/client-s3@3.917.0)
+      '@aws-sdk/lib-storage': 3.918.0(@aws-sdk/client-s3@3.918.0)
       '@aws-sdk/s3-presigned-post': 3.918.0
       '@aws-sdk/s3-request-presigner': 3.918.0
       atob: 2.1.2
@@ -20132,16 +20006,16 @@ snapshots:
 
   kuler@2.0.0: {}
 
-  langchain@0.2.16(@aws-sdk/client-s3@3.917.0)(@aws-sdk/credential-provider-node@3.918.0)(axios@1.7.4)(encoding@0.1.13)(fast-xml-parser@5.2.5)(ignore@5.3.1)(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))(redis@5.5.6)(ws@8.18.0):
+  langchain@0.2.16(@aws-sdk/client-s3@3.918.0)(@aws-sdk/credential-provider-node@3.918.0)(axios@1.7.4)(encoding@0.1.13)(fast-xml-parser@5.2.5)(ignore@5.3.1)(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))(redis@5.5.6)(ws@8.18.0):
     dependencies:
-      '@langchain/core': 0.2.27(langchain@0.2.16(@aws-sdk/client-s3@3.917.0)(@aws-sdk/credential-provider-node@3.918.0)(axios@1.7.4)(encoding@0.1.13)(fast-xml-parser@5.2.5)(ignore@5.3.1)(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))(redis@5.5.6)(ws@8.18.0))(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))
-      '@langchain/openai': 0.2.7(encoding@0.1.13)(langchain@0.2.16(@aws-sdk/client-s3@3.917.0)(@aws-sdk/credential-provider-node@3.918.0)(axios@1.7.4)(encoding@0.1.13)(fast-xml-parser@5.2.5)(ignore@5.3.1)(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))(redis@5.5.6)(ws@8.18.0))(ws@8.18.0)
-      '@langchain/textsplitters': 0.0.3(langchain@0.2.16(@aws-sdk/client-s3@3.917.0)(@aws-sdk/credential-provider-node@3.918.0)(axios@1.7.4)(encoding@0.1.13)(fast-xml-parser@5.2.5)(ignore@5.3.1)(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))(redis@5.5.6)(ws@8.18.0))(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))
+      '@langchain/core': 0.2.27(langchain@0.2.16(@aws-sdk/client-s3@3.918.0)(@aws-sdk/credential-provider-node@3.918.0)(axios@1.7.4)(encoding@0.1.13)(fast-xml-parser@5.2.5)(ignore@5.3.1)(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))(redis@5.5.6)(ws@8.18.0))(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))
+      '@langchain/openai': 0.2.7(encoding@0.1.13)(langchain@0.2.16(@aws-sdk/client-s3@3.918.0)(@aws-sdk/credential-provider-node@3.918.0)(axios@1.7.4)(encoding@0.1.13)(fast-xml-parser@5.2.5)(ignore@5.3.1)(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))(redis@5.5.6)(ws@8.18.0))(ws@8.18.0)
+      '@langchain/textsplitters': 0.0.3(langchain@0.2.16(@aws-sdk/client-s3@3.918.0)(@aws-sdk/credential-provider-node@3.918.0)(axios@1.7.4)(encoding@0.1.13)(fast-xml-parser@5.2.5)(ignore@5.3.1)(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))(redis@5.5.6)(ws@8.18.0))(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))
       binary-extensions: 2.3.0
       js-tiktoken: 1.0.14
       js-yaml: 4.1.0
       jsonpointer: 5.0.1
-      langsmith: 0.1.41(@langchain/core@0.2.27(langchain@0.2.16(@aws-sdk/client-s3@3.917.0)(@aws-sdk/credential-provider-node@3.918.0)(axios@1.7.4)(encoding@0.1.13)(fast-xml-parser@5.2.5)(ignore@5.3.1)(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))(redis@5.5.6)(ws@8.18.0))(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5)))(langchain@0.2.16(@aws-sdk/client-s3@3.917.0)(@aws-sdk/credential-provider-node@3.918.0)(axios@1.7.4)(encoding@0.1.13)(fast-xml-parser@5.2.5)(ignore@5.3.1)(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))(redis@5.5.6)(ws@8.18.0))(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))
+      langsmith: 0.1.41(@langchain/core@0.2.27(langchain@0.2.16(@aws-sdk/client-s3@3.918.0)(@aws-sdk/credential-provider-node@3.918.0)(axios@1.7.4)(encoding@0.1.13)(fast-xml-parser@5.2.5)(ignore@5.3.1)(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))(redis@5.5.6)(ws@8.18.0))(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5)))(langchain@0.2.16(@aws-sdk/client-s3@3.918.0)(@aws-sdk/credential-provider-node@3.918.0)(axios@1.7.4)(encoding@0.1.13)(fast-xml-parser@5.2.5)(ignore@5.3.1)(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))(redis@5.5.6)(ws@8.18.0))(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))
       openapi-types: 12.1.3
       p-retry: 4.6.2
       uuid: 10.0.0
@@ -20149,7 +20023,7 @@ snapshots:
       zod: 3.25.76
       zod-to-json-schema: 3.24.6(zod@3.25.76)
     optionalDependencies:
-      '@aws-sdk/client-s3': 3.917.0
+      '@aws-sdk/client-s3': 3.918.0
       '@aws-sdk/credential-provider-node': 3.918.0
       axios: 1.7.4
       fast-xml-parser: 5.2.5
@@ -20160,7 +20034,7 @@ snapshots:
       - encoding
       - openai
 
-  langsmith@0.1.41(@langchain/core@0.2.27(langchain@0.2.16(@aws-sdk/client-s3@3.917.0)(@aws-sdk/credential-provider-node@3.918.0)(axios@1.7.4)(encoding@0.1.13)(fast-xml-parser@5.2.5)(ignore@5.3.1)(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))(redis@5.5.6)(ws@8.18.0))(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5)))(langchain@0.2.16(@aws-sdk/client-s3@3.917.0)(@aws-sdk/credential-provider-node@3.918.0)(axios@1.7.4)(encoding@0.1.13)(fast-xml-parser@5.2.5)(ignore@5.3.1)(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))(redis@5.5.6)(ws@8.18.0))(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5)):
+  langsmith@0.1.41(@langchain/core@0.2.27(langchain@0.2.16(@aws-sdk/client-s3@3.918.0)(@aws-sdk/credential-provider-node@3.918.0)(axios@1.7.4)(encoding@0.1.13)(fast-xml-parser@5.2.5)(ignore@5.3.1)(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))(redis@5.5.6)(ws@8.18.0))(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5)))(langchain@0.2.16(@aws-sdk/client-s3@3.918.0)(@aws-sdk/credential-provider-node@3.918.0)(axios@1.7.4)(encoding@0.1.13)(fast-xml-parser@5.2.5)(ignore@5.3.1)(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))(redis@5.5.6)(ws@8.18.0))(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5)):
     dependencies:
       '@types/uuid': 9.0.8
       commander: 10.0.1
@@ -20169,8 +20043,8 @@ snapshots:
       semver: 7.7.2
       uuid: 9.0.1
     optionalDependencies:
-      '@langchain/core': 0.2.27(langchain@0.2.16(@aws-sdk/client-s3@3.917.0)(@aws-sdk/credential-provider-node@3.918.0)(axios@1.7.4)(encoding@0.1.13)(fast-xml-parser@5.2.5)(ignore@5.3.1)(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))(redis@5.5.6)(ws@8.18.0))(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))
-      langchain: 0.2.16(@aws-sdk/client-s3@3.917.0)(@aws-sdk/credential-provider-node@3.918.0)(axios@1.7.4)(encoding@0.1.13)(fast-xml-parser@5.2.5)(ignore@5.3.1)(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))(redis@5.5.6)(ws@8.18.0)
+      '@langchain/core': 0.2.27(langchain@0.2.16(@aws-sdk/client-s3@3.918.0)(@aws-sdk/credential-provider-node@3.918.0)(axios@1.7.4)(encoding@0.1.13)(fast-xml-parser@5.2.5)(ignore@5.3.1)(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))(redis@5.5.6)(ws@8.18.0))(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))
+      langchain: 0.2.16(@aws-sdk/client-s3@3.918.0)(@aws-sdk/credential-provider-node@3.918.0)(axios@1.7.4)(encoding@0.1.13)(fast-xml-parser@5.2.5)(ignore@5.3.1)(openai@4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5))(redis@5.5.6)(ws@8.18.0)
       openai: 4.96.0(encoding@0.1.13)(ws@8.18.0)(zod@4.0.5)
 
   language-subtag-registry@0.3.22: {}
