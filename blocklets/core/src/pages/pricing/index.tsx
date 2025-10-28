@@ -33,7 +33,7 @@ import { useSessionContext } from '../../contexts/session';
 import { ReactComponent as EmbeddingIcon } from '../../icons/icon-embedding.svg';
 import { ReactComponent as ImageIcon } from '../../icons/icon-image.svg';
 import { ReactComponent as ChatIcon } from '../../icons/icon-text.svg';
-import { ReactComponent as VideoIcon } from '../../icons/icon-video1.svg';
+import { ReactComponent as VideoIcon } from '../../icons/icon-video.svg';
 
 const ONE_MILLION = new BigNumber(1000000);
 
