@@ -160,7 +160,7 @@ function CreditBoard() {
               {showStatsSkeleton ? (
                 <UsageChartsSkeleton />
               ) : (
-                <UsageCharts dailyStats={dailyStats} showCredits={isCreditBillingEnabled} showRequests={false} />
+                <UsageCharts dailyStats={dailyStats} showCredits={isCreditBillingEnabled} />
               )}
             </Stack>
 

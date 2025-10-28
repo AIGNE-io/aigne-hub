@@ -23,8 +23,9 @@ import { formatToShortUrl } from './url';
 
 const PAYMENT_DID = 'z2qaCNvKMv5GjouKdcDWexv6WqtHbpNPQDnAk';
 
-export const isPaymentRunning = () =>
-  !!config.components.find((i) => i.did === PAYMENT_DID && i.status === BlockletStatus.running);
+export const isPaymentRunning = () => {
+  return !!config.components.find((i) => i.did === PAYMENT_DID && i.status === BlockletStatus.running);
+};
 
 export const paymentClient = payment;
 export const getPaymentKitPrefix = () => {
