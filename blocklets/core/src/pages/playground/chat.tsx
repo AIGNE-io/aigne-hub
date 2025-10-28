@@ -217,7 +217,11 @@ export default function Chat() {
     return selectedModel.type || 'chatCompletion';
   }, [model, modelGroups, selectedType]);
 
-  const processMediaResponse = (items: {type: 'file'; data: string; mimeType: string}[], property: 'url' | 'data' = 'url', defaultMimeType = 'image/png') => {
+  const processMediaResponse = (
+    items: { type: 'file'; data: string; mimeType: string }[],
+    property: 'url' | 'data' = 'url',
+    defaultMimeType = 'image/png'
+  ) => {
     return items.map((item: any) => {
       if (item.type === 'file' && item.data) {
         const dataUrl = `data:${item.mimeType || defaultMimeType};base64,${item.data}`;
@@ -246,7 +250,10 @@ export default function Chat() {
           model,
         }).then((res) => {
           // Convert to streaming format
-          const images = Array.isArray(res.images) && res.images.length > 0 ? processMediaResponse(res.images, 'url', 'image/png') : [];
+          const images =
+            Array.isArray(res.images) && res.images.length > 0
+              ? processMediaResponse(res.images, 'url', 'image/png')
+              : [];
 
           if (images.length === 0) {
             return new ReadableStream({
@@ -321,7 +328,10 @@ export default function Chat() {
 
       if (currentModelType === 'video') {
         return videoGenerationsV2({ prompt: promptText, model }).then((res) => {
-          const videos = Array.isArray(res.videos) && res.videos.length > 0 ? processMediaResponse(res.videos, 'url', 'video/mp4') : [];
+          const videos =
+            Array.isArray(res.videos) && res.videos.length > 0
+              ? processMediaResponse(res.videos, 'url', 'video/mp4')
+              : [];
 
           if (videos.length === 0) {
             return new ReadableStream({
