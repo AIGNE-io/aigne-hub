@@ -1,3 +1,7 @@
+## 0.4.57 (2025-10-28)
+
+- feat: support video model
+
 ## 0.4.56 (2025-10-27)
 
 - chore: update aigne deps

@@ -114,11 +114,10 @@ export default function Conversation({
                               <ImagePreview
                                 itemWidth={200}
                                 borderRadius={12}
-                                dataSource={msg.response.images
-                                  .map(({ url }) => ({
-                                    src: url!,
-                                    onLoad: () => scrollToBottom(),
-                                  }))}
+                                dataSource={msg.response.images.map(({ url }) => ({
+                                  src: url!,
+                                  onLoad: () => scrollToBottom(),
+                                }))}
                               />
                             )}
 
@@ -168,20 +167,21 @@ export default function Conversation({
                         msg.response.videos.length > 0 && (
                           <>
                             {/* Show actual videos if they have real data URLs */}
-                            {msg.response.videos.some((video) => (video.data && video.data.startsWith('data:')) || video.url) && (
+                            {msg.response.videos.some(
+                              (video) => (video.data && video.data.startsWith('data:')) || video.url
+                            ) && (
                               <VideoPreview
                                 itemWidth={300}
                                 borderRadius={12}
-                                dataSource={msg.response.videos
-                                  .map(({ data, url, type }) => ({
-                                    src: type==='file' && data ? data : url!,
-                                    onLoad: () => scrollToBottom(),
-                                  }))}
+                                dataSource={msg.response.videos.map(({ data, url, type }) => ({
+                                  src: type === 'file' && data ? data : url!,
+                                  onLoad: () => scrollToBottom(),
+                                }))}
                               />
                             )}
 
                             {/* Show placeholder for images without real data */}
-                            {msg.response.videos.some((video) => video.data === '[VIDEO_PLACEHOLDER]' ) && (
+                            {msg.response.videos.some((video) => video.data === '[VIDEO_PLACEHOLDER]') && (
                               <Box
                                 sx={{
                                   margin: '8px 0',
@@ -205,8 +205,9 @@ export default function Conversation({
                                     fontWeight: 500,
                                     minWidth: 200,
                                   }}>
-                                  {msg.response.videos.filter((video) => !video.url || video.data === '[VIDEO_PLACEHOLDER]')
-                                    .length === 1
+                                  {msg.response.videos.filter(
+                                    (video) => !video.url || video.data === '[VIDEO_PLACEHOLDER]'
+                                  ).length === 1
                                     ? 'Video (Not Cached)'
                                     : `${
                                         msg.response.videos.filter(

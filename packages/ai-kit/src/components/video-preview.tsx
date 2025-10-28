@@ -132,8 +132,9 @@ export default function VideoPreview({
                   backgroundColor: '#000',
                   maxWidth: '400px',
                 }}
-                preload="metadata"
-              />
+                preload="metadata">
+                <track kind="captions" />
+              </video>
               <Box
                 className="video-toolbar"
                 sx={{
