@@ -1,3 +1,7 @@
+## 0.4.60 (2025-10-28)
+
+- chore: bump version
+
 ## 0.4.59 (2025-10-28)
 
 - fix: video svg case
