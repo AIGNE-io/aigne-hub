@@ -24,7 +24,7 @@ import { joinURL } from 'ufo';
 import { ReactComponent as EmbeddingIcon } from '../icons/icon-embedding.svg';
 import { ReactComponent as ImageIcon } from '../icons/icon-image.svg';
 import { ReactComponent as ChatIcon } from '../icons/icon-text.svg';
-import { ReactComponent as VideoIcon } from '../icons/icon-video.svg';
+import { ReactComponent as VideoIcon } from '../icons/icon-video1.svg';
 
 interface ModelSelectorProps {
   open: boolean;
