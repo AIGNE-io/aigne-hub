@@ -110,12 +110,11 @@ export default function Conversation({
                         msg.response.images.length > 0 && (
                           <>
                             {/* Show actual images if they have real data URLs */}
-                            {msg.response.images.some((img) => img.url && img.url.startsWith('data:')) && (
+                            {msg.response.images.some((img) => img.url && img.url !== '[IMAGE_PLACEHOLDER]') && (
                               <ImagePreview
                                 itemWidth={200}
                                 borderRadius={12}
                                 dataSource={msg.response.images
-                                  .filter((img) => img.url && img.url.startsWith('data:'))
                                   .map(({ url }) => ({
                                     src: url!,
                                     onLoad: () => scrollToBottom(),
@@ -174,8 +173,8 @@ export default function Conversation({
                                 itemWidth={300}
                                 borderRadius={12}
                                 dataSource={msg.response.videos
-                                  .map(({ data, url }) => ({
-                                    src: data ? data : url!,
+                                  .map(({ data, url, type }) => ({
+                                    src: type==='file' && data ? data : url!,
                                     onLoad: () => scrollToBottom(),
                                   }))}
                               />
