@@ -370,9 +370,11 @@ router.post(
           hooks: {
             onEnd: async (data) => {
               traceId = data?.context?.id;
+              logger.info('Image generation response', { response: data });
               return data;
             },
             onError: async (data) => {
+              logger.error('Image generation error', { error: data.error });
               onError(data, req);
             },
           },
@@ -470,9 +472,11 @@ router.post(
         hooks: {
           onEnd: async (data) => {
             traceId = data?.context?.id;
+            logger.info('Video generation response', { response: data });
             return data;
           },
           onError: async (data) => {
+            logger.error('Video generation error', { error: data.error });
             onError(data, req);
           },
         },

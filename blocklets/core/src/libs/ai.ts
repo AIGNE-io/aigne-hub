@@ -72,7 +72,7 @@ export const videoGenerationsV2 = async (input: { prompt: string; model: string 
     },
     {
       headers: { 'x-aigne-hub-client-did': window.blocklet?.appPid },
-      timeout: 5 * 60 * 1000,
+      timeout: 10 * 60 * 1000,
     }
   );
 
