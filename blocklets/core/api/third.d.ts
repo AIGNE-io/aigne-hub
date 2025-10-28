@@ -19,6 +19,7 @@ declare module '@abtnode/*';
 
 declare module '@arcblock/ws';
 declare module '@abtnode/cron';
+declare module '@blocklet/uploader-server';
 declare module '@blocklet/logger' {
   function createLogger(name: string): typeof console;
 

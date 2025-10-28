@@ -24,7 +24,7 @@ repository:
   type: git
   url: git+https://github.com/AIGNE-io/aigne-hub.git
 specVersion: 1.2.8
-version: 0.4.57
+version: 0.4.58
 logo: screenshots/logo.png
 files:
   - dist
@@ -99,13 +99,6 @@ components:
     source:
       store: https://store.blocklet.dev
       name: z2qa2GCqPJkufzqF98D8o7PWHrRRSHpYkNhEh
-      version: latest
-  - name: media-kit
-    title: Media Kit
-    mountPoint: /media-kit
-    required: true
-    source:
-      name: media-kit
       version: latest
 navigation:
   - id: settings
