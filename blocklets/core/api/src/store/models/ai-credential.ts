@@ -108,8 +108,8 @@ export default class AiCredential extends Model<InferAttributes<AiCredential>, I
 
   // 更新使用统计
   async updateUsage(): Promise<void> {
-    await this.increment('usageCount');
-    await this.update({ lastUsedAt: new Date() });
+    await this.increment('usageCount', { silent: true });
+    await this.update({ lastUsedAt: new Date() }, { silent: true });
   }
 
   // 获取下一个可用的凭证（负载均衡）
@@ -285,10 +285,12 @@ AiCredential.init(AiCredential.GENESIS_ATTRIBUTES, {
       }
     },
     afterUpdate: (credential: AiCredential) => {
-      clearAllRotationCache();
       const previousActive = credential.previous('active');
-      if (credential.active && previousActive !== credential.active) {
-        clearFailedProvider(credential.providerId);
+      if (previousActive !== credential.active) {
+        clearAllRotationCache();
+        if (credential.active) {
+          clearFailedProvider(credential.providerId);
+        }
       }
     },
     afterDestroy: () => clearAllRotationCache(),

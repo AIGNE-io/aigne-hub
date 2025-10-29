@@ -400,14 +400,34 @@ class ProviderRotationManager {
       }
     }
 
-    const currentIndex = rotationState.currentIndex % availableProviders.length;
-    const selected = availableProviders[currentIndex];
-    rotationState.currentIndex = (currentIndex + 1) % availableProviders.length;
+    const availableProviderIds = new Set(availableProviders.map((p) => p.providerId));
+    let attempts = 0;
+    let selected = null;
+
+    while (attempts < rotationState.providers.length) {
+      const candidate = rotationState.providers[rotationState.currentIndex];
+      rotationState.currentIndex = (rotationState.currentIndex + 1) % rotationState.providers.length;
+
+      if (candidate && availableProviderIds.has(candidate.providerId)) {
+        selected = candidate;
+        break;
+      }
+
+      attempts++;
+    }
 
     if (!selected) {
-      logger.error(`Selected provider is undefined for model ${modelName}`);
+      logger.error(`Could not find available provider for model ${modelName} after checking all providers`);
       return null;
     }
+
+    logger.info('Provider rotation selection', {
+      model: modelName,
+      totalProviders: rotationState.providers.length,
+      availableProviders: availableProviders.length,
+      selected: selected.providerName,
+      nextIndex: rotationState.currentIndex,
+    });
 
     return {
       providerId: selected.providerId,

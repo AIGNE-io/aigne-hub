@@ -122,10 +122,12 @@ AiProvider.init(AiProvider.GENESIS_ATTRIBUTES, {
   hooks: {
     afterCreate: () => clearAllRotationCache(),
     afterUpdate: (provider: AiProvider) => {
-      clearAllRotationCache();
       const previousEnabled = provider.previous('enabled');
-      if (provider.enabled && previousEnabled !== provider.enabled) {
-        clearFailedProvider(provider.id);
+      if (previousEnabled !== provider.enabled) {
+        clearAllRotationCache();
+        if (provider.enabled) {
+          clearFailedProvider(provider.id);
+        }
       }
     },
     afterDestroy: () => clearAllRotationCache(),
