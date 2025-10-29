@@ -1,3 +1,7 @@
+## 0.5.4 (2025-10-29)
+
+- fix: update package to latest
+
 ## 0.5.3 (2025-10-29)
 
 - fix: add logger for subscribe
