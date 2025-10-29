@@ -178,10 +178,10 @@ const handleUserUpdated = async (user: any) => {
 
 export async function subscribeEvents() {
   await subscribe((event: any) => {
-    const skip = shouldExecuteTask(`subscribeEvents:${event.type}`);
-    logger.info('skipping event', { eventType: event.type, skip });
-    if (!skip) return;
-    logger.info('processing event', { eventType: event.type, skip });
+    const shouldProcess = shouldExecuteTask(`subscribeEvents:${event.type}`);
+    logger.info('skipping event', { eventType: event.type, shouldProcess });
+    if (!shouldProcess) return;
+    logger.info('processing event', { eventType: event.type, shouldProcess });
 
     if (event.type === 'blocklet.user.added') {
       logger.info('user.added', event.id, event.data.object?.did);
