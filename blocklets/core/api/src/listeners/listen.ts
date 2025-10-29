@@ -177,7 +177,7 @@ const handleUserUpdated = async (user: any) => {
 };
 
 export async function subscribeEvents() {
-  subscribe((event: any) => {
+  await subscribe((event: any) => {
     const skip = shouldExecuteTask(`subscribeEvents:${event.type}`);
     logger.info('skipping event', { eventType: event.type, skip });
     if (!skip) return;
