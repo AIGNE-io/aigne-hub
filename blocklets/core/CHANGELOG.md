@@ -1,3 +1,7 @@
+## 0.5.1 (2025-10-29)
+
+- fix: to fix the 413 error, upload using local path
+
 ## 0.5.0 (2025-10-29)
 
 - chore: update package to latest
