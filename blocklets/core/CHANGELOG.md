@@ -1,3 +1,7 @@
+## 0.5.3 (2025-10-29)
+
+- fix: add logger for subscribe
+
 ## 0.5.2 (2025-10-29)
 
 - chore: update agine
