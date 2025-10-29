@@ -71,9 +71,9 @@ This endpoint generates text-based responses for conversational AI, text complet
 import { AIGNEHubChatModel } from "@aigne/aigne-hub";
 
 const model = new AIGNEHubChatModel({
-  url: "https://your-aigne-hub-url/api/v2/chat",
+  baseURL: "https://your-aigne-hub-url",
   accessKey: "your-user-access-key",
-  model: "openai/gpt-3.5-turbo",
+  model: "aignehub/gpt-3.5-turbo",
 });
 
 const result = await model.invoke({

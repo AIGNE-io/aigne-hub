@@ -84,9 +84,9 @@ curl -X POST 'https://your-aigne-hub-url/api/v2/chat/completions' \
 import { AIGNEHubChatModel } from "@aigne/aigne-hub";
 
 const model = new AIGNEHubChatModel({
-  url: "https://your-aigne-hub-url/api/v2/chat",
-  accessKey: "your-oauth-access-key",
-  model: "openai/gpt-3.5-turbo",
+  baseURL: "https://your-aigne-hub-url",
+  apiKey: "your-oauth-access-key",
+  model: "aignehub/gpt-3.5-turbo",
 });
 
 const result = await model.invoke({

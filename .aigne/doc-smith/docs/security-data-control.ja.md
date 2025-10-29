@@ -78,13 +78,13 @@ import { AIGNEHubChatModel } from "@aigne/aigne-hub";
 // ハブの設定でモデルを初期化します
 const model = new AIGNEHubChatModel({
   // AIGNE Hub APIエンドポイントのURL
-  url: "https://your-aigne-hub-url/api/v2/chat",
+  baseURL: "https://your-aigne-hub-url",
 
   // OAuth経由で取得した、またはアプリケーション用に生成されたセキュアなアクセスキー
-  accessKey: "your-oauth-access-key",
+  apiKey: "your-oauth-access-key",
 
   // 使用するプロバイダーとモデルを指定します
-  model: "openai/gpt-3.5-turbo",
+  model: "aignehub/gpt-3.5-turbo",
 });
 
 async function getCompletion() {

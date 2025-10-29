@@ -71,9 +71,9 @@ V2 API 是所有新開發的標準。它為聊天、圖片生成和嵌入提供�
 import { AIGNEHubChatModel } from "@aigne/aigne-hub";
 
 const model = new AIGNEHubChatModel({
-  url: "https://your-aigne-hub-url/api/v2/chat",
+  baseURL: "https://your-aigne-hub-url",
   accessKey: "your-user-access-key",
-  model: "openai/gpt-3.5-turbo",
+  model: "aignehub/gpt-3.5-turbo",
 });
 
 const result = await model.invoke({

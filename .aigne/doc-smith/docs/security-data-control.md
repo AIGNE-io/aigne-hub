@@ -78,13 +78,13 @@ import { AIGNEHubChatModel } from "@aigne/aigne-hub";
 // Initialize the model with your Hub's configuration
 const model = new AIGNEHubChatModel({
   // URL of your AIGNE Hub API endpoint
-  url: "https://your-aigne-hub-url/api/v2/chat",
+  baseURL: "https://your-aigne-hub-url",
 
   // Secure access key obtained via OAuth or generated for an application
-  accessKey: "your-oauth-access-key",
+  apiKey: "your-oauth-access-key",
 
   // Specify the provider and model to use
-  model: "openai/gpt-3.5-turbo",
+  model: "aignehub/gpt-3.5-turbo",
 });
 
 async function getCompletion() {
