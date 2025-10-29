@@ -32,7 +32,7 @@ export async function appStatus(
       ? aiKitApi.get('/api/app/status', {
           params: { description },
           responseType: options.responseType,
-          headers: { ...getRemoteComponentCallHeaders({}) },
+          headers: { ...(await getRemoteComponentCallHeaders({})) },
         })
       : call({
           name: 'ai-kit',
@@ -109,7 +109,7 @@ export async function cancelSubscription({
           {},
           {
             responseType: options.responseType,
-            headers: { ...getRemoteComponentCallHeaders({}) },
+            headers: { ...(await getRemoteComponentCallHeaders({})) },
           }
         )
       : call({
@@ -144,7 +144,7 @@ export async function recoverSubscription({
           {},
           {
             responseType: options.responseType,
-            headers: { ...getRemoteComponentCallHeaders({}) },
+            headers: { ...(await getRemoteComponentCallHeaders({})) },
           }
         )
       : call({

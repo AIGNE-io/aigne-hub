@@ -1,3 +1,12 @@
+## 0.5.0 (2025-10-29)
+
+- chore: update package to latest
+
+## 0.4.62 (2025-10-28)
+
+- chore: update aigne deps
+
+
 ## 0.4.61 (2025-10-28)
 
 - fix: update the application DID of the staging environment
