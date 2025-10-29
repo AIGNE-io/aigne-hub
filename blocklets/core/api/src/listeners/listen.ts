@@ -180,7 +180,7 @@ export async function subscribeEvents() {
   await subscribe((event: any) => {
     const shouldProcess = shouldExecuteTask(`subscribeEvents:${event.type}`);
     if (!shouldProcess) return;
-    logger.info('processing event', { ...event, shouldProcess });
+    logger.info('processing event', { id: event.id, type: event.type, shouldProcess });
 
     if (event.type === 'blocklet.user.added') {
       logger.info('user.added', event.id, event.data.object?.did);
