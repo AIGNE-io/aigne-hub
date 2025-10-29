@@ -44,7 +44,7 @@ const router = Router();
 const getFileExtension = (type: string) => mime.getExtension(type) || 'png';
 const getMediaKitUrl = () => joinURL(config.env.appUrl, getComponentMountPoint(MEDIA_KIT_DID));
 
-async function convertMediaToOnlineUrl(data: string, mimeType: string): Promise<{ type: 'url'; url: string }> {
+async function convertMediaToOnlineUrl(path: string, mimeType: string): Promise<{ type: 'url'; url: string }> {
   const mountPoint = getComponentMountPoint(MEDIA_KIT_DID);
   if (!mountPoint) {
     throw new CustomError(500, 'MediaKit is not available');
@@ -54,9 +54,7 @@ async function convertMediaToOnlineUrl(data: string, mimeType: string): Promise<
   const ext = getFileExtension(mimeType);
   const fileName = ext ? `${id}.${ext}` : id;
 
-  const { data: uploadResult } = (await uploadToMediaKit({ base64: data, fileName })) as unknown as {
-    data: { filename: string };
-  };
+  const uploadResult = (await uploadToMediaKit({ filePath: path, fileName }))?.data;
 
   return {
     type: 'url',
@@ -299,9 +297,9 @@ router.post(
               if (value.input?.outputFileType === 'url' && usageData.files && usageData.files?.length > 0) {
                 const list = await Promise.all(
                   usageData.files.map(async (file) => {
-                    if (file.type === 'file' && file.data) {
+                    if (file.type === 'local' && file.path) {
                       try {
-                        return await convertMediaToOnlineUrl(file.data, file?.mimeType || 'image/png');
+                        return await convertMediaToOnlineUrl(file.path, file?.mimeType || 'image/png');
                       } catch (err) {
                         logger.error('Failed to upload image to MediaKit', { error: err });
                         return file;
@@ -364,7 +362,11 @@ router.post(
       const aigne = new AIGNE();
       const response = await aigne.invoke(
         modelInstance,
-        { ...input, outputFileType: 'file', modelOptions: { ...input.modelOptions, model } },
+        {
+          ...input,
+          outputFileType: input.outputFileType === 'url' ? 'local' : input.outputFileType,
+          modelOptions: { ...input.modelOptions, model },
+        },
         {
           userContext: { ...body.options?.userContext, userId: req.user?.did },
           hooks: {
@@ -410,9 +412,9 @@ router.post(
       if (input?.outputFileType === 'url' && response.images.length > 0) {
         const list = await Promise.all(
           response.images.map(async (image) => {
-            if (image.type === 'file' && image.data) {
+            if (image.type === 'local' && image.path) {
               try {
-                return await convertMediaToOnlineUrl(image.data, image?.mimeType || 'image/png');
+                return await convertMediaToOnlineUrl(image.path, image?.mimeType || 'image/png');
               } catch (err) {
                 logger.error('Failed to upload image to MediaKit', { error: err });
                 return image;
@@ -464,7 +466,12 @@ router.post(
     const aigne = new AIGNE();
     const response = await aigne.invoke(
       modelInstance,
-      { ...input, model, outputFileType: 'file', modelOptions: { ...modelOptions, model } },
+      {
+        ...input,
+        model,
+        outputFileType: input.outputFileType === 'url' ? 'local' : input.outputFileType,
+        modelOptions: { ...modelOptions, model },
+      },
       {
         userContext: { ...body.options?.userContext, userId: req.user?.did },
         hooks: {
@@ -508,9 +515,9 @@ router.post(
     if (input?.outputFileType === 'url' && response.videos.length > 0) {
       const list = await Promise.all(
         response.videos.map(async (video) => {
-          if (video.type === 'file' && video.data) {
+          if (video.type === 'local' && video.path) {
             try {
-              return await convertMediaToOnlineUrl(video.data, video?.mimeType || 'video/mp4');
+              return await convertMediaToOnlineUrl(video.path, video?.mimeType || 'video/mp4');
             } catch (err) {
               logger.error('Failed to upload video to MediaKit', { error: err });
               return video;
