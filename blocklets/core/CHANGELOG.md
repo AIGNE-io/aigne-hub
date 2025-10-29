@@ -1,23 +1,6 @@
 ## 0.5.0 (2025-10-29)
 
-- fix: update package to latest
-- fix: update package to latest
-- fix: update payment-js to latest
-- fix: show usage charts
-- fix: update package
-- fix: update package
-- fix: code review
-- fix: code review
-- fix: code review
-- fix: code review
-- fix: code review
-- chore: code review
-- chore: code review
-- chore: code review
-- chore: code review
-- fix: update sign method
-- fix: update pacakge
-- fix: update pacakge
+- chore: update package to latest
 
 ## 0.4.62 (2025-10-28)
 
