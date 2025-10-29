@@ -1,3 +1,7 @@
+## 0.5.2 (2025-10-29)
+
+- chore: update agine
+
 ## 0.5.1 (2025-10-29)
 
 - fix: to fix the 413 error, upload using local path
