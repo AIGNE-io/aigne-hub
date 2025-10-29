@@ -12,11 +12,12 @@ import { getModelAndProviderId } from '../providers/util';
 import credentialsQueue from '../queue/credentials';
 import { getQueue } from '../queue/queue';
 import wsServer from '../ws';
-import { getOpenAIV2, markProviderAsFailed } from './ai-provider';
+import { getOpenAIV2 } from './ai-provider';
 import { AIGNE_HUB_DEFAULT_WEIGHT } from './constants';
 import logger from './logger';
 import { NotificationManager } from './notifications/manager';
 import { CredentialInvalidNotificationTemplate } from './notifications/templates/credential';
+import { markProviderAsFailed } from './provider-rotation';
 
 export const typeFilterMap: Record<string, string> = {
   chatCompletion: 'chatCompletion',
@@ -280,7 +281,7 @@ export function withModelStatus(handler: (req: Request, res: Response) => Promis
       const { model, provider, credentialId } = req;
       await sendCredentialInvalidNotification({ model, provider, credentialId, error });
 
-      if (error.status && [401, 403, 404, 500, 501, 503].includes(Number(error.status))) {
+      if (error.status && [401, 402, 403, 404, 500, 501, 503].includes(Number(error.status))) {
         await updateModelStatus({
           model: req.body.model,
           success: false,

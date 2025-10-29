@@ -3,6 +3,7 @@ import { CreationOptional, DataTypes, InferAttributes, InferCreationAttributes, 
 
 import { AIGNE_HUB_DEFAULT_WEIGHT } from '../../libs/constants';
 import nextId from '../../libs/next-id';
+import { clearAllRotationCache, clearFailedProvider } from '../../libs/provider-rotation';
 import { sequelize } from '../sequelize';
 
 export type CredentialType = 'api_key' | 'access_key_pair' | 'custom';
@@ -274,4 +275,22 @@ export default class AiCredential extends Model<InferAttributes<AiCredential>, I
   }
 }
 
-AiCredential.init(AiCredential.GENESIS_ATTRIBUTES, { sequelize });
+AiCredential.init(AiCredential.GENESIS_ATTRIBUTES, {
+  sequelize,
+  hooks: {
+    afterCreate: (credential: AiCredential) => {
+      clearAllRotationCache();
+      if (credential.active) {
+        clearFailedProvider(credential.providerId);
+      }
+    },
+    afterUpdate: (credential: AiCredential) => {
+      clearAllRotationCache();
+      const previousActive = credential.previous('active');
+      if (credential.active && previousActive !== credential.active) {
+        clearFailedProvider(credential.providerId);
+      }
+    },
+    afterDestroy: () => clearAllRotationCache(),
+  },
+});

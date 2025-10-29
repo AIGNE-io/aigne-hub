@@ -47,7 +47,6 @@ export const imageGenerationsV2Image = async (input: {
         outputFileType: 'url',
         modelOptions: { model: input.model },
       },
-      fixedProvider: true,
     },
     {
       headers: { 'x-aigne-hub-client-did': window.blocklet?.appPid },
@@ -89,7 +88,6 @@ export const embeddingsV2Direct = async (
     {
       model,
       input,
-      fixedProvider: true,
     },
     {
       headers: { 'x-aigne-hub-client-did': window.blocklet?.appPid },

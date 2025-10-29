@@ -306,6 +306,14 @@ export const Config = {
     return this._creditExpirationDays;
   },
 
+  _excludedRotationProviders: undefined as string[] | undefined,
+  get excludedRotationProviders() {
+    if (this._excludedRotationProviders === undefined) {
+      this._excludedRotationProviders = config.env.preferences.excludedRotationProviders?.split(',') ?? [];
+    }
+    return this._excludedRotationProviders;
+  },
+
   _pricing: undefined as Pricing | undefined | null,
   get pricing() {
     if (this._pricing === undefined) {
