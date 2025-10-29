@@ -4,7 +4,8 @@ import AiCredential from '@api/store/models/ai-credential';
 import AiModelRate from '@api/store/models/ai-model-rate';
 import AiModelStatus, { ModelError, ModelErrorType } from '@api/store/models/ai-model-status';
 import AiProvider from '@api/store/models/ai-provider';
-import { CustomError } from '@blocklet/error';
+import { CreditErrorType } from '@blocklet/aigne-hub/api';
+import { CustomError, formatError } from '@blocklet/error';
 import type { Request, Response } from 'express';
 
 import { getImageModel, getModel } from '../providers/models';
@@ -158,7 +159,10 @@ const sendCredentialInvalidNotification = async ({
   error: Error & { status: number };
 }) => {
   try {
-    if (credentialId && [401, 403].includes(Number(error.status))) {
+    const errorMessage = formatError(error);
+    const isProvider402 =
+      Number(error.status) === 402 && errorMessage && errorMessage.indexOf(CreditErrorType.NOT_ENOUGH) !== -1;
+    if (credentialId && ([401, 403].includes(Number(error.status)) || isProvider402)) {
       logger.info('update credential status and send credential invalid notification', {
         credentialId,
         provider,
@@ -281,7 +285,7 @@ export function withModelStatus(handler: (req: Request, res: Response) => Promis
       const { model, provider, credentialId } = req;
       await sendCredentialInvalidNotification({ model, provider, credentialId, error });
 
-      if (error.status && [401, 402, 403, 404, 500, 501, 503].includes(Number(error.status))) {
+      if (error.status && [401, 403, 404, 500, 501, 503].includes(Number(error.status))) {
         await updateModelStatus({
           model: req.body.model,
           success: false,
