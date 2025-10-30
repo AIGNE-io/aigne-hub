@@ -1,5 +1,6 @@
-import { ensureModelWithProvider, getReqModel } from '@api/libs/ai-provider';
+import { getReqModel } from '@api/libs/ai-provider';
 import logger from '@api/libs/logger';
+import { ensureModelWithProvider } from '@api/libs/provider-rotation';
 import { getCurrentUnixTimestamp } from '@api/libs/timestamp';
 import { getModelAndProviderId } from '@api/providers/util';
 import ModelCall from '@api/store/models/model-call';

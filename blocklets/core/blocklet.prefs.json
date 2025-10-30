@@ -375,6 +375,19 @@
                         "required": true,
                         "x-designable-id": "7m9oi0lw0c6",
                         "x-index": 0
+                      },
+                      "excludedRotationProviders": {
+                        "type": "string",
+                        "title": "Excluded Providers",
+                        "x-decorator": "FormItem",
+                        "x-component": "Input",
+                        "x-validator": [],
+                        "x-component-props": {},
+                        "x-decorator-props": {},
+                        "description": "Providers listed here will not be included in automatic rotation. You can still select them manually when creating a connection or choosing a model.（e.g.,  poe, openrouter）",
+                        "name": "excludedRotationProviders",
+                        "x-designable-id": "sx43uibvnqs",
+                        "x-index": 1
                       }
                     }
                   }
@@ -668,6 +681,6 @@
         }
       }
     },
-    "x-designable-id": "1ohg9glz0te"
+    "x-designable-id": "raabjmw72b5"
   }
 }

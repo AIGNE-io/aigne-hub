@@ -1,4 +1,5 @@
 import { AIProviderType } from '@api/libs/constants';
+import { clearAllRotationCache, clearFailedProvider } from '@api/libs/provider-rotation';
 import { CreationOptional, DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequelize';
 
 import nextId from '../../libs/next-id';
@@ -116,4 +117,19 @@ export default class AiProvider extends Model<InferAttributes<AiProvider>, Infer
   }
 }
 
-AiProvider.init(AiProvider.GENESIS_ATTRIBUTES, { sequelize });
+AiProvider.init(AiProvider.GENESIS_ATTRIBUTES, {
+  sequelize,
+  hooks: {
+    afterCreate: () => clearAllRotationCache(),
+    afterUpdate: (provider: AiProvider) => {
+      const previousEnabled = provider.previous('enabled');
+      if (previousEnabled !== provider.enabled) {
+        clearAllRotationCache();
+        if (provider.enabled) {
+          clearFailedProvider(provider.id);
+        }
+      }
+    },
+    afterDestroy: () => clearAllRotationCache(),
+  },
+});

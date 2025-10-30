@@ -23,9 +23,9 @@ export default function Home() {
   const codeExample = `import { AIGNEHubChatModel } from "@aigne/aigne-hub";
 
 const model = new AIGNEHubChatModel({
-  url: "${window.location.origin}",
-  accessKey: "your-oauth-access-key", 
-  model: "openai/gpt-4o-mini",
+  baseURL: "${window.location.origin}",
+  apiKey: "your-oauth-access-key", 
+  model: "aignehub/gpt-3.5-turbo",
 });
 
 const result = await model.invoke({

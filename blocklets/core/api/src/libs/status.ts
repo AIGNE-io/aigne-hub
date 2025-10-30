@@ -4,7 +4,8 @@ import AiCredential from '@api/store/models/ai-credential';
 import AiModelRate from '@api/store/models/ai-model-rate';
 import AiModelStatus, { ModelError, ModelErrorType } from '@api/store/models/ai-model-status';
 import AiProvider from '@api/store/models/ai-provider';
-import { CustomError } from '@blocklet/error';
+import { CreditErrorType } from '@blocklet/aigne-hub/api';
+import { CustomError, formatError } from '@blocklet/error';
 import type { Request, Response } from 'express';
 
 import { getImageModel, getModel } from '../providers/models';
@@ -12,11 +13,12 @@ import { getModelAndProviderId } from '../providers/util';
 import credentialsQueue from '../queue/credentials';
 import { getQueue } from '../queue/queue';
 import wsServer from '../ws';
-import { getOpenAIV2, markProviderAsFailed } from './ai-provider';
+import { getOpenAIV2 } from './ai-provider';
 import { AIGNE_HUB_DEFAULT_WEIGHT } from './constants';
 import logger from './logger';
 import { NotificationManager } from './notifications/manager';
 import { CredentialInvalidNotificationTemplate } from './notifications/templates/credential';
+import { markProviderAsFailed } from './provider-rotation';
 
 export const typeFilterMap: Record<string, string> = {
   chatCompletion: 'chatCompletion',
@@ -157,7 +159,10 @@ const sendCredentialInvalidNotification = async ({
   error: Error & { status: number };
 }) => {
   try {
-    if (credentialId && [401, 403].includes(Number(error.status))) {
+    const errorMessage = formatError(error);
+    const isProvider402 =
+      Number(error.status) === 402 && errorMessage && errorMessage.indexOf(CreditErrorType.NOT_ENOUGH) !== -1;
+    if (credentialId && ([401, 403].includes(Number(error.status)) || isProvider402)) {
       logger.info('update credential status and send credential invalid notification', {
         credentialId,
         provider,

@@ -3,6 +3,7 @@ import { CreationOptional, DataTypes, InferAttributes, InferCreationAttributes, 
 
 import { AIGNE_HUB_DEFAULT_WEIGHT } from '../../libs/constants';
 import nextId from '../../libs/next-id';
+import { clearAllRotationCache, clearFailedProvider } from '../../libs/provider-rotation';
 import { sequelize } from '../sequelize';
 
 export type CredentialType = 'api_key' | 'access_key_pair' | 'custom';
@@ -107,8 +108,8 @@ export default class AiCredential extends Model<InferAttributes<AiCredential>, I
 
   // 更新使用统计
   async updateUsage(): Promise<void> {
-    await this.increment('usageCount');
-    await this.update({ lastUsedAt: new Date() });
+    await this.increment('usageCount', { silent: true });
+    await this.update({ lastUsedAt: new Date() }, { silent: true });
   }
 
   // 获取下一个可用的凭证（负载均衡）
@@ -274,4 +275,24 @@ export default class AiCredential extends Model<InferAttributes<AiCredential>, I
   }
 }
 
-AiCredential.init(AiCredential.GENESIS_ATTRIBUTES, { sequelize });
+AiCredential.init(AiCredential.GENESIS_ATTRIBUTES, {
+  sequelize,
+  hooks: {
+    afterCreate: (credential: AiCredential) => {
+      clearAllRotationCache();
+      if (credential.active) {
+        clearFailedProvider(credential.providerId);
+      }
+    },
+    afterUpdate: (credential: AiCredential) => {
+      const previousActive = credential.previous('active');
+      if (previousActive !== credential.active) {
+        clearAllRotationCache();
+        if (credential.active) {
+          clearFailedProvider(credential.providerId);
+        }
+      }
+    },
+    afterDestroy: () => clearAllRotationCache(),
+  },
+});

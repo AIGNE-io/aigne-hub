@@ -1,3 +1,7 @@
+## 0.5.7 (2025-10-30)
+
+- feat: implement provider rotation management and exclude providers from automatic rotation
+
 ## 0.5.6 (2025-10-30)
 
 - fix: show mode provider for calculate the price

@@ -78,13 +78,13 @@ import { AIGNEHubChatModel } from "@aigne/aigne-hub";
 // 使用您的 Hub 配置初始化模型
 const model = new AIGNEHubChatModel({
   // 您的 AIGNE Hub API 端点的 URL
-  url: "https://your-aigne-hub-url/api/v2/chat",
+  baseURL: "https://your-aigne-hub-url",
 
   // 通过 OAuth 获取或为应用程序生成的安全访问密钥
-  accessKey: "your-oauth-access-key",
+  apiKey: "your-oauth-access-key",
 
   // 指定要使用的提供商和模型
-  model: "openai/gpt-3.5-turbo",
+  model: "aignehub/gpt-3.5-turbo",
 });
 
 async function getCompletion() {
