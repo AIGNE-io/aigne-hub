@@ -44,7 +44,10 @@ const router = Router();
 const getFileExtension = (type: string) => mime.getExtension(type) || 'png';
 const getMediaKitUrl = () => joinURL(config.env.appUrl, getComponentMountPoint(MEDIA_KIT_DID));
 
-async function convertMediaToOnlineUrl(path: string, mimeType: string): Promise<{ type: 'url'; url: string }> {
+async function convertMediaToOnlineUrl(
+  path: string,
+  mimeType: string
+): Promise<{ type: 'url'; url: string; mimeType?: string; filename?: string }> {
   const mountPoint = getComponentMountPoint(MEDIA_KIT_DID);
   if (!mountPoint) {
     throw new CustomError(500, 'MediaKit is not available');
@@ -59,6 +62,8 @@ async function convertMediaToOnlineUrl(path: string, mimeType: string): Promise<
   return {
     type: 'url',
     url: joinURL(getMediaKitUrl(), '/uploads', uploadResult?.filename),
+    mimeType,
+    filename: uploadResult?.filename,
   } as const;
 }
 
