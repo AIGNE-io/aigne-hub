@@ -224,6 +224,10 @@ router.post(
               modelCallId: req.modelCallContext?.id,
             } as any;
           }
+
+          if (data.output) {
+            data.output.modelWithProvider = getReqModel(req) || DEFAULT_MODEL;
+          }
         }
         return data;
       },
@@ -297,6 +301,10 @@ router.post(
                     modelCallId: req.modelCallContext?.id,
                   };
                 }
+
+                if (data.output) {
+                  data.output.modelWithProvider = modelOptions?.model;
+                }
               }
 
               if (value.input?.outputFileType === 'url' && usageData.files && usageData.files?.length > 0) {
@@ -349,7 +357,7 @@ router.post(
         await checkUserCreditBalance({ userDid });
       }
 
-      const m = (input.modelOptions?.model as string) || DEFAULT_IMAGE_MODEL; // should remove this field in the future
+      const m = getReqModel(req) || DEFAULT_IMAGE_MODEL;
 
       const { provider, model } = parseModel(m);
       if (!provider || !model) throw new CustomError(400, `Invalid model format: ${m}, should be {provider}/{model}`);
@@ -433,7 +441,7 @@ router.post(
         response.images = list;
       }
 
-      res.json({ ...response, usage: { ...response.usage, aigneHubCredits } });
+      res.json({ ...response, usage: { ...response.usage, aigneHubCredits }, modelWithProvider: m });
     })
   )
 );
@@ -454,7 +462,7 @@ router.post(
       await checkUserCreditBalance({ userDid });
     }
 
-    const m = input.model || modelOptions?.model || DEFAULT_VIDEO_MODEL;
+    const m = getReqModel(req) || DEFAULT_VIDEO_MODEL;
 
     const { provider, model } = parseModel(m);
     if (!provider || !model) throw new CustomError(400, `Invalid model format: ${m}, should be {provider}/{model}`);
@@ -536,7 +544,7 @@ router.post(
       response.videos = list;
     }
 
-    res.json({ ...response, usage: { ...response.usage, aigneHubCredits } });
+    res.json({ ...response, usage: { ...response.usage, aigneHubCredits }, modelWithProvider: m });
   })
 );
 
