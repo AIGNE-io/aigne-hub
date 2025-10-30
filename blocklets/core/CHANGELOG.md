@@ -1,3 +1,7 @@
+## 0.5.5 (2025-10-30)
+
+- fix: return mimeType field via convertMediaToOnlineUrl
+
 ## 0.5.4 (2025-10-29)
 
 - fix: update package to latest
