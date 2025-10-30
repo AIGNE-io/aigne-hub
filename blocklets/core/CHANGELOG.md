@@ -1,3 +1,7 @@
+## 0.5.6 (2025-10-30)
+
+- fix: show mode provider for calculate the price
+
 ## 0.5.5 (2025-10-30)
 
 - fix: return mimeType field via convertMediaToOnlineUrl
