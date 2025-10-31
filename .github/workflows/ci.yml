@@ -30,3 +30,15 @@ jobs:
 
       - name: Lint
         run: pnpm lint
+
+      - name: Setup bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Test
+        run: pnpm test:coverage
+
+      - name: Report coverage
+        uses: ArcBlock/code-coverage-assistant@v1.2.1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          app-name: 'aigne hub'
