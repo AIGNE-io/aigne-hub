@@ -31,7 +31,10 @@ jobs:
       - name: Lint
         run: pnpm lint
 
-      - name: Run unit tests for coverage
+      - name: Setup bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Test
         run: pnpm test:coverage
 
       - name: Report coverage
