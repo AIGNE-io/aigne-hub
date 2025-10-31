@@ -8,9 +8,6 @@ on:
 jobs:
   Deploy:
     runs-on: ubuntu-latest
-
-    if: "! contains(toJSON(github.event.commits.*.message), '[skip ci]')"
-
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
