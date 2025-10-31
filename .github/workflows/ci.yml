@@ -30,3 +30,12 @@ jobs:
 
       - name: Lint
         run: pnpm lint
+
+      - name: Run unit tests for coverage
+        run: pnpm test:coverage
+
+      - name: Report coverage
+        uses: ArcBlock/code-coverage-assistant@v1.2.1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          app-name: 'aigne hub'
