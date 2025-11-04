@@ -1,3 +1,7 @@
+## 0.5.10 (2025-11-4)
+
+- fix: update package to latest
+
 ## 0.5.9 (2025-10-31)
 
 - fix: add test coverage ci
