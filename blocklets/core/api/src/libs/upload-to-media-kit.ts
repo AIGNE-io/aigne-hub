@@ -1,4 +1,5 @@
 import { v7 } from '@aigne/uuid';
+import { BlockletStatus } from '@blocklet/constant';
 import { CustomError } from '@blocklet/error';
 import { getComponentMountPoint } from '@blocklet/sdk/lib/component';
 import config from '@blocklet/sdk/lib/config';
@@ -11,12 +12,15 @@ import { MEDIA_KIT_DID } from './constants';
 const getFileExtension = (type: string) => mime.getExtension(type) || 'png';
 const getMediaKitUrl = () => joinURL(config.env.appUrl, getComponentMountPoint(MEDIA_KIT_DID));
 
+const isMediaKitRunning = () => {
+  return !!config.components.find((i) => i.did === MEDIA_KIT_DID && i.status === BlockletStatus.running);
+};
+
 async function convertMediaToOnlineUrl(
   path: string,
   mimeType: string
 ): Promise<{ type: 'url'; url: string; mimeType?: string; filename?: string }> {
-  const mountPoint = getComponentMountPoint(MEDIA_KIT_DID);
-  if (!mountPoint) {
+  if (!isMediaKitRunning()) {
     throw new CustomError(500, 'MediaKit is not available');
   }
 

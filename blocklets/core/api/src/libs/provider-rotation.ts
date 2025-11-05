@@ -103,6 +103,18 @@ export function getSupportedProviders(model: string): AIProviderType[] {
   return Array.from(set).sort((a, b) => PROVIDER_RANK[a] - PROVIDER_RANK[b]);
 }
 
+/**
+ * Resolve provider-specific model ID based on platform conventions
+ * @param provider - The provider name (e.g., 'openrouter', 'bedrock', 'google')
+ * @param canonicalModel - The canonical model name (e.g., 'gemini-2.5-pro', 'claude-3-5-sonnet-20241022')
+ * @param vendor - Optional vendor hint (e.g., 'google' for gemini models, 'anthropic' for claude)
+ * @returns Provider-specific model ID
+ *
+ * Examples:
+ * - OpenRouter: 'google/gemini-2.5-pro', 'openai/gpt-4o', 'anthropic/claude-3-5-sonnet'
+ * - Bedrock: 'anthropic.claude-3-5-sonnet-20241022-v2:0', 'meta.llama3-70b-instruct-v1:0'
+ * - Direct providers (google, openai, etc.): 'gemini-2.5-pro', 'gpt-4o'
+ */
 export function resolveProviderModelId(provider: AIProviderType, canonicalModel: string, vendor?: string): string {
   const v = vendor || inferVendorFromModel(canonicalModel);
 
@@ -309,10 +321,15 @@ class ProviderRotationManager {
     }
   }
 
-  public async getNextProviderForModel(
-    model: string,
-    preferredProviderName?: string
-  ): Promise<{ providerId: string; providerName: string; modelName: string } | null> {
+  private async ensureProvidersForModel(model: string): Promise<{
+    rotationState: {
+      providers: Array<{ providerId: string; providerName: string; modelName: string }>;
+      currentIndex: number;
+      lastUpdateTime: number;
+    };
+    availableProviders: Array<{ providerId: string; providerName: string; modelName: string }>;
+    modelName: string;
+  } | null> {
     const { modelName } = parseModelNameWithProvider(model);
 
     const now = Date.now();
@@ -346,6 +363,25 @@ class ProviderRotationManager {
     }
 
     const availableProviders = this.filterAvailableProviders(rotationState.providers);
+
+    return {
+      rotationState,
+      availableProviders,
+      modelName,
+    };
+  }
+
+  public async getNextProviderForModel(
+    model: string,
+    preferredProviderName?: string
+  ): Promise<{ providerId: string; providerName: string; modelName: string } | null> {
+    const result = await this.ensureProvidersForModel(model);
+    if (!result) {
+      return null;
+    }
+
+    const { rotationState, availableProviders, modelName } = result;
+
     if (availableProviders.length === 0) {
       logger.warn(`No available providers for model ${modelName}, all are in cool down or excluded`);
       return null;
@@ -404,39 +440,12 @@ class ProviderRotationManager {
     providers: Array<{ providerId: string; providerName: string; modelName: string }>;
     availableProvidersList: Array<{ providerId: string; providerName: string; modelName: string }>;
   } | null> {
-    const { modelName } = parseModelNameWithProvider(model);
-
-    const now = Date.now();
-    let rotationState = this.rotationState.get(modelName);
-    const needsRefresh =
-      !rotationState || now - rotationState.lastUpdateTime > ProviderRotationManager.PROVIDER_CACHE_TTL;
-
-    if (needsRefresh) {
-      let providerList: Array<{ providerId: string; providerName: string; modelName: string }> | null = null;
-
-      if (Config.creditBasedBillingEnabled) {
-        providerList = await this.fetchProvidersFromCreditSystem(modelName);
-      } else {
-        providerList = await this.generateProvidersByModelPattern(modelName);
-      }
-
-      if (!providerList || providerList.length === 0) {
-        return null;
-      }
-
-      rotationState = {
-        providers: providerList,
-        currentIndex: 0,
-        lastUpdateTime: now,
-      };
-      this.rotationState.set(modelName, rotationState);
-    }
-
-    if (!rotationState) {
+    const result = await this.ensureProvidersForModel(model);
+    if (!result) {
       return null;
     }
 
-    const availableProviders = this.filterAvailableProviders(rotationState.providers);
+    const { rotationState, availableProviders } = result;
 
     return {
       totalProviders: rotationState.providers.length,
@@ -527,6 +536,11 @@ function getReqModel(req: {
   return req.body?.model || req.body?.input?.model || req.body?.input?.modelOptions?.model || '';
 }
 
+/**
+ * Ensure model has a provider, applying automatic rotation if needed
+ * Modifies req.body.model to include provider prefix
+ * Falls back to default provider if rotation fails
+ */
 export async function ensureModelWithProvider(
   req: {
     body: { model?: string; input?: { model?: string; modelOptions?: { model?: string } } };
