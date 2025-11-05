@@ -304,6 +304,9 @@ export function withModelStatus(handler: (req: Request, res: Response) => Promis
       }
 
       handleModelCallError(req, error);
+      if (error.status && !(error instanceof CustomError)) {
+        throw new CustomError(Number(error.status || '500'), error.message || 'Unknown error');
+      }
       throw error;
     }
   };
