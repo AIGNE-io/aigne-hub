@@ -76,9 +76,9 @@ export function getMaxProviderRetriesMiddleware() {
       req.originalModel = model;
 
       const providersInfo = await getProvidersForModel(originalModel);
-      req.availableModelsWithProvider = (providersInfo?.availableProvidersList || []).map(
-        (p) => `${p.providerName}/${p.modelName}`
-      );
+      req.availableModelsWithProvider = (providersInfo?.availableProvidersList || [])
+        .filter((p) => p.providerName && p.modelName)
+        .map((p) => `${p.providerName}/${p.modelName}`);
 
       req.maxProviderRetries = providersInfo?.availableProviders || 1;
       logger.info('Provider rotation info for retry', {
