@@ -479,6 +479,7 @@ export default flatten({
   },
 
   quickSelect: '快速选择',
+  selectDateRange: '选择日期范围',
   customRange: '自定义范围',
   dataAvailableFrom: '数据可查询近3个月',
   usedBy: '使用者',

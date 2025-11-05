@@ -1,7 +1,20 @@
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import { FormLabel } from '@blocklet/aigne-hub/components';
-import { CalendarMonth, ExpandLess, ExpandMore, KeyboardArrowDown } from '@mui/icons-material';
-import { Box, Button, Collapse, Divider, Popover, Stack, SxProps, Typography, useMediaQuery } from '@mui/material';
+import { CalendarMonth, Close, ExpandLess, ExpandMore, KeyboardArrowDown } from '@mui/icons-material';
+import {
+  Box,
+  Button,
+  Collapse,
+  Divider,
+  Drawer,
+  IconButton,
+  Popover,
+  Stack,
+  SxProps,
+  Typography,
+  useMediaQuery,
+  useTheme,
+} from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs, { Dayjs } from 'dayjs';
 import { useState } from 'react';
@@ -25,14 +38,15 @@ export function DateRangePicker({
   onEndDateChange,
   onQuickSelect = undefined,
   maxDate = dayjs(),
-  minDate = dayjs().subtract(3, 'month').startOf('month'), // Default to 3 months ago
+  minDate = dayjs().subtract(3, 'month').startOf('month'),
   maxRangeDays = 31,
   sx = {},
 }: DateRangePickerProps) {
   const { t, locale } = useLocaleContext();
+  const theme = useTheme();
   const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
   const [showCustom, setShowCustom] = useState(false);
-  const isMobile = useMediaQuery((theme) => theme.breakpoints.down('md'));
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const handleStartDateChange = (date: Dayjs | null) => {
     if (!date) {
@@ -164,6 +178,139 @@ export function DateRangePicker({
 
   const activeQuickRange = getActiveQuickRange();
 
+  const renderContent = () => (
+    <Box sx={{ p: isMobile ? 2.5 : 3 }}>
+      <Typography
+        variant="h6"
+        sx={{
+          mb: isMobile ? 1.25 : 2.5,
+          color: 'text.primary',
+          fontWeight: 600,
+          fontSize: isMobile ? '0.875rem' : '1rem',
+        }}>
+        {t('quickSelect')}
+      </Typography>
+
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: isMobile ? 1 : 1.5,
+          mb: isMobile ? 1.25 : 2.5,
+        }}>
+        {quickRanges.map((range) => {
+          const isActive = activeQuickRange?.label === range.label;
+          return (
+            <Button
+              key={range.label}
+              variant={isActive ? 'contained' : 'outlined'}
+              onClick={() => handleQuickSelect(range.getValue())}
+              sx={{
+                py: isMobile ? 0.875 : 1,
+                textTransform: 'none',
+                borderRadius: 2,
+                fontSize: isMobile ? '0.8125rem' : '0.875rem',
+                fontWeight: isActive ? 600 : 500,
+                bgcolor: isActive ? 'primary.main' : 'transparent',
+                borderColor: isActive ? 'primary.main' : 'divider',
+                color: isActive ? 'primary.contrastText' : 'text.primary',
+                '&:hover': {
+                  bgcolor: isActive ? 'primary.dark' : 'action.hover',
+                  borderColor: isActive ? 'primary.dark' : 'primary.main',
+                  transform: 'translateY(-1px)',
+                },
+                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                boxShadow: isActive ? '0 2px 8px rgba(0,0,0,0.15)' : 'none',
+              }}>
+              {range.label}
+            </Button>
+          );
+        })}
+      </Box>
+
+      <Divider sx={{ mb: isMobile ? 1.25 : 2.5 }} />
+
+      <Button
+        variant="text"
+        startIcon={showCustom ? <ExpandLess /> : <ExpandMore />}
+        onClick={() => setShowCustom(!showCustom)}
+        sx={{
+          width: '100%',
+          justifyContent: 'flex-start',
+          textTransform: 'none',
+          p: 0,
+          fontWeight: 600,
+          color: 'text.primary',
+          fontSize: isMobile ? '0.875rem' : '1rem',
+          mb: isMobile ? 1.25 : 2.5,
+        }}>
+        {t('customRange')}
+      </Button>
+
+      <Collapse in={showCustom}>
+        <Stack sx={{ gap: isMobile ? 2 : 3 }}>
+          <Box sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 1.5 : 2 }}>
+            <Box sx={{ flex: 1 }}>
+              <FormLabel sx={{ mb: 1, color: 'text.secondary', fontSize: isMobile ? '0.8125rem' : '0.875rem' }}>
+                {t('analytics.startDate')}
+              </FormLabel>
+              <DatePicker
+                value={startDate}
+                onChange={handleStartDateChange}
+                maxDate={maxDate}
+                minDate={minDate}
+                slotProps={{
+                  textField: {
+                    size: 'small',
+                    fullWidth: true,
+                    sx: {
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 1.5,
+                      },
+                    },
+                  },
+                }}
+              />
+            </Box>
+
+            <Box sx={{ flex: 1 }}>
+              <FormLabel sx={{ mb: 1, color: 'text.secondary', fontSize: isMobile ? '0.8125rem' : '0.875rem' }}>
+                {t('analytics.endDate')}
+              </FormLabel>
+              <DatePicker
+                value={endDate}
+                onChange={handleEndDateChange}
+                minDate={startDate}
+                maxDate={maxDate}
+                slotProps={{
+                  textField: {
+                    size: 'small',
+                    fullWidth: true,
+                    sx: {
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 1.5,
+                      },
+                    },
+                  },
+                }}
+              />
+            </Box>
+          </Box>
+          <Typography
+            variant="caption"
+            sx={{
+              color: 'text.secondary',
+              fontStyle: 'italic',
+              textAlign: 'center',
+              fontSize: isMobile ? '0.6875rem' : '0.75rem',
+            }}>
+            {t('dataAvailableFrom')}
+          </Typography>
+        </Stack>
+      </Collapse>
+    </Box>
+  );
+
   return (
     <>
       <Button
@@ -186,157 +333,67 @@ export function DateRangePicker({
         {formatDateRange()}
       </Button>
 
-      <Popover
-        open={open}
-        anchorEl={anchorEl}
-        onClose={handleClose}
-        anchorOrigin={{
-          vertical: 'bottom',
-          horizontal: 'left',
-        }}
-        transformOrigin={{
-          vertical: 'top',
-          horizontal: 'left',
-        }}
-        slotProps={{
-          paper: {
-            sx: {
-              p: 0,
-              minWidth: 320,
-              borderRadius: 3,
-              boxShadow: '0 8px 40px rgba(0,0,0,0.12)',
-              border: '1px solid',
-              borderColor: 'divider',
+      {isMobile ? (
+        <Drawer
+          anchor="bottom"
+          open={open}
+          onClose={handleClose}
+          sx={{
+            '& .MuiDrawer-paper': {
+              borderTopLeftRadius: 16,
+              borderTopRightRadius: 16,
+              maxHeight: '90vh',
+              overflow: 'auto',
             },
-          },
-        }}>
-        <Box sx={{ p: isMobile ? 2 : 3 }}>
-          <Typography
-            variant="h6"
-            sx={{
-              mb: isMobile ? 1.5 : 2.5,
-              color: 'text.primary',
-              fontWeight: 600,
-              fontSize: '1rem',
-            }}>
-            {t('quickSelect')}
-          </Typography>
-
+          }}>
           <Box
             sx={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: 1.5,
-              mb: isMobile ? 1.5 : 2.5,
+              position: 'sticky',
+              top: 0,
+              bgcolor: 'background.paper',
+              zIndex: 1,
+              borderBottom: 1,
+              borderColor: 'divider',
             }}>
-            {quickRanges.map((range) => {
-              const isActive = activeQuickRange?.label === range.label;
-              return (
-                <Button
-                  key={range.label}
-                  variant={isActive ? 'contained' : 'outlined'}
-                  onClick={() => handleQuickSelect(range.getValue())}
-                  sx={{
-                    py: 1,
-                    textTransform: 'none',
-                    borderRadius: 2,
-                    fontSize: '0.875rem',
-                    fontWeight: isActive ? 600 : 500,
-                    bgcolor: isActive ? 'primary.main' : 'transparent',
-                    borderColor: isActive ? 'primary.main' : 'divider',
-                    color: isActive ? 'primary.contrastText' : 'text.primary',
-                    '&:hover': {
-                      bgcolor: isActive ? 'primary.dark' : 'action.hover',
-                      borderColor: isActive ? 'primary.dark' : 'primary.main',
-                      transform: 'translateY(-1px)',
-                    },
-                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                    boxShadow: isActive ? '0 2px 8px rgba(0,0,0,0.15)' : 'none',
-                  }}>
-                  {range.label}
-                </Button>
-              );
-            })}
-          </Box>
-
-          <Divider sx={{ mb: isMobile ? 1.5 : 2.5 }} />
-
-          <Button
-            variant="text"
-            startIcon={showCustom ? <ExpandLess /> : <ExpandMore />}
-            onClick={() => setShowCustom(!showCustom)}
-            sx={{
-              width: '100%',
-              justifyContent: 'flex-start',
-              textTransform: 'none',
-              p: 0,
-              fontWeight: 600,
-              color: 'text.primary',
-              fontSize: '1rem',
-              mb: isMobile ? 1.5 : 2.5,
-            }}>
-            {t('customRange')}
-          </Button>
-
-          <Collapse in={showCustom}>
-            <Stack sx={{ gap: 3 }}>
-              <Box sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 2 }}>
-                <Box sx={{ flex: 1 }}>
-                  <FormLabel sx={{ mb: 1, color: 'text.secondary' }}>{t('analytics.startDate')}</FormLabel>
-                  <DatePicker
-                    value={startDate}
-                    onChange={handleStartDateChange}
-                    maxDate={maxDate}
-                    minDate={minDate}
-                    slotProps={{
-                      textField: {
-                        size: 'small',
-                        fullWidth: true,
-                        sx: {
-                          '& .MuiOutlinedInput-root': {
-                            borderRadius: 1.5,
-                          },
-                        },
-                      },
-                    }}
-                  />
-                </Box>
-
-                <Box sx={{ flex: 1 }}>
-                  <FormLabel sx={{ mb: 1, color: 'text.secondary' }}>{t('analytics.endDate')}</FormLabel>
-                  <DatePicker
-                    value={endDate}
-                    onChange={handleEndDateChange}
-                    minDate={startDate}
-                    maxDate={maxDate}
-                    slotProps={{
-                      textField: {
-                        size: 'small',
-                        fullWidth: true,
-                        sx: {
-                          '& .MuiOutlinedInput-root': {
-                            borderRadius: 1.5,
-                          },
-                        },
-                      },
-                    }}
-                  />
-                </Box>
-              </Box>
-              <Typography
-                variant="caption"
-                sx={{
-                  color: 'text.secondary',
-                  fontStyle: 'italic',
-                  textAlign: 'center',
-                  fontSize: '0.75rem',
-                }}>
-                {t('dataAvailableFrom')}
+            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ p: 2 }}>
+              <Typography variant="h4" sx={{ fontWeight: 600 }}>
+                {t('selectDateRange')}
               </Typography>
+              <IconButton onClick={handleClose} size="small">
+                <Close />
+              </IconButton>
             </Stack>
-          </Collapse>
-        </Box>
-      </Popover>
+          </Box>
+          {renderContent()}
+        </Drawer>
+      ) : (
+        <Popover
+          open={open}
+          anchorEl={anchorEl}
+          onClose={handleClose}
+          anchorOrigin={{
+            vertical: 'bottom',
+            horizontal: 'left',
+          }}
+          transformOrigin={{
+            vertical: 'top',
+            horizontal: 'left',
+          }}
+          slotProps={{
+            paper: {
+              sx: {
+                p: 0,
+                minWidth: 320,
+                borderRadius: 3,
+                boxShadow: '0 8px 40px rgba(0,0,0,0.12)',
+                border: '1px solid',
+                borderColor: 'divider',
+              },
+            },
+          }}>
+          {renderContent()}
+        </Popover>
+      )}
     </>
   );
 }

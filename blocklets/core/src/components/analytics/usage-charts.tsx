@@ -302,6 +302,7 @@ export function UsageCharts({
     borderColor: 'divider',
     height: '100%',
     backgroundColor: 'background.default',
+    overflow: 'visible',
   };
 
   const chartTitle = title || (showCredits ? t('analytics.dailyCreditsUsage') : t('analytics.dailyUsage'));
@@ -311,6 +312,8 @@ export function UsageCharts({
       <LineChart data={dailyStats} margin={{ right: 30, left: 20, top: 10 }}>
         <Tooltip
           content={<CustomTooltip showCredits={showCredits} showRequests={showRequests} theme={theme} t={t} />}
+          allowEscapeViewBox={{ x: false, y: true }}
+          wrapperStyle={{ zIndex: 1000, pointerEvents: 'none' }}
         />
         <XAxis
           dataKey="date"
@@ -339,6 +342,7 @@ export function UsageCharts({
           sx={{
             height,
             px: 0,
+            overflow: 'visible',
             svg: {
               outline: 'none',
             },

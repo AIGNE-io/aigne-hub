@@ -1,6 +1,6 @@
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import { formatError } from '@blocklet/error';
-import { Alert, AlertProps, Stack } from '@mui/material';
+import { Alert, AlertProps } from '@mui/material';
 
 import { CreditErrorType } from '../../api/error';
 import withLocaleProvider from '../../utils/withLocaleProvider';
@@ -29,20 +29,25 @@ function CreditErrorAlert({ error, ...props }: { error: CreditError } & AlertPro
       severity="warning"
       {...props}
       sx={{
-        px: 1,
-        py: 0,
+        px: 2,
+        py: 1,
         '& .MuiAlert-message': {
           width: '100%',
         },
         ...props.sx,
-      }}>
+      }}
+      action={
+        <CreditButton shouldOpenInNewTab size="small" variant="outlined" color="warning" sx={{ whiteSpace: 'nowrap' }}>
+          {t('buyCreditsNow')}
+        </CreditButton>
+      }>
       {t('creditNotEnoughTip')}
 
-      <Stack direction="row" sx={{ justifyContent: 'flex-end' }}>
+      {/* <Stack direction="row" sx={{ justifyContent: 'flex-end' }}>
         <CreditButton shouldOpenInNewTab size="small" variant="outlined" color="warning">
           {t('buyCreditsNow')}
         </CreditButton>
-      </Stack>
+      </Stack> */}
     </Alert>
   );
 }

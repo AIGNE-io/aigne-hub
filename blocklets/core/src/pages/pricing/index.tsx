@@ -542,11 +542,11 @@ export default function PricingPage() {
                       px: 2,
                       height: 40,
                       fontWeight: 600,
-                      color: '#18181b',
+                      color: isSelected ? 'text.primary' : 'text.secondary',
                       borderColor: isSelected ? 'divider' : 'transparent',
                       bgcolor: 'transparent',
                       '&:hover': {
-                        color: '#18181b',
+                        color: 'text.primary',
                         borderColor: isSelected ? 'divider' : 'transparent',
                         bgcolor: 'transparent',
                       },
@@ -558,7 +558,14 @@ export default function PricingPage() {
             </Box>
 
             {/* Search and Filter Row */}
-            <SearchRow sx={{ minWidth: { xs: '100%', md: 500 } }}>
+            <SearchRow
+              sx={{
+                minWidth: { xs: '100%', md: 500 },
+                gap: {
+                  xs: 2,
+                  md: 1,
+                },
+              }}>
               <TextField
                 fullWidth
                 placeholder={t('pricing.searchPlaceholder')}

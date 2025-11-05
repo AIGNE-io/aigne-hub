@@ -3,7 +3,9 @@ import { AIGNE_HUB_DID, OBSERVABILITY_DID } from '@api/libs/env';
 import logger from '@api/libs/logger';
 import { proxyToAIKit } from '@blocklet/aigne-hub/api/call';
 import AIKitConfig from '@blocklet/aigne-hub/api/config';
-import { call, getComponentMountPoint } from '@blocklet/sdk/lib/component';
+import { BlockletStatus } from '@blocklet/constant';
+import { call } from '@blocklet/sdk/lib/component';
+import config from '@blocklet/sdk/lib/config';
 import { Router } from 'express';
 
 import aiProviders from './ai-providers';
@@ -16,8 +18,12 @@ import v2 from './v2';
 
 const router = Router();
 
+export const isObservabilityRunning = () => {
+  return !!config.components.find((i) => i.did === OBSERVABILITY_DID && i.status === BlockletStatus.running);
+};
+
 AIGNEObserver.setExportFn(async (spans) => {
-  if (!getComponentMountPoint(OBSERVABILITY_DID)) {
+  if (!isObservabilityRunning()) {
     return;
   }
 

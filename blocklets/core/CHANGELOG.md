@@ -1,3 +1,10 @@
+## 0.5.11 (2025-11-5)
+
+- feat: enhance DateRangePicker with responsive design and custom range selection
+- fix: enhance chart tooltip behavior and improve overflow handling in UsageCharts component
+- chore: update dependencies to latest versions and improve error handling in status management
+- fix: streamline error handling in useConversation
+
 ## 0.5.10 (2025-11-4)
 
 - fix: update package to latest
