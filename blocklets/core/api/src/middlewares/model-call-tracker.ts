@@ -1,6 +1,6 @@
 import { getReqModel } from '@api/libs/ai-provider';
 import logger from '@api/libs/logger';
-import { ensureModelWithProvider, getProvidersForModel } from '@api/libs/provider-rotation';
+import { ensureModelWithProvider, getProvidersForModel, modelHasProvider } from '@api/libs/provider-rotation';
 import { getCurrentUnixTimestamp } from '@api/libs/timestamp';
 import { getModelAndProviderId } from '@api/providers/util';
 import ModelCall from '@api/store/models/model-call';
@@ -59,6 +59,12 @@ export function getMaxProviderRetriesMiddleware() {
       const model = getReqModel(req);
 
       if (!model) {
+        next();
+        return;
+      }
+
+      const hasProvider = modelHasProvider(model);
+      if (hasProvider) {
         next();
         return;
       }

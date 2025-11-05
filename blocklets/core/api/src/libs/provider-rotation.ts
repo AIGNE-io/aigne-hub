@@ -486,7 +486,7 @@ export function clearFailedProvider(providerId: string): void {
   providerRotationManager.clearFailedProvider(providerId);
 }
 
-function modelHasProvider(model: string): boolean {
+export function modelHasProvider(model: string): boolean {
   if (!model || !model.includes('/')) {
     return false;
   }
