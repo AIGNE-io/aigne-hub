@@ -179,14 +179,14 @@ export function DateRangePicker({
   const activeQuickRange = getActiveQuickRange();
 
   const renderContent = () => (
-    <Box sx={{ p: isMobile ? 2 : 3 }}>
+    <Box sx={{ p: isMobile ? 2.5 : 3 }}>
       <Typography
         variant="h6"
         sx={{
-          mb: isMobile ? 1.5 : 2.5,
+          mb: isMobile ? 1.25 : 2.5,
           color: 'text.primary',
           fontWeight: 600,
-          fontSize: '1rem',
+          fontSize: isMobile ? '0.875rem' : '1rem',
         }}>
         {t('quickSelect')}
       </Typography>
@@ -195,8 +195,8 @@ export function DateRangePicker({
         sx={{
           display: 'grid',
           gridTemplateColumns: '1fr 1fr',
-          gap: 1.5,
-          mb: isMobile ? 1.5 : 2.5,
+          gap: isMobile ? 1 : 1.5,
+          mb: isMobile ? 1.25 : 2.5,
         }}>
         {quickRanges.map((range) => {
           const isActive = activeQuickRange?.label === range.label;
@@ -206,10 +206,10 @@ export function DateRangePicker({
               variant={isActive ? 'contained' : 'outlined'}
               onClick={() => handleQuickSelect(range.getValue())}
               sx={{
-                py: 1,
+                py: isMobile ? 0.875 : 1,
                 textTransform: 'none',
                 borderRadius: 2,
-                fontSize: '0.875rem',
+                fontSize: isMobile ? '0.8125rem' : '0.875rem',
                 fontWeight: isActive ? 600 : 500,
                 bgcolor: isActive ? 'primary.main' : 'transparent',
                 borderColor: isActive ? 'primary.main' : 'divider',
@@ -228,7 +228,7 @@ export function DateRangePicker({
         })}
       </Box>
 
-      <Divider sx={{ mb: isMobile ? 1.5 : 2.5 }} />
+      <Divider sx={{ mb: isMobile ? 1.25 : 2.5 }} />
 
       <Button
         variant="text"
@@ -241,17 +241,19 @@ export function DateRangePicker({
           p: 0,
           fontWeight: 600,
           color: 'text.primary',
-          fontSize: '1rem',
-          mb: isMobile ? 1.5 : 2.5,
+          fontSize: isMobile ? '0.875rem' : '1rem',
+          mb: isMobile ? 1.25 : 2.5,
         }}>
         {t('customRange')}
       </Button>
 
       <Collapse in={showCustom}>
-        <Stack sx={{ gap: 3 }}>
-          <Box sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 2 }}>
+        <Stack sx={{ gap: isMobile ? 2 : 3 }}>
+          <Box sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 1.5 : 2 }}>
             <Box sx={{ flex: 1 }}>
-              <FormLabel sx={{ mb: 1, color: 'text.secondary' }}>{t('analytics.startDate')}</FormLabel>
+              <FormLabel sx={{ mb: 1, color: 'text.secondary', fontSize: isMobile ? '0.8125rem' : '0.875rem' }}>
+                {t('analytics.startDate')}
+              </FormLabel>
               <DatePicker
                 value={startDate}
                 onChange={handleStartDateChange}
@@ -272,7 +274,9 @@ export function DateRangePicker({
             </Box>
 
             <Box sx={{ flex: 1 }}>
-              <FormLabel sx={{ mb: 1, color: 'text.secondary' }}>{t('analytics.endDate')}</FormLabel>
+              <FormLabel sx={{ mb: 1, color: 'text.secondary', fontSize: isMobile ? '0.8125rem' : '0.875rem' }}>
+                {t('analytics.endDate')}
+              </FormLabel>
               <DatePicker
                 value={endDate}
                 onChange={handleEndDateChange}
@@ -298,7 +302,7 @@ export function DateRangePicker({
               color: 'text.secondary',
               fontStyle: 'italic',
               textAlign: 'center',
-              fontSize: '0.75rem',
+              fontSize: isMobile ? '0.6875rem' : '0.75rem',
             }}>
             {t('dataAvailableFrom')}
           </Typography>
@@ -352,7 +356,7 @@ export function DateRangePicker({
               borderColor: 'divider',
             }}>
             <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ p: 2 }}>
-              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              <Typography variant="h4" sx={{ fontWeight: 600 }}>
                 {t('selectDateRange')}
               </Typography>
               <IconButton onClick={handleClose} size="small">
