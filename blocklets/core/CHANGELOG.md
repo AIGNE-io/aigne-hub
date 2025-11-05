@@ -1,3 +1,7 @@
+## 0.5.12 (2025-11-5)
+
+- fix: add automatic model retry mechanism with provider rotation
+
 ## 0.5.11 (2025-11-5)
 
 - feat: enhance DateRangePicker with responsive design and custom range selection
