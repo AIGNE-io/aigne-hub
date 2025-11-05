@@ -214,9 +214,10 @@ export const createRetryHandler = (
           originalModel: req.originalModel,
         });
 
-        const nextModel =
-          (req.availableModelsWithProvider || []).filter((m) => m !== getReqModel(req))?.[0] || req.originalModel;
+        const filteredModels = (req.availableModelsWithProvider || []).filter((m) => m !== getReqModel(req));
+        req.availableModelsWithProvider = filteredModels || [];
 
+        const nextModel = filteredModels[0] || req.originalModel;
         if (nextModel) {
           req.body.model = nextModel;
         }
