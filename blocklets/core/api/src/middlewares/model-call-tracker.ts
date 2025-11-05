@@ -49,6 +49,7 @@ declare global {
       model?: string;
       maxProviderRetries?: number;
       originalModel?: string;
+      availableModelsWithProvider?: string[];
     }
   }
 }
@@ -75,11 +76,15 @@ export function getMaxProviderRetriesMiddleware() {
       req.originalModel = model;
 
       const providersInfo = await getProvidersForModel(originalModel);
+      req.availableModelsWithProvider = (providersInfo?.availableProvidersList || []).map(
+        (p) => `${p.providerName}/${p.modelName}`
+      );
+
       req.maxProviderRetries = providersInfo?.availableProviders || 1;
-      logger.info('Provider retry info', {
+      logger.info('Provider rotation info for retry', {
         model: originalModel,
         availableProviders: providersInfo?.availableProviders,
-        maxProviderRetries: req.maxProviderRetries,
+        availableProvidersList: req.availableModelsWithProvider,
       });
     } catch (error) {
       logger.warn('Failed to get providers info for retry', { error, model: req.originalModel });

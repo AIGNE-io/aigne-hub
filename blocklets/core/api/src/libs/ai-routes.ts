@@ -175,10 +175,11 @@ export const createRetryHandler = (
     try {
       logger.info('create retry handler start', { model: getReqModel(req) });
 
-      await new Promise<void>((resolve, reject) => {
+      // eslint-disable-next-line no-async-promise-executor
+      await new Promise<void>(async (resolve, reject) => {
         let index = 0;
 
-        const middlewareNext: NextFunction = (err?: any) => {
+        const middlewareNext: NextFunction = async (err?: any) => {
           if (err) {
             reject(err);
             return;
@@ -191,13 +192,13 @@ export const createRetryHandler = (
 
           const middleware = middlewaresArray[index++];
           if (middleware) {
-            middleware(req, res, middlewareNext).catch(reject);
+            await middleware(req, res, middlewareNext).catch(reject);
           } else {
             resolve();
           }
         };
 
-        middlewareNext();
+        await middlewareNext();
       });
     } catch (error) {
       const maxRetries = req.maxProviderRetries !== undefined ? req.maxProviderRetries : defaultOptions.maxRetries;
@@ -213,9 +214,13 @@ export const createRetryHandler = (
           originalModel: req.originalModel,
         });
 
-        if (req.originalModel) {
-          req.body.model = req.originalModel;
+        const nextModel =
+          (req.availableModelsWithProvider || []).filter((m) => m !== getReqModel(req))?.[0] || req.originalModel;
+
+        if (nextModel) {
+          req.body.model = nextModel;
         }
+
         await fn(req, res, next, nextCount);
         return;
       }
