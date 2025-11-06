@@ -1,6 +1,6 @@
 import { getReqModel } from '@api/libs/ai-provider';
 import logger from '@api/libs/logger';
-import { ensureModelWithProvider } from '@api/libs/provider-rotation';
+import { ensureModelWithProvider, getProvidersForModel, modelHasProvider } from '@api/libs/provider-rotation';
 import { getCurrentUnixTimestamp } from '@api/libs/timestamp';
 import { getModelAndProviderId } from '@api/providers/util';
 import ModelCall from '@api/store/models/model-call';
@@ -47,15 +47,57 @@ declare global {
       credentialId?: string;
       provider?: string;
       model?: string;
+      maxProviderRetries?: number;
+      originalModel?: string;
+      availableModelsWithProvider?: string[];
     }
   }
+}
+
+export function getMaxProviderRetriesMiddleware() {
+  return async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const model = getReqModel(req);
+
+      if (!model) {
+        next();
+        return;
+      }
+
+      const hasProvider = modelHasProvider(model);
+      if (hasProvider) {
+        next();
+        return;
+      }
+
+      const modelNameParts = model.includes('/') ? model.split('/').slice(1) : [model];
+      const modelNameWithoutProvider = modelNameParts.join('/');
+      const originalModel = modelNameWithoutProvider || model;
+      req.originalModel = model;
+
+      const providersInfo = await getProvidersForModel(originalModel);
+      req.availableModelsWithProvider = (providersInfo?.availableProvidersList || [])
+        .filter((p) => p.providerName && p.modelName)
+        .map((p) => `${p.providerName}/${p.modelName}`);
+      req.maxProviderRetries = providersInfo?.availableProviders || 1;
+
+      logger.info('Provider rotation info for retry', {
+        model: originalModel,
+        availableProviders: providersInfo?.availableProviders,
+        availableProvidersList: req.availableModelsWithProvider,
+      });
+    } catch (error) {
+      logger.warn('Failed to get providers info for retry', { error, model: req.originalModel });
+    }
+
+    next();
+  };
 }
 
 export function createModelCallMiddleware(callType: CallType) {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const userDid = req.user?.did;
 
-    // Ensure model has provider before processing
     await ensureModelWithProvider(req);
 
     const model = getReqModel(req);
@@ -98,13 +140,11 @@ export function createModelCallMiddleware(callType: CallType) {
       if (context) {
         req.modelCallContext = context;
 
-        // 监听响应结束事件，如果没有手动完成则标记为异常
         const originalEnd = res.end.bind(res);
         let completed = false;
 
         res.end = (...args: any[]) => {
           if (!completed && req.modelCallContext) {
-            // 如果响应结束但没有手动完成ModelCall，标记为异常
             req.modelCallContext.fail('Response ended without completion').catch((err) => {
               logger.error('Failed to mark incomplete model call as failed', { error: err });
             });
@@ -112,7 +152,6 @@ export function createModelCallMiddleware(callType: CallType) {
           return originalEnd(...args);
         };
 
-        // 重写complete和fail方法以确保只能调用一次
         const originalComplete = context.complete;
         const originalFail = context.fail;
 
@@ -161,7 +200,6 @@ async function createModelCallContext({
     p = providerId;
     m = modelName;
 
-    // Create ModelCall record without provider/credential info initially
     const params = {
       providerId: providerId || '',
       model: modelName || model,
@@ -327,7 +365,6 @@ async function createModelCallContext({
   }
 }
 
-// Cleanup model call records that have been stuck in processing state beyond the specified timeout
 export async function cleanupStaleProcessingCalls(timeoutMinutes: number = 30): Promise<number> {
   try {
     const cutoffTime = getCurrentUnixTimestamp() - timeoutMinutes * 60;

@@ -56,17 +56,12 @@ export function inferVendorFromModel(model: string): string | undefined {
   return undefined;
 }
 
-/**
- * Get default/fallback provider for a model when rotation fails
- * Returns the most reliable direct provider for each model family
- */
 export function getDefaultProviderForModel(model: string): AIProviderType | null {
   if (!model) {
     return null;
   }
   const id = model.toLowerCase();
 
-  // Direct provider connections (highest reliability)
   if (/^gemini/.test(id)) return 'google';
   if (/^gpt-|^o[13]-|^dall-e-|^text-embedding|^sora-/.test(id)) return 'openai';
   if (/^claude/.test(id)) return 'anthropic';
@@ -74,7 +69,6 @@ export function getDefaultProviderForModel(model: string): AIProviderType | null
   if (/^grok/.test(id)) return 'xai';
   if (/^doubao/.test(id)) return 'doubao';
 
-  // For open-source models, fallback to openrouter (most comprehensive)
   if (/^(llama|mistral|mixtral|gemma|qwen|yi|phi)\b/i.test(id)) return 'openrouter';
 
   return null;
@@ -124,38 +118,28 @@ export function getSupportedProviders(model: string): AIProviderType[] {
 export function resolveProviderModelId(provider: AIProviderType, canonicalModel: string, vendor?: string): string {
   const v = vendor || inferVendorFromModel(canonicalModel);
 
-  // AWS Bedrock uses format: <provider>.<model-family>-<version>[:<revision>]
-  // e.g., 'anthropic.claude-3-5-sonnet-20241022-v2:0'
   if (provider === 'bedrock' && v) {
-    // If already in bedrock format, return as-is
     if (canonicalModel.includes('.')) {
       return canonicalModel;
     }
     return `${v}.${canonicalModel}`;
   }
 
-  // OpenRouter uses format: <vendor>/<model>
-  // e.g., 'google/gemini-2.5-pro', 'anthropic/claude-3-5-sonnet'
   if (provider === 'openrouter' && v && !canonicalModel.startsWith(`${v}/`)) {
     return `${v}/${canonicalModel}`;
   }
 
-  // Direct providers (google, openai, anthropic, etc.) and poe use model name directly
   return canonicalModel;
 }
 
-/**
- * AIProviderType Rotation Manager
- * Manages automatic provider switching for AI models
- */
 class ProviderRotationManager {
   private static readonly PROVIDER_CACHE_TTL = 5 * 60 * 1000;
 
-  private static readonly FAILED_PROVIDER_COOL_DOWN = 90 * 1000; // 90 seconds
+  private static readonly FAILED_PROVIDER_COOL_DOWN = 90 * 1000;
 
   private static readonly MAX_FAILURES_THRESHOLD = 3;
 
-  private static readonly EXTENDED_COOL_DOWN = 3 * 60 * 1000; // 3 minutes
+  private static readonly EXTENDED_COOL_DOWN = 3 * 60 * 1000;
 
   private rotationState = new Map<
     string,
@@ -236,11 +220,6 @@ class ProviderRotationManager {
     });
   }
 
-  /**
-   * Fetch providers from credit system with active credentials
-   * Queries AiModelRate to find configured providers for the model
-   * Match patterns: exact match or wildcard match like 'openai/gpt-4o'
-   */
   private async fetchProvidersFromCreditSystem(
     modelName: string
   ): Promise<Array<{ providerId: string; providerName: string; modelName: string }> | null> {
@@ -288,11 +267,6 @@ class ProviderRotationManager {
     return providerList.length > 0 ? providerList : null;
   }
 
-  /**
-   * Generate providers list based on built-in pattern matching rules
-   * Uses regex patterns to determine which providers support a given model
-   * Then filters by providers with active credentials in the database
-   */
   private async generateProvidersByModelPattern(
     modelName: string
   ): Promise<Array<{ providerId: string; providerName: string; modelName: string }> | null> {
@@ -347,10 +321,15 @@ class ProviderRotationManager {
     }
   }
 
-  public async getNextProviderForModel(
-    model: string,
-    preferredProviderName?: string
-  ): Promise<{ providerId: string; providerName: string; modelName: string } | null> {
+  private async ensureProvidersForModel(model: string): Promise<{
+    rotationState: {
+      providers: Array<{ providerId: string; providerName: string; modelName: string }>;
+      currentIndex: number;
+      lastUpdateTime: number;
+    };
+    availableProviders: Array<{ providerId: string; providerName: string; modelName: string }>;
+    modelName: string;
+  } | null> {
     const { modelName } = parseModelNameWithProvider(model);
 
     const now = Date.now();
@@ -384,6 +363,25 @@ class ProviderRotationManager {
     }
 
     const availableProviders = this.filterAvailableProviders(rotationState.providers);
+
+    return {
+      rotationState,
+      availableProviders,
+      modelName,
+    };
+  }
+
+  public async getNextProviderForModel(
+    model: string,
+    preferredProviderName?: string
+  ): Promise<{ providerId: string; providerName: string; modelName: string } | null> {
+    const result = await this.ensureProvidersForModel(model);
+    if (!result) {
+      return null;
+    }
+
+    const { rotationState, availableProviders, modelName } = result;
+
     if (availableProviders.length === 0) {
       logger.warn(`No available providers for model ${modelName}, all are in cool down or excluded`);
       return null;
@@ -435,9 +433,29 @@ class ProviderRotationManager {
       modelName: selected.modelName,
     };
   }
+
+  public async getProvidersForModel(model: string): Promise<{
+    totalProviders: number;
+    availableProviders: number;
+    providers: Array<{ providerId: string; providerName: string; modelName: string }>;
+    availableProvidersList: Array<{ providerId: string; providerName: string; modelName: string }>;
+  } | null> {
+    const result = await this.ensureProvidersForModel(model);
+    if (!result) {
+      return null;
+    }
+
+    const { rotationState, availableProviders } = result;
+
+    return {
+      totalProviders: rotationState.providers.length,
+      availableProviders: availableProviders.length,
+      providers: rotationState.providers,
+      availableProvidersList: availableProviders,
+    };
+  }
 }
 
-// Export singleton instance
 const providerRotationManager = new ProviderRotationManager();
 
 export function markProviderAsFailed(providerId: string, providerName: string): void {
@@ -451,6 +469,15 @@ export async function getNextProviderForModel(
   return providerRotationManager.getNextProviderForModel(model, preferredProviderName);
 }
 
+export async function getProvidersForModel(model: string): Promise<{
+  totalProviders: number;
+  availableProviders: number;
+  providers: Array<{ providerId: string; providerName: string; modelName: string }>;
+  availableProvidersList: Array<{ providerId: string; providerName: string; modelName: string }>;
+} | null> {
+  return providerRotationManager.getProvidersForModel(model);
+}
+
 export function clearAllRotationCache(): void {
   providerRotationManager.clearAllCache();
 }
@@ -459,10 +486,7 @@ export function clearFailedProvider(providerId: string): void {
   providerRotationManager.clearFailedProvider(providerId);
 }
 
-/**
- * Check if model already has a provider prefix
- */
-function modelHasProvider(model: string): boolean {
+export function modelHasProvider(model: string): boolean {
   if (!model || !model.includes('/')) {
     return false;
   }
@@ -476,9 +500,6 @@ function modelHasProvider(model: string): boolean {
   return SUPPORTED_PROVIDERS_SET.has(possibleProvider as AIProviderType);
 }
 
-/**
- * Update request body with provider-prefixed model
- */
 function updateRequestModel(
   req: {
     body: { model?: string; input?: { model?: string; modelOptions?: { model?: string } } };
@@ -487,14 +508,12 @@ function updateRequestModel(
   modelId: string
 ): void {
   const modelWithProvider = `${provider}/${modelId}`;
+
   if (req.body?.model) req.body.model = modelWithProvider;
   if (req.body?.input?.model) req.body.input.model = modelWithProvider;
   if (req.body?.input?.modelOptions?.model) req.body.input.modelOptions.model = modelWithProvider;
 }
 
-/**
- * Check if provider has active credentials
- */
 async function hasActiveCredentials(providerName: string): Promise<boolean> {
   const provider = await AiProvider.findOne({
     where: { name: providerName, enabled: true },
@@ -511,10 +530,6 @@ async function hasActiveCredentials(providerName: string): Promise<boolean> {
   return !!(provider && (provider as any).credentials?.length);
 }
 
-/**
- * Extract model from request body
- * Copied from ai-provider.ts to avoid circular dependency
- */
 function getReqModel(req: {
   body: { model?: string; input?: { model?: string; modelOptions?: { model?: string } } };
 }): string {
@@ -537,13 +552,11 @@ export async function ensureModelWithProvider(
     return;
   }
 
-  // Skip if model already has a provider prefix
   if (modelHasProvider(model)) {
     logger.info(`Model ${model} already has provider, skipping rotation`);
     return;
   }
 
-  // Try provider rotation first
   let providerInfo: { providerId: string; providerName: string; modelName: string } | null = null;
 
   try {
@@ -558,7 +571,6 @@ export async function ensureModelWithProvider(
     return;
   }
 
-  // Fallback to default provider
   logger.warn(`Provider rotation failed for model ${model}, attempting fallback to default provider`);
 
   const defaultProvider = getDefaultProviderForModel(model);
@@ -569,7 +581,6 @@ export async function ensureModelWithProvider(
     );
   }
 
-  // Check if default provider has active credentials
   const hasCredentials = await hasActiveCredentials(defaultProvider);
   if (!hasCredentials) {
     throw new CustomError(
@@ -578,7 +589,6 @@ export async function ensureModelWithProvider(
     );
   }
 
-  // Use default provider
   logger.info(`Using default provider ${defaultProvider} for model ${model}`);
   const vendor = inferVendorFromModel(model);
   const providerModelId = resolveProviderModelId(defaultProvider, model, vendor);

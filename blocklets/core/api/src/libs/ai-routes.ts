@@ -15,18 +15,17 @@ import {
 } from '@blocklet/aigne-hub/api/types';
 import { CustomError } from '@blocklet/error';
 import { get_encoding } from '@dqbd/tiktoken';
-import { Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import Joi from 'joi';
 import pick from 'lodash/pick';
 import { ImageEditParams, ImagesResponse } from 'openai/resources/images';
 
-import { DEFAULT_MODEL, getModelNameWithProvider, getOpenAIV2 } from './ai-provider';
+import { DEFAULT_MODEL, getModelNameWithProvider, getOpenAIV2, getReqModel } from './ai-provider';
 import { Config } from './env';
 import { processImageUrl } from './image';
 import logger from './logger';
 import { InvokeOptions } from './on-error';
 
-// Common Joi Schemas
 export const completionsRequestSchema = Joi.object<
   { model: string } & (
     | (ChatCompletionInput & { prompt: undefined })
@@ -160,36 +159,84 @@ export const imageGenerationRequestSchema = Joi.object<
   responseFormat: Joi.string().empty([null]),
 });
 
-// Common retry helper
+type Middleware = (req: Request, res: Response, next: NextFunction) => Promise<void>;
+const defaultOptions = { maxRetries: 1 };
+
+function canRetry(retries: number, maxRetries: number) {
+  return retries < maxRetries;
+}
+
 export const createRetryHandler = (
-  callback: (req: Request, res: Response) => Promise<void>
-): ((req: Request, res: Response) => Promise<void>) => {
-  const options = { maxRetries: Config.maxRetries, retryCodes: [500, 502] };
+  middlewares: Array<Middleware> | Middleware
+): ((req: Request, res: Response, next: NextFunction) => Promise<void>) => {
+  const middlewaresArray = Array.isArray(middlewares) ? middlewares : [middlewares];
 
-  function canRetry(code: number, retries: number) {
-    return options.retryCodes.includes(code) && retries < options.maxRetries;
-  }
-
-  const fn = async (req: Request, res: Response, count: number = 0): Promise<void> => {
+  const fn = async (req: Request, res: Response, next: NextFunction, count: number = 0): Promise<void> => {
     try {
-      await callback(req, res);
+      logger.info('create retry handler start', { model: getReqModel(req) });
+
+      // eslint-disable-next-line no-async-promise-executor
+      await new Promise<void>(async (resolve, reject) => {
+        let index = 0;
+
+        const middlewareNext: NextFunction = async (err?: any) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+
+          if (index >= middlewaresArray.length) {
+            resolve();
+            return;
+          }
+
+          const middleware = middlewaresArray[index++];
+          if (middleware) {
+            await middleware(req, res, middlewareNext).catch(reject);
+          } else {
+            resolve();
+          }
+        };
+
+        await middlewareNext();
+      });
     } catch (error) {
-      if (canRetry(error.response?.status, count)) {
-        logger.info('ai route retry', { count });
-        await fn(req, res, count + 1);
+      const maxRetries = req.maxProviderRetries !== undefined ? req.maxProviderRetries : defaultOptions.maxRetries;
+      const errorStatus = error.response?.status || error.status || 500;
+      const nextCount = count + 1;
+
+      if (canRetry(nextCount, maxRetries)) {
+        logger.info('ai route retry', {
+          count: nextCount,
+          maxRetries,
+          errorStatus,
+          model: getReqModel(req),
+          originalModel: req.originalModel,
+        });
+
+        const filteredModels = (req.availableModelsWithProvider || []).filter((m) => m !== getReqModel(req));
+        req.availableModelsWithProvider = filteredModels || [];
+
+        const nextModel = filteredModels[0] || req.originalModel;
+        if (nextModel) {
+          req.body.model = nextModel;
+        }
+
+        await fn(req, res, next, nextCount);
         return;
       }
 
       throw error;
     }
+
+    next();
   };
 
-  return async (req: Request, res: Response): Promise<void> => {
-    await fn(req, res, 0);
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    await fn(req, res, next, 0);
   };
 };
 
-// Core completions logic - returns usage data for caller to handle
 export async function processChatCompletion(
   req: Request,
   res: Response,
@@ -273,7 +320,6 @@ export async function processChatCompletion(
   if (!input.stream && !isEventStream) {
     res.json({
       role: 'assistant',
-      // Deprecated: use `content` instead.
       text: content,
       content,
       toolCalls: toolCalls.length ? toolCalls : undefined,
@@ -285,7 +331,6 @@ export async function processChatCompletion(
   if (Config.verbose) logger.info(`AIGNE Hub ${version} completions output:`, { content, toolCalls });
 
   if (!usage) {
-    // TODO: 更精确的 token 计算，暂时简单地 stringify 之后按照 gpt3/4 的 token 算法计算，尤其 function call 的计算偏差较大，需要改进
     const enc = get_encoding('cl100k_base');
     try {
       const promptTokens = enc.encode(JSON.stringify(input.messages)).length;
@@ -305,7 +350,6 @@ export async function processChatCompletion(
   };
 }
 
-// Core embeddings logic - returns usage data for caller to handle
 export async function processEmbeddings(
   req: Request,
   res: Response
@@ -333,7 +377,6 @@ export async function processEmbeddings(
   };
 }
 
-// Core image generation logic - returns usage data for caller to handle
 export async function processImageGeneration(
   {
     req,

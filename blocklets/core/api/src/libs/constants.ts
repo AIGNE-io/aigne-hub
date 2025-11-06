@@ -1,5 +1,3 @@
-// NOTE: Need to keep in sync with @blocklet/aigne-hub/api/constants.ts
-
 export const AI_PROVIDERS = {
   OPENAI: 'openai',
   ANTHROPIC: 'anthropic',
@@ -43,3 +41,10 @@ export const PROVIDER_RANK: Record<AIProviderType, number> = {
   poe: 3,
   ollama: 4,
 };
+
+const DEFAULT_MODEL = 'openai/gpt-5-mini';
+const DEFAULT_IMAGE_MODEL = 'openai/dall-e-2';
+const DEFAULT_VIDEO_MODEL = 'openai/sora-2';
+const MEDIA_KIT_DID = 'z8ia1mAXo8ZE7ytGF36L5uBf9kD2kenhqFGp9';
+
+export { DEFAULT_MODEL, DEFAULT_IMAGE_MODEL, DEFAULT_VIDEO_MODEL, MEDIA_KIT_DID };
