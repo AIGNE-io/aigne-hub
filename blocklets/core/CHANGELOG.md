@@ -1,3 +1,7 @@
+## 0.6.0 (2025-11-6)
+
+- fix: update package to latest
+
 ## 0.5.12 (2025-11-5)
 
 - fix: add automatic model retry mechanism with provider rotation
