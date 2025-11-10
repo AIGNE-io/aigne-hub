@@ -5,6 +5,11 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
+  '@aigne/aigne-hub': ^0.10.5
+  '@aigne/core': ^1.66.0
+  '@aigne/observability-api': ^0.11.5
+  '@aigne/openai': ^0.16.5
+  '@aigne/transport': ^0.15.14
   '@arcblock/did': 1.27.4
   '@arcblock/did-connect-js': 1.27.4
   '@arcblock/did-ext': 1.27.4
@@ -142,8 +147,8 @@ importers:
         specifier: ^3.2.2
         version: 3.2.2(b4b8f3c5c67e2c90a0feebf89d816323)
       '@blocklet/uploader-server':
-        specifier: ^0.3.8
-        version: 0.3.8(@tus/file-store@1.0.0(@tus/server@1.0.0))(@tus/server@1.0.0)(@uppy/companion@4.15.1)(axios@1.7.4)
+        specifier: ^0.3.9
+        version: 0.3.9(@tus/file-store@1.0.0(@tus/server@1.0.0))(@tus/server@1.0.0)(@uppy/companion@4.15.1)(axios@1.7.4)
       '@dqbd/tiktoken':
         specifier: ^1.0.16
         version: 1.0.16
@@ -578,6 +583,9 @@ packages:
 
   '@abtnode/cron@1.17.1':
     resolution: {integrity: sha512-K0pK6Jflu5+ecqteU85HrAyUZI8CTuquhESfZ0SmIHYfBchXb7TJbqfKcokoYojDb79b/xmcvFTOnE6hItKnzw==}
+
+  '@abtnode/cron@1.17.2-beta-20251110-023854-e91dad6f':
+    resolution: {integrity: sha512-BCP1FXlmkgicDyhiisLqA/NCz5pqbOP1inMmQjd88d/8KGMADwkBMJUwMjMPIE8FnckuLlYlKjj7KKRNqmDURA==}
 
   '@abtnode/db-cache@1.17.1':
     resolution: {integrity: sha512-DoV+yliPFh7W8JqQwc+kQEcZolB+M+wpQ7JD7AQr7pyUYDeXA0u6xoVDf2T0b2hcvAX9t5pTNDsyXeSb6J0SOA==}
@@ -1645,16 +1653,16 @@ packages:
       react: ^19.0.0
       react-router-dom: ^6.22.3
 
-  '@blocklet/uploader-server@0.3.8':
-    resolution: {integrity: sha512-S/Xog8LWJA45kY9YIRiOAnW3vq2uvLD0oaMHFaQbVRl/+4rKVKR98jjLv99fiNUu5yGgtOXuQy91CPaaWP1r8g==}
+  '@blocklet/uploader-server@0.3.9':
+    resolution: {integrity: sha512-VDobn7xNISUr77kQKgh23PsDAjc+d0/gb21Cx7b+O7bv00khGWf4rq8LpOiX6wat6ovsPan5FXPlRxgbXpMp0g==}
     peerDependencies:
       '@tus/file-store': 1.0.0
       '@tus/server': 1.0.0
       '@uppy/companion': 4.15.1
       axios: ^1.7.4
 
-  '@blocklet/xss@0.3.6':
-    resolution: {integrity: sha512-NWE5c6WAG/Fd2jXoBuWUrVZJ/so1xDgGoQEUlsplFChdLBCPAU23W7Vokk/TVIuER/qn1FpAq79kkrkbtMg3Gg==}
+  '@blocklet/xss@0.3.7':
+    resolution: {integrity: sha512-Y1ahXjVsCHE8oEpN79Ot7TFi04HFhKKGvYVXgdgZRCF6TRp9oP+yLVnhV9veGYyJB5iil/3n3adDS4csGOlX9A==}
 
   '@colors/colors@1.6.0':
     resolution: {integrity: sha512-Ir+AOibqzrIsL6ajt3Rz3LskB7OiMVHqltZmspbW/TJuTVuyOMirVqAkjfY6JISiLHgyNqicAC8AyHHGzNd/dA==}
@@ -10421,6 +10429,13 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  '@abtnode/cron@1.17.2-beta-20251110-023854-e91dad6f':
+    dependencies:
+      cron: 3.5.0
+      debug: 4.4.3(supports-color@5.5.0)
+    transitivePeerDependencies:
+      - supports-color
+
   '@abtnode/db-cache@1.17.1':
     dependencies:
       redis: 5.5.6
@@ -10490,7 +10505,7 @@ snapshots:
       '@blocklet/constant': 1.17.1
       '@blocklet/error': 0.3.2
       '@blocklet/meta': 1.17.1
-      '@blocklet/xss': 0.3.6
+      '@blocklet/xss': 0.3.7
       '@ocap/client': 1.27.4
       '@ocap/mcrypto': 1.27.4
       '@ocap/util': 1.27.4
@@ -13630,9 +13645,9 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@blocklet/uploader-server@0.3.8(@tus/file-store@1.0.0(@tus/server@1.0.0))(@tus/server@1.0.0)(@uppy/companion@4.15.1)(axios@1.7.4)':
+  '@blocklet/uploader-server@0.3.9(@tus/file-store@1.0.0(@tus/server@1.0.0))(@tus/server@1.0.0)(@uppy/companion@4.15.1)(axios@1.7.4)':
     dependencies:
-      '@abtnode/cron': 1.17.1
+      '@abtnode/cron': 1.17.2-beta-20251110-023854-e91dad6f
       '@blocklet/constant': 1.17.1
       '@blocklet/logger': 1.17.1
       '@blocklet/sdk': 1.17.1
@@ -13656,7 +13671,7 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@blocklet/xss@0.3.6':
+  '@blocklet/xss@0.3.7':
     dependencies:
       lodash: 4.17.21
       xss: 1.0.15
@@ -14741,7 +14756,7 @@ snapshots:
       '@arcblock/jwt': 1.27.4
       '@arcblock/validator': 1.27.4
       '@arcblock/vc': 1.27.4
-      '@blocklet/xss': 0.3.6
+      '@blocklet/xss': 0.3.7
       '@ocap/asset': 1.27.4
       '@ocap/client': 1.27.4
       '@ocap/mcrypto': 1.27.4
