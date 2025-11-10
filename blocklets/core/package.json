@@ -38,7 +38,7 @@
     "@abtnode/util": "^1.17.1",
     "@aigne/aigne-hub": "^0.10.5-beta.3",
     "@aigne/core": "^1.65.1-beta.3",
-    "@aigne/observability-api": "^0.11.5-beta.2",
+    "@aigne/observability-api": "^0.11.5",
     "@aigne/openai": "^0.16.5-beta.3",
     "@aigne/transport": "^0.15.14-beta.3",
     "@arcblock/did": "^1.27.4",
