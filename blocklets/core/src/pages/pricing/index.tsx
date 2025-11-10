@@ -36,9 +36,10 @@ import { ReactComponent as ChatIcon } from '../../icons/icon-text.svg';
 import { ReactComponent as VideoIcon } from '../../icons/icon-video.svg';
 
 const ONE_MILLION = new BigNumber(1000000);
+const MEDIA_TYPES = ['image_generation', 'video'];
 
-const getPrice = (price: number | BigNumber.Value, fixed?: number, isImage?: boolean) => {
-  const priceBN = new BigNumber(price).multipliedBy(isImage ? 1 : ONE_MILLION);
+const getPrice = (price: number | BigNumber.Value, fixed?: number, type?: string) => {
+  const priceBN = new BigNumber(price).multipliedBy(MEDIA_TYPES.includes(type || '') ? 1 : ONE_MILLION);
   return formatNumber(fixed !== undefined ? priceBN.toFixed(fixed) : priceBN.toString());
 };
 
@@ -387,7 +388,7 @@ export default function PricingPage() {
                   sx={{
                     color: 'primary.main',
                   }}>
-                  {getPrice(model.input_credits_per_token, 0, model.type === 'image_generation')} credits
+                  {getPrice(model.input_credits_per_token, 0, model.type)} credits
                 </Typography>
                 <Typography
                   sx={{
@@ -399,7 +400,7 @@ export default function PricingPage() {
               </Box>
               {window.blocklet.preferences.baseCreditPrice && (
                 <Box sx={{ color: 'text.secondary', fontSize: 14 }}>
-                  {`$${getPrice(new BigNumber(model.input_credits_per_token).multipliedBy(new BigNumber(window.blocklet.preferences.baseCreditPrice || 0)), 2, model.type === 'image_generation')}`}
+                  {`$${getPrice(new BigNumber(model.input_credits_per_token).multipliedBy(new BigNumber(window.blocklet.preferences.baseCreditPrice || 0)), 2, model.type)}`}
                 </Box>
               )}
             </Box>
@@ -438,6 +439,8 @@ export default function PricingPage() {
           let unit = '1M tokens';
           if (model.type === 'image_generation') {
             unit = 'image';
+          } else if (model.type === 'video') {
+            unit = 'second';
           }
 
           return (
@@ -460,7 +463,7 @@ export default function PricingPage() {
                     color: 'primary.main',
                     fontWeight: '700',
                   }}>
-                  {getPrice(model.output_credits_per_token, 0, model.type === 'image_generation')} credits
+                  {getPrice(model.output_credits_per_token, 0, model.type)} credits
                 </Typography>
                 <Typography
                   sx={{
@@ -472,7 +475,7 @@ export default function PricingPage() {
               </Box>
               {window.blocklet.preferences.baseCreditPrice && (
                 <Box sx={{ color: 'text.secondary', fontSize: 14 }}>
-                  {`$${getPrice(new BigNumber(model.output_credits_per_token).multipliedBy(new BigNumber(window.blocklet.preferences.baseCreditPrice || 0)), 2, model.type === 'image_generation')}`}
+                  {`$${getPrice(new BigNumber(model.output_credits_per_token).multipliedBy(new BigNumber(window.blocklet.preferences.baseCreditPrice || 0)), 2, model.type)}`}
                 </Box>
               )}
             </Box>

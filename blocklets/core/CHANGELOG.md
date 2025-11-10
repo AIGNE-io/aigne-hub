@@ -1,3 +1,9 @@
+## 0.6.2 (2025-11-10)
+
+- fix: correct video price calculation and display
+
+## 0.6.1 (2025-11-7)
+
 ## 0.6.0 (2025-11-6)
 
 - fix: update package to latest
