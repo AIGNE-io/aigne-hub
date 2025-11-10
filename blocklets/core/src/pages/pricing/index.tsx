@@ -441,7 +441,7 @@ export default function PricingPage() {
           if (model.type === 'image_generation') {
             unit = 'image';
           } else if (model.type === 'video') {
-            unit = 'seconds';
+            unit = 'second';
           }
 
           return (
