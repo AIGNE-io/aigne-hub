@@ -366,6 +366,7 @@ export default function PricingPage() {
         customBodyRender: (_value: any, tableMeta: any) => {
           const model = filteredData.list[tableMeta.rowIndex];
           if (!model) return null;
+          console.log(model);
 
           if (model.input_credits_per_token === 0) return '-';
 
@@ -388,7 +389,7 @@ export default function PricingPage() {
                   sx={{
                     color: 'primary.main',
                   }}>
-                  {getPrice(model.input_credits_per_token, 0, 'image_generation')} credits
+                  {getPrice(model.input_credits_per_token, 0, model.type)} credits
                 </Typography>
                 <Typography
                   sx={{
@@ -400,7 +401,7 @@ export default function PricingPage() {
               </Box>
               {window.blocklet.preferences.baseCreditPrice && (
                 <Box sx={{ color: 'text.secondary', fontSize: 14 }}>
-                  {`$${getPrice(new BigNumber(model.input_credits_per_token).multipliedBy(new BigNumber(window.blocklet.preferences.baseCreditPrice || 0)), 2, 'image_generation')}`}
+                  {`$${getPrice(new BigNumber(model.input_credits_per_token).multipliedBy(new BigNumber(window.blocklet.preferences.baseCreditPrice || 0)), 2, model.type)}`}
                 </Box>
               )}
             </Box>
@@ -440,7 +441,7 @@ export default function PricingPage() {
           if (model.type === 'image_generation') {
             unit = 'image';
           } else if (model.type === 'video') {
-            unit = 'second';
+            unit = 'seconds';
           }
 
           return (
@@ -463,7 +464,7 @@ export default function PricingPage() {
                     color: 'primary.main',
                     fontWeight: '700',
                   }}>
-                  {getPrice(model.output_credits_per_token, 0,  'image_generation')} credits
+                  {getPrice(model.output_credits_per_token, 0, model.type)} credits
                 </Typography>
                 <Typography
                   sx={{
@@ -475,7 +476,7 @@ export default function PricingPage() {
               </Box>
               {window.blocklet.preferences.baseCreditPrice && (
                 <Box sx={{ color: 'text.secondary', fontSize: 14 }}>
-                  {`$${getPrice(new BigNumber(model.output_credits_per_token).multipliedBy(new BigNumber(window.blocklet.preferences.baseCreditPrice || 0)), 2, 'image_generation')}`}
+                  {`$${getPrice(new BigNumber(model.output_credits_per_token).multipliedBy(new BigNumber(window.blocklet.preferences.baseCreditPrice || 0)), 2, model.type)}`}
                 </Box>
               )}
             </Box>
