@@ -1,3 +1,7 @@
+## 0.6.3 (2025-11-10)
+
+- chore: update package
+
 ## 0.6.2 (2025-11-10)
 
 - fix: correct video price calculation and display
