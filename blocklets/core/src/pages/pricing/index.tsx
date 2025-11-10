@@ -366,7 +366,6 @@ export default function PricingPage() {
         customBodyRender: (_value: any, tableMeta: any) => {
           const model = filteredData.list[tableMeta.rowIndex];
           if (!model) return null;
-          console.log(model);
 
           if (model.input_credits_per_token === 0) return '-';
 
