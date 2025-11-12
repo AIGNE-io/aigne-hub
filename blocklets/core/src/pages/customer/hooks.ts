@@ -1,7 +1,7 @@
 import api from '@app/libs/api';
+import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import Toast from '@arcblock/ux/lib/Toast';
 import { useRequest } from 'ahooks';
-
 // Types
 export interface CreditBalance {
   balance: number;
@@ -189,6 +189,8 @@ export function useModelCalls(params: {
 }
 
 export function useExportModelCalls() {
+  const { locale } = useLocaleContext();
+
   const { run: exportCalls, loading } = useRequest(
     async (params: {
       startTime: string;
@@ -199,7 +201,7 @@ export function useExportModelCalls() {
       providerId?: string;
     }) => {
       const response = await api.get('/api/user/model-calls/export', {
-        params,
+        params: { ...params, locale },
         responseType: 'blob',
       });
 

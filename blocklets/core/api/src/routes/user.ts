@@ -80,6 +80,7 @@ export interface ModelCallsQuery {
   providerId?: string;
   appDid?: string;
   allUsers?: boolean;
+  locale?: string;
 }
 
 const modelCallsSchema = Joi.object<ModelCallsQuery>({
@@ -93,7 +94,26 @@ const modelCallsSchema = Joi.object<ModelCallsQuery>({
   providerId: Joi.string().max(100).empty([null, '']),
   appDid: Joi.string().optional().empty([null, '']),
   allUsers: Joi.boolean().optional().empty([null, '']),
+  locale: Joi.string().optional().empty([null, '']),
 });
+
+const headerMap: Record<string, { en: string; zh: string }> = {
+  timestamp: { en: 'Timestamp', zh: '时间' },
+  requestId: { en: 'Request ID', zh: '请求ID' },
+  userDid: { en: 'User DID', zh: '用户DID' },
+  userName: { en: 'User Name', zh: '用户名' },
+  userEmail: { en: 'User Email', zh: '用户邮箱' },
+  model: { en: 'Model', zh: '模型' },
+  provider: { en: 'Provider', zh: '提供商' },
+  type: { en: 'Type', zh: '类型' },
+  status: { en: 'Status', zh: '状态' },
+  inputTokens: { en: 'Input Tokens', zh: '输入Token数' },
+  outputTokens: { en: 'Output Tokens', zh: '输出Token数' },
+  totalUsage: { en: 'Total Usage', zh: '总使用量' },
+  credits: { en: 'Credits', zh: '积分' },
+  duration: { en: 'Duration(s)', zh: '时长(秒)' },
+  appDid: { en: 'App DID', zh: '应用DID' },
+};
 
 export interface UsageStatsQuery {
   startTime?: string;
@@ -381,7 +401,7 @@ router.get(
   },
   async (req, res) => {
     try {
-      const { startTime, endTime, search, status, model, providerId, appDid, allUsers } =
+      const { startTime, endTime, search, status, model, providerId, appDid, allUsers, locale } =
         await modelCallsSchema.validateAsync(req.query, { stripUnknown: true });
 
       const userDid = req.user?.did;
@@ -447,16 +467,30 @@ router.get(
         `attachment; filename="model-calls-${new Date().toISOString().split('T')[0]}.csv"`
       );
 
-      const csvHeaders =
-        'Timestamp,Request ID,User DID,User Name,User Email,Model,Provider,Type,Status,Input Tokens,Output Tokens,Total Usage,Credits,Duration(ms),App DID\n';
+      const headerKeys = [
+        'timestamp',
+        'requestId',
+        'userDid',
+        'userName',
+        'userEmail',
+        'model',
+        'provider',
+        'type',
+        'status',
+        'inputTokens',
+        'outputTokens',
+        'totalUsage',
+        'credits',
+        'duration',
+        'appDid',
+      ];
+
+      const csvHeaders = headerKeys.map((key) => headerMap[key]?.[locale === 'zh' ? 'zh' : 'en']).join(',');
       const csvRows = csvData
-        .map(
-          (row) =>
-            `${row.timestamp},${row.requestId},${row.userDid},${row.userName},${row.userEmail},${row.model},${row.provider},${row.type},${row.status},${row.inputTokens},${row.outputTokens},${row.totalUsage},${row.credits},${row.duration},${row.appDid || ''}`
-        )
+        .map((row) => headerKeys.map((key) => row[key as keyof typeof row] || '').join(','))
         .join('\n');
 
-      return res.send(csvHeaders + csvRows);
+      return res.send(`${csvHeaders}\n${csvRows}`);
     } catch (error) {
       return res.status(500).json({ message: error.message });
     }
