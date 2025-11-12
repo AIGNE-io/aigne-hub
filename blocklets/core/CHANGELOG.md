@@ -1,3 +1,7 @@
+## 0.6.4 (2025-11-12)
+
+- fix: add i18n support for model calls CSV export
+
 ## 0.6.3 (2025-11-10)
 
 - chore: update package

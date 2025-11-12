@@ -121,7 +121,7 @@ export function CallHistory({
   appDid = undefined,
   allUsers = false,
 }: CallHistoryProps) {
-  const { t } = useLocaleContext();
+  const { t, locale } = useLocaleContext();
   const { api } = useSessionContext();
 
   // Local state for search and pagination
@@ -201,7 +201,7 @@ export function CallHistory({
       delete query.pageSize;
 
       const response = await api.get('/api/user/model-calls/export', {
-        params: query,
+        params: { ...query, locale },
         responseType: 'blob',
       });
 
