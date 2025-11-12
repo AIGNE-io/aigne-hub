@@ -201,7 +201,7 @@ export function CallHistory({
       delete query.pageSize;
 
       const response = await api.get('/api/user/model-calls/export', {
-        params: { ...query, locale: locale },
+        params: { ...query, locale },
         responseType: 'blob',
       });
 
