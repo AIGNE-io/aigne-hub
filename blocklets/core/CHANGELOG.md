@@ -1,3 +1,5 @@
+## 0.6.5 (2025-11-14)
+
 ## 0.6.4 (2025-11-12)
 
 - fix: add i18n support for model calls CSV export
