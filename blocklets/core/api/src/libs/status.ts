@@ -304,9 +304,18 @@ export function withModelStatus(handler: (req: Request, res: Response) => Promis
       }
 
       handleModelCallError(req, error);
+
       if (error.status && !(error instanceof CustomError)) {
+        if (String(error.status).startsWith('50')) {
+          throw new CustomError(
+            Number(error.status),
+            `${provider} service is temporarily unavailable. Please try again later`
+          );
+        }
+
         throw new CustomError(Number(error.status || '500'), error.message || 'Unknown error');
       }
+
       throw error;
     }
   };

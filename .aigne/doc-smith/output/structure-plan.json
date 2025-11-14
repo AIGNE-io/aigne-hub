@@ -7,7 +7,8 @@
       "README.md",
       "blocklets/core/blocklet.md"
     ],
-    "parentId": ""
+    "parentId": "",
+    "icon": "lucide:book-open"
   },
   {
     "title": "Architecture",
@@ -22,7 +23,8 @@
       "blocklets/core/api/src/providers/models.ts",
       "blocklets/core/api/src/store/migrate.ts"
     ],
-    "parentId": ""
+    "parentId": "",
+    "icon": "lucide:layers"
   },
   {
     "title": "System Components",
@@ -75,7 +77,8 @@
     "sourceIds": [
       "README.md"
     ],
-    "parentId": ""
+    "parentId": "",
+    "icon": "lucide:rocket"
   },
   {
     "title": "Prerequisites",
@@ -114,7 +117,8 @@
       "blocklets/core/api/src/libs/payment.ts",
       "blocklets/core/api/src/libs/env.ts"
     ],
-    "parentId": ""
+    "parentId": "",
+    "icon": "lucide:settings"
   },
   {
     "title": "AI Providers and Credentials",
@@ -153,7 +157,8 @@
       "blocklets/core/api/src/store/models/model-call.ts",
       "blocklets/core/api/src/store/models/model-call-stat.ts"
     ],
-    "parentId": ""
+    "parentId": "",
+    "icon": "lucide:compass"
   },
   {
     "title": "Monitoring Usage and Costs",
@@ -197,7 +202,8 @@
       "blocklets/core/api/src/routes/v2.ts",
       "blocklets/core/api/src/libs/ai-routes.ts"
     ],
-    "parentId": ""
+    "parentId": "",
+    "icon": "lucide:code"
   },
   {
     "title": "Authentication",
@@ -242,7 +248,8 @@
       "blocklets/core/api/src/libs/auth.ts",
       "blocklets/core/api/src/store/models/ai-credential.ts"
     ],
-    "parentId": ""
+    "parentId": "",
+    "icon": "lucide:shield"
   },
   {
     "title": "Self-Hosted Data Control",

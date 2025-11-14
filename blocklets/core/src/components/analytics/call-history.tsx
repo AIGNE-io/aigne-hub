@@ -600,7 +600,14 @@ export function CallHistory({
             selectableRows: 'none',
             responsive: 'vertical',
           }}
-          emptyNodeText={t('analytics.noCallsFound')}
+          emptyNodeText={
+            dateRange?.from && dateRange?.to
+              ? t('analytics.noCallsFoundBetween', {
+                  startTime: dayjs((dateRange?.from || 0) * 1000).format('YYYY-MM-DD'),
+                  endTime: dayjs((dateRange?.to || 0) * 1000).format('YYYY-MM-DD'),
+                })
+              : t('analytics.noCallsFound')
+          }
           mobileTDFlexDirection="row"
         />
       </Root>

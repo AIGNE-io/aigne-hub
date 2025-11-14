@@ -61,7 +61,7 @@ function CreditBoard() {
 
   // Smart loading states to prevent flickering
   const showBalanceSkeleton = useSmartLoading(balanceLoading, creditBalance);
-  const showStatsSkeleton = useSmartLoading(statsLoading, usageStats);
+  const showStatsSkeleton = statsLoading;
 
   const onRefresh = () => {
     refetchBalance();
@@ -88,16 +88,6 @@ function CreditBoard() {
               alignItems: { xs: 'flex-start', md: 'center' },
             }}>
             <Box>
-              <Typography variant="h2" sx={{ fontWeight: 'bold', mb: 0.5, color: 'text.primary' }}>
-                {t('analytics.creditUsage')}
-              </Typography>
-              <Typography
-                variant="body1"
-                sx={{
-                  color: 'text.secondary',
-                }}>
-                {t('analytics.creditBoardDescription')}
-              </Typography>
             </Box>
             <Stack direction="row" spacing={1}>
               <DateRangePicker
@@ -135,6 +125,19 @@ function CreditBoard() {
               {formatError(balanceError || statsError)}
             </Alert>
           )}
+
+          <Stack>
+            <Typography variant="h3">{t('analytics.creditUsage')}</Typography>
+            <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+              <Typography
+                variant="body2"
+                sx={{
+                  color: 'text.secondary',
+                }}>
+                {t('analytics.creditBoardDescription')}
+              </Typography>
+            </Stack>
+          </Stack>
 
           {/* Credits Balance */}
           {showBalanceSkeleton ? (
@@ -178,7 +181,7 @@ function CreditBoard() {
             </Stack>
           </Box>
 
-          <Divider sx={{ my: 2 }} />
+          <Box sx={{ my: 2 }} />
 
           <CallHistory refreshKey={refreshKey} dateRange={dateRange} enableExport appDid={appDid ?? undefined} />
         </Stack>
