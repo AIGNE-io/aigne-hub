@@ -50,9 +50,9 @@ export function UsageSummarySkeleton() {
       {[1, 2, 3].map((i) => (
         <Card key={i} sx={{ flex: 1, p: 2 }}>
           <Stack spacing={1}>
-            <Skeleton variant="text" width="60%" height={20} />
-            <Skeleton variant="text" width="40%" height={32} />
-            <Skeleton variant="text" width="80%" height={16} />
+            <Skeleton variant="text" width="60%" height={22} />
+            <Skeleton variant="text" width="40%" height={34} />
+            <Skeleton variant="text" width="80%" height={18} />
           </Stack>
         </Card>
       ))}
@@ -64,7 +64,7 @@ export function UsageChartsSkeleton() {
   return (
     <Card sx={{ p: 3 }}>
       <Skeleton variant="text" width="40%" height={24} sx={{ mb: 2 }} />
-      <Skeleton variant="rectangular" width="100%" height={260} />
+      <Skeleton variant="rectangular" width="100%" height={190} />
     </Card>
   );
 }
