@@ -88,9 +88,6 @@ function CreditBoard() {
               alignItems: { xs: 'flex-start', md: 'center' },
             }}>
             <Box>
-              <Typography variant="h2" sx={{ fontWeight: 'bold', color: 'text.primary' }}>
-                {t('analytics.creditUsage')}
-              </Typography>
             </Box>
             <Stack direction="row" spacing={1}>
               <DateRangePicker
@@ -122,8 +119,6 @@ function CreditBoard() {
             </Stack>
           </Stack>
 
-          <Box sx={{ my: 1 }} />
-
           {/* Error Alert */}
           {hasError && (
             <Alert severity="error" sx={{ borderRadius: 2 }}>
@@ -132,7 +127,7 @@ function CreditBoard() {
           )}
 
           <Stack>
-            <Typography variant="h3">{t('analytics.creditOverview')}</Typography>
+            <Typography variant="h3">{t('analytics.creditUsage')}</Typography>
             <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
               <Typography
                 variant="body2"
