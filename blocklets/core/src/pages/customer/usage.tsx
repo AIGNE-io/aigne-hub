@@ -88,7 +88,7 @@ function CreditBoard() {
               alignItems: { xs: 'flex-start', md: 'center' },
             }}>
             <Box>
-              <Typography variant="h2" sx={{ fontWeight: 'bold', mb: 0.5, color: 'text.primary' }}>
+              <Typography variant="h2" sx={{ fontWeight: 'bold', color: 'text.primary' }}>
                 {t('analytics.creditUsage')}
               </Typography>
             </Box>
@@ -122,7 +122,7 @@ function CreditBoard() {
             </Stack>
           </Stack>
 
-          <Divider sx={{ my: 2 }} />
+          <Box sx={{ my: 1 }} />
 
           {/* Error Alert */}
           {hasError && (
