@@ -277,7 +277,7 @@ router.post(
                 }
               }
 
-              if (value.input?.outputFileType === 'url' && usageData.files && usageData.files?.length > 0) {
+              if (value.input?.outputFileType === 'url' && usageData?.files && usageData.files?.length > 0) {
                 const list = await Promise.all(
                   usageData.files.map(async (file) => {
                     if (file.type === 'local' && file.path) {

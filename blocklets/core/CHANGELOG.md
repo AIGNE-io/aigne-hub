@@ -1,3 +1,21 @@
+## 0.6.6 (2025-11-14)
+
+- fix: update package to latest
+
+## 0.6.5 (2025-11-14)
+
+## 0.6.4 (2025-11-12)
+
+- fix: add i18n support for model calls CSV export
+
+## 0.6.3 (2025-11-10)
+
+- chore: update package
+
+## 0.6.2 (2025-11-10)
+
+- fix: correct video price calculation and display
+
 ## 0.6.1 (2025-11-7)
 
 ## 0.6.0 (2025-11-6)
