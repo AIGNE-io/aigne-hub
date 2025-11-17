@@ -428,6 +428,7 @@ export default flatten({
   analytics: {
     allCreditsUsage: '额度总览',
     creditUsage: '额度分析',
+    creditOverview: '额度总览',
     allCreditBoardDescription: '实时监控团队成员的模型使用情况，统一管理 AIGNE Hub Credits',
     creditBoardDescription: '监控您的模型使用情况并管理 AIGNE Hub Credits 额度',
     loadingData: '数据加载中...',
@@ -463,7 +464,8 @@ export default flatten({
     searchPlaceholder: '按模型 / {did} 搜索...',
     allStatus: '所有状态',
     timestamp: '时间戳',
-    noCallsFound: '未找到符合条件的调用记录',
+    noCallsFoundBetween: '未找到日期在 {startTime} 至 {endTime} 之间的调用记录',
+    noCallsFound: '没有找到符合条件的调用记录',
     dailyTokenUsage: '每日Token使用',
     noLimit: '不限量',
     modelUsageStatsEmpty: '当前时间段内没有模型使用记录',

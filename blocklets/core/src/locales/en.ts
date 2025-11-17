@@ -436,6 +436,7 @@ export default flatten({
   // Analytics & Credit Board
   analytics: {
     creditUsage: 'Credit Usage',
+    creditOverview: 'Credit Overview',
     creditBoardDescription: 'Monitor your model usage and manage AIGNE Hub Credits',
     allCreditsUsage: 'All Credits Usage',
     allCreditBoardDescription: 'Monitor all users model usage and manage AIGNE Hub Credits',
@@ -472,7 +473,8 @@ export default flatten({
     searchPlaceholder: 'Search by model / {did}...',
     allStatus: 'All Status',
     timestamp: 'Timestamp',
-    noCallsFound: 'No calls found matching your criteria',
+    noCallsFoundBetween: 'No matching call records were found between {startTime} and {endTime}',
+    noCallsFound: 'No matching call records were found',
     dailyTokenUsage: 'Daily Token Usage',
     noLimit: 'No Limit',
     modelUsageStatsEmpty: 'No model usage records',
