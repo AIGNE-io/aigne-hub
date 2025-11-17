@@ -48,10 +48,10 @@ export function UsageSummarySkeleton() {
   return (
     <Stack direction={{ xs: 'column', md: 'row' }} spacing={3}>
       {[1, 2, 3].map((i) => (
-        <Card key={i} sx={{ flex: 1, p: 2 }}>
-          <Stack spacing={1}>
-            <Skeleton variant="text" width="60%" height={22} />
-            <Skeleton variant="text" width="40%" height={34} />
+        <Card key={i} sx={{ flex: 1, p: 2.5, pb: 3 }}>
+          <Stack spacing={0}>
+            <Skeleton variant="text" width="60%" height={20} sx={{ mb: 1 }} />
+            <Skeleton variant="text" width="40%" height={34} sx={{ mb: 0.5 }} />
             <Skeleton variant="text" width="80%" height={18} />
           </Stack>
         </Card>
@@ -62,43 +62,46 @@ export function UsageSummarySkeleton() {
 
 export function UsageChartsSkeleton() {
   return (
-    <Card sx={{ p: 3 }}>
-      <Skeleton variant="text" width="40%" height={24} sx={{ mb: 2 }} />
-      <Skeleton variant="rectangular" width="100%" height={190} />
+    <Card sx={{ height: 278 }}>
+      <Skeleton variant="text" width="40%" height={24} sx={{ m: 2 }} />
+      <Skeleton variant="rectangular" height={180} sx={{ m: 2, mb: 3, overflow: 'hidden' }} />
     </Card>
   );
 }
 
 export function ModelUsageStatsSkeleton() {
   return (
-    <Card sx={{ p: 3, height: '100%' }}>
-      <Stack spacing={3}>
-        <Stack spacing={1}>
-          <Skeleton variant="text" width="60%" height={24} />
-          <Skeleton variant="text" width="80%" height={16} />
+    <Card sx={{ p: 2, height: '100%' }}>
+      <Stack spacing={0}>
+        <Stack spacing={0} sx={{ mb: '24px !important' }}>
+          <Skeleton variant="text" width="60%" height={27} sx={{ mb: 0.1 }} />
+          <Skeleton variant="text" width="80%" height={24} sx={{ mb: 1 }} />
         </Stack>
-        {[1, 2, 3, 4, 5].map((i) => (
-          <Stack
-            key={i}
-            direction="row"
-            sx={{
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            }}>
+
+        <Stack spacing={1.5}>
+          {[1, 2, 3, 4, 5].map((i) => (
             <Stack
+              key={i}
               direction="row"
-              spacing={3}
               sx={{
+                justifyContent: 'space-between',
                 alignItems: 'center',
               }}>
-              <Skeleton variant="circular" width={24} height={24} />
-              <Stack>
-                <Skeleton variant="text" width={120} height={20} />
+              <Stack
+                width="100%"
+                direction="row"
+                spacing={1.5}
+                my={1}
+                sx={{
+                  alignItems: 'center',
+                }}>
+                <Skeleton variant="circular" width={24} height={24} />
+                <Skeleton variant="text" width={200} height={20} sx={{ mb: 0.1 }} />
               </Stack>
+              <Skeleton variant="text" width={60} height={20} />
             </Stack>
-            <Skeleton variant="text" width={60} height={20} />
-          </Stack>
-        ))}
+          ))}
+        </Stack>
       </Stack>
     </Card>
   );
