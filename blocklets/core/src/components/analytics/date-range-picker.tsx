@@ -140,7 +140,7 @@ export function DateRangePicker({
     if (locale === 'zh') {
       if (startDate.isSame(endDate, 'year')) {
         if (isMobile) {
-          return `${startDate.format('M D')} - ${endDate.format('M D')}`;
+          return `${startDate.format('M.D')} - ${endDate.format('M.D YYYY')}`;
         }
 
         return `${startDate.format('M月D日')} - ${endDate.format('M月D日, YYYY年')}`;
@@ -148,7 +148,11 @@ export function DateRangePicker({
       return `${startDate.format('YYYY年M月D日')} - ${endDate.format('YYYY年M月D日')}`;
     }
 
-    return `${startDate.format('MMM DD')} - ${endDate.format(isMobile ? 'MMM DD' : 'MMM DD, YYYY')}`;
+    if (isMobile) {
+      return `${startDate.format('M.D')} - ${endDate.format('M.D YYYY')}`;
+    }
+
+    return `${startDate.format('MMM DD')} - ${endDate.format('MMM DD, YYYY')}`;
   };
 
   const handleQuickSelect = (range: { start: Dayjs; end: Dayjs }) => {
