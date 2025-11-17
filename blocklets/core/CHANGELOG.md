@@ -1,6 +1,6 @@
 ## 0.6.6 (2025-11-14)
 
-- fix: improve credit page layout and UX
+- fix: update package to latest
 
 ## 0.6.5 (2025-11-14)
 
