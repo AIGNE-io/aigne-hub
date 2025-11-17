@@ -4,7 +4,6 @@ import {
   UsageChartsSkeleton,
   UsageSummarySkeleton,
   toUTCTimestamp,
-  useSmartLoading,
 } from '@app/components/analytics/skeleton';
 import { Toast } from '@arcblock/ux';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
@@ -44,7 +43,7 @@ export default function UsageStatsBoard() {
     });
   };
 
-  const showStatsSkeleton = useSmartLoading(statsLoading, usageStats);
+  const showStatsSkeleton = statsLoading;
 
   const onRefresh = () => {
     refetchStats();

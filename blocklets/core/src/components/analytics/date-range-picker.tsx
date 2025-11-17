@@ -139,12 +139,12 @@ export function DateRangePicker({
 
     if (locale === 'zh') {
       if (startDate.isSame(endDate, 'year')) {
-        return `${startDate.format('M月D日')} - ${endDate.format('M月D日, YYYY年')}`;
+        return `${startDate.format('M月D日')} - ${endDate.format(isMobile ? 'M月D日' : 'M月D日, YYYY年')}`;
       }
       return `${startDate.format('YYYY年M月D日')} - ${endDate.format('YYYY年M月D日')}`;
     }
 
-    return `${startDate.format('MMM DD')} - ${endDate.format('MMM DD, YYYY')}`;
+    return `${startDate.format('MMM DD')} - ${endDate.format(isMobile ? 'MMM DD' : 'MMM DD, YYYY')}`;
   };
 
   const handleQuickSelect = (range: { start: Dayjs; end: Dayjs }) => {
