@@ -12,7 +12,7 @@ import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import { UserInfoResult } from '@blocklet/aigne-hub/api/types/user';
 import { formatError } from '@blocklet/error';
 import { RefreshOutlined } from '@mui/icons-material';
-import { Alert, Box, Divider, IconButton, Stack, Tooltip, Typography } from '@mui/material';
+import { Alert, Box, IconButton, Stack, Tooltip, Typography } from '@mui/material';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { useState } from 'react';
@@ -87,8 +87,18 @@ function CreditBoard() {
               justifyContent: 'space-between',
               alignItems: { xs: 'flex-start', md: 'center' },
             }}>
-            <Box>
-            </Box>
+            <Stack>
+              <Typography variant="h3">{t('analytics.creditUsage')}</Typography>
+              <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: 'text.secondary',
+                  }}>
+                  {t('analytics.creditBoardDescription')}
+                </Typography>
+              </Stack>
+            </Stack>
             <Stack direction="row" spacing={1}>
               <DateRangePicker
                 startDate={dayjs.unix(dateRange.from).local()}
@@ -125,19 +135,6 @@ function CreditBoard() {
               {formatError(balanceError || statsError)}
             </Alert>
           )}
-
-          <Stack>
-            <Typography variant="h3">{t('analytics.creditUsage')}</Typography>
-            <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-              <Typography
-                variant="body2"
-                sx={{
-                  color: 'text.secondary',
-                }}>
-                {t('analytics.creditBoardDescription')}
-              </Typography>
-            </Stack>
-          </Stack>
 
           {/* Credits Balance */}
           {showBalanceSkeleton ? (
@@ -183,7 +180,7 @@ function CreditBoard() {
 
           <Box sx={{ my: 2 }} />
 
-          <CallHistory refreshKey={refreshKey} dateRange={dateRange} enableExport appDid={appDid ?? undefined} />
+          <CallHistory refreshKey={refreshKey} enableExport appDid={appDid ?? undefined} />
         </Stack>
       </Box>
     </LocalizationProvider>

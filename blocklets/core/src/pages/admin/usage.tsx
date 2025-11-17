@@ -10,7 +10,7 @@ import { Toast } from '@arcblock/ux';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import { formatError } from '@blocklet/error';
 import { RefreshOutlined } from '@mui/icons-material';
-import { Alert, Box, Divider, IconButton, Stack, Tooltip, Typography } from '@mui/material';
+import { Alert, Box, IconButton, Stack, Tooltip, Typography } from '@mui/material';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { useState } from 'react';
@@ -68,18 +68,18 @@ export default function UsageStatsBoard() {
               justifyContent: 'space-between',
               alignItems: { xs: 'flex-start', md: 'center' },
             }}>
-            <Box>
-              <Typography variant="h2" sx={{ fontWeight: 'bold', mb: 0.5, color: 'text.primary' }}>
-                {t('analytics.allCreditsUsage')}
-              </Typography>
-              <Typography
-                variant="body1"
-                sx={{
-                  color: 'text.secondary',
-                }}>
-                {t('analytics.allCreditBoardDescription')}
-              </Typography>
-            </Box>
+            <Stack>
+              <Typography variant="h3">{t('analytics.creditUsage')}</Typography>
+              <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: 'text.secondary',
+                  }}>
+                  {t('analytics.creditBoardDescription')}
+                </Typography>
+              </Stack>
+            </Stack>
             <Stack direction="row" spacing={1}>
               <DateRangePicker
                 startDate={dayjs.unix(dateRange.from).local()}
@@ -151,9 +151,9 @@ export default function UsageStatsBoard() {
             </Stack>
           </Box>
 
-          <Divider sx={{ my: 2 }} />
+          <Box sx={{ my: 2 }} />
 
-          <CallHistory refreshKey={refreshKey} dateRange={dateRange} enableExport allUsers />
+          <CallHistory refreshKey={refreshKey} enableExport allUsers />
         </Stack>
       </Box>
     </LocalizationProvider>
