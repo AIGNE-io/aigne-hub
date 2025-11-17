@@ -140,7 +140,7 @@ export function DateRangePicker({
     if (locale === 'zh') {
       if (startDate.isSame(endDate, 'year')) {
         if (isMobile) {
-          return `${startDate.format('M.D')} - ${endDate.format('M.D YYYY')}`;
+          return `${startDate.format('M.D')} - ${endDate.format('M.D,YYYY')}`;
         }
 
         return `${startDate.format('M月D日')} - ${endDate.format('M月D日, YYYY年')}`;
@@ -149,7 +149,7 @@ export function DateRangePicker({
     }
 
     if (isMobile) {
-      return `${startDate.format('M.D')} - ${endDate.format('M.D YYYY')}`;
+      return `${startDate.format('M.D')} - ${endDate.format('M.D,YYYY')}`;
     }
 
     return `${startDate.format('MMM DD')} - ${endDate.format('MMM DD, YYYY')}`;
