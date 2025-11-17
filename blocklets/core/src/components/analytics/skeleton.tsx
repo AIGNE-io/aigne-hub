@@ -50,9 +50,9 @@ export function UsageSummarySkeleton() {
       {[1, 2, 3].map((i) => (
         <Card key={i} sx={{ flex: 1, p: 2.5, pb: 3 }}>
           <Stack spacing={0}>
-            <Skeleton variant="rectangular" width="60%" height={20} sx={{ mb: 1 }} />
-            <Skeleton variant="rectangular" width="40%" height={34} sx={{ mb: 0.5 }} />
-            <Skeleton variant="rectangular" width="80%" height={18} />
+            <Skeleton variant="text" width="60%" height={20} sx={{ mb: 1 }} />
+            <Skeleton variant="text" width="40%" height={34} sx={{ mb: 0.5 }} />
+            <Skeleton variant="text" width="80%" height={18} />
           </Stack>
         </Card>
       ))}
@@ -63,7 +63,7 @@ export function UsageSummarySkeleton() {
 export function UsageChartsSkeleton() {
   return (
     <Card sx={{ height: 278 }}>
-      <Skeleton variant="rectangular" width="40%" height={24} sx={{ m: 2 }} />
+      <Skeleton variant="text" width="40%" height={24} sx={{ m: 2 }} />
       <Skeleton variant="rectangular" height={180} sx={{ m: 2, mb: 3, overflow: 'hidden' }} />
     </Card>
   );
@@ -74,8 +74,8 @@ export function ModelUsageStatsSkeleton() {
     <Card sx={{ p: 2, height: '100%' }}>
       <Stack spacing={0}>
         <Stack spacing={0} sx={{ mb: '24px !important' }}>
-          <Skeleton variant="rectangular" width="60%" height={27} sx={{ mb: 0.1 }} />
-          <Skeleton variant="rectangular" width="80%" height={24} sx={{ mb: 1 }} />
+          <Skeleton variant="text" width="60%" height={27} sx={{ mb: 0.1 }} />
+          <Skeleton variant="text" width="80%" height={24} sx={{ mb: 1 }} />
         </Stack>
 
         <Stack spacing={1.5}>
@@ -96,9 +96,9 @@ export function ModelUsageStatsSkeleton() {
                   alignItems: 'center',
                 }}>
                 <Skeleton variant="circular" width={24} height={24} />
-                <Skeleton variant="rectangular" width={200} height={20} sx={{ mb: 0.1 }} />
+                <Skeleton variant="text" width={200} height={20} sx={{ mb: 0.1 }} />
               </Stack>
-              <Skeleton variant="rectangular" width={60} height={20} />
+              <Skeleton variant="text" width={60} height={20} />
             </Stack>
           ))}
         </Stack>
