@@ -149,7 +149,8 @@ export const embeddingsRequestSchema = Joi.object<EmbeddingInput>({
 });
 
 export const imageGenerationRequestSchema = Joi.object<
-  ImageGenerationInput & Required<Pick<ImageGenerationInput, 'model' | 'n'>>
+  ImageGenerationInput &
+    Required<Pick<ImageGenerationInput, 'model' | 'n'>> & { outputFileType?: 'file' | 'url' | 'local' }
 >({
   model: Joi.string().empty(['', null]).default('dall-e-2'),
   image: Joi.alternatives().try(Joi.string(), Joi.array().items(Joi.string())),
@@ -157,6 +158,7 @@ export const imageGenerationRequestSchema = Joi.object<
   size: Joi.string().empty(['', null]),
   n: Joi.number().min(1).max(10).empty([null]).default(1),
   responseFormat: Joi.string().empty([null]),
+  outputFileType: Joi.string().empty([null]),
 });
 
 type Middleware = (req: Request, res: Response, next: NextFunction) => Promise<void>;
@@ -456,6 +458,7 @@ export async function processImageGeneration(
       {
         ...params,
         responseFormat: params.responseFormat === 'b64_json' ? 'base64' : params.responseFormat || 'base64',
+        outputFileType: input?.outputFileType || 'file',
       },
       options
     );

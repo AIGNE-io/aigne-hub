@@ -1,3 +1,7 @@
+## 0.6.9 (2025-11-17)
+
+- fix: add outputFileType parameter for image generation
+
 ## 0.6.8 (2025-11-17)
 
 - fix: optimize skeleton sizes and mobile date format
