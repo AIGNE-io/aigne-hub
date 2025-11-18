@@ -1,7 +1,7 @@
 {
   "name": "ai-kit",
   "private": true,
-  "version": "0.6.9",
+  "version": "0.6.10",
   "workspaces": [
     "blocklets/*",
     "packages/*"
@@ -63,11 +63,11 @@
     "zx": "^8.1.4"
   },
   "resolutions": {
-    "@aigne/aigne-hub": "^0.10.7-beta",
-    "@aigne/core": "^1.68.0-beta",
-    "@aigne/observability-api": "^0.11.6",
-    "@aigne/openai": "^0.16.7-beta",
-    "@aigne/transport": "^0.15.16-beta",
+    "@aigne/aigne-hub": "^0.10.9",
+    "@aigne/core": "^1.68.2",
+    "@aigne/observability-api": "^0.11.8",
+    "@aigne/openai": "^0.16.9",
+    "@aigne/transport": "^0.15.18",
     "@arcblock/did": "1.27.6",
     "@arcblock/did-connect-js": "1.27.6",
     "@arcblock/did-ext": "1.27.6",

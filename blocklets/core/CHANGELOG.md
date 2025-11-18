@@ -1,3 +1,10 @@
+## 0.6.10 (2025-11-18)
+
+- chore: update blocklet dependencies to version 1.17.3-beta
+- feat: implement user-specific storage keys for chat and conversation history migration
+- feat: integrate localization for model selector and enhance user experience
+- feat: add guest playground feature and enhance credit notifications
+
 ## 0.6.9 (2025-11-17)
 
 - fix: add outputFileType parameter for image generation
