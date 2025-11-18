@@ -50,6 +50,8 @@ export default flatten({
       priceDefault: '按价格排序',
       priceLowToHigh: '价格：从低到高',
       priceHighToLow: '价格：从高到低',
+      tryAdjusting: '尝试调整搜索或筛选条件',
+      selected: '已选择',
     },
     table: {
       model: '模型',
@@ -388,6 +390,7 @@ export default flatten({
     loading: '加载中...',
     clearHistory: '清除对话历史',
     clearHistoryConfirm: '确定要清除所有对话历史吗？',
+    selectModel: '选择 AI 模型',
     placeholders: {
       chat: '输入您的消息...（Shift+Enter 换行）',
       imageGeneration: '描述您想要生成的图片...',
@@ -431,6 +434,13 @@ export default flatten({
     creditOverview: '额度总览',
     allCreditBoardDescription: '实时监控团队成员的模型使用情况，统一管理 AIGNE Hub Credits',
     creditBoardDescription: '监控您的模型使用情况并管理 AIGNE Hub Credits 额度',
+    welcomeTitle: '欢迎来到 AIGNE Hub',
+    welcomeMessage:
+      'AIGNE Hub 是 [AIGNE] 生态系统的统一 AI 服务中心，为所有 AIGNE 应用提供模型、生成与内容处理等 AI 能力。你已获得体验额度，可用于试用各类 AI 模型。',
+    welcomeDocLabel: '了解 AIGNE Hub',
+    welcomeSandboxLabel: '沙盒体验',
+    tryPlayground: '前往沙盒体验',
+    emptyStateHint: '想要体验 AI 模型？',
     loadingData: '数据加载中...',
     startDate: '开始日期',
     endDate: '结束日期',

@@ -6,17 +6,17 @@ import { useCallback, useEffect, useState } from 'react';
 import type { MessageItem, VideoResponse } from './conversation';
 
 const nextId = () => nanoid(16);
-const STORAGE_KEY = 'aigne-hub-conversation-history';
-const SESSION_STORAGE_KEY = 'aigne-hub-conversation-session';
+const DEFAULT_STORAGE_KEY = 'aigne-hub-conversation-history';
+const DEFAULT_SESSION_STORAGE_KEY = 'aigne-hub-conversation-session';
 const MAX_CACHED_MESSAGES = 5; // Limit cached messages to reduce storage usage
 
 // Load messages from localStorage/sessionStorage
-const loadMessages = async (): Promise<MessageItem[]> => {
+const loadMessages = async (storageKey: string, sessionStorageKey: string): Promise<MessageItem[]> => {
   try {
     // Try localStorage first, then sessionStorage as fallback
-    let cached = localStorage.getItem(STORAGE_KEY);
+    let cached = localStorage.getItem(storageKey);
     if (!cached) {
-      cached = sessionStorage.getItem(SESSION_STORAGE_KEY);
+      cached = sessionStorage.getItem(sessionStorageKey);
     }
     if (cached) {
       const parsed = JSON.parse(cached);
@@ -35,7 +35,7 @@ const loadMessages = async (): Promise<MessageItem[]> => {
 };
 
 // Save messages to localStorage
-const saveMessages = async (messages: MessageItem[]) => {
+const saveMessages = async (messages: MessageItem[], storageKey: string, sessionStorageKey: string) => {
   try {
     // Only save completed messages (no loading state)
     const toSave = messages
@@ -76,14 +76,14 @@ const saveMessages = async (messages: MessageItem[]) => {
 
     // Try to save to localStorage, fallback to sessionStorage if quota exceeded
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+      localStorage.setItem(storageKey, JSON.stringify(toSave));
       // Clear sessionStorage if localStorage succeeded
-      sessionStorage.removeItem(SESSION_STORAGE_KEY);
+      sessionStorage.removeItem(sessionStorageKey);
     } catch (storageError) {
       if (storageError instanceof Error && storageError.name === 'QuotaExceededError') {
         // Fallback to sessionStorage
         try {
-          sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(toSave));
+          sessionStorage.setItem(sessionStorageKey, JSON.stringify(toSave));
         } catch (sessionError) {
           console.warn('Failed to save to sessionStorage:', sessionError);
         }
@@ -101,6 +101,7 @@ export default function useConversation({
   textCompletions,
   imageGenerations,
   enableCache = true,
+  storageKeyPrefix,
 }: {
   scrollToBottom?: (options?: { force?: boolean }) => void;
   textCompletions: (
@@ -120,16 +121,57 @@ export default function useConversation({
     options: { meta?: any }
   ) => Promise<{ url: string }[]>;
   enableCache?: boolean;
+  storageKeyPrefix?: string;
 }) {
   const [messages, setMessages] = useState<MessageItem[]>([]);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [isLoadingHistory, setIsLoadingHistory] = useState(enableCache);
 
-  // Load initial messages from cache
+  // Use user-specific storage keys if prefix provided
+  const STORAGE_KEY = storageKeyPrefix ? `${storageKeyPrefix}-conversation-history` : DEFAULT_STORAGE_KEY;
+  const SESSION_STORAGE_KEY = storageKeyPrefix
+    ? `${storageKeyPrefix}-conversation-session`
+    : DEFAULT_SESSION_STORAGE_KEY;
+
+  // Load messages from cache (runs on mount and when STORAGE_KEY changes)
   useEffect(() => {
-    if (enableCache && isLoadingHistory) {
-      loadMessages().then((loadedMessages) => {
-        // If no messages loaded, show welcome message
+    if (!enableCache) {
+      setMessages([
+        { id: nextId(), response: 'Hi, I am AIGNE Hub! How can I assist you today?', timestamp: Date.now() },
+      ]);
+      return;
+    }
+
+    setIsLoadingHistory(true);
+    setIsInitialLoad(true);
+
+    // Load from storage
+    loadMessages(STORAGE_KEY, SESSION_STORAGE_KEY).then((loadedMessages) => {
+      // If no messages loaded from new key, try to migrate from old key (one-time migration)
+      if (loadedMessages.length === 0 && storageKeyPrefix) {
+        // Try loading from old keys
+        loadMessages(DEFAULT_STORAGE_KEY, DEFAULT_SESSION_STORAGE_KEY).then((oldMessages) => {
+          if (oldMessages.length > 0) {
+            // eslint-disable-next-line no-console
+            console.log('Migrating conversation history from old storage key to user-specific key');
+            setMessages(oldMessages);
+            // Save to new key
+            saveMessages(oldMessages, STORAGE_KEY, SESSION_STORAGE_KEY).catch((error) => {
+              console.warn('Failed to migrate messages:', error);
+            });
+            // Clean up old keys after successful migration
+            localStorage.removeItem(DEFAULT_STORAGE_KEY);
+            sessionStorage.removeItem(DEFAULT_SESSION_STORAGE_KEY);
+          } else {
+            // No old data either, show welcome message
+            setMessages([
+              { id: nextId(), response: 'Hi, I am AIGNE Hub! How can I assist you today?', timestamp: Date.now() },
+            ]);
+          }
+          setIsLoadingHistory(false);
+        });
+      } else {
+        // Messages loaded from new key, or no migration needed
         if (loadedMessages.length === 0) {
           setMessages([
             { id: nextId(), response: 'Hi, I am AIGNE Hub! How can I assist you today?', timestamp: Date.now() },
@@ -138,14 +180,9 @@ export default function useConversation({
           setMessages(loadedMessages);
         }
         setIsLoadingHistory(false);
-      });
-    } else if (!enableCache) {
-      setMessages([
-        { id: nextId(), response: 'Hi, I am AIGNE Hub! How can I assist you today?', timestamp: Date.now() },
-      ]);
-      setIsLoadingHistory(false);
-    }
-  }, [enableCache, isLoadingHistory]);
+      }
+    });
+  }, [enableCache, STORAGE_KEY, SESSION_STORAGE_KEY, storageKeyPrefix]);
 
   // Scroll to bottom on initial load
   useEffect(() => {
@@ -162,7 +199,7 @@ export default function useConversation({
   useEffect(() => {
     if (enableCache && messages.length > 0) {
       const timeoutId = setTimeout(() => {
-        saveMessages(messages).catch((error) => {
+        saveMessages(messages, STORAGE_KEY, SESSION_STORAGE_KEY).catch((error) => {
           console.error('❌ Failed to save messages:', error);
         });
       }, 1000); // Delay save by 1 second to avoid saving during streaming
@@ -170,7 +207,7 @@ export default function useConversation({
       return () => clearTimeout(timeoutId);
     }
     return () => {};
-  }, [messages, enableCache]);
+  }, [messages, enableCache, STORAGE_KEY, SESSION_STORAGE_KEY]);
 
   const add = useCallback(
     async (prompt: string | ChatCompletionMessageParam[], meta?: any) => {
@@ -306,7 +343,7 @@ export default function useConversation({
       localStorage.removeItem(STORAGE_KEY);
       sessionStorage.removeItem(SESSION_STORAGE_KEY);
     }
-  }, [enableCache]);
+  }, [enableCache, STORAGE_KEY, SESSION_STORAGE_KEY]);
 
   return {
     messages,

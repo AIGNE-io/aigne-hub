@@ -517,6 +517,49 @@ export function CallHistory({
   }
 
   const isCreditBillingEnabled = window.blocklet?.preferences?.creditBasedBillingEnabled;
+  const showGuestPlayground = window.blocklet?.preferences?.guestPlaygroundEnabled;
+
+  // Custom empty state with Playground guide
+  const renderEmptyState = () => {
+    const emptyText =
+      dateRange?.from && dateRange?.to
+        ? t('analytics.noCallsFoundBetween', {
+            startTime: dayjs((dateRange?.from || 0) * 1000).format('YYYY-MM-DD'),
+            endTime: dayjs((dateRange?.to || 0) * 1000).format('YYYY-MM-DD'),
+          })
+        : t('analytics.noCallsFound');
+
+    const shouldShowPlaygroundGuide = showGuestPlayground && total === 0 && !allUsers && !showUserColumn;
+
+    return (
+      <Stack spacing={1} sx={{ py: 4, alignItems: 'center' }}>
+        <Typography variant="body2" color="text.secondary">
+          {emptyText}
+        </Typography>
+        {shouldShowPlaygroundGuide && (
+          <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {t('analytics.emptyStateHint')}{' '}
+            <Button
+              component="a"
+              href={joinURL(getPrefix(), '/playground')}
+              target="_blank"
+              rel="noopener noreferrer"
+              variant="text"
+              size="small"
+              sx={{
+                p: 0,
+                textTransform: 'none',
+                verticalAlign: 'baseline',
+              }}>
+              <Typography variant="body2" color="primary.main" sx={{ display: 'inline-block' }}>
+                {t('analytics.tryPlayground')}
+              </Typography>
+            </Button>
+          </Typography>
+        )}
+      </Stack>
+    );
+  };
 
   return (
     <Stack spacing={3}>
@@ -627,14 +670,7 @@ export function CallHistory({
             selectableRows: 'none',
             responsive: 'vertical',
           }}
-          emptyNodeText={
-            dateRange?.from && dateRange?.to
-              ? t('analytics.noCallsFoundBetween', {
-                  startTime: dayjs((dateRange?.from || 0) * 1000).format('YYYY-MM-DD'),
-                  endTime: dayjs((dateRange?.to || 0) * 1000).format('YYYY-MM-DD'),
-                })
-              : t('analytics.noCallsFound')
-          }
+          emptyNodeText={renderEmptyState()}
           mobileTDFlexDirection="row"
         />
       </Root>

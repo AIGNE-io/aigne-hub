@@ -98,10 +98,8 @@ function formatModelsData(apiModels: ApiModel[]): ModelGroup[] {
   return modelGroups.sort((a, b) => a.provider.localeCompare(b.provider));
 }
 
-const STORAGE_KEY = 'aigne-hub-selected-model';
-
 export default function Chat() {
-  const { api } = useSessionContext();
+  const { api, session } = useSessionContext();
   const { t } = useLocaleContext();
   const ref = useRef<ConversationRef>(null);
   const [modelGroups, setModelGroups] = useState<ModelGroup[]>([]);
@@ -113,6 +111,10 @@ export default function Chat() {
   const [scrollContainer, setScrollContainer] = useState<HTMLElement | null>(null);
   const isAdmin = useIsRole('owner', 'admin');
   const navigate = useNavigate();
+
+  // Get user-specific storage key
+  const userDid = session?.user?.did || 'anonymous';
+  const STORAGE_KEY = `aigne-hub-selected-model-${userDid}`;
 
   const showPlayground = isAdmin || window.blocklet?.preferences?.guestPlaygroundEnabled;
 
@@ -156,12 +158,27 @@ export default function Chat() {
         const formattedGroups = formatModelsData(apiModels);
         setModelGroups(formattedGroups);
 
-        // Try to restore previously selected model from localStorage
-        const savedModel = localStorage.getItem(STORAGE_KEY);
+        // Migration: Try to restore from old key first, then migrate to new key
+        const OLD_STORAGE_KEY = 'aigne-hub-selected-model';
+        let savedModel = localStorage.getItem(STORAGE_KEY);
+
+        // If no data in new key, try old key and migrate
+        if (!savedModel) {
+          const oldSavedModel = localStorage.getItem(OLD_STORAGE_KEY);
+          if (oldSavedModel) {
+            // eslint-disable-next-line no-console
+            console.log('Migrating selected model from old storage key to user-specific key');
+            savedModel = oldSavedModel;
+            localStorage.setItem(STORAGE_KEY, oldSavedModel);
+            // Clean up old key after migration
+            localStorage.removeItem(OLD_STORAGE_KEY);
+          }
+        }
+
         const allModels = formattedGroups.flatMap((g) => g.models);
         const isValidSavedModel = savedModel && allModels.some((m) => m.value === savedModel);
 
-        if (isValidSavedModel) {
+        if (isValidSavedModel && savedModel) {
           setModel(savedModel);
         } else if (formattedGroups.length > 0 && formattedGroups[0]!.models && formattedGroups[0]!.models!.length > 0) {
           // Set default selected model if no valid saved model
@@ -180,14 +197,17 @@ export default function Chat() {
     };
 
     fetchModels();
-  }, [api]);
+  }, [api, STORAGE_KEY]);
 
   // Save selected model to localStorage when it changes
-  const handleModelChange = useCallback((newModel: string) => {
-    setModel(newModel);
-    localStorage.setItem(STORAGE_KEY, newModel);
-    // Don't auto-close - let ModelSelector handle it
-  }, []);
+  const handleModelChange = useCallback(
+    (newModel: string) => {
+      setModel(newModel);
+      localStorage.setItem(STORAGE_KEY, newModel);
+      // Don't auto-close - let ModelSelector handle it
+    },
+    [STORAGE_KEY]
+  );
 
   // Get display name for selected model
   const selectedModelDisplay = useMemo(() => {
@@ -234,6 +254,7 @@ export default function Chat() {
 
   const { messages, add, cancel, clearHistory, isLoadingHistory } = useConversation({
     scrollToBottom: (o) => ref.current?.scrollToBottom(o),
+    storageKeyPrefix: `aigne-hub-${userDid}`,
     textCompletions: (prompt) => {
       // Route to different APIs based on model type
       const promptText =

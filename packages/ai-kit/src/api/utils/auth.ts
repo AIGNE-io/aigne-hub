@@ -12,7 +12,7 @@ import { StatusCodeError } from '../error';
 
 const TOKEN_EXPIRES_IN_SECONDS = 60 * 10;
 
-export const wallet = getWallet();
+export const wallet: ReturnType<typeof getWallet> = getWallet();
 
 const ADMIN_ROLES = ['owner', 'admin'];
 

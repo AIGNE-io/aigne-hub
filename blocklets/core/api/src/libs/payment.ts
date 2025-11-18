@@ -32,10 +32,11 @@ export const getPaymentKitPrefix = () => {
   return joinURL(config.env.appUrl, getComponentMountPoint(PAYMENT_DID));
 };
 
-const selfNotificationEvents = ['customer.credit_grant.granted'];
+const selfNotificationEvents = ['customer.credit_grant.granted', 'checkout.session.completed'];
 const ensureNotificationSettings = async () => {
   const settings = await payment.settings.retrieve(AIGNE_HUB_DID);
-  if (settings && difference(settings.settings.include_events, selfNotificationEvents).length > 0) {
+  const missingEvents = difference(selfNotificationEvents, settings.settings.include_events || []);
+  if (settings && missingEvents.length > 0) {
     await payment.settings.update(settings.id, {
       settings: {
         ...settings.settings,
@@ -51,7 +52,7 @@ const ensureNotificationSettings = async () => {
       description: 'AIGNE Hub Notification Settings',
       settings: {
         self_handle: true,
-        include_events: ['customer.credit_grant.granted'],
+        include_events: selfNotificationEvents,
       },
     });
     logger.info('create notification settings for AIGNE Hub', { setting });
@@ -372,6 +373,12 @@ export async function ensureDefaultCreditPaymentLink() {
           },
         },
       ],
+      metadata: {
+        notification_settings: {
+          include_events: selfNotificationEvents,
+          self_handle: true,
+        },
+      },
     });
     const link = joinURL('/checkout/pay', paymentLink.id);
     Config.creditPaymentLink = link;
@@ -384,6 +391,26 @@ export async function ensureDefaultCreditPaymentLink() {
   }
 }
 
+async function updateCreditPaymentLinkNotificationSettings(link: string) {
+  const linkId = link.match(/plink_\w+/)?.[0];
+  if (linkId) {
+    try {
+      const paymentLink = await payment.paymentLinks.retrieve(linkId);
+      if (paymentLink && !paymentLink.metadata?.notification_settings) {
+        await payment.paymentLinks.update(linkId, {
+          metadata: {
+            notification_settings: {
+              include_events: selfNotificationEvents,
+              self_handle: true,
+            },
+          },
+        });
+      }
+    } catch (error) {
+      logger.error('failed to update notification settings for credit payment link', { error });
+    }
+  }
+}
 // default credit payment link
 export async function getCreditPaymentLink() {
   if (!isPaymentRunning()) return null;
@@ -395,6 +422,7 @@ export async function getCreditPaymentLink() {
     await updateCreditConfig({
       paymentLink: url,
     });
+    await updateCreditPaymentLinkNotificationSettings(url);
     return Config.creditPaymentLink;
   }
   // fallback to default payment link
@@ -403,6 +431,8 @@ export async function getCreditPaymentLink() {
     logger.error('failed to ensure default credit payment link');
     throw new CustomError(404, 'Credit payment link not found');
   }
+
+  await updateCreditPaymentLinkNotificationSettings(link);
   return link;
 }
 
@@ -566,6 +596,14 @@ export function getUserProfileLink(userDid: string) {
 export function getCreditUsageLink(userDid: string) {
   return getUrl(
     withQuery('/credit-usage', {
+      ...getConnectQueryParam({ userDid }),
+    })
+  );
+}
+
+export function getPlaygroundLink(userDid: string) {
+  return getUrl(
+    withQuery('/playground', {
       ...getConnectQueryParam({ userDid }),
     })
   );
