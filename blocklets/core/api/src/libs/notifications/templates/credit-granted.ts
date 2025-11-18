@@ -59,7 +59,6 @@ function translate(key: string, locale: string, params?: Record<string, any>): s
       'notification.common.viewCreditGrant': 'View Credits',
       'notification.common.viewInvoice': 'View Invoice',
       'notification.common.tryNow': 'Try Now',
-      'notification.common.startNow': 'Start Now',
     },
     zh: {
       'notification.creditGranted.welcomeTitle': 'AIGNE Hub：您的 AI 体验额度已激活',
@@ -83,7 +82,6 @@ function translate(key: string, locale: string, params?: Record<string, any>): s
       'notification.common.viewCreditGrant': '查看额度',
       'notification.common.viewInvoice': '查看账单',
       'notification.common.tryNow': '立即体验',
-      'notification.common.startNow': '立即体验',
     },
   };
 
@@ -329,8 +327,8 @@ export class CreditGrantedNotificationTemplate extends BaseNotificationTemplate<
     // Add playground action if enabled
     if (Config.guestPlaygroundEnabled) {
       actions.push({
-        name: translate(isPurchase ? 'notification.common.startNow' : 'notification.common.tryNow', locale),
-        title: translate(isPurchase ? 'notification.common.startNow' : 'notification.common.tryNow', locale),
+        name: translate('notification.common.tryNow', locale),
+        title: translate('notification.common.tryNow', locale),
         link: getPlaygroundLink(userDid),
       });
     }
