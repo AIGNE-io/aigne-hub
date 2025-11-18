@@ -50,6 +50,8 @@ export default flatten({
       priceDefault: '按价格排序',
       priceLowToHigh: '价格：从低到高',
       priceHighToLow: '价格：从高到低',
+      tryAdjusting: '尝试调整搜索或筛选条件',
+      selected: '已选择',
     },
     table: {
       model: '模型',
@@ -388,6 +390,7 @@ export default flatten({
     loading: '加载中...',
     clearHistory: '清除对话历史',
     clearHistoryConfirm: '确定要清除所有对话历史吗？',
+    selectModel: '选择 AI 模型',
     placeholders: {
       chat: '输入您的消息...（Shift+Enter 换行）',
       imageGeneration: '描述您想要生成的图片...',

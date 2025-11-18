@@ -50,6 +50,8 @@ export default flatten({
       priceDefault: 'By Price',
       priceLowToHigh: 'Price: Low to High',
       priceHighToLow: 'Price: High to Low',
+      tryAdjusting: 'Try adjusting your search or filter',
+      selected: 'Selected',
     },
     table: {
       model: 'Model',
@@ -395,6 +397,7 @@ export default flatten({
     loading: 'Loading...',
     clearHistory: 'Clear conversation history',
     clearHistoryConfirm: 'Are you sure you want to clear all conversation history?',
+    selectModel: 'Select AI Model',
     placeholders: {
       chat: 'Type your message...',
       imageGeneration: 'Describe the image you want to generate...',
