@@ -228,3 +228,51 @@ export function useExportModelCalls() {
     loading,
   };
 }
+
+export function useCreditGrants(isCreditBillingEnabled: boolean) {
+  const {
+    data,
+    loading,
+    error,
+    runAsync: refetch,
+  } = useRequest(
+    () => api.get('/api/user/credit/grants', { params: { page: 1, pageSize: 10 } }).then((res) => res.data),
+    {
+      onError: (error) => {
+        console.error('Failed to fetch credit grants:', error);
+      },
+      ready: isCreditBillingEnabled,
+    }
+  );
+
+  return {
+    data,
+    loading,
+    error,
+    refetch,
+  };
+}
+
+export function useCreditTransactions(isCreditBillingEnabled: boolean) {
+  const {
+    data,
+    loading,
+    error,
+    runAsync: refetch,
+  } = useRequest(
+    () => api.get('/api/user/credit/transactions', { params: { page: 1, pageSize: 1 } }).then((res) => res.data),
+    {
+      onError: (error) => {
+        console.error('Failed to fetch credit transactions:', error);
+      },
+      ready: isCreditBillingEnabled,
+    }
+  );
+
+  return {
+    data,
+    loading,
+    error,
+    refetch,
+  };
+}

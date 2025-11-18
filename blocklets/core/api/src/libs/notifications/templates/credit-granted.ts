@@ -1,8 +1,16 @@
 import { formatNumber } from '@blocklet/aigne-hub/utils/util';
 import { fromUnitToToken } from '@ocap/util';
 
+import { Config } from '../../env';
 import logger from '../../logger';
-import { ensureCustomer, ensureMeter, getCreditUsageLink, paymentClient } from '../../payment';
+import {
+  ensureCustomer,
+  ensureMeter,
+  getCreditUsageLink,
+  getPaymentKitPrefix,
+  getPlaygroundLink,
+  paymentClient,
+} from '../../payment';
 import { formatTime, getUserLocale } from '../shared';
 import {
   BaseNotificationTemplate,
@@ -22,49 +30,60 @@ export interface CreditGrantedNotificationTemplateContext extends BaseNotificati
   expiresAt?: string;
   neverExpires: boolean;
   isWelcomeCredit: boolean;
+  isPurchase: boolean;
+  paymentAmount?: string;
+  invoiceUrl?: string;
 }
 
 function translate(key: string, locale: string, params?: Record<string, any>): string {
   const translations = {
     en: {
-      'notification.creditGranted.welcomeTitle': 'Welcome to AIGNE Hub! Your AI credits are ready',
+      'notification.creditGranted.welcomeTitle': 'AIGNE Hub: Your AI experience credits are activated',
       'notification.creditGranted.welcomeBody':
-        'Your AIGNE Hub account has been activated with {grantedAmount} in credits. Use them to access our AI services until {expiresAt}. Start exploring now!',
+        'Your AIGNE Hub account has been granted {grantedAmount} in experience credits, available until {expiresAt} for the entire AIGNE ecosystem, including DocSmith, WebSmith, and every AI application.\nAIGNE Hub is the AI service center for the AIGNE ecosystem, powering all applications with models, generation, and content processing capabilities.\nTry now!',
       'notification.creditGranted.welcomeBodyNoExpire':
-        'Your AIGNE Hub account has been activated with {grantedAmount} in credits. Use them to access our AI services anytime.',
+        'Your AIGNE Hub account has been granted {grantedAmount} in experience credits, available for the entire AIGNE ecosystem, including DocSmith, WebSmith, and every AI application.\nAIGNE Hub is the AI service center for the AIGNE ecosystem, powering all applications with models, generation, and content processing capabilities.\nTry now!',
 
-      'notification.creditGranted.title': 'Your AIGNE Hub account has been credited',
+      'notification.creditGranted.title': 'AIGNE Hub: Your AI credits are now active',
       'notification.creditGranted.body':
-        'Your AIGNE Hub account has received {grantedAmount} in credits. Use them to call AI services until {expiresAt}.',
+        'Your account has been credited with {grantedAmount}, available until {expiresAt} for the entire AIGNE ecosystem, including DocSmith, WebSmith, and every AI application.\nAIGNE Hub is the AI service center for the AIGNE ecosystem, powering all applications with models, generation, and content processing capabilities.\nTry now!',
       'notification.creditGranted.bodyNoExpire':
-        'Your AIGNE Hub account has received {grantedAmount} in credits. Use them to call AI services anytime.',
+        'Your account has been credited with {grantedAmount}, available for the entire AIGNE ecosystem, including DocSmith, WebSmith, and every AI application.\nAIGNE Hub is the AI service center for the AIGNE ecosystem, powering all applications with models, generation, and content processing capabilities.\nTry now!',
 
       'notification.creditGranted.grantedCredit': 'Credit Amount',
       'notification.creditGranted.validUntil': 'Valid until',
       'notification.creditGranted.neverExpires': 'No expiration',
+      'notification.creditGranted.paymentAmount': 'Payment Amount',
+      'notification.creditGranted.invoiceId': 'Invoice ID',
       'notification.common.account': 'Account',
       'notification.common.viewCreditGrant': 'View Credits',
-      'notification.common.aiServicesHint': 'Use credits to access all AIGNE Hub AI services',
+      'notification.common.viewInvoice': 'View Invoice',
+      'notification.common.tryNow': 'Try Now',
+      'notification.common.startNow': 'Start Now',
     },
     zh: {
-      'notification.creditGranted.welcomeTitle': '欢迎来到 AIGNE Hub！AI额度已激活',
+      'notification.creditGranted.welcomeTitle': 'AIGNE Hub：您的 AI 体验额度已激活',
       'notification.creditGranted.welcomeBody':
-        '您的 AIGNE Hub 账户已激活 {grantedAmount} 额度，可用于调用平台所有AI服务至 {expiresAt}。立即体验！',
+        '您的 AIGNE Hub 账户已获得 {grantedAmount} 体验额度，可在 {expiresAt} 前用于 AIGNE 全系应用（如 DocSmith、WebSmith）的所有 AI 功能。\nAIGNE Hub 是 AIGNE 生态系统的统一 AI 服务中心，为所有 AIGNE 应用提供模型、生成与内容处理等 AI 能力。\n立即体验！',
       'notification.creditGranted.welcomeBodyNoExpire':
-        '您的 AIGNE Hub 账户已激活 {grantedAmount} 额度，可随时调用平台AI服务。',
+        '您的 AIGNE Hub 账户已获得 {grantedAmount} 体验额度，可用于 AIGNE 全系应用（如 DocSmith、WebSmith）的所有 AI 功能。\nAIGNE Hub 是 AIGNE 生态系统的统一 AI 服务中心，为所有 AIGNE 应用提供模型、生成与内容处理等 AI 能力。\n立即体验！',
 
-      'notification.creditGranted.title': '您的 AIGNE Hub 账户额度已更新',
+      'notification.creditGranted.title': 'AIGNE Hub：您的 AI 额度已到账',
       'notification.creditGranted.body':
-        '您的 AIGNE Hub 账户已获得 {grantedAmount} 额度，有效期至 {expiresAt}，可用于所有AI服务调用。',
+        '您的账户本次激活 {grantedAmount} 额度，可在 {expiresAt} 前用于 AIGNE 全系应用（如 DocSmith、WebSmith）的所有 AI 功能。\nAIGNE Hub 是 AIGNE 生态系统的统一 AI 服务中心，为所有 AIGNE 应用提供模型、生成与内容处理等 AI 能力。\n立即体验！',
       'notification.creditGranted.bodyNoExpire':
-        '您的 AIGNE Hub 账户已获得 {grantedAmount} 额度，可随时用于AI服务调用。',
+        '您的账户本次激活 {grantedAmount} 额度，可用于 AIGNE 全系应用（如 DocSmith、WebSmith）的所有 AI 功能。\nAIGNE Hub 是 AIGNE 生态系统的统一 AI 服务中心，为所有 AIGNE 应用提供模型、生成与内容处理等 AI 能力。\n立即体验！',
 
       'notification.creditGranted.grantedCredit': '额度',
       'notification.creditGranted.validUntil': '有效期至',
       'notification.creditGranted.neverExpires': '永久有效',
+      'notification.creditGranted.paymentAmount': '支付金额',
+      'notification.creditGranted.invoiceId': '账单 ID',
       'notification.common.account': '账户',
       'notification.common.viewCreditGrant': '查看额度',
-      'notification.common.aiServicesHint': '额度可用于调用 AIGNE Hub 平台所有AI服务',
+      'notification.common.viewInvoice': '查看账单',
+      'notification.common.tryNow': '立即体验',
+      'notification.common.startNow': '立即体验',
     },
   };
 
@@ -162,8 +181,34 @@ export class CreditGrantedNotificationTemplate extends BaseNotificationTemplate<
     const neverExpires = !creditGrant.expires_at;
     const expiresAt = creditGrant.expires_at ? formatTime(new Date(creditGrant.expires_at * 1000)) : undefined;
 
-    // 判断是否为欢迎授信
-    const isWelcomeCreditFlag = await isWelcomeCredit(creditGrant, userDid);
+    const invoiceIdFromMetadata = creditGrant.metadata?.invoice_id;
+    let paymentAmount: string | undefined;
+    let invoiceUrl: string | undefined;
+    let isPurchase = false;
+
+    if (invoiceIdFromMetadata) {
+      try {
+        const invoice = await paymentClient.invoices.retrieve(invoiceIdFromMetadata);
+        if (invoice) {
+          isPurchase = true;
+          const invoiceCurrency = invoice.paymentCurrency || paymentCurrency;
+          const invoiceSymbol = invoiceCurrency?.symbol || currencySymbol;
+          const invoiceDecimal = invoiceCurrency?.decimal ?? paymentCurrency.decimal;
+          if (invoice.amount_paid) {
+            paymentAmount = `${formatNumber(fromUnitToToken(invoice.amount_paid || '0', invoiceDecimal))} ${invoiceSymbol}`;
+          }
+          invoiceUrl = invoice.id ? `${getPaymentKitPrefix()}/customer/invoice/${invoice.id}` : undefined;
+        }
+      } catch (error) {
+        logger.error('Failed to retrieve invoice for credit grant notification', {
+          error,
+          invoiceId: invoiceIdFromMetadata,
+          creditGrantId: creditGrant.id,
+        });
+      }
+    }
+
+    const isWelcomeCreditFlag = !isPurchase && (await isWelcomeCredit(creditGrant, userDid));
 
     return {
       locale,
@@ -173,21 +218,43 @@ export class CreditGrantedNotificationTemplate extends BaseNotificationTemplate<
       expiresAt,
       neverExpires,
       isWelcomeCredit: isWelcomeCreditFlag,
+      isPurchase,
+      paymentAmount,
+      invoiceUrl,
     };
   }
 
   async getTemplate(): Promise<BaseNotificationTemplateType> {
     const context = await this.getContext();
-    const { locale, userDid, grantedAmount, expiresAt, neverExpires, isWelcomeCredit } = context;
+    const {
+      locale,
+      userDid,
+      grantedAmount,
+      expiresAt,
+      neverExpires,
+      isWelcomeCredit,
+      isPurchase,
+      paymentAmount,
+      invoiceUrl,
+    } = context;
 
-    const titleKey = isWelcomeCredit ? 'notification.creditGranted.welcomeTitle' : 'notification.creditGranted.title';
-    const bodyKey = isWelcomeCredit
-      ? neverExpires
+    let titleKey = 'notification.creditGranted.title';
+    let bodyKey = neverExpires ? 'notification.creditGranted.bodyNoExpire' : 'notification.creditGranted.body';
+    if (isWelcomeCredit) {
+      titleKey = 'notification.creditGranted.welcomeTitle';
+      bodyKey = neverExpires
         ? 'notification.creditGranted.welcomeBodyNoExpire'
-        : 'notification.creditGranted.welcomeBody'
-      : neverExpires
-        ? 'notification.creditGranted.bodyNoExpire'
-        : 'notification.creditGranted.body';
+        : 'notification.creditGranted.welcomeBody';
+    }
+
+    const titleParams: Record<string, string> = {};
+    if (!isWelcomeCredit) {
+      titleParams.grantedAmount = grantedAmount;
+    }
+    const bodyParams: Record<string, string> = { grantedAmount };
+    if (!neverExpires && expiresAt) {
+      bodyParams.expiresAt = expiresAt;
+    }
 
     const fields = [
       {
@@ -237,24 +304,63 @@ export class CreditGrantedNotificationTemplate extends BaseNotificationTemplate<
       },
     ];
 
+    if (isPurchase && paymentAmount) {
+      fields.push(
+        {
+          type: 'text',
+          data: {
+            type: 'plain',
+            color: '#9397A1',
+            text: translate('notification.creditGranted.paymentAmount', locale),
+          },
+        },
+        {
+          type: 'text',
+          data: {
+            type: 'plain',
+            text: paymentAmount,
+          },
+        }
+      );
+    }
+
+    const actions = [];
+
+    // Add playground action if enabled
+    if (Config.guestPlaygroundEnabled) {
+      actions.push({
+        name: translate(isPurchase ? 'notification.common.startNow' : 'notification.common.tryNow', locale),
+        title: translate(isPurchase ? 'notification.common.startNow' : 'notification.common.tryNow', locale),
+        link: getPlaygroundLink(userDid),
+      });
+    }
+
+    // Add view credit grant action
+    actions.push({
+      name: translate('notification.common.viewCreditGrant', locale),
+      title: translate('notification.common.viewCreditGrant', locale),
+      link: getCreditUsageLink(userDid),
+    });
+
+    // Add invoice action if applicable
+    if (isPurchase && invoiceUrl) {
+      actions.push({
+        name: translate('notification.common.viewInvoice', locale),
+        title: translate('notification.common.viewInvoice', locale),
+        link: invoiceUrl,
+      });
+    }
+
     const template: BaseNotificationTemplateType = {
-      title: translate(titleKey, locale, isWelcomeCredit ? {} : { grantedAmount }),
-      body: neverExpires
-        ? translate(bodyKey, locale, { grantedAmount })
-        : translate(bodyKey, locale, { grantedAmount, expiresAt }),
+      title: translate(titleKey, locale, titleParams),
+      body: translate(bodyKey, locale, bodyParams),
       attachments: [
         {
           type: 'section',
           fields,
         },
       ],
-      actions: [
-        {
-          name: translate('notification.common.viewCreditGrant', locale),
-          title: translate('notification.common.viewCreditGrant', locale),
-          link: getCreditUsageLink(userDid),
-        },
-      ],
+      actions,
     };
 
     return template;
