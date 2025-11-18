@@ -1,3 +1,7 @@
+## 0.6.10 (2025-11-17)
+
+- chore: bump version
+
 ## 0.6.9 (2025-11-17)
 
 - fix: add outputFileType parameter for image generation
