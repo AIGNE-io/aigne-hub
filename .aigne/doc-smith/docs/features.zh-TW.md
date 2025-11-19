@@ -1,0 +1,171 @@
+# 核心功能
+
+本節將深入技術探討 AIGNE Hub 的關鍵功能。閱讀完畢後，您將瞭解該平台的主要能力，從統一的 AI 模型互動和供應商管理，到強大的安全性和詳細的分析，為利用該系統奠定堅實的基礎。
+
+AIGNE Hub 被設計為一個中央閘道，簡化與各種大型語言模型（LLMs）和 AI 服務的所有互動。它統一了 API 存取，集中了安全性，並提供了對使用情況和成本的全面可見性。該平台的各項功能旨在支援企業內部部署和多租戶服務供應商模型。
+
+下圖提供了 AIGNE Hub 架構及其核心組件的高層次概覽。
+
+```d2
+direction: down
+
+External-Entities: {
+  label: "外部實體"
+  style.stroke-dash: 2
+
+  Developer: {
+    shape: c4-person
+  }
+  
+  End-User-Applications: {
+    label: "終端使用者應用程式"
+  }
+}
+
+AIGNE-Hub: {
+  label: "AIGNE Hub - 中央閘道"
+  shape: rectangle
+  style.fill: "#f0f4ff"
+
+  Core-Services: {
+    label: "核心服務"
+    grid-columns: 2
+
+    Unified-API-Gateway: {
+      label: "統一 API 閘道"
+      style.fill: "#e6f7ff"
+    }
+
+    Model-Playground: {
+      label: "模型遊樂場"
+      style.fill: "#e6f7ff"
+    }
+  }
+
+  Functional-Modules: {
+    label: "功能模組"
+    grid-columns: 3
+
+    AI-Service-Unification: {
+      label: "AI 服務統一"
+      shape: rectangle
+      "💬 聊天補完"
+      "🖼️ 圖像生成"
+      "🧠 嵌入"
+    }
+
+    Centralized-Management: {
+      label: "集中管理"
+      shape: rectangle
+      Provider-Management: "供應商管理"
+      Billing-System: "計費系統"
+      Analytics-Dashboard: "用量與成本分析"
+    }
+
+    Security-Access-Control: {
+      label: "安全性與存取控制"
+      shape: rectangle
+      API-Key-Management: "API 金鑰管理"
+      OAuth-Integration: "OAuth 整合"
+      Encrypted-Storage: "加密憑證儲存"
+      Audit-Logging: "稽核日誌"
+    }
+  }
+}
+
+Upstream-AI-Providers: {
+  label: "上游 AI 供應商"
+  style.stroke-dash: 2
+  grid-columns: 2
+
+  OpenAI: {}
+  Anthropic: {}
+  Google-Gemini: {
+    label: "Google Gemini"
+  }
+  Amazon-Bedrock: {
+    label: "Amazon Bedrock"
+  }
+}
+
+External-Entities.Developer -> AIGNE-Hub.Core-Services.Model-Playground: "實驗與測試"
+External-Entities.End-User-Applications -> AIGNE-Hub.Core-Services.Unified-API-Gateway: "API 請求"
+AIGNE-Hub.Core-Services.Unified-API-Gateway -> AIGNE-Hub.Functional-Modules.AI-Service-Unification: "路由至 AI 服務"
+AIGNE-Hub.Functional-Modules.AI-Service-Unification -> Upstream-AI-Providers: "轉發請求"
+Upstream-AI-Providers -> AIGNE-Hub.Functional-Modules.AI-Service-Unification: "返回回應"
+AIGNE-Hub.Core-Services.Unified-API-Gateway -> AIGNE-Hub.Functional-Modules.Security-Access-Control: "驗證與授權"
+AIGNE-Hub.Core-Services.Unified-API-Gateway -> AIGNE-Hub.Functional-Modules.Centralized-Management.Analytics-Dashboard: "記錄用量與成本資料"
+External-Entities.Developer -> AIGNE-Hub.Functional-Modules.Centralized-Management: "設定與監控"
+
+```
+
+有關特定功能的更多詳細資訊，請參閱以下各節：
+
+<x-cards data-columns="3">
+  <x-card data-title="供應商管理" data-href="/features/provider-management" data-icon="lucide:cloud">
+  瞭解如何連接、設定和管理上游 AI 供應商。
+  </x-card>
+  <x-card data-title="用量與成本分析" data-href="/features/analytics" data-icon="lucide:bar-chart-2">
+  瞭解如何監控全系統及每位使用者的消耗和成本。
+  </x-card>
+  <x-card data-title="安全性與存取" data-href="/features/security" data-icon="lucide:shield-check">
+  檢閱安全架構，包括存取控制和資料保護。
+  </x-card>
+</x-cards>
+
+## AI 服務統一
+
+AIGNE Hub 提供一組單一、一致的 API 端點，從而簡化了與多個 AI 供應商整合的複雜性。這使開發人員能夠建構應用程式，而不會被特定供應商鎖定，並能無縫切換模型。
+
+### 核心 AI 能力
+
+該平台為最常見的生成式 AI 模態提供了標準化的存取：
+
+-   **💬 聊天補完**：與對話式 AI 和先進的文本生成模型互動，適用於廣泛的應用。該系統透過一個與 OpenAI 相容的 API 支援標準和串流回應。
+-   **🖼️ 圖像生成**：存取如 DALL·E 等生成式圖像模型，用於 AI 驅動的圖像創建和編輯任務。
+-   **🧠 嵌入**：生成文本的向量表示，用於語義搜尋、聚類和檢索增強生成（RAG）等使用案例。
+
+### 內建模型遊樂場
+
+AIGNE Hub 包含一個互動式遊樂場，用於即時測試和實驗任何已連接的 AI 模型。這個工具對於提示工程、模型比較和快速原型製作非常有價值，且無需編寫任何程式碼。
+
+![AIGNE Hub 用於測試 AI 模型的互動式遊樂場。](../../../blocklets/core/screenshots/d037b6b6b092765ccbfa58706c241622.png)
+
+## 集中管理與分析
+
+有效的管理和營運可見性是 AIGNE Hub 設計的核心。該平台提供一個統一的儀表板，以控制、監控和分析所有與 AI 相關的活動。
+
+### 供應商與計費設定
+
+您可以從單一的管理介面管理服務的各個方面。
+
+-   **供應商管理**：連接到不斷增長的 AI 供應商列表，包括 OpenAI、Anthropic、Google Gemini 和 Amazon Bedrock。憑證會被加密並安全儲存。
+-   **彈性的計費系統**：以兩種主要模式運作。對於內部使用，您可以連接自己的供應商金鑰並直接向他們付款。對於面向公眾的服務，您可以啟用基於點數的計費系統，設定自訂定價，並將您的 AI 閘道貨幣化。
+
+![AIGNE Hub 中的 AI 供應商設定畫面。](../../../blocklets/core/screenshots/6fff77ec3c1fbefb780b2b79c61a36f7.png)
+
+### 用量與成本分析
+
+分析儀表板提供了對所有供應商、模型和使用者的消耗和支出的深入洞察。
+
+-   **用量追蹤**：即時監控關鍵指標，如 token 消耗、API 請求和延遲。
+-   **成本分析**：追蹤您的供應商帳戶的支出，或者在服務供應商模式下，監控收入和點數消耗。這些資料對於預算編列、預測和優化 AI 支出至關重要。
+
+## 安全性與存取控制
+
+AIGNE Hub 採用企業級安全設計，以保護敏感資料並確保對強大 AI 模型的受控存取。
+
+-   **加密憑證儲存**：所有上游供應商的 API 金鑰和憑證均使用 AES-256 加密，以防止未經授權的存取。
+-   **OAuth 整合**：透過行業標準的 OAuth 2.0 協定，為應用程式和使用者提供安全的存取。
+-   **API 金鑰管理**：在 AIGNE Hub 內生成和管理 API 金鑰，從而實現對應用程式存取的精細控制。
+-   **稽核日誌**：全面的稽核軌跡記錄所有重要事件，包括 API 請求、設定變更和使用者活動，確保問責制和合規性。
+
+## 總結
+
+AIGNE Hub 提供一套全面的功能，旨在統一、管理和保護您組織對生成式 AI 的存取。透過集中化供應商整合、提供詳細分析和實施強大的安全措施，它成為任何使用 AI 建構團隊的關鍵基礎設施組件。
+
+要繼續，請探索每個核心功能領域的詳細文件：
+
+-   **[供應商管理](./features-provider-management.md)**：深入瞭解連接和設定 AI 服務的具體細節。
+-   **[用量與成本分析](./features-analytics.md)**：瞭解如何利用分析儀表板獲得營運洞察。
+-   **[安全性與存取](./features-security.md)**：詳細瞭解平台的安全機制。

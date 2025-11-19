@@ -1,126 +1,88 @@
-# 身分驗證
+# API 驗證
 
-所有對 AIGNE Hub 的 API 請求都必須經過身分驗證，以確保對閘道器及其整合的 AI 服務的安全存取。本文件概述了所有 API 互動所需的基於權杖 (token) 的身分驗證機制。
+對 AIGNE Hub API 的請求進行安全驗證，是程式化存取與整合的關鍵步驟。本指南提供一個清晰、逐步的流程，說明如何使用 API 金鑰來授權您的應用程式，確保所有互動都是安全且能被正確識別的。
 
-API 的存取是透過 Bearer 權杖進行控制。每個請求的 `Authorization` 標頭中都必須包含一個有效的權杖。未經驗證的請求或憑證無效的請求將會導致錯誤。
+## 驗證方法
 
-有關可用端點的更多詳細資訊，請參閱 [V2 端點 (建議)](./api-reference-v2-endpoints.md) 章節。
+AIGNE Hub 主要為其 RESTful API 使用帶有 API 金鑰的 bearer 驗證。所有 API 請求都必須包含一個含有有效 API 金鑰的 `Authorization` 標頭。這種方法直接、安全，並符合服務對服務通訊的業界最佳實踐。
 
-## 身分驗證流程
+## 產生 API 金鑰
 
-此流程始於管理員透過 AIGNE Hub 的使用者介面產生存取權杖。然後，此權杖會提供給用戶端應用程式，用戶端應用程式會將其包含在每個 API 請求的標頭中。AIGNE Hub API 會在處理請求前驗證此權杖。
+在進行驗證之前，您必須從 AIGNE Hub 管理介面產生一個 API 金鑰。
 
-```d2
-shape: sequence_diagram
+1.  在您的 AIGNE Hub 實例中，導覽至 **Settings** 區塊。
+2.  選擇 **API Keys** 標籤頁。
+3.  點擊 **"Generate New Key"** 按鈕。
+4.  為您的金鑰提供一個描述性的名稱，以幫助您稍後識別其用途（例如，`dev-server-integration`、`analytics-script-key`）。
+5.  系統將會產生一把新的金鑰。**請立即複製此金鑰並將其存放在安全的位置。** 基於安全考量，在您離開此頁面後，完整的金鑰將不會再次顯示。
 
-Admin: {
-  shape: c4-person
-}
+## 使用 API 金鑰
 
-AIGNE-Hub-Admin-UI: {
-  label: "AIGNE Hub\n管理介面"
-}
+要驗證 API 請求，請將 API 金鑰包含在 HTTP 請求的 `Authorization` 標頭中。該值必須以 `Bearer ` 方案為前綴。
 
-Client-Application: {
-  label: "用戶端應用程式"
-}
-
-AIGNE-Hub-API: {
-  label: "AIGNE Hub API"
-}
-
-Admin -> AIGNE-Hub-Admin-UI: "1. 產生存取權杖"
-AIGNE-Hub-Admin-UI -> Admin: "2. 提供權杖"
-Admin -> Client-Application: "3. 使用權杖進行設定"
-
-Client-Application -> AIGNE-Hub-API: "4. API 請求\n(Authorization: Bearer <token>)"
-AIGNE-Hub-API -> AIGNE-Hub-API: "5. 驗證權杖與權限"
-
-"若已授權" {
-  AIGNE-Hub-API -> Client-Application: "6a. 200 OK 回應"
-}
-
-"若未授權" {
-  AIGNE-Hub-API -> Client-Application: "6b. 401 Unauthorized 錯誤"
-}
-```
-
-## 發送已驗證的請求
-
-要驗證 API 請求，您必須包含一個含有 Bearer 權杖的 `Authorization` 標頭。
-
-**標頭格式：**
+### HTTP 標頭格式
 
 ```
-Authorization: Bearer <YOUR_ACCESS_TOKEN>
+Authorization: Bearer <YOUR_API_KEY>
 ```
 
-請將 `<YOUR_ACCESS_TOKEN>` 替換為從 AIGNE Hub 管理介面產生的實際 OAuth 存取金鑰。
+請將 `<YOUR_API_KEY>` 替換為您實際產生的金鑰。
 
-### 範例：cURL 請求
+### cURL 請求範例
 
-此範例示範如何使用 `curl` 向聊天完成 (chat completions) 端點發送請求。
+以下是使用 `cURL` 向 Chat Completions 端點發出已驗證請求的範例。
 
-```bash 使用 cURL 的 API 請求 icon=cib:curl
-curl -X POST 'https://your-aigne-hub-url/api/v2/chat/completions' \
--H 'Authorization: Bearer your-oauth-access-key' \
--H 'Content-Type: application/json' \
--d '{
-  "model": "openai/gpt-3.5-turbo",
-  "messages": [
-    {
-      "role": "user",
-      "content": "Hello, AIGNE Hub!"
-    }
-  ]
-}'
+```bash Authenticated API Request icon=lucide:terminal
+curl -X POST https://your-aigne-hub-url/api/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -d '{
+    "model": "aignehub/gpt-3.5-turbo",
+    "messages": [{"role": "user", "content": "Hello!"}]
+  }'
 ```
 
-### 範例：Node.js 用戶端
+### Node.js 應用程式中的範例
 
-當使用官方的 AIGNE Hub 用戶端函式庫時，身分驗證標頭會自動管理。
+在與應用程式整合時，您將在 HTTP 客戶端函式庫中設定 `Authorization` 標頭。以下範例使用 AIGNE Hub SDK，它簡化了此流程。
 
-```typescript AIGNE Hub 用戶端 icon=logos:nodejs
+```javascript AIGNEHubChatModel.js icon=logos:javascript
 import { AIGNEHubChatModel } from "@aigne/aigne-hub";
 
 const model = new AIGNEHubChatModel({
   baseURL: "https://your-aigne-hub-url",
-  apiKey: "your-oauth-access-key",
+  apiKey: "YOUR_API_KEY", // SDK 會處理加上 "Bearer " 前綴
   model: "aignehub/gpt-3.5-turbo",
 });
 
-const result = await model.invoke({
-  messages: "Hello, AIGNE Hub!",
-});
-
-console.log(result);
-```
-
-## 錯誤處理
-
-如果身分驗證失敗，API 將會回傳 HTTP `401 Unauthorized` 狀態碼。這表示請求中提供的憑證有問題。
-
-`401` 錯誤的常見原因包括：
-
-| 原因 | 說明 |
-| :--- | :--- |
-| **缺少權杖** | 請求中未包含 `Authorization` 標頭。 |
-| **無效的權杖** | 提供的權杖格式錯誤、已過期或已被撤銷。 |
-| **權限不足** | 權杖有效，但關聯的使用者或應用程式缺乏對所請求資源的必要權限。 |
-
-### 錯誤回應範例
-
-失敗的身分驗證嘗試將會回傳一個包含錯誤詳細資訊的 JSON 物件。
-
-```json 未授權回應 icon=mdi:code-json
-{
-  "error": "Unauthorized",
-  "message": "Authentication token is invalid or missing."
+async function getGreeting() {
+  try {
+    const result = await model.invoke({
+      messages: [{ role: "user", content: "Hello, AIGNE Hub!" }],
+    });
+    console.log(result);
+  } catch (error) {
+    console.error("API request failed:", error.message);
+  }
 }
+
+getGreeting();
 ```
 
-如果您收到此回應，請在重試請求前，確認您的存取權杖是否正確、尚未過期，並具備所需權限。
+在此範例中，提供給 `AIGNEHubChatModel` 建構函式的 `apiKey` 會被自動放入正確的 `Authorization` 標頭中，用於該模型實例後續發出的所有 API 呼叫。
+
+## 安全最佳實踐
+
+-   **像對待密碼一樣對待 API 金鑰。** 將它們安全地存放在秘密管理器或環境變數中。切勿將它們暴露在客戶端程式碼中，或提交到版本控制系統。
+-   **為不同的應用程式使用不同的金鑰。** 這種做法稱為最小權限原則，可以在單一金鑰被洩露時限制其影響範圍。
+-   **定期輪換金鑰。** 定期撤銷舊金鑰並產生新金鑰，以降低因金鑰洩露而導致未經授權存取的風險。
+-   **監控 API 使用情況。** 密切注意分析儀表板，以偵測任何可能表示金鑰已遭洩露的異常活動。
 
 ## 總結
 
-本節詳細介紹了 AIGNE Hub API 的 Bearer 權杖身分驗證機制。所有請求都必須在 `Authorization` 標頭中包含一個有效的權杖。有關特定端點的詳細資訊，請繼續參閱 [V2 端點 (建議)](./api-reference-v2-endpoints.md) 文件。
+對 AIGNE Hub API 的驗證是透過包含在 `Authorization` 標頭中作為 bearer token 的 API 金鑰來處理的。遵循上述的產生流程和安全最佳實踐，您可以確保對所有 API 端點的程式化存取是安全且可靠的。
+
+有關特定端點的更多資訊，請參考以下章節：
+- [Chat Completions](./api-reference-chat-completions.md)
+- [Image Generation](./api-reference-image-generation.md)
+- [Embeddings](./api-reference-embeddings.md)

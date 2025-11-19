@@ -1,211 +1,109 @@
 # API リファレンス
 
-AIGNE Hub は、AI 機能をアプリケーションに統合するための堅牢な RESTful API セットを提供します。この API は、統一されたゲートウェイとして設計されており、さまざまな基盤となる AI プロバイダーとのやり取りを簡素化します。このドキュメントでは、開発者および SRE が API エンドポイントをデプロイ、統合、および監視する方法に関する詳細情報を提供します。
+このドキュメントは、AIGNE Hub RESTful API の技術仕様を提供します。このガイドに従うことで、チャット補完、画像生成、埋め込みのコアエンドポイントを認証し、対話する方法を理解し、アプリケーションとの堅牢なバックエンド統合を可能にします。
 
-利用可能な API には 2 つのバージョンがあります。すべての新しい統合では **V2 API** を使用することを強くお勧めします。V2 API は機能がより豊富で、AIGNE フレームワークに準拠しており、クレジットベースの課金システムをサポートしているためです。
+AIGNE Hub API は、様々な基盤となる AI モデルへの統一されたインターフェースを提供し、個々のプロバイダー API の複雑さを抽象化します。すべてのリクエストは API キーを使用して認証されます。
 
-- **V2 API**: 現在の推奨バージョンで、すべてのユーザー向けです。ユーザーベースの認証が必要で、クレジット課金システムと統合されています。
-- **V1 API (レガシー)**: 主に内部のコンポーネント間通信に使用される非推奨のバージョンです。よりシンプルなサブスクリプションモデルに依存しており、機能が制限されています。
+以下の図は、アプリケーション、AIGNE Hub API、および基盤となる AI モデル間の相互作用を示しています。
 
----
+```d2
+direction: down
 
-## 認証
+Your-Application: {
+  label: "あなたのアプリケーション"
+  shape: rectangle
+}
 
-V1 API と V2 API では、それぞれの異なるユースケースを反映して、認証の処理方法が異なります。
+AIGNE-Hub: {
+  label: "AIGNE Hub API"
+  shape: rectangle
+  grid-columns: 2
 
-### V2 認証: ユーザーアクセスキー
+  Chat-Completions: {
+    label: "チャット補完"
+  }
 
-V2 API は、エンドユーザーおよびアプリケーションの統合向けに設計されています。セッションベースの認証メカニズムを使用し、認証された各ユーザーはアクセスキーを持ちます。
+  Image-Generation: {
+    label: "画像生成"
+  }
 
-- **メカニズム**: クライアントは、認証のためにリクエストに有効なアクセスキーを含める必要があります。これは通常、`Authorization` ヘッダーまたは `@blocklet/sdk` によって管理されるセッションクッキーを介して行われます。
-- **使用法**: この方法は、すべての V2 エンドポイント (例: `/api/v2/chat/completions`、`/api/v2/image`) で使用されます。これにより、すべての API コールが特定のユーザーに関連付けられ、正確な使用状況の追跡とクレジットベースの課金に不可欠です。
+  Embeddings: {
+    label: "埋め込み"
+  }
 
-### V1 認証: コンポーネントコール
-
-V1 API は、Blocklet エコシステム内の異なるコンポーネント間の内部的なサーバー間通信を目的としています。
-
-- **メカニズム**: V1 エンドポイントは `ensureRemoteComponentCall` および `ensureAdmin` ミドルウェアによって保護されています。このシステムは、リクエストが必要な管理者権限を持つ信頼されたコンポーネントから発信されたことを検証します。
-- **使用法**: これは、外部またはエンドユーザー向けのアプリケーションを対象としていません。AIGNE エコシステムの異なる部分が内部で Hub と通信するための安全な方法を提供します。
-
----
-
-## API バージョン 2 (推奨)
-
-V2 API は、すべての新規開発における標準です。チャット、画像生成、埋め込みのための包括的な機能を提供し、使用状況の追跡とクレジットベースの課金のための組み込みサポートを備えています。
-
-### エンドポイント: チャット補完
-
-このエンドポイントは、対話型 AI、テキスト補完、その他の言語タスクのためにテキストベースの応答を生成します。OpenAI Chat Completions API 形式と互換性があり、ストリーミングをサポートしています。
-
-- **エンドポイント**: `POST /api/v2/chat/completions`
-- **AIGNE ネイティブエンドポイント**: `POST /api/v2/chat`
-
-#### リクエストボディ
-
-| フィールド | 型 | 説明 | 必須 |
-| :--- | :--- | :--- | :--- |
-| `model` | string | 使用するモデルの ID (例: `openai/gpt-4`、`anthropic/claude-3-opus`)。 | はい |
-| `messages` | array | 会話履歴を表すメッセージオブジェクトの配列。下記のオブジェクト構造を参照してください。 | はい |
-| `stream` | boolean | `true` の場合、API は部分的なメッセージ差分をサーバーセントイベント (SSE) としてストリーミングで返します。 | いいえ |
-| `temperature` | number | ランダム性を制御します。値が低いほど、出力はより確定的になります。範囲は 0.0 から 2.0 です。 | いいえ |
-| `maxTokens` | integer | 補完で生成するトークンの最大数。 | いいえ |
-| `topP` | number | ニュークリアスサンプリングを介して多様性を制御します。範囲は 0.1 から 1.0 です。 | いいえ |
-| `presencePenalty` | number | これまでのテキストに出現するかに基づいて新しいトークンにペナルティを課します。範囲は -2.0 から 2.0 です。 | いいえ |
-| `frequencyPenalty` | number | これまでのテキストにおける既存の頻度に基づいて新しいトークンにペナルティを課します。範囲は -2.0 から 2.0 です。 | いいえ |
-| `tools` | array | モデルが呼び出す可能性のあるツールのリスト。 | いいえ |
-| `toolChoice` | string or object | モデルがどのツールを使用すべきかを制御します。「none」、「auto」、「required」、または特定の関数を指定できます。 | いいえ |
-| `responseFormat` | object | モデルが出力しなければならない形式を指定するオブジェクト。例: `{ "type": "json_object" }` | いいえ |
-
-**メッセージオブジェクトの構造**
-
-| フィールド | 型 | 説明 |
-| :--- | :--- | :--- |
-| `role` | string | メッセージ作成者の役割。`system`、`user`、`assistant`、`tool` のいずれか。 |
-| `content` | string or array | メッセージの内容。マルチモーダルモデルの場合、これはテキストと画像オブジェクトの配列にすることができます。 |
-| `toolCalls` | array | モデルがツールを呼び出すと判断した場合、`assistant` メッセージに存在します。 |
-| `toolCallId` | string | `tool` ロールのメッセージに必須で、応答するツールコールの ID を指定します。 |
-
-#### 使用例 (TypeScript)
-
-```typescript
-import { AIGNEHubChatModel } from "@aigne/aigne-hub";
-
-const model = new AIGNEHubChatModel({
-  baseURL: "https://your-aigne-hub-url",
-  accessKey: "your-user-access-key",
-  model: "aignehub/gpt-3.5-turbo",
-});
-
-const result = await model.invoke({
-  messages: "Hello, what is AIGNE Hub?",
-});
-
-console.log(result);
-```
-
-#### レスポンスオブジェクト
-
-レスポンスには、生成されたメッセージ、モデル情報、および AIGNE Hub クレジットでのコストを含む詳細な使用状況メトリクスが含まれます。
-
-```json
-{
-  "id": "chatcmpl-xxxxxxxx",
-  "object": "chat.completion",
-  "created": 1677652288,
-  "model": "openai/gpt-3.5-turbo",
-  "choices": [{
-    "index": 0,
-    "message": {
-      "role": "assistant",
-      "content": "AIGNE Hub is a unified AI gateway..."
-    },
-    "finish_reason": "stop"
-  }],
-  "usage": {
-    "prompt_tokens": 8,
-    "completion_tokens": 20,
-    "total_tokens": 28,
-    "aigneHubCredits": 0.0015
+  Audio: {
+    label: "音声サービス"
   }
 }
-```
 
-### エンドポイント: 画像生成
+AI-Models: {
+  label: "基盤となる AI モデル"
+  shape: rectangle
 
-このエンドポイントは、テキストプロンプトから画像を生成します。
+  OpenAI: {
+    label: "OpenAI"
+  }
 
-- **エンドポイント**: `POST /api/v2/image/generations`
-- **AIGNE ネイティブエンドポイント**: `POST /api/v2/image`
+  Anthropic: {
+    label: "Anthropic"
+  }
 
-#### リクエストボディ
+  Mistral: {
+    label: "Mistral"
+  }
 
-| フィールド | 型 | 説明 | 必須 |
-| :--- | :--- | :--- | :--- |
-| `model` | string | 画像生成に使用するモデル (例: `openai/dall-e-3`)。 | はい |
-| `prompt` | string | 希望する画像のテキスト説明。 | はい |
-| `n` | integer | 生成する画像の数。デフォルトは 1。最大 10。 | いいえ |
-| `size` | string | 生成する画像のサイズ (例: `1024x1024`、`1792x1024`)。 | いいえ |
-| `quality` | string | 画像の品質。`standard` または `hd`。 | いいえ |
-| `style` | string | 生成する画像のスタイル。`vivid` または `natural`。 | いいえ |
-| `responseFormat` | string | 生成された画像が返される形式。`url` または `b64_json`。 | いいえ |
-
-#### レスポンスオブジェクト
-
-```json
-{
-  "created": 1689989552,
-  "data": [
-    {
-      "url": "https://..."
-    },
-    {
-      "url": "https://..."
-    }
-  ],
-  "model": "openai/dall-e-3",
-  "usage": {
-    "aigneHubCredits": 0.080
+  Others: {
+    label: "..."
   }
 }
+
+Your-Application -> AIGNE-Hub: "キー付き API リクエスト"
+AIGNE-Hub.Chat-Completions -> AI-Models.OpenAI
+AIGNE-Hub.Chat-Completions -> AI-Models.Anthropic
+AIGNE-Hub.Image-Generation -> AI-Models.OpenAI
+AIGNE-Hub.Embeddings -> AI-Models.Mistral
+AIGNE-Hub.Audio -> AI-Models.Others
+AI-Models -> AIGNE-Hub: "モデルの応答"
+AIGNE-Hub -> Your-Application: "統一された API 応答"
 ```
 
-### エンドポイント: 埋め込み
+各エンドポイントの詳細な仕様（リクエストとレスポンスのスキーマを含む）については、特定のサブセクションを参照してください。
 
-このエンドポイントは、セマンティック検索、クラスタリング、その他の機械学習タスクに使用できる、与えられた入力のベクトル表現を作成します。
+<x-cards data-columns="3">
+  <x-card data-title="チャット補完" data-icon="lucide:message-square-text" data-href="/api-reference/chat-completions">
+    チャット補完エンドポイントの詳細仕様。リクエスト/レスポンススキーマとストリーミングサポートを含みます。
+  </x-card>
+  <x-card data-title="画像生成" data-icon="lucide:image" data-href="/api-reference/image-generation">
+    画像生成エンドポイントのリファレンス。サポートされるモデルやサイズと品質に関するパラメータを網羅しています。
+  </x-card>
+  <x-card data-title="埋め込み" data-icon="lucide:codesandbox" data-href="/api-reference/embeddings">
+    セマンティック検索やその他の ML タスクで使用するためにテキストのベクトル表現を作成するためのドキュメント。
+  </x-card>
+</x-cards>
 
-- **エンドポイント**: `POST /api/v2/embeddings`
+<x-cards>
+  <x-card data-title="API 認証" data-icon="lucide:key-round" data-href="/api-reference/authentication">
+    OAuth と API キーを使用して AIGNE Hub API へのリクエストを安全に認証する方法を説明します。
+  </x-card>
+</x-cards>
 
-#### リクエストボディ
+## エンドポイント
 
-| フィールド | 型 | 説明 | 必須 |
-| :--- | :--- | :--- | :--- |
-| `model` | string | 埋め込みを作成するために使用するモデル (例: `openai/text-embedding-ada-002`)。 | はい |
-| `input` | string or array | 埋め込む入力テキストまたはトークン。単一の文字列または文字列/トークンの配列が可能です。 | はい |
+以下の表は、利用可能な API エンドポイントの概要を示しています。
 
-#### レスポンスオブジェクト
+| Method | Endpoint                    | Description                                        |
+| :----- | :-------------------------- | :------------------------------------------------- |
+| `POST` | `/chat/completions`         | 指定されたチャットの会話に対する応答を生成します。|
+| `POST` | `/embeddings`               | 指定された入力テキストのベクトル埋め込みを生成します。|
+| `POST` | `/image/generations`        | テキストプロンプトに基づいて画像を生成します。           |
+| `POST` | `/audio/transcriptions`     | 音声を入力言語に文字起こしします。         |
+| `POST` | `/audio/speech`             | 入力テキストから音声を生成します。               |
+| `GET`  | `/status`                   | サービスとモデルの可用性を確認します。 |
 
-```json
-{
-  "object": "list",
-  "data": [
-    {
-      "object": "embedding",
-      "embedding": [
-        -0.0069292834,
-        -0.005336422,
-        ...
-      ],
-      "index": 0
-    }
-  ],
-  "model": "openai/text-embedding-ada-002",
-  "usage": {
-    "prompt_tokens": 5,
-    "total_tokens": 5
-  }
-}
-```
+## まとめ
 
----
+このセクションでは、AIGNE Hub API の概要を説明し、認証と利用可能なエンドポイントの概要について触れました。実践的な統合については、各エンドポイントの詳細なドキュメントに進んでください。
 
-## システム運用と信頼性
-
-DevOps および SRE にとって、システムの運用挙動を理解することは、信頼性の高いサービスを維持するための鍵となります。
-
-### 自動リトライ
-
-API ゲートウェイには、下流の AI プロバイダーからの一時的な障害を処理するための組み込みリトライメカニズムが含まれています。これにより、クライアント側のリトライロジックを必要とせずに、リクエストの全体的な信頼性が向上します。
-
-- **トリガーとなるステータスコード**: 下流サービスが以下の HTTP ステータスコードのいずれかを返した場合、リトライが自動的に試行されます。
-  - `429 (Too Many Requests)`
-  - `500 (Internal Server Error)`
-  - `502 (Bad Gateway)`
-- **設定**: システムにはデフォルトの `maxRetries` 値が設定されています。リクエストが上記のコードのいずれかで失敗した場合、クライアントにエラーを返す前に、この最大回数までリトライされます。このロジックは `createRetryHandler` 関数に実装されています。
-
-### 課金と使用状況の追跡
-
-AIGNE Hub の V2 API は、クレジットベースの課金システムと密接に統合されています。このシステムは、コストの監視、クォータの強制、およびエンタープライズとサービスプロバイダーの両方のデプロイメントにおけるユーザーアクセスの管理に不可欠です。
-
-- **クレジットチェック**: V2 API リクエストを処理する前に、システムは `checkUserCreditBalance` を呼び出して、認証されたユーザーが操作を実行するのに十分なクレジットを持っていることを確認します。残高が不十分な場合、リクエストはエラーで拒否されます。
-- **使用状況の報告**: API コールが正常に完了すると、システムは使用されたモデル、処理されたトークン、または生成された画像に基づいて操作のコストを計算します。`createUsageAndCompleteModelCall` 関数は、この使用状況を記録し、対応する金額をユーザーのクレジット残高から差し引きます。
-- **レスポンスメタデータ**: 透明性のために、チャットおよび画像生成の API レスポンスには、`usage` オブジェクト内に `aigneHubCredits` フィールドが含まれます。このフィールドは、その特定のトランザクションの正確なコストを示し、クライアントがリアルタイムで消費量を追跡できるようにします。
+- **対話型 AI の構築には:** [チャット補完 API](./api-reference-chat-completions.md) をご覧ください。
+- **画像の生成には:** [画像生成 API](./api-reference-image-generation.md) をご覧ください。
+- **テキスト分析と検索には:** [埋め込み API](./api-reference-embeddings.md) をご利用ください。
