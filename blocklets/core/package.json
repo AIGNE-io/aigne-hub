@@ -36,7 +36,7 @@
     "@abtnode/cron": "1.17.3-beta-20251118-061144-335cd35d",
     "@abtnode/queue": "1.17.3-beta-20251118-061144-335cd35d",
     "@abtnode/util": "1.17.3-beta-20251118-061144-335cd35d",
-    "@aigne/aigne-hub": "^0.10.10-beta.3",
+    "@aigne/aigne-hub": "^0.10.10-beta.4",
     "@aigne/core": "^1.69.0-beta.2",
     "@aigne/observability-api": "^0.11.9-beta.3",
     "@aigne/openai": "^0.16.10-beta.3",
