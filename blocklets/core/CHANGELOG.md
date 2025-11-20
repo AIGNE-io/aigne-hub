@@ -1,3 +1,7 @@
+## 0.6.12 (2025-11-20)
+
+- chore: update framework packages to support Gemini 3.x models
+
 ## 0.6.11 (2025-11-18)
 
 - chore: update blocklet dependencies to version 1.17.3-beta
