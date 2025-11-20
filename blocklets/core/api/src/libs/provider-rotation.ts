@@ -1,10 +1,16 @@
+import {
+  getDefaultProviderForModel,
+  getSupportedProviders,
+  inferVendorFromModel,
+  resolveProviderModelId,
+} from '@aigne/aigne-hub';
 import AiCredential from '@api/store/models/ai-credential';
 import AiModelRate from '@api/store/models/ai-model-rate';
 import AiProvider from '@api/store/models/ai-provider';
 import { CustomError } from '@blocklet/error';
 import { Op } from 'sequelize';
 
-import { AIProviderType, PROVIDER_RANK, SUPPORTED_PROVIDERS_SET } from './constants';
+import { AIProviderType, SUPPORTED_PROVIDERS_SET } from './constants';
 import { Config } from './env';
 import logger from './logger';
 
@@ -34,102 +40,6 @@ function parseModelNameWithProvider(model: string): { providerName: string; mode
     modelName: model,
     providerName: '',
   };
-}
-
-export function inferVendorFromModel(model: string): string | undefined {
-  if (!model) {
-    return undefined;
-  }
-  const id = model.toLowerCase();
-  if (/^gemini/.test(id)) return 'google';
-  if (/^claude/.test(id)) return 'anthropic';
-  if (/^gpt-|^o[13]-|^dall-e-|^text-embedding|^sora-/.test(id)) return 'openai';
-  if (/^deepseek/.test(id)) return 'deepseek';
-  if (/^grok/.test(id)) return 'xai';
-  if (/^doubao/.test(id)) return 'doubao';
-  if (/^llama/.test(id)) return 'meta';
-  if (/^mistral|^mixtral/.test(id)) return 'mistral';
-  if (/^qwen/.test(id)) return 'qwen';
-  if (/^gemma/.test(id)) return 'google';
-  if (/^yi/.test(id)) return 'yi';
-  if (/^phi/.test(id)) return 'microsoft';
-  return undefined;
-}
-
-export function getDefaultProviderForModel(model: string): AIProviderType | null {
-  if (!model) {
-    return null;
-  }
-  const id = model.toLowerCase();
-
-  if (/^gemini/.test(id)) return 'google';
-  if (/^gpt-|^o[13]-|^dall-e-|^text-embedding|^sora-/.test(id)) return 'openai';
-  if (/^claude/.test(id)) return 'anthropic';
-  if (/^deepseek/.test(id)) return 'deepseek';
-  if (/^grok/.test(id)) return 'xai';
-  if (/^doubao/.test(id)) return 'doubao';
-
-  if (/^(llama|mistral|mixtral|gemma|qwen|yi|phi)\b/i.test(id)) return 'openrouter';
-
-  return null;
-}
-
-export function getSupportedProviders(model: string): AIProviderType[] {
-  const id = model.toLowerCase();
-  const set = new Set<AIProviderType>();
-
-  if (/^gemini/.test(id)) {
-    ['google', 'openrouter', 'poe'].forEach((p) => set.add(p as AIProviderType));
-  }
-  if (/^gpt-|^o[13]-|^dall-e-|^text-embedding|^sora-/.test(id)) {
-    ['openai', 'openrouter', 'poe'].forEach((p) => set.add(p as AIProviderType));
-  }
-  if (/^claude/.test(id)) {
-    ['anthropic', 'bedrock', 'openrouter', 'poe'].forEach((p) => set.add(p as AIProviderType));
-  }
-  if (/^deepseek/.test(id)) {
-    ['deepseek', 'openrouter', 'ollama'].forEach((p) => set.add(p as AIProviderType));
-  }
-  if (/^grok/.test(id)) {
-    ['xai', 'openrouter', 'poe'].forEach((p) => set.add(p as AIProviderType));
-  }
-  if (/^doubao/.test(id)) {
-    ['doubao'].forEach((p) => set.add(p as AIProviderType));
-  }
-  if (/^(llama|mistral|mixtral|gemma|qwen|yi|phi)\b/i.test(id)) {
-    ['openrouter', 'ollama', 'bedrock'].forEach((p) => set.add(p as AIProviderType));
-  }
-
-  return Array.from(set).sort((a, b) => PROVIDER_RANK[a] - PROVIDER_RANK[b]);
-}
-
-/**
- * Resolve provider-specific model ID based on platform conventions
- * @param provider - The provider name (e.g., 'openrouter', 'bedrock', 'google')
- * @param canonicalModel - The canonical model name (e.g., 'gemini-2.5-pro', 'claude-3-5-sonnet-20241022')
- * @param vendor - Optional vendor hint (e.g., 'google' for gemini models, 'anthropic' for claude)
- * @returns Provider-specific model ID
- *
- * Examples:
- * - OpenRouter: 'google/gemini-2.5-pro', 'openai/gpt-4o', 'anthropic/claude-3-5-sonnet'
- * - Bedrock: 'anthropic.claude-3-5-sonnet-20241022-v2:0', 'meta.llama3-70b-instruct-v1:0'
- * - Direct providers (google, openai, etc.): 'gemini-2.5-pro', 'gpt-4o'
- */
-export function resolveProviderModelId(provider: AIProviderType, canonicalModel: string, vendor?: string): string {
-  const v = vendor || inferVendorFromModel(canonicalModel);
-
-  if (provider === 'bedrock' && v) {
-    if (canonicalModel.includes('.')) {
-      return canonicalModel;
-    }
-    return `${v}.${canonicalModel}`;
-  }
-
-  if (provider === 'openrouter' && v && !canonicalModel.startsWith(`${v}/`)) {
-    return `${v}/${canonicalModel}`;
-  }
-
-  return canonicalModel;
 }
 
 class ProviderRotationManager {
