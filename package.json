@@ -1,7 +1,7 @@
 {
   "name": "ai-kit",
   "private": true,
-  "version": "0.6.13",
+  "version": "0.6.14",
   "workspaces": [
     "blocklets/*",
     "packages/*"
@@ -63,7 +63,7 @@
     "zx": "^8.1.4"
   },
   "resolutions": {
-    "@aigne/aigne-hub": "^0.10.10-beta.3",
+    "@aigne/aigne-hub": "^0.10.10-beta.4",
     "@aigne/core": "^1.69.0-beta.2",
     "@aigne/observability-api": "^0.11.9-beta.3",
     "@aigne/openai": "^0.16.10-beta.3",
