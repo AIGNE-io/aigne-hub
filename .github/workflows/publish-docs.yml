@@ -12,6 +12,8 @@ on:
     branches:
       - master
       - main
+    paths:
+      - '.aigne/doc-smith/**'
   pull_request:
     types:
       - opened
@@ -22,6 +24,8 @@ on:
       - master
       - main
       - dev
+    paths:
+      - '.aigne/doc-smith/**'
 
 jobs:
   publish-docs:
