@@ -1,3 +1,7 @@
+## 0.6.13 (2025-11-20)
+
+- chore: update publish-docs workflow to include path filters for doc-smith
+
 ## 0.6.12 (2025-11-20)
 
 - chore: update framework packages to support Gemini 3.x models
