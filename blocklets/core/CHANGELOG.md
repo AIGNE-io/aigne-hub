@@ -1,3 +1,7 @@
+## 0.6.14 (2025-11-20)
+
+- chore: update pacakge for fix model fetch timeout
+
 ## 0.6.13 (2025-11-20)
 
 - chore: update publish-docs workflow to include path filters for doc-smith
