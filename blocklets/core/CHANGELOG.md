@@ -1,3 +1,7 @@
+## 0.6.17 (2025-11-21)
+
+- chore: update deps
+
 ## 0.6.16 (2025-11-21)
 
 - chore: add model and provider logging for completions endpoints
