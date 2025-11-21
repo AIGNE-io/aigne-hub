@@ -221,7 +221,7 @@ export const createRetryHandler = (
           count: nextCount,
           maxRetries,
           errorStatus,
-          model: currentModel,
+          currentModel,
           nextModel,
           originalModel: req.originalModel,
         });
