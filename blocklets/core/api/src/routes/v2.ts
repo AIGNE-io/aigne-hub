@@ -233,6 +233,7 @@ router.post(
 
       const engine = new AIGNE({ model });
       const aigneServer = new AIGNEHTTPServer(engine);
+      logger.info('chat completions model with provider', getReqModel(req));
 
       await new Promise((resolve, reject) => {
         aigneServer.invoke(req, res, {
@@ -344,6 +345,8 @@ router.post(
       let traceId;
 
       const aigne = new AIGNE();
+      logger.info('image completions model with provider', getReqModel(req));
+
       const response = await aigne.invoke(
         modelInstance,
         {
@@ -450,6 +453,8 @@ router.post(
       let traceId;
 
       const aigne = new AIGNE();
+      logger.info('video completions model with provider', getReqModel(req));
+
       const response = await aigne.invoke(
         modelInstance,
         {

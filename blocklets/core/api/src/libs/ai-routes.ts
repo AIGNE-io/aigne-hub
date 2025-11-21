@@ -203,26 +203,28 @@ export const createRetryHandler = (
         await middlewareNext();
       });
     } catch (error) {
+      const currentModel = getReqModel(req);
       const maxRetries = req.maxProviderRetries !== undefined ? req.maxProviderRetries : defaultOptions.maxRetries;
       const errorStatus = error.response?.status || error.status || 500;
       const nextCount = count + 1;
 
       if (canRetry(nextCount, maxRetries)) {
-        logger.info('ai route retry', {
-          count: nextCount,
-          maxRetries,
-          errorStatus,
-          model: getReqModel(req),
-          originalModel: req.originalModel,
-        });
-
-        const filteredModels = (req.availableModelsWithProvider || []).filter((m) => m !== getReqModel(req));
+        const filteredModels = (req.availableModelsWithProvider || []).filter((m) => m !== currentModel);
         req.availableModelsWithProvider = filteredModels || [];
 
         const nextModel = filteredModels[0] || req.originalModel;
         if (nextModel) {
           req.body.model = nextModel;
         }
+
+        logger.info('ai route retry', {
+          count: nextCount,
+          maxRetries,
+          errorStatus,
+          currentModel,
+          nextModel,
+          originalModel: req.originalModel,
+        });
 
         await fn(req, res, next, nextCount);
         return;
