@@ -1,3 +1,7 @@
+## 0.6.16 (2025-11-21)
+
+- chore: add model and provider logging for completions endpoints
+
 ## 0.6.15 (2025-11-21)
 
 - fix: correct model formatting when provider is specified
