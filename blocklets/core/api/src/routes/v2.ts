@@ -273,7 +273,7 @@ router.post(
                 }
 
                 if (data.output) {
-                  data.output.modelWithProvider = modelOptions?.model;
+                  data.output.modelWithProvider = getReqModel(req);
                 }
               }
 
@@ -412,7 +412,7 @@ router.post(
         response.images = list;
       }
 
-      res.json({ ...response, usage: { ...response.usage, aigneHubCredits }, modelWithProvider: m });
+      res.json({ ...response, usage: { ...response.usage, aigneHubCredits }, modelWithProvider: getReqModel(req) });
     }),
   ])
 );
@@ -517,7 +517,7 @@ router.post(
         response.videos = list;
       }
 
-      res.json({ ...response, usage: { ...response.usage, aigneHubCredits }, modelWithProvider: m });
+      res.json({ ...response, usage: { ...response.usage, aigneHubCredits }, modelWithProvider: getReqModel(req) });
     }),
   ])
 );

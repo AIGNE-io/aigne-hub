@@ -1,6 +1,10 @@
+## 0.6.15 (2025-11-21)
+
+- fix: correct model formatting when provider is specified
+
 ## 0.6.14 (2025-11-20)
 
-- chore: update pacakge for fix model fetch timeout
+- chore: update package for fix model fetch timeout
 
 ## 0.6.13 (2025-11-20)
 
