@@ -52,7 +52,7 @@ AIGNEObserver.setUpdateFn(async (id, data) => {
     return;
   }
 
-  logger.info('update trace', id, data);
+  logger.info('update trace', id, Object.keys(data));
 
   await call({
     name: OBSERVABILITY_DID,
