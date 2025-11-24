@@ -4,6 +4,7 @@ import AiCredential from '@api/store/models/ai-credential';
 import AiModelRate from '@api/store/models/ai-model-rate';
 import AiModelStatus, { ModelError, ModelErrorType } from '@api/store/models/ai-model-status';
 import AiProvider from '@api/store/models/ai-provider';
+import { CallType } from '@api/store/models/types';
 import { CreditErrorType } from '@blocklet/aigne-hub/api';
 import { CustomError, formatError } from '@blocklet/error';
 import type { Request, Response } from 'express';
@@ -225,7 +226,7 @@ export async function updateModelStatus({
   success: boolean;
   duration: number;
   error?: Error;
-  type?: string;
+  type?: Omit<CallType, 'custom' | 'audioGeneration'>;
 }) {
   const { modelName, providerName } = await getModelAndProviderId(model);
   const provider = await AiProvider.findOne({ where: { name: providerName } });
@@ -258,7 +259,7 @@ export function withModelStatus({
   type,
   handler,
 }: {
-  type?: string;
+  type?: Omit<CallType, 'custom' | 'audioGeneration'>;
   handler: (req: Request, res: Response) => Promise<void>;
 }) {
   return async (req: Request, res: Response) => {
