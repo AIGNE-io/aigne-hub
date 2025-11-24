@@ -149,60 +149,63 @@ router.post(
   maxProviderRetriesMiddleware,
   createRetryHandler([
     chatCallTracker,
-    withModelStatus(async (req, res) => {
-      const userDid = req.user?.did;
+    withModelStatus({
+      type: 'chatCompletion',
+      handler: async (req, res) => {
+        const userDid = req.user?.did;
 
-      if (userDid && Config.creditBasedBillingEnabled) {
-        await checkUserCreditBalance({ userDid });
-      }
+        if (userDid && Config.creditBasedBillingEnabled) {
+          await checkUserCreditBalance({ userDid });
+        }
 
-      await processChatCompletion(req, res, 'v2', {
-        onEnd: async (data) => {
-          if (data?.output) {
-            const usageData = data.output;
+        await processChatCompletion(req, res, 'v2', {
+          onEnd: async (data) => {
+            if (data?.output) {
+              const usageData = data.output;
 
-            const usage = await createUsageAndCompleteModelCall({
-              req,
-              type: 'chatCompletion',
-              promptTokens: usageData.usage?.inputTokens || 0,
-              completionTokens: usageData.usage?.outputTokens || 0,
-              model: getReqModel(req),
-              modelParams: req.body?.options?.modelOptions,
-              appId: req.headers['x-aigne-hub-client-did'] as string,
-              userDid: userDid!,
-              creditBasedBillingEnabled: Config.creditBasedBillingEnabled,
-              additionalMetrics: {
-                totalTokens: (usageData.usage?.inputTokens || 0) + (usageData.usage?.outputTokens || 0),
-              },
-              metadata: {
-                endpoint: req.path,
-                responseId: data.output.id,
-                model: data.output.model,
-              },
-              traceId: data.context?.id,
-            }).catch((err) => {
-              logger.error('Create usage and complete model call error', { error: err });
-              return undefined;
-            });
+              const usage = await createUsageAndCompleteModelCall({
+                req,
+                type: 'chatCompletion',
+                promptTokens: usageData.usage?.inputTokens || 0,
+                completionTokens: usageData.usage?.outputTokens || 0,
+                model: getReqModel(req),
+                modelParams: req.body?.options?.modelOptions,
+                appId: req.headers['x-aigne-hub-client-did'] as string,
+                userDid: userDid!,
+                creditBasedBillingEnabled: Config.creditBasedBillingEnabled,
+                additionalMetrics: {
+                  totalTokens: (usageData.usage?.inputTokens || 0) + (usageData.usage?.outputTokens || 0),
+                },
+                metadata: {
+                  endpoint: req.path,
+                  responseId: data.output.id,
+                  model: data.output.model,
+                },
+                traceId: data.context?.id,
+              }).catch((err) => {
+                logger.error('Create usage and complete model call error', { error: err });
+                return undefined;
+              });
 
-            if (data.output.usage && Config.creditBasedBillingEnabled && usage) {
-              data.output.usage = {
-                ...data.output.usage,
-                aigneHubCredits: usage,
-                modelCallId: req.modelCallContext?.id,
-              } as any;
+              if (data.output.usage && Config.creditBasedBillingEnabled && usage) {
+                data.output.usage = {
+                  ...data.output.usage,
+                  aigneHubCredits: usage,
+                  modelCallId: req.modelCallContext?.id,
+                } as any;
+              }
+
+              if (data.output) {
+                data.output.modelWithProvider = getReqModel(req) || DEFAULT_MODEL;
+              }
             }
-
-            if (data.output) {
-              data.output.modelWithProvider = getReqModel(req) || DEFAULT_MODEL;
-            }
-          }
-          return data;
-        },
-        onError: async (data) => {
-          onError(data, req);
-        },
-      });
+            return data;
+          },
+          onError: async (data) => {
+            onError(data, req);
+          },
+        });
+      },
     }),
   ])
 );
@@ -214,100 +217,103 @@ router.post(
   maxProviderRetriesMiddleware,
   createRetryHandler([
     chatCallTracker,
-    withModelStatus(async (req, res) => {
-      const value = aigneHubModelBodyValidate(req.body);
+    withModelStatus({
+      type: 'chatCompletion',
+      handler: async (req, res) => {
+        const value = aigneHubModelBodyValidate(req.body);
 
-      const userDid = req.user?.did;
+        const userDid = req.user?.did;
 
-      if (userDid && Config.creditBasedBillingEnabled) {
-        await checkUserCreditBalance({ userDid });
-      }
+        if (userDid && Config.creditBasedBillingEnabled) {
+          await checkUserCreditBalance({ userDid });
+        }
 
-      const { modelOptions } = value.input;
-      await checkModelRateAvailable(modelOptions.model);
+        const { modelOptions } = value.input;
+        await checkModelRateAvailable(modelOptions.model);
 
-      const { modelInstance: model } = await getModel(modelOptions, { modelOptions, req });
-      if (modelOptions) {
-        delete req.body.input.modelOptions;
-      }
+        const { modelInstance: model } = await getModel(modelOptions, { modelOptions, req });
+        if (modelOptions) {
+          delete req.body.input.modelOptions;
+        }
 
-      const engine = new AIGNE({ model });
-      const aigneServer = new AIGNEHTTPServer(engine);
-      logger.info('chat completions model with provider', getReqModel(req));
+        const engine = new AIGNE({ model });
+        const aigneServer = new AIGNEHTTPServer(engine);
+        logger.info('chat completions model with provider', getReqModel(req));
 
-      await new Promise((resolve, reject) => {
-        aigneServer.invoke(req, res, {
-          userContext: { userId: req.user?.did, ...value.options?.userContext },
-          hooks: {
-            onEnd: async (data) => {
-              const usageData: ChatModelOutput = data.output;
+        await new Promise((resolve, reject) => {
+          aigneServer.invoke(req, res, {
+            userContext: { userId: req.user?.did, ...value.options?.userContext },
+            hooks: {
+              onEnd: async (data) => {
+                const usageData: ChatModelOutput = data.output;
 
-              if (usageData) {
-                const usage = await createUsageAndCompleteModelCall({
-                  req,
-                  type: 'chatCompletion',
-                  promptTokens: usageData.usage?.inputTokens || 0,
-                  completionTokens: usageData.usage?.outputTokens || 0,
-                  model: modelOptions?.model,
-                  modelParams: modelOptions,
-                  userDid: userDid!,
-                  appId: req.headers['x-aigne-hub-client-did'] as string,
-                  creditBasedBillingEnabled: Config.creditBasedBillingEnabled,
-                  additionalMetrics: {
-                    totalTokens: (usageData.usage?.inputTokens || 0) + (usageData.usage?.outputTokens || 0),
-                    endpoint: req.path,
-                  },
-                  traceId: data.context?.id,
-                }).catch((err) => {
-                  logger.error('Create usage and complete model call error', { error: err });
-                  return undefined;
-                });
+                if (usageData) {
+                  const usage = await createUsageAndCompleteModelCall({
+                    req,
+                    type: 'chatCompletion',
+                    promptTokens: usageData.usage?.inputTokens || 0,
+                    completionTokens: usageData.usage?.outputTokens || 0,
+                    model: modelOptions?.model,
+                    modelParams: modelOptions,
+                    userDid: userDid!,
+                    appId: req.headers['x-aigne-hub-client-did'] as string,
+                    creditBasedBillingEnabled: Config.creditBasedBillingEnabled,
+                    additionalMetrics: {
+                      totalTokens: (usageData.usage?.inputTokens || 0) + (usageData.usage?.outputTokens || 0),
+                      endpoint: req.path,
+                    },
+                    traceId: data.context?.id,
+                  }).catch((err) => {
+                    logger.error('Create usage and complete model call error', { error: err });
+                    return undefined;
+                  });
 
-                logger.info('usage', data.output.usage, Config.creditBasedBillingEnabled, usage);
+                  logger.info('usage', data.output.usage, Config.creditBasedBillingEnabled, usage);
 
-                if (data.output.usage && Config.creditBasedBillingEnabled && usage) {
-                  data.output.usage = {
-                    ...data.output.usage,
-                    aigneHubCredits: usage,
-                    modelCallId: req.modelCallContext?.id,
-                  };
+                  if (data.output.usage && Config.creditBasedBillingEnabled && usage) {
+                    data.output.usage = {
+                      ...data.output.usage,
+                      aigneHubCredits: usage,
+                      modelCallId: req.modelCallContext?.id,
+                    };
+                  }
+
+                  if (data.output) {
+                    data.output.modelWithProvider = getReqModel(req);
+                  }
                 }
 
-                if (data.output) {
-                  data.output.modelWithProvider = getReqModel(req);
-                }
-              }
-
-              if (value.input?.outputFileType === 'url' && usageData?.files && usageData.files?.length > 0) {
-                const list = await Promise.all(
-                  usageData.files.map(async (file) => {
-                    if (file.type === 'local' && file.path) {
-                      try {
-                        return await convertMediaToOnlineUrl(file.path, file?.mimeType || 'image/png');
-                      } catch (err) {
-                        logger.error('Failed to upload image to MediaKit', { error: err });
-                        return file;
+                if (value.input?.outputFileType === 'url' && usageData?.files && usageData.files?.length > 0) {
+                  const list = await Promise.all(
+                    usageData.files.map(async (file) => {
+                      if (file.type === 'local' && file.path) {
+                        try {
+                          return await convertMediaToOnlineUrl(file.path, file?.mimeType || 'image/png');
+                        } catch (err) {
+                          logger.error('Failed to upload image to MediaKit', { error: err });
+                          return file;
+                        }
                       }
-                    }
 
-                    return file;
-                  })
-                );
+                      return file;
+                    })
+                  );
 
-                usageData.files = list;
-              }
+                  usageData.files = list;
+                }
 
-              resolve(data);
+                resolve(data);
 
-              return data;
+                return data;
+              },
+              onError: async (data) => {
+                onError(data, req);
+                reject(data.error);
+              },
             },
-            onError: async (data) => {
-              onError(data, req);
-              reject(data.error);
-            },
-          },
+          });
         });
-      });
+      },
     }),
   ])
 );
@@ -319,103 +325,106 @@ router.post(
   maxProviderRetriesMiddleware,
   createRetryHandler([
     imageCallTracker,
-    withModelStatus(async (req, res) => {
-      const body = checkArguments('Check image generation payload', invokePayloadSchema, req.body);
-      const input = checkArguments('Check image model input', imageModelInputSchema.passthrough(), body.input);
+    withModelStatus({
+      type: 'imageGeneration',
+      handler: async (req, res) => {
+        const body = checkArguments('Check image generation payload', invokePayloadSchema, req.body);
+        const input = checkArguments('Check image model input', imageModelInputSchema.passthrough(), body.input);
 
-      const userDid = req.user?.did;
+        const userDid = req.user?.did;
 
-      if (userDid && Config.creditBasedBillingEnabled) {
-        await checkUserCreditBalance({ userDid });
-      }
-
-      const m = getReqModel(req) || DEFAULT_IMAGE_MODEL;
-
-      const { provider, model } = parseModel(m);
-      if (!provider || !model) throw new CustomError(400, `Invalid model format: ${m}, should be {provider}/{model}`);
-
-      await checkModelRateAvailable(m);
-
-      const { match: M } = findImageModel(provider);
-      if (!M) throw new CustomError(400, `Image model provider ${provider} not found`);
-      const credential = await getProviderCredentials(provider, { modelCallContext: req.modelCallContext, model });
-      req.credentialId = credential.id;
-      const modelInstance = M.create(credential);
-
-      let traceId;
-
-      const aigne = new AIGNE();
-      logger.info('image completions model with provider', getReqModel(req));
-
-      const response = await aigne.invoke(
-        modelInstance,
-        {
-          ...input,
-          outputFileType: input.outputFileType === 'url' ? 'local' : input.outputFileType,
-          modelOptions: { ...input.modelOptions, model },
-        },
-        {
-          userContext: { ...body.options?.userContext, userId: req.user?.did },
-          hooks: {
-            onEnd: async (data) => {
-              traceId = data?.context?.id;
-              return data;
-            },
-            onError: async (data) => {
-              onError(data, req);
-            },
-          },
+        if (userDid && Config.creditBasedBillingEnabled) {
+          await checkUserCreditBalance({ userDid });
         }
-      );
 
-      let aigneHubCredits: number | undefined;
+        const m = getReqModel(req) || DEFAULT_IMAGE_MODEL;
 
-      if (response.usage && userDid) {
-        aigneHubCredits = await createUsageAndCompleteModelCall({
-          req,
-          type: 'imageGeneration',
-          model: m,
-          modelParams: pick(input as Message, 'size', 'responseFormat', 'style', 'quality'),
-          promptTokens: response.usage.inputTokens,
-          completionTokens: response.usage.outputTokens,
-          numberOfImageGeneration: response.images.length,
-          appId: req.headers['x-aigne-hub-client-did'] as string,
-          userDid: userDid!,
-          creditBasedBillingEnabled: Config.creditBasedBillingEnabled,
-          additionalMetrics: {
-            imageSize: (input as Message).size,
-            imageQuality: (input as Message).quality,
-            imageStyle: (input as Message).style,
-            totalTokens: (response.usage?.inputTokens || 0) + (response.usage?.outputTokens || 0),
+        const { provider, model } = parseModel(m);
+        if (!provider || !model) throw new CustomError(400, `Invalid model format: ${m}, should be {provider}/{model}`);
+
+        await checkModelRateAvailable(m);
+
+        const { match: M } = findImageModel(provider);
+        if (!M) throw new CustomError(400, `Image model provider ${provider} not found`);
+        const credential = await getProviderCredentials(provider, { modelCallContext: req.modelCallContext, model });
+        req.credentialId = credential.id;
+        const modelInstance = M.create(credential);
+
+        let traceId;
+
+        const aigne = new AIGNE();
+        logger.info('image completions model with provider', getReqModel(req));
+
+        const response = await aigne.invoke(
+          modelInstance,
+          {
+            ...input,
+            outputFileType: input.outputFileType === 'url' ? 'local' : input.outputFileType,
+            modelOptions: { ...input.modelOptions, model },
           },
-          metadata: {
-            endpoint: req.path,
-            numberOfImages: response.images.length,
-          },
-          traceId,
-        });
-      }
-
-      if (input?.outputFileType === 'url' && response.images.length > 0) {
-        const list = await Promise.all(
-          response.images.map(async (image) => {
-            if (image.type === 'local' && image.path) {
-              try {
-                return await convertMediaToOnlineUrl(image.path, image?.mimeType || 'image/png');
-              } catch (err) {
-                logger.error('Failed to upload image to MediaKit', { error: err });
-                return image;
-              }
-            }
-
-            return image;
-          })
+          {
+            userContext: { ...body.options?.userContext, userId: req.user?.did },
+            hooks: {
+              onEnd: async (data) => {
+                traceId = data?.context?.id;
+                return data;
+              },
+              onError: async (data) => {
+                onError(data, req);
+              },
+            },
+          }
         );
 
-        response.images = list;
-      }
+        let aigneHubCredits: number | undefined;
 
-      res.json({ ...response, usage: { ...response.usage, aigneHubCredits }, modelWithProvider: getReqModel(req) });
+        if (response.usage && userDid) {
+          aigneHubCredits = await createUsageAndCompleteModelCall({
+            req,
+            type: 'imageGeneration',
+            model: m,
+            modelParams: pick(input as Message, 'size', 'responseFormat', 'style', 'quality'),
+            promptTokens: response.usage.inputTokens,
+            completionTokens: response.usage.outputTokens,
+            numberOfImageGeneration: response.images.length,
+            appId: req.headers['x-aigne-hub-client-did'] as string,
+            userDid: userDid!,
+            creditBasedBillingEnabled: Config.creditBasedBillingEnabled,
+            additionalMetrics: {
+              imageSize: (input as Message).size,
+              imageQuality: (input as Message).quality,
+              imageStyle: (input as Message).style,
+              totalTokens: (response.usage?.inputTokens || 0) + (response.usage?.outputTokens || 0),
+            },
+            metadata: {
+              endpoint: req.path,
+              numberOfImages: response.images.length,
+            },
+            traceId,
+          });
+        }
+
+        if (input?.outputFileType === 'url' && response.images.length > 0) {
+          const list = await Promise.all(
+            response.images.map(async (image) => {
+              if (image.type === 'local' && image.path) {
+                try {
+                  return await convertMediaToOnlineUrl(image.path, image?.mimeType || 'image/png');
+                } catch (err) {
+                  logger.error('Failed to upload image to MediaKit', { error: err });
+                  return image;
+                }
+              }
+
+              return image;
+            })
+          );
+
+          response.images = list;
+        }
+
+        res.json({ ...response, usage: { ...response.usage, aigneHubCredits }, modelWithProvider: getReqModel(req) });
+      },
     }),
   ])
 );
@@ -427,102 +436,105 @@ router.post(
   maxProviderRetriesMiddleware,
   createRetryHandler([
     videoCallTracker,
-    withModelStatus(async (req, res) => {
-      const body = checkArguments('Check video generation payload', invokePayloadSchema, req.body);
-      const input = checkArguments('Check video model input', videoModelInputSchema.passthrough(), body.input);
-      const modelOptions = input.modelOptions as { model?: string };
+    withModelStatus({
+      type: 'video',
+      handler: async (req, res) => {
+        const body = checkArguments('Check video generation payload', invokePayloadSchema, req.body);
+        const input = checkArguments('Check video model input', videoModelInputSchema.passthrough(), body.input);
+        const modelOptions = input.modelOptions as { model?: string };
 
-      const userDid = req.user?.did;
+        const userDid = req.user?.did;
 
-      if (userDid && Config.creditBasedBillingEnabled) {
-        await checkUserCreditBalance({ userDid });
-      }
-
-      const m = getReqModel(req) || DEFAULT_VIDEO_MODEL;
-
-      const { provider, model } = parseModel(m);
-      if (!provider || !model) throw new CustomError(400, `Invalid model format: ${m}, should be {provider}/{model}`);
-
-      await checkModelRateAvailable(m);
-
-      const { match: M } = findVideoModel(provider);
-      if (!M) throw new CustomError(400, `Video model provider ${provider} not found`);
-      const credential = await getProviderCredentials(provider, { modelCallContext: req.modelCallContext, model });
-      const modelInstance = M.create(credential);
-
-      let traceId;
-
-      const aigne = new AIGNE();
-      logger.info('video completions model with provider', getReqModel(req));
-
-      const response = await aigne.invoke(
-        modelInstance,
-        {
-          ...input,
-          model,
-          outputFileType: input.outputFileType === 'url' ? 'local' : input.outputFileType,
-          modelOptions: { ...modelOptions, model },
-        },
-        {
-          userContext: { ...body.options?.userContext, userId: req.user?.did },
-          hooks: {
-            onEnd: async (data) => {
-              traceId = data?.context?.id;
-              return data;
-            },
-            onError: async (data) => {
-              onError(data, req);
-            },
-          },
+        if (userDid && Config.creditBasedBillingEnabled) {
+          await checkUserCreditBalance({ userDid });
         }
-      );
 
-      let aigneHubCredits: number | undefined;
+        const m = getReqModel(req) || DEFAULT_VIDEO_MODEL;
 
-      if (response.usage && userDid) {
-        aigneHubCredits = await createUsageAndCompleteModelCall({
-          req,
-          type: 'video',
-          model: m,
-          modelParams: input,
-          promptTokens: response.usage.inputTokens,
-          completionTokens: response.usage.outputTokens,
-          numberOfImageGeneration: response.videos.length,
-          mediaDuration: response.seconds,
-          appId: req.headers['x-aigne-hub-client-did'] as string,
-          userDid: userDid!,
-          creditBasedBillingEnabled: Config.creditBasedBillingEnabled,
-          additionalMetrics: {
-            totalTokens: (response.usage?.inputTokens || 0) + (response.usage?.outputTokens || 0),
+        const { provider, model } = parseModel(m);
+        if (!provider || !model) throw new CustomError(400, `Invalid model format: ${m}, should be {provider}/{model}`);
+
+        await checkModelRateAvailable(m);
+
+        const { match: M } = findVideoModel(provider);
+        if (!M) throw new CustomError(400, `Video model provider ${provider} not found`);
+        const credential = await getProviderCredentials(provider, { modelCallContext: req.modelCallContext, model });
+        const modelInstance = M.create(credential);
+
+        let traceId;
+
+        const aigne = new AIGNE();
+        logger.info('video completions model with provider', getReqModel(req));
+
+        const response = await aigne.invoke(
+          modelInstance,
+          {
+            ...input,
+            model,
+            outputFileType: input.outputFileType === 'url' ? 'local' : input.outputFileType,
+            modelOptions: { ...modelOptions, model },
           },
-          metadata: {
-            endpoint: req.path,
-            numberOfVideos: response.videos.length,
-          },
-          traceId,
-        });
-      }
-
-      if (input?.outputFileType === 'url' && response.videos.length > 0) {
-        const list = await Promise.all(
-          response.videos.map(async (video) => {
-            if (video.type === 'local' && video.path) {
-              try {
-                return await convertMediaToOnlineUrl(video.path, video?.mimeType || 'video/mp4');
-              } catch (err) {
-                logger.error('Failed to upload video to MediaKit', { error: err });
-                return video;
-              }
-            }
-
-            return video;
-          })
+          {
+            userContext: { ...body.options?.userContext, userId: req.user?.did },
+            hooks: {
+              onEnd: async (data) => {
+                traceId = data?.context?.id;
+                return data;
+              },
+              onError: async (data) => {
+                onError(data, req);
+              },
+            },
+          }
         );
 
-        response.videos = list;
-      }
+        let aigneHubCredits: number | undefined;
 
-      res.json({ ...response, usage: { ...response.usage, aigneHubCredits }, modelWithProvider: getReqModel(req) });
+        if (response.usage && userDid) {
+          aigneHubCredits = await createUsageAndCompleteModelCall({
+            req,
+            type: 'video',
+            model: m,
+            modelParams: input,
+            promptTokens: response.usage.inputTokens,
+            completionTokens: response.usage.outputTokens,
+            numberOfImageGeneration: response.videos.length,
+            mediaDuration: response.seconds,
+            appId: req.headers['x-aigne-hub-client-did'] as string,
+            userDid: userDid!,
+            creditBasedBillingEnabled: Config.creditBasedBillingEnabled,
+            additionalMetrics: {
+              totalTokens: (response.usage?.inputTokens || 0) + (response.usage?.outputTokens || 0),
+            },
+            metadata: {
+              endpoint: req.path,
+              numberOfVideos: response.videos.length,
+            },
+            traceId,
+          });
+        }
+
+        if (input?.outputFileType === 'url' && response.videos.length > 0) {
+          const list = await Promise.all(
+            response.videos.map(async (video) => {
+              if (video.type === 'local' && video.path) {
+                try {
+                  return await convertMediaToOnlineUrl(video.path, video?.mimeType || 'video/mp4');
+                } catch (err) {
+                  logger.error('Failed to upload video to MediaKit', { error: err });
+                  return video;
+                }
+              }
+
+              return video;
+            })
+          );
+
+          response.videos = list;
+        }
+
+        res.json({ ...response, usage: { ...response.usage, aigneHubCredits }, modelWithProvider: getReqModel(req) });
+      },
     }),
   ])
 );
@@ -534,35 +546,38 @@ router.post(
   maxProviderRetriesMiddleware,
   createRetryHandler([
     embeddingCallTracker,
-    withModelStatus(async (req, res) => {
-      const userDid = req.user?.did;
+    withModelStatus({
+      type: 'embedding',
+      handler: async (req, res) => {
+        const userDid = req.user?.did;
 
-      if (userDid && Config.creditBasedBillingEnabled) {
-        await checkUserCreditBalance({ userDid });
-      }
+        if (userDid && Config.creditBasedBillingEnabled) {
+          await checkUserCreditBalance({ userDid });
+        }
 
-      const usageData = await processEmbeddings(req, res);
+        const usageData = await processEmbeddings(req, res);
 
-      if (usageData && userDid) {
-        await createUsageAndCompleteModelCall({
-          req,
-          type: 'embedding',
-          promptTokens: usageData.promptTokens,
-          completionTokens: 0,
-          model: usageData.model,
-          userDid: userDid!,
-          appId: req.headers['x-aigne-hub-client-did'] as string,
-          creditBasedBillingEnabled: Config.creditBasedBillingEnabled,
-          additionalMetrics: {},
-          metadata: {
-            endpoint: req.path,
-            inputText: Array.isArray(req.body?.input) ? req.body.input.length : 1,
-          },
-        }).catch((err) => {
-          logger.error('Create usage and complete model call error', { error: err });
-          return undefined;
-        });
-      }
+        if (usageData && userDid) {
+          await createUsageAndCompleteModelCall({
+            req,
+            type: 'embedding',
+            promptTokens: usageData.promptTokens,
+            completionTokens: 0,
+            model: usageData.model,
+            userDid: userDid!,
+            appId: req.headers['x-aigne-hub-client-did'] as string,
+            creditBasedBillingEnabled: Config.creditBasedBillingEnabled,
+            additionalMetrics: {},
+            metadata: {
+              endpoint: req.path,
+              inputText: Array.isArray(req.body?.input) ? req.body.input.length : 1,
+            },
+          }).catch((err) => {
+            logger.error('Create usage and complete model call error', { error: err });
+            return undefined;
+          });
+        }
+      },
     }),
   ])
 );
@@ -574,54 +589,57 @@ router.post(
   maxProviderRetriesMiddleware,
   createRetryHandler([
     imageCallTracker,
-    withModelStatus(async (req, res) => {
-      const userDid = req.user?.did;
+    withModelStatus({
+      type: 'imageGeneration',
+      handler: async (req, res) => {
+        const userDid = req.user?.did;
 
-      if (userDid && Config.creditBasedBillingEnabled) {
-        await checkUserCreditBalance({ userDid });
-      }
+        if (userDid && Config.creditBasedBillingEnabled) {
+          await checkUserCreditBalance({ userDid });
+        }
 
-      const usageData = await processImageGeneration({
-        req,
-        res,
-        version: 'v2',
-        inputBody: {
-          ...req.body,
-          responseFormat: req.body.response_format || req.body.responseFormat,
-        },
-      });
-
-      let aigneHubCredits;
-      if (usageData && userDid) {
-        aigneHubCredits = await createUsageAndCompleteModelCall({
+        const usageData = await processImageGeneration({
           req,
-          type: 'imageGeneration',
-          model: usageData.model,
-          modelParams: usageData.modelParams,
-          numberOfImageGeneration: usageData.numberOfImageGeneration,
-          appId: req.headers['x-aigne-hub-client-did'] as string,
-          userDid: userDid!,
-          creditBasedBillingEnabled: Config.creditBasedBillingEnabled,
-          additionalMetrics: {
-            imageSize: usageData.modelParams?.size,
-            imageQuality: usageData.modelParams?.quality,
-            imageStyle: usageData.modelParams?.style,
-          },
-          metadata: {
-            endpoint: req.path,
-            numberOfImages: usageData.numberOfImageGeneration,
+          res,
+          version: 'v2',
+          inputBody: {
+            ...req.body,
+            responseFormat: req.body.response_format || req.body.responseFormat,
           },
         });
-      }
 
-      res.json({
-        images: usageData?.images,
-        data: usageData?.images,
-        model: usageData?.modelName,
-        usage: {
-          aigneHubCredits: Number(aigneHubCredits),
-        },
-      });
+        let aigneHubCredits;
+        if (usageData && userDid) {
+          aigneHubCredits = await createUsageAndCompleteModelCall({
+            req,
+            type: 'imageGeneration',
+            model: usageData.model,
+            modelParams: usageData.modelParams,
+            numberOfImageGeneration: usageData.numberOfImageGeneration,
+            appId: req.headers['x-aigne-hub-client-did'] as string,
+            userDid: userDid!,
+            creditBasedBillingEnabled: Config.creditBasedBillingEnabled,
+            additionalMetrics: {
+              imageSize: usageData.modelParams?.size,
+              imageQuality: usageData.modelParams?.quality,
+              imageStyle: usageData.modelParams?.style,
+            },
+            metadata: {
+              endpoint: req.path,
+              numberOfImages: usageData.numberOfImageGeneration,
+            },
+          });
+        }
+
+        res.json({
+          images: usageData?.images,
+          data: usageData?.images,
+          model: usageData?.modelName,
+          usage: {
+            aigneHubCredits: Number(aigneHubCredits),
+          },
+        });
+      },
     }),
   ])
 );

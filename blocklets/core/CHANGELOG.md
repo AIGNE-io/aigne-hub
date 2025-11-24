@@ -1,3 +1,7 @@
+## 0.6.19 (2025-11-24)
+
+- fix: add type field to model status for accurate tracking
+
 ## 0.6.18 (2025-11-24)
 
 - feat: support trace updates in observability integration

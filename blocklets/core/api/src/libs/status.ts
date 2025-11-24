@@ -4,6 +4,7 @@ import AiCredential from '@api/store/models/ai-credential';
 import AiModelRate from '@api/store/models/ai-model-rate';
 import AiModelStatus, { ModelError, ModelErrorType } from '@api/store/models/ai-model-status';
 import AiProvider from '@api/store/models/ai-provider';
+import { CallType } from '@api/store/models/types';
 import { CreditErrorType } from '@blocklet/aigne-hub/api';
 import { CustomError, formatError } from '@blocklet/error';
 import type { Request, Response } from 'express';
@@ -219,17 +220,19 @@ export async function updateModelStatus({
   success: available,
   duration,
   error,
+  type,
 }: {
   model: string;
   success: boolean;
   duration: number;
   error?: Error;
+  type?: Omit<CallType, 'custom' | 'audioGeneration'>;
 }) {
   const { modelName, providerName } = await getModelAndProviderId(model);
   const provider = await AiProvider.findOne({ where: { name: providerName } });
 
   if (provider) {
-    const current = await AiModelStatus.findOne({ where: { model: modelName, providerId: provider.id } });
+    const current = await AiModelStatus.findOne({ where: { model: modelName, providerId: provider.id, type } });
 
     if (current?.available !== available) {
       await AiModelStatus.upsertModelStatus({
@@ -238,6 +241,7 @@ export async function updateModelStatus({
         available,
         responseTime: duration,
         error: error ? classifyError(error) : null,
+        ...(type ? { type } : {}),
       });
     }
   }
@@ -247,10 +251,17 @@ export async function updateModelStatus({
     model: modelName,
     available,
     error: error ? classifyError(error) : null,
+    ...(type ? { type } : {}),
   });
 }
 
-export function withModelStatus(handler: (req: Request, res: Response) => Promise<void>) {
+export function withModelStatus({
+  type,
+  handler,
+}: {
+  type?: Omit<CallType, 'custom' | 'audioGeneration'>;
+  handler: (req: Request, res: Response) => Promise<void>;
+}) {
   return async (req: Request, res: Response) => {
     const start = Date.now();
 
@@ -265,6 +276,7 @@ export function withModelStatus(handler: (req: Request, res: Response) => Promis
         model: req.body.model,
         success: true,
         duration: Date.now() - start,
+        type,
       });
 
       const { credentialId } = req;
@@ -291,6 +303,7 @@ export function withModelStatus(handler: (req: Request, res: Response) => Promis
           success: false,
           duration: Date.now() - start,
           error,
+          type,
         }).catch((error) => {
           logger.error('Failed to update model status', error);
         });
@@ -322,7 +335,7 @@ export function withModelStatus(handler: (req: Request, res: Response) => Promis
 }
 
 export async function callWithModelStatus(
-  { provider, model, credentialId }: { provider: string; model: string; credentialId?: string },
+  { provider, model, credentialId, type }: { provider: string; model: string; credentialId?: string; type?: string },
   handler: ({ provider, model }: { provider: string; model: string }) => Promise<void>
 ) {
   const start = Date.now();
@@ -334,6 +347,7 @@ export async function callWithModelStatus(
       model: `${provider}/${model}`,
       success: true,
       duration: Date.now() - start,
+      type,
     });
   } catch (error) {
     logger.error('Failed to call with model status', error.message);
@@ -345,6 +359,7 @@ export async function callWithModelStatus(
       success: false,
       duration: Date.now() - start,
       error,
+      type,
     }).catch((error) => {
       logger.error('Failed to update model status', error);
     });
@@ -355,14 +370,14 @@ export async function callWithModelStatus(
 
 const checkChatModelStatus = async ({ provider, model }: { provider: string; model: string }) => {
   const { modelInstance, credentialId } = await getModel({ model: `${provider}/${model}` });
-  await callWithModelStatus({ provider, model, credentialId }, async () => {
+  await callWithModelStatus({ provider, model, credentialId, type: 'chatCompletion' }, async () => {
     await modelInstance.invoke({ messages: [{ role: 'user', content: 'hi' }] });
   });
 };
 
 const checkImageModelStatus = async ({ provider, model }: { provider: string; model: string }) => {
   const { modelInstance, credentialId } = await getImageModel({ model: `${provider}/${model}` });
-  await callWithModelStatus({ provider, model, credentialId }, async () => {
+  await callWithModelStatus({ provider, model, credentialId, type: 'imageGeneration' }, async () => {
     try {
       await modelInstance.invoke({ prompt: 'A simple image of a cat', model });
     } catch (error) {
@@ -381,7 +396,7 @@ const checkImageModelStatus = async ({ provider, model }: { provider: string; mo
 const checkVideoModelStatus = async () => {};
 
 const checkEmbeddingModelStatus = async ({ provider, model }: { provider: string; model: string }) => {
-  await callWithModelStatus({ provider, model }, async ({ provider, model }) => {
+  await callWithModelStatus({ provider, model, type: 'embedding' }, async ({ provider, model }) => {
     const openai = await getOpenAIV2({ body: { model: `${provider}/${model}` } });
     await openai.embeddings.create({ input: ['test'], model });
   });
@@ -430,8 +445,6 @@ export const checkModelStatus = async ({
     }
   } catch (error) {
     logger.error('check model status error', { provider: provider.name, model, type, error });
-
-    await updateModelStatus({ model: `${provider.name}/${model}`, success: false, duration: 0, error });
     throw error;
   }
 };
