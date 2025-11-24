@@ -967,7 +967,7 @@ router.get('/model-rates', user, async (req, res) => {
     const list = await Promise.all(
       modelRates.map(async (rate) => {
         const modelStatus = await AiModelStatus.findOne({
-          where: { providerId: rate.providerId, model: rate.model },
+          where: { providerId: rate.providerId, model: rate.model, type: rate.type },
         });
         return { ...rate.toJSON(), status: modelStatus };
       })
@@ -1097,7 +1097,7 @@ router.get('/models', async (req, res) => {
     const list = await Promise.all(
       result.map(async (item) => {
         const modelStatus = await AiModelStatus.findOne({
-          where: { providerId: item.providerId, model: item.model },
+          where: { providerId: item.providerId, model: item.model, type: item.type },
         });
         return { ...item, status: modelStatus };
       })
