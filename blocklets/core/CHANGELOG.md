@@ -1,3 +1,7 @@
+## 0.6.18 (2025-11-24)
+
+- feat: support trace updates in observability integration
+
 ## 0.6.17 (2025-11-21)
 
 - chore: update deps
