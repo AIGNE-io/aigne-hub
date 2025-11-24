@@ -115,7 +115,7 @@ export default class AiModelStatus extends Model<
     available: boolean;
     error?: ModelError | null;
     responseTime?: number;
-    type?: string;
+    type?: Omit<CallType, 'custom' | 'audioGeneration'>;
   }): Promise<AiModelStatus> {
     const [status] = await AiModelStatus.findOrCreate({
       where: { providerId, model, type },
