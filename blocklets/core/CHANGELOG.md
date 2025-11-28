@@ -1,3 +1,7 @@
+## 0.6.20 (2025-11-28)
+
+- fix: update package to latest
+
 ## 0.6.19 (2025-11-24)
 
 - fix: add type field to model status for accurate tracking
