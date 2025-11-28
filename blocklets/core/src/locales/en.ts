@@ -497,6 +497,10 @@ export default flatten({
     fromPreviousPeriod: 'from previous period',
     remaining: 'remaining',
     usedAmount: 'Used {used} / Total {total}',
+    currentEffectiveTotal: 'Current Effective Total: {total}',
+    currentEffectiveTotalTooltip: 'Sum of all active grant packages (excludes exhausted or expired packages)',
+    fromGrants: 'From {count} grant{s}',
+    viewDetails: 'View Details',
   },
 
   quickSelect: 'Quick Select',

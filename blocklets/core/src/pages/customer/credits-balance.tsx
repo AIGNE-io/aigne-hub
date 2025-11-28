@@ -3,8 +3,8 @@ import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import { UserInfoResult } from '@blocklet/aigne-hub/api/types/user';
 import { formatNumber } from '@blocklet/aigne-hub/utils/util';
 import { AutoTopup, PaymentProvider, SafeGuard } from '@blocklet/payment-react';
-import { Add, CreditCard, Receipt } from '@mui/icons-material';
-import { Box, Button, Card, CardContent, CardHeader, Stack, Typography, alpha, useTheme } from '@mui/material';
+import { Add, CreditCard, InfoOutlined, Receipt } from '@mui/icons-material';
+import { Box, Button, Card, CardContent, CardHeader, Stack, Tooltip, Typography, alpha, useTheme } from '@mui/material';
 import { useEffect, useRef } from 'react';
 
 import { useSessionContext } from '../../contexts/session';
@@ -240,16 +240,50 @@ export function CreditsBalance({ data = undefined as UserInfoResult | undefined 
 
   const renderBalanceInfo = () => {
     const { status } = getBalanceStatus();
+    const grantCount = creditBalance?.grantCount || 0;
 
     return (
       <Stack spacing={0.5}>
         {isCreditBillingEnabled && creditBalance && total > 0 && (
-          <Typography variant="caption" color="text.secondary">
-            {t('analytics.usedAmount', {
-              used: formatNumber(total - balance),
-              total: formatNumber(total),
-            })}
-          </Typography>
+          <Stack spacing={0.75}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <Tooltip title={t('analytics.currentEffectiveTotalTooltip')} arrow placement="top">
+                <InfoOutlined sx={{ fontSize: 14, color: 'text.secondary', opacity: 0.7, cursor: 'help' }} />
+              </Tooltip>
+              <Typography variant="caption" color="text.secondary">
+                {t('analytics.currentEffectiveTotal', {
+                  total: formatNumber(total),
+                })}
+              </Typography>
+            </Box>
+            {grantCount > 0 && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap', pl: 2.5 }}>
+                <Typography variant="caption" color="text.secondary">
+                  {t('analytics.fromGrants', {
+                    count: grantCount,
+                    s: grantCount === 1 ? '' : 's',
+                  })}
+                </Typography>
+                <Typography
+                  component="span"
+                  variant="caption"
+                  onClick={() => {
+                    window.open(getPaymentUrl('/customer?creditTab=grants', false), '_self');
+                  }}
+                  sx={{
+                    color: 'primary.main',
+                    cursor: 'pointer',
+                    fontWeight: 500,
+                    '&:hover': {
+                      color: 'primary.dark',
+                      textDecoration: 'underline',
+                    },
+                  }}>
+                  {t('analytics.viewDetails')}
+                </Typography>
+              </Box>
+            )}
+          </Stack>
         )}
         {status === 'overdue' && (
           <Typography variant="caption" color="error.main" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -309,7 +343,7 @@ export function CreditsBalance({ data = undefined as UserInfoResult | undefined 
             size="small"
             startIcon={<Receipt />}
             onClick={() => {
-              window.open(getPaymentUrl('/customer?creditTab=grants', false), '_self');
+              window.open(getPaymentUrl('/customer?creditTab=transactions', false), '_self');
             }}
             sx={{
               borderRadius: 2,

@@ -1,3 +1,10 @@
+## 0.6.20 (2025-11-28)
+
+- chore: update dependencies
+- feat(core): improve credit grant notifications and balance display
+- fix(api): improve streaming timeout handling and error cleanup
+- feat: enhance credit balance verification and update error message for AI services usage
+
 ## 0.6.19 (2025-11-24)
 
 - fix: add type field to model status for accurate tracking

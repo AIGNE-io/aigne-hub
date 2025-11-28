@@ -488,6 +488,10 @@ export default flatten({
     fromPreviousPeriod: '与上一周期相比',
     remaining: '剩余',
     usedAmount: '已使用 {used} / 总额度 {total}',
+    currentEffectiveTotal: '当前有效总额：{total}',
+    currentEffectiveTotalTooltip: '汇总所有生效中的额度包（已用完或已过期的不计入）',
+    fromGrants: '来自 {count} 个额度包',
+    viewDetails: '查看详情',
   },
 
   quickSelect: '快速选择',

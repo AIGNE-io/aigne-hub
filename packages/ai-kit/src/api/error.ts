@@ -66,7 +66,7 @@ export enum CreditErrorType {
 
 const CreditErrors: Record<CreditErrorType, string> = {
   [CreditErrorType.NOT_ENOUGH]:
-    'Hello, in order to continue chatting, please first buy some credits in the link below.',
+    'Hello, in order to continue using AI services, please first buy some credits in the link below.',
   [CreditErrorType.UNKNOWN]: 'An unknown error occurred',
 };
 

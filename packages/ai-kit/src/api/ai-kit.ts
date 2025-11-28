@@ -36,35 +36,62 @@ export const createTextCompletionApi =
     headers?: Record<string, string>;
   }): TextCompletionFn<P> =>
   async (options) => {
-    const promise: Promise<TextCompletions | ReadableStream<Uint8Array>> = options.stream
-      ? fetch(path, {
+    if (options.stream) {
+      const abortController = timeout ? new AbortController() : undefined;
+      let timeoutId: NodeJS.Timeout | undefined;
+
+      if (timeout && abortController) {
+        timeoutId = setTimeout(() => {
+          abortController.abort();
+        }, timeout);
+      }
+
+      try {
+        const res = await fetch(path, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...headers },
           body: JSON.stringify(options),
-        }).then(async (res) => {
-          if (res.status !== 200) {
-            const text = await res.text();
-            let json: any;
-            try {
-              json = JSON.parse(text);
-            } catch {
-              // eslint-disable-next-line no-empty
-            }
-            if (json?.error?.type) {
-              throw new SubscriptionError(json?.error?.type);
-            }
-            throw new Error(json?.error?.message || json?.message || text || res.status);
+          signal: abortController?.signal,
+        });
+
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+
+        if (res.status !== 200) {
+          const text = await res.text();
+          let json: any;
+          try {
+            json = JSON.parse(text);
+          } catch {
+            // eslint-disable-next-line no-empty
           }
-          return res.body!;
-        })
-      : fetch(path, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...headers },
-          body: JSON.stringify(options),
-        })
-          .then((res) => res.json())
-          .then((data) => ({ text: data.text ?? data.choices?.[0]?.text ?? data.choices?.[0]?.message?.content }))
-          .catch(processResponseError);
+          if (json?.error?.type) {
+            throw new SubscriptionError(json?.error?.type);
+          }
+          throw new Error(json?.error?.message || json?.message || text || res.status);
+        }
+
+        return res.body!;
+      } catch (error: any) {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+        if (error.name === 'AbortError') {
+          throw new Error('Connection timeout');
+        }
+        throw error;
+      }
+    }
+
+    const promise: Promise<TextCompletions> = fetch(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...headers },
+      body: JSON.stringify(options),
+    })
+      .then((res) => res.json())
+      .then((data) => ({ text: data.text ?? data.choices?.[0]?.text ?? data.choices?.[0]?.message?.content }))
+      .catch(processResponseError);
 
     if (!timeout) {
       return promise as any;

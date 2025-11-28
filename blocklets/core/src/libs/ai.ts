@@ -1,7 +1,7 @@
 import { createImageGenerationApi, createStatusApi, createTextCompletionApi } from '@blocklet/aigne-hub/api';
 import { createFetch } from '@blocklet/js-sdk';
 
-import axios, { API_TIMEOUT } from './api';
+import axios, { API_TIMEOUT, STREAM_API_TIMEOUT } from './api';
 
 export type { ImageGenerationSize } from '@blocklet/aigne-hub/api/ai-kit';
 
@@ -19,7 +19,7 @@ export const textCompletions = createTextCompletionApi({
 export const textCompletionsV2 = createTextCompletionApi({
   fetch: createFetch() as typeof fetch,
   path: '/api/v2/completions',
-  timeout: API_TIMEOUT,
+  timeout: STREAM_API_TIMEOUT,
   headers: {
     'x-aigne-hub-client-did': window.blocklet?.appPid,
   },

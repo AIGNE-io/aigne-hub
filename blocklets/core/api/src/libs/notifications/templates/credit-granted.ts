@@ -44,11 +44,16 @@ function translate(key: string, locale: string, params?: Record<string, any>): s
       'notification.creditGranted.welcomeBodyNoExpire':
         'Your AIGNE Hub account has been granted {grantedAmount} in experience credits, available for the entire AIGNE ecosystem, including DocSmith, WebSmith, and every AI application.\nAIGNE Hub is the AI service center for the AIGNE ecosystem, powering all applications with models, generation, and content processing capabilities.\nTry now!',
 
+      'notification.creditGranted.purchaseBody':
+        "Your payment was successful. We've added {grantedAmount} to your balance, available until {expiresAt}.\nYou can use these credits immediately to use LLMs, process content, and build with DocSmith, WebSmith, and all AIGNE Hub applications.",
+      'notification.creditGranted.purchaseBodyNoExpire':
+        "Your payment was successful. We've added {grantedAmount} to your balance.\nYou can use these credits immediately to use LLMs, process content, and build with DocSmith, WebSmith, and all AIGNE Hub applications.",
+
       'notification.creditGranted.title': 'AIGNE Hub: Your AI credits are now active',
       'notification.creditGranted.body':
-        'Your account has been credited with {grantedAmount}, available until {expiresAt} for the entire AIGNE ecosystem, including DocSmith, WebSmith, and every AI application.\nAIGNE Hub is the AI service center for the AIGNE ecosystem, powering all applications with models, generation, and content processing capabilities.\nTry now!',
+        "We've added {grantedAmount} to your account, available until {expiresAt}.\nYou can use these credits to use LLMs, process content, and build with DocSmith, WebSmith, and all AIGNE Hub applications.",
       'notification.creditGranted.bodyNoExpire':
-        'Your account has been credited with {grantedAmount}, available for the entire AIGNE ecosystem, including DocSmith, WebSmith, and every AI application.\nAIGNE Hub is the AI service center for the AIGNE ecosystem, powering all applications with models, generation, and content processing capabilities.\nTry now!',
+        "We've added {grantedAmount} to your account.\nYou can use these credits to use LLMs, process content, and build with DocSmith, WebSmith, and all AIGNE Hub applications.",
 
       'notification.creditGranted.grantedCredit': 'Credit Amount',
       'notification.creditGranted.validUntil': 'Valid until',
@@ -67,11 +72,16 @@ function translate(key: string, locale: string, params?: Record<string, any>): s
       'notification.creditGranted.welcomeBodyNoExpire':
         '您的 AIGNE Hub 账户已获得 {grantedAmount} 体验额度，可用于 AIGNE 全系应用（如 DocSmith、WebSmith）的所有 AI 功能。\nAIGNE Hub 是 AIGNE 生态系统的统一 AI 服务中心，为所有 AIGNE 应用提供模型、生成与内容处理等 AI 能力。\n立即体验！',
 
+      'notification.creditGranted.purchaseBody':
+        '支付成功！您的账户已到账 {grantedAmount}，可在 {expiresAt} 前用于 AIGNE 全系应用（如 DocSmith、WebSmith）的所有 AI 功能。',
+      'notification.creditGranted.purchaseBodyNoExpire':
+        '支付成功！您的账户已到账 {grantedAmount}，可用于 AIGNE 全系应用（如 DocSmith、WebSmith）的所有 AI 功能。',
+
       'notification.creditGranted.title': 'AIGNE Hub：您的 AI 额度已到账',
       'notification.creditGranted.body':
-        '您的账户本次激活 {grantedAmount} 额度，可在 {expiresAt} 前用于 AIGNE 全系应用（如 DocSmith、WebSmith）的所有 AI 功能。\nAIGNE Hub 是 AIGNE 生态系统的统一 AI 服务中心，为所有 AIGNE 应用提供模型、生成与内容处理等 AI 能力。\n立即体验！',
+        '您的账户已到账 {grantedAmount}，可在 {expiresAt} 前用于 AIGNE 全系应用（如 DocSmith、WebSmith）的所有 AI 功能。',
       'notification.creditGranted.bodyNoExpire':
-        '您的账户本次激活 {grantedAmount} 额度，可用于 AIGNE 全系应用（如 DocSmith、WebSmith）的所有 AI 功能。\nAIGNE Hub 是 AIGNE 生态系统的统一 AI 服务中心，为所有 AIGNE 应用提供模型、生成与内容处理等 AI 能力。\n立即体验！',
+        '您的账户已到账 {grantedAmount}，可用于 AIGNE 全系应用（如 DocSmith、WebSmith）的所有 AI 功能。',
 
       'notification.creditGranted.grantedCredit': '额度',
       'notification.creditGranted.validUntil': '有效期至',
@@ -238,11 +248,17 @@ export class CreditGrantedNotificationTemplate extends BaseNotificationTemplate<
 
     let titleKey = 'notification.creditGranted.title';
     let bodyKey = neverExpires ? 'notification.creditGranted.bodyNoExpire' : 'notification.creditGranted.body';
+
     if (isWelcomeCredit) {
       titleKey = 'notification.creditGranted.welcomeTitle';
       bodyKey = neverExpires
         ? 'notification.creditGranted.welcomeBodyNoExpire'
         : 'notification.creditGranted.welcomeBody';
+    } else if (isPurchase) {
+      // Use same title as general case, but different body to emphasize payment
+      bodyKey = neverExpires
+        ? 'notification.creditGranted.purchaseBodyNoExpire'
+        : 'notification.creditGranted.purchaseBody';
     }
 
     const titleParams: Record<string, string> = {};
