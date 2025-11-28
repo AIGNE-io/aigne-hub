@@ -437,8 +437,27 @@ export async function getCreditPaymentLink() {
 }
 
 export async function checkUserCreditBalance({ userDid }: { userDid: string }) {
-  const { balance } = await getUserCredits({ userDid });
+  const { balance, pendingCredit } = await getUserCredits({ userDid });
   if (balance && toBN(balance).lte(toBN(0))) {
+    try {
+      const meter = await ensureMeter();
+      if (!meter) {
+        throw new CustomError(404, 'Meter not found');
+      }
+      const verifyResult = await payment.creditGrants.verifyAvailability({
+        customer_id: userDid,
+        currency_id: meter.currency_id as string,
+        pending_amount: pendingCredit,
+      });
+      logger.info('credit grant verify result', { verifyResult });
+      if (verifyResult.can_continue) {
+        logger.info('user can continue using AI services with auto purchase credits');
+        return;
+      }
+    } catch (err) {
+      logger.error('failed to verify credit grant availability', { err });
+    }
+
     let link: string | null = null;
     try {
       link = await getCreditPaymentLink();
