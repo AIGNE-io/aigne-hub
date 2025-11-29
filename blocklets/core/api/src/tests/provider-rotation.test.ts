@@ -1,12 +1,11 @@
-import { modelRegistry } from '@api/libs/model-registry';
 import {
-  ensureModelWithProvider,
   getDefaultProviderForModel,
-  getNextProviderForModel,
   getSupportedProviders,
   inferVendorFromModel,
   resolveProviderModelId,
-} from '@api/libs/provider-rotation';
+} from '@aigne/aigne-hub';
+import { modelRegistry } from '@api/libs/model-registry';
+import { ensureModelWithProvider, getNextProviderForModel } from '@api/libs/provider-rotation';
 import AiModelRate from '@api/store/models/ai-model-rate';
 import AiProvider from '@api/store/models/ai-provider';
 import { beforeAll, beforeEach, describe, expect, spyOn, test } from 'bun:test';

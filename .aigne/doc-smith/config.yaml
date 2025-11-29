@@ -17,7 +17,7 @@ projectLogo: https://avatars.githubusercontent.com/u/143965177?v=4
 #   solveProblems    - Troubleshoot common issues: Help users troubleshoot and fix issues
 #   mixedPurpose     - Serve multiple purposes: Comprehensive documentation covering multiple needs
 documentPurpose:
-  - understandSystem
+  - getStarted
 
 # Target Audience: Who will be reading this most often?
 # Available options (uncomment and modify as needed):
@@ -48,10 +48,11 @@ readerKnowledgeLevel: experiencedUsers
 documentationDepth: balancedCoverage
 
 # Custom Rules: Define specific documentation generation rules and requirements
-rules: | 
+rules: |
   - 不要生成任何关于如何为该项目做贡献的内容
   - 不要包含任何你不确定的内容
   - 移除关于 v1 版本的描述, v1的接口后面都会被移除。请你展示 v2 版本相关的信息和接口，并且不要声明这是哪个版本
+  - ensure only meaningful changes are included in the "Release Notes" page, do not include dependency update related changes
 
 # Target Audience: Describe your specific target audience and their characteristics
 targetAudience: ""
@@ -69,10 +70,8 @@ sourcesPath:  # Source code paths to analyze
   - ./blocklets/core/blocklet.md
   - ./blocklets/core/api/src
   - ./blocklets/core/src/
-  - ./overview.png
   - ./blocklets/core/screenshots
-lastGitHead: f290f8a01b25fdf747f1b77144c976e499049ba3
-appUrl: https://docsmith.aigne.io
+lastGitHead: 327dd038a5eb1d5c37a83272af586c03679a408d
 boardId: aigne-hub
 # Checkout ID for document deployment service
 checkoutId: ""

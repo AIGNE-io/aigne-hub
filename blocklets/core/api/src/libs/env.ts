@@ -47,6 +47,14 @@ export const Config = {
     return process.env.BLOCKLET_APP_DIR!;
   },
 
+  _guestPlaygroundEnabled: undefined as boolean | undefined,
+  get guestPlaygroundEnabled() {
+    if (this._guestPlaygroundEnabled === undefined) {
+      this._guestPlaygroundEnabled = config.env.preferences.guestPlaygroundEnabled ?? false;
+    }
+    return this._guestPlaygroundEnabled;
+  },
+
   _verbose: undefined as boolean | undefined,
   get verbose() {
     if (this._verbose === undefined) {

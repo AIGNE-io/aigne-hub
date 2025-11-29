@@ -1,6 +1,6 @@
 name: publish docs
 
-env: 
+env:
   AIGNE_HUB_API_KEY: ${{ secrets.AIGNE_HUB_API_KEY }}
 
 permissions:
@@ -12,6 +12,8 @@ on:
     branches:
       - master
       - main
+    paths:
+      - '.aigne/doc-smith/**'
   pull_request:
     types:
       - opened
@@ -22,6 +24,8 @@ on:
       - master
       - main
       - dev
+    paths:
+      - '.aigne/doc-smith/**'
 
 jobs:
   publish-docs:
@@ -77,7 +81,7 @@ jobs:
           if [ -n "$(git status --porcelain)" ]; then
             echo "Changes detected. Committing and pushing..."
             git add -A
-            git commit -m "chore(docs): push doc smith cache [skip ci]"
+            git commit -m "chore(docs): push doc smith cache"
             BRANCH="${{ github.head_ref || github.ref_name }}"
             git push origin HEAD:refs/heads/"${BRANCH}"
           else

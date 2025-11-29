@@ -1,6 +1,7 @@
 import { getPrefix } from '@app/libs/util';
+import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import type { ModelGroup } from '@blocklet/aigne-hub/api/types';
-import { Close, Search } from '@mui/icons-material';
+import { AllInclusiveOutlined, Close, Search } from '@mui/icons-material';
 import {
   Avatar,
   Box,
@@ -45,6 +46,7 @@ export default function ModelSelector({
   selectedType = 'all',
   onTypeChange = () => {},
 }: ModelSelectorProps) {
+  const { t } = useLocaleContext();
   const [searchQuery, setSearchQuery] = useState('');
   const [providerFilter, setProviderFilter] = useState<string>('all');
   const typeFilter = selectedType; // Use the external selectedType
@@ -108,8 +110,11 @@ export default function ModelSelector({
   }, [modelGroups, searchQuery, providerFilter, typeFilter]);
 
   const handleModelClick = (modelValue: string) => {
-    onModelSelect(modelValue);
-    // Don't auto-close - let user browse and compare models
+    onClose(); // Close dialog first to avoid showing "Selected" badge flash
+    // Delay selection update slightly to prevent flash during close animation
+    setTimeout(() => {
+      onModelSelect(modelValue);
+    }, 100);
   };
 
   return (
@@ -142,7 +147,7 @@ export default function ModelSelector({
             fontWeight: 600,
             fontSize: { xs: '1.1rem', sm: '1.25rem' },
           }}>
-          Select AI Model
+          {t('chat.selectModel')}
         </Typography>
         <IconButton onClick={onClose} size="small">
           <Close />
@@ -154,7 +159,7 @@ export default function ModelSelector({
         <Box sx={{ p: { xs: 1.5, sm: 2 }, borderColor: 'divider' }}>
           <TextField
             fullWidth
-            placeholder="Search models..."
+            placeholder={t('pricing.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             size="small"
@@ -207,11 +212,11 @@ export default function ModelSelector({
             },
           }}>
           {[
-            { key: 'all', label: 'All Models', icon: null },
-            { key: 'chatCompletion', label: 'Chat', icon: <ChatIcon viewBox="0 0 12 12" /> },
-            { key: 'imageGeneration', label: 'Image', icon: <ImageIcon viewBox="0 0 12 12" /> },
-            { key: 'embedding', label: 'Embedding', icon: <EmbeddingIcon viewBox="0 0 12 12" /> },
-            { key: 'video', label: 'Video', icon: <VideoIcon viewBox="0 0 12 12" /> },
+            { key: 'all', label: t('pricing.filters.allModels'), icon: <AllInclusiveOutlined /> },
+            { key: 'chatCompletion', label: t('modelTypes.chatCompletion'), icon: <ChatIcon viewBox="0 0 12 12" /> },
+            { key: 'imageGeneration', label: t('modelTypes.imageGeneration'), icon: <ImageIcon viewBox="0 0 12 12" /> },
+            { key: 'embedding', label: t('modelTypes.embedding'), icon: <EmbeddingIcon viewBox="0 0 12 12" /> },
+            { key: 'video', label: t('modelTypes.video'), icon: <VideoIcon viewBox="0 0 12 12" /> },
           ].map((option) => (
             <Chip
               key={option.key}
@@ -278,7 +283,7 @@ export default function ModelSelector({
             },
           }}>
           <Chip
-            label="All"
+            label={t('pricing.filters.allProviders')}
             onClick={() => setProviderFilter('all')}
             variant={providerFilter === 'all' ? 'filled' : 'outlined'}
             size="small"
@@ -345,9 +350,9 @@ export default function ModelSelector({
                 color: 'text.secondary',
               }}>
               <Typography variant="body1" sx={{ mb: 1 }}>
-                No models found
+                {t('chat.noModelsAvailable')}
               </Typography>
-              <Typography variant="body2">Try adjusting your search or filter</Typography>
+              <Typography variant="body2">{t('pricing.filters.tryAdjusting')}</Typography>
             </Box>
           ) : (
             filteredGroups.flatMap((group) =>
@@ -441,18 +446,13 @@ export default function ModelSelector({
                                     color: 'text.secondary',
                                     lineHeight: 1,
                                   }}>
-                                  {{
-                                    chatCompletion: 'Chat',
-                                    imageGeneration: 'Image',
-                                    video: 'Video',
-                                    embedding: 'Embedding',
-                                  }[modelType] || 'Chat'}
+                                  {t(`modelTypes.${modelType}`) || t('modelTypes.chatCompletion')}
                                 </Typography>
                               </Box>
                             ))}
                           {selectedModel === model.value && (
                             <Chip
-                              label="Selected"
+                              label={t('pricing.filters.selected')}
                               size="small"
                               color="primary"
                               sx={{

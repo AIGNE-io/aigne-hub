@@ -27,6 +27,11 @@ AIGNEObserver.setExportFn(async (spans) => {
     return;
   }
 
+  logger.info(
+    'export trace tree',
+    (spans || []).map((x: any) => ({ id: x.id, name: x.name }))
+  );
+
   await call({
     name: OBSERVABILITY_DID,
     method: 'POST',
@@ -37,6 +42,23 @@ AIGNEObserver.setExportFn(async (spans) => {
         componentId: AIGNE_HUB_DID,
       };
     }),
+  }).catch((err) => {
+    logger.error('Failed to send trace tree to Observability blocklet', err);
+  });
+});
+
+AIGNEObserver.setUpdateFn(async (id, data) => {
+  if (!isObservabilityRunning()) {
+    return;
+  }
+
+  logger.info('update trace', id, Object.keys(data));
+
+  await call({
+    name: OBSERVABILITY_DID,
+    method: 'PATCH',
+    path: `/api/trace/tree/${id}`,
+    data,
   }).catch((err) => {
     logger.error('Failed to send trace tree to Observability blocklet', err);
   });

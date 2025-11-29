@@ -1,143 +1,149 @@
 # 總覽
 
-AIGNE Hub 是一個統一的 AI 閘道，旨在管理和簡化與各種大型語言模型（LLM）和 AI 生成內容（AIGC）提供商的連接。它作為 AIGNE 生態系統中的核心組件，將處理多個 API 金鑰、追蹤用量以及管理各種 AI 服務計費的複雜性抽象化。
+您是否正在為管理日益增多的 API 金鑰、計費系統以及不同 AI 供應商的整合而苦惱？本文件將全面介紹 AIGNE Hub，這是一個統一的 AI 閘道，旨在簡化這種複雜性。您將了解其核心功能、主要優勢和系統架構，從而清楚地認識其在基礎設施管理方面的價值。
 
-該系統設計為可自行託管，讓組織能夠完全控制其資料和 AI 操作。透過將所有 AI 相關請求路由至單一、安全的端點，AIGNE Hub 確保了一致的安全性、監控和治理。
+AIGNE Hub 作為一個集中式閘道，讓您能夠透過單一、一致的 API 將您的應用程式連接到領先的大型語言模型（LLM）和 AIGC 服務。無論您是將其部署為內部工具，還是作為一個可營利的多租戶服務，它都能簡化 API 金鑰的管理、用量追蹤和安全性。
+
+## 為何選擇 AIGNE Hub？
+
+將多個 AI 服務整合到組織的基礎設施中會帶來巨大的營運開銷。團隊經常面臨著供應商特定的 API 碎片化、計費週期分散以及安全性模型不一致的局面。這種複雜性會減緩開發速度、使成本管理複雜化，並增加安全風險。
+
+下圖說明了 AIGNE Hub 如何位於您的應用程式和各種 AI 供應商之間，以解決這些挑戰：
 
 ```d2
-direction: down
+direction: right
 
-User-Application: {
-  label: "使用者 / 應用程式"
-  shape: c4-person
-}
+Applications: {
+  label: "您的應用程式"
+  shape: rectangle
 
-Self-Hosted-Infrastructure: {
-  label: "自行託管的基礎設施"
-  style: {
-    stroke-dash: 4
-  }
-
-  AIGNE-Hub: {
-    label: "AIGNE Hub\n（統一 AI 閘道）"
+  internal-tools: {
+    label: "內部工具"
     shape: rectangle
+  }
 
-    Unified-API-Endpoint: {
-      label: "統一 API 端點\n（與 OpenAI 相容）"
-    }
+  customer-apps: {
+    label: "面向客戶的應用程式"
+    shape: rectangle
+  }
 
-    Central-Management: {
-      label: "集中管理與功能"
-      shape: rectangle
-      grid-columns: 2
-
-      Secure-Credential-Storage: { label: "安全憑證\n儲存" }
-      Usage-Analytics: { label: "用量分析" }
-      Flexible-Billing-System: { label: "彈性計費\n系統" }
-    }
-    
-    Unified-API-Endpoint -> Central-Management
+  chatbots: {
+    label: "聊天機器人與 Agents"
+    shape: rectangle
   }
 }
 
-External-Services: {
+AIGNE-Hub: {
+  label: "AIGNE Hub"
+  shape: rectangle
+
+  unified-api: {
+    label: "統一 API 端點"
+  }
+
+  security: {
+    label: "集中式安全與金鑰"
+  }
+
+  analytics: {
+    label: "用量與成本分析"
+  }
+
+  billing: {
+    label: "彈性的計費系統"
+  }
+}
+
+AI-Providers: {
+  label: "AI 供應商"
+  shape: rectangle
   grid-columns: 2
-  grid-gap: 200
 
-  AI-Providers: {
-    label: "AI 提供商"
-    shape: rectangle
-    grid-columns: 2
-
-    OpenAI: {}
-    Anthropic: {}
-    Google-Gemini: { label: "Google Gemini"}
-    Amazon-Bedrock: { label: "Amazon Bedrock"}
-    Ollama: {}
-    "Others...": { label: "其他..."}
-  }
-
-  Payment-Kit: {
-    label: "Payment Kit\n（適用於服務提供商模式）"
-    shape: rectangle
-  }
+  openai: "OpenAI"
+  anthropic: "Anthropic"
+  google: "Google Gemini"
+  aws: "Amazon Bedrock"
+  deepseek: "DeepSeek"
+  others: "... 及更多"
 }
 
-User-Application -> Self-Hosted-Infrastructure.AIGNE-Hub.Unified-API-Endpoint: "1. AI 請求"
-Self-Hosted-Infrastructure.AIGNE-Hub -> External-Services.AI-Providers: "2. 路由至特定提供商"
-Self-Hosted-Infrastructure.AIGNE-Hub.Central-Management.Flexible-Billing-System <-> External-Services.Payment-Kit: "管理點數和計費"
+Applications -> AIGNE-Hub: "單一、一致的 API"
+AIGNE-Hub -> AI-Providers: "路由至任何供應商"
 ```
 
-## 主要功能
+AIGNE Hub 旨在透過提供以下功能來解決這些特定挑戰：
 
-AIGNE Hub 提供了一套全面的功能，專為企業內部使用和希望向其客戶提供 AI 功能的服務提供商而設計。
+-   **單一整合點：** 它為所有連接的供應商提供一個統一的、與 OpenAI 相容的 API 端點。這使得開發人員無需學習和維護多個 SDK 和整合模式。
+-   **集中式憑證管理：** 所有上游 API 金鑰都透過 AES 加密安全地儲存在一個地方，降低了金鑰在各種應用程式和環境中暴露的風險。
+-   **統一的用量和成本分析：** 從單一儀表板全面了解所有模型、使用者和供應商的消耗和支出情況。這簡化了預算追蹤和資源分配。
+-   **彈性的部署模型：** AIGNE Hub 既可以部署為純內部使用（您自備金鑰），也可以作為一個內建基於點數的計費系統的公開服務。
+
+## 核心功能
+
+AIGNE Hub 提供一套強大的功能，旨在簡化 AI 服務使用和管理的整個生命週期。
 
 <x-cards data-columns="3">
-  <x-card data-title="統一 API 存取" data-icon="lucide:plug-zap">
-    透過單一、一致且與 OpenAI 相容的 API 端點，連接超過 8 家領先的 AI 提供商，包括 OpenAI、Anthropic 和 Google Gemini。
+  <x-card data-title="多供應商管理" data-icon="lucide:cloud">
+    透過單一介面連接超過 8 家領先的 AI 供應商，如 OpenAI、Anthropic 和 Google Gemini。
   </x-card>
-  <x-card data-title="集中化管理" data-icon="lucide:database">
-    單一儀表板提供對所有連接的模型和使用者的用量、成本和效能的全面可見性。
+  <x-card data-title="統一的 API 端點" data-icon="lucide:plug-zap">
+    使用與 OpenAI 相容的 RESTful API 與所有模型互動，進行聊天完成、圖像生成和嵌入。
   </x-card>
-  <x-card data-title="安全憑證儲存" data-icon="lucide:shield-check">
-    所有提供商的 API 金鑰和憑證在靜態時都經過 AES 加密，確保敏感資訊受到保護。
+  <x-card data-title="用量與成本分析" data-icon="lucide:line-chart">
+    透過全面的分析儀表板，監控所有使用者和供應商的 token 用量、成本和延遲指標。
   </x-card>
-  <x-card data-title="用量分析" data-icon="lucide:pie-chart">
-    追蹤 token 消耗、分析成本並監控效能指標，以優化 AI 支出和資源分配。
+  <x-card data-title="集中式安全" data-icon="lucide:shield-check">
+    受益於加密的 API 金鑰儲存、OAuth 整合、基於角色的存取控制（RBAC）和詳細的稽核日誌。
   </x-card>
-  <x-card data-title="彈性計費系統" data-icon="lucide:credit-card">
-    可採用「自備金鑰」模式供內部使用，或啟用可選的基於點數的計費系統以將 AI 服務變現。
+  <x-card data-title="彈性的計費系統" data-icon="lucide:credit-card">
+    可選啟用由 Payment Kit 驅動的基於點數的計費系統，為外部使用者提供營利服務。
   </x-card>
-  <x-card data-title="自行託管控制" data-icon="lucide:server">
-    在您自己的基礎設施內部署 AIGNE Hub，以實現最大的資料隱私、安全性和營運控制。
+  <x-card data-title="內建遊樂場" data-icon="lucide:flask-conical">
+    直接從 AIGNE Hub 使用者介面即時測試和實驗任何已連接的 AI 模型。
   </x-card>
 </x-cards>
 
-![AIGNE Hub 儀表板](../../../blocklets/core/screenshots/fc46e9461382f0be7541af17ef13f632.png)
+## 支援的 AI 供應商
 
-## 支援的 AI 提供商
+AIGNE Hub 支援越來越多的主要 AI 供應商。該系統設計為可擴展的，並持續增加新的供應商。
 
-AIGNE Hub 為眾多 AI 提供商提供內建支援，並持續新增新的整合。平台會在新提供商可用時自動發現並支援它們。
-
-| 提供商 | 支援的模型/服務 |
+| 供應商 | 支援的服務 |
 | :--- | :--- |
 | **OpenAI** | GPT 模型、DALL-E、Embeddings |
 | **Anthropic** | Claude 模型 |
-| **Amazon Bedrock** | AWS 託管的模型 |
-| **Google Gemini** | Gemini Pro、Vision |
+| **Google Gemini** | Gemini Pro、Vision 模型 |
+| **Amazon Bedrock** | AWS 託管的基礎模型 |
 | **DeepSeek** | 進階推理模型 |
-| **Ollama** | 本地模型部署 |
-| **OpenRouter** | 存取多個提供商 |
 | **xAI** | Grok 模型 |
-| **Doubao** | Doubao AI 模型 |
+| **OpenRouter** | 多個供應商的聚合器 |
+| **Ollama** | 本地模型部署 |
+| **Doubao** | 豆包 AI 模型 |
 | **Poe** | Poe AI 平台 |
 
-![AI 提供商設定](../../../blocklets/core/screenshots/6fff77ec3c1fbefb780b2b79c61a36f7.png)
+## 系統架構
 
-## 部署場景
+AIGNE Hub 是為可靠性和性能而設計的，它是在 AIGNE 框架上建構的 [Blocklet](https://blocklet.io)。這種架構確保了在 AIGNE 生態系統內的無縫整合，並為雲原生部署和擴展提供了堅實的基礎。
 
-AIGNE Hub 旨在適應兩種主要營運模式，以滿足不同的組織需求。
+技術堆疊的主要元件包括：
 
-### 企業自行託管
+-   **後端：** 使用 Node.js 和 TypeScript 建構，提供強型別且高效的伺服器端環境。
+-   **前端：** 使用 React 19 建構的現代化使用者介面。
+-   **資料庫：** 使用 SQLite 搭配 Sequelize ORM 進行本地資料儲存，確保設定簡單且資料管理可靠。
+-   **框架：** 運用最新版本的 AIGNE 框架來實現核心功能和整合能力。
 
-此模式非常適合需要嚴格資料控制和隱私的內部團隊和組織。
-
-- **基礎設施**：完全部署在組織的私有基礎設施內。
-- **計費**：無需外部計費；組織直接向 AI 提供商付款。
-- **資料安全**：所有資料和 API 憑證都保留在企業安全邊界內。
-- **使用案例**：適用於企業 AI 計畫、內部開發團隊和研究專案。
-
-### 服務提供商模式
-
-此模式允許組織透過將 AIGNE Hub 轉變為一個多租戶、可變現的平台，向外部客戶提供 AI 服務。
-
-- **計費**：與 Payment Kit 整合，以啟用基於點數的計費系統。
-- **定價**：營運商可以為每個模型設定自訂費率，從而獲得利潤空間。
-- **使用者引導**：支援自動使用者引導，並可設定初始點數。
-- **使用案例**：非常適合 SaaS 平台、AI 服務提供商以及為客戶建構 AI 驅動解決方案的代理商。
+![AIGNE Hub Dashboard](https://raw.githubusercontent.com/AIGNE-io/aigne-hub/main/blocklets/core/screenshots/fc46e9461382f0be7541af17ef13f632.png)
 
 ## 總結
 
-AIGNE Hub 作為 AIGNE 生態系統內所有生成式 AI 互動的中央閘道。它簡化了使用多個 AI 提供商的營運複雜性，透過集中式憑證管理增強了安全性，並提供了強大的監控和計費工具。透過提供彈性的部署模式，它支援從內部開發到面向公眾的 AI 服務等廣泛的使用案例。
+本總覽介紹了 AIGNE Hub 作為一個統一的 AI 閘道，旨在簡化多供應商 AI 服務的基礎設施管理。我們概述了它解決的問題、其核心功能及其技術架構。
 
-如需深入了解系統結構，請繼續閱讀 [架構](./architecture.md) 部分。
+接下來，您可以繼續閱讀以下部分以獲取更詳細的資訊：
+
+<x-cards data-columns="2">
+  <x-card data-title="快速入門" data-href="/getting-started" data-icon="lucide:rocket">
+    遵循逐步指南，在 30 分鐘內部署和設定您的 AIGNE Hub 實例。
+  </x-card>
+  <x-card data-title="部署情境" data-href="/deployment-scenarios" data-icon="lucide:milestone">
+    探索將 AIGNE Hub 部署為企業內部使用或作為營利服務的架構指南。
+  </x-card>
+</x-cards>

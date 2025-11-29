@@ -1,143 +1,149 @@
 # 概要
 
-AIGNE Hub は、多種多様な大規模言語モデル (LLM) および AI 生成コンテンツ (AIGC) プロバイダーへの接続を管理および効率化するために設計された、統合 AI ゲートウェイです。AIGNE エコシステム内の中核コンポーネントとして機能し、複数の API キーの処理、使用状況の追跡、さまざまな AI サービスにまたがる請求管理の複雑さを抽象化します。
+増え続けるAPIキー、請求システム、さまざまなAIプロバイダーとの統合の管理にお困りではありませんか？このドキュメントでは、この複雑さを簡素化する統合AIゲートウェイであるAIGNE Hubについて包括的に紹介します。そのコア機能、主な利点、システムアーキテクチャについて学び、インフラ管理における価値を明確に理解することができます。
 
-このシステムはセルフホスト型として設計されており、組織が自身のデータと AI 運用を完全に制御できるようにします。すべての AI 関連リクエストを単一のセキュアなエンドポイント経由でルーティングすることにより、AIGNE Hub は一貫したセキュリティ、監視、およびガバナンスを保証します。
+AIGNE Hubは、一元化されたゲートウェイとして機能し、単一の一貫したAPIを通じてアプリケーションを主要な大規模言語モデル（LLM）やAIGCサービスに接続できるようにします。社内ツールとして展開する場合でも、収益化されたマルチテナントサービスとして展開する場合でも、APIキーの管理、使用状況の追跡、セキュリティを合理化します。
+
+## なぜAIGNE Hubなのか？
+
+複数のAIサービスを組織のインフラに統合することは、運用上の大きなオーバーヘッドをもたらします。チームは、プロバイダー固有のAPI、ばらばらの請求サイクル、一貫性のないセキュリティモデルといった断片化された状況に直面することがよくあります。この複雑さは開発を遅らせ、コスト管理を複雑にし、セキュリティの攻撃対象領域を増大させます。
+
+以下の図は、AIGNE HubがアプリケーションとさまざまなAIプロバイダーの間に位置し、これらの課題をどのように解決するかを示しています。
 
 ```d2
-direction: down
+direction: right
 
-User-Application: {
-  label: "ユーザー / アプリケーション"
-  shape: c4-person
-}
+Applications: {
+  label: "あなたのアプリケーション"
+  shape: rectangle
 
-Self-Hosted-Infrastructure: {
-  label: "セルフホストインフラストラクチャ"
-  style: {
-    stroke-dash: 4
-  }
-
-  AIGNE-Hub: {
-    label: "AIGNE Hub\n(統合 AI ゲートウェイ)"
+  internal-tools: {
+    label: "社内ツール"
     shape: rectangle
+  }
 
-    Unified-API-Endpoint: {
-      label: "統合 API エンドポイント\n(OpenAI 互換)"
-    }
+  customer-apps: {
+    label: "顧客向けアプリ"
+    shape: rectangle
+  }
 
-    Central-Management: {
-      label: "中央管理 & 機能"
-      shape: rectangle
-      grid-columns: 2
-
-      Secure-Credential-Storage: { label: "安全な認証情報\nストレージ" }
-      Usage-Analytics: { label: "使用状況分析" }
-      Flexible-Billing-System: { label: "柔軟な請求\nシステム" }
-    }
-    
-    Unified-API-Endpoint -> Central-Management
+  chatbots: {
+    label: "チャットボット & Agents"
+    shape: rectangle
   }
 }
 
-External-Services: {
+AIGNE-Hub: {
+  label: "AIGNE Hub"
+  shape: rectangle
+
+  unified-api: {
+    label: "統一APIエンドポイント"
+  }
+
+  security: {
+    label: "一元化されたセキュリティとキー"
+  }
+
+  analytics: {
+    label: "使用状況とコスト分析"
+  }
+
+  billing: {
+    label: "柔軟な請求システム"
+  }
+}
+
+AI-Providers: {
+  label: "AIプロバイダー"
+  shape: rectangle
   grid-columns: 2
-  grid-gap: 200
 
-  AI-Providers: {
-    label: "AI プロバイダー"
-    shape: rectangle
-    grid-columns: 2
-
-    OpenAI: {}
-    Anthropic: {}
-    Google-Gemini: { label: "Google Gemini"}
-    Amazon-Bedrock: { label: "Amazon Bedrock"}
-    Ollama: {}
-    "Others...": {label: "その他..."}
-  }
-
-  Payment-Kit: {
-    label: "Payment Kit\n(サービスプロバイダーモード用)"
-    shape: rectangle
-  }
+  openai: "OpenAI"
+  anthropic: "Anthropic"
+  google: "Google Gemini"
+  aws: "Amazon Bedrock"
+  deepseek: "DeepSeek"
+  others: "... その他"
 }
 
-User-Application -> Self-Hosted-Infrastructure.AIGNE-Hub.Unified-API-Endpoint: "1. AI リクエスト"
-Self-Hosted-Infrastructure.AIGNE-Hub -> External-Services.AI-Providers: "2. 特定のプロバイダーへルーティング"
-Self-Hosted-Infrastructure.AIGNE-Hub.Central-Management.Flexible-Billing-System <-> External-Services.Payment-Kit: "クレジットと請求を管理"
+Applications -> AIGNE-Hub: "単一で一貫したAPI"
+AIGNE-Hub -> AI-Providers: "任意のプロバイダーへのルーティング"
 ```
 
-## 主な機能
+AIGNE Hubは、以下の機能を提供することで、これらの特定の課題を解決するように設計されています。
 
-AIGNE Hub は、社内エンタープライズ利用と、顧客に AI 機能を提供しようとするサービスプロバイダーの両方向けに設計された、包括的な機能セットを提供します。
+-   **単一の統合ポイント：** 接続されているすべてのプロバイダーに対して、OpenAI互換の統一されたAPIエンドポイントを提供します。これにより、開発者が複数のSDKや統合パターンを学習・維持する必要がなくなります。
+-   **一元化された認証情報管理：** すべての上流APIキーはAES暗号化で一箇所に安全に保存され、さまざまなアプリケーションや環境でのキー漏洩のリスクを低減します。
+-   **統一された使用状況とコスト分析：** すべてのモデル、ユーザー、プロバイダーにわたる消費量と支出を単一のダッシュボードで完全に可視化します。これにより、予算追跡とリソース割り当てが簡素化されます。
+-   **柔軟なデプロイモデル：** AIGNE Hubは、純粋に内部使用（Bring Your Own Keys）のためにデプロイすることも、組み込みのクレジットベースの請求システムを備えた公開サービスとしてデプロイすることもできます。
+
+## コア機能
+
+AIGNE Hubは、AIサービスの消費と管理のライフサイクル全体を合理化するために設計された堅牢な機能セットを提供します。
 
 <x-cards data-columns="3">
-  <x-card data-title="統合 API アクセス" data-icon="lucide:plug-zap">
-    OpenAI、Anthropic、Google Gemini を含む 8 社以上の一流 AI プロバイダーに、単一で一貫性のある OpenAI 互換の API エンドポイントを通じて接続します。
+  <x-card data-title="マルチプロバイダー管理" data-icon="lucide:cloud">
+    OpenAI、Anthropic、Google Geminiなど8社以上の主要AIプロバイダーに単一のインターフェースで接続できます。
   </x-card>
-  <x-card data-title="一元管理" data-icon="lucide:database">
-    単一のダッシュボードで、接続されているすべてのモデルとユーザーの使用状況、コスト、パフォーマンスを完全に可視化します。
+  <x-card data-title="統一APIエンドポイント" data-icon="lucide:plug-zap">
+    OpenAI互換のRESTful APIを使用して、チャット補完、画像生成、埋め込みのためにすべてのモデルと対話できます。
   </x-card>
-  <x-card data-title="安全な認証情報ストレージ" data-icon="lucide:shield-check">
-    すべてのプロバイダーの API キーと認証情報は AES 暗号化されて保管され、機密情報が保護されることを保証します。
+  <x-card data-title="使用状況とコスト分析" data-icon="lucide:line-chart">
+    包括的な分析ダッシュボードで、すべてのユーザーとプロバイダーにわたるトークン使用量、コスト、遅延メトリクスを監視できます。
   </x-card>
-  <x-card data-title="使用状況分析" data-icon="lucide:pie-chart">
-    トークン消費量を追跡し、コストを分析し、パフォーマンスメトリクスを監視して、AI 関連の支出とリソース割り当てを最適化します。
+  <x-card data-title="一元化されたセキュリティ" data-icon="lucide:shield-check">
+    暗号化されたAPIキーの保存、OAuth統合、ロールベースのアクセス制御（RBAC）、詳細な監査ログの恩恵を受けられます。
   </x-card>
   <x-card data-title="柔軟な請求システム" data-icon="lucide:credit-card">
-    社内利用向けに「bring-your-own-key (自身のキーを使用する)」モデルで運用するか、オプションのクレジットベースの請求システムを有効にして AI サービスを収益化します。
+    オプションで、Payment Kitを搭載したクレジットベースの請求システムを有効にして、外部ユーザー向けにサービスを収益化できます。
   </x-card>
-  <x-card data-title="セルフホストによる制御" data-icon="lucide:server">
-    自身のインフラストラクチャ内に AIGNE Hub をデプロイし、データプライバシー、セキュリティ、および運用管理を最大限に高めます。
+  <x-card data-title="組み込みプレイグラウンド" data-icon="lucide:flask-conical">
+    AIGNE Hubのユーザーインターフェースから直接、接続されたAIモデルをリアルタイムでテストおよび実験できます。
   </x-card>
 </x-cards>
 
-![AIGNE Hub ダッシュボード](../../../blocklets/core/screenshots/fc46e9461382f0be7541af17ef13f632.png)
+## サポートされているAIプロバイダー
 
-## サポートされている AI プロバイダー
+AIGNE Hubは、主要なAIプロバイダーのリストを拡大し続けています。システムは拡張可能に設計されており、新しいプロバイダーが継続的に追加されています。
 
-AIGNE Hub は、幅広い AI プロバイダーへの組み込みサポートを提供しており、新しい統合も継続的に追加されています。プラットフォームは、新しいプロバイダーが利用可能になると自動的に検出し、サポートします。
-
-| プロバイダー | サポートされているモデル/サービス |
+| プロバイダー | サポートされているサービス |
 | :--- | :--- |
-| **OpenAI** | GPT モデル、DALL-E、Embeddings |
-| **Anthropic** | Claude モデル |
-| **Amazon Bedrock** | AWS ホストモデル |
-| **Google Gemini** | Gemini Pro、Vision |
+| **OpenAI** | GPTモデル、DALL-E、Embeddings |
+| **Anthropic** | Claudeモデル |
+| **Google Gemini** | Gemini Pro、Visionモデル |
+| **Amazon Bedrock** | AWSホストの基盤モデル |
 | **DeepSeek** | 高度な推論モデル |
+| **xAI** | Grokモデル |
+| **OpenRouter** | 複数プロバイダーのアグリゲーター |
 | **Ollama** | ローカルモデルのデプロイ |
-| **OpenRouter** | 複数のプロバイダーへのアクセス |
-| **xAI** | Grok モデル |
-| **Doubao** | Doubao AI モデル |
-| **Poe** | Poe AI プラットフォーム |
+| **Doubao** | Doubao AIモデル |
+| **Poe** | Poe AIプラットフォーム |
 
-![AI プロバイダー設定](../../../blocklets/core/screenshots/6fff77ec3c1fbefb780b2b79c61a36f7.png)
+## システムアーキテクチャ
 
-## デプロイシナリオ
+AIGNE Hubは、信頼性とパフォーマンスを重視して設計されており、AIGNEフレームワーク上で[Blocklet](https://blocklet.io)として構築されています。このアーキテクチャは、AIGNEエコシステム内でのシームレスな統合を保証し、クラウドネイティブなデプロイとスケーリングのための堅牢な基盤を提供します。
 
-AIGNE Hub は、さまざまな組織のニーズに対応するため、主に 2 つの運用モデルに対応できるように設計されています。
+スタックの主要コンポーネントは以下の通りです。
 
-### エンタープライズセルフホスティング
+-   **バックエンド：** Node.jsとTypeScriptで構築され、強力な型付けと効率的なサーバーサイド環境を提供します。
+-   **フロントエンド：** React 19で構築されたモダンなユーザーインターフェース。
+-   **データベース：** ローカルデータストレージにSequelize ORMを備えたSQLiteを利用し、簡単なセットアップと信頼性の高いデータ管理を保証します。
+-   **フレームワーク：** コア機能と統合能力のために最新バージョンのAIGNE Frameworkを活用します。
 
-このモデルは、厳格なデータ管理とプライバシーを必要とする社内チームや組織に最適です。
-
-- **インフラストラクチャ**: 組織のプライベートインフラストラクチャ内に完全にデプロイされます。
-- **請求**: 外部への請求は不要です。組織は AI プロバイダーに直接支払います。
-- **データセキュリティ**: すべてのデータと API 認証情報は、企業のセキュリティ境界内に留まります。
-- **ユースケース**: 企業の AI イニシアチブ、社内開発チーム、研究プロジェクトに適しています。
-
-### サービスプロバイダーモード
-
-このモデルにより、組織は AIGNE Hub をマルチテナントの収益化プラットフォームに変えることで、外部の顧客に AI サービスを提供できます。
-
-- **請求**: Payment Kit と統合し、クレジットベースの請求システムを有効にします。
-- **価格設定**: オペレーターはモデルごとにカスタムの価格レートを設定でき、利益率を確保できます。
-- **ユーザーオンボーディング**: 設定可能なスタータークレジットによる自動ユーザーオンボーディングをサポートします。
-- **ユースケース**: SaaS プラットフォーム、AI サービスプロバイダー、およびクライアント向けの AI 搭載ソリューションを構築する代理店に最適です。
+![AIGNE Hub Dashboard](https://raw.githubusercontent.com/AIGNE-io/aigne-hub/main/blocklets/core/screenshots/fc46e9461382f0be7541af17ef13f632.png)
 
 ## まとめ
 
-AIGNE Hub は、AIGNE エコシステム内におけるすべての生成 AI インタラクションの中心的なゲートウェイとして機能します。複数の AI プロバイダーを使用する際の運用上の複雑さを簡素化し、認証情報の一元管理を通じてセキュリティを強化し、監視と請求のための堅牢なツールを提供します。柔軟なデプロイモデルを提供することで、社内開発から一般向けの AI サービスまで、幅広いユースケースをサポートします。
+この概要では、マルチプロバイダーAIサービスのインフラ管理を簡素化するために設計された統合AIゲートウェイとしてAIGNE Hubを紹介しました。それが解決する問題、そのコア機能、および技術アーキテクチャについて概説しました。
 
-システムの構造について詳しく理解するには、[アーキテクチャ](./architecture.md) のセクションに進んでください。
+次のステップとして、より詳細な情報については以下のセクションに進むことができます。
+
+<x-cards data-columns="2">
+  <x-card data-title="はじめに" data-href="/getting-started" data-icon="lucide:rocket">
+    ステップバイステップのガイドに従って、30分以内にAIGNE Hubインスタンスをデプロイおよび設定します。
+  </x-card>
+  <x-card data-title="デプロイシナリオ" data-href="/deployment-scenarios" data-icon="lucide:milestone">
+    社内企業利用または収益化サービスとしてAIGNE Hubをデプロイするためのアーキテクチャガイダンスを探ります。
+  </x-card>
+</x-cards>

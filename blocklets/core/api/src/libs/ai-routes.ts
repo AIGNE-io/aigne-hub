@@ -149,7 +149,8 @@ export const embeddingsRequestSchema = Joi.object<EmbeddingInput>({
 });
 
 export const imageGenerationRequestSchema = Joi.object<
-  ImageGenerationInput & Required<Pick<ImageGenerationInput, 'model' | 'n'>>
+  ImageGenerationInput &
+    Required<Pick<ImageGenerationInput, 'model' | 'n'>> & { outputFileType?: 'file' | 'url' | 'local' }
 >({
   model: Joi.string().empty(['', null]).default('dall-e-2'),
   image: Joi.alternatives().try(Joi.string(), Joi.array().items(Joi.string())),
@@ -157,6 +158,7 @@ export const imageGenerationRequestSchema = Joi.object<
   size: Joi.string().empty(['', null]),
   n: Joi.number().min(1).max(10).empty([null]).default(1),
   responseFormat: Joi.string().empty([null]),
+  outputFileType: Joi.string().empty([null]),
 });
 
 type Middleware = (req: Request, res: Response, next: NextFunction) => Promise<void>;
@@ -201,26 +203,28 @@ export const createRetryHandler = (
         await middlewareNext();
       });
     } catch (error) {
+      const currentModel = getReqModel(req);
       const maxRetries = req.maxProviderRetries !== undefined ? req.maxProviderRetries : defaultOptions.maxRetries;
       const errorStatus = error.response?.status || error.status || 500;
       const nextCount = count + 1;
 
       if (canRetry(nextCount, maxRetries)) {
-        logger.info('ai route retry', {
-          count: nextCount,
-          maxRetries,
-          errorStatus,
-          model: getReqModel(req),
-          originalModel: req.originalModel,
-        });
-
-        const filteredModels = (req.availableModelsWithProvider || []).filter((m) => m !== getReqModel(req));
+        const filteredModels = (req.availableModelsWithProvider || []).filter((m) => m !== currentModel);
         req.availableModelsWithProvider = filteredModels || [];
 
         const nextModel = filteredModels[0] || req.originalModel;
         if (nextModel) {
           req.body.model = nextModel;
         }
+
+        logger.info('ai route retry', {
+          count: nextCount,
+          maxRetries,
+          errorStatus,
+          currentModel,
+          nextModel,
+          originalModel: req.originalModel,
+        });
 
         await fn(req, res, next, nextCount);
         return;
@@ -456,6 +460,7 @@ export async function processImageGeneration(
       {
         ...params,
         responseFormat: params.responseFormat === 'b64_json' ? 'base64' : params.responseFormat || 'base64',
+        outputFileType: input?.outputFileType || 'file',
       },
       options
     );

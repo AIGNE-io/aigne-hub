@@ -1,3 +1,65 @@
+## 0.6.20 (2025-11-28)
+
+- chore: update dependencies
+- feat(core): improve credit grant notifications and balance display
+- fix(api): improve streaming timeout handling and error cleanup
+- feat: enhance credit balance verification and update error message for AI services usage
+
+## 0.6.19 (2025-11-24)
+
+- fix: add type field to model status for accurate tracking
+
+## 0.6.18 (2025-11-24)
+
+- feat: support trace updates in observability integration
+
+## 0.6.17 (2025-11-21)
+
+- chore: update deps
+
+## 0.6.16 (2025-11-21)
+
+- chore: add model and provider logging for completions endpoints
+
+## 0.6.15 (2025-11-21)
+
+- fix: correct model formatting when provider is specified
+
+## 0.6.14 (2025-11-20)
+
+- chore: update package for fix model fetch timeout
+
+## 0.6.13 (2025-11-20)
+
+- chore: update publish-docs workflow to include path filters for doc-smith
+
+## 0.6.12 (2025-11-20)
+
+- chore: update framework packages to support Gemini 3.x models
+
+## 0.6.11 (2025-11-18)
+
+- chore: update blocklet dependencies to version 1.17.3-beta
+- feat: implement user-specific storage keys for chat and conversation history migration
+- feat: integrate localization for model selector and enhance user experience
+- feat: add guest playground feature and enhance credit notifications
+
+## 0.6.10 (2025-11-17)
+
+- chore: bump version
+
+## 0.6.9 (2025-11-17)
+
+- fix: add outputFileType parameter for image generation
+
+## 0.6.8 (2025-11-17)
+
+- fix: optimize skeleton sizes and mobile date format
+
+## 0.6.7 (2025-11-17)
+
+- fix: improve credit page layout and UX
+
 ## 0.6.6 (2025-11-14)
 
 - fix: update package to latest

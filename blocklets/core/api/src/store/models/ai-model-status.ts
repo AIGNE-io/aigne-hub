@@ -2,6 +2,7 @@ import { CreationOptional, DataTypes, InferAttributes, InferCreationAttributes, 
 
 import nextId from '../../libs/next-id';
 import { sequelize } from '../sequelize';
+import { CallType } from './types';
 
 export enum ModelErrorType {
   INVALID_ARGUMENT = 'Invalid Argument',
@@ -33,6 +34,8 @@ export default class AiModelStatus extends Model<
 
   declare model: string;
 
+  declare type?: Omit<CallType, 'custom' | 'audioGeneration'>;
+
   declare available: boolean;
 
   declare error?: ModelError | null;
@@ -59,6 +62,10 @@ export default class AiModelStatus extends Model<
     model: {
       type: DataTypes.STRING(100),
       allowNull: false,
+    },
+    type: {
+      type: DataTypes.ENUM('chatCompletion', 'embedding', 'imageGeneration', 'video'),
+      allowNull: true,
     },
     available: {
       type: DataTypes.BOOLEAN,
@@ -95,44 +102,23 @@ export default class AiModelStatus extends Model<
     });
   }
 
-  static async getModelStatus(
-    providerId: string,
-    model: string,
-    trustWindowMs: number = 3600000
-  ): Promise<AiModelStatus | null> {
-    const status = await AiModelStatus.findOne({
-      where: { providerId, model },
-    });
-
-    if (!status) {
-      return null;
-    }
-
-    const now = new Date();
-    const timeSinceLastCheck = now.getTime() - status.lastChecked.getTime();
-
-    if (timeSinceLastCheck > trustWindowMs) {
-      return null;
-    }
-
-    return status;
-  }
-
   static async upsertModelStatus({
     providerId,
     model,
     available,
     error,
     responseTime,
+    type,
   }: {
     providerId: string;
     model: string;
     available: boolean;
     error?: ModelError | null;
     responseTime?: number;
+    type?: Omit<CallType, 'custom' | 'audioGeneration'>;
   }): Promise<AiModelStatus> {
     const [status] = await AiModelStatus.findOrCreate({
-      where: { providerId, model },
+      where: { providerId, model, type },
       defaults: {
         providerId,
         model,
@@ -140,6 +126,7 @@ export default class AiModelStatus extends Model<
         error,
         responseTime,
         lastChecked: new Date(),
+        type,
       },
     });
 
@@ -148,6 +135,7 @@ export default class AiModelStatus extends Model<
       error,
       responseTime,
       lastChecked: new Date(),
+      type,
     });
 
     return status;

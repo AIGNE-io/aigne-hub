@@ -1,3 +1,5 @@
+import { DateRangePicker } from '@app/components/analytics';
+import { toUTCTimestamp } from '@app/components/analytics/skeleton';
 import { getPrefix } from '@app/libs/util';
 import DID from '@arcblock/ux/lib/DID';
 /* eslint-disable react/no-unstable-nested-components */
@@ -63,10 +65,6 @@ interface CallHistoryProps {
   subtitle?: string;
   showUserColumn?: boolean;
   showAppColumn?: boolean;
-  dateRange?: {
-    from: number;
-    to: number;
-  };
   initialPageSize?: number;
   enableExport?: boolean;
   refreshKey?: number;
@@ -114,7 +112,6 @@ export function CallHistory({
   subtitle = undefined,
   showUserColumn = false,
   showAppColumn = false,
-  dateRange = undefined,
   initialPageSize = 10,
   enableExport = true,
   refreshKey = 0,
@@ -124,6 +121,10 @@ export function CallHistory({
   const { t, locale } = useLocaleContext();
   const { api } = useSessionContext();
 
+  const [dateRange, setDateRange] = useState({
+    from: toUTCTimestamp(dayjs().subtract(6, 'day')),
+    to: toUTCTimestamp(dayjs(), true),
+  });
   // Local state for search and pagination
   const [searchTerm, setSearchTerm] = useState('');
   const [searchValue, setSearchValue] = useState(appDid || '');
@@ -150,6 +151,13 @@ export function CallHistory({
     [searchValue],
     { wait: 500 }
   );
+
+  const handleQuickDateSelect = (range: { start: dayjs.Dayjs; end: dayjs.Dayjs }) => {
+    setDateRange({
+      from: toUTCTimestamp(range.start),
+      to: toUTCTimestamp(range.end, true),
+    });
+  };
 
   // Build query parameters
   const buildQuery = (): CallHistoryQuery => {
@@ -509,14 +517,58 @@ export function CallHistory({
   }
 
   const isCreditBillingEnabled = window.blocklet?.preferences?.creditBasedBillingEnabled;
+  const showGuestPlayground = window.blocklet?.preferences?.guestPlaygroundEnabled;
+
+  // Custom empty state with Playground guide
+  const renderEmptyState = () => {
+    const emptyText =
+      dateRange?.from && dateRange?.to
+        ? t('analytics.noCallsFoundBetween', {
+            startTime: dayjs((dateRange?.from || 0) * 1000).format('YYYY-MM-DD'),
+            endTime: dayjs((dateRange?.to || 0) * 1000).format('YYYY-MM-DD'),
+          })
+        : t('analytics.noCallsFound');
+
+    const shouldShowPlaygroundGuide = showGuestPlayground && total === 0 && !allUsers && !showUserColumn;
+
+    return (
+      <Stack spacing={1} sx={{ py: 4, alignItems: 'center' }}>
+        <Typography variant="body2" color="text.secondary">
+          {emptyText}
+        </Typography>
+        {shouldShowPlaygroundGuide && (
+          <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {t('analytics.emptyStateHint')}{' '}
+            <Button
+              component="a"
+              href={joinURL(getPrefix(), '/playground')}
+              target="_blank"
+              rel="noopener noreferrer"
+              variant="text"
+              size="small"
+              sx={{
+                p: 0,
+                textTransform: 'none',
+                verticalAlign: 'baseline',
+              }}>
+              <Typography variant="body2" color="primary.main" sx={{ display: 'inline-block' }}>
+                {t('analytics.tryPlayground')}
+              </Typography>
+            </Button>
+          </Typography>
+        )}
+      </Stack>
+    );
+  };
 
   return (
     <Stack spacing={3}>
       <Stack
-        direction="row"
+        direction={{ xs: 'column', md: 'row' }}
+        spacing={2}
         sx={{
           justifyContent: 'space-between',
-          alignItems: 'center',
+          alignItems: { xs: 'flex-start', md: 'center' },
           mb: 1,
         }}>
         <Stack>
@@ -540,16 +592,34 @@ export function CallHistory({
             )}
           </Stack>
         </Stack>
-        {enableExport && (
-          <Button
-            variant="outlined"
-            startIcon={<Download />}
-            onClick={handleExport}
-            disabled={exportLoading}
-            size="small">
-            {exportLoading ? <CircularProgress size={16} /> : t('export')}
-          </Button>
-        )}
+
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+          <DateRangePicker
+            startDate={dayjs.unix(dateRange.from).local()}
+            endDate={dayjs.unix(dateRange.to).local()}
+            onStartDateChange={(date: dayjs.Dayjs | null) =>
+              setDateRange((prev) => ({ ...prev, from: toUTCTimestamp(date || dayjs()) }))
+            }
+            onEndDateChange={(date: dayjs.Dayjs | null) =>
+              setDateRange((prev) => ({ ...prev, to: toUTCTimestamp(date || dayjs(), true) }))
+            }
+            onQuickSelect={handleQuickDateSelect}
+            sx={{
+              alignSelf: 'flex-end',
+            }}
+          />
+
+          {enableExport && (
+            <Button
+              variant="outlined"
+              startIcon={<Download />}
+              onClick={handleExport}
+              disabled={exportLoading}
+              size="small">
+              {exportLoading ? <CircularProgress size={16} /> : t('export')}
+            </Button>
+          )}
+        </Stack>
       </Stack>
       <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
         <TextField
@@ -600,7 +670,7 @@ export function CallHistory({
             selectableRows: 'none',
             responsive: 'vertical',
           }}
-          emptyNodeText={t('analytics.noCallsFound')}
+          emptyNodeText={renderEmptyState()}
           mobileTDFlexDirection="row"
         />
       </Root>

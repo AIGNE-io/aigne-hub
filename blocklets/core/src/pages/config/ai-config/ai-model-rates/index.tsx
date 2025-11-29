@@ -172,14 +172,25 @@ export default function AIModelRates() {
 
   useSubscription(
     'model.status.updated',
-    ({ provider, model, available, error }: { provider: string; model: string; available: boolean; error: any }) => {
+    ({
+      provider,
+      model,
+      available,
+      error,
+      type,
+    }: {
+      provider: string;
+      model: string;
+      available: boolean;
+      error: any;
+      type: string;
+    }) => {
       mutate((r: any) => {
         const data = r.list || [];
 
         data.forEach((item: any) => {
-          if (item.provider?.name === provider && item.model === model) {
+          if (item.provider?.name === provider && item.model === model && type === item.type) {
             item.loading = false;
-
             if (item.status) {
               item.status.available = available;
               item.status.error = error;
