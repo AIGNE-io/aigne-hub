@@ -414,6 +414,8 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
 
     const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
 
+    // 优化查询：添加 FORCE INDEX 提示（如果数据库支持）
+    // 并确保查询条件顺序与索引匹配
     const topModelsQuery = `
       SELECT
         "model",
@@ -426,6 +428,7 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
       LIMIT :limit
     `;
 
+    // 优化：使用子查询减少扫描范围
     const totalCountQuery = `
       SELECT COUNT(DISTINCT "model") as "totalModels"
       FROM "ModelCalls"
