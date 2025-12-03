@@ -85,10 +85,7 @@ export const getAppName = async (appDid: string) => {
 
 async function getHourlyStatsInRange(start: number, end: number): Promise<DailyStats[]> {
   const stats = await ModelCallStat.findAll({
-    where: {
-      timeType: 'hour',
-      timestamp: { [Op.gte]: start, [Op.lte]: end },
-    },
+    where: { timeType: 'hour', timestamp: { [Op.gte]: start, [Op.lte]: end } },
   });
 
   return stats.map((stat) => ({ ...stat.stats, timestamp: stat.timestamp }));
@@ -117,7 +114,7 @@ export async function getTrendComparisonOptimized({
       const currentHours = generateHourRangeFromTimestamps(startTime, endTime);
       const previousHours = generateHourRangeFromTimestamps(previousStart, previousEnd);
 
-      // 批量查询两个时间段的缓存数据
+      // Batch query the cache data of two time periods
       const [currentCachedStats, previousCachedStats] = await Promise.all([
         ModelCallStat.findAll({
           where: {
@@ -125,7 +122,6 @@ export async function getTrendComparisonOptimized({
             timeType: 'hour',
             timestamp: { [Op.in]: currentHours },
           },
-          raw: true,
         }),
         ModelCallStat.findAll({
           where: {
@@ -133,11 +129,10 @@ export async function getTrendComparisonOptimized({
             timeType: 'hour',
             timestamp: { [Op.in]: previousHours },
           },
-          raw: true,
         }),
       ]);
 
-      // 构建缓存 Map
+      // Build the cache Map
       const currentCachedMap = new Map<number, DailyStats>();
       const previousCachedMap = new Map<number, DailyStats>();
 
@@ -148,38 +143,33 @@ export async function getTrendComparisonOptimized({
         previousCachedMap.set(stat.timestamp, stat.stats);
       });
 
-      // 找出缺失的小时
+      // Find the missing hours
       const currentMissing = currentHours.filter((hour) => !currentCachedMap.has(hour));
       const previousMissing = previousHours.filter((hour) => !previousCachedMap.has(hour));
 
-      // 当前小时实时计算，历史小时触发缓存
+      // The current hour is always calculated in real-time, and the historical hours trigger the cache
       const currentHour = Math.floor(Date.now() / 1000 / 3600) * 3600;
 
-      // 分批处理缺失数据
+      // Batch process the missing data
       const BATCH_SIZE = 50;
-      const processMissingBatch = async (hours: number[], isCurrentPeriod: boolean) => {
+      const processMissingBatch = async (hours: number[]) => {
         const results: Array<{ hour: number; stats: DailyStats }> = [];
         const historicalHours = hours.filter((h) => h < currentHour);
         const currentHours = hours.filter((h) => h >= currentHour);
 
-        // 分批处理历史小时
+        // Batch process the historical hours
         for (let i = 0; i < historicalHours.length; i += BATCH_SIZE) {
           const batch = historicalHours.slice(i, i + BATCH_SIZE);
+          // eslint-disable-next-line no-await-in-loop
           const batchResults = await Promise.all(
-            batch.map(async (hour) => ({
-              hour,
-              stats: await ModelCallStat.getHourlyStats(userDid, hour),
-            }))
+            batch.map(async (hour) => ({ hour, stats: await ModelCallStat.computeAndSaveHourlyStats(userDid, hour) }))
           );
           results.push(...batchResults);
         }
 
-        // 实时计算当前小时
+        // Real-time calculate the current hour
         const currentResults = await Promise.all(
-          currentHours.map(async (hour) => ({
-            hour,
-            stats: await ModelCallStat.computeHourlyStats(userDid, hour),
-          }))
+          currentHours.map(async (hour) => ({ hour, stats: await ModelCallStat.computeHourlyStats(userDid, hour) }))
         );
         results.push(...currentResults);
 
@@ -187,11 +177,11 @@ export async function getTrendComparisonOptimized({
       };
 
       const [currentMissingStats, previousMissingStats] = await Promise.all([
-        processMissingBatch(currentMissing, true),
-        processMissingBatch(previousMissing, false),
+        processMissingBatch(currentMissing),
+        processMissingBatch(previousMissing),
       ]);
 
-      // 合并数据
+      // Merge the data
       currentMissingStats.forEach(({ hour, stats }) => {
         currentCachedMap.set(hour, stats);
       });
@@ -199,7 +189,7 @@ export async function getTrendComparisonOptimized({
         previousCachedMap.set(hour, stats);
       });
 
-      // 按顺序构建结果
+      // Build the result by hour order
       currentHourlyStats = currentHours.map((hour) => currentCachedMap.get(hour)!);
       previousHourlyStats = previousHours.map((hour) => previousCachedMap.get(hour)!);
     } else {
@@ -246,7 +236,6 @@ export async function getUsageStatsHourlyOptimized(userDid: string, startTime: n
         timeType: 'hour',
         timestamp: { [Op.in]: hours },
       },
-      raw: true,
     });
 
     // Build the Map of cached data
@@ -267,12 +256,13 @@ export async function getUsageStatsHourlyOptimized(userDid: string, startTime: n
     const BATCH_SIZE = 50;
     const missingStats: Array<{ hour: number; stats: DailyStats }> = [];
 
+    // save the missing historical hours data
     for (let i = 0; i < missingHistoricalHours.length; i += BATCH_SIZE) {
       const batch = missingHistoricalHours.slice(i, i + BATCH_SIZE);
       // eslint-disable-next-line no-await-in-loop
       const batchResults = await Promise.all(
         batch.map(async (hour) => {
-          const stats = await ModelCallStat.getHourlyStats(userDid, hour);
+          const stats = await ModelCallStat.computeAndSaveHourlyStats(userDid, hour);
           return { hour, stats };
         })
       );
@@ -307,7 +297,7 @@ export async function getUsageStatsHourlyOptimized(userDid: string, startTime: n
 
 export async function getUsageStatsHourlyOptimizedAdmin(startTime: number, endTime: number) {
   try {
-    // 批量查询指定时间范围内所有用户的小时统计数据
+    // Batch query the hourly statistics of all users within the specified time range
     const existingStat = await ModelCallStat.findAll({
       where: {
         timeType: 'hour',
