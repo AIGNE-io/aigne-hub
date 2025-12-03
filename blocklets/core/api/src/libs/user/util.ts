@@ -91,6 +91,69 @@ async function getHourlyStatsInRange(start: number, end: number): Promise<DailyS
   return stats.map((stat) => ({ ...stat.stats, timestamp: stat.timestamp }));
 }
 
+/**
+ * Fetch hourly stats with cache optimization
+ * - Batch query cached data
+ * - Compute missing hours (save historical, real-time for current)
+ * - Merge and return in hour order
+ */
+async function fetchHourlyStatsWithCache(userDid: string, hours: number[]): Promise<DailyStats[]> {
+  // Batch query cached hourly data
+  const cachedStats = await ModelCallStat.findAll({
+    where: {
+      userDid,
+      timeType: 'hour',
+      timestamp: { [Op.in]: hours },
+    },
+  });
+
+  // Build cache Map
+  const cachedStatsMap = new Map<number, DailyStats>();
+  cachedStats.forEach((stat: any) => {
+    cachedStatsMap.set(stat.timestamp, stat.stats);
+  });
+
+  // Find missing hours
+  const missingHours = hours.filter((hour) => !cachedStatsMap.has(hour));
+
+  // Separate historical hours and current hour
+  const currentHour = Math.floor(Date.now() / 1000 / 3600) * 3600;
+  const historicalHours = missingHours.filter((h) => h < currentHour);
+  const currentHours = missingHours.filter((h) => h >= currentHour);
+
+  // Batch process missing data
+  const BATCH_SIZE = 50;
+  const missingStats: Array<{ hour: number; stats: DailyStats }> = [];
+
+  // Process historical hours in batches (save to cache)
+  if (historicalHours.length > 0) {
+    for (let i = 0; i < historicalHours.length; i += BATCH_SIZE) {
+      const batch = historicalHours.slice(i, i + BATCH_SIZE);
+      // eslint-disable-next-line no-await-in-loop
+      const batchResults = await Promise.all(
+        batch.map(async (hour) => ({ hour, stats: await ModelCallStat.computeAndSaveHourlyStats(userDid, hour) }))
+      );
+      missingStats.push(...batchResults);
+    }
+  }
+
+  // Process current hours (real-time, no cache)
+  const currentHourStats = await Promise.all(
+    currentHours.map(async (hour) => ({ hour, stats: await ModelCallStat.computeHourlyStats(userDid, hour) }))
+  );
+
+  // Merge all data
+  missingStats.forEach(({ hour, stats }) => {
+    cachedStatsMap.set(hour, stats);
+  });
+  currentHourStats.forEach(({ hour, stats }) => {
+    cachedStatsMap.set(hour, stats);
+  });
+
+  // Return in hour order
+  return hours.map((hour) => cachedStatsMap.get(hour)!);
+}
+
 // Optimized trend comparison using hourly ModelCallStat data
 export async function getTrendComparisonOptimized({
   userDid,
@@ -114,84 +177,11 @@ export async function getTrendComparisonOptimized({
       const currentHours = generateHourRangeFromTimestamps(startTime, endTime);
       const previousHours = generateHourRangeFromTimestamps(previousStart, previousEnd);
 
-      // Batch query the cache data of two time periods
-      const [currentCachedStats, previousCachedStats] = await Promise.all([
-        ModelCallStat.findAll({
-          where: {
-            userDid,
-            timeType: 'hour',
-            timestamp: { [Op.in]: currentHours },
-          },
-        }),
-        ModelCallStat.findAll({
-          where: {
-            userDid,
-            timeType: 'hour',
-            timestamp: { [Op.in]: previousHours },
-          },
-        }),
+      // Fetch hourly stats with cache for both periods in parallel
+      [currentHourlyStats, previousHourlyStats] = await Promise.all([
+        fetchHourlyStatsWithCache(userDid, currentHours),
+        fetchHourlyStatsWithCache(userDid, previousHours),
       ]);
-
-      // Build the cache Map
-      const currentCachedMap = new Map<number, DailyStats>();
-      const previousCachedMap = new Map<number, DailyStats>();
-
-      currentCachedStats.forEach((stat: any) => {
-        currentCachedMap.set(stat.timestamp, stat.stats);
-      });
-      previousCachedStats.forEach((stat: any) => {
-        previousCachedMap.set(stat.timestamp, stat.stats);
-      });
-
-      // Find the missing hours
-      const currentMissing = currentHours.filter((hour) => !currentCachedMap.has(hour));
-      const previousMissing = previousHours.filter((hour) => !previousCachedMap.has(hour));
-
-      // The current hour is always calculated in real-time, and the historical hours trigger the cache
-      const currentHour = Math.floor(Date.now() / 1000 / 3600) * 3600;
-
-      // Batch process the missing data
-      const BATCH_SIZE = 50;
-      const processMissingBatch = async (hours: number[]) => {
-        const results: Array<{ hour: number; stats: DailyStats }> = [];
-        const historicalHours = hours.filter((h) => h < currentHour);
-        const currentHours = hours.filter((h) => h >= currentHour);
-
-        // Batch process the historical hours
-        for (let i = 0; i < historicalHours.length; i += BATCH_SIZE) {
-          const batch = historicalHours.slice(i, i + BATCH_SIZE);
-          // eslint-disable-next-line no-await-in-loop
-          const batchResults = await Promise.all(
-            batch.map(async (hour) => ({ hour, stats: await ModelCallStat.computeAndSaveHourlyStats(userDid, hour) }))
-          );
-          results.push(...batchResults);
-        }
-
-        // Real-time calculate the current hour
-        const currentResults = await Promise.all(
-          currentHours.map(async (hour) => ({ hour, stats: await ModelCallStat.computeHourlyStats(userDid, hour) }))
-        );
-        results.push(...currentResults);
-
-        return results;
-      };
-
-      const [currentMissingStats, previousMissingStats] = await Promise.all([
-        processMissingBatch(currentMissing),
-        processMissingBatch(previousMissing),
-      ]);
-
-      // Merge the data
-      currentMissingStats.forEach(({ hour, stats }) => {
-        currentCachedMap.set(hour, stats);
-      });
-      previousMissingStats.forEach(({ hour, stats }) => {
-        previousCachedMap.set(hour, stats);
-      });
-
-      // Build the result by hour order
-      currentHourlyStats = currentHours.map((hour) => currentCachedMap.get(hour)!);
-      previousHourlyStats = previousHours.map((hour) => previousCachedMap.get(hour)!);
     } else {
       [currentHourlyStats, previousHourlyStats] = await Promise.all([
         getHourlyStatsInRange(startTime, endTime),
@@ -229,64 +219,8 @@ export async function getUsageStatsHourlyOptimized(userDid: string, startTime: n
     // Generate hourly range from user's local time timestamps
     const hours = generateHourRangeFromTimestamps(startTime, endTime);
 
-    // Batch query the cached hourly data instead of querying one by one
-    const cachedStats = await ModelCallStat.findAll({
-      where: {
-        userDid,
-        timeType: 'hour',
-        timestamp: { [Op.in]: hours },
-      },
-    });
-
-    // Build the Map of cached data
-    const cachedStatsMap = new Map<number, DailyStats>();
-    cachedStats.forEach((stat: any) => {
-      cachedStatsMap.set(stat.timestamp, stat.stats);
-    });
-
-    // Find the missing hours
-    const missingHours = hours.filter((hour) => !cachedStatsMap.has(hour));
-
-    // The current hour is always calculated in real-time
-    const currentHour = Math.floor(Date.now() / 1000 / 3600) * 3600;
-    const missingHistoricalHours = missingHours.filter((hour) => hour < currentHour);
-    const currentHours = missingHours.filter((hour) => hour >= currentHour);
-
-    // Batch process the missing historical hours data to avoid too many concurrent queries
-    const BATCH_SIZE = 50;
-    const missingStats: Array<{ hour: number; stats: DailyStats }> = [];
-
-    // save the missing historical hours data
-    for (let i = 0; i < missingHistoricalHours.length; i += BATCH_SIZE) {
-      const batch = missingHistoricalHours.slice(i, i + BATCH_SIZE);
-      // eslint-disable-next-line no-await-in-loop
-      const batchResults = await Promise.all(
-        batch.map(async (hour) => {
-          const stats = await ModelCallStat.computeAndSaveHourlyStats(userDid, hour);
-          return { hour, stats };
-        })
-      );
-      missingStats.push(...batchResults);
-    }
-
-    // Process the current hour (real-time calculation)
-    const currentHourStats = await Promise.all(
-      currentHours.map(async (hour) => {
-        const stats = await ModelCallStat.computeHourlyStats(userDid, hour);
-        return { hour, stats };
-      })
-    );
-
-    // Merge all data
-    missingStats.forEach(({ hour, stats }) => {
-      cachedStatsMap.set(hour, stats);
-    });
-    currentHourStats.forEach(({ hour, stats }) => {
-      cachedStatsMap.set(hour, stats);
-    });
-
-    // Build the result by hour order
-    const hourlyStatsRaw = hours.map((hour) => cachedStatsMap.get(hour)!);
+    // Fetch hourly stats with cache optimization
+    const hourlyStatsRaw = await fetchHourlyStatsWithCache(userDid, hours);
 
     return formatUsageStats({ hourlyStatsRaw, hours });
   } catch (error) {
@@ -299,17 +233,10 @@ export async function getUsageStatsHourlyOptimizedAdmin(startTime: number, endTi
   try {
     // Batch query the hourly statistics of all users within the specified time range
     const existingStat = await ModelCallStat.findAll({
-      where: {
-        timeType: 'hour',
-        timestamp: {
-          [Op.gte]: startTime,
-          [Op.lte]: endTime,
-        },
-      },
-      raw: true,
+      where: { timeType: 'hour', timestamp: { [Op.gte]: startTime, [Op.lte]: endTime } },
     });
 
-    const statsWithTimestamp = existingStat.map((stat: any) => ({
+    const statsWithTimestamp = existingStat.map((stat) => ({
       ...stat.stats,
       timestamp: stat.timestamp,
     }));

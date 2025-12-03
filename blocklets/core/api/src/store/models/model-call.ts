@@ -301,76 +301,6 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
     return totalCredits.toNumber();
   }
 
-  static async getDailyUsageStats({
-    userDid,
-    startTime,
-    endTime,
-  }: {
-    userDid?: string;
-    startTime?: number;
-    endTime?: number;
-  }): Promise<
-    Array<{
-      date: string;
-      timestamp: number;
-      byType: { [key: string]: { totalUsage: number; totalCalls: number } };
-      totalCredits: number;
-      totalCalls: number;
-    }>
-  > {
-    const whereClause: any = {};
-
-    if (userDid) {
-      whereClause.userDid = userDid;
-    }
-
-    if (startTime || endTime) {
-      whereClause.callTime = {};
-      if (startTime) whereClause.callTime[Op.gte] = Number(startTime);
-      if (endTime) whereClause.callTime[Op.lte] = Number(endTime);
-    }
-
-    const calls = await ModelCall.findAll({
-      where: whereClause,
-      order: [['callTime', 'ASC']],
-      raw: true,
-    });
-
-    const dailyStats = new Map<string, any>();
-
-    calls.forEach((call: any) => {
-      const date = new Date(call.callTime * 1000).toISOString().split('T')[0]!;
-      const type = call.type || 'unknown';
-
-      if (!dailyStats.has(date)) {
-        const dayTimestamp = Math.floor(new Date(`${date}T00:00:00.000Z`).getTime() / 1000);
-        dailyStats.set(date, {
-          date,
-          timestamp: dayTimestamp,
-          byType: {},
-          totalCredits: 0,
-          totalCalls: 0,
-          totalUsage: 0,
-        });
-      }
-
-      const dayStats = dailyStats.get(date)!;
-      if (!dayStats.byType[type]) {
-        dayStats.byType[type] = { totalUsage: 0, totalCalls: 0 };
-      }
-
-      dayStats.byType[type].totalUsage = new BigNumber(dayStats.byType[type].totalUsage)
-        .plus(call.totalUsage || 0)
-        .toNumber();
-      dayStats.byType[type].totalCalls = new BigNumber(dayStats.byType[type].totalCalls).plus(1).toNumber();
-      dayStats.totalCredits = new BigNumber(dayStats.totalCredits).plus(call.credits || 0).toNumber();
-      dayStats.totalCalls = new BigNumber(dayStats.totalCalls).plus(1).toNumber();
-      dayStats.totalUsage = new BigNumber(dayStats.totalUsage).plus(call.totalUsage || 0).toNumber();
-    });
-
-    return Array.from(dailyStats.values()).sort((a, b) => a.date.localeCompare(b.date));
-  }
-
   static async getModelUsageStats({
     userDid,
     startTime,
@@ -414,8 +344,6 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
 
     const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
 
-    // 优化查询：添加 FORCE INDEX 提示（如果数据库支持）
-    // 并确保查询条件顺序与索引匹配
     const topModelsQuery = `
       SELECT
         "model",
@@ -428,7 +356,6 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
       LIMIT :limit
     `;
 
-    // 优化：使用子查询减少扫描范围
     const totalCountQuery = `
       SELECT COUNT(DISTINCT "model") as "totalModels"
       FROM "ModelCalls"
@@ -479,81 +406,6 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
       list,
       totalModelCount,
     };
-  }
-
-  static async getModelUsageStatsLegacy({
-    userDid,
-    startTime,
-    endTime,
-    limit = 10,
-  }: {
-    userDid?: string;
-    startTime?: number;
-    endTime?: number;
-    limit?: number;
-  }): Promise<
-    Array<{
-      providerId: string;
-      model: string;
-      type: CallType;
-      totalUsage: number;
-      totalCredits: number;
-      totalCalls: number;
-      successRate: number;
-    }>
-  > {
-    const whereConditions: string[] = [];
-    const replacements: any = { limit };
-
-    if (userDid) {
-      whereConditions.push('"userDid" = :userDid');
-      replacements.userDid = userDid;
-    }
-
-    if (startTime) {
-      whereConditions.push('"callTime" >= :startTime');
-      replacements.startTime = Number(startTime);
-    }
-
-    if (endTime) {
-      whereConditions.push('"callTime" <= :endTime');
-      replacements.endTime = Number(endTime);
-    }
-
-    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
-
-    const query = `
-      SELECT
-        "providerId", "model", "type",
-        SUM("totalUsage") as "totalUsage",
-        SUM("credits") as "totalCredits",
-        COUNT(*) as "totalCalls",
-        SUM(CASE WHEN "status" = 'success' THEN 1 ELSE 0 END) as "successCalls"
-      FROM "ModelCalls"
-      ${whereClause}
-      GROUP BY "providerId", "model", "type"
-      ORDER BY SUM("totalUsage") DESC
-      LIMIT :limit
-    `;
-
-    const results = (await sequelize.query(query, {
-      type: QueryTypes.SELECT,
-      replacements,
-    })) as any[];
-
-    return results.map((result: any) => {
-      const totalCalls = parseInt(result.totalCalls, 10);
-      const successCalls = parseInt(result.successCalls, 10);
-      return {
-        providerId: result.providerId,
-        model: result.model,
-        type: result.type as CallType,
-        totalUsage: parseInt(result.totalUsage, 10),
-        totalCredits: parseFloat(result.totalCredits || '0'),
-        totalCalls,
-        successRate: totalCalls > 0 ? Math.round((successCalls / totalCalls) * 10000) / 100 : 0,
-      };
-    });
   }
 
   static async getWeeklyComparison(userDid: string): Promise<{

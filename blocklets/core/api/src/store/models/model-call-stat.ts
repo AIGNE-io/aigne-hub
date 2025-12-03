@@ -1,16 +1,7 @@
 import BigNumber from 'bignumber.js';
-import {
-  CreationOptional,
-  DataTypes,
-  InferAttributes,
-  InferCreationAttributes,
-  Model,
-  Op,
-  QueryTypes,
-} from 'sequelize';
+import { CreationOptional, DataTypes, InferAttributes, InferCreationAttributes, Model, QueryTypes } from 'sequelize';
 
 import nextId from '../../libs/next-id';
-import { getDateUnixTimestamp } from '../../libs/timestamp';
 import { sequelize } from '../sequelize';
 import { DailyStats } from './types';
 
