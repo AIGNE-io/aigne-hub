@@ -1,3 +1,7 @@
+## 0.6.21 (2025-12-3)
+
+- fix: optimize database indexes for model call queries
+
 ## 0.6.20 (2025-11-28)
 
 - chore: update dependencies
