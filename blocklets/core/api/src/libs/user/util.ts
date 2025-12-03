@@ -239,38 +239,37 @@ export async function getUsageStatsHourlyOptimized(userDid: string, startTime: n
     // Generate hourly range from user's local time timestamps
     const hours = generateHourRangeFromTimestamps(startTime, endTime);
 
-    // 批量查询已缓存的小时数据，而不是逐个查询
+    // Batch query the cached hourly data instead of querying one by one
     const cachedStats = await ModelCallStat.findAll({
       where: {
         userDid,
         timeType: 'hour',
-        timestamp: {
-          [Op.in]: hours,
-        },
+        timestamp: { [Op.in]: hours },
       },
       raw: true,
     });
 
-    // 构建已缓存数据的 Map
+    // Build the Map of cached data
     const cachedStatsMap = new Map<number, DailyStats>();
     cachedStats.forEach((stat: any) => {
       cachedStatsMap.set(stat.timestamp, stat.stats);
     });
 
-    // 找出缺失的小时
+    // Find the missing hours
     const missingHours = hours.filter((hour) => !cachedStatsMap.has(hour));
 
-    // 当前小时总是实时计算
+    // The current hour is always calculated in real-time
     const currentHour = Math.floor(Date.now() / 1000 / 3600) * 3600;
     const missingHistoricalHours = missingHours.filter((hour) => hour < currentHour);
     const currentHours = missingHours.filter((hour) => hour >= currentHour);
 
-    // 分批处理缺失的历史小时数据，避免过多并发
+    // Batch process the missing historical hours data to avoid too many concurrent queries
     const BATCH_SIZE = 50;
     const missingStats: Array<{ hour: number; stats: DailyStats }> = [];
 
     for (let i = 0; i < missingHistoricalHours.length; i += BATCH_SIZE) {
       const batch = missingHistoricalHours.slice(i, i + BATCH_SIZE);
+      // eslint-disable-next-line no-await-in-loop
       const batchResults = await Promise.all(
         batch.map(async (hour) => {
           const stats = await ModelCallStat.getHourlyStats(userDid, hour);
@@ -280,7 +279,7 @@ export async function getUsageStatsHourlyOptimized(userDid: string, startTime: n
       missingStats.push(...batchResults);
     }
 
-    // 处理当前小时（实时计算）
+    // Process the current hour (real-time calculation)
     const currentHourStats = await Promise.all(
       currentHours.map(async (hour) => {
         const stats = await ModelCallStat.computeHourlyStats(userDid, hour);
@@ -288,7 +287,7 @@ export async function getUsageStatsHourlyOptimized(userDid: string, startTime: n
       })
     );
 
-    // 合并所有数据
+    // Merge all data
     missingStats.forEach(({ hour, stats }) => {
       cachedStatsMap.set(hour, stats);
     });
@@ -296,7 +295,7 @@ export async function getUsageStatsHourlyOptimized(userDid: string, startTime: n
       cachedStatsMap.set(hour, stats);
     });
 
-    // 按小时顺序构建结果
+    // Build the result by hour order
     const hourlyStatsRaw = hours.map((hour) => cachedStatsMap.get(hour)!);
 
     return formatUsageStats({ hourlyStatsRaw, hours });
