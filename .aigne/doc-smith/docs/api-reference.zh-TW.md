@@ -6,66 +6,9 @@ AIGNE Hub API 為各種底層 AI 模型提供了一個統一的介面，抽象�
 
 下圖說明了應用程式、AIGNE Hub API 和底層 AI 模型之間的互動。
 
-```d2
-direction: down
-
-Your-Application: {
-  label: "您的應用程式"
-  shape: rectangle
-}
-
-AIGNE-Hub: {
-  label: "AIGNE Hub API"
-  shape: rectangle
-  grid-columns: 2
-
-  Chat-Completions: {
-    label: "聊天完成"
-  }
-
-  Image-Generation: {
-    label: "圖片生成"
-  }
-
-  Embeddings: {
-    label: "嵌入"
-  }
-
-  Audio: {
-    label: "音訊服務"
-  }
-}
-
-AI-Models: {
-  label: "底層 AI 模型"
-  shape: rectangle
-
-  OpenAI: {
-    label: "OpenAI"
-  }
-
-  Anthropic: {
-    label: "Anthropic"
-  }
-
-  Mistral: {
-    label: "Mistral"
-  }
-
-  Others: {
-    label: "..."
-  }
-}
-
-Your-Application -> AIGNE-Hub: "帶金鑰的 API 請求"
-AIGNE-Hub.Chat-Completions -> AI-Models.OpenAI
-AIGNE-Hub.Chat-Completions -> AI-Models.Anthropic
-AIGNE-Hub.Image-Generation -> AI-Models.OpenAI
-AIGNE-Hub.Embeddings -> AI-Models.Mistral
-AIGNE-Hub.Audio -> AI-Models.Others
-AI-Models -> AIGNE-Hub: "模型回應"
-AIGNE-Hub -> Your-Application: "統一的 API 回應"
-```
+<!-- DIAGRAM_IMAGE_START:architecture:16:9 -->
+![API Reference](assets/diagram/api-reference-diagram-0.jpg)
+<!-- DIAGRAM_IMAGE_END -->
 
 關於各端點的詳細規格，包括請求和回應的結構，請參閱具體的子章節：
 

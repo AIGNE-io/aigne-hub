@@ -10,71 +10,9 @@ AIGNE Hub 將每次 API 互動記錄為一筆 `ModelCall` 項目。這些記錄�
 
 了解底層資料結構對於有效查詢和解讀分析資料至關重要。下圖說明了 `ModelCall` 記錄是如何生成並被分析端點使用的。
 
-```d2
-direction: down
-
-User: {
-  shape: c4-person
-}
-
-App: {
-  label: "使用者應用程式"
-  shape: rectangle
-}
-
-Aigne-Hub: {
-  label: "AIGNE Hub"
-  shape: rectangle
-
-  Model-Call-Logger: {
-    label: "模型呼叫記錄器"
-  }
-
-  Analytics-API: {
-    label: "分析 API"
-    shape: rectangle
-
-    Usage-Stats-Endpoint: {
-      label: "GET /api/user/usage-stats"
-    }
-
-    Model-Calls-Endpoint: {
-      label: "GET /api/user/model-calls"
-    }
-
-    Export-Endpoint: {
-      label: "GET /.../export"
-    }
-  }
-}
-
-AI-Provider: {
-  label: "AI 供應商\n（例如 OpenAI）"
-  shape: rectangle
-}
-
-DB: {
-  label: "資料庫"
-  shape: cylinder
-
-  Model-Call-Table: {
-    label: "ModelCall 記錄"
-  }
-}
-
-App -> Aigne-Hub: "1. API 呼叫"
-Aigne-Hub -> AI-Provider: "2. 轉發請求"
-AI-Provider -> Aigne-Hub: "3. 返回回應"
-Aigne-Hub.Model-Call-Logger -> DB.Model-Call-Table: "4. 記錄 'ModelCall' 項目"
-
-User -> Aigne-Hub.Analytics-API: "5. 請求分析資料"
-Aigne-Hub.Analytics-API.Usage-Stats-Endpoint -> DB.Model-Call-Table: "6. 查詢與匯總資料"
-Aigne-Hub.Analytics-API.Model-Calls-Endpoint -> DB.Model-Call-Table: "6. 查詢與篩選資料"
-Aigne-Hub.Analytics-API.Export-Endpoint -> DB.Model-Call-Table: "6. 查詢與匯出資料"
-DB.Model-Call-Table -> Aigne-Hub.Analytics-API: "7. 返回資料"
-Aigne-Hub.Analytics-API -> User: "8. 返回統計資料／日誌／CSV"
-
-```
+<!-- DIAGRAM_IMAGE_START:architecture:16:9 -->
+![Usage & Cost Analytics](assets/diagram/analytics-diagram-0.jpg)
+<!-- DIAGRAM_IMAGE_END -->
 
 ### `ModelCall` 物件
 

@@ -4,35 +4,9 @@
 
 以下の図は、AIGNE Hub 内でプロバイダー、認証情報、モデル料金がどのように相互接続されているかを示しています。
 
-```d2
-direction: down
-
-AIGNE-Hub: {
-  label: "AIGNE Hub 管理"
-  shape: rectangle
-
-  Provider: {
-    label: "プロバイダー\n(例：OpenAI, Google)"
-    shape: rectangle
-    style.fill: "#f0f4ff"
-  }
-
-  Credential: {
-    label: "認証情報\n(例：API キー)"
-    shape: rectangle
-    style.fill: "#e6fffa"
-  }
-
-  Model-Rate: {
-    label: "モデル料金\n(例：gpt-4o-mini のコスト)"
-    shape: rectangle
-    style.fill: "#fffbe6"
-  }
-}
-
-AIGNE-Hub.Provider -> AIGNE-Hub.Credential: "1つ以上を持つ"
-AIGNE-Hub.Provider <-> AIGNE-Hub.Model-Rate: "関連付けられている"
-```
+<!-- DIAGRAM_IMAGE_START:architecture:16:9 -->
+![Provider Management](assets/diagram/provider-management-diagram-0.jpg)
+<!-- DIAGRAM_IMAGE_END -->
 
 ## プロバイダーの設定
 

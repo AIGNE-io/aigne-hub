@@ -10,66 +10,9 @@ AIGNE Hubは、一元化されたゲートウェイとして機能し、単一�
 
 以下の図は、AIGNE HubがアプリケーションとさまざまなAIプロバイダーの間に位置し、これらの課題をどのように解決するかを示しています。
 
-```d2
-direction: right
-
-Applications: {
-  label: "あなたのアプリケーション"
-  shape: rectangle
-
-  internal-tools: {
-    label: "社内ツール"
-    shape: rectangle
-  }
-
-  customer-apps: {
-    label: "顧客向けアプリ"
-    shape: rectangle
-  }
-
-  chatbots: {
-    label: "チャットボット & Agents"
-    shape: rectangle
-  }
-}
-
-AIGNE-Hub: {
-  label: "AIGNE Hub"
-  shape: rectangle
-
-  unified-api: {
-    label: "統一APIエンドポイント"
-  }
-
-  security: {
-    label: "一元化されたセキュリティとキー"
-  }
-
-  analytics: {
-    label: "使用状況とコスト分析"
-  }
-
-  billing: {
-    label: "柔軟な請求システム"
-  }
-}
-
-AI-Providers: {
-  label: "AIプロバイダー"
-  shape: rectangle
-  grid-columns: 2
-
-  openai: "OpenAI"
-  anthropic: "Anthropic"
-  google: "Google Gemini"
-  aws: "Amazon Bedrock"
-  deepseek: "DeepSeek"
-  others: "... その他"
-}
-
-Applications -> AIGNE-Hub: "単一で一貫したAPI"
-AIGNE-Hub -> AI-Providers: "任意のプロバイダーへのルーティング"
-```
+<!-- DIAGRAM_IMAGE_START:architecture:16:9 -->
+![Overview](assets/diagram/overview-diagram-0.jpg)
+<!-- DIAGRAM_IMAGE_END -->
 
 AIGNE Hubは、以下の機能を提供することで、これらの特定の課題を解決するように設計されています。
 

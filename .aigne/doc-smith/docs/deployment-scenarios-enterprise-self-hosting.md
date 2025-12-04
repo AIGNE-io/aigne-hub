@@ -19,63 +19,9 @@ This deployment scenario is ideal for development teams, corporate AI initiative
 
 When deploying AIGNE Hub for internal enterprise use, it functions as a centralized gateway within your security perimeter. All internal applications and services route their AI requests through the Hub, which then securely communicates with the external AI providers.
 
-The following diagram illustrates this architecture:
-
-```d2
-direction: down
-
-Corporate-Network: {
-  label: "Your Corporate Network / Security Perimeter"
-  style: {
-    stroke: "#888"
-    stroke-width: 2
-    stroke-dash: 4
-  }
-
-  Internal-Applications: {
-    label: "Internal Applications & Services"
-    shape: rectangle
-  }
-
-  AIGNE-Hub-Instance: {
-    label: "AIGNE Hub Instance"
-    shape: rectangle
-    icon: "https://www.arcblock.io/image-bin/uploads/89a24f04c34eca94f26c9dd30aec44fc.png"
-  }
-
-  Authentication-System: {
-    label: "Corporate Authentication System (OAuth)"
-    shape: rectangle
-  }
-}
-
-External-AI-Providers: {
-  label: "External AI Providers"
-  shape: rectangle
-  grid-columns: 3
-
-  OpenAI: {
-    label: "OpenAI"
-  }
-
-  Anthropic: {
-    label: "Anthropic"
-  }
-
-  Google: {
-    label: "Google AI"
-  }
-}
-
-Corporate-Network.Internal-Applications -> Corporate-Network.Authentication-System: "1. Authenticate user/service"
-Corporate-Network.Authentication-System -> Corporate-Network.Internal-Applications: "2. Provide token"
-Corporate-Network.Internal-Applications -> Corporate-Network.AIGNE-Hub-Instance: "3. Unified AI API Request"
-Corporate-Network.AIGNE-Hub-Instance -> External-AI-Providers: "4. Securely routes request to provider"
-External-AI-Providers -> Corporate-Network.AIGNE-Hub-Instance: "5. AI Response"
-Corporate-Network.AIGNE-Hub-Instance -> Corporate-Network.Internal-Applications: "6. Return response"
-```
-
-![AIGNE Hub Dashboard](https://raw.githubusercontent.com/AIGNE-io/aigne-hub/main/blocklets/core/screenshots/fc46e9461382f0be7541af17ef13f632.png)
+<!-- DIAGRAM_IMAGE_START:architecture:16:9 -->
+![Enterprise Self-Hosting](assets/diagram/enterprise-self-hosting-diagram-0.jpg)
+<!-- DIAGRAM_IMAGE_END -->
 
 ### Key Components
 
