@@ -10,71 +10,9 @@ AIGNE Hub records every API interaction as a `ModelCall` entry. These records fo
 
 Understanding the underlying data structures is essential for effectively querying and interpreting analytics data. The following diagram illustrates how a `ModelCall` record is generated and used by the analytics endpoints.
 
-```d2
-direction: down
-
-User: {
-  shape: c4-person
-}
-
-App: {
-  label: "User Application"
-  shape: rectangle
-}
-
-Aigne-Hub: {
-  label: "AIGNE Hub"
-  shape: rectangle
-
-  Model-Call-Logger: {
-    label: "Model Call Logger"
-  }
-
-  Analytics-API: {
-    label: "Analytics API"
-    shape: rectangle
-
-    Usage-Stats-Endpoint: {
-      label: "GET /api/user/usage-stats"
-    }
-
-    Model-Calls-Endpoint: {
-      label: "GET /api/user/model-calls"
-    }
-
-    Export-Endpoint: {
-      label: "GET /.../export"
-    }
-  }
-}
-
-AI-Provider: {
-  label: "AI Provider\n(e.g., OpenAI)"
-  shape: rectangle
-}
-
-DB: {
-  label: "Database"
-  shape: cylinder
-
-  Model-Call-Table: {
-    label: "ModelCall Records"
-  }
-}
-
-App -> Aigne-Hub: "1. API Call"
-Aigne-Hub -> AI-Provider: "2. Forward Request"
-AI-Provider -> Aigne-Hub: "3. Return Response"
-Aigne-Hub.Model-Call-Logger -> DB.Model-Call-Table: "4. Log 'ModelCall' Record"
-
-User -> Aigne-Hub.Analytics-API: "5. Request Analytics"
-Aigne-Hub.Analytics-API.Usage-Stats-Endpoint -> DB.Model-Call-Table: "6. Query & Aggregate Data"
-Aigne-Hub.Analytics-API.Model-Calls-Endpoint -> DB.Model-Call-Table: "6. Query & Filter Data"
-Aigne-Hub.Analytics-API.Export-Endpoint -> DB.Model-Call-Table: "6. Query & Export Data"
-DB.Model-Call-Table -> Aigne-Hub.Analytics-API: "7. Return Data"
-Aigne-Hub.Analytics-API -> User: "8. Return Stats / Logs / CSV"
-
-```
+<!-- DIAGRAM_IMAGE_START:architecture:16:9 -->
+![Usage & Cost Analytics](assets/diagram/analytics-diagram-0.jpg)
+<!-- DIAGRAM_IMAGE_END -->
 
 ### The `ModelCall` Object
 

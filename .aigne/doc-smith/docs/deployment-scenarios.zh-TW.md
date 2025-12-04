@@ -6,89 +6,9 @@ AIGNE Hub 提供靈活性，可以部署為兩種主要模式之一：作為供�
 
 下圖提供了兩種部署模型的高層次比較：
 
-```d2
-direction: down
-
-Enterprise-Self-Hosting: {
-  label: "企業自架設"
-  shape: rectangle
-  style: {
-    stroke: "#888"
-    stroke-width: 2
-    stroke-dash: 4
-  }
-
-  Internal-Teams: {
-    shape: c4-person
-  }
-  
-  AIGNE-Hub-Gateway: {
-    label: "AIGNE Hub (閘道)"
-  }
-  
-  Upstream-AI-Providers: {
-    label: "上游 AI 供應商"
-    shape: cylinder
-  }
-  
-  Internal-Teams -> AIGNE-Hub-Gateway: "1. 使用 AI 服務"
-  AIGNE-Hub-Gateway -> Upstream-AI-Providers: "2. 路由請求"
-  
-  Billing: {
-    label: "計費"
-    shape: rectangle
-    style.fill: "#f0f0f0"
-    
-    Organization: {
-      label: "您的組織"
-      shape: rectangle
-    }
-    
-    Organization -> Upstream-AI-Providers: "直接付款"
-  }
-}
-
-Service-Provider-Mode: {
-  label: "服務供應商模式"
-  shape: rectangle
-  style: {
-    stroke: "#888"
-    stroke-width: 2
-    stroke-dash: 4
-  }
-  
-  End-Users: {
-    label: "終端使用者"
-    shape: c4-person
-  }
-  
-  AIGNE-Hub-Platform: {
-    label: "AIGNE Hub (平台)"
-  }
-  
-  Upstream-AI-Providers: {
-    label: "上游 AI 供應商"
-    shape: cylinder
-  }
-  
-  End-Users -> AIGNE-Hub-Platform: "1. 購買點數並使用 AI"
-  AIGNE-Hub-Platform -> Upstream-AI-Providers: "2. 路由請求"
-  
-  Billing: {
-    label: "計費"
-    shape: rectangle
-    style.fill: "#f0f0f0"
-
-    Provider: {
-      label: "您 (服務供應商)"
-      shape: rectangle
-    }
-
-    End-Users -> Provider: "支付點數費用"
-    Provider -> Upstream-AI-Providers: "直接付款"
-  }
-}
-```
+<!-- DIAGRAM_IMAGE_START:architecture:16:9 -->
+![Deployment Scenarios](assets/diagram/deployment-scenarios-diagram-0.jpg)
+<!-- DIAGRAM_IMAGE_END -->
 
 以下章節將概述每種部署情境。有關詳細的設定說明，請參閱具體的子文件。
 

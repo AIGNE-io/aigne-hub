@@ -10,46 +10,9 @@
 
 サービスプロバイダーモードが有効になると、AIGNE Hub はプリペイドのクレジットベースシステムで動作します。次の図は、そのワークフローを示しています。
 
-```d2
-direction: down
-
-User: {
-  shape: c4-person
-}
-
-Service-Provider-Platform: {
-  label: "サービスプロバイダープラットフォーム"
-  shape: rectangle
-
-  AIGNE-Hub: {
-    label: "AIGNE Hub"
-    icon: "https://www.arcblock.io/image-bin/uploads/89a24f04c34eca94f26c9dd30aec44fc.png"
-  }
-
-  Payment-Kit: {
-    label: "Payment Kit"
-    shape: rectangle
-  }
-}
-
-Upstream-AI-Providers: {
-  label: "アップストリーム AI プロバイダー"
-  shape: rectangle
-
-  OpenAI: { label: "OpenAI" }
-  Claude: { label: "Claude" }
-  Google: { label: "Google" }
-  More: { label: "..." }
-}
-
-User -> Service-Provider-Platform.Payment-Kit: "1. クレジットを購入"
-Service-Provider-Platform.Payment-Kit -> Service-Provider-Platform.AIGNE-Hub: "2. クレジット残高を更新"
-User -> Service-Provider-Platform.AIGNE-Hub: "3. API コールを行う\n(AI モデルを使用)"
-Service-Provider-Platform.AIGNE-Hub -> Upstream-AI-Providers: "4. リクエストを転送"
-Upstream-AI-Providers -> Service-Provider-Platform.AIGNE-Hub: "5. レスポンスを返す"
-Service-Provider-Platform.AIGNE-Hub -> Service-Provider-Platform.AIGNE-Hub: "6. ユーザー残高から\nクレジットを差し引く"
-Service-Provider-Platform.AIGNE-Hub -> User: "7. ユーザーにレスポンスを返す"
-```
+<!-- DIAGRAM_IMAGE_START:flowchart:16:9 -->
+![Service Provider Mode](assets/diagram/service-provider-diagram-0.jpg)
+<!-- DIAGRAM_IMAGE_END -->
 
 ワークフローは次のとおりです。
 

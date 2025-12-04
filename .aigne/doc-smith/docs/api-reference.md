@@ -6,66 +6,9 @@ The AIGNE Hub API provides a unified interface to various underlying AI models, 
 
 The following diagram illustrates the interaction between an application, the AIGNE Hub API, and the underlying AI models.
 
-```d2
-direction: down
-
-Your-Application: {
-  label: "Your Application"
-  shape: rectangle
-}
-
-AIGNE-Hub: {
-  label: "AIGNE Hub API"
-  shape: rectangle
-  grid-columns: 2
-
-  Chat-Completions: {
-    label: "Chat Completions"
-  }
-
-  Image-Generation: {
-    label: "Image Generation"
-  }
-
-  Embeddings: {
-    label: "Embeddings"
-  }
-
-  Audio: {
-    label: "Audio Services"
-  }
-}
-
-AI-Models: {
-  label: "Underlying AI Models"
-  shape: rectangle
-
-  OpenAI: {
-    label: "OpenAI"
-  }
-
-  Anthropic: {
-    label: "Anthropic"
-  }
-
-  Mistral: {
-    label: "Mistral"
-  }
-
-  Others: {
-    label: "..."
-  }
-}
-
-Your-Application -> AIGNE-Hub: "API Request with Key"
-AIGNE-Hub.Chat-Completions -> AI-Models.OpenAI
-AIGNE-Hub.Chat-Completions -> AI-Models.Anthropic
-AIGNE-Hub.Image-Generation -> AI-Models.OpenAI
-AIGNE-Hub.Embeddings -> AI-Models.Mistral
-AIGNE-Hub.Audio -> AI-Models.Others
-AI-Models -> AIGNE-Hub: "Model Response"
-AIGNE-Hub -> Your-Application: "Unified API Response"
-```
+<!-- DIAGRAM_IMAGE_START:architecture:16:9 -->
+![API Reference](assets/diagram/api-reference-diagram-0.jpg)
+<!-- DIAGRAM_IMAGE_END -->
 
 For detailed specifications on each endpoint, including request and response schemas, please refer to the specific sub-sections:
 

@@ -4,45 +4,9 @@ This document provides a detailed specification for the Chat Completions API end
 
 The Chat Completions API enables you to build applications that leverage large language models for a variety of conversational tasks. You provide a series of messages as input, and the model returns a text-based response.
 
-The following diagram illustrates the request and response flow for both standard and streaming API calls:
-
-```d2
-shape: sequence_diagram
-
-Client: {
-  label: "Client Application"
-  shape: c4-person
-}
-
-AIGNE-Hub-API: {
-  label: "AIGNE Hub API"
-}
-
-AI-Model: {
-  label: "AI Model"
-}
-
-Standard-Request: {
-  label: "Standard Request (stream: false)"
-  Client -> AIGNE-Hub-API: "1. POST /api/chat/completions"
-  AIGNE-Hub-API -> AI-Model: "2. Process messages"
-  AI-Model -> AIGNE-Hub-API: "3. Return full completion"
-  AIGNE-Hub-API -> Client: "4. Send single JSON response"
-}
-
-Streaming-Request: {
-  label: "Streaming Request (stream: true)"
-  Client -> AIGNE-Hub-API: "1. POST /api/chat/completions\n(stream=true)"
-  AIGNE-Hub-API -> AI-Model: "2. Process messages"
-  loop: "While generating" {
-    AI-Model -> AIGNE-Hub-API: "3a. Stream token delta"
-    AIGNE-Hub-API -> Client: "3b. Stream chunk (SSE)"
-  }
-  AI-Model -> AIGNE-Hub-API: "4. Send final chunk with usage"
-  AIGNE-Hub-API -> Client: "5. Stream [DONE] message"
-}
-
-```
+<!-- DIAGRAM_IMAGE_START:sequence:16:9 -->
+![Chat Completions](assets/diagram/chat-completions-diagram-0.jpg)
+<!-- DIAGRAM_IMAGE_END -->
 
 For related functionalities, refer to the [Image Generation](./api-reference-image-generation.md) and [Embeddings](./api-reference-embeddings.md) API documentation.
 

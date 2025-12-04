@@ -10,66 +10,9 @@ AIGNE Hub 作为一个中心化的网关，使您能够通过单一、一致的 
 
 下图说明了 AIGNE Hub 如何置于您的应用程序和各种 AI 提供商之间以解决这些挑战：
 
-```d2
-direction: right
-
-Applications: {
-  label: "您的应用程序"
-  shape: rectangle
-
-  internal-tools: {
-    label: "内部工具"
-    shape: rectangle
-  }
-
-  customer-apps: {
-    label: "面向客户的应用"
-    shape: rectangle
-  }
-
-  chatbots: {
-    label: "聊天机器人与 Agent"
-    shape: rectangle
-  }
-}
-
-AIGNE-Hub: {
-  label: "AIGNE Hub"
-  shape: rectangle
-
-  unified-api: {
-    label: "统一 API 端点"
-  }
-
-  security: {
-    label: "集中式安全与密钥管理"
-  }
-
-  analytics: {
-    label: "用量与成本分析"
-  }
-
-  billing: {
-    label: "灵活的计费系统"
-  }
-}
-
-AI-Providers: {
-  label: "AI 提供商"
-  shape: rectangle
-  grid-columns: 2
-
-  openai: "OpenAI"
-  anthropic: "Anthropic"
-  google: "Google Gemini"
-  aws: "Amazon Bedrock"
-  deepseek: "DeepSeek"
-  others: "... 及更多"
-}
-
-Applications -> AIGNE-Hub: "单一、一致的 API"
-AIGNE-Hub -> AI-Providers: "路由至任何提供商"
-```
+<!-- DIAGRAM_IMAGE_START:architecture:16:9 -->
+![Overview](assets/diagram/overview-diagram-0.jpg)
+<!-- DIAGRAM_IMAGE_END -->
 
 AIGNE Hub 旨在通过提供以下功能来解决这些具体挑战：
 

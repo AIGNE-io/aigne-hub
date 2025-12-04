@@ -1,3 +1,7 @@
+## 0.6.22 (2025-12-4)
+
+- docs: update docs with new diagram
+
 ## 0.6.21 (2025-12-3)
 
 - fix: optimize database indexes for model call queries

@@ -6,43 +6,9 @@
 
 下图说明了标准和流式 API 调用的请求和响应流程：
 
-```d2
-shape: sequence_diagram
-
-Client: {
-  label: "客户端应用程序"
-  shape: c4-person
-}
-
-AIGNE-Hub-API: {
-  label: "AIGNE Hub API"
-}
-
-AI-Model: {
-  label: "AI 模型"
-}
-
-Standard-Request: {
-  label: "标准请求 (stream: false)"
-  Client -> AIGNE-Hub-API: "1. POST /api/chat/completions"
-  AIGNE-Hub-API -> AI-Model: "2. 处理消息"
-  AI-Model -> AIGNE-Hub-API: "3. 返回完整补全"
-  AIGNE-Hub-API -> Client: "4. 发送单个 JSON 响应"
-}
-
-Streaming-Request: {
-  label: "流式请求 (stream: true)"
-  Client -> AIGNE-Hub-API: "1. POST /api/chat/completions\n(stream=true)"
-  AIGNE-Hub-API -> AI-Model: "2. 处理消息"
-  loop: "生成期间" {
-    AI-Model -> AIGNE-Hub-API: "3a. 流式传输令牌增量"
-    AIGNE-Hub-API -> Client: "3b. 流式传输数据块 (SSE)"
-  }
-  AI-Model -> AIGNE-Hub-API: "4. 发送包含用量的最终数据块"
-  AIGNE-Hub-API -> Client: "5. 流式传输 [DONE] 消息"
-}
-
-```
+<!-- DIAGRAM_IMAGE_START:sequence:16:9 -->
+![Chat Completions](assets/diagram/chat-completions-diagram-0.jpg)
+<!-- DIAGRAM_IMAGE_END -->
 
 有关相关功能，请参阅[图像生成](./api-reference-image-generation.md)和[嵌入](./api-reference-embeddings.md) API 文档。
 

@@ -4,82 +4,9 @@
 
 以下の図は、開始するためのコアワークフローを示しています。
 
-```d2
-direction: down
-
-Admin: {
-  shape: c4-person
-}
-
-Blocklet-Server: {
-  label: "Blocklet Server"
-  shape: rectangle
-
-  Blocklet-Store: {
-    label: "Blocklet Store"
-    icon: "https://store.blocklet.dev/assets/z8ia29UsENBg6tLZUKi2HABj38Cw1LmHZocbQ/logo.png"
-  }
-
-  AIGNE-Hub: {
-    label: "AIGNE Hub"
-    icon: "https://www.arcblock.io/image-bin/uploads/89a24f04c34eca94f26c9dd30aec44fc.png"
-  }
-}
-
-AI-Providers: {
-  label: "AIプロバイダ"
-  shape: rectangle
-  style: {
-    stroke: "#888"
-    stroke-width: 2
-    stroke-dash: 4
-  }
-  OpenAI: {}
-  Gemini: {}
-  Anthropic: {}
-}
-
-Choose-Mode: {
-  label: "運用モードを選択"
-  shape: diamond
-}
-
-Enterprise-Use: {
-  label: "社内利用"
-  shape: rectangle
-}
-
-Service-Provider: {
-  label: "サービスプロバイダ"
-  shape: rectangle
-
-  Payment-Kit: {
-    label: "Payment Kit"
-    shape: rectangle
-  }
-}
-
-Basic-Usage: {
-  label: "基本利用"
-  shape: rectangle
-
-  Playground: {}
-  API-Integration: {
-    label: "API統合"
-  }
-}
-
-Admin -> Blocklet-Server.Blocklet-Store: "1. ストアで検索"
-Blocklet-Server.Blocklet-Store -> Blocklet-Server.AIGNE-Hub: "2. Blockletをインストール"
-Admin -> Blocklet-Server.AIGNE-Hub: "3. 設定"
-Blocklet-Server.AIGNE-Hub -> AI-Providers: "接続"
-Blocklet-Server.AIGNE-Hub -> Choose-Mode
-Choose-Mode -> Enterprise-Use: "デフォルト"
-Enterprise-Use -> Basic-Usage
-Choose-Mode -> Service-Provider: "収益化"
-Service-Provider -> Basic-Usage
-
-```
+<!-- DIAGRAM_IMAGE_START:guide:4:3 -->
+![Getting Started](assets/diagram/getting-started-diagram-0.jpg)
+<!-- DIAGRAM_IMAGE_END -->
 
 ## 前提条件
 

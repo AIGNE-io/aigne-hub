@@ -4,82 +4,9 @@
 
 下圖說明了開始使用的核心工作流程：
 
-```d2
-direction: down
-
-Admin: {
-  shape: c4-person
-}
-
-Blocklet-Server: {
-  label: "Blocklet Server"
-  shape: rectangle
-
-  Blocklet-Store: {
-    label: "Blocklet 商店"
-    icon: "https://store.blocklet.dev/assets/z8ia29UsENBg6tLZUKi2HABj38Cw1LmHZocbQ/logo.png"
-  }
-
-  AIGNE-Hub: {
-    label: "AIGNE Hub"
-    icon: "https://www.arcblock.io/image-bin/uploads/89a24f04c34eca94f26c9dd30aec44fc.png"
-  }
-}
-
-AI-Providers: {
-  label: "AI 供應商"
-  shape: rectangle
-  style: {
-    stroke: "#888"
-    stroke-width: 2
-    stroke-dash: 4
-  }
-  OpenAI: {}
-  Gemini: {}
-  Anthropic: {}
-}
-
-Choose-Mode: {
-  label: "選擇操作模式"
-  shape: diamond
-}
-
-Enterprise-Use: {
-  label: "企業內部使用"
-  shape: rectangle
-}
-
-Service-Provider: {
-  label: "服務供應商"
-  shape: rectangle
-
-  Payment-Kit: {
-    label: "支付套件"
-    shape: rectangle
-  }
-}
-
-Basic-Usage: {
-  label: "基本用法"
-  shape: rectangle
-
-  Playground: {}
-  API-Integration: {
-    label: "API 整合"
-  }
-}
-
-Admin -> Blocklet-Server.Blocklet-Store: "1. 在商店中尋找"
-Blocklet-Server.Blocklet-Store -> Blocklet-Server.AIGNE-Hub: "2. 安裝 Blocklet"
-Admin -> Blocklet-Server.AIGNE-Hub: "3. 設定"
-Blocklet-Server.AIGNE-Hub -> AI-Providers: "連接至"
-Blocklet-Server.AIGNE-Hub -> Choose-Mode
-Choose-Mode -> Enterprise-Use: "預設"
-Enterprise-Use -> Basic-Usage
-Choose-Mode -> Service-Provider: "營利"
-Service-Provider -> Basic-Usage
-
-```
+<!-- DIAGRAM_IMAGE_START:guide:4:3 -->
+![Getting Started](assets/diagram/getting-started-diagram-0.jpg)
+<!-- DIAGRAM_IMAGE_END -->
 
 ## 前提條件
 

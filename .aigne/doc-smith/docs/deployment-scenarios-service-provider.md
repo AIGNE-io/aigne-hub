@@ -10,46 +10,9 @@ For information on deploying AIGNE Hub for internal use, see the [Enterprise Sel
 
 When Service Provider Mode is enabled, AIGNE Hub operates on a prepaid, credit-based system. The following diagram illustrates the workflow:
 
-```d2
-direction: down
-
-User: {
-  shape: c4-person
-}
-
-Service-Provider-Platform: {
-  label: "Service Provider Platform"
-  shape: rectangle
-
-  AIGNE-Hub: {
-    label: "AIGNE Hub"
-    icon: "https://www.arcblock.io/image-bin/uploads/89a24f04c34eca94f26c9dd30aec44fc.png"
-  }
-
-  Payment-Kit: {
-    label: "Payment Kit"
-    shape: rectangle
-  }
-}
-
-Upstream-AI-Providers: {
-  label: "Upstream AI Providers"
-  shape: rectangle
-
-  OpenAI: { label: "OpenAI" }
-  Claude: { label: "Claude" }
-  Google: { label: "Google" }
-  More: { label: "..." }
-}
-
-User -> Service-Provider-Platform.Payment-Kit: "1. Purchase Credits"
-Service-Provider-Platform.Payment-Kit -> Service-Provider-Platform.AIGNE-Hub: "2. Update Credit Balance"
-User -> Service-Provider-Platform.AIGNE-Hub: "3. Make API Call\n(Use AI Model)"
-Service-Provider-Platform.AIGNE-Hub -> Upstream-AI-Providers: "4. Forward Request"
-Upstream-AI-Providers -> Service-Provider-Platform.AIGNE-Hub: "5. Return Response"
-Service-Provider-Platform.AIGNE-Hub -> Service-Provider-Platform.AIGNE-Hub: "6. Deduct Credits from\nUser Balance"
-Service-Provider-Platform.AIGNE-Hub -> User: "7. Return Response to User"
-```
+<!-- DIAGRAM_IMAGE_START:flowchart:16:9 -->
+![Service Provider Mode](assets/diagram/service-provider-diagram-0.jpg)
+<!-- DIAGRAM_IMAGE_END -->
 
 The workflow is as follows:
 

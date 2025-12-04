@@ -6,66 +6,9 @@ AIGNE Hub API は、様々な基盤となる AI モデルへの統一された�
 
 以下の図は、アプリケーション、AIGNE Hub API、および基盤となる AI モデル間の相互作用を示しています。
 
-```d2
-direction: down
-
-Your-Application: {
-  label: "あなたのアプリケーション"
-  shape: rectangle
-}
-
-AIGNE-Hub: {
-  label: "AIGNE Hub API"
-  shape: rectangle
-  grid-columns: 2
-
-  Chat-Completions: {
-    label: "チャット補完"
-  }
-
-  Image-Generation: {
-    label: "画像生成"
-  }
-
-  Embeddings: {
-    label: "埋め込み"
-  }
-
-  Audio: {
-    label: "音声サービス"
-  }
-}
-
-AI-Models: {
-  label: "基盤となる AI モデル"
-  shape: rectangle
-
-  OpenAI: {
-    label: "OpenAI"
-  }
-
-  Anthropic: {
-    label: "Anthropic"
-  }
-
-  Mistral: {
-    label: "Mistral"
-  }
-
-  Others: {
-    label: "..."
-  }
-}
-
-Your-Application -> AIGNE-Hub: "キー付き API リクエスト"
-AIGNE-Hub.Chat-Completions -> AI-Models.OpenAI
-AIGNE-Hub.Chat-Completions -> AI-Models.Anthropic
-AIGNE-Hub.Image-Generation -> AI-Models.OpenAI
-AIGNE-Hub.Embeddings -> AI-Models.Mistral
-AIGNE-Hub.Audio -> AI-Models.Others
-AI-Models -> AIGNE-Hub: "モデルの応答"
-AIGNE-Hub -> Your-Application: "統一された API 応答"
-```
+<!-- DIAGRAM_IMAGE_START:architecture:16:9 -->
+![API Reference](assets/diagram/api-reference-diagram-0.jpg)
+<!-- DIAGRAM_IMAGE_END -->
 
 各エンドポイントの詳細な仕様（リクエストとレスポンスのスキーマを含む）については、特定のサブセクションを参照してください。
 

@@ -6,43 +6,9 @@
 
 下圖說明了標準和串流 API 呼叫的請求與回應流程：
 
-```d2
-shape: sequence_diagram
-
-Client: {
-  label: "用戶端應用程式"
-  shape: c4-person
-}
-
-AIGNE-Hub-API: {
-  label: "AIGNE Hub API"
-}
-
-AI-Model: {
-  label: "AI 模型"
-}
-
-Standard-Request: {
-  label: "標準請求 (stream: false)"
-  Client -> AIGNE-Hub-API: "1. POST /api/chat/completions"
-  AIGNE-Hub-API -> AI-Model: "2. 處理訊息"
-  AI-Model -> AIGNE-Hub-API: "3. 回傳完整補全"
-  AIGNE-Hub-API -> Client: "4. 傳送單一 JSON 回應"
-}
-
-Streaming-Request: {
-  label: "串流請求 (stream: true)"
-  Client -> AIGNE-Hub-API: "1. POST /api/chat/completions\n(stream=true)"
-  AIGNE-Hub-API -> AI-Model: "2. 處理訊息"
-  loop: "生成期間" {
-    AI-Model -> AIGNE-Hub-API: "3a. 串流傳輸 token 增量"
-    AIGNE-Hub-API -> Client: "3b. 串流傳輸區塊 (SSE)"
-  }
-  AI-Model -> AIGNE-Hub-API: "4. 傳送包含用量資訊的最終區塊"
-  AIGNE-Hub-API -> Client: "5. 串流傳輸 [DONE] 訊息"
-}
-
-```
+<!-- DIAGRAM_IMAGE_START:sequence:16:9 -->
+![Chat Completions](assets/diagram/chat-completions-diagram-0.jpg)
+<!-- DIAGRAM_IMAGE_END -->
 
 若需相關功能，請參閱 [圖像生成](./api-reference-image-generation.md) 和 [嵌入](./api-reference-embeddings.md) API 文件。
 

@@ -4,91 +4,9 @@ Choosing the right deployment model is crucial for aligning AIGNE Hub with your 
 
 AIGNE Hub offers the flexibility to be deployed in one of two primary modes: as a self-hosted gateway for internal enterprise use or as a multi-tenant service provider platform with a built-in credit and billing system. The selected mode dictates the configuration for billing, user management, and security.
 
-The following diagram provides a high-level comparison of the two deployment models:
-
-```d2
-direction: down
-
-Enterprise-Self-Hosting: {
-  label: "Enterprise Self-Hosting"
-  shape: rectangle
-  style: {
-    stroke: "#888"
-    stroke-width: 2
-    stroke-dash: 4
-  }
-
-  Internal-Teams: {
-    shape: c4-person
-  }
-  
-  AIGNE-Hub-Gateway: {
-    label: "AIGNE Hub (Gateway)"
-  }
-  
-  Upstream-AI-Providers: {
-    label: "Upstream AI Providers"
-    shape: cylinder
-  }
-  
-  Internal-Teams -> AIGNE-Hub-Gateway: "1. Use AI Services"
-  AIGNE-Hub-Gateway -> Upstream-AI-Providers: "2. Route Requests"
-  
-  Billing: {
-    label: "Billing"
-    shape: rectangle
-    style.fill: "#f0f0f0"
-    
-    Organization: {
-      label: "Your Organization"
-      shape: rectangle
-    }
-    
-    Organization -> Upstream-AI-Providers: "Direct Payment"
-  }
-}
-
-Service-Provider-Mode: {
-  label: "Service Provider Mode"
-  shape: rectangle
-  style: {
-    stroke: "#888"
-    stroke-width: 2
-    stroke-dash: 4
-  }
-  
-  End-Users: {
-    label: "End Users"
-    shape: c4-person
-  }
-  
-  AIGNE-Hub-Platform: {
-    label: "AIGNE Hub (Platform)"
-  }
-  
-  Upstream-AI-Providers: {
-    label: "Upstream AI Providers"
-    shape: cylinder
-  }
-  
-  End-Users -> AIGNE-Hub-Platform: "1. Purchase Credits & Use AI"
-  AIGNE-Hub-Platform -> Upstream-AI-Providers: "2. Route Requests"
-  
-  Billing: {
-    label: "Billing"
-    shape: rectangle
-    style.fill: "#f0f0f0"
-
-    Provider: {
-      label: "You (Service Provider)"
-      shape: rectangle
-    }
-
-    End-Users -> Provider: "Pay for Credits"
-    Provider -> Upstream-AI-Providers: "Direct Payment"
-  }
-}
-```
+<!-- DIAGRAM_IMAGE_START:architecture:16:9 -->
+![Deployment Scenarios](assets/diagram/deployment-scenarios-diagram-0.jpg)
+<!-- DIAGRAM_IMAGE_END -->
 
 The following sections provide an overview of each deployment scenario. For detailed configuration instructions, please refer to the specific sub-documents.
 

@@ -4,35 +4,9 @@
 
 下圖說明了供應商、憑證和模型費率在 AIGNE Hub 內的相互關聯：
 
-```d2
-direction: down
-
-AIGNE-Hub: {
-  label: "AIGNE Hub 管理"
-  shape: rectangle
-
-  Provider: {
-    label: "供應商\n（例如 OpenAI、Google）"
-    shape: rectangle
-    style.fill: "#f0f4ff"
-  }
-
-  Credential: {
-    label: "憑證\n（例如 API 金鑰）"
-    shape: rectangle
-    style.fill: "#e6fffa"
-  }
-
-  Model-Rate: {
-    label: "模型費率\n（例如 gpt-4o-mini 成本）"
-    shape: rectangle
-    style.fill: "#fffbe6"
-  }
-}
-
-AIGNE-Hub.Provider -> AIGNE-Hub.Credential: "擁有一或多個"
-AIGNE-Hub.Provider <-> AIGNE-Hub.Model-Rate: "與...相關聯"
-```
+<!-- DIAGRAM_IMAGE_START:architecture:16:9 -->
+![Provider Management](assets/diagram/provider-management-diagram-0.jpg)
+<!-- DIAGRAM_IMAGE_END -->
 
 ## 供應商設定
 
