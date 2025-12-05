@@ -86,7 +86,7 @@ function CreditBoard() {
   // Check if user has welcome credit and no transactions
   const hasWelcomeCredit = useMemo(() => {
     if (!creditGrants?.list || creditGrants.list.length === 0) return false;
-    return creditGrants.list.some((grant: any) => grant.metadata?.welcomeCredit === true);
+    return creditGrants.list.some((grant: any) => grant.metadata?.welcomeCredit === true && grant.status === 'active');
   }, [creditGrants]);
 
   const hasNoTransactions = useMemo(() => {
