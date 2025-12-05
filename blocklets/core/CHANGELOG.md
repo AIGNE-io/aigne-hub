@@ -1,7 +1,13 @@
+## 0.6.22 (2025-12-5)
+
+- chore: update  dependencies
+- feat: add model availability check in API status route and refine welcome credit validation
+- fix: handle optional chaining for payment settings and return correct payment link
+
 ## 0.6.21 (2025-12-3)
 
 - fix: optimize database indexes for model call queries
-
+  
 ## 0.6.20 (2025-11-28)
 
 - chore: update dependencies
