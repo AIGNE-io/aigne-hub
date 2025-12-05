@@ -18,6 +18,7 @@ import { createModelCallMiddleware, getMaxProviderRetriesMiddleware } from '@api
 import { checkModelRateAvailable } from '@api/providers';
 import AiCredential from '@api/store/models/ai-credential';
 import AiModelRate from '@api/store/models/ai-model-rate';
+import AiModelStatus from '@api/store/models/ai-model-status';
 import AiProvider from '@api/store/models/ai-provider';
 import { CustomError } from '@blocklet/error';
 import { sessionMiddleware } from '@blocklet/sdk/lib/middlewares/session';
@@ -123,6 +124,11 @@ router.get('/status', user, async (req, res) => {
     const modelRate = await AiModelRate.findOne({ where: { model: modelName } });
     if (!modelRate) {
       return res.json({ available: false, error: 'Model rate not available' });
+    }
+
+    const modelStatus = await AiModelStatus.findOne({ where: { model: modelName } });
+    if (modelStatus?.available === false) {
+      return res.json({ available: false, error: 'Model is not available' });
     }
   }
 
