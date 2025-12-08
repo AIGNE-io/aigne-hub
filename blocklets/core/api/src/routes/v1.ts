@@ -77,7 +77,7 @@ router.post(
     }
 
     // Process embeddings and get usage data
-    const usageData = await processEmbeddings(req, res);
+    const usageData = await processEmbeddings(req);
 
     // Report usage with v1 specific parameters
     if (usageData) {
@@ -88,6 +88,8 @@ router.post(
         appId: req.appClient?.appId,
       });
     }
+
+    res.json({ data: usageData?.data });
   })
 );
 

@@ -355,9 +355,8 @@ export async function processChatCompletion(
 }
 
 export async function processEmbeddings(
-  req: Request,
-  res: Response
-): Promise<{ promptTokens: number; model: string } | null> {
+  req: Request
+): Promise<{ promptTokens: number; model: string; data: any } | null> {
   const { error, value: input } = embeddingsRequestSchema.validate(req.body, { stripUnknown: true });
   if (error) {
     throw new CustomError(400, error.message);
@@ -373,11 +372,10 @@ export async function processEmbeddings(
     model: modelName,
   });
 
-  res.json({ data });
-
   return {
     promptTokens: usage.prompt_tokens,
     model: input.model,
+    data,
   };
 }
 
