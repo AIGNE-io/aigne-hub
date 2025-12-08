@@ -119,6 +119,12 @@ export default function Chat() {
   const showPlayground = isAdmin || window.blocklet?.preferences?.guestPlaygroundEnabled;
 
   useEffect(() => {
+    if (!session.user) {
+      session.login();
+    }
+  }, []);
+
+  useEffect(() => {
     if (!showPlayground) {
       navigate('/');
     }
@@ -440,6 +446,11 @@ export default function Chat() {
         }}
         messages={messages}
         onSubmit={(prompt) => {
+          if (!session.user) {
+            session.login();
+            return;
+          }
+
           add(prompt);
         }}
         customActions={customActions}
