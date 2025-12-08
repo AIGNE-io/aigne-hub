@@ -5,11 +5,11 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  '@aigne/aigne-hub': ^0.10.12
-  '@aigne/core': ^1.69.2
-  '@aigne/observability-api': ^0.11.11
-  '@aigne/openai': ^0.16.12
-  '@aigne/transport': ^0.15.21
+  '@aigne/aigne-hub': ^0.10.15-beta
+  '@aigne/core': ^1.71.0-beta
+  '@aigne/observability-api': ^0.11.12
+  '@aigne/openai': ^0.16.15-beta
+  '@aigne/transport': ^0.15.24-beta
   '@arcblock/did': 1.27.6
   '@arcblock/did-connect-js': 1.27.6
   '@arcblock/did-ext': 1.27.6
@@ -18,10 +18,10 @@ overrides:
   '@arcblock/jwt': 1.27.6
   '@arcblock/validator': 1.27.6
   '@arcblock/ws': 1.27.6
-  '@blocklet/constant': ^1.17.4-beta-20251204-152224-243ff54f
-  '@blocklet/js-sdk': ^1.17.4-beta-20251204-152224-243ff54f
-  '@blocklet/logger': ^1.17.4-beta-20251204-152224-243ff54f
-  '@blocklet/sdk': ^1.17.4-beta-20251204-152224-243ff54f
+  '@blocklet/constant': ^1.17.4
+  '@blocklet/js-sdk': ^1.17.4
+  '@blocklet/logger': ^1.17.4
+  '@blocklet/sdk': ^1.17.4
   '@ocap/asset': 1.27.6
   '@ocap/client': 1.27.6
   '@ocap/types': 1.27.6
@@ -78,29 +78,29 @@ importers:
   blocklets/core:
     dependencies:
       '@abtnode/cron':
-        specifier: ^1.17.4-beta-20251204-152224-243ff54f
-        version: 1.17.4-beta-20251204-152224-243ff54f
+        specifier: ^1.17.4
+        version: 1.17.4
       '@abtnode/queue':
-        specifier: ^1.17.4-beta-20251204-152224-243ff54f
-        version: 1.17.4-beta-20251204-152224-243ff54f
+        specifier: ^1.17.4
+        version: 1.17.4
       '@abtnode/util':
-        specifier: ^1.17.4-beta-20251204-152224-243ff54f
-        version: 1.17.4-beta-20251204-152224-243ff54f
+        specifier: ^1.17.4
+        version: 1.17.4
       '@aigne/aigne-hub':
-        specifier: ^0.10.12
-        version: 0.10.12(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
+        specifier: ^0.10.15-beta
+        version: 0.10.15-beta(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
       '@aigne/core':
-        specifier: ^1.69.2
-        version: 1.69.2(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)
+        specifier: ^1.71.0-beta
+        version: 1.71.0-beta(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)
       '@aigne/observability-api':
-        specifier: ^0.11.11
-        version: 0.11.11(@libsql/client@0.15.15)(bun-types@1.2.21(@types/react@18.3.9))(sqlite3@5.1.7)
+        specifier: ^0.11.12
+        version: 0.11.12(@libsql/client@0.15.15)(bun-types@1.2.21(@types/react@18.3.9))(sqlite3@5.1.7)
       '@aigne/openai':
-        specifier: ^0.16.12
-        version: 0.16.12(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
+        specifier: ^0.16.15-beta
+        version: 0.16.15-beta(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
       '@aigne/transport':
-        specifier: ^0.15.21
-        version: 0.15.21(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
+        specifier: ^0.15.24-beta
+        version: 0.15.24-beta(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
       '@arcblock/did':
         specifier: 1.27.6
         version: 1.27.6
@@ -109,7 +109,7 @@ importers:
         version: 1.27.6
       '@arcblock/did-connect-react':
         specifier: ^3.2.11
-        version: 3.2.11(@arcblock/ux@3.2.11(f10e9cc8b65c45160d672b76621e82bc))(@blocklet/js-sdk@1.17.4-beta-20251204-152224-243ff54f)(@blocklet/theme@3.2.11)(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react@19.1.0))(@mui/material@7.2.0(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: 3.2.11(@arcblock/ux@3.2.11(f10e9cc8b65c45160d672b76621e82bc))(@blocklet/js-sdk@1.17.4)(@blocklet/theme@3.2.11)(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react@19.1.0))(@mui/material@7.2.0(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       '@arcblock/did-connect-storage-nedb':
         specifier: ^1.8.0
         version: 1.8.0
@@ -123,29 +123,29 @@ importers:
         specifier: workspace:^
         version: link:../../packages/ai-kit
       '@blocklet/constant':
-        specifier: ^1.17.4-beta-20251204-152224-243ff54f
-        version: 1.17.4-beta-20251204-152224-243ff54f
+        specifier: ^1.17.4
+        version: 1.17.4
       '@blocklet/error':
         specifier: 0.3.2
         version: 0.3.2
       '@blocklet/js-sdk':
-        specifier: ^1.17.4-beta-20251204-152224-243ff54f
-        version: 1.17.4-beta-20251204-152224-243ff54f
+        specifier: ^1.17.4
+        version: 1.17.4
       '@blocklet/logger':
-        specifier: ^1.17.4-beta-20251204-152224-243ff54f
-        version: 1.17.4-beta-20251204-152224-243ff54f
+        specifier: ^1.17.4
+        version: 1.17.4
       '@blocklet/payment-js':
-        specifier: ^1.22.29
-        version: 1.22.29
+        specifier: ^1.22.30
+        version: 1.22.30
       '@blocklet/payment-react':
-        specifier: ^1.22.29
-        version: 1.22.29(@blocklet/js-sdk@1.17.4-beta-20251204-152224-243ff54f)(@blocklet/sdk@1.17.4-beta-20251204-152224-243ff54f)(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react@19.1.0))(@mui/utils@7.2.0(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(immer@10.1.3)(prop-types@15.8.1)(react-dom@19.1.0(react@19.1.0))(react-router-dom@6.26.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react@19.1.0)(terser@5.29.2)(use-sync-external-store@1.5.0(react@19.1.0))(vite@7.0.2(@types/node@22.4.1)(jiti@1.21.6)(terser@5.29.2)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: ^1.22.30
+        version: 1.22.30(@blocklet/js-sdk@1.17.4)(@blocklet/sdk@1.17.4)(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react@19.1.0))(@mui/utils@7.2.0(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(immer@10.1.3)(prop-types@15.8.1)(react-dom@19.1.0(react@19.1.0))(react-router-dom@6.26.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react@19.1.0)(terser@5.29.2)(use-sync-external-store@1.5.0(react@19.1.0))(vite@7.0.2(@types/node@22.4.1)(jiti@1.21.6)(terser@5.29.2)(tsx@4.20.3)(yaml@2.8.1))
       '@blocklet/sdk':
-        specifier: ^1.17.4-beta-20251204-152224-243ff54f
-        version: 1.17.4-beta-20251204-152224-243ff54f
+        specifier: ^1.17.4
+        version: 1.17.4
       '@blocklet/ui-react':
         specifier: ^3.2.11
-        version: 3.2.11(aeed57360c71fde3ddbc2ae015f2f201)
+        version: 3.2.11(39e4b017643ea1c1277bd0c8838a9e74)
       '@blocklet/uploader-server':
         specifier: ^0.3.14
         version: 0.3.14(@tus/file-store@1.0.0(@tus/server@1.0.0))(@tus/server@1.0.0)(@uppy/companion@4.15.1)(axios@1.7.4)
@@ -362,7 +362,7 @@ importers:
         version: 18.3.0
       '@vitejs/plugin-react':
         specifier: ^4.6.0
-        version: 4.6.0(vite@7.0.2(jiti@1.21.6)(terser@5.29.2)(tsx@4.20.3)(yaml@2.8.1))
+        version: 4.6.0(vite@7.0.2(@types/node@22.4.1)(jiti@1.21.6)(terser@5.29.2)(tsx@4.20.3)(yaml@2.8.1))
       cross-env:
         specifier: ^7.0.3
         version: 7.0.3
@@ -418,14 +418,14 @@ importers:
         specifier: 0.3.2
         version: 0.3.2
       '@blocklet/logger':
-        specifier: ^1.17.4-beta-20251204-152224-243ff54f
-        version: 1.17.4-beta-20251204-152224-243ff54f
+        specifier: ^1.17.4
+        version: 1.17.4
       '@blocklet/payment-js':
-        specifier: ^1.22.29
-        version: 1.22.29
+        specifier: ^1.22.30
+        version: 1.22.30
       '@blocklet/sdk':
-        specifier: ^1.17.4-beta-20251204-152224-243ff54f
-        version: 1.17.4-beta-20251204-152224-243ff54f
+        specifier: ^1.17.4
+        version: 1.17.4
       '@emotion/css':
         specifier: ^11.13.5
         version: 11.13.5
@@ -552,7 +552,7 @@ importers:
         version: 18.3.0
       '@vitejs/plugin-react':
         specifier: ^4.6.0
-        version: 4.6.0(vite@7.0.2(jiti@1.21.6)(terser@5.29.2)(tsx@4.20.3)(yaml@2.8.1))
+        version: 4.6.0(vite@7.0.2(@types/node@22.4.1)(jiti@1.21.6)(terser@5.29.2)(tsx@4.20.3)(yaml@2.8.1))
       npm-run-all:
         specifier: ^4.1.5
         version: 4.1.5
@@ -581,44 +581,41 @@ packages:
   '@abtnode/constant@1.17.2':
     resolution: {integrity: sha512-c1qNbiwe5vbdM1eQ9N1JQSWHcViX5cp+LVc+sG0kAhcldFhlqgj4bxZSrOaxdTMR0atuefU8mlwL9IgjVlGsiA==}
 
-  '@abtnode/constant@1.17.4-beta-20251204-152224-243ff54f':
-    resolution: {integrity: sha512-PWvAZ0WHCwxJcfGk/6IwZA1EWgmvpo69To8aXdIsjZbz9bbRTZdx+YFTs7IbXDAynbB/19o7+aD42VWecwrlcw==}
+  '@abtnode/constant@1.17.4':
+    resolution: {integrity: sha512-Q7TpNp9wyr9ToLxMZDoiQ/ur6MQUbVklGpJwLUDS/QxltNGTEzF06jz47iWEfqTW0FThNWvd0L7oH+Jc94Whuw==}
 
-  '@abtnode/cron@1.17.3':
-    resolution: {integrity: sha512-S7cb0wUwoxR3yIa+qbNtaWREAH4JpA1we0+nKBkZg59/vDb+rkWAePRz+IkRfQFD1IOX2D+9cSNWg9WWHUlQZg==}
-
-  '@abtnode/cron@1.17.4-beta-20251204-152224-243ff54f':
-    resolution: {integrity: sha512-6sTSVl+m/VTHiV714xPX0nzhrSw/HzQPP646L9Xi3Zdaq2lz4GNBsr4YML9k6Ud/J7VgKEeVOh4ujZSJym6Eag==}
+  '@abtnode/cron@1.17.4':
+    resolution: {integrity: sha512-yGcUXgs8On/M9MXgGHJlU457HUCG9rrnyUHmURFzmp27R8DtlKZguEXZU+lZBAiNi59/V0q/Z1nYkzU65aVlVQ==}
 
   '@abtnode/db-cache@1.17.2':
     resolution: {integrity: sha512-sIe9aQQWfS4cDjZrkzhioo8b//u8ss8AtVPxey7DATi8409GpS6emta9MN19XF73HfvQLQ/Jm9PX/Wqxe78MZg==}
 
-  '@abtnode/db-cache@1.17.4-beta-20251204-152224-243ff54f':
-    resolution: {integrity: sha512-zASKp1IEtLFgTYSAc/+QhK7Sf2rj6pO/zohET0nNadXyORxuGDRVWjKJHIM2pFSOCyGwQu67epK17SqzMYdCJw==}
+  '@abtnode/db-cache@1.17.4':
+    resolution: {integrity: sha512-pSJ0FgIN+sCuF29LRL1y4f1VPyRMcaVq6FaOgxV1nzq0eM829eLcTla5D2gnAUoGoI6IXTIcrqvSUTW4xKV2JQ==}
 
-  '@abtnode/db@1.17.4-beta-20251204-152224-243ff54f':
-    resolution: {integrity: sha512-LE6p16E07zJPRYEthP2g1RTOgvP21L3s+PNVTxdahJFSwqb3UUktuVy+CEvHUXrkbzMRVLiA6P9qxfah7k8I/Q==}
+  '@abtnode/db@1.17.4':
+    resolution: {integrity: sha512-IPCxXks8z9XWMuOPCgHS3Qg0YpB57PFd2lk73hTC4XIjO3vnysvQ0cI+5fuzJuKiFHuXOTIO3oeFtLO6DJ5DgQ==}
 
   '@abtnode/docker-utils@1.17.2':
     resolution: {integrity: sha512-DEA4XJrdpkGgq5jiGhaEDydrPqAgKQ1LqOGuVCeI9I3coY54NPuoLQEp7P1b37uxiTE0U5wpCDLEGZ8iG3b5Sw==}
 
-  '@abtnode/docker-utils@1.17.4-beta-20251204-152224-243ff54f':
-    resolution: {integrity: sha512-WpdUetqQvIQ7OWF4oDyiv75JQkoUe3F7xgx720v7SyqxCWRZ6ADZXf541jppOllmdH00PBZU4ApvFlnTv38IhA==}
+  '@abtnode/docker-utils@1.17.4':
+    resolution: {integrity: sha512-CprojbQJnUGN2Cemti1nMuZmrDqpLWevOt3uhoFDlW4RF19tUKQED+0E7Ro89icWvNF9U54d5JSeVwYDjyyndA==}
 
   '@abtnode/file-stream-rotator@0.6.3':
     resolution: {integrity: sha512-vCHn68o7k0FY5Qois5YP/n0AYuA9w9HzfvvxHN7v97oY/ElwMPlcUF4OmaRXqtk/tVRQVXYdj/Qey32wM4oiNw==}
 
-  '@abtnode/logger@1.17.4-beta-20251204-152224-243ff54f':
-    resolution: {integrity: sha512-86WlG2nq0192lxsAafJLzzjTFm5mYJtEBN21xgHCovDnIJzP7l0S7AKGbdm/T476Wl22l9X4BSRjCEIqtQOrwA==}
+  '@abtnode/logger@1.17.4':
+    resolution: {integrity: sha512-C8kF3qb16uAB3JAF9r+csA2cOyQb359uh1g5c2MeIZVc+cAXQbu6d0KcI2pJkvYM+dRda/6VBqdTS6komyC9Jg==}
 
-  '@abtnode/queue@1.17.4-beta-20251204-152224-243ff54f':
-    resolution: {integrity: sha512-VBki4vj43MLvzY1dAoLUm/mP7v72VBYRobFMnU4xqHridYzANx9Z29Pl0jWVohy8Q0UhaliA+d5+PWUEXUGmZw==}
+  '@abtnode/queue@1.17.4':
+    resolution: {integrity: sha512-BoQN2Ycenb+kZci48ojwXOyDBEFdfAgMYeTdfz6vDfebKVdThYcMIF93Z2/et7T0n5Org4w14lbYnzSFp294mQ==}
 
   '@abtnode/util@1.17.2':
     resolution: {integrity: sha512-8en1/Gfq4GAmnqQoptH2VVOu+mMvkEiuis+5rWO3nyPw0AGXeQ7NQ2tlyu9x1+LpNyl9y7bqbNzjfNPxqp6kLw==}
 
-  '@abtnode/util@1.17.4-beta-20251204-152224-243ff54f':
-    resolution: {integrity: sha512-D63UsMgfdmd/n4+GSfHN5d4TP1Q+x6CoTL+By0fvbaHReWHzwsZoQPRQfsJxZqgVEc+28djz3pjA7yDoWd4yOg==}
+  '@abtnode/util@1.17.4':
+    resolution: {integrity: sha512-GN0Z2xRXV/BI7X9E2zISi1KyzIWS33XfPF5SgpWou9fd/bE35DcbUIRV/S7Z6p5A0PgW3/wiWvzYRpyz/4e++w==}
 
   '@abtnode/winston-daily-rotate-file@5.0.1':
     resolution: {integrity: sha512-FUnLTCFRocN4gIioS+UQICheqnSjlrAwToRgdc7fuyE0QpK0dkTLkX47QZTK+k4zfypW1aqtGV+GWvhnZ6G/2Q==}
@@ -629,71 +626,71 @@ packages:
   '@adobe/css-tools@4.4.0':
     resolution: {integrity: sha512-Ff9+ksdQQB3rMncgqDK78uLznstjyfIf2Arnh22pW8kBpLs6rpKDwgnZT46hin5Hl1WzazzK64DOrhSwYpS7bQ==}
 
-  '@aigne/afs-history@1.1.1':
-    resolution: {integrity: sha512-/bHfncOBcjTNPoRsGcayMPUTdKio1d2byTwtI1SlPHAt6y7Xqizc3Wz7RK8HGIf1KtPWSfM9e5hybYFoU0wepg==}
+  '@aigne/afs-history@1.1.3-beta':
+    resolution: {integrity: sha512-1Cxu7dffNoiSl9PL/Hy+okWWZ9GJBc9zlNTBavtSxE7MKjT5NgmEGk1tMi2bkqxByCVB77kifgFgi+Y29tGR+A==}
 
-  '@aigne/afs@1.2.2':
-    resolution: {integrity: sha512-23dAANREKuCZcXBF0QaSklV/a1a3Ve0cmRaCJMRW64HN1Kviq92qXHQZxlp9U2k9AtWHXOaAvL/7B827HyX/qg==}
+  '@aigne/afs@1.3.0-beta':
+    resolution: {integrity: sha512-YQLy6GYmVd2UXUsWgTJDsqYKTBCJ44Vo9aGwmZ40S28kCUOHCvN53WSsc2Ti/dKo/z811qLiTKS818x6d23woQ==}
 
-  '@aigne/aigne-hub@0.10.12':
-    resolution: {integrity: sha512-7+oWcRF0Gl28EnJr3wiZhFUPntQZvTsfyoFCqPdYcYvp/aZeu53+YBnumC9E4OR4uopPqr2P1HG35Ly8LYrFRQ==}
+  '@aigne/aigne-hub@0.10.15-beta':
+    resolution: {integrity: sha512-HTtcqLlhI74bS/X5Wo1zw99X+jMPCT4gZNql5nR+jXGwgSSlDqQJClTdL7EyrOCX89oNnP6ybvfnmat7cq2MiQ==}
 
-  '@aigne/anthropic@0.14.12':
-    resolution: {integrity: sha512-PU93DX2U+a4amnPdxFXk2My0ptvM6kPkDqtFMjzFkXzOok6gakkxr4RjyCr7BKIsvd4HDriRcuUwsPpBQmyZdA==}
+  '@aigne/anthropic@0.14.15-beta':
+    resolution: {integrity: sha512-ONEjF+FNbMOqLE+eIjpA2bb3mXdQG0JiD3k+rvOTc83G9ecVMxPNfQqdDUQJVDCfs3ovjdJw9enbPl1jEBpR7Q==}
 
-  '@aigne/bedrock@0.10.17':
-    resolution: {integrity: sha512-UG8DfaRxrvttccWXMe81enmD4gwQf2tZNBwtnwnyyy5krENNOqwpTvdJZHlbAwG8yddKJ9lcEATt1NyqKQay5Q==}
+  '@aigne/bedrock@0.10.20-beta':
+    resolution: {integrity: sha512-AXVOFPUN8yzlN+WL/40t9x+gq7keN4uM7/Lp66BJSou3frG8Mu0TXXHoOafxxOq6m3NzrWwtWmelIeP+u9rDHA==}
 
-  '@aigne/core@1.69.2':
-    resolution: {integrity: sha512-QbEsrkAnmk49fQIwBUAslYsPZTY6IINZjIl7WemAlmq3cpZUlDnuJQEUws2bfHKDVap56va8JF7tzA46F1k7Ag==}
+  '@aigne/core@1.71.0-beta':
+    resolution: {integrity: sha512-j1c/jmYcdI9wMZ5LILBkZQzvoiBgxLxG0hTrfVX+PVgAmHRne92haM4GsSDeVQe/FjAAVjKFiVmhacHhlSop4Q==}
 
-  '@aigne/deepseek@0.7.58':
-    resolution: {integrity: sha512-uSd6eHqxPcjOawtb8VRg9EzNIVGLFXvEMVXnJcr949D2HEVSk7iZIw7gsF+kUwMd/egnQTvsrrCEQcuMrkhTVQ==}
+  '@aigne/deepseek@0.7.61-beta':
+    resolution: {integrity: sha512-y+FtuZIIejNWEmCXDR/c3WTtG9IapucHcly1twiUYuVmINgQ4tycT42QQSzkzI5qet/QQwFTVDKyw8XgUX+HYA==}
 
-  '@aigne/doubao@1.2.2':
-    resolution: {integrity: sha512-DrOWlOZd997vJnULR3oQSHhROzcs/Wqs+QjxGuRvcAfBlvScLJiAMAp/p7ZynqNmiyYgn8NozDTybUv4yQ/qvA==}
+  '@aigne/doubao@1.2.5-beta':
+    resolution: {integrity: sha512-VgG1vp8Ig4Nk1dS+621TYPWd58TdN2EF7PIu/C17MdSDLCTzJr8HfCjTN3DfAV4KcSEnT1bUOmNY4vmkHIQBYA==}
 
-  '@aigne/gemini@0.14.12':
-    resolution: {integrity: sha512-WZ8EF/bXdMBqY+sIXC8sCqbDQIStI/wTVhem9MlrBqXBsHTNApR1s8Hh8e7Ja5x8T2YC4TXrUPqu9uV1ZeeQHw==}
+  '@aigne/gemini@0.14.15-beta':
+    resolution: {integrity: sha512-dNrkI1E0NTzk1xxNej8OkRc8a73pCOluxy+RAneGec/8X40AmxGpfapOE9cHSdQ5ow/XcwemYjX1uWeKLk/Lyw==}
 
-  '@aigne/ideogram@0.4.12':
-    resolution: {integrity: sha512-ddTzPB+REc+toyikWOVLDCv5dJ2I+4iQPZh1QGOIwXygMcPazkz1yWzEvbp9n7YaIcbgair2gNKlDjmawSLNhQ==}
+  '@aigne/ideogram@0.4.15-beta':
+    resolution: {integrity: sha512-J/MzPo1XYbq9yutzsSkLvkiQzX6Q9pTNv1rkggHm2ZWnsOIpKe+lR1L9H0hvreZPIvyjEoghh8gQ/IZ1XJr3Zg==}
 
   '@aigne/json-schema-to-zod@1.3.3':
     resolution: {integrity: sha512-8QsF5Vm/Znj16KAvfNIoXghSB7XzGGp+HHoI3CWyuFLX6DbI0YrzRm3EpKo87OhbpdtiWQurC0bidkH2cbsYNQ==}
     peerDependencies:
       zod: ^3.0.0
 
-  '@aigne/observability-api@0.11.11':
-    resolution: {integrity: sha512-UJoifv2CMuO3aFhusyEheWnA41n6XC4LnuLOA1QKf3l5uDn2ExWUeD80UGMTPztwxvOZgIB0abGIhh9yR3lQjA==}
+  '@aigne/observability-api@0.11.12':
+    resolution: {integrity: sha512-CIot0r+UTBnSXGpUdnYLkUTib6e413EbrPhBvqbNoZ49eS3zgbrBP3r6GXbTzfMz2tcCeT+UAfKrHOnW41r3BQ==}
 
-  '@aigne/ollama@0.7.58':
-    resolution: {integrity: sha512-mQqrXNJVEUACE6ZXUproGsLxbdwWBADs0QPuWfZtsQCyiYsEdSzw8x6X15pG4qeSqA/QDFvDzeAXCKFS8Dx/1Q==}
+  '@aigne/ollama@0.7.61-beta':
+    resolution: {integrity: sha512-zovwT4QzmjvGWjmxD/dHqmpcJuGByTd9DxhvipXCnc5NDz5ojr+BVLmzx7dX/Ozqg8XesXm7/abzimiJJf4hGA==}
 
-  '@aigne/open-router@0.7.58':
-    resolution: {integrity: sha512-Lj0sqGFThGG/vb9GCa3jKq0J9FD0I1PYnwuVUiR7sxded8nTKL0QgcYJ1BXskKITQ+2HTnz6W5y8FYUptjUbPQ==}
+  '@aigne/open-router@0.7.61-beta':
+    resolution: {integrity: sha512-geTQ2wIMPzzeSZ1hGMGX9bDmLGkQ0YQTXhaGQuq6Yah+U6Iuc8/g78FE6PnYwqZj8zUGG2JWf3WkqeuDuED/Fg==}
 
-  '@aigne/openai@0.16.12':
-    resolution: {integrity: sha512-+ka8kRh7xTadBof9asQ/dNv8zJrHIoQQ61UKpNnqb6y+SOi+qhlMni5Au1vMKQ2jQvfgxA5wKmjacZEE/NylGQ==}
+  '@aigne/openai@0.16.15-beta':
+    resolution: {integrity: sha512-v/BR2mEhIqTRrtWrIvMGyDAZFzRKYvG/QOWFRv7QJr1Y40gOROvEfKtP7oi1+uuBIUkiZ3V8kDJyVHGwMyZJwg==}
 
   '@aigne/platform-helpers@0.6.5':
     resolution: {integrity: sha512-wYzLc2VZe8GciXQEbBeJy/o+AKvkMjPX9Kl/+wmgZaIpI6nHiiMsK7qJYdrI98i5atpicnfc24KBZ9ThpKbewg==}
 
-  '@aigne/poe@1.1.2':
-    resolution: {integrity: sha512-bSNhNTk7XOu+w7XTWLvnY5k1Zw8RMGpTnJ4wzB/c4EfH8Eh2qEq0MCTOoAATSm1uvFT1w9aIZ3oYe6IO4LNWvA==}
+  '@aigne/poe@1.1.5-beta':
+    resolution: {integrity: sha512-7uVrk0/xUQEgQanVlwwB+Ob6ZZY7fUGOw3FUKosKC0gGsItjSWAhUqIs9q30rtlvgUu4LBIWGOmMrS2MAlLn8w==}
 
   '@aigne/sqlite@0.4.7':
     resolution: {integrity: sha512-ejgEDZJ70QALFeFifAtVRdIgNhnBAFuS1dYXxEngwC152pdjP5PZrUVY3WStrkBnFVVe7rxRRrx7LH37hsopRA==}
 
-  '@aigne/transport@0.15.21':
-    resolution: {integrity: sha512-fztrvLiVlUeGypHtxDFpiNGhN0wFIiLeJB/q4wi3BXSvyTeWSP+vn9Je1e0SE1TBekRvRk2q23xAeDSXDWTxbw==}
+  '@aigne/transport@0.15.24-beta':
+    resolution: {integrity: sha512-w2QjtwZK9hW5uVO71racvgm/8p6UVM395VDR00hKU5A2zCmOsXH59jIF6GvbobXa/r6B/Ik6/SAx3yiHYbyPkw==}
 
   '@aigne/uuid@13.0.1':
     resolution: {integrity: sha512-28GrlAzaE1RkCQhkBn953gOd0hvCOAlZzjs4R5xPRphyNgZtDf058i2VfGDTyGvcVVkLhhoTy7s85srOM52krQ==}
     hasBin: true
 
-  '@aigne/xai@0.7.58':
-    resolution: {integrity: sha512-WB2bP9PcE+XoQaJfSLKHjZm3Hsj4g1DtWDoayanB1fWqInLFOXLwg7U1H42Dxdm29wPx1aXjnXYzo/IPCrlAqQ==}
+  '@aigne/xai@0.7.61-beta':
+    resolution: {integrity: sha512-pksdamQI7Du0/m80OqpX+cQ7yw44/Ik2Ze8KnvVZhhR8KjsXKaqa0BO9fPAB3vD7bvS8LK1Il/Uphw5sN7UdNQ==}
 
   '@ampproject/remapping@2.3.0':
     resolution: {integrity: sha512-30iZtAPgz+LTIYoeivqYo853f02jBYSd5uGnGpkFV0M3xOt9aN73erkgYAmZU43x4VfqcnLxW9Kpg3R5LC4YYw==}
@@ -718,7 +715,7 @@ packages:
     resolution: {integrity: sha512-9WYNRqehyA3tPgonwL00eInhiWaHa3iCYUmAm98TAaxfEdOR03ueukFgOsdtAAoZR1ZVwKDQZI69IaZg/a+gqA==}
     peerDependencies:
       '@arcblock/ux': ^3.1.0
-      '@blocklet/js-sdk': ^1.17.4-beta-20251204-152224-243ff54f
+      '@blocklet/js-sdk': ^1.17.4
       '@blocklet/theme': ^3.1.0
       '@emotion/react': ^11.14.0
       '@emotion/styled': ^11.14.0
@@ -1608,20 +1605,20 @@ packages:
     resolution: {integrity: sha512-ruv7Ae4J5dUYULmeXw1gmb7rYRz57OWCPM57pHojnLq/3Z1CK2lNSLTCVjxVk1F/TZHwOZZrOWi0ur95BbLxNQ==}
     engines: {node: '>=6.9.0'}
 
-  '@blocklet/constant@1.17.4-beta-20251204-152224-243ff54f':
-    resolution: {integrity: sha512-CbY0I/EiRi3wv0I3qvnqxlbcXcCscPillNH5+0aC9bYhXyV+TJQtj44Kh9/Mp/pTGJaGUCNN996n9YsuBPtqSw==}
+  '@blocklet/constant@1.17.4':
+    resolution: {integrity: sha512-LAMUzKI4c//LJBaMdk/hcELcnPSqBjQA6JHKStbkTnl53rXvN4Oqj0QM5Q9GHx1KTjxo6/czuM6UNn3BK6zMCQ==}
 
   '@blocklet/did-space-react@1.2.3':
     resolution: {integrity: sha512-KDA+OhqjTYApocNldH4CGpOHIjNFDHNMo3g+6dr8bXKh0qNUJUnEN/nE7rpmkZtD+EhTKk3FYBpInt11L5Jz7w==}
     peerDependencies:
       '@arcblock/did-connect-react': ^3.1.2
       '@arcblock/ux': ^3.1.31
-      '@blocklet/js-sdk': ^1.17.4-beta-20251204-152224-243ff54f
-      '@blocklet/sdk': ^1.17.4-beta-20251204-152224-243ff54f
+      '@blocklet/js-sdk': ^1.17.4
+      '@blocklet/sdk': ^1.17.4
       react: ^19.1.0
 
-  '@blocklet/env@1.17.4-beta-20251204-152224-243ff54f':
-    resolution: {integrity: sha512-1jR4Ny0sBFsj1D76nqiLoo1i/MbEBd1E6VRhVG8uj073yJY5jqBEKHaI7B+/UsrSF+ODgNlGdGvgbxV82Rfrmg==}
+  '@blocklet/env@1.17.4':
+    resolution: {integrity: sha512-LuHkyJczHMzYHQTAuyaTPJzH8PlWPMe1c0muf74L1khMAM6YpTCPgSkVq+0pUlbxex/+78U+/ldYvocoQusQRw==}
 
   '@blocklet/error@0.3.2':
     resolution: {integrity: sha512-851ogRv2DH7rSPBvIBV0M6m7KHbv6yrL44TK7QboF8wYayPjjCE0Q37vjW28INQjEwKu35HoLgSTMvo+LOa8fA==}
@@ -1629,34 +1626,34 @@ packages:
   '@blocklet/error@0.3.3':
     resolution: {integrity: sha512-vhUpoqAjt7HSs28bTw8l0jI4xxnYKQzLGclk50x6URMFta0wWQHKzWgnomHdXFBJzmQ7I1koLyCu02RjkAl1/Q==}
 
-  '@blocklet/js-sdk@1.17.4-beta-20251204-152224-243ff54f':
-    resolution: {integrity: sha512-fofvTqzgjYHwFUlY7jLQedkmUUa+Z2GDy1npWDMcae2D/syPB2+JEygi5+hWdzLoEl1YIbvfeP7lkrTGLAmJhg==}
+  '@blocklet/js-sdk@1.17.4':
+    resolution: {integrity: sha512-ZSZXS2Tm0c2crZv1TyomwJbFXuxehYbO1Aoofh+c0f/wR7Zn9v1QCoIeV8KIqFtDXW/9Rc9p4XFJO1eEIlRmrQ==}
 
-  '@blocklet/logger@1.17.4-beta-20251204-152224-243ff54f':
-    resolution: {integrity: sha512-vC7q+fhiEmOYzY2dBGJVyyaLxvtclrvnzUfaMRmAs2rB7PEgygrHxU2RsGSIPYIhLd8mvuhwSgAL7FuGzXFq2w==}
+  '@blocklet/logger@1.17.4':
+    resolution: {integrity: sha512-nno7TRnXi0pGvfhGBLAHtJ32loo8hJA9zB1BOhdnG+iLlPOQOA5OWWlnV2idwh+vwTf84h2fpjNxKiMM20e9dA==}
 
   '@blocklet/meta@1.17.2':
     resolution: {integrity: sha512-4ndlsiigE+c0vPLPWZz9W7cW6neuw61huSFepPq9mFNmSzPzPno5/azMRPY4KXi1Cv4elbbJVRr0CwsvSVBkHg==}
 
-  '@blocklet/meta@1.17.4-beta-20251204-152224-243ff54f':
-    resolution: {integrity: sha512-2cCK1eRiKfEV1CdiDBxOZBHPztBMjBv5+B5erioFzJIrMwCThSwz4fGLyliM9BLdD2jUqXWoLchNRk6TW0pEvA==}
+  '@blocklet/meta@1.17.4':
+    resolution: {integrity: sha512-qTZaGKUHDdMmi726mYKf1XwYqTohA5de4PmSLeBhsO+fuQPJiPE/85IpenoyfvHMzAZWkbPwh4Sq7wCDI8o9AQ==}
 
-  '@blocklet/payment-js@1.22.29':
-    resolution: {integrity: sha512-ExtrAE62ghj/AThCKGFfe5t95/cr9IuaEtRCNvhaTweqYYRJhu5SHRS9LsPEA5uZlThgWiyZCDamxx6fOCv2uw==}
+  '@blocklet/payment-js@1.22.30':
+    resolution: {integrity: sha512-d7MJVs1rvFWfV7A7AEBIgmTUZ7B6iWCtTPqoEFnDIJo5BD8n6tViaVqxGVc1x//zzsKRm16UsTiRxQYOQUYy9g==}
 
-  '@blocklet/payment-react@1.22.29':
-    resolution: {integrity: sha512-Y31ED/lRBCSgjY524ld0AJhsa0ThTMMqe/ga96gjB3/rpQuU5kSdm7PDNzz6kQNRwT6snpYrdqbYpry97CIhXQ==}
+  '@blocklet/payment-react@1.22.30':
+    resolution: {integrity: sha512-YcokO6NEnEAHRCO65F1DNGgWs5kqIucTHyYPCgOlTdT5q1uKUSTYT6vClYUIPtZIrfxq18L5WxCHmIc6IIIu5Q==}
     peerDependencies:
       react: ^19.1.0
 
-  '@blocklet/payment-types@1.22.29':
-    resolution: {integrity: sha512-ZDf/VRS7X/YAFCr5CIRZGNcI+2ZUQbtQ0x27S69JpgRI6j2l34Bw/2E2LNuVElWeJfruA2HDh/5Svbh12Vs9Qw==}
+  '@blocklet/payment-types@1.22.30':
+    resolution: {integrity: sha512-dQFEEejyWSKCNuo5jcdbS4TQeNLqrwj6bdTMLNesJbXZbWrOnPcU1h+tLb3RmMmspSEMLUBamEBbAdqUw2xVNg==}
 
-  '@blocklet/sdk@1.17.4-beta-20251204-152224-243ff54f':
-    resolution: {integrity: sha512-qboJsFU0aQ2kN+F5wDoBVM5by8o8hrAGcgYn2LbJSUAFXw+05mATaTT2t2ezlqoNNIEmwFZr6YD8NRx0UcD2iA==}
+  '@blocklet/sdk@1.17.4':
+    resolution: {integrity: sha512-li5o5NbiNTx3C/fPNcVlgvnxqwf7VRc4szZ5jMqjxTQ0W5GTs4F+D9OUOPkK97J+ndhtRd6kMoZa7LBiUYO1Ng==}
 
-  '@blocklet/server-js@1.17.4-beta-20251204-152224-243ff54f':
-    resolution: {integrity: sha512-q3DgYhaoqV3d6Mm1mjRpjBgrDa4nyGtqMGnFDzp/u25wKcgoeaoEe8MEZejHHqGTAXDMsMaS66/vgtdioTVUGQ==}
+  '@blocklet/server-js@1.17.4':
+    resolution: {integrity: sha512-wGK5/I0FxRcP36r2MreNSqpogtCkj/xOYOQxqBVtz7cUbHWmrfFOF2CSxKcpJMdT8VrhVcs0HIjuXeQZsZ8HPg==}
 
   '@blocklet/theme@3.2.11':
     resolution: {integrity: sha512-IaCqUqMA0JOSJ0t6zRhuMBiUrV/PN+0ICmnX0T4A9Eo7tGe9TPUj4skTdDN0QK/n+aaQFZL9Vvuc/YUJ9Zf4Ww==}
@@ -1666,7 +1663,7 @@ packages:
     peerDependencies:
       '@arcblock/did-connect-react': ^3.1.0
       '@arcblock/ux': ^3.1.0
-      '@blocklet/js-sdk': ^1.17.4-beta-20251204-152224-243ff54f
+      '@blocklet/js-sdk': ^1.17.4
       '@emotion/react': ^11.14.0
       '@emotion/styled': ^11.14.0
       '@mui/icons-material': ^7.2.0
@@ -10423,16 +10420,9 @@ snapshots:
 
   '@abtnode/constant@1.17.2': {}
 
-  '@abtnode/constant@1.17.4-beta-20251204-152224-243ff54f': {}
+  '@abtnode/constant@1.17.4': {}
 
-  '@abtnode/cron@1.17.3':
-    dependencies:
-      cron: 3.5.0
-      debug: 4.4.3(supports-color@5.5.0)
-    transitivePeerDependencies:
-      - supports-color
-
-  '@abtnode/cron@1.17.4-beta-20251204-152224-243ff54f':
+  '@abtnode/cron@1.17.4':
     dependencies:
       cron: 3.5.0
       debug: 4.4.3(supports-color@5.5.0)
@@ -10447,7 +10437,7 @@ snapshots:
       - bluebird
       - supports-color
 
-  '@abtnode/db-cache@1.17.4-beta-20251204-152224-243ff54f':
+  '@abtnode/db-cache@1.17.4':
     dependencies:
       '@types/proper-lockfile': 4.1.4
       proper-lockfile: 4.1.2
@@ -10457,10 +10447,10 @@ snapshots:
       - bluebird
       - supports-color
 
-  '@abtnode/db@1.17.4-beta-20251204-152224-243ff54f':
+  '@abtnode/db@1.17.4':
     dependencies:
-      '@abtnode/logger': 1.17.4-beta-20251204-152224-243ff54f
-      '@abtnode/util': 1.17.4-beta-20251204-152224-243ff54f
+      '@abtnode/logger': 1.17.4
+      '@abtnode/util': 1.17.4
       '@nedb/core': 2.1.5
     transitivePeerDependencies:
       - bluebird
@@ -10472,7 +10462,7 @@ snapshots:
     dependencies:
       joi: 17.12.2
 
-  '@abtnode/docker-utils@1.17.4-beta-20251204-152224-243ff54f':
+  '@abtnode/docker-utils@1.17.4':
     dependencies:
       joi: 17.12.2
 
@@ -10480,10 +10470,10 @@ snapshots:
     dependencies:
       moment: 2.30.1
 
-  '@abtnode/logger@1.17.4-beta-20251204-152224-243ff54f':
+  '@abtnode/logger@1.17.4':
     dependencies:
-      '@abtnode/constant': 1.17.4-beta-20251204-152224-243ff54f
-      '@abtnode/util': 1.17.4-beta-20251204-152224-243ff54f
+      '@abtnode/constant': 1.17.4
+      '@abtnode/util': 1.17.4
       '@abtnode/winston-daily-rotate-file': 5.0.1(winston@3.13.0)
       debug: 4.4.3(supports-color@5.5.0)
       fast-safe-stringify: 2.1.1
@@ -10498,10 +10488,10 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@abtnode/queue@1.17.4-beta-20251204-152224-243ff54f':
+  '@abtnode/queue@1.17.4':
     dependencies:
-      '@abtnode/db': 1.17.4-beta-20251204-152224-243ff54f
-      '@abtnode/util': 1.17.4-beta-20251204-152224-243ff54f
+      '@abtnode/db': 1.17.4
+      '@abtnode/util': 1.17.4
       '@blocklet/error': 0.3.3
       debug: 4.4.3(supports-color@5.5.0)
       fastq: 1.19.1
@@ -10519,7 +10509,7 @@ snapshots:
       '@arcblock/did': 1.27.6
       '@arcblock/event-hub': 1.27.6
       '@arcblock/pm2': 6.0.12
-      '@blocklet/constant': 1.17.4-beta-20251204-152224-243ff54f
+      '@blocklet/constant': 1.17.4
       '@blocklet/error': 0.3.2
       '@blocklet/meta': 1.17.2
       '@blocklet/xss': 0.3.11
@@ -10584,16 +10574,16 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@abtnode/util@1.17.4-beta-20251204-152224-243ff54f':
+  '@abtnode/util@1.17.4':
     dependencies:
-      '@abtnode/constant': 1.17.4-beta-20251204-152224-243ff54f
-      '@abtnode/db-cache': 1.17.4-beta-20251204-152224-243ff54f
+      '@abtnode/constant': 1.17.4
+      '@abtnode/db-cache': 1.17.4
       '@arcblock/did': 1.27.6
       '@arcblock/event-hub': 1.27.6
       '@arcblock/pm2': 6.0.12
-      '@blocklet/constant': 1.17.4-beta-20251204-152224-243ff54f
+      '@blocklet/constant': 1.17.4
       '@blocklet/error': 0.3.3
-      '@blocklet/meta': 1.17.4-beta-20251204-152224-243ff54f
+      '@blocklet/meta': 1.17.4
       '@blocklet/xss': 0.3.11
       '@ocap/client': 1.27.6
       '@ocap/mcrypto': 1.27.14
@@ -10666,9 +10656,9 @@ snapshots:
 
   '@adobe/css-tools@4.4.0': {}
 
-  '@aigne/afs-history@1.1.1(@opentelemetry/api@1.9.0)(bun-types@1.2.21(@types/react@18.3.9))(sqlite3@5.1.7)':
+  '@aigne/afs-history@1.1.3-beta(@opentelemetry/api@1.9.0)(bun-types@1.2.21(@types/react@18.3.9))(sqlite3@5.1.7)':
     dependencies:
-      '@aigne/afs': 1.2.2
+      '@aigne/afs': 1.3.0-beta
       '@aigne/sqlite': 0.4.7(@opentelemetry/api@1.9.0)(bun-types@1.2.21(@types/react@18.3.9))(sqlite3@5.1.7)
       '@aigne/uuid': 13.0.1
       ufo: 1.6.1
@@ -10704,27 +10694,27 @@ snapshots:
       - sqlite3
       - utf-8-validate
 
-  '@aigne/afs@1.2.2':
+  '@aigne/afs@1.3.0-beta':
     dependencies:
       strict-event-emitter: 0.5.1
       ufo: 1.6.1
 
-  '@aigne/aigne-hub@0.10.12(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)':
+  '@aigne/aigne-hub@0.10.15-beta(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)':
     dependencies:
-      '@aigne/anthropic': 0.14.12(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)
-      '@aigne/bedrock': 0.10.17(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)
-      '@aigne/core': 1.69.2(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)
-      '@aigne/deepseek': 0.7.58(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
-      '@aigne/doubao': 1.2.2(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
-      '@aigne/gemini': 0.14.12(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)
-      '@aigne/ideogram': 0.4.12(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)
-      '@aigne/ollama': 0.7.58(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
-      '@aigne/open-router': 0.7.58(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
-      '@aigne/openai': 0.16.12(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
+      '@aigne/anthropic': 0.14.15-beta(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)
+      '@aigne/bedrock': 0.10.20-beta(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)
+      '@aigne/core': 1.71.0-beta(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)
+      '@aigne/deepseek': 0.7.61-beta(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
+      '@aigne/doubao': 1.2.5-beta(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
+      '@aigne/gemini': 0.14.15-beta(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)
+      '@aigne/ideogram': 0.4.15-beta(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)
+      '@aigne/ollama': 0.7.61-beta(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
+      '@aigne/open-router': 0.7.61-beta(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
+      '@aigne/openai': 0.16.15-beta(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
       '@aigne/platform-helpers': 0.6.5
-      '@aigne/poe': 1.1.2(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
-      '@aigne/transport': 0.15.21(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
-      '@aigne/xai': 0.7.58(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
+      '@aigne/poe': 1.1.5-beta(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
+      '@aigne/transport': 0.15.24-beta(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
+      '@aigne/xai': 0.7.61-beta(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
       '@smithy/node-http-handler': 4.4.3
       https-proxy-agent: 7.0.6
       ufo: 1.6.1
@@ -10767,9 +10757,9 @@ snapshots:
       - utf-8-validate
       - ws
 
-  '@aigne/anthropic@0.14.12(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)':
+  '@aigne/anthropic@0.14.15-beta(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)':
     dependencies:
-      '@aigne/core': 1.69.2(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)
+      '@aigne/core': 1.71.0-beta(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)
       '@aigne/platform-helpers': 0.6.5
       '@anthropic-ai/sdk': 0.63.0(zod@3.25.76)
       zod: 3.25.76
@@ -10808,11 +10798,12 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@aigne/bedrock@0.10.17(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)':
+  '@aigne/bedrock@0.10.20-beta(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)':
     dependencies:
-      '@aigne/core': 1.69.2(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)
+      '@aigne/core': 1.71.0-beta(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)
       '@aigne/uuid': 13.0.1
       '@aws-sdk/client-bedrock-runtime': 3.893.0
+      yaml: 2.8.1
       zod: 3.25.76
     transitivePeerDependencies:
       - '@aws-sdk/client-rds-data'
@@ -10850,12 +10841,12 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@aigne/core@1.69.2(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)':
+  '@aigne/core@1.71.0-beta(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)':
     dependencies:
-      '@aigne/afs': 1.2.2
-      '@aigne/afs-history': 1.1.1(@opentelemetry/api@1.9.0)(bun-types@1.2.21(@types/react@18.3.9))(sqlite3@5.1.7)
+      '@aigne/afs': 1.3.0-beta
+      '@aigne/afs-history': 1.1.3-beta(@opentelemetry/api@1.9.0)(bun-types@1.2.21(@types/react@18.3.9))(sqlite3@5.1.7)
       '@aigne/json-schema-to-zod': 1.3.3(zod@3.25.76)
-      '@aigne/observability-api': 0.11.11(@libsql/client@0.15.15)(bun-types@1.2.21(@types/react@18.3.9))(sqlite3@5.1.7)
+      '@aigne/observability-api': 0.11.12(@libsql/client@0.15.15)(bun-types@1.2.21(@types/react@18.3.9))(sqlite3@5.1.7)
       '@aigne/platform-helpers': 0.6.5
       '@aigne/uuid': 13.0.1
       '@inquirer/prompts': 7.8.6(@types/node@22.4.1)
@@ -10918,9 +10909,9 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@aigne/deepseek@0.7.58(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)':
+  '@aigne/deepseek@0.7.61-beta(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)':
     dependencies:
-      '@aigne/openai': 0.16.12(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
+      '@aigne/openai': 0.16.15-beta(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
     transitivePeerDependencies:
       - '@aws-sdk/client-rds-data'
       - '@cloudflare/workers-types'
@@ -10957,9 +10948,9 @@ snapshots:
       - utf-8-validate
       - ws
 
-  '@aigne/doubao@1.2.2(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)':
+  '@aigne/doubao@1.2.5-beta(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)':
     dependencies:
-      '@aigne/openai': 0.16.12(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
+      '@aigne/openai': 0.16.15-beta(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
       ufo: 1.6.1
       zod: 3.25.76
     transitivePeerDependencies:
@@ -10998,12 +10989,13 @@ snapshots:
       - utf-8-validate
       - ws
 
-  '@aigne/gemini@0.14.12(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)':
+  '@aigne/gemini@0.14.15-beta(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)':
     dependencies:
-      '@aigne/core': 1.69.2(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)
+      '@aigne/core': 1.71.0-beta(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)
       '@aigne/platform-helpers': 0.6.5
       '@aigne/uuid': 13.0.1
       '@google/genai': 1.30.0
+      yaml: 2.8.1
       zod: 3.25.76
       zod-to-json-schema: 3.24.6(zod@3.25.76)
     transitivePeerDependencies:
@@ -11042,9 +11034,9 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@aigne/ideogram@0.4.12(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)':
+  '@aigne/ideogram@0.4.15-beta(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)':
     dependencies:
-      '@aigne/core': 1.69.2(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)
+      '@aigne/core': 1.71.0-beta(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)
       ufo: 1.6.1
       zod: 3.25.67
     transitivePeerDependencies:
@@ -11086,7 +11078,7 @@ snapshots:
     dependencies:
       zod: 3.25.76
 
-  '@aigne/observability-api@0.11.11(@libsql/client@0.15.15)(bun-types@1.2.21(@types/react@18.3.9))(sqlite3@5.1.7)':
+  '@aigne/observability-api@0.11.12(@libsql/client@0.15.15)(bun-types@1.2.21(@types/react@18.3.9))(sqlite3@5.1.7)':
     dependencies:
       '@aigne/sqlite': 0.4.7(@opentelemetry/api@1.9.0)(bun-types@1.2.21(@types/react@18.3.9))(sqlite3@5.1.7)
       '@aigne/uuid': 13.0.1
@@ -11141,9 +11133,9 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@aigne/ollama@0.7.58(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)':
+  '@aigne/ollama@0.7.61-beta(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)':
     dependencies:
-      '@aigne/openai': 0.16.12(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
+      '@aigne/openai': 0.16.15-beta(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
     transitivePeerDependencies:
       - '@aws-sdk/client-rds-data'
       - '@cloudflare/workers-types'
@@ -11180,9 +11172,9 @@ snapshots:
       - utf-8-validate
       - ws
 
-  '@aigne/open-router@0.7.58(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)':
+  '@aigne/open-router@0.7.61-beta(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)':
     dependencies:
-      '@aigne/openai': 0.16.12(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
+      '@aigne/openai': 0.16.15-beta(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
     transitivePeerDependencies:
       - '@aws-sdk/client-rds-data'
       - '@cloudflare/workers-types'
@@ -11219,9 +11211,9 @@ snapshots:
       - utf-8-validate
       - ws
 
-  '@aigne/openai@0.16.12(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)':
+  '@aigne/openai@0.16.15-beta(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)':
     dependencies:
-      '@aigne/core': 1.69.2(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)
+      '@aigne/core': 1.71.0-beta(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)
       '@aigne/platform-helpers': 0.6.5
       '@aigne/uuid': 13.0.1
       openai: 6.6.0(ws@8.18.0)(zod@3.25.76)
@@ -11268,9 +11260,9 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@aigne/poe@1.1.2(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)':
+  '@aigne/poe@1.1.5-beta(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)':
     dependencies:
-      '@aigne/openai': 0.16.12(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
+      '@aigne/openai': 0.16.15-beta(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
     transitivePeerDependencies:
       - '@aws-sdk/client-rds-data'
       - '@cloudflare/workers-types'
@@ -11344,9 +11336,9 @@ snapshots:
       - sqlite3
       - utf-8-validate
 
-  '@aigne/transport@0.15.21(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)':
+  '@aigne/transport@0.15.24-beta(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)':
     dependencies:
-      '@aigne/openai': 0.16.12(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
+      '@aigne/openai': 0.16.15-beta(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
       content-type: 1.0.5
       p-retry: 7.0.0
       raw-body: 3.0.1
@@ -11389,9 +11381,9 @@ snapshots:
 
   '@aigne/uuid@13.0.1': {}
 
-  '@aigne/xai@0.7.58(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)':
+  '@aigne/xai@0.7.61-beta(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)':
     dependencies:
-      '@aigne/openai': 0.16.12(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
+      '@aigne/openai': 0.16.15-beta(@libsql/client@0.15.15)(@types/node@22.4.1)(bun-types@1.2.21(@types/react@18.3.9))(chokidar@3.6.0)(sqlite3@5.1.7)(ws@8.18.0)
     transitivePeerDependencies:
       - '@aws-sdk/client-rds-data'
       - '@cloudflare/workers-types'
@@ -11461,7 +11453,7 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@arcblock/did-connect-react@3.2.11(@arcblock/ux@3.2.11(f10e9cc8b65c45160d672b76621e82bc))(@blocklet/js-sdk@1.17.4-beta-20251204-152224-243ff54f)(@blocklet/theme@3.2.11)(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react@19.1.0))(@mui/material@7.2.0(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)':
+  '@arcblock/did-connect-react@3.2.11(@arcblock/ux@3.2.11(f10e9cc8b65c45160d672b76621e82bc))(@blocklet/js-sdk@1.17.4)(@blocklet/theme@3.2.11)(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react@19.1.0))(@mui/material@7.2.0(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)':
     dependencies:
       '@arcblock/bridge': 3.2.11
       '@arcblock/did': 1.27.6
@@ -11469,7 +11461,7 @@ snapshots:
       '@arcblock/react-hooks': 3.2.11
       '@arcblock/ux': 3.2.11(f10e9cc8b65c45160d672b76621e82bc)
       '@arcblock/ws': 1.27.6
-      '@blocklet/js-sdk': 1.17.4-beta-20251204-152224-243ff54f
+      '@blocklet/js-sdk': 1.17.4
       '@blocklet/theme': 3.2.11
       '@emotion/react': 11.14.0(@types/react@18.3.9)(react@19.1.0)
       '@emotion/styled': 11.14.1(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react@19.1.0)
@@ -11730,7 +11722,7 @@ snapshots:
       '@arcblock/icons': 3.2.11(react@19.1.0)
       '@arcblock/nft-display': 3.2.11
       '@arcblock/react-hooks': 3.2.11
-      '@blocklet/js-sdk': 1.17.4-beta-20251204-152224-243ff54f(debug@4.4.3)
+      '@blocklet/js-sdk': 1.17.4(debug@4.4.3)
       '@blocklet/theme': 3.2.11
       '@emotion/react': 11.14.0(@types/react@18.3.9)(react@19.1.0)
       '@emotion/styled': 11.14.1(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react@19.1.0)
@@ -13428,15 +13420,15 @@ snapshots:
       '@babel/helper-string-parser': 7.27.1
       '@babel/helper-validator-identifier': 7.27.1
 
-  '@blocklet/constant@1.17.4-beta-20251204-152224-243ff54f': {}
+  '@blocklet/constant@1.17.4': {}
 
-  '@blocklet/did-space-react@1.2.3(3266cd1f5d072e32628f80d41766f519)':
+  '@blocklet/did-space-react@1.2.3(@arcblock/did-connect-react@3.2.11(@arcblock/ux@3.2.11(f10e9cc8b65c45160d672b76621e82bc))(@blocklet/js-sdk@1.17.4)(@blocklet/theme@3.2.11)(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react@19.1.0))(@mui/material@7.2.0(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(@arcblock/ux@3.2.11(f10e9cc8b65c45160d672b76621e82bc))(@blocklet/js-sdk@1.17.4)(@blocklet/sdk@1.17.4)(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)':
     dependencies:
       '@arcblock/did': 1.27.6
-      '@arcblock/did-connect-react': 3.2.11(@arcblock/ux@3.2.11(f10e9cc8b65c45160d672b76621e82bc))(@blocklet/js-sdk@1.17.4-beta-20251204-152224-243ff54f)(@blocklet/theme@3.2.11)(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react@19.1.0))(@mui/material@7.2.0(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+      '@arcblock/did-connect-react': 3.2.11(@arcblock/ux@3.2.11(f10e9cc8b65c45160d672b76621e82bc))(@blocklet/js-sdk@1.17.4)(@blocklet/theme@3.2.11)(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react@19.1.0))(@mui/material@7.2.0(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       '@arcblock/ux': 3.2.11(f10e9cc8b65c45160d672b76621e82bc)
-      '@blocklet/js-sdk': 1.17.4-beta-20251204-152224-243ff54f
-      '@blocklet/sdk': 1.17.4-beta-20251204-152224-243ff54f
+      '@blocklet/js-sdk': 1.17.4
+      '@blocklet/sdk': 1.17.4
       '@did-space/constants': 1.2.3
       '@mui/icons-material': 7.2.0(@mui/material@7.2.0(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(@types/react@18.3.9)(react@19.1.0)
       '@mui/lab': 7.0.0-beta.14(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react@19.1.0))(@mui/material@7.2.0(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(@types/react@18.3.9)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
@@ -13463,19 +13455,19 @@ snapshots:
       - react-dom
       - supports-color
 
-  '@blocklet/env@1.17.4-beta-20251204-152224-243ff54f':
+  '@blocklet/env@1.17.4':
     dependencies:
-      '@blocklet/constant': 1.17.4-beta-20251204-152224-243ff54f
+      '@blocklet/constant': 1.17.4
 
   '@blocklet/error@0.3.2': {}
 
   '@blocklet/error@0.3.3': {}
 
-  '@blocklet/js-sdk@1.17.4-beta-20251204-152224-243ff54f':
+  '@blocklet/js-sdk@1.17.4':
     dependencies:
-      '@abtnode/constant': 1.17.4-beta-20251204-152224-243ff54f
+      '@abtnode/constant': 1.17.4
       '@arcblock/did': 1.27.6
-      '@blocklet/meta': 1.17.4-beta-20251204-152224-243ff54f
+      '@blocklet/meta': 1.17.4
       '@ocap/wallet': 1.27.12
       axios: 1.7.4
       is-url: 1.2.4
@@ -13491,11 +13483,11 @@ snapshots:
       - debug
       - supports-color
 
-  '@blocklet/js-sdk@1.17.4-beta-20251204-152224-243ff54f(debug@4.4.3)':
+  '@blocklet/js-sdk@1.17.4(debug@4.4.3)':
     dependencies:
-      '@abtnode/constant': 1.17.4-beta-20251204-152224-243ff54f
+      '@abtnode/constant': 1.17.4
       '@arcblock/did': 1.27.6
-      '@blocklet/meta': 1.17.4-beta-20251204-152224-243ff54f
+      '@blocklet/meta': 1.17.4
       '@ocap/wallet': 1.27.12
       axios: 1.7.4(debug@4.4.3)
       is-url: 1.2.4
@@ -13511,9 +13503,9 @@ snapshots:
       - debug
       - supports-color
 
-  '@blocklet/logger@1.17.4-beta-20251204-152224-243ff54f':
+  '@blocklet/logger@1.17.4':
     dependencies:
-      '@abtnode/logger': 1.17.4-beta-20251204-152224-243ff54f
+      '@abtnode/logger': 1.17.4
     transitivePeerDependencies:
       - bluebird
       - bufferutil
@@ -13529,7 +13521,7 @@ snapshots:
       '@arcblock/did-ext': 1.27.6
       '@arcblock/did-util': 1.27.6
       '@arcblock/jwt': 1.27.6
-      '@blocklet/constant': 1.17.4-beta-20251204-152224-243ff54f
+      '@blocklet/constant': 1.17.4
       '@ocap/asset': 1.27.6
       '@ocap/mcrypto': 1.27.14
       '@ocap/types': 1.27.6
@@ -13561,16 +13553,16 @@ snapshots:
       - bluebird
       - supports-color
 
-  '@blocklet/meta@1.17.4-beta-20251204-152224-243ff54f':
+  '@blocklet/meta@1.17.4':
     dependencies:
-      '@abtnode/constant': 1.17.4-beta-20251204-152224-243ff54f
-      '@abtnode/db-cache': 1.17.4-beta-20251204-152224-243ff54f
-      '@abtnode/docker-utils': 1.17.4-beta-20251204-152224-243ff54f
+      '@abtnode/constant': 1.17.4
+      '@abtnode/db-cache': 1.17.4
+      '@abtnode/docker-utils': 1.17.4
       '@arcblock/did': 1.27.6
       '@arcblock/did-ext': 1.27.6
       '@arcblock/did-util': 1.27.6
       '@arcblock/jwt': 1.27.6
-      '@blocklet/constant': 1.17.4-beta-20251204-152224-243ff54f
+      '@blocklet/constant': 1.17.4
       '@ocap/asset': 1.27.6
       '@ocap/mcrypto': 1.27.14
       '@ocap/types': 1.27.6
@@ -13602,26 +13594,26 @@ snapshots:
       - bluebird
       - supports-color
 
-  '@blocklet/payment-js@1.22.29':
+  '@blocklet/payment-js@1.22.30':
     dependencies:
-      '@blocklet/constant': 1.17.4-beta-20251204-152224-243ff54f
-      '@blocklet/payment-types': 1.22.29
-      '@blocklet/sdk': 1.17.4-beta-20251204-152224-243ff54f
+      '@blocklet/constant': 1.17.4
+      '@blocklet/payment-types': 1.22.30
+      '@blocklet/sdk': 1.17.4
     transitivePeerDependencies:
       - bluebird
       - bufferutil
       - supports-color
       - utf-8-validate
 
-  '@blocklet/payment-react@1.22.29(@blocklet/js-sdk@1.17.4-beta-20251204-152224-243ff54f)(@blocklet/sdk@1.17.4-beta-20251204-152224-243ff54f)(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react@19.1.0))(@mui/utils@7.2.0(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(immer@10.1.3)(prop-types@15.8.1)(react-dom@19.1.0(react@19.1.0))(react-router-dom@6.26.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react@19.1.0)(terser@5.29.2)(use-sync-external-store@1.5.0(react@19.1.0))(vite@7.0.2(@types/node@22.4.1)(jiti@1.21.6)(terser@5.29.2)(tsx@4.20.3)(yaml@2.8.1))':
+  '@blocklet/payment-react@1.22.30(@blocklet/js-sdk@1.17.4)(@blocklet/sdk@1.17.4)(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react@19.1.0))(@mui/utils@7.2.0(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(immer@10.1.3)(prop-types@15.8.1)(react-dom@19.1.0(react@19.1.0))(react-router-dom@6.26.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react@19.1.0)(terser@5.29.2)(use-sync-external-store@1.5.0(react@19.1.0))(vite@7.0.2(@types/node@22.4.1)(jiti@1.21.6)(terser@5.29.2)(tsx@4.20.3)(yaml@2.8.1))':
     dependencies:
       '@arcblock/bridge': 3.2.11
-      '@arcblock/did-connect-react': 3.2.11(@arcblock/ux@3.2.11(f10e9cc8b65c45160d672b76621e82bc))(@blocklet/js-sdk@1.17.4-beta-20251204-152224-243ff54f)(@blocklet/theme@3.2.11)(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react@19.1.0))(@mui/material@7.2.0(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+      '@arcblock/did-connect-react': 3.2.11(@arcblock/ux@3.2.11(f10e9cc8b65c45160d672b76621e82bc))(@blocklet/js-sdk@1.17.4)(@blocklet/theme@3.2.11)(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react@19.1.0))(@mui/material@7.2.0(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       '@arcblock/react-hooks': 3.2.11
       '@arcblock/ux': 3.2.11(f10e9cc8b65c45160d672b76621e82bc)
       '@arcblock/ws': 1.27.6
       '@blocklet/theme': 3.2.11
-      '@blocklet/ui-react': 3.2.11(aeed57360c71fde3ddbc2ae015f2f201)
+      '@blocklet/ui-react': 3.2.11(39e4b017643ea1c1277bd0c8838a9e74)
       '@mui/icons-material': 7.2.0(@mui/material@7.2.0(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(@types/react@18.3.9)(react@19.1.0)
       '@mui/lab': 7.0.0-beta.14(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react@19.1.0))(@mui/material@7.2.0(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(@types/react@18.3.9)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       '@mui/material': 7.2.0(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
@@ -13667,23 +13659,23 @@ snapshots:
       - utf-8-validate
       - vite
 
-  '@blocklet/payment-types@1.22.29': {}
+  '@blocklet/payment-types@1.22.30': {}
 
-  '@blocklet/sdk@1.17.4-beta-20251204-152224-243ff54f':
+  '@blocklet/sdk@1.17.4':
     dependencies:
-      '@abtnode/constant': 1.17.4-beta-20251204-152224-243ff54f
-      '@abtnode/db-cache': 1.17.4-beta-20251204-152224-243ff54f
-      '@abtnode/util': 1.17.4-beta-20251204-152224-243ff54f
+      '@abtnode/constant': 1.17.4
+      '@abtnode/db-cache': 1.17.4
+      '@abtnode/util': 1.17.4
       '@arcblock/did': 1.27.6
       '@arcblock/did-connect-js': 1.27.6
       '@arcblock/did-ext': 1.27.6
       '@arcblock/jwt': 1.27.6
       '@arcblock/ws': 1.27.6
-      '@blocklet/constant': 1.17.4-beta-20251204-152224-243ff54f
-      '@blocklet/env': 1.17.4-beta-20251204-152224-243ff54f
+      '@blocklet/constant': 1.17.4
+      '@blocklet/env': 1.17.4
       '@blocklet/error': 0.3.3
-      '@blocklet/meta': 1.17.4-beta-20251204-152224-243ff54f
-      '@blocklet/server-js': 1.17.4-beta-20251204-152224-243ff54f
+      '@blocklet/meta': 1.17.4
+      '@blocklet/server-js': 1.17.4
       '@blocklet/theme': 3.2.11
       '@did-connect/authenticator': 2.2.8
       '@did-connect/handler': 2.2.8(debug@4.4.3)
@@ -13712,7 +13704,7 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@blocklet/server-js@1.17.4-beta-20251204-152224-243ff54f':
+  '@blocklet/server-js@1.17.4':
     dependencies:
       '@arcblock/sdk-util': 0.36.1
       '@ocap/util': 1.27.6
@@ -13732,19 +13724,19 @@ snapshots:
     dependencies:
       deepmerge: 4.3.1
 
-  '@blocklet/ui-react@3.2.11(aeed57360c71fde3ddbc2ae015f2f201)':
+  '@blocklet/ui-react@3.2.11(39e4b017643ea1c1277bd0c8838a9e74)':
     dependencies:
       '@abtnode/constant': 1.17.2
       '@abtnode/util': 1.17.2
       '@arcblock/bridge': 3.2.11
-      '@arcblock/did-connect-react': 3.2.11(@arcblock/ux@3.2.11(f10e9cc8b65c45160d672b76621e82bc))(@blocklet/js-sdk@1.17.4-beta-20251204-152224-243ff54f)(@blocklet/theme@3.2.11)(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react@19.1.0))(@mui/material@7.2.0(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+      '@arcblock/did-connect-react': 3.2.11(@arcblock/ux@3.2.11(f10e9cc8b65c45160d672b76621e82bc))(@blocklet/js-sdk@1.17.4)(@blocklet/theme@3.2.11)(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react@19.1.0))(@mui/material@7.2.0(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       '@arcblock/icons': 3.2.11(react@19.1.0)
       '@arcblock/react-hooks': 3.2.11
       '@arcblock/ux': 3.2.11(f10e9cc8b65c45160d672b76621e82bc)
       '@arcblock/ws': 1.27.6
-      '@blocklet/constant': 1.17.4-beta-20251204-152224-243ff54f
-      '@blocklet/did-space-react': 1.2.3(3266cd1f5d072e32628f80d41766f519)
-      '@blocklet/js-sdk': 1.17.4-beta-20251204-152224-243ff54f
+      '@blocklet/constant': 1.17.4
+      '@blocklet/did-space-react': 1.2.3(@arcblock/did-connect-react@3.2.11(@arcblock/ux@3.2.11(f10e9cc8b65c45160d672b76621e82bc))(@blocklet/js-sdk@1.17.4)(@blocklet/theme@3.2.11)(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react@19.1.0))(@mui/material@7.2.0(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(@arcblock/ux@3.2.11(f10e9cc8b65c45160d672b76621e82bc))(@blocklet/js-sdk@1.17.4)(@blocklet/sdk@1.17.4)(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+      '@blocklet/js-sdk': 1.17.4
       '@emotion/react': 11.14.0(@types/react@18.3.9)(react@19.1.0)
       '@emotion/styled': 11.14.1(@emotion/react@11.14.0(@types/react@18.3.9)(react@19.1.0))(@types/react@18.3.9)(react@19.1.0)
       '@iconify-icons/logos': 1.2.36
@@ -13790,10 +13782,10 @@ snapshots:
 
   '@blocklet/uploader-server@0.3.14(@tus/file-store@1.0.0(@tus/server@1.0.0))(@tus/server@1.0.0)(@uppy/companion@4.15.1)(axios@1.7.4)':
     dependencies:
-      '@abtnode/cron': 1.17.3
-      '@blocklet/constant': 1.17.4-beta-20251204-152224-243ff54f
-      '@blocklet/logger': 1.17.4-beta-20251204-152224-243ff54f
-      '@blocklet/sdk': 1.17.4-beta-20251204-152224-243ff54f
+      '@abtnode/cron': 1.17.4
+      '@blocklet/constant': 1.17.4
+      '@blocklet/logger': 1.17.4
+      '@blocklet/sdk': 1.17.4
       '@tus/file-store': 1.0.0(@tus/server@1.0.0)
       '@tus/server': 1.0.0
       '@uppy/companion': 4.15.1
@@ -16555,7 +16547,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@vitejs/plugin-react@4.6.0(vite@7.0.2(jiti@1.21.6)(terser@5.29.2)(tsx@4.20.3)(yaml@2.8.1))':
+  '@vitejs/plugin-react@4.6.0(vite@7.0.2(@types/node@22.4.1)(jiti@1.21.6)(terser@5.29.2)(tsx@4.20.3)(yaml@2.8.1))':
     dependencies:
       '@babel/core': 7.28.0
       '@babel/plugin-transform-react-jsx-self': 7.27.1(@babel/core@7.28.0)

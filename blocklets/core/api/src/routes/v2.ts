@@ -561,7 +561,7 @@ router.post(
           await checkUserCreditBalance({ userDid });
         }
 
-        const usageData = await processEmbeddings(req, res);
+        const usageData = await processEmbeddings(req);
 
         if (usageData && userDid) {
           await createUsageAndCompleteModelCall({
@@ -583,6 +583,8 @@ router.post(
             return undefined;
           });
         }
+
+        res.json({ data: usageData?.data });
       },
     }),
   ])

@@ -1,8 +1,10 @@
-## 0.6.22 (2025-12-5)
+## 0.6.23 (2025-12-8)
 
-- chore: update  dependencies
-- feat: add model availability check in API status route and refine welcome credit validation
-- fix: handle optional chaining for payment settings and return correct payment link
+- fix: move response handling from processEmbeddings to route layer
+
+## 0.6.22 (2025-12-7)
+
+- chore: update deps
 
 ## 0.6.21 (2025-12-3)
 
