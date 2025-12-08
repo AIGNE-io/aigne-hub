@@ -35,7 +35,7 @@ export const getPaymentKitPrefix = () => {
 const selfNotificationEvents = ['customer.credit_grant.granted', 'checkout.session.completed'];
 const ensureNotificationSettings = async () => {
   const settings = await payment.settings.retrieve(AIGNE_HUB_DID);
-  const missingEvents = difference(selfNotificationEvents, settings.settings.include_events || []);
+  const missingEvents = difference(selfNotificationEvents, settings?.settings?.include_events || []);
   if (settings && missingEvents.length > 0) {
     await payment.settings.update(settings.id, {
       settings: {
@@ -423,7 +423,7 @@ export async function getCreditPaymentLink() {
       paymentLink: url,
     });
     await updateCreditPaymentLinkNotificationSettings(url);
-    return Config.creditPaymentLink;
+    return url;
   }
   // fallback to default payment link
   const link = await ensureDefaultCreditPaymentLink();
