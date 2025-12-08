@@ -447,7 +447,9 @@ export default function Chat() {
         messages={messages}
         onSubmit={(prompt) => {
           if (!session.user) {
-            session.login();
+            session.login(() => {
+              add(prompt);
+            });
             return;
           }
 
