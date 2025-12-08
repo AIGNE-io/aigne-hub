@@ -1,3 +1,7 @@
+## 0.6.23 (2025-12-8)
+
+- fix: move response handling from processEmbeddings to route layer
+
 ## 0.6.22 (2025-12-7)
 
 - chore: update deps
