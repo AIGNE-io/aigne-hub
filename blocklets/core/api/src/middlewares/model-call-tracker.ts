@@ -1,4 +1,5 @@
 import { getReqModel } from '@api/libs/ai-provider';
+import { CREDIT_DECIMAL_PLACES } from '@api/libs/env';
 import logger from '@api/libs/logger';
 import { ensureModelWithProvider, getProvidersForModel, modelHasProvider } from '@api/libs/provider-rotation';
 import { getCurrentUnixTimestamp } from '@api/libs/timestamp';
@@ -267,7 +268,7 @@ async function createModelCallContext({
         } else {
           totalUsage = new BigNumber(result.promptTokens || 0)
             .plus(result.completionTokens || 0)
-            .decimalPlaces(2)
+            .decimalPlaces(CREDIT_DECIMAL_PLACES)
             .toNumber();
         }
         await ModelCall.update(
@@ -308,7 +309,7 @@ async function createModelCallContext({
         } else {
           totalUsage = new BigNumber(partialUsage?.promptTokens || 0)
             .plus(partialUsage?.completionTokens || 0)
-            .decimalPlaces(2)
+            .decimalPlaces(CREDIT_DECIMAL_PLACES)
             .toNumber();
         }
 

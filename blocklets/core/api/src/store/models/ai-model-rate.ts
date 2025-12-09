@@ -75,12 +75,12 @@ export default class AiModelRate extends Model<InferAttributes<AiModelRate>, Inf
       allowNull: true,
     },
     inputRate: {
-      type: DataTypes.DECIMAL(10, 4),
+      type: DataTypes.DECIMAL(20, 10),
       allowNull: false,
       defaultValue: 0,
     },
     outputRate: {
-      type: DataTypes.DECIMAL(10, 4),
+      type: DataTypes.DECIMAL(20, 10),
       allowNull: false,
       defaultValue: 0,
     },

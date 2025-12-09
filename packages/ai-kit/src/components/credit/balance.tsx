@@ -101,7 +101,7 @@ function CreditBalance({ balance = undefined, currency = undefined, useAIKitServ
 
           <Box>
             <Typography variant="h3" sx={{ fontWeight: 'bold', lineHeight: 1 }}>
-              {displayBalance}
+              ${displayBalance}
             </Typography>
             <Typography variant="body1" sx={{ opacity: 0.9, mt: 0.5 }}>
               {displayCurrency}

@@ -126,7 +126,7 @@ function UserCreditCard({
               sx={{
                 fontWeight: 'bold',
               }}>
-              {formatNumber(userInfoData?.creditBalance?.balance || '0')}
+              ${formatNumber(userInfoData?.creditBalance?.balance || '0')}
             </Typography>
           </Stack>
 
@@ -150,7 +150,7 @@ function UserCreditCard({
                   fontWeight: 'bold',
                   color: 'error.main',
                 }}>
-                {formatNumber(userInfoData.creditBalance.pendingCredit)}
+                ${formatNumber(userInfoData.creditBalance.pendingCredit)}
               </Typography>
             </Stack>
           )}

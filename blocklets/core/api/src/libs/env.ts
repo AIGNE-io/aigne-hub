@@ -11,13 +11,16 @@ export const PAYMENT_DID = 'z2qaCNvKMv5GjouKdcDWexv6WqtHbpNPQDnAk';
 export const OBSERVABILITY_DID = 'z2qa2GCqPJkufzqF98D8o7PWHrRRSHpYkNhEh';
 export const AIGNE_HUB_DID = 'z8ia3xzq2tMq8CRHfaXj1BTYJyYnEcHbqP8cJ';
 
-export const METER_NAME = 'agent-hub-ai-meter';
+export const METER_NAME = 'agent-hub-ai-meter-v2';
 
-export const METER_UNIT = 'AIGNE Hub Credits';
+export const METER_UNIT = 'USD';
 
-export const DEFAULT_CREDIT_PRICE_KEY = 'DEFAULT_CREDIT_UNIT_PRICE';
+export const DEFAULT_CREDIT_PRICE_KEY = 'DEFAULT_CREDIT_UNIT_PRICE_V2';
 
-export const DEFAULT_CREDIT_PAYMENT_LINK_KEY = 'DEFAULT_AHC_PACKS_LINK';
+export const DEFAULT_CREDIT_PAYMENT_LINK_KEY = 'DEFAULT_CREDIT_PAYMENT_LINK_V2';
+
+// Decimal places for credit calculations to avoid precision loss with small values
+export const CREDIT_DECIMAL_PLACES = 10;
 
 export const MODEL_CALL_STATS_CRON_TIME = process.env.MODEL_CALL_STATS_CRON_TIME || '0 1 * * * *'; // every hour at 1 minute past the hour
 export const CLEANUP_STALE_MODEL_CALLS_CRON_TIME = process.env.CLEANUP_STALE_MODEL_CALLS_CRON_TIME || '*/10 * * * *'; // every 10 minutes
@@ -301,7 +304,7 @@ export const Config = {
   _newUserCreditGrantAmount: undefined as number | undefined,
   get newUserCreditGrantAmount() {
     if (this._newUserCreditGrantAmount === undefined) {
-      this._newUserCreditGrantAmount = config.env.preferences.newUserCreditGrantAmount ?? 100;
+      this._newUserCreditGrantAmount = config.env.preferences.newUserCreditGrantAmount ?? 0.1;
     }
     return this._newUserCreditGrantAmount;
   },
