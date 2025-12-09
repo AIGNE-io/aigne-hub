@@ -263,7 +263,13 @@ export async function runCreditMigration(): Promise<MigrationResult[]> {
       }
 
       if (grants.length < pageSize) break;
+
       page++;
+
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise((resolve) => {
+        setTimeout(resolve, 300);
+      });
     } catch (error) {
       console.error('Failed to fetch credit grants:', error);
       break;
@@ -274,8 +280,7 @@ export async function runCreditMigration(): Promise<MigrationResult[]> {
   const successful = results.filter((r) => r.status === 'success');
   const errors = results.filter((r) => r.status === 'error');
 
-  console.log(`\n${'='.repeat(50)}`);
-  console.log(`Migration complete: ${successful.length} migrated, ${errors.length} errors`);
+  console.log(`✅ Migration complete: ${successful.length} migrated, ${errors.length} errors`);
   if (errors.length > 0) {
     errors.forEach((e) => console.log(`  Error: ${e.grantId} - ${e.error}`));
   }
