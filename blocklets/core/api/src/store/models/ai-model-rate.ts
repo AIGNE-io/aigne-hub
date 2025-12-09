@@ -1,3 +1,4 @@
+import BigNumber from 'bignumber.js';
 import { CreationOptional, DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequelize';
 
 import nextId from '../../libs/next-id';
@@ -134,4 +135,25 @@ export default class AiModelRate extends Model<InferAttributes<AiModelRate>, Inf
   }
 }
 
-AiModelRate.init(AiModelRate.GENESIS_ATTRIBUTES, { sequelize });
+AiModelRate.init(AiModelRate.GENESIS_ATTRIBUTES, {
+  sequelize,
+  // Use getterMethods to avoid scientific notation (e.g., 8e-8) in JSON response
+  getterMethods: {
+    inputRate() {
+      const value = this.getDataValue('inputRate');
+      return value != null ? new BigNumber(value).toFixed() : 0;
+    },
+    outputRate() {
+      const value = this.getDataValue('outputRate');
+      return value != null ? new BigNumber(value).toFixed() : 0;
+    },
+    unitCosts() {
+      const value = this.getDataValue('unitCosts');
+      if (!value) return value;
+      return {
+        input: value.input != null ? new BigNumber(value.input).toFixed() : 0,
+        output: value.output != null ? new BigNumber(value.output).toFixed() : 0,
+      };
+    },
+  },
+});

@@ -368,7 +368,7 @@ export function CallHistory({
           if (!call) return null;
           return (
             <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
-              ${call.credits}
+              ${formatNumber(call.credits, 4)}
             </Typography>
           );
         },

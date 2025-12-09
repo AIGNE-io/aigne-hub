@@ -199,7 +199,7 @@ export function CreditsBalance({ data = undefined as UserInfoResult | undefined 
     if (overDue) {
       return (
         <Typography variant="h1" sx={{ fontWeight: 'bold', mb: 1, color: 'error.main' }}>
-          -${formatNumber(creditBalance?.pendingCredit || 0)}
+          -${formatNumber(creditBalance?.pendingCredit || 0, 4)}
         </Typography>
       );
     }
@@ -212,7 +212,7 @@ export function CreditsBalance({ data = undefined as UserInfoResult | undefined 
           color: isNegative ? 'error.main' : 'text.primary',
         }}>
         {isNegative ? '-$' : '$'}
-        {formatNumber(Math.abs(balance))}
+        {formatNumber(Math.abs(balance), 4)}
       </Typography>
     );
   };
@@ -252,7 +252,7 @@ export function CreditsBalance({ data = undefined as UserInfoResult | undefined 
               </Tooltip>
               <Typography variant="caption" color="text.secondary">
                 {t('analytics.currentEffectiveTotal', {
-                  total: `$${formatNumber(total)}`,
+                  total: `$${formatNumber(total, 4)}`,
                 })}
               </Typography>
             </Box>

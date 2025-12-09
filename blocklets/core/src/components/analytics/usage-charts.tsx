@@ -164,7 +164,7 @@ function CustomTooltip({
                   fontSize: '14px',
                   fontWeight: 600,
                 }}>
-                ${formatNumber(data.totalCredits)}
+                ${formatNumber(data.totalCredits, 4)}
               </span>
             </div>
           ) : (

@@ -64,7 +64,8 @@ function TokenCostInput({
   };
 
   useEffect(() => {
-    setValue(formatMillionTokenCost(costValue));
+    // Use precision 10 to preserve small decimal values
+    setValue(formatMillionTokenCost(costValue, 10));
   }, [costValue]);
 
   return (
@@ -76,7 +77,8 @@ function TokenCostInput({
         onChange={handleChange}
         size="small"
         slotProps={{
-          htmlInput: { type: 'number', step: 0.01, min: 0 },
+          // Use type="text" with inputMode="decimal" to avoid HTML5 number validation issues
+          htmlInput: { type: 'text', inputMode: 'decimal' },
           input: {
             endAdornment: (
               <InputAdornment position="end">
@@ -138,7 +140,8 @@ function CreditRateInput({
         size="small"
         fullWidth
         slotProps={{
-          htmlInput: { type: 'number', step: 0.01, min: 0 },
+          // Use type="text" with inputMode="decimal" to avoid HTML5 number validation issues
+          htmlInput: { type: 'text', inputMode: 'decimal' },
           input: {
             endAdornment: (
               <InputAdornment position="end">
@@ -452,6 +455,10 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
     const formData = {
       ...data,
       providers: rate ? [rate.provider.id] : selectedProviders,
+      // Use BigNumber toFixed to avoid scientific notation (e.g., 8e-8) for very small numbers
+      // BigNumber.toFixed() returns a string which won't be converted to scientific notation in JSON
+      inputRate: new BigNumber(data.inputRate).toFixed(),
+      outputRate: new BigNumber(data.outputRate).toFixed(),
       unitCosts: {
         input: data.unitCosts?.input || 0,
         output: data.unitCosts?.output || 0,
@@ -468,7 +475,8 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
       },
     };
 
-    onSubmit(formData);
+    // Use type assertion as we're sending string format to avoid scientific notation
+    onSubmit(formData as unknown as ModelRateFormData);
   };
 
   return (

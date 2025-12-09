@@ -1,9 +1,7 @@
 /* eslint-disable no-console */
 /**
- * Credit System Migration Script
- *
- * Migrates credit grants from old system (1 USD = 400,000 credits)
- * to new system (1 USD = 1 credit).
+ * Credit System Migration
+ * Migrates from old system (1 USD = 400,000 credits) to new system (1 USD = 1 credit)
  */
 import { BlockletStatus } from '@blocklet/constant';
 import payment from '@blocklet/payment-js';
@@ -11,14 +9,11 @@ import config from '@blocklet/sdk/lib/config';
 import BigNumber from 'bignumber.js';
 
 import { DEFAULT_CREDIT_PAYMENT_LINK_KEY, DEFAULT_CREDIT_PRICE_KEY, METER_NAME, METER_UNIT } from '../libs/env';
+import { sequelize } from '../store/sequelize';
 
 const PAYMENT_DID = 'z2qaCNvKMv5GjouKdcDWexv6WqtHbpNPQDnAk';
-
-function isPaymentRunning() {
-  return !!config.components.find((i) => i.did === PAYMENT_DID && i.status === BlockletStatus.running);
-}
-
 const CONVERSION_FACTOR = 400000;
+const OLD_SYSTEM_DECIMAL_PRECISION = 100;
 const OLD_METER_NAME = 'agent-hub-ai-meter';
 const OLD_CREDIT_PRICE_KEY = 'DEFAULT_CREDIT_UNIT_PRICE';
 const OLD_CREDIT_PAYMENT_LINK_KEY = 'DEFAULT_CREDIT_PAYMENT_LINK';
@@ -32,9 +27,10 @@ interface MigrationResult {
   error?: string;
 }
 
-/**
- * Create new meter and product, copying metadata from old ones.
- */
+function isPaymentRunning() {
+  return !!config.components.find((i) => i.did === PAYMENT_DID && i.status === BlockletStatus.running);
+}
+
 async function createMeter(oldMeter: any): Promise<{ meter: any; currencyId: string }> {
   console.log('credit-migration: Creating new meter...');
 
@@ -48,23 +44,19 @@ async function createMeter(oldMeter: any): Promise<{ meter: any; currencyId: str
     metadata: { ...oldMeter.metadata },
   } as any);
 
-  console.log(`credit-migration: New meter created, currency_id: ${meter.currency_id}`);
-
-  // Get old price and payment link to copy their configurations (may not exist)
   let oldPrice = null;
   let oldPaymentLink = null;
   try {
     oldPrice = await payment.prices.retrieve(OLD_CREDIT_PRICE_KEY);
   } catch {
-    // Old price doesn't exist, will use defaults
+    // Old price doesn't exist
   }
   try {
     oldPaymentLink = await payment.paymentLinks.retrieve(OLD_CREDIT_PAYMENT_LINK_KEY);
   } catch {
-    // Old payment link doesn't exist, will use defaults
+    // Old payment link doesn't exist
   }
 
-  // Create new product, price and payment link
   try {
     const paymentCurrencies = await payment.paymentCurrencies.list({});
     await payment.products.create({
@@ -117,7 +109,6 @@ async function createMeter(oldMeter: any): Promise<{ meter: any; currencyId: str
         base_price_id: price.id,
         payment_link_id: paymentLink.id,
       });
-      console.log('credit-migration: Product, price and payment link created');
     }
   } catch (error) {
     console.error('credit-migration: Failed to create product/price/payment-link:', error);
@@ -126,35 +117,27 @@ async function createMeter(oldMeter: any): Promise<{ meter: any; currencyId: str
   return { meter, currencyId: meter.currency_id! };
 }
 
-/**
- * Migrate a single credit grant to the new currency
- */
 async function migrateGrant(grant: any, newCurrencyId: string): Promise<MigrationResult> {
   const { id: grantId, customer_id: customerId, amount = '0', status: grantStatus } = grant;
   const remainingAmount = grant.remaining_amount || amount;
 
-  console.log(`Processing grant ${grantId}: status=${grantStatus}, amount=${amount}, remaining=${remainingAmount}`);
-
   // Skip non-active, already migrated, or zero balance grants
   if (grantStatus !== 'granted' && grantStatus !== 'pending') {
-    console.log(`  Skipped: invalid status (${grantStatus})`);
     return { grantId, customerId, oldAmount: amount, newAmount: '0', status: 'skipped' };
   }
-  // Check if old grant has already been migrated (more reliable than checking new grant)
   if (grant.metadata?.migratedTo) {
-    console.log(`  Skipped: already migrated to ${grant.metadata.migratedTo}`);
     return { grantId, customerId, oldAmount: amount, newAmount: '0', status: 'skipped' };
   }
   if (new BigNumber(remainingAmount).lte(0)) {
-    console.log('  Skipped: zero balance');
     return { grantId, customerId, oldAmount: remainingAmount, newAmount: '0', status: 'skipped' };
   }
 
   try {
-    const newAmount = new BigNumber(remainingAmount).dividedBy(CONVERSION_FACTOR).toFixed(10);
-    console.log(`  Migrating: ${remainingAmount} -> ${newAmount}`);
+    const newAmount = new BigNumber(remainingAmount)
+      .dividedBy(OLD_SYSTEM_DECIMAL_PRECISION)
+      .dividedBy(CONVERSION_FACTOR)
+      .toFixed(10);
 
-    // Create new grant with converted amount
     const newGrant = await payment.creditGrants.create({
       customer_id: customerId,
       currency_id: newCurrencyId,
@@ -171,12 +154,9 @@ async function migrateGrant(grant: any, newCurrencyId: string): Promise<Migratio
       },
     });
 
-    // Expire the old grant to prevent double-spending
-    // @ts-ignore - expires_at is supported by the SDK
+    // @ts-ignore
     await payment.creditGrants.update(grantId, {
-      metadata: {
-        migratedTo: newGrant.id,
-      },
+      metadata: { migratedTo: newGrant.id },
       // @ts-ignore
       expired: true,
     });
@@ -189,21 +169,19 @@ async function migrateGrant(grant: any, newCurrencyId: string): Promise<Migratio
 }
 
 /**
- * Run the credit migration.
+ * Main migration entry point
+ * Flow: runCreditMigration -> migrateModelCallsCredits -> rebuildModelCallStats
  */
 export async function runCreditMigration(): Promise<MigrationResult[]> {
-  // Check if payment is running
   if (!isPaymentRunning()) {
     console.log('credit-migration: Payment is not running, skipping');
     return [];
   }
 
-  // Check if migration is needed
   let oldMeter = null;
   try {
     oldMeter = await payment.meters.retrieve(OLD_METER_NAME);
   } catch (error: any) {
-    // 404 means old meter doesn't exist (fresh install), other errors should be thrown
     if (error?.response?.status === 404) {
       console.log('credit-migration: No old meter found, skipping (fresh install)');
       return [];
@@ -215,46 +193,28 @@ export async function runCreditMigration(): Promise<MigrationResult[]> {
   try {
     newMeter = await payment.meters.retrieve(METER_NAME);
   } catch (error: any) {
-    // 404 is expected if new meter doesn't exist yet
-    if (error?.response?.status !== 404) {
-      throw error;
-    }
+    if (error?.response?.status !== 404) throw error;
   }
 
-  // SKIP_CREATE_METER: Skip meter creation and only migrate grants (for retry scenarios)
-  const skipCreateMeter = process.env.SKIP_CREATE_METER === 'true';
-
-  if (newMeter?.status === 'active' && !skipCreateMeter) {
+  if (newMeter?.status === 'active') {
     console.log('credit-migration: New meter already exists, skipping');
     return [];
   }
 
   console.log('credit-migration: Starting migration...');
-  const oldCurrencyId = oldMeter.currency_id;
 
-  // Create new meter and product (or use existing if SKIP_CREATE_METER is set)
-  let newCurrencyId: string;
-  if (skipCreateMeter && newMeter?.currency_id) {
-    console.log('credit-migration: SKIP_CREATE_METER is set, using existing meter');
-    newCurrencyId = newMeter.currency_id;
-  } else {
-    const result = await createMeter(oldMeter);
-    newCurrencyId = result.currencyId;
-  }
-
-  // Migrate all credit grants
+  const { currencyId: newCurrencyId } = await createMeter(oldMeter);
   const results: MigrationResult[] = [];
   let page = 1;
-  const pageSize = 100;
 
   // eslint-disable-next-line no-constant-condition
   while (true) {
     try {
       // eslint-disable-next-line no-await-in-loop
       const { list: grants = [] } = await payment.creditGrants.list({
-        currency_id: oldCurrencyId,
+        currency_id: oldMeter.currency_id,
         page,
-        pageSize,
+        pageSize: 100,
       });
 
       for (const grant of grants) {
@@ -262,8 +222,7 @@ export async function runCreditMigration(): Promise<MigrationResult[]> {
         results.push(await migrateGrant(grant, newCurrencyId));
       }
 
-      if (grants.length < pageSize) break;
-
+      if (grants.length < 100) break;
       page++;
 
       // eslint-disable-next-line no-await-in-loop
@@ -276,14 +235,73 @@ export async function runCreditMigration(): Promise<MigrationResult[]> {
     }
   }
 
-  // Print summary
   const successful = results.filter((r) => r.status === 'success');
   const errors = results.filter((r) => r.status === 'error');
+  console.log(`✅ credit-migration: ${successful.length} migrated, ${errors.length} errors`);
 
-  console.log(`✅ Migration complete: ${successful.length} migrated, ${errors.length} errors`);
-  if (errors.length > 0) {
-    errors.forEach((e) => console.log(`  Error: ${e.grantId} - ${e.error}`));
-  }
+  await migrateModelCallsCredits();
+  await rebuildModelCallStats();
 
   return results;
+}
+
+/**
+ * Migrate ModelCalls.credits (idempotent: only updates credits > 10)
+ */
+export async function migrateModelCallsCredits(): Promise<void> {
+  try {
+    await sequelize.query(
+      `UPDATE "ModelCalls" SET "credits" = "credits" / ${CONVERSION_FACTOR}.0 WHERE "credits" > 10`
+    );
+    console.log('✅ model-calls-credit-migration: Complete');
+  } catch (error: any) {
+    console.error('model-calls-credit-migration: Failed:', error);
+    throw error;
+  }
+}
+
+/**
+ * Rebuild ModelCallStats cache for active users
+ */
+export async function rebuildModelCallStats(days = 7): Promise<void> {
+  console.log(`rebuild-model-call-stats: Rebuilding ${days} days...`);
+
+  try {
+    await sequelize.query('DELETE FROM "ModelCallStats"');
+
+    const [activeUsers] = (await sequelize.query(
+      `
+      SELECT DISTINCT "userDid" FROM "ModelCalls" WHERE "callTime" >= :since
+    `,
+      { replacements: { since: Math.floor(Date.now() / 1000) - days * 24 * 60 * 60 } }
+    )) as [any[], any];
+
+    const now = Math.floor(Date.now() / 1000);
+    const currentHour = Math.floor(now / 3600) * 3600;
+    const hours: number[] = [];
+    for (let h = currentHour - days * 24 * 3600; h < currentHour; h += 3600) {
+      hours.push(h);
+    }
+
+    const { default: ModelCallStat } = await import('../store/models/model-call-stat');
+
+    for (const user of activeUsers) {
+      for (const hour of hours) {
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          await ModelCallStat.getHourlyStats(user.userDid, hour);
+        } catch {
+          console.error(
+            `rebuild-model-call-stats: Failed to get hourly stats for user ${user.userDid} at hour ${hour}`
+          );
+          // Ignore
+        }
+      }
+    }
+
+    console.log(`✅ rebuild-model-call-stats: Complete (${activeUsers.length} users)`);
+  } catch (error: any) {
+    console.error('rebuild-model-call-stats: Failed:', error);
+    throw error;
+  }
 }
