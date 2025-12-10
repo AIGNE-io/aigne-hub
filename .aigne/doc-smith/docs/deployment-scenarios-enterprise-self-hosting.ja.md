@@ -21,59 +21,9 @@
 
 以下の図は、このアーキテクチャを示しています。
 
-```d2
-direction: down
-
-Corporate-Network: {
-  label: "貴社の企業ネットワーク / セキュリティ境界"
-  style: {
-    stroke: "#888"
-    stroke-width: 2
-    stroke-dash: 4
-  }
-
-  Internal-Applications: {
-    label: "社内アプリケーション & サービス"
-    shape: rectangle
-  }
-
-  AIGNE-Hub-Instance: {
-    label: "AIGNE Hub インスタンス"
-    shape: rectangle
-    icon: "https://www.arcblock.io/image-bin/uploads/89a24f04c34eca94f26c9dd30aec44fc.png"
-  }
-
-  Authentication-System: {
-    label: "企業認証システム (OAuth)"
-    shape: rectangle
-  }
-}
-
-External-AI-Providers: {
-  label: "外部 AI プロバイダー"
-  shape: rectangle
-  grid-columns: 3
-
-  OpenAI: {
-    label: "OpenAI"
-  }
-
-  Anthropic: {
-    label: "Anthropic"
-  }
-
-  Google: {
-    label: "Google AI"
-  }
-}
-
-Corporate-Network.Internal-Applications -> Corporate-Network.Authentication-System: "1. ユーザー/サービスを認証"
-Corporate-Network.Authentication-System -> Corporate-Network.Internal-Applications: "2. トークンを提供"
-Corporate-Network.Internal-Applications -> Corporate-Network.AIGNE-Hub-Instance: "3. 統合 AI API リクエスト"
-Corporate-Network.AIGNE-Hub-Instance -> External-AI-Providers: "4. プロバイダーにリクエストを安全にルーティング"
-External-AI-Providers -> Corporate-Network.AIGNE-Hub-Instance: "5. AI レスポンス"
-Corporate-Network.AIGNE-Hub-Instance -> Corporate-Network.Internal-Applications: "6. レスポンスを返す"
-```
+<!-- DIAGRAM_IMAGE_START:architecture:16:9 -->
+![Enterprise Self-Hosting](assets/diagram/enterprise-self-hosting-diagram-0.jpg)
+<!-- DIAGRAM_IMAGE_END -->
 
 ![AIGNE Hub ダッシュボード](https://raw.githubusercontent.com/AIGNE-io/aigne-hub/main/blocklets/core/screenshots/fc46e9461382f0be7541af17ef13f632.png)
 
