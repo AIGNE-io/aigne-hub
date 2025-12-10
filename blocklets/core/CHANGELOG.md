@@ -1,3 +1,7 @@
+## 0.6.25 (2025-12-8)
+
+- feat: add auto-login for unauthenticated users in chat playground
+
 ## 0.6.24 (2025-12-8)
 
 - chore: update  dependencies
