@@ -1147,3 +1147,15 @@ c65f3bf14cf3e41606beaf43e82138a9973784021922ac4a47b3324884f40d60:
     https://docsmith.aigne.io:
       url: https://docsmith.aigne.io/image-bin/uploads/572eeb077b3eebfe.jpg
       upload_time: 2025-12-04T10:39:37.604Z
+28c803b95e528073157bea154a466d090ef5ac2b139ef8c846be89bd8ba9575e:
+  local_path: .aigne/doc-smith/docs/assets/diagram/features-analytics-01.jpg
+  sites:
+    https://hub.aigne.io:
+      url: https://hub.aigne.io/image-bin/uploads/28c803b95e528073.jpg
+      upload_time: 2025-12-10T15:53:21.457Z
+    https://www.arcblock.io:
+      url: https://www.arcblock.io/image-bin/uploads/28c803b95e528073.jpg
+      upload_time: 2025-12-10T15:53:44.135Z
+    https://docsmith.aigne.io:
+      url: https://docsmith.aigne.io/image-bin/uploads/28c803b95e528073.jpg
+      upload_time: 2025-12-10T15:54:05.678Z
