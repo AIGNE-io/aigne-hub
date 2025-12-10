@@ -4,7 +4,6 @@ import { CreditGrantedNotificationTemplate } from './templates/credit-granted';
 
 export async function handleCreditGranted(creditGrant: any, extraParams: any) {
   try {
-    logger.info('handleCreditGranted', { creditGrant, extraParams });
     const template = new CreditGrantedNotificationTemplate({
       creditGrantId: creditGrant.id,
       creditGrant,
