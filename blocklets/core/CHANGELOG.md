@@ -1,11 +1,25 @@
-## 0.6.22 (2025-12-4)
+## 0.6.25 (2025-12-8)
 
-- docs: update docs with new diagram
+- feat: add auto-login for unauthenticated users in chat playground
+
+## 0.6.24 (2025-12-8)
+
+- chore: update  dependencies
+- feat: add model availability check in API status route and refine welcome credit validation
+- fix: handle optional chaining for payment settings and return correct payment link
+
+## 0.6.23 (2025-12-8)
+
+- fix: move response handling from processEmbeddings to route layer
+
+## 0.6.22 (2025-12-7)
+
+- chore: update deps
 
 ## 0.6.21 (2025-12-3)
 
 - fix: optimize database indexes for model call queries
-
+  
 ## 0.6.20 (2025-11-28)
 
 - chore: update dependencies
