@@ -10,8 +10,8 @@ AIGNE Hub records every API interaction as a `ModelCall` entry. These records fo
 
 Understanding the underlying data structures is essential for effectively querying and interpreting analytics data. The following diagram illustrates how a `ModelCall` record is generated and used by the analytics endpoints.
 
-<!-- DIAGRAM_IMAGE_START:architecture:16:9 -->
-![Usage & Cost Analytics](assets/diagram/analytics-diagram-0.jpg)
+<!-- DIAGRAM_IMAGE_START:flowchart:16:9 -->
+![Usage & Cost Analytics](assets/diagram/features-analytics-01.jpg)
 <!-- DIAGRAM_IMAGE_END -->
 
 ### The `ModelCall` Object

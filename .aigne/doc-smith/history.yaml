@@ -1,4 +1,14 @@
 entries:
+  - timestamp: 2025-12-10T14:59:26.530Z
+    operation: document_update
+    feedback: 重新生成流程图,要求说清楚这篇文档的核心内容
+    docPaths:
+      - /features/analytics
+  - timestamp: 2025-12-10T14:54:37.177Z
+    operation: document_update
+    feedback: 图片移除一些过于详细的参数介绍,只需要保留流程即可
+    docPaths:
+      - /features/analytics
   - timestamp: 2025-11-19T06:27:57.575Z
     operation: document_update
     feedback: Please remove links to other pages from this page

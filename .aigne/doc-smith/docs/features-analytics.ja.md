@@ -10,8 +10,8 @@ AIGNE Hub は、すべての API インタラクションを `ModelCall` エン�
 
 分析データを効果的にクエリし、解釈するためには、基礎となるデータ構造を理解することが不可欠です。以下の図は、`ModelCall` レコードがどのように生成され、分析エンドポイントによって使用されるかを示しています。
 
-<!-- DIAGRAM_IMAGE_START:architecture:16:9 -->
-![Usage & Cost Analytics](assets/diagram/analytics-diagram-0.jpg)
+<!-- DIAGRAM_IMAGE_START:flowchart:16:9 -->
+![Usage & Cost Analytics](assets/diagram/features-analytics-01.jpg)
 <!-- DIAGRAM_IMAGE_END -->
 
 ### `ModelCall` オブジェクト

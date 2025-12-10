@@ -10,8 +10,8 @@ AIGNE Hub 將每次 API 互動記錄為一筆 `ModelCall` 項目。這些記錄�
 
 了解底層資料結構對於有效查詢和解讀分析資料至關重要。下圖說明了 `ModelCall` 記錄是如何生成並被分析端點使用的。
 
-<!-- DIAGRAM_IMAGE_START:architecture:16:9 -->
-![Usage & Cost Analytics](assets/diagram/analytics-diagram-0.jpg)
+<!-- DIAGRAM_IMAGE_START:flowchart:16:9 -->
+![Usage & Cost Analytics](assets/diagram/features-analytics-01.jpg)
 <!-- DIAGRAM_IMAGE_END -->
 
 ### `ModelCall` 物件
