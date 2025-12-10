@@ -1,3 +1,8 @@
+## 0.6.26 (2025-12-10)
+
+- feat: implement meter caching and clear cache functionality in payment module
+- docs: update docs with new diagram
+
 ## 0.6.25 (2025-12-8)
 
 - feat: add auto-login for unauthenticated users in chat playground
