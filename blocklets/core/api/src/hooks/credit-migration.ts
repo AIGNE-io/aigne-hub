@@ -170,7 +170,7 @@ async function migrateGrant(grant: any, newCurrencyId: string): Promise<Migratio
 
 /**
  * Main migration entry point
- * Flow: runCreditMigration -> migrateModelCallsCredits -> rebuildModelCallStats
+ * Flow: runCreditMigration -> migrateAiModelRates -> migrateModelCallsCredits -> rebuildModelCallStats
  */
 export async function runCreditMigration(): Promise<MigrationResult[]> {
   if (!isPaymentRunning()) {
@@ -239,10 +239,30 @@ export async function runCreditMigration(): Promise<MigrationResult[]> {
   const errors = results.filter((r) => r.status === 'error');
   console.log(`✅ credit-migration: ${successful.length} migrated, ${errors.length} errors`);
 
+  await migrateAiModelRates();
   await migrateModelCallsCredits();
   await rebuildModelCallStats();
 
   return results;
+}
+
+/**
+ * Migrate AiModelRates.inputRate and outputRate (idempotent: only updates rates > 0.01)
+ * Old system rates are much larger (e.g., 1.2), new system rates are very small (e.g., 0.000003)
+ */
+export async function migrateAiModelRates(): Promise<void> {
+  try {
+    console.log('ai-model-rates-migration: Starting migration...');
+    // Only update rates > 0.01 to ensure idempotency
+    // New system rates are typically very small (< 0.001), old system rates are much larger
+    await sequelize.query(
+      `UPDATE "AiModelRates" SET "inputRate" = "inputRate" / ${CONVERSION_FACTOR}.0, "outputRate" = "outputRate" / ${CONVERSION_FACTOR}.0 WHERE "inputRate" > 0.01 OR "outputRate" > 0.01`
+    );
+    console.log('✅ ai-model-rates-migration: Complete');
+  } catch (error: any) {
+    console.error('ai-model-rates-migration: Failed:', error);
+    throw error;
+  }
 }
 
 /**
