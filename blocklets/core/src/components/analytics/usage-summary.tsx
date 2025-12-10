@@ -303,7 +303,7 @@ export function UsageSummary({
   const metrics = customMetrics || [
     {
       title: t('analytics.totalCreditsUsed'),
-      value: `${formatNumber(new BigNumber(trendComparison?.current?.totalCredits || totalCredits || 0).dp(4).toString())}`,
+      value: `$${formatNumber(new BigNumber(trendComparison?.current?.totalCredits || totalCredits || 0).dp(4).toString())}`,
       trend: trendComparison ? formatTrend(trendComparison.growth.creditsGrowth) : undefined,
       trendDescription: trendComparison ? getTrendDescription(periodDays) : undefined,
       icon: <CallMade color="primary" />,

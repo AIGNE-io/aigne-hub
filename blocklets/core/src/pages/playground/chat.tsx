@@ -12,6 +12,7 @@ import {
 } from '@blocklet/aigne-hub/components';
 import { ArrowDropDown, DeleteOutline, HighlightOff } from '@mui/icons-material';
 import { Avatar, Box, Button, CircularProgress, IconButton, Stack, Tooltip, Typography } from '@mui/material';
+import { nanoid } from 'nanoid';
 import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { joinURL } from 'ufo';
@@ -252,7 +253,7 @@ export default function Chat() {
     });
   };
 
-  const { messages, add, cancel, clearHistory, isLoadingHistory } = useConversation({
+  const { messages, add, cancel, clearHistory, isLoadingHistory, setMessages } = useConversation({
     scrollToBottom: (o) => ref.current?.scrollToBottom(o),
     storageKeyPrefix: `aigne-hub-${userDid}`,
     textCompletions: (prompt) => {
@@ -440,6 +441,19 @@ export default function Chat() {
         }}
         messages={messages}
         onSubmit={(prompt) => {
+          if (!session?.user) {
+            // If not logged in, show login prompt without calling API
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: nanoid(16),
+                prompt,
+                response: t('chat.pleaseLogin'),
+                timestamp: Date.now(),
+              },
+            ]);
+            return;
+          }
           add(prompt);
         }}
         customActions={customActions}
