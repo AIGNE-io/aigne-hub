@@ -189,6 +189,11 @@ export async function runCreditMigration(): Promise<MigrationResult[]> {
     throw error;
   }
 
+  if (!oldMeter) {
+    console.log('credit-migration: No old meter found, skipping (fresh install)');
+    return [];
+  }
+
   let newMeter = null;
   try {
     newMeter = await payment.meters.retrieve(METER_NAME);
