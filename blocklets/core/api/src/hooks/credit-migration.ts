@@ -60,8 +60,8 @@ async function createMeter(oldMeter: any): Promise<{ meter: any; currencyId: str
   try {
     const paymentCurrencies = await payment.paymentCurrencies.list({});
     await payment.products.create({
-      name: oldPrice?.product?.name || 'Basic AIGNE Hub Credit Packs',
-      description: oldPrice?.product?.description || `It is a basic pack of ${METER_UNIT}`,
+      name: 'AIGNE Hub Credits',
+      description: 'Purchase credits to use AI services in AIGNE Hub',
       type: 'credit',
       prices: [
         {
@@ -258,10 +258,11 @@ export async function runCreditMigration(): Promise<MigrationResult[]> {
 export async function migrateAiModelRates(): Promise<void> {
   try {
     console.log('ai-model-rates-migration: Starting migration...');
-    // Only update rates > 0.01 to ensure idempotency
-    // New system rates are typically very small (< 0.001), old system rates are much larger
+    // Only update rates > 0.001 to ensure idempotency
+    // Old system rates are typically > 0.004 (even for cheapest models like $0.01/1M tokens)
+    // New system rates are typically < 0.0001 (even for expensive models like $30/1M tokens)
     await sequelize.query(
-      `UPDATE "AiModelRates" SET "inputRate" = "inputRate" / ${CONVERSION_FACTOR}.0, "outputRate" = "outputRate" / ${CONVERSION_FACTOR}.0 WHERE "inputRate" > 0.01 OR "outputRate" > 0.01`
+      `UPDATE "AiModelRates" SET "inputRate" = "inputRate" / ${CONVERSION_FACTOR}.0, "outputRate" = "outputRate" / ${CONVERSION_FACTOR}.0 WHERE "inputRate" > 0.001 OR "outputRate" > 0.001`
     );
     console.log('✅ ai-model-rates-migration: Complete');
   } catch (error: any) {
@@ -272,6 +273,8 @@ export async function migrateAiModelRates(): Promise<void> {
 
 /**
  * Migrate ModelCalls.credits (idempotent: only updates credits > 10)
+ * Old system credits are typically > 4 (even for cheapest models with minimal usage)
+ * New system credits are typically < 0.1 (even for expensive models with heavy usage)
  */
 export async function migrateModelCallsCredits(): Promise<void> {
   try {

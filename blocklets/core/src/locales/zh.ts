@@ -405,7 +405,6 @@ export default flatten({
     },
     cacheInfo: '{count} 张缓存图片（{size} MB）',
     noModelsAvailable: '暂无可用模型',
-    pleaseLogin: '请先登录',
   },
   integration: '集成示例',
   manageCredits: '管理 Credits',

@@ -54,7 +54,7 @@ export default function AIModelRates() {
   const [modelSearchValue, setModelSearchValue] = useState('');
   const [statusLoading, setStatusLoading] = useState(false);
 
-  const baseCreditPrice = window.blocklet?.preferences?.baseCreditPrice || 1;
+  const baseCreditPrice = window.blocklet?.preferences?.baseCreditPrice ?? 1;
   const targetProfitMargin = window.blocklet?.preferences?.targetProfitMargin || 0;
 
   const persisted = getDurableData(listKey);

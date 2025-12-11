@@ -412,7 +412,6 @@ export default flatten({
     },
     cacheInfo: '{count} cached images ({size} MB)',
     noModelsAvailable: 'No models available',
-    pleaseLogin: 'Please log in first.',
   },
   integration: 'Integration',
   manageCredits: 'Manage Credits',

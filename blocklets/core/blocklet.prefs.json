@@ -140,7 +140,7 @@
                         "x-decorator-props": {},
                         "name": "newUserCreditGrantAmount",
                         "description": "Number of Credits granted to new users (1 Credit = $1 USD, e.g., 0.1 = $0.10)",
-                        "default": "0.1",
+                        "default": "0",
                         "x-reactions": {
                           "dependencies": [
                             {

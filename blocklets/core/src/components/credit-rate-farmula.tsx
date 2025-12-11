@@ -3,7 +3,7 @@ import { Box, Typography } from '@mui/material';
 
 export function CreditRateFormula() {
   const { t } = useLocaleContext();
-  const baseCreditPrice = window.blocklet?.preferences?.baseCreditPrice || 1;
+  const baseCreditPrice = window.blocklet?.preferences?.baseCreditPrice ?? 1;
   const targetProfitMargin = window.blocklet?.preferences?.targetProfitMargin || 2;
 
   return (

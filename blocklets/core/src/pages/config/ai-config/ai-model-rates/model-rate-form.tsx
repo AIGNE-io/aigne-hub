@@ -128,7 +128,7 @@ function CreditRateInput({
 
   return (
     <Box sx={{ flex: 1 }}>
-      <FormLabel>{label}</FormLabel>
+      <FormLabel required>{label}</FormLabel>
       {description && (
         <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 0.5 }}>
           {description}
@@ -140,6 +140,7 @@ function CreditRateInput({
         onChange={handleChange}
         size="small"
         fullWidth
+        required
         slotProps={{
           // Use type="text" with inputMode="decimal" to avoid HTML5 number validation issues
           htmlInput: { type: 'text', inputMode: 'decimal' },
@@ -233,7 +234,7 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
   const [pricingMenuAnchor, setPricingMenuAnchor] = useState<null | HTMLElement>(null);
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
 
-  const baseCreditPrice = window.blocklet?.preferences?.baseCreditPrice || 1;
+  const baseCreditPrice = window.blocklet?.preferences?.baseCreditPrice ?? 1;
   const targetProfitMargin = window.blocklet?.preferences?.targetProfitMargin || 0;
 
   const { modelOptions: allModelOptions, loading: modelDataLoading, fetchModelData } = useModelData();
@@ -397,7 +398,7 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
           .multipliedBy(1 + targetProfitMargin / 100)
           .dividedBy(baseCreditPrice)
           .toNumber();
-        // Use higher precision (16 decimal places) to preserve small value differences
+        // Use higher precision (10 decimal places) to preserve small value differences
         setValue('inputRate', Number(calculatedInputRate.toFixed(10)));
       } else {
         setValue('inputRate', 0);
@@ -407,7 +408,7 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
           .multipliedBy(1 + targetProfitMargin / 100)
           .dividedBy(baseCreditPrice)
           .toNumber();
-        // Use higher precision (16 decimal places) to preserve small value differences
+        // Use higher precision (10 decimal places) to preserve small value differences
         setValue('outputRate', Number(calculatedOutputRate.toFixed(10)));
       } else {
         setValue('outputRate', 0);
