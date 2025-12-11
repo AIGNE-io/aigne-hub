@@ -1,3 +1,7 @@
+## 0.7.0 (2025-12-11)
+
+- feat: switch to USD-based pricing mode
+
 ## 0.6.26 (2025-12-10)
 
 - feat: implement meter caching and clear cache functionality in payment module
