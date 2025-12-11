@@ -252,19 +252,19 @@ export async function runCreditMigration(): Promise<MigrationResult[]> {
 }
 
 /**
- * Migrate AiModelRates.inputRate and outputRate (idempotent: only updates rates > 0.01)
- * Old system rates are much larger (e.g., 1.2), new system rates are very small (e.g., 0.000003)
+ * Migrate AiModelRates.inputRate and outputRate (idempotent via updatedAt + rate threshold)
+ * Only migrates records updated > 1 day ago with non-zero rates.
+ * Time condition ensures new data won't be re-processed even if migration runs multiple times.
  */
 export async function migrateAiModelRates(): Promise<void> {
   try {
     console.log('ai-model-rates-migration: Starting migration...');
-    // Only update rates > 0.001 to ensure idempotency
-    // Old system rates are typically > 0.004 (even for cheapest models like $0.01/1M tokens)
-    // New system rates are typically < 0.0001 (even for expensive models like $30/1M tokens)
-    await sequelize.query(
-      `UPDATE "AiModelRates" SET "inputRate" = "inputRate" / ${CONVERSION_FACTOR}.0, "outputRate" = "outputRate" / ${CONVERSION_FACTOR}.0 WHERE "inputRate" > 0.001 OR "outputRate" > 0.001`
-    );
-    console.log('✅ ai-model-rates-migration: Complete');
+    const timeThreshold = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(); // 1 day ago
+    const [, rowsAffected] = (await sequelize.query(
+      `UPDATE "AiModelRates" SET "inputRate" = "inputRate" / ${CONVERSION_FACTOR}.0, "outputRate" = "outputRate" / ${CONVERSION_FACTOR}.0 WHERE "updatedAt" < :timeThreshold AND ("inputRate" > 0.001 OR "outputRate" > 0.001)`,
+      { replacements: { timeThreshold } }
+    )) as [unknown, number];
+    console.log(`✅ ai-model-rates-migration: Complete (${rowsAffected} rows updated)`);
   } catch (error: any) {
     console.error('ai-model-rates-migration: Failed:', error);
     throw error;
@@ -272,16 +272,18 @@ export async function migrateAiModelRates(): Promise<void> {
 }
 
 /**
- * Migrate ModelCalls.credits (idempotent: only updates credits > 10)
- * Old system credits are typically > 4 (even for cheapest models with minimal usage)
- * New system credits are typically < 0.1 (even for expensive models with heavy usage)
+ * Migrate ModelCalls.credits (idempotent via updatedAt + credits threshold)
+ * Only migrates records updated > 1 day ago with non-zero credits.
+ * Time condition ensures new data won't be re-processed even if migration runs multiple times.
  */
 export async function migrateModelCallsCredits(): Promise<void> {
   try {
-    await sequelize.query(
-      `UPDATE "ModelCalls" SET "credits" = "credits" / ${CONVERSION_FACTOR}.0 WHERE "credits" > 10`
-    );
-    console.log('✅ model-calls-credit-migration: Complete');
+    const timeThreshold = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(); // 1 day ago
+    const [, rowsAffected] = (await sequelize.query(
+      `UPDATE "ModelCalls" SET "credits" = "credits" / ${CONVERSION_FACTOR}.0 WHERE "updatedAt" < :timeThreshold AND "credits" > 0.001`,
+      { replacements: { timeThreshold } }
+    )) as [unknown, number];
+    console.log(`✅ model-calls-credit-migration: Complete (${rowsAffected} rows updated)`);
   } catch (error: any) {
     console.error('model-calls-credit-migration: Failed:', error);
     throw error;
