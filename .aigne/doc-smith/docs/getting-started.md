@@ -3,83 +3,9 @@
 This guide provides a direct, task-oriented path to deploying and operating AIGNE Hub. By following these steps, a functional instance can be configured in under 30 minutes, enabling immediate integration with upstream AI providers and downstream applications.
 
 The following diagram illustrates the core workflow for getting started:
-
-```d2
-direction: down
-
-Admin: {
-  shape: c4-person
-}
-
-Blocklet-Server: {
-  label: "Blocklet Server"
-  shape: rectangle
-
-  Blocklet-Store: {
-    label: "Blocklet Store"
-    icon: "https://store.blocklet.dev/assets/z8ia29UsENBg6tLZUKi2HABj38Cw1LmHZocbQ/logo.png"
-  }
-
-  AIGNE-Hub: {
-    label: "AIGNE Hub"
-    icon: "https://www.arcblock.io/image-bin/uploads/89a24f04c34eca94f26c9dd30aec44fc.png"
-  }
-}
-
-AI-Providers: {
-  label: "AI Providers"
-  shape: rectangle
-  style: {
-    stroke: "#888"
-    stroke-width: 2
-    stroke-dash: 4
-  }
-  OpenAI: {}
-  Gemini: {}
-  Anthropic: {}
-}
-
-Choose-Mode: {
-  label: "Choose Operational Mode"
-  shape: diamond
-}
-
-Enterprise-Use: {
-  label: "Internal Enterprise Use"
-  shape: rectangle
-}
-
-Service-Provider: {
-  label: "Service Provider"
-  shape: rectangle
-
-  Payment-Kit: {
-    label: "Payment Kit"
-    shape: rectangle
-  }
-}
-
-Basic-Usage: {
-  label: "Basic Usage"
-  shape: rectangle
-
-  Playground: {}
-  API-Integration: {
-    label: "API Integration"
-  }
-}
-
-Admin -> Blocklet-Server.Blocklet-Store: "1. Find in Store"
-Blocklet-Server.Blocklet-Store -> Blocklet-Server.AIGNE-Hub: "2. Install Blocklet"
-Admin -> Blocklet-Server.AIGNE-Hub: "3. Configure"
-Blocklet-Server.AIGNE-Hub -> AI-Providers: "Connects to"
-Blocklet-Server.AIGNE-Hub -> Choose-Mode
-Choose-Mode -> Enterprise-Use: "Default"
-Enterprise-Use -> Basic-Usage
-Choose-Mode -> Service-Provider: "Monetize"
-Service-Provider -> Basic-Usage
-
-```
+<!-- DIAGRAM_IMAGE_START:guide:4:3 -->
+![Getting Started](assets/diagram/getting-started-diagram-0.jpg)
+<!-- DIAGRAM_IMAGE_END -->
 
 ## Prerequisites
 

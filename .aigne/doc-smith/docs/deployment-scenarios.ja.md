@@ -6,89 +6,9 @@ AIGNE Hub は、社内企業向けのセルフホストゲートウェイとし�
 
 以下の図は、2つのデプロイモデルの概要比較です。
 
-```d2
-direction: down
-
-Enterprise-Self-Hosting: {
-  label: "エンタープライズセルフホスティング"
-  shape: rectangle
-  style: {
-    stroke: "#888"
-    stroke-width: 2
-    stroke-dash: 4
-  }
-
-  Internal-Teams: {
-    shape: c4-person
-  }
-  
-  AIGNE-Hub-Gateway: {
-    label: "AIGNE Hub (ゲートウェイ)"
-  }
-  
-  Upstream-AI-Providers: {
-    label: "上流 AI プロバイダー"
-    shape: cylinder
-  }
-  
-  Internal-Teams -> AIGNE-Hub-Gateway: "1. AI サービスを利用"
-  AIGNE-Hub-Gateway -> Upstream-AI-Providers: "2. リクエストをルーティング"
-  
-  Billing: {
-    label: "請求"
-    shape: rectangle
-    style.fill: "#f0f0f0"
-    
-    Organization: {
-      label: "あなたの組織"
-      shape: rectangle
-    }
-    
-    Organization -> Upstream-AI-Providers: "直接支払い"
-  }
-}
-
-Service-Provider-Mode: {
-  label: "サービスプロバイダーモード"
-  shape: rectangle
-  style: {
-    stroke: "#888"
-    stroke-width: 2
-    stroke-dash: 4
-  }
-  
-  End-Users: {
-    label: "エンドユーザー"
-    shape: c4-person
-  }
-  
-  AIGNE-Hub-Platform: {
-    label: "AIGNE Hub (プラットフォーム)"
-  }
-  
-  Upstream-AI-Providers: {
-    label: "上流 AI プロバイダー"
-    shape: cylinder
-  }
-  
-  End-Users -> AIGNE-Hub-Platform: "1. クレジットを購入して AI を利用"
-  AIGNE-Hub-Platform -> Upstream-AI-Providers: "2. リクエストをルーティング"
-  
-  Billing: {
-    label: "請求"
-    shape: rectangle
-    style.fill: "#f0f0f0"
-
-    Provider: {
-      label: "あなた (サービスプロバイダー)"
-      shape: rectangle
-    }
-
-    End-Users -> Provider: "クレジットの支払い"
-    Provider -> Upstream-AI-Providers: "直接支払い"
-  }
-}
-```
+<!-- DIAGRAM_IMAGE_START:architecture:16:9 -->
+![Deployment Scenarios](assets/diagram/deployment-scenarios-diagram-0.jpg)
+<!-- DIAGRAM_IMAGE_END -->
 
 以下のセクションでは、各デプロイシナリオの概要を説明します。詳細な設定手順については、特定のサブドキュメントを参照してください。
 

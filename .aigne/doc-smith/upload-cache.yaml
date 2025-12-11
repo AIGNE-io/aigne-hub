@@ -64,6 +64,9 @@ b0be4ea5888064498b856198e33fd25a44dfa6b92b24e8cffd55582297cab129:
     https://hub.aigne.io:
       url: https://hub.aigne.io/image-bin/uploads/467a43898fb97a96.png
       upload_time: 2025-11-20T01:05:30.213Z
+    https://staging.docsmith.aigne.io:
+      url: https://staging.docsmith.aigne.io/image-bin/uploads/467a43898fb97a96.png
+      upload_time: 2025-12-04T10:32:37.480Z
 84151b07ec025b9fa454fdb0210eb2cb47da88cf607bb832e666c74f13af2f1a:
   local_path: blocklets/core/screenshots/d037b6b6b092765ccbfa58706c241622.png
   sites:
@@ -79,6 +82,9 @@ b0be4ea5888064498b856198e33fd25a44dfa6b92b24e8cffd55582297cab129:
     https://hub.aigne.io:
       url: https://hub.aigne.io/image-bin/uploads/84151b07ec025b9f.png
       upload_time: 2025-11-20T01:05:27.086Z
+    https://staging.docsmith.aigne.io:
+      url: https://staging.docsmith.aigne.io/image-bin/uploads/84151b07ec025b9f.png
+      upload_time: 2025-12-04T10:32:35.350Z
 ea664bc1d0d2ea1a3a1524b561279859f50ff43a7b31d7917060f1648055bcda:
   local_path: blocklets/core/src/icons/icon-image.svg
   sites:
@@ -130,6 +136,9 @@ a4381f1b70efa48fe13a0c9eca2fa260d40d598b8dafad06a7f6e0923a7cee1b:
     https://hub.aigne.io:
       url: https://hub.aigne.io/image-bin/uploads/3c965b1fec89be97.png
       upload_time: 2025-11-20T01:05:26.733Z
+    https://staging.docsmith.aigne.io:
+      url: https://staging.docsmith.aigne.io/image-bin/uploads/3c965b1fec89be97.png
+      upload_time: 2025-12-04T10:32:36.762Z
 073cd91a15e8548d5846b1d822134eafa4a399156f4c2d47a8534bcaf023c2d1:
   local_path: .aigne/doc-smith/.tmp/assets/d2/552ffdcb5a0652d76ff23f4418e368a0282198b9d9a4938f219690eaaac088aa.svg
   sites:
@@ -349,6 +358,9 @@ dda37e10b8c4ebcf7f3a180ff9bd074d4a23c5a03a684cc1014374ed8f940832:
     https://bbqawe3vpkk2nnqosook6kwzto5hzbfl4iwweosbhrq.did.abtnet.io:
       url: https://bbqawe3vpkk2nnqosook6kwzto5hzbfl4iwweosbhrq.did.abtnet.io/image-bin/uploads/759f20b4abfeccdf.png
       upload_time: 2025-11-19T04:40:12.623Z
+    https://staging.docsmith.aigne.io:
+      url: https://staging.docsmith.aigne.io/image-bin/uploads/759f20b4abfeccdf.png
+      upload_time: 2025-12-04T10:32:34.089Z
 a9cd09be56bd25027aff8b1c54917d95e70717a59d61312295edb42cfe861e8e:
   local_path: blocklets/core/screenshots/fc46e9461382f0be7541af17ef13f632.png
   sites:
@@ -364,6 +376,9 @@ a9cd09be56bd25027aff8b1c54917d95e70717a59d61312295edb42cfe861e8e:
     https://bbqawe3vpkk2nnqosook6kwzto5hzbfl4iwweosbhrq.did.abtnet.io:
       url: https://bbqawe3vpkk2nnqosook6kwzto5hzbfl4iwweosbhrq.did.abtnet.io/image-bin/uploads/a9cd09be56bd2502.png
       upload_time: 2025-11-19T04:40:12.633Z
+    https://staging.docsmith.aigne.io:
+      url: https://staging.docsmith.aigne.io/image-bin/uploads/a9cd09be56bd2502.png
+      upload_time: 2025-12-04T10:32:34.227Z
 ba32e618956f4e97996a02b246e167a977e668df1e046bd75c5808ba03886061:
   local_path: .aigne/doc-smith/.tmp/assets/d2/5b9e36401c87fd444ce88d3f22f30b26c0cf11654a4e72d2c70b1c02fe69cdf4.svg
   sites:
@@ -967,3 +982,180 @@ ac15c43cdfa84f0a0ec66359e112e8c61d8585fc60420848698a790ffb745209:
     https://docsmith.aigne.io:
       url: https://docsmith.aigne.io/image-bin/uploads/ac15c43cdfa84f0a.svg
       upload_time: 2025-11-20T01:06:27.835Z
+a620f1e3b9fe6c922023932793c54cbca51a37fe412eb6026f4d55c1383307e0:
+  local_path: .aigne/doc-smith/docs/assets/diagram/deployment-scenarios-diagram-0.jpg
+  sites:
+    https://staging.docsmith.aigne.io:
+      url: https://staging.docsmith.aigne.io/image-bin/uploads/a620f1e3b9fe6c92.jpg
+      upload_time: 2025-12-04T10:32:32.824Z
+    https://hub.aigne.io:
+      url: https://hub.aigne.io/image-bin/uploads/a620f1e3b9fe6c92.jpg
+      upload_time: 2025-12-04T10:38:50.895Z
+    https://www.arcblock.io:
+      url: https://www.arcblock.io/image-bin/uploads/a620f1e3b9fe6c92.jpg
+      upload_time: 2025-12-04T10:39:11.103Z
+    https://docsmith.aigne.io:
+      url: https://docsmith.aigne.io/image-bin/uploads/a620f1e3b9fe6c92.jpg
+      upload_time: 2025-12-04T10:39:31.436Z
+cda398893dea7b57a8cb54dd9b8c50344e53cc4be2106539409e093b6b04fee7:
+  local_path: .aigne/doc-smith/docs/assets/diagram/overview-diagram-0.jpg
+  sites:
+    https://staging.docsmith.aigne.io:
+      url: https://staging.docsmith.aigne.io/image-bin/uploads/cda398893dea7b57.jpg
+      upload_time: 2025-12-04T10:32:33.420Z
+    https://hub.aigne.io:
+      url: https://hub.aigne.io/image-bin/uploads/cda398893dea7b57.jpg
+      upload_time: 2025-12-04T10:38:51.091Z
+    https://www.arcblock.io:
+      url: https://www.arcblock.io/image-bin/uploads/cda398893dea7b57.jpg
+      upload_time: 2025-12-04T10:39:11.055Z
+    https://docsmith.aigne.io:
+      url: https://docsmith.aigne.io/image-bin/uploads/cda398893dea7b57.jpg
+      upload_time: 2025-12-04T10:39:31.345Z
+d3e59dfe0b305a8fe1101c20aac95ad3ab616c355747045cbeed309b447a9b65:
+  local_path: .aigne/doc-smith/docs/assets/diagram/getting-started-diagram-0.jpg
+  sites:
+    https://staging.docsmith.aigne.io:
+      url: https://staging.docsmith.aigne.io/image-bin/uploads/d3e59dfe0b305a8f.jpg
+      upload_time: 2025-12-04T10:32:33.713Z
+    https://hub.aigne.io:
+      url: https://hub.aigne.io/image-bin/uploads/d3e59dfe0b305a8f.jpg
+      upload_time: 2025-12-04T10:38:51.136Z
+    https://www.arcblock.io:
+      url: https://www.arcblock.io/image-bin/uploads/d3e59dfe0b305a8f.jpg
+      upload_time: 2025-12-04T10:39:11.208Z
+    https://docsmith.aigne.io:
+      url: https://docsmith.aigne.io/image-bin/uploads/d3e59dfe0b305a8f.jpg
+      upload_time: 2025-12-04T10:39:31.398Z
+0a431417ad2ea78b8304ae68e0eaaaa48cd6f2c504629975476acc86a3b5f47d:
+  local_path: .aigne/doc-smith/docs/assets/diagram/enterprise-self-hosting-diagram-0.jpg
+  sites:
+    https://staging.docsmith.aigne.io:
+      url: https://staging.docsmith.aigne.io/image-bin/uploads/0a431417ad2ea78b.jpg
+      upload_time: 2025-12-04T10:32:36.663Z
+    https://hub.aigne.io:
+      url: https://hub.aigne.io/image-bin/uploads/0a431417ad2ea78b.jpg
+      upload_time: 2025-12-04T10:38:53.315Z
+    https://www.arcblock.io:
+      url: https://www.arcblock.io/image-bin/uploads/0a431417ad2ea78b.jpg
+      upload_time: 2025-12-04T10:39:13.569Z
+    https://docsmith.aigne.io:
+      url: https://docsmith.aigne.io/image-bin/uploads/0a431417ad2ea78b.jpg
+      upload_time: 2025-12-04T10:39:34.302Z
+3e4eeb130709f7518850b7e8369ff86000cb8f02c8ea2638b3dca0f96319438c:
+  local_path: .aigne/doc-smith/docs/assets/diagram/service-provider-diagram-0.jpg
+  sites:
+    https://staging.docsmith.aigne.io:
+      url: https://staging.docsmith.aigne.io/image-bin/uploads/3e4eeb130709f751.jpg
+      upload_time: 2025-12-04T10:32:36.785Z
+    https://hub.aigne.io:
+      url: https://hub.aigne.io/image-bin/uploads/3e4eeb130709f751.jpg
+      upload_time: 2025-12-04T10:38:53.339Z
+    https://www.arcblock.io:
+      url: https://www.arcblock.io/image-bin/uploads/3e4eeb130709f751.jpg
+      upload_time: 2025-12-04T10:39:13.695Z
+    https://docsmith.aigne.io:
+      url: https://docsmith.aigne.io/image-bin/uploads/3e4eeb130709f751.jpg
+      upload_time: 2025-12-04T10:39:34.705Z
+550ea91d14c6145c863a79134fe75be567a6bcdfbfb6125d1c577500f6cbd7eb:
+  local_path: .aigne/doc-smith/docs/assets/diagram/features-diagram-0.jpg
+  sites:
+    https://staging.docsmith.aigne.io:
+      url: https://staging.docsmith.aigne.io/image-bin/uploads/550ea91d14c6145c.jpg
+      upload_time: 2025-12-04T10:32:39.992Z
+    https://hub.aigne.io:
+      url: https://hub.aigne.io/image-bin/uploads/550ea91d14c6145c.jpg
+      upload_time: 2025-12-04T10:38:53.539Z
+    https://www.arcblock.io:
+      url: https://www.arcblock.io/image-bin/uploads/550ea91d14c6145c.jpg
+      upload_time: 2025-12-04T10:39:13.795Z
+    https://docsmith.aigne.io:
+      url: https://docsmith.aigne.io/image-bin/uploads/550ea91d14c6145c.jpg
+      upload_time: 2025-12-04T10:39:34.247Z
+c65f3bf14cf3e41606beaf43e82138a9973784021922ac4a47b3324884f40d60:
+  local_path: .aigne/doc-smith/docs/assets/diagram/api-reference-diagram-0.jpg
+  sites:
+    https://staging.docsmith.aigne.io:
+      url: https://staging.docsmith.aigne.io/image-bin/uploads/c65f3bf14cf3e416.jpg
+      upload_time: 2025-12-04T10:32:43.085Z
+    https://hub.aigne.io:
+      url: https://hub.aigne.io/image-bin/uploads/c65f3bf14cf3e416.jpg
+      upload_time: 2025-12-04T10:38:53.756Z
+    https://www.arcblock.io:
+      url: https://www.arcblock.io/image-bin/uploads/c65f3bf14cf3e416.jpg
+      upload_time: 2025-12-04T10:39:13.767Z
+    https://docsmith.aigne.io:
+      url: https://docsmith.aigne.io/image-bin/uploads/c65f3bf14cf3e416.jpg
+      upload_time: 2025-12-04T10:39:34.433Z
+9bcb86d95ae0edb9edfc4651c9e6cf8306a07ecc0c2cee16f14f0b3743fe43d9:
+  local_path: .aigne/doc-smith/docs/assets/diagram/provider-management-diagram-0.jpg
+  sites:
+    https://staging.docsmith.aigne.io:
+      url: https://staging.docsmith.aigne.io/image-bin/uploads/9bcb86d95ae0edb9.jpg
+      upload_time: 2025-12-04T10:32:44.597Z
+    https://hub.aigne.io:
+      url: https://hub.aigne.io/image-bin/uploads/9bcb86d95ae0edb9.jpg
+      upload_time: 2025-12-04T10:38:56.379Z
+    https://www.arcblock.io:
+      url: https://www.arcblock.io/image-bin/uploads/9bcb86d95ae0edb9.jpg
+      upload_time: 2025-12-04T10:39:16.539Z
+    https://docsmith.aigne.io:
+      url: https://docsmith.aigne.io/image-bin/uploads/9bcb86d95ae0edb9.jpg
+      upload_time: 2025-12-04T10:39:37.164Z
+6eb62829c76d1117a6cdf4da9163dd41364233cd17bf8ebfe4402274d06ad707:
+  local_path: .aigne/doc-smith/docs/assets/diagram/security-diagram-0.jpg
+  sites:
+    https://staging.docsmith.aigne.io:
+      url: https://staging.docsmith.aigne.io/image-bin/uploads/6eb62829c76d1117.jpg
+      upload_time: 2025-12-04T10:32:44.904Z
+    https://hub.aigne.io:
+      url: https://hub.aigne.io/image-bin/uploads/6eb62829c76d1117.jpg
+      upload_time: 2025-12-04T10:38:56.120Z
+    https://www.arcblock.io:
+      url: https://www.arcblock.io/image-bin/uploads/6eb62829c76d1117.jpg
+      upload_time: 2025-12-04T10:39:16.640Z
+    https://docsmith.aigne.io:
+      url: https://docsmith.aigne.io/image-bin/uploads/6eb62829c76d1117.jpg
+      upload_time: 2025-12-04T10:39:37.234Z
+488a0d08608ef6dac6e26b4af3d02d2e4b1beb0c2ba798c0d3e5d33bf41ae345:
+  local_path: .aigne/doc-smith/docs/assets/diagram/analytics-diagram-0.jpg
+  sites:
+    https://staging.docsmith.aigne.io:
+      url: https://staging.docsmith.aigne.io/image-bin/uploads/488a0d08608ef6da.jpg
+      upload_time: 2025-12-04T10:32:45.028Z
+    https://hub.aigne.io:
+      url: https://hub.aigne.io/image-bin/uploads/488a0d08608ef6da.jpg
+      upload_time: 2025-12-04T10:38:56.001Z
+    https://www.arcblock.io:
+      url: https://www.arcblock.io/image-bin/uploads/488a0d08608ef6da.jpg
+      upload_time: 2025-12-04T10:39:16.617Z
+    https://docsmith.aigne.io:
+      url: https://docsmith.aigne.io/image-bin/uploads/488a0d08608ef6da.jpg
+      upload_time: 2025-12-04T10:39:37.306Z
+572eeb077b3eebfea432502f967d4321ea7ca77a384b22a9fecc3dd5809c0704:
+  local_path: .aigne/doc-smith/docs/assets/diagram/chat-completions-diagram-0.jpg
+  sites:
+    https://staging.docsmith.aigne.io:
+      url: https://staging.docsmith.aigne.io/image-bin/uploads/572eeb077b3eebfe.jpg
+      upload_time: 2025-12-04T10:32:46.970Z
+    https://hub.aigne.io:
+      url: https://hub.aigne.io/image-bin/uploads/572eeb077b3eebfe.jpg
+      upload_time: 2025-12-04T10:38:56.208Z
+    https://www.arcblock.io:
+      url: https://www.arcblock.io/image-bin/uploads/572eeb077b3eebfe.jpg
+      upload_time: 2025-12-04T10:39:16.439Z
+    https://docsmith.aigne.io:
+      url: https://docsmith.aigne.io/image-bin/uploads/572eeb077b3eebfe.jpg
+      upload_time: 2025-12-04T10:39:37.604Z
+28c803b95e528073157bea154a466d090ef5ac2b139ef8c846be89bd8ba9575e:
+  local_path: .aigne/doc-smith/docs/assets/diagram/features-analytics-01.jpg
+  sites:
+    https://hub.aigne.io:
+      url: https://hub.aigne.io/image-bin/uploads/28c803b95e528073.jpg
+      upload_time: 2025-12-10T15:53:21.457Z
+    https://www.arcblock.io:
+      url: https://www.arcblock.io/image-bin/uploads/28c803b95e528073.jpg
+      upload_time: 2025-12-10T15:53:44.135Z
+    https://docsmith.aigne.io:
+      url: https://docsmith.aigne.io/image-bin/uploads/28c803b95e528073.jpg
+      upload_time: 2025-12-10T15:54:05.678Z

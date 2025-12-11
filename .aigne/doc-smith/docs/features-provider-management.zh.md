@@ -4,35 +4,9 @@
 
 下图说明了 Provider、凭证和模型费率在 AIGNE Hub 中是如何相互关联的：
 
-```d2
-direction: down
-
-AIGNE-Hub: {
-  label: "AIGNE Hub 管理"
-  shape: rectangle
-
-  Provider: {
-    label: "Provider\n(例如 OpenAI, Google)"
-    shape: rectangle
-    style.fill: "#f0f4ff"
-  }
-
-  Credential: {
-    label: "凭证\n(例如 API 密钥)"
-    shape: rectangle
-    style.fill: "#e6fffa"
-  }
-
-  Model-Rate: {
-    label: "模型费率\n(例如 gpt-4o-mini 成本)"
-    shape: rectangle
-    style.fill: "#fffbe6"
-  }
-}
-
-AIGNE-Hub.Provider -> AIGNE-Hub.Credential: "拥有一个或多个"
-AIGNE-Hub.Provider <-> AIGNE-Hub.Model-Rate: "与之关联"
-```
+<!-- DIAGRAM_IMAGE_START:architecture:16:9 -->
+![Provider Management](assets/diagram/provider-management-diagram-0.jpg)
+<!-- DIAGRAM_IMAGE_END -->
 
 ## Provider 配置
 
