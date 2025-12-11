@@ -465,7 +465,7 @@ export default flatten({
     noLimitDescription: 'Your account has no credit limit and can use AI services without restrictions',
     viewBilling: 'View Billing',
     totalCreditsUsed: 'Total Credits Used',
-    totalUsage: 'Total Tokens Usage',
+    totalUsage: 'Total Model Usage',
     totalTokens: 'Total Tokens',
     totalImages: 'Total Images Generated',
     totalRequests: 'Total Calls',

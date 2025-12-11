@@ -53,7 +53,7 @@ function TokenCostInput({
   costValue: number;
   onCostChange: (value: number) => void;
 }) {
-  const [value, setValue] = useState<number | string>(costValue || 0);
+  const [value, setValue] = useState<number | string>(() => formatMillionTokenCost(costValue, 10));
 
   const handleBlur = (e: FocusEvent<HTMLInputElement>) => {
     onCostChange(parseMillionTokenCost(e.target.value));
@@ -109,7 +109,8 @@ function CreditRateInput({
   profitRate?: number;
   profitRateLabel?: string;
 }) {
-  const [value, setValue] = useState<number | string>(rateValue || 0);
+  // Initialize with formatted value to avoid flicker on first render
+  const [value, setValue] = useState<number | string>(() => formatMillionTokenCost(rateValue, 10));
 
   const handleBlur = (e: FocusEvent<HTMLInputElement>) => {
     // Convert from "Credits / 1M Token" to "Credits / Token"
@@ -397,7 +398,7 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
           .dividedBy(baseCreditPrice)
           .toNumber();
         // Use higher precision (16 decimal places) to preserve small value differences
-        setValue('inputRate', Number(calculatedInputRate.toFixed(16)));
+        setValue('inputRate', Number(calculatedInputRate.toFixed(10)));
       } else {
         setValue('inputRate', 0);
       }
@@ -407,7 +408,7 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
           .dividedBy(baseCreditPrice)
           .toNumber();
         // Use higher precision (16 decimal places) to preserve small value differences
-        setValue('outputRate', Number(calculatedOutputRate.toFixed(16)));
+        setValue('outputRate', Number(calculatedOutputRate.toFixed(10)));
       } else {
         setValue('outputRate', 0);
       }

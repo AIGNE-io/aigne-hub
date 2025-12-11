@@ -304,7 +304,7 @@ export const Config = {
   _newUserCreditGrantAmount: undefined as number | undefined,
   get newUserCreditGrantAmount() {
     if (this._newUserCreditGrantAmount === undefined) {
-      this._newUserCreditGrantAmount = config.env.preferences.newUserCreditGrantAmount ?? 0.1;
+      this._newUserCreditGrantAmount = config.env.preferences.newUserCreditGrantAmount ?? 0;
     }
     return this._newUserCreditGrantAmount;
   },

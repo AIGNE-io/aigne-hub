@@ -8,7 +8,7 @@ import Toast from '@arcblock/ux/lib/Toast';
 import UserCard from '@arcblock/ux/lib/UserCard';
 import { CardType, InfoType } from '@arcblock/ux/lib/UserCard/types';
 import { Table } from '@blocklet/aigne-hub/components';
-import { formatNumber } from '@blocklet/aigne-hub/utils/util';
+import { CREDIT_DISPLAY_DECIMAL_PLACES, formatNumber } from '@blocklet/aigne-hub/utils/util';
 import { formatError } from '@blocklet/error';
 import styled from '@emotion/styled';
 import { Download, FilterAltOutlined, OpenInNew, Search } from '@mui/icons-material';
@@ -368,7 +368,7 @@ export function CallHistory({
           if (!call) return null;
           return (
             <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
-              ${formatNumber(call.credits, 4)}
+              ${formatNumber(call.credits, CREDIT_DISPLAY_DECIMAL_PLACES)}
             </Typography>
           );
         },
