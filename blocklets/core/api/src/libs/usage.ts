@@ -256,7 +256,10 @@ async function reportUsageV2({ appId, userDid }: { appId: string; userDid: strin
 
 async function executeOriginalReportLogicWithProtection({ appId, userDid }: { appId: string; userDid: string }) {
   try {
-    if (!isPaymentRunning()) return;
+    if (!isPaymentRunning()) {
+      logger.info('Payment is not running, skipping usage report', { appId, userDid });
+      return;
+    }
 
     const { pricing } = Config;
     if (!pricing) throw new CustomError(400, 'Missing required preference `pricing`');
