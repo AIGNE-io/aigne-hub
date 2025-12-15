@@ -55,8 +55,8 @@ async function createMeter(oldMeter: any): Promise<{ meter: any; currencyId: str
   console.log('credit-migration: Creating new meter...');
 
   const meter = await payment.meters.create({
-    name: oldMeter.name || 'AIGNE Hub AI Meter',
-    description: oldMeter.description || 'AIGNE Hub AI Meter',
+    name: 'AIGNE Hub Credits',
+    description: oldMeter.description || 'AIGNE Hub Credits',
     event_name: NEW_METER_NAME,
     unit: METER_UNIT,
     aggregation_method: 'sum',
@@ -174,7 +174,10 @@ async function migrateGrant(grant: any, newCurrencyId: string, oldDecimal: numbe
       amount: newAmount,
       name: `[Migrated] ${grant.name || 'Credit Grant'}`,
       expires_at: grant.expires_at || 0,
+      effective_at: grant.effective_at || 0,
       category: grant.category || 'promotional',
+      priority: grant.priority,
+      applicability_config: grant.applicability_config,
       metadata: {
         ...grant.metadata,
         migratedFromGrantId: grantId,

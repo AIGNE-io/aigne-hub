@@ -139,7 +139,7 @@
                         },
                         "x-decorator-props": {},
                         "name": "newUserCreditGrantAmount",
-                        "description": "Number of Credits granted to new users (1 Credit = $1 USD, e.g., 0.1 = $0.10)",
+                        "description": "Number of Credits granted to new users (e.g., 1, 10)",
                         "default": "0",
                         "x-reactions": {
                           "dependencies": [
@@ -296,7 +296,7 @@
                           "addonAfter": "💲",
                           "addonBefore": "Per 1 Credit ="
                         },
-                        "description": "AIGNE Hub Credits is the unit for AI calls. 1 Credit = $1 USD.",
+                        "description": "AIGNE Hub Credits is the unit for AI calls. Enter cost per Credit (e.g., 1e-3 = 0.001)",
                         "name": "baseCreditPrice",
                         "x-designable-id": "79hmyquqn8p",
                         "x-index": 0,
