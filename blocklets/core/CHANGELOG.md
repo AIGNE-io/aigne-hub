@@ -1,3 +1,7 @@
+## 0.6.27 (2025-12-15)
+
+- fix: update aigne-code-reviewer to latest
+
 ## 0.6.26 (2025-12-10)
 
 - feat: implement meter caching and clear cache functionality in payment module
