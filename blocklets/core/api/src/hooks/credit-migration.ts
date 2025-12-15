@@ -362,6 +362,7 @@ export async function migrateModelCallsCredits(): Promise<void> {
 
 /**
  * Rebuild ModelCallStats cache for active users
+ * Optimized version: single SQL aggregation query + bulk insert
  */
 export async function rebuildModelCallStats(days = 7): Promise<void> {
   console.log(`rebuild-model-call-stats: Rebuilding ${days} days...`);
@@ -369,37 +370,72 @@ export async function rebuildModelCallStats(days = 7): Promise<void> {
   try {
     await sequelize.query('DELETE FROM "ModelCallStats"');
 
-    const [activeUsers] = (await sequelize.query(
+    const since = Math.floor(Date.now() / 1000) - days * 24 * 60 * 60;
+    const currentHour = Math.floor(Date.now() / 1000 / 3600) * 3600;
+
+    // Single query to aggregate all stats by userDid, hour, and type
+    const [rows] = (await sequelize.query(
       `
-      SELECT DISTINCT "userDid" FROM "ModelCalls" WHERE "callTime" >= :since
+      SELECT 
+        "userDid",
+        ("callTime" / 3600) * 3600 as "hourTimestamp",
+        "type",
+        COALESCE(SUM("totalUsage"), 0) as "totalUsage",
+        COALESCE(SUM("credits"), 0) as "totalCredits",
+        COUNT(*) as "totalCalls",
+        SUM(CASE WHEN "status" = 'success' THEN 1 ELSE 0 END) as "successCalls"
+      FROM "ModelCalls"
+      WHERE "callTime" >= :since AND ("callTime" / 3600) * 3600 < :currentHour
+      GROUP BY "userDid", ("callTime" / 3600) * 3600, "type"
     `,
-      { replacements: { since: Math.floor(Date.now() / 1000) - days * 24 * 60 * 60 } }
-    )) as [any[], any];
+      { replacements: { since, currentHour } }
+    )) as [any[], unknown];
 
-    const now = Math.floor(Date.now() / 1000);
-    const currentHour = Math.floor(now / 3600) * 3600;
-    const hours: number[] = [];
-    for (let h = currentHour - days * 24 * 3600; h < currentHour; h += 3600) {
-      hours.push(h);
+    if (rows.length === 0) {
+      console.log('✅ rebuild-model-call-stats: Complete (0 hourly stats created)');
+      return;
     }
 
-    const { default: ModelCallStat } = await import('../store/models/model-call-stat');
+    // Aggregate data by userDid + hourTimestamp to build stats objects
+    const statsMap = new Map<string, { userDid: string; timestamp: number; stats: any }>();
 
-    for (const user of activeUsers) {
-      for (const hour of hours) {
-        try {
-          // eslint-disable-next-line no-await-in-loop
-          await ModelCallStat.getHourlyStats(user.userDid, hour);
-        } catch {
-          console.error(
-            `rebuild-model-call-stats: Failed to get hourly stats for user ${user.userDid} at hour ${hour}`
-          );
-          // Ignore
-        }
+    for (const row of rows) {
+      const key = `${row.userDid}-${row.hourTimestamp}`;
+
+      if (!statsMap.has(key)) {
+        statsMap.set(key, {
+          userDid: row.userDid,
+          timestamp: row.hourTimestamp,
+          stats: { totalUsage: 0, totalCredits: 0, totalCalls: 0, successCalls: 0, byType: {} },
+        });
       }
+
+      const entry = statsMap.get(key)!;
+      entry.stats.totalUsage += Number(row.totalUsage);
+      entry.stats.totalCredits += Number(row.totalCredits);
+      entry.stats.totalCalls += Number(row.totalCalls);
+      entry.stats.successCalls += Number(row.successCalls);
+      entry.stats.byType[row.type] = {
+        totalUsage: Number(row.totalUsage),
+        totalCredits: Number(row.totalCredits),
+        totalCalls: Number(row.totalCalls),
+        successCalls: Number(row.successCalls),
+      };
     }
 
-    console.log(`✅ rebuild-model-call-stats: Complete (${activeUsers.length} users)`);
+    // Bulk insert all stats records
+    const { default: ModelCallStat } = await import('../store/models/model-call-stat');
+    const records = Array.from(statsMap.entries()).map(([key, value]) => ({
+      id: key,
+      userDid: value.userDid,
+      timestamp: value.timestamp,
+      timeType: 'hour' as const,
+      stats: value.stats,
+    }));
+
+    await ModelCallStat.bulkCreate(records);
+
+    console.log(`✅ rebuild-model-call-stats: Complete (${records.length} hourly stats created)`);
   } catch (error: any) {
     console.error('rebuild-model-call-stats: Failed:', error);
     throw error;
