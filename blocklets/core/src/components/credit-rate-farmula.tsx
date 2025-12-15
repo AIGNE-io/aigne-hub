@@ -5,6 +5,7 @@ export function CreditRateFormula() {
   const { t } = useLocaleContext();
   const baseCreditPrice = window.blocklet?.preferences?.baseCreditPrice ?? 1;
   const targetProfitMargin = window.blocklet?.preferences?.targetProfitMargin || 2;
+  const creditPrefix = window.blocklet?.preferences?.creditPrefix || '';
 
   return (
     <Box sx={{ width: '100%', p: 1 }}>
@@ -107,8 +108,8 @@ export function CreditRateFormula() {
           </Typography>
         </Box>
         <Typography variant="caption" sx={{ color: 'text.secondary', mt: 1, display: 'block' }}>
-          <strong>{t('config.modelRates.configInfo.formulaExample')}:</strong> ${baseCreditPrice} × (1 +{' '}
-          {targetProfitMargin}%) ÷ {t('config.modelRates.configInfo.modelTokenCost')}
+          <strong>{t('config.modelRates.configInfo.formulaExample')}:</strong> {creditPrefix}
+          {baseCreditPrice} × (1 + {targetProfitMargin}%) ÷ {t('config.modelRates.configInfo.modelTokenCost')}
         </Typography>
       </Box>
     </Box>

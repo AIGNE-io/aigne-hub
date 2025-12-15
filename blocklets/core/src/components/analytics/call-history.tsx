@@ -192,6 +192,8 @@ export function CallHistory({
   // Data fetching with useRequest
   const { data = { list: [], count: 0 }, loading } = useRequest(() => fetchModelCalls(buildQuery()), {
     refreshDeps: [pagination, searchTerm, statusFilter, dateRange, refreshKey],
+    pollingInterval: 30 * 1000,
+    pollingWhenHidden: false,
     onError: (error: any) => {
       Toast.error(formatError(error));
     },
@@ -366,9 +368,11 @@ export function CallHistory({
         customBodyRender: (_value: any, tableMeta: any) => {
           const call = modelCalls[tableMeta.rowIndex];
           if (!call) return null;
+          const creditPrefix = window.blocklet?.preferences?.creditPrefix || '';
           return (
             <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
-              ${formatNumber(call.credits, CREDIT_DISPLAY_DECIMAL_PLACES)}
+              {creditPrefix}
+              {formatNumber(call.credits, CREDIT_DISPLAY_DECIMAL_PLACES)}
             </Typography>
           );
         },

@@ -236,6 +236,7 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
 
   const baseCreditPrice = window.blocklet?.preferences?.baseCreditPrice ?? 1;
   const targetProfitMargin = window.blocklet?.preferences?.targetProfitMargin || 0;
+  const creditPrefix = window.blocklet?.preferences?.creditPrefix || '';
 
   const { modelOptions: allModelOptions, loading: modelDataLoading, fetchModelData } = useModelData();
 
@@ -815,8 +816,9 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
                             <strong>{t('config.modelRates.configInfo.title')}</strong>
                           </Typography>
                           <Typography variant="body2" sx={{ mb: 1 }}>
-                            {t('config.modelRates.configInfo.creditValue')}${formatMillionTokenCost(baseCreditPrice)} /
-                            1M
+                            {t('config.modelRates.configInfo.creditValue')}
+                            {creditPrefix}
+                            {formatMillionTokenCost(baseCreditPrice)} / 1M
                           </Typography>
                           <Typography variant="body2" sx={{ mb: 1 }}>
                             {t('config.modelRates.configInfo.profitMargin')}

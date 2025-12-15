@@ -15,6 +15,7 @@ interface CreditBalanceProps {
 
 function CreditBalance({ balance = undefined, currency = undefined, useAIKitService = false }: CreditBalanceProps) {
   const { t } = useLocaleContext();
+  const creditPrefix = (typeof window !== 'undefined' && window.blocklet?.preferences?.creditPrefix) || '';
   const [creditData, setCreditData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -101,7 +102,8 @@ function CreditBalance({ balance = undefined, currency = undefined, useAIKitServ
 
           <Box>
             <Typography variant="h3" sx={{ fontWeight: 'bold', lineHeight: 1 }}>
-              ${displayBalance}
+              {creditPrefix}
+              {displayBalance}
             </Typography>
             <Typography variant="body1" sx={{ opacity: 0.9, mt: 0.5 }}>
               {displayCurrency}

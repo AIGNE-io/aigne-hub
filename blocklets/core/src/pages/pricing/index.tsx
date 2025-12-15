@@ -94,6 +94,7 @@ const listKey = 'pricing-models';
 export default function PricingPage() {
   const { t } = useLocaleContext();
   const { api } = useSessionContext();
+  const creditPrefix = window.blocklet?.preferences?.creditPrefix || '';
 
   const [search, setSearch] = useSetState({
     pageSize: 25,
@@ -388,7 +389,7 @@ export default function PricingPage() {
                   sx={{
                     color: 'primary.main',
                   }}>
-                  {`$${getPrice(new BigNumber(model.input_credits_per_token).multipliedBy(new BigNumber(window.blocklet.preferences.baseCreditPrice ?? 0)), 2, model.type)}`}
+                  {`${creditPrefix}${getPrice(new BigNumber(model.input_credits_per_token).multipliedBy(new BigNumber(window.blocklet.preferences.baseCreditPrice ?? 0)), 2, model.type)}`}
                 </Typography>
                 <Typography
                   sx={{
@@ -458,7 +459,7 @@ export default function PricingPage() {
                     color: 'primary.main',
                     fontWeight: '700',
                   }}>
-                  {`$${getPrice(new BigNumber(model.output_credits_per_token).multipliedBy(new BigNumber(window.blocklet.preferences.baseCreditPrice ?? 0)), 2, model.type)}`}
+                  {`${creditPrefix}${getPrice(new BigNumber(model.output_credits_per_token).multipliedBy(new BigNumber(window.blocklet.preferences.baseCreditPrice ?? 0)), 2, model.type)}`}
                 </Typography>
                 <Typography
                   sx={{

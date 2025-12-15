@@ -32,6 +32,7 @@ function UserCreditCard({
   manageBtnProps = {},
 }: UserCreditCardProps) {
   const { t } = useLocaleContext();
+  const creditPrefix = (typeof window !== 'undefined' && window.blocklet?.preferences?.creditPrefix) || '';
 
   const { data: userInfoData, loading } = useRequest(() => getUserInfo({ baseUrl, accessKey: apiKey }), {
     refreshDeps: [baseUrl, apiKey],
@@ -126,7 +127,8 @@ function UserCreditCard({
               sx={{
                 fontWeight: 'bold',
               }}>
-              ${formatNumber(userInfoData?.creditBalance?.balance || '0')}
+              {creditPrefix}
+              {formatNumber(userInfoData?.creditBalance?.balance || '0')}
             </Typography>
           </Stack>
 
@@ -150,7 +152,8 @@ function UserCreditCard({
                   fontWeight: 'bold',
                   color: 'error.main',
                 }}>
-                ${formatNumber(userInfoData.creditBalance.pendingCredit)}
+                {creditPrefix}
+                {formatNumber(userInfoData.creditBalance.pendingCredit)}
               </Typography>
             </Stack>
           )}

@@ -108,6 +108,8 @@ function CustomTooltip({
     padding: 0,
   };
 
+  const creditPrefix = (typeof window !== 'undefined' && window.blocklet?.preferences?.creditPrefix) || '';
+
   return (
     <div style={tooltipStyle}>
       {/* Header */}
@@ -164,7 +166,8 @@ function CustomTooltip({
                   fontSize: '14px',
                   fontWeight: 600,
                 }}>
-                ${formatNumber(data.totalCredits, CREDIT_DISPLAY_DECIMAL_PLACES)}
+                {creditPrefix}
+                {formatNumber(data.totalCredits, CREDIT_DISPLAY_DECIMAL_PLACES)}
               </span>
             </div>
           ) : (

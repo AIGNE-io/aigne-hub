@@ -182,6 +182,7 @@ export function CreditsBalance({ data = undefined as UserInfoResult | undefined 
 
   const overDue = Number(creditBalance?.pendingCredit) > 0;
   const isCreditBillingEnabled = window.blocklet?.preferences?.creditBasedBillingEnabled;
+  const creditPrefix = window.blocklet?.preferences?.creditPrefix || '';
   const balance = Number(creditBalance?.balance || 0);
   const total = Number(creditBalance?.total || 0);
 
@@ -199,7 +200,8 @@ export function CreditsBalance({ data = undefined as UserInfoResult | undefined 
     if (overDue) {
       return (
         <Typography variant="h1" sx={{ fontWeight: 'bold', mb: 1, color: 'error.main' }}>
-          -${formatNumber(creditBalance?.pendingCredit || 0, CREDIT_DISPLAY_DECIMAL_PLACES)}
+          -{creditPrefix}
+          {formatNumber(creditBalance?.pendingCredit || 0, CREDIT_DISPLAY_DECIMAL_PLACES)}
         </Typography>
       );
     }
@@ -211,7 +213,7 @@ export function CreditsBalance({ data = undefined as UserInfoResult | undefined 
           mb: 1,
           color: isNegative ? 'error.main' : 'text.primary',
         }}>
-        {isNegative ? '-$' : '$'}
+        {isNegative ? `-${creditPrefix}` : creditPrefix}
         {formatNumber(Math.abs(balance), CREDIT_DISPLAY_DECIMAL_PLACES)}
       </Typography>
     );
@@ -252,7 +254,7 @@ export function CreditsBalance({ data = undefined as UserInfoResult | undefined 
               </Tooltip>
               <Typography variant="caption" color="text.secondary">
                 {t('analytics.currentEffectiveTotal', {
-                  total: `$${formatNumber(total, CREDIT_DISPLAY_DECIMAL_PLACES)}`,
+                  total: `${creditPrefix}${formatNumber(total, CREDIT_DISPLAY_DECIMAL_PLACES)}`,
                 })}
               </Typography>
             </Box>
