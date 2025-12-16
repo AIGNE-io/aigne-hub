@@ -94,7 +94,6 @@ const listKey = 'pricing-models';
 export default function PricingPage() {
   const { t } = useLocaleContext();
   const { api } = useSessionContext();
-  const creditPrefix = window.blocklet?.preferences?.creditPrefix || '';
 
   const [search, setSearch] = useSetState({
     pageSize: 25,
@@ -389,7 +388,6 @@ export default function PricingPage() {
                   sx={{
                     color: 'primary.main',
                   }}>
-                  {creditPrefix}
                   {getPrice(model.input_credits_per_token, CREDIT_DISPLAY_DECIMAL_PLACES, model.type)} credits
                 </Typography>
                 <Typography
@@ -465,7 +463,6 @@ export default function PricingPage() {
                     color: 'primary.main',
                     fontWeight: '700',
                   }}>
-                  {creditPrefix}
                   {getPrice(model.output_credits_per_token, CREDIT_DISPLAY_DECIMAL_PLACES, model.type)} credits
                 </Typography>
                 <Typography
