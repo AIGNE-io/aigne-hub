@@ -5,7 +5,7 @@ import { useSubscription } from '@app/libs/ws';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import Toast from '@arcblock/ux/lib/Toast';
 import { Table } from '@blocklet/aigne-hub/components';
-import { formatNumber } from '@blocklet/aigne-hub/utils/util';
+import { CREDIT_DISPLAY_DECIMAL_PLACES, formatNumber } from '@blocklet/aigne-hub/utils/util';
 import { formatError } from '@blocklet/error';
 import Header from '@blocklet/ui-react/lib/Header';
 import styled from '@emotion/styled';
@@ -388,7 +388,7 @@ export default function PricingPage() {
                   sx={{
                     color: 'primary.main',
                   }}>
-                  {getPrice(model.input_credits_per_token, 0, model.type)} credits
+                  {getPrice(model.input_credits_per_token, CREDIT_DISPLAY_DECIMAL_PLACES, model.type)} credits
                 </Typography>
                 <Typography
                   sx={{
@@ -400,7 +400,7 @@ export default function PricingPage() {
               </Box>
               {window.blocklet.preferences.baseCreditPrice && (
                 <Box sx={{ color: 'text.secondary', fontSize: 14 }}>
-                  {`$${getPrice(new BigNumber(model.input_credits_per_token).multipliedBy(new BigNumber(window.blocklet.preferences.baseCreditPrice || 0)), 2, model.type)}`}
+                  {`$${getPrice(new BigNumber(model.input_credits_per_token).multipliedBy(new BigNumber(window.blocklet.preferences.baseCreditPrice || 0)), 4, model.type)}`}
                 </Box>
               )}
             </Box>
@@ -463,7 +463,7 @@ export default function PricingPage() {
                     color: 'primary.main',
                     fontWeight: '700',
                   }}>
-                  {getPrice(model.output_credits_per_token, 0, model.type)} credits
+                  {getPrice(model.output_credits_per_token, CREDIT_DISPLAY_DECIMAL_PLACES, model.type)} credits
                 </Typography>
                 <Typography
                   sx={{
@@ -475,7 +475,7 @@ export default function PricingPage() {
               </Box>
               {window.blocklet.preferences.baseCreditPrice && (
                 <Box sx={{ color: 'text.secondary', fontSize: 14 }}>
-                  {`$${getPrice(new BigNumber(model.output_credits_per_token).multipliedBy(new BigNumber(window.blocklet.preferences.baseCreditPrice || 0)), 2, model.type)}`}
+                  {`$${getPrice(new BigNumber(model.output_credits_per_token).multipliedBy(new BigNumber(window.blocklet.preferences.baseCreditPrice || 0)), 4, model.type)}`}
                 </Box>
               )}
             </Box>

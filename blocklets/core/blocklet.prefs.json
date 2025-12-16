@@ -139,8 +139,8 @@
                         },
                         "x-decorator-props": {},
                         "name": "newUserCreditGrantAmount",
-                        "description": "Number of Credits granted to new users (e.g., 100, 500)",
-                        "default": "100",
+                        "description": "Number of Credits granted to new users (e.g., 1, 10)",
+                        "default": "0",
                         "x-reactions": {
                           "dependencies": [
                             {
@@ -217,6 +217,41 @@
                         },
                         "x-designable-id": "28c5d040bkv",
                         "x-index": 4
+                      },
+                      "creditPrefix": {
+                        "type": "string",
+                        "title": "Credit Prefix",
+                        "x-decorator": "FormItem",
+                        "x-component": "Input",
+                        "x-validator": [],
+                        "x-component-props": {},
+                        "x-decorator-props": {},
+                        "name": "creditPrefix",
+                        "description": "Currency symbol prefix displayed before credit amounts on the interface (e.g., $, ¥, €)",
+                        "default": "",
+                        "x-reactions": {
+                          "dependencies": [
+                            {
+                              "property": "value",
+                              "type": "boolean",
+                              "source": "p72faa2emzb.doc1z1uo846.rfnqchxbwb4.d4bm9ro1vnh.newUserCreditGrantEnabled",
+                              "name": "newUserCreditGrantEnabled"
+                            },
+                            {
+                              "property": "value",
+                              "type": "boolean",
+                              "source": "p72faa2emzb.doc1z1uo846.rfnqchxbwb4.d4bm9ro1vnh.creditBasedBillingEnabled",
+                              "name": "creditBasedBillingEnabled"
+                            }
+                          ],
+                          "fulfill": {
+                            "state": {
+                              "visible": "{{$deps.newUserCreditGrantEnabled === true && $deps.creditBasedBillingEnabled === true}}"
+                            }
+                          }
+                        },
+                        "x-designable-id": "xl3ngmfaelh",
+                        "x-index": 5
                       }
                     }
                   }
@@ -265,7 +300,7 @@
                         "name": "baseCreditPrice",
                         "x-designable-id": "79hmyquqn8p",
                         "x-index": 0,
-                        "default": "0.0000025"
+                        "default": "1"
                       },
                       "targetProfitMargin": {
                         "type": "number",
@@ -681,6 +716,6 @@
         }
       }
     },
-    "x-designable-id": "raabjmw72b5"
+    "x-designable-id": "xywj8y53z6l"
   }
 }

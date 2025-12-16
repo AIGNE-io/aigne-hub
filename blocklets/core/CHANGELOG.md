@@ -1,6 +1,6 @@
-## 0.6.27 (2025-12-15)
+## 0.7.0 (2025-12-11)
 
-- fix: update aigne-code-reviewer to latest
+- feat: switch to USD-based pricing mode
 
 ## 0.6.26 (2025-12-10)
 

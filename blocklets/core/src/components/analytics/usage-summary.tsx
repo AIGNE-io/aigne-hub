@@ -1,5 +1,5 @@
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
-import { formatNumber } from '@blocklet/aigne-hub/utils/util';
+import { CREDIT_DISPLAY_DECIMAL_PLACES, formatNumber } from '@blocklet/aigne-hub/utils/util';
 import { AccountBalance, CallMade, InfoOutlined, TrendingUp } from '@mui/icons-material';
 import { Box, Card, CardContent, Grid, Tooltip, Typography } from '@mui/material';
 import BigNumber from 'bignumber.js';
@@ -190,6 +190,7 @@ export function UsageSummary({
   customMetrics = undefined,
 }: UsageSummaryProps) {
   const { t } = useLocaleContext();
+  const creditPrefix = window.blocklet?.preferences?.creditPrefix || '';
 
   const formatTrend = (growth: number): string => {
     if (growth === 0) return '0%';
@@ -303,7 +304,7 @@ export function UsageSummary({
   const metrics = customMetrics || [
     {
       title: t('analytics.totalCreditsUsed'),
-      value: formatNumber(new BigNumber(trendComparison?.current?.totalCredits || totalCredits || 0).dp(2).toString()),
+      value: `${creditPrefix}${formatNumber(new BigNumber(trendComparison?.current?.totalCredits || totalCredits || 0).dp(CREDIT_DISPLAY_DECIMAL_PLACES).toString())}`,
       trend: trendComparison ? formatTrend(trendComparison.growth.creditsGrowth) : undefined,
       trendDescription: trendComparison ? getTrendDescription(periodDays) : undefined,
       icon: <CallMade color="primary" />,

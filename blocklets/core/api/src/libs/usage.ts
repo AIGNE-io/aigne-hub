@@ -13,7 +13,7 @@ import { Op } from 'sequelize';
 
 import { getModelNameWithProvider } from './ai-provider';
 import { wallet } from './auth';
-import { Config } from './env';
+import { CREDIT_DECIMAL_PLACES, Config } from './env';
 import logger from './logger';
 import { createMeterEvent, getActiveSubscriptionOfApp, isPaymentRunning } from './payment';
 
@@ -142,13 +142,19 @@ export async function createAndReportUsageV2({
     const price = await getPrice(type, model);
     if (price) {
       if (type === 'imageGeneration') {
-        usedCredits = new BigNumber(numberOfImageGeneration).multipliedBy(price.outputRate).decimalPlaces(2).toNumber();
+        usedCredits = new BigNumber(numberOfImageGeneration)
+          .multipliedBy(price.outputRate)
+          .decimalPlaces(CREDIT_DECIMAL_PLACES)
+          .toNumber();
       } else if (type === 'video') {
-        usedCredits = new BigNumber(mediaDuration || 0).multipliedBy(price.outputRate).decimalPlaces(2).toNumber();
+        usedCredits = new BigNumber(mediaDuration || 0)
+          .multipliedBy(price.outputRate)
+          .decimalPlaces(CREDIT_DECIMAL_PLACES)
+          .toNumber();
       } else {
         const input = new BigNumber(promptTokens).multipliedBy(price.inputRate);
         const output = new BigNumber(completionTokens).multipliedBy(price.outputRate);
-        usedCredits = input.plus(output).decimalPlaces(2).toNumber();
+        usedCredits = input.plus(output).decimalPlaces(CREDIT_DECIMAL_PLACES).toNumber();
       }
     }
 
@@ -250,7 +256,10 @@ async function reportUsageV2({ appId, userDid }: { appId: string; userDid: strin
 
 async function executeOriginalReportLogicWithProtection({ appId, userDid }: { appId: string; userDid: string }) {
   try {
-    if (!isPaymentRunning()) return;
+    if (!isPaymentRunning()) {
+      logger.info('Payment is not running, skipping usage report', { appId, userDid });
+      return;
+    }
 
     const { pricing } = Config;
     if (!pricing) throw new CustomError(400, 'Missing required preference `pricing`');
@@ -332,7 +341,7 @@ async function executeOriginalReportLogicWithProtection({ appId, userDid }: { ap
       recordCount: updatedRows,
     });
 
-    const reportQuantity = new BigNumber(quantity || 0).decimalPlaces(2).toNumber();
+    const reportQuantity = new BigNumber(quantity || 0).decimalPlaces(CREDIT_DECIMAL_PLACES).toNumber();
     const imagesGeneratedNum = Number(imagesGenerated) || 0;
     try {
       await createMeterEvent({

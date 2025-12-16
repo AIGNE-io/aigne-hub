@@ -1,6 +1,9 @@
 import trimEnd from 'lodash/trimEnd';
 import numbro from 'numbro';
 
+// Decimal places for credit display in UI (different from backend calculation precision)
+export const CREDIT_DISPLAY_DECIMAL_PLACES = 6;
+
 export function formatNumber(
   n: number | string,
   precision: number = 6,

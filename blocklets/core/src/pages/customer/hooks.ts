@@ -100,6 +100,9 @@ export interface ModelCallsResponse {
   };
 }
 
+// Polling interval for all queries (30 seconds)
+const POLLING_INTERVAL = 30 * 1000;
+
 // Custom hooks
 export function useCreditBalance() {
   const {
@@ -108,6 +111,8 @@ export function useCreditBalance() {
     error,
     runAsync: refetch,
   } = useRequest(() => api.get('/api/user/info').then((res) => res.data), {
+    pollingInterval: POLLING_INTERVAL,
+    pollingWhenHidden: false,
     onError: (error) => {
       console.error('Failed to fetch credit balance:', error);
     },
@@ -134,6 +139,8 @@ export function useUsageStats(params: { startTime: string; endTime: string; allU
         .then((res) => res.data),
     {
       refreshDeps: [params.startTime, params.endTime],
+      pollingInterval: POLLING_INTERVAL,
+      pollingWhenHidden: false,
       onError: (error) => {
         console.error('Failed to fetch usage stats:', error);
         Toast.error(error?.message);
@@ -238,6 +245,8 @@ export function useCreditGrants(isCreditBillingEnabled: boolean) {
   } = useRequest(
     () => api.get('/api/user/credit/grants', { params: { page: 1, pageSize: 10 } }).then((res) => res.data),
     {
+      pollingInterval: POLLING_INTERVAL,
+      pollingWhenHidden: false,
       onError: (error) => {
         console.error('Failed to fetch credit grants:', error);
       },

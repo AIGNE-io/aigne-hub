@@ -53,7 +53,7 @@ function TokenCostInput({
   costValue: number;
   onCostChange: (value: number) => void;
 }) {
-  const [value, setValue] = useState<number | string>(costValue || 0);
+  const [value, setValue] = useState<number | string>(() => formatMillionTokenCost(costValue, 10));
 
   const handleBlur = (e: FocusEvent<HTMLInputElement>) => {
     onCostChange(parseMillionTokenCost(e.target.value));
@@ -64,7 +64,8 @@ function TokenCostInput({
   };
 
   useEffect(() => {
-    setValue(formatMillionTokenCost(costValue));
+    // Use precision 10 to preserve small decimal values
+    setValue(formatMillionTokenCost(costValue, 10));
   }, [costValue]);
 
   return (
@@ -76,7 +77,8 @@ function TokenCostInput({
         onChange={handleChange}
         size="small"
         slotProps={{
-          htmlInput: { type: 'number', step: 0.01, min: 0 },
+          // Use type="text" with inputMode="decimal" to avoid HTML5 number validation issues
+          htmlInput: { type: 'text', inputMode: 'decimal' },
           input: {
             endAdornment: (
               <InputAdornment position="end">
@@ -87,6 +89,88 @@ function TokenCostInput({
           },
         }}
       />
+    </Box>
+  );
+}
+
+// Credit rate input component - displays as "Credits / 1M Token" but stores as "Credits / Token"
+function CreditRateInput({
+  label,
+  description = '',
+  rateValue = 0,
+  onRateChange,
+  profitRate = undefined,
+  profitRateLabel = '',
+}: {
+  label: string;
+  description?: string;
+  rateValue: number;
+  onRateChange: (value: number) => void;
+  profitRate?: number;
+  profitRateLabel?: string;
+}) {
+  // Initialize with formatted value to avoid flicker on first render
+  const [value, setValue] = useState<number | string>(() => formatMillionTokenCost(rateValue, 10));
+
+  const handleBlur = (e: FocusEvent<HTMLInputElement>) => {
+    // Convert from "Credits / 1M Token" to "Credits / Token"
+    onRateChange(parseMillionTokenCost(e.target.value));
+  };
+
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setValue(e.target.value);
+  };
+
+  useEffect(() => {
+    // Convert from "Credits / Token" to "Credits / 1M Token" for display
+    setValue(formatMillionTokenCost(rateValue, 10));
+  }, [rateValue]);
+
+  return (
+    <Box sx={{ flex: 1 }}>
+      <FormLabel required>{label}</FormLabel>
+      {description && (
+        <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 0.5 }}>
+          {description}
+        </Typography>
+      )}
+      <TextField
+        value={value}
+        onBlur={handleBlur}
+        onChange={handleChange}
+        size="small"
+        fullWidth
+        required
+        slotProps={{
+          // Use type="text" with inputMode="decimal" to avoid HTML5 number validation issues
+          htmlInput: { type: 'text', inputMode: 'decimal' },
+          input: {
+            endAdornment: (
+              <InputAdornment position="end">
+                <UnitDisplay value="" type="token" addon="Tokens" />
+              </InputAdornment>
+            ),
+            startAdornment: <InputAdornment position="start">$</InputAdornment>,
+          },
+        }}
+        sx={{
+          '& .MuiOutlinedInput-root': {
+            backgroundColor: 'background.default',
+          },
+        }}
+      />
+      {profitRate !== undefined && rateValue > 0 && (
+        <Typography
+          variant="caption"
+          sx={{
+            color: profitRate >= 0 ? 'success.main' : 'error.main',
+            display: 'block',
+            fontWeight: 500,
+            mt: 1,
+          }}>
+          {profitRateLabel}: {profitRate.toFixed(1)}%
+        </Typography>
+      )}
     </Box>
   );
 }
@@ -150,8 +234,9 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
   const [pricingMenuAnchor, setPricingMenuAnchor] = useState<null | HTMLElement>(null);
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
 
-  const baseCreditPrice = window.blocklet?.preferences?.baseCreditPrice || 0.0000025;
+  const baseCreditPrice = window.blocklet?.preferences?.baseCreditPrice ?? 1;
   const targetProfitMargin = window.blocklet?.preferences?.targetProfitMargin || 0;
+  const creditPrefix = window.blocklet?.preferences?.creditPrefix || '';
 
   const { modelOptions: allModelOptions, loading: modelDataLoading, fetchModelData } = useModelData();
 
@@ -233,6 +318,12 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
     [baseCreditPrice]
   );
 
+  // Computed profit rates for display
+  const inputProfitRate =
+    inputRate > 0 && unitCostsInput > 0 ? calculateProfitRate(inputRate, unitCostsInput) : undefined;
+  const outputProfitRate =
+    outputRate > 0 && unitCostsOutput > 0 ? calculateProfitRate(outputRate, unitCostsOutput) : undefined;
+
   // 自动计算费率的函数
   const autoCalculateRates = () => {
     const calculatedInputRate = new BigNumber(unitCostsInput)
@@ -243,8 +334,8 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
       .multipliedBy(1 + targetProfitMargin / 100)
       .dividedBy(baseCreditPrice)
       .toNumber();
-    setValue('inputRate', Number(calculatedInputRate.toFixed(6)));
-    setValue('outputRate', Number(calculatedOutputRate.toFixed(6)));
+    setValue('inputRate', Number(calculatedInputRate.toFixed(10)));
+    setValue('outputRate', Number(calculatedOutputRate.toFixed(10)));
   };
 
   // 获取提供商列表
@@ -308,7 +399,8 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
           .multipliedBy(1 + targetProfitMargin / 100)
           .dividedBy(baseCreditPrice)
           .toNumber();
-        setValue('inputRate', Number(calculatedInputRate.toFixed(6)));
+        // Use higher precision (10 decimal places) to preserve small value differences
+        setValue('inputRate', Number(calculatedInputRate.toFixed(10)));
       } else {
         setValue('inputRate', 0);
       }
@@ -317,7 +409,8 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
           .multipliedBy(1 + targetProfitMargin / 100)
           .dividedBy(baseCreditPrice)
           .toNumber();
-        setValue('outputRate', Number(calculatedOutputRate.toFixed(6)));
+        // Use higher precision (10 decimal places) to preserve small value differences
+        setValue('outputRate', Number(calculatedOutputRate.toFixed(10)));
       } else {
         setValue('outputRate', 0);
       }
@@ -365,6 +458,10 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
     const formData = {
       ...data,
       providers: rate ? [rate.provider.id] : selectedProviders,
+      // Use BigNumber toFixed to avoid scientific notation (e.g., 8e-8) for very small numbers
+      // BigNumber.toFixed() returns a string which won't be converted to scientific notation in JSON
+      inputRate: new BigNumber(data.inputRate).toFixed(),
+      outputRate: new BigNumber(data.outputRate).toFixed(),
       unitCosts: {
         input: data.unitCosts?.input || 0,
         output: data.unitCosts?.output || 0,
@@ -381,7 +478,8 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
       },
     };
 
-    onSubmit(formData);
+    // Use type assertion as we're sending string format to avoid scientific notation
+    onSubmit(formData as unknown as ModelRateFormData);
   };
 
   return (
@@ -718,8 +816,9 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
                             <strong>{t('config.modelRates.configInfo.title')}</strong>
                           </Typography>
                           <Typography variant="body2" sx={{ mb: 1 }}>
-                            {t('config.modelRates.configInfo.creditValue')}${formatMillionTokenCost(baseCreditPrice)} /
-                            1M
+                            {t('config.modelRates.configInfo.creditValue')}
+                            {creditPrefix}
+                            {formatMillionTokenCost(baseCreditPrice)} / 1M
                           </Typography>
                           <Typography variant="body2" sx={{ mb: 1 }}>
                             {t('config.modelRates.configInfo.profitMargin')}
@@ -776,88 +875,22 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
                 </Stack>
 
                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                  <Box sx={{ flex: 1 }}>
-                    <FormInput
-                      name="inputRate"
-                      label={t('config.modelRates.fields.inputRate')}
-                      description={t('config.modelRates.configInfo.inputTokenConsumption')}
-                      required
-                      rules={{
-                        required: t('config.modelRates.form.inputRate.required'),
-                        min: { value: 0, message: 'Must be >= 0' },
-                      }}
-                      slotProps={{
-                        htmlInput: {
-                          type: 'number',
-                          step: 0.001,
-                          min: 0,
-                        },
-                        input: {
-                          endAdornment: <InputAdornment position="end">Credits / Token</InputAdornment>,
-                        },
-                      }}
-                      sx={{
-                        '& .MuiOutlinedInput-root': {
-                          backgroundColor: 'background.default',
-                        },
-                      }}
-                    />
-
-                    {inputRate > 0 && (
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          color: calculateProfitRate(inputRate, unitCostsInput) >= 0 ? 'success.main' : 'error.main',
-                          display: 'block',
-                          fontWeight: 500,
-                          mt: 1,
-                        }}>
-                        {t('config.modelRates.configInfo.estimatedProfitRate')}:{' '}
-                        {calculateProfitRate(inputRate, unitCostsInput).toFixed(1)}%
-                      </Typography>
-                    )}
-                  </Box>
-
-                  <Box sx={{ flex: 1 }}>
-                    <FormInput
-                      name="outputRate"
-                      label={t('config.modelRates.fields.outputRate')}
-                      required
-                      description={t('config.modelRates.configInfo.outputTokenConsumption')}
-                      rules={{
-                        required: t('config.modelRates.form.outputRate.required'),
-                        min: { value: 0, message: 'Must be >= 0' },
-                      }}
-                      slotProps={{
-                        htmlInput: {
-                          type: 'number',
-                          step: 0.001,
-                          min: 0,
-                        },
-                        input: {
-                          endAdornment: <InputAdornment position="end">Credits / Token</InputAdornment>,
-                        },
-                      }}
-                      sx={{
-                        '& .MuiOutlinedInput-root': {
-                          backgroundColor: 'background.default',
-                        },
-                      }}
-                    />
-                    {outputRate > 0 && (
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          color: calculateProfitRate(outputRate, unitCostsOutput) >= 0 ? 'success.main' : 'error.main',
-                          display: 'block',
-                          fontWeight: 500,
-                          mt: 1,
-                        }}>
-                        {t('config.modelRates.configInfo.estimatedProfitRate')}:{' '}
-                        {calculateProfitRate(outputRate, unitCostsOutput).toFixed(1)}%
-                      </Typography>
-                    )}
-                  </Box>
+                  <CreditRateInput
+                    label={t('config.modelRates.fields.inputRate')}
+                    description={t('config.modelRates.configInfo.inputTokenConsumption')}
+                    rateValue={inputRate}
+                    onRateChange={(value) => setValue('inputRate', value)}
+                    profitRate={inputProfitRate}
+                    profitRateLabel={t('config.modelRates.configInfo.estimatedProfitRate')}
+                  />
+                  <CreditRateInput
+                    label={t('config.modelRates.fields.outputRate')}
+                    description={t('config.modelRates.configInfo.outputTokenConsumption')}
+                    rateValue={outputRate}
+                    onRateChange={(value) => setValue('outputRate', value)}
+                    profitRate={outputProfitRate}
+                    profitRateLabel={t('config.modelRates.configInfo.estimatedProfitRate')}
+                  />
                 </Stack>
               </Box>
 

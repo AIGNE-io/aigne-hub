@@ -8,7 +8,7 @@ import Toast from '@arcblock/ux/lib/Toast';
 import UserCard from '@arcblock/ux/lib/UserCard';
 import { CardType, InfoType } from '@arcblock/ux/lib/UserCard/types';
 import { Table } from '@blocklet/aigne-hub/components';
-import { formatNumber } from '@blocklet/aigne-hub/utils/util';
+import { CREDIT_DISPLAY_DECIMAL_PLACES, formatNumber } from '@blocklet/aigne-hub/utils/util';
 import { formatError } from '@blocklet/error';
 import styled from '@emotion/styled';
 import { Download, FilterAltOutlined, OpenInNew, Search } from '@mui/icons-material';
@@ -366,9 +366,11 @@ export function CallHistory({
         customBodyRender: (_value: any, tableMeta: any) => {
           const call = modelCalls[tableMeta.rowIndex];
           if (!call) return null;
+          const creditPrefix = window.blocklet?.preferences?.creditPrefix || '';
           return (
             <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
-              {call.credits}
+              {creditPrefix}
+              {formatNumber(call.credits, CREDIT_DISPLAY_DECIMAL_PLACES)}
             </Typography>
           );
         },

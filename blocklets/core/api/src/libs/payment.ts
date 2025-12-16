@@ -10,14 +10,7 @@ import difference from 'lodash/difference';
 import { joinURL, parseURL, withQuery } from 'ufo';
 
 import { getConnectQueryParam } from './auth';
-import {
-  AIGNE_HUB_DID,
-  Config,
-  DEFAULT_CREDIT_PAYMENT_LINK_KEY,
-  DEFAULT_CREDIT_PRICE_KEY,
-  METER_NAME,
-  METER_UNIT,
-} from './env';
+import { AIGNE_HUB_DID, CREDIT_PAYMENT_LINK_KEY, CREDIT_PRICE_KEY, Config, METER_NAME, METER_UNIT } from './env';
 import logger from './logger';
 import { formatToShortUrl } from './url';
 
@@ -253,7 +246,7 @@ export async function createMeterEvent({
 
 export async function ensureDefaultCreditPrice() {
   try {
-    const price = await payment.prices.retrieve(DEFAULT_CREDIT_PRICE_KEY);
+    const price = await payment.prices.retrieve(CREDIT_PRICE_KEY);
     return price;
   } catch {
     try {
@@ -274,14 +267,14 @@ export async function ensureDefaultCreditPrice() {
         prices: [
           {
             type: 'one_time',
-            unit_amount: '0.0025',
+            unit_amount: '1',
             currency_id: paymentCurrencies[0]!.id,
             // @ts-ignore
             currency_options: paymentCurrencies.map((currency) => ({
               currency_id: currency.id,
-              unit_amount: '0.5',
+              unit_amount: '1',
             })),
-            lookup_key: DEFAULT_CREDIT_PRICE_KEY,
+            lookup_key: CREDIT_PRICE_KEY,
             nickname: 'Per Unit Credit For AIGNE Hub',
             metadata: {
               credit_config: {
@@ -289,14 +282,14 @@ export async function ensureDefaultCreditPrice() {
                 valid_duration_value: 0,
                 valid_duration_unit: 'days',
                 currency_id: meter.currency_id,
-                credit_amount: '200000',
+                credit_amount: '1',
               },
               meter_id: meter.id,
             },
           },
         ],
       });
-      const price = await payment.prices.retrieve(DEFAULT_CREDIT_PRICE_KEY);
+      const price = await payment.prices.retrieve(CREDIT_PRICE_KEY);
       return price;
     } catch (error) {
       logger.error('failed to ensure credit price', { error });
@@ -332,7 +325,7 @@ export async function updateCreditConfig({
     const currency = await payment.paymentCurrencies.getRechargeConfig(meterCurrencyId);
     const rechargeConfig = currency?.recharge_config;
     if (!rechargeConfig || !rechargeConfig?.base_price_id) {
-      const defaultPrice = await payment.prices.retrieve(priceId || DEFAULT_CREDIT_PRICE_KEY);
+      const defaultPrice = await payment.prices.retrieve(priceId || CREDIT_PRICE_KEY);
       if (!defaultPrice) {
         return;
       }
@@ -386,7 +379,7 @@ export async function ensureDefaultCreditPaymentLink() {
     throw new CustomError(404, 'Default credit price not found');
   }
   try {
-    const existingPaymentLink = await payment.paymentLinks.retrieve(DEFAULT_CREDIT_PAYMENT_LINK_KEY);
+    const existingPaymentLink = await payment.paymentLinks.retrieve(CREDIT_PAYMENT_LINK_KEY);
     if (!existingPaymentLink) {
       throw new CustomError(404, 'Default credit payment link not found');
     }
@@ -401,7 +394,7 @@ export async function ensureDefaultCreditPaymentLink() {
     const paymentLink = await payment.paymentLinks.create({
       name: price.product.name,
       // @ts-ignore
-      lookup_key: DEFAULT_CREDIT_PAYMENT_LINK_KEY,
+      lookup_key: CREDIT_PAYMENT_LINK_KEY,
       line_items: [
         {
           price_id: price.id,

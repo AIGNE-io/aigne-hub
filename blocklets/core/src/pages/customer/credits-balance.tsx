@@ -1,7 +1,7 @@
 import { getPaymentUrl } from '@app/libs/env';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import { UserInfoResult } from '@blocklet/aigne-hub/api/types/user';
-import { formatNumber } from '@blocklet/aigne-hub/utils/util';
+import { CREDIT_DISPLAY_DECIMAL_PLACES, formatNumber } from '@blocklet/aigne-hub/utils/util';
 import { AutoTopup, PaymentProvider, SafeGuard } from '@blocklet/payment-react';
 import { Add, CreditCard, InfoOutlined, Receipt } from '@mui/icons-material';
 import { Box, Button, Card, CardContent, CardHeader, Stack, Tooltip, Typography, alpha, useTheme } from '@mui/material';
@@ -182,6 +182,7 @@ export function CreditsBalance({ data = undefined as UserInfoResult | undefined 
 
   const overDue = Number(creditBalance?.pendingCredit) > 0;
   const isCreditBillingEnabled = window.blocklet?.preferences?.creditBasedBillingEnabled;
+  const creditPrefix = window.blocklet?.preferences?.creditPrefix || '';
   const balance = Number(creditBalance?.balance || 0);
   const total = Number(creditBalance?.total || 0);
 
@@ -199,7 +200,8 @@ export function CreditsBalance({ data = undefined as UserInfoResult | undefined 
     if (overDue) {
       return (
         <Typography variant="h1" sx={{ fontWeight: 'bold', mb: 1, color: 'error.main' }}>
-          - {formatNumber(creditBalance?.pendingCredit || 0)}
+          -{creditPrefix}
+          {formatNumber(creditBalance?.pendingCredit || 0, CREDIT_DISPLAY_DECIMAL_PLACES)}
         </Typography>
       );
     }
@@ -211,8 +213,8 @@ export function CreditsBalance({ data = undefined as UserInfoResult | undefined 
           mb: 1,
           color: isNegative ? 'error.main' : 'text.primary',
         }}>
-        {isNegative ? '- ' : ''}
-        {formatNumber(Math.abs(balance))}
+        {isNegative ? `-${creditPrefix}` : creditPrefix}
+        {formatNumber(Math.abs(balance), CREDIT_DISPLAY_DECIMAL_PLACES)}
       </Typography>
     );
   };
@@ -252,7 +254,7 @@ export function CreditsBalance({ data = undefined as UserInfoResult | undefined 
               </Tooltip>
               <Typography variant="caption" color="text.secondary">
                 {t('analytics.currentEffectiveTotal', {
-                  total: formatNumber(total),
+                  total: `${creditPrefix}${formatNumber(total, CREDIT_DISPLAY_DECIMAL_PLACES)}`,
                 })}
               </Typography>
             </Box>

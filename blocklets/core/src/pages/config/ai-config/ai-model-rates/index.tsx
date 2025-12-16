@@ -54,8 +54,9 @@ export default function AIModelRates() {
   const [modelSearchValue, setModelSearchValue] = useState('');
   const [statusLoading, setStatusLoading] = useState(false);
 
-  const baseCreditPrice = window.blocklet?.preferences?.baseCreditPrice || 0.0000025;
+  const baseCreditPrice = window.blocklet?.preferences?.baseCreditPrice ?? 1;
   const targetProfitMargin = window.blocklet?.preferences?.targetProfitMargin || 0;
+  const creditPrefix = window.blocklet?.preferences?.creditPrefix || '';
 
   const persisted = getDurableData(listKey);
   const [search, setSearch] = useLocalStorageState<ModelRatesQuery>(listKey, {
@@ -369,11 +370,13 @@ export default function AIModelRates() {
               title={
                 <Stack spacing={1}>
                   <Typography variant="caption">
-                    <strong>{t('config.modelRates.configInfo.creditCost')}</strong>$
+                    <strong>{t('config.modelRates.configInfo.creditCost')}</strong>
+                    {creditPrefix}
                     {formatMillionTokenCost(multiply(rate.inputRate, baseCreditPrice))} / 1M Tokens
                   </Typography>
                   <Typography variant="caption">
-                    <strong>{t('config.modelRates.configInfo.actualCost')}</strong>$
+                    <strong>{t('config.modelRates.configInfo.actualCost')}</strong>
+                    {creditPrefix}
                     {formatMillionTokenCost(actualInputCost)} / 1M Tokens
                   </Typography>
                   <Typography variant="caption">
@@ -396,7 +399,10 @@ export default function AIModelRates() {
               }}
               placement="bottom">
               <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                <Typography variant="body2">{rate.inputRate}</Typography>
+                <Typography variant="body2">
+                  {creditPrefix}
+                  {formatMillionTokenCost(multiply(rate.inputRate, baseCreditPrice))}
+                </Typography>
                 <Typography
                   variant="body2"
                   sx={{
@@ -445,11 +451,13 @@ export default function AIModelRates() {
               title={
                 <Stack spacing={1}>
                   <Typography variant="caption">
-                    <strong>{t('config.modelRates.configInfo.creditCost')}</strong>$
+                    <strong>{t('config.modelRates.configInfo.creditCost')}</strong>
+                    {creditPrefix}
                     {formatMillionTokenCost(multiply(rate.outputRate, baseCreditPrice))} / 1M Tokens
                   </Typography>
                   <Typography variant="caption">
-                    <strong>{t('config.modelRates.configInfo.actualCost')}</strong>$
+                    <strong>{t('config.modelRates.configInfo.actualCost')}</strong>
+                    {creditPrefix}
                     {formatMillionTokenCost(actualOutputCost)} / 1M Tokens
                   </Typography>
                   <Typography variant="caption">
@@ -472,7 +480,10 @@ export default function AIModelRates() {
                 },
               }}>
               <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                <Typography variant="body2">{rate.outputRate}</Typography>
+                <Typography variant="body2">
+                  {creditPrefix}
+                  {formatMillionTokenCost(multiply(rate.outputRate, baseCreditPrice))}
+                </Typography>
                 <Typography
                   variant="caption"
                   sx={{
@@ -626,7 +637,9 @@ export default function AIModelRates() {
               sx={{
                 color: 'text.secondary',
               }}>
-              <Typography component="span">{t('config.modelRates.configInfo.creditValue')} $</Typography>
+              <Typography component="span">
+                {t('config.modelRates.configInfo.creditValue')} {creditPrefix}
+              </Typography>
               <UnitDisplay value={formatMillionTokenCost(baseCreditPrice)} type="credit" />
               <Typography component="span" sx={{ ml: 1 }}>
                 • {t('config.modelRates.configInfo.profitMargin')}
