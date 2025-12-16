@@ -192,8 +192,6 @@ export function CallHistory({
   // Data fetching with useRequest
   const { data = { list: [], count: 0 }, loading } = useRequest(() => fetchModelCalls(buildQuery()), {
     refreshDeps: [pagination, searchTerm, statusFilter, dateRange, refreshKey],
-    pollingInterval: 30 * 1000,
-    pollingWhenHidden: false,
     onError: (error: any) => {
       Toast.error(formatError(error));
     },

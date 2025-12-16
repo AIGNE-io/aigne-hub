@@ -271,8 +271,6 @@ export function useCreditTransactions(isCreditBillingEnabled: boolean) {
   } = useRequest(
     () => api.get('/api/user/credit/transactions', { params: { page: 1, pageSize: 1 } }).then((res) => res.data),
     {
-      pollingInterval: POLLING_INTERVAL,
-      pollingWhenHidden: false,
       onError: (error) => {
         console.error('Failed to fetch credit transactions:', error);
       },
