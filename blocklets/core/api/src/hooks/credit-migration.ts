@@ -5,9 +5,11 @@
  */
 import { BlockletStatus } from '@blocklet/constant';
 import payment from '@blocklet/payment-js';
+import { getComponentMountPoint } from '@blocklet/sdk';
 import config from '@blocklet/sdk/lib/config';
 import { BlockletService } from '@blocklet/sdk/lib/service/blocklet';
 import BigNumber from 'bignumber.js';
+import { joinURL } from 'ufo';
 
 import {
   ENABLE_CREDIT_MIGRATION,
@@ -43,6 +45,10 @@ function getConversionFactor(): BigNumber {
   }
   return new BigNumber(1).dividedBy(baseCreditPrice);
 }
+
+export const getPaymentKitPrefix = () => {
+  return joinURL(config.env.appUrl, getComponentMountPoint(PAYMENT_DID));
+};
 
 interface MigrationResult {
   grantId: string;
@@ -115,7 +121,7 @@ async function createMeter(oldMeter: any): Promise<{
               valid_duration_value: oldPrice?.metadata?.credit_config?.valid_duration_value ?? 0,
               valid_duration_unit: oldPrice?.metadata?.credit_config?.valid_duration_unit || 'days',
               currency_id: meter.currency_id,
-              credit_amount: '1',
+              credit_amount: '0.5',
             },
             meter_id: meter.id,
           },
@@ -318,7 +324,7 @@ export async function runCreditMigration(): Promise<MigrationResult[]> {
     creditPrefix: '$', // Update currency prefix
     newUserCreditGrantAmount: 1, // Set grant amount to 1
     basePricePerUnit: 1000, // Update base price per unit
-    creditPaymentLink: `${config.env.appUrl}/checkout/pay/${paymentLinkId}`,
+    creditPaymentLink: `${getPaymentKitPrefix()}/checkout/pay/${paymentLinkId}`,
   };
 
   console.log('credit-migration: Preferences to update:', prefsToUpdate);
