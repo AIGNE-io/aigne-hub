@@ -15,13 +15,13 @@ export const AIGNE_HUB_DID = 'z8ia3xzq2tMq8CRHfaXj1BTYJyYnEcHbqP8cJ';
 export const OLD_METER_NAME = 'agent-hub-ai-meter';
 export const OLD_CREDIT_PRICE_KEY = 'DEFAULT_CREDIT_UNIT_PRICE';
 export const OLD_CREDIT_PAYMENT_LINK_KEY = 'DEFAULT_CREDIT_PAYMENT_LINK';
+export const OLD_METER_UNIT = 'AIGNE Hub Credits';
 
 // New system constants (after migration)
 export const NEW_METER_NAME = 'agent-hub-ai-meter-v2';
 export const NEW_CREDIT_PRICE_KEY = 'DEFAULT_CREDIT_UNIT_PRICE_V2';
 export const NEW_CREDIT_PAYMENT_LINK_KEY = 'DEFAULT_CREDIT_PAYMENT_LINK_V2';
-
-export const METER_UNIT = 'USD';
+export const NEW_METER_UNIT = 'USD';
 
 // Migration environment variable - if set, migration runs in pre-start and system uses new constants
 export const ENABLE_CREDIT_MIGRATION = process.env.ENABLE_CREDIT_MIGRATION === 'true';
@@ -32,6 +32,7 @@ export const CREDIT_PRICE_KEY = ENABLE_CREDIT_MIGRATION ? NEW_CREDIT_PRICE_KEY :
 export const CREDIT_PAYMENT_LINK_KEY = ENABLE_CREDIT_MIGRATION
   ? NEW_CREDIT_PAYMENT_LINK_KEY
   : OLD_CREDIT_PAYMENT_LINK_KEY;
+export const METER_UNIT = ENABLE_CREDIT_MIGRATION ? NEW_METER_UNIT : OLD_METER_UNIT;
 
 // Decimal places for credit calculations to avoid precision loss with small values
 export const CREDIT_DECIMAL_PLACES = 10;
