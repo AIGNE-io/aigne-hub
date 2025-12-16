@@ -400,7 +400,7 @@ export default function PricingPage() {
               </Box>
               {window.blocklet.preferences.baseCreditPrice && (
                 <Box sx={{ color: 'text.secondary', fontSize: 14 }}>
-                  {`$${getPrice(new BigNumber(model.input_credits_per_token).multipliedBy(new BigNumber(window.blocklet.preferences.baseCreditPrice || 0)), 2, model.type)}`}
+                  {`$${getPrice(new BigNumber(model.input_credits_per_token).multipliedBy(new BigNumber(window.blocklet.preferences.baseCreditPrice || 0)), 4, model.type)}`}
                 </Box>
               )}
             </Box>
@@ -475,7 +475,7 @@ export default function PricingPage() {
               </Box>
               {window.blocklet.preferences.baseCreditPrice && (
                 <Box sx={{ color: 'text.secondary', fontSize: 14 }}>
-                  {`$${getPrice(new BigNumber(model.output_credits_per_token).multipliedBy(new BigNumber(window.blocklet.preferences.baseCreditPrice || 0)), 2, model.type)}`}
+                  {`$${getPrice(new BigNumber(model.output_credits_per_token).multipliedBy(new BigNumber(window.blocklet.preferences.baseCreditPrice || 0)), 4, model.type)}`}
                 </Box>
               )}
             </Box>
