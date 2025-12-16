@@ -464,11 +464,6 @@ export async function rebuildModelCallStats(days = 7): Promise<void> {
     const since = Math.floor(Date.now() / 1000) - days * 24 * 60 * 60;
     const currentHour = Math.floor(Date.now() / 1000 / 3600) * 3600;
 
-    // Only delete stats within the time range we're going to rebuild
-    await sequelize.query('DELETE FROM "ModelCallStats" WHERE "timestamp" >= :since AND "timestamp" < :currentHour', {
-      replacements: { since, currentHour },
-    });
-
     // Single query to aggregate all stats by userDid, hour, and type
     const [rows] = (await sequelize.query(
       `
@@ -518,6 +513,11 @@ export async function rebuildModelCallStats(days = 7): Promise<void> {
         successCalls: Number(row.successCalls),
       };
     }
+
+    // Only delete stats within the time range we're going to rebuild
+    await sequelize.query('DELETE FROM "ModelCallStats" WHERE "timestamp" >= :since AND "timestamp" < :currentHour', {
+      replacements: { since, currentHour },
+    });
 
     // Bulk insert all stats records
     const { default: ModelCallStat } = await import('../store/models/model-call-stat');

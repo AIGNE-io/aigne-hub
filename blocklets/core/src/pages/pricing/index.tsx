@@ -389,7 +389,8 @@ export default function PricingPage() {
                   sx={{
                     color: 'primary.main',
                   }}>
-                  {`${creditPrefix}${getPrice(new BigNumber(model.input_credits_per_token).multipliedBy(new BigNumber(window.blocklet.preferences.baseCreditPrice ?? 0)), 2, model.type)}`}
+                  {creditPrefix}
+                  {getPrice(model.input_credits_per_token, 0, model.type)} credits
                 </Typography>
                 <Typography
                   sx={{
@@ -399,6 +400,11 @@ export default function PricingPage() {
                   / 1M tokens
                 </Typography>
               </Box>
+              {window.blocklet.preferences.baseCreditPrice && (
+                <Box sx={{ color: 'text.secondary', fontSize: 14 }}>
+                  {`$${getPrice(new BigNumber(model.input_credits_per_token).multipliedBy(new BigNumber(window.blocklet.preferences.baseCreditPrice || 0)), 2, model.type)}`}
+                </Box>
+              )}
             </Box>
           );
         },
@@ -459,7 +465,8 @@ export default function PricingPage() {
                     color: 'primary.main',
                     fontWeight: '700',
                   }}>
-                  {`${creditPrefix}${getPrice(new BigNumber(model.output_credits_per_token).multipliedBy(new BigNumber(window.blocklet.preferences.baseCreditPrice ?? 0)), 2, model.type)}`}
+                  {creditPrefix}
+                  {getPrice(model.output_credits_per_token, 0, model.type)} credits
                 </Typography>
                 <Typography
                   sx={{
@@ -469,6 +476,11 @@ export default function PricingPage() {
                   / {unit}
                 </Typography>
               </Box>
+              {window.blocklet.preferences.baseCreditPrice && (
+                <Box sx={{ color: 'text.secondary', fontSize: 14 }}>
+                  {`$${getPrice(new BigNumber(model.output_credits_per_token).multipliedBy(new BigNumber(window.blocklet.preferences.baseCreditPrice || 0)), 2, model.type)}`}
+                </Box>
+              )}
             </Box>
           );
         },
