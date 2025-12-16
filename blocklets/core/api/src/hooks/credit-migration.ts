@@ -6,6 +6,7 @@
 import { BlockletStatus } from '@blocklet/constant';
 import payment from '@blocklet/payment-js';
 import config from '@blocklet/sdk/lib/config';
+import { BlockletService } from '@blocklet/sdk/lib/service/blocklet';
 import BigNumber from 'bignumber.js';
 
 import {
@@ -20,10 +21,15 @@ import {
 } from '../libs/env';
 import { sequelize } from '../store/sequelize';
 
+const blockletService = new BlockletService();
+
 // Time threshold in hours for migration (only migrate records older than this)
 const MIGRATION_TIME_THRESHOLD_HOURS = Number(process.env.MIGRATION_TIME_THRESHOLD_HOURS) || 24;
 
 const PAYMENT_DID = 'z2qaCNvKMv5GjouKdcDWexv6WqtHbpNPQDnAk';
+
+// Store baseCreditPrice before migration starts to ensure consistent conversion throughout the process
+let baseCreditPriceBeforeMigration: string | null = null;
 
 /**
  * Calculate conversion factor from baseCreditPrice
@@ -31,7 +37,7 @@ const PAYMENT_DID = 'z2qaCNvKMv5GjouKdcDWexv6WqtHbpNPQDnAk';
  * baseCreditPrice = 1 -> CONVERSION_FACTOR = 1 (new system, no conversion needed)
  */
 function getConversionFactor(): BigNumber {
-  const baseCreditPrice = new BigNumber(config.env.preferences.baseCreditPrice || 1);
+  const baseCreditPrice = new BigNumber(baseCreditPriceBeforeMigration ?? config.env.preferences.baseCreditPrice ?? 1);
   if (baseCreditPrice.lte(0)) {
     return new BigNumber(1); // fallback to no conversion
   }
@@ -51,7 +57,12 @@ function isPaymentRunning() {
   return !!config.components.find((i) => i.did === PAYMENT_DID && i.status === BlockletStatus.running);
 }
 
-async function createMeter(oldMeter: any): Promise<{ meter: any; currencyId: string }> {
+async function createMeter(oldMeter: any): Promise<{
+  meter: any;
+  currencyId: string;
+  paymentLinkId: string | null;
+  productId: string | null;
+}> {
   console.log('credit-migration: Creating new meter...');
 
   const meter = await payment.meters.create({
@@ -77,23 +88,26 @@ async function createMeter(oldMeter: any): Promise<{ meter: any; currencyId: str
     // Old payment link doesn't exist
   }
 
+  let newPaymentLinkId: string | null = null;
+  let newProductId: string | null = null;
+
   try {
     const paymentCurrencies = await payment.paymentCurrencies.list({});
-    await payment.products.create({
+    const product = await payment.products.create({
       name: 'AIGNE Hub Credits',
       description: 'Purchase credits to use AI services in AIGNE Hub',
       type: 'credit',
       prices: [
         {
           type: 'one_time',
-          unit_amount: '1',
+          unit_amount: '0.5',
           lookup_key: NEW_CREDIT_PRICE_KEY,
           nickname: oldPrice?.nickname || 'Per Unit Credit For AIGNE Hub',
           currency_id: paymentCurrencies[0]!.id,
           // @ts-ignore
           currency_options: paymentCurrencies.map((currency) => ({
             currency_id: currency.id,
-            unit_amount: '1',
+            unit_amount: '0.5',
           })),
           metadata: {
             credit_config: {
@@ -108,6 +122,8 @@ async function createMeter(oldMeter: any): Promise<{ meter: any; currencyId: str
         },
       ],
     });
+
+    newProductId = product?.id || null;
 
     const price = await payment.prices.retrieve(NEW_CREDIT_PRICE_KEY);
     if (price) {
@@ -125,6 +141,9 @@ async function createMeter(oldMeter: any): Promise<{ meter: any; currencyId: str
         metadata: { ...oldPaymentLink?.metadata },
       });
 
+      newPaymentLinkId = paymentLink?.id || null;
+      console.log('credit-migration: New payment link:', paymentLink);
+
       await payment.paymentCurrencies.updateRechargeConfig(meter.currency_id!, {
         base_price_id: price.id,
         payment_link_id: paymentLink.id,
@@ -134,7 +153,7 @@ async function createMeter(oldMeter: any): Promise<{ meter: any; currencyId: str
     console.error('credit-migration: Failed to create product/price/payment-link:', error);
   }
 
-  return { meter, currencyId: meter.currency_id! };
+  return { meter, currencyId: meter.currency_id!, paymentLinkId: newPaymentLinkId, productId: newProductId };
 }
 
 async function migrateGrant(grant: any, newCurrencyId: string, oldDecimal: number): Promise<MigrationResult> {
@@ -177,7 +196,6 @@ async function migrateGrant(grant: any, newCurrencyId: string, oldDecimal: numbe
       effective_at: grant.effective_at || 0,
       category: grant.category || 'promotional',
       priority: grant.priority,
-      applicability_config: grant.applicability_config,
       metadata: {
         ...grant.metadata,
         migratedFromGrantId: grantId,
@@ -203,7 +221,7 @@ async function migrateGrant(grant: any, newCurrencyId: string, oldDecimal: numbe
 
 /**
  * Main migration entry point
- * Flow: runCreditMigration -> migrateAiModelRates -> migrateModelCallsCredits -> rebuildModelCallStats
+ * Flow: runCreditMigration -> migrateAiModelRates -> migrateModelCallsCredits -> migrateUsageCredits -> rebuildModelCallStats
  */
 export async function runCreditMigration(): Promise<MigrationResult[]> {
   // Only run migration if explicitly enabled via environment variable
@@ -247,7 +265,11 @@ export async function runCreditMigration(): Promise<MigrationResult[]> {
 
   console.log('credit-migration: Starting migration...');
 
-  const { currencyId: newCurrencyId } = await createMeter(oldMeter);
+  // Get current baseCreditPrice before migration and store it in module variable
+  baseCreditPriceBeforeMigration = config.env.preferences.baseCreditPrice || '0.0000025';
+  console.log('credit-migration: Current baseCreditPrice:', baseCreditPriceBeforeMigration);
+
+  const { currencyId: newCurrencyId, paymentLinkId } = await createMeter(oldMeter);
   const oldDecimal = (oldMeter as any).paymentCurrency?.decimal ?? 2;
   console.log('credit-migration: Old meter decimal:', oldDecimal);
   const results: MigrationResult[] = [];
@@ -287,7 +309,45 @@ export async function runCreditMigration(): Promise<MigrationResult[]> {
 
   await migrateAiModelRates();
   await migrateModelCallsCredits();
+  await migrateUsageCredits();
   await rebuildModelCallStats();
+
+  // Update preferences after migration with retry
+  const prefsToUpdate: Record<string, any> = {
+    baseCreditPrice: 1, // 1 USD = 1 credit
+    creditPrefix: '$', // Update currency prefix
+    newUserCreditGrantAmount: 1, // Set grant amount to 1
+    basePricePerUnit: 1000, // Update base price per unit
+    creditPaymentLink: `${config.env.appUrl}/checkout/pay/${paymentLinkId}`,
+  };
+
+  console.log('credit-migration: Preferences to update:', prefsToUpdate);
+
+  const maxRetries = 5;
+  const retryDelay = 2000; // 2 seconds
+
+  /* eslint-disable no-await-in-loop */
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`credit-migration: Updating preferences (attempt ${attempt}/${maxRetries})...`);
+      const updateResult = await blockletService.updatePreferences(prefsToUpdate);
+      console.log('credit-migration: Preferences updated successfully:', updateResult);
+      break;
+    } catch (error: any) {
+      const isComponentNotFound = error?.message?.includes('component not found');
+      if (isComponentNotFound && attempt < maxRetries) {
+        console.log(`credit-migration: Component not ready, retrying in ${retryDelay / 1000}s...`);
+        await new Promise((resolve) => {
+          setTimeout(resolve, retryDelay);
+        });
+      } else {
+        console.error('credit-migration: Failed to update preferences:', error);
+        // Don't throw - migration can still be considered successful
+        break;
+      }
+    }
+  }
+  /* eslint-enable no-await-in-loop */
 
   return results;
 }
@@ -327,9 +387,10 @@ export async function migrateAiModelRates(): Promise<void> {
 }
 
 /**
- * Migrate ModelCalls.credits (idempotent via updatedAt + credits threshold)
- * Only migrates records updated > 1 day ago with non-zero credits.
- * Time condition ensures new data won't be re-processed even if migration runs multiple times.
+ * Migrate ModelCalls.credits (idempotent via credits value threshold)
+ * Only migrates records with credits > 1 (old system values are much larger than new system).
+ * Old system: 1 USD = 400,000 credits, so even small calls have credits >> 1
+ * New system: 1 USD = 1 credit, so calls typically have credits < 0.1
  * Only runs if ENABLE_CREDIT_MIGRATION is set to "true".
  */
 export async function migrateModelCallsCredits(): Promise<void> {
@@ -341,21 +402,53 @@ export async function migrateModelCallsCredits(): Promise<void> {
   try {
     console.log('model-calls-credit-migration: Starting migration...');
     const conversionFactor = getConversionFactor().toNumber();
-    const timeThreshold = new Date(Date.now() - MIGRATION_TIME_THRESHOLD_HOURS * 60 * 60 * 1000).toISOString();
-    const whereClause = '"updatedAt" < :timeThreshold AND "credits" > 0.001';
+    // Use credits > 1 as threshold to identify old system data (new system values are << 1)
+    const whereClause = '"credits" > 1';
 
-    const [countResult] = (await sequelize.query(`SELECT COUNT(*) as count FROM "ModelCalls" WHERE ${whereClause}`, {
-      replacements: { timeThreshold },
-    })) as [{ count: string }[], unknown];
+    const [countResult] = (await sequelize.query(
+      `SELECT COUNT(*) as count FROM "ModelCalls" WHERE ${whereClause}`
+    )) as [{ count: string }[], unknown];
     const rowCount = Number(countResult[0]?.count ?? 0);
 
-    await sequelize.query(
-      `UPDATE "ModelCalls" SET "credits" = "credits" / ${conversionFactor}.0 WHERE ${whereClause}`,
-      { replacements: { timeThreshold } }
-    );
+    await sequelize.query(`UPDATE "ModelCalls" SET "credits" = "credits" / ${conversionFactor}.0 WHERE ${whereClause}`);
     console.log(`✅ model-calls-credit-migration: Complete (${rowCount} rows updated)`);
   } catch (error: any) {
     console.error('model-calls-credit-migration: Failed:', error);
+    throw error;
+  }
+}
+
+/**
+ * Migrate Usage.usedCredits (idempotent via usedCredits value threshold)
+ * Only migrates records with usedCredits > 1 (old system values are much larger than new system).
+ * Old system: 1 USD = 400,000 credits, so even small calls have usedCredits >> 1
+ * New system: 1 USD = 1 credit, so calls typically have usedCredits < 0.1
+ * Only runs if ENABLE_CREDIT_MIGRATION is set to "true".
+ */
+export async function migrateUsageCredits(): Promise<void> {
+  if (!ENABLE_CREDIT_MIGRATION) {
+    console.log('usage-credit-migration: Migration is not enabled, skipping');
+    return;
+  }
+
+  try {
+    console.log('usage-credit-migration: Starting migration...');
+    const conversionFactor = getConversionFactor().toNumber();
+    // Use usedCredits > 1 as threshold to identify old system data (new system values are << 1)
+    const whereClause = '"usedCredits" > 1';
+
+    const [countResult] = (await sequelize.query(`SELECT COUNT(*) as count FROM "Usages" WHERE ${whereClause}`)) as [
+      { count: string }[],
+      unknown,
+    ];
+    const rowCount = Number(countResult[0]?.count ?? 0);
+
+    await sequelize.query(
+      `UPDATE "Usages" SET "usedCredits" = "usedCredits" / ${conversionFactor}.0 WHERE ${whereClause}`
+    );
+    console.log(`✅ usage-credit-migration: Complete (${rowCount} rows updated)`);
+  } catch (error: any) {
+    console.error('usage-credit-migration: Failed:', error);
     throw error;
   }
 }
@@ -368,10 +461,13 @@ export async function rebuildModelCallStats(days = 7): Promise<void> {
   console.log(`rebuild-model-call-stats: Rebuilding ${days} days...`);
 
   try {
-    await sequelize.query('DELETE FROM "ModelCallStats"');
-
     const since = Math.floor(Date.now() / 1000) - days * 24 * 60 * 60;
     const currentHour = Math.floor(Date.now() / 1000 / 3600) * 3600;
+
+    // Only delete stats within the time range we're going to rebuild
+    await sequelize.query('DELETE FROM "ModelCallStats" WHERE "timestamp" >= :since AND "timestamp" < :currentHour', {
+      replacements: { since, currentHour },
+    });
 
     // Single query to aggregate all stats by userDid, hour, and type
     const [rows] = (await sequelize.query(
