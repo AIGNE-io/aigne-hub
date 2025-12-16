@@ -49,7 +49,7 @@
     "@arcblock/ws": "^1.27.15",
     "@blocklet/aigne-hub": "workspace:^",
     "@blocklet/constant": "^1.17.5",
-    "@blocklet/error": "0.3.2",
+    "@blocklet/error": "0.3.5",
     "@blocklet/js-sdk": "^1.17.5",
     "@blocklet/logger": "^1.17.5",
     "@blocklet/payment-js": "^1.23.2",

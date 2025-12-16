@@ -120,7 +120,7 @@
   "dependencies": {
     "@arcblock/did": "^1.27.15",
     "@arcblock/ux": "^3.2.14",
-    "@blocklet/error": "0.3.2",
+    "@blocklet/error": "0.3.5",
     "@blocklet/logger": "^1.17.5",
     "@blocklet/payment-js": "^1.23.2",
     "@blocklet/sdk": "^1.17.5",
