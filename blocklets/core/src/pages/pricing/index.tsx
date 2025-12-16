@@ -5,7 +5,7 @@ import { useSubscription } from '@app/libs/ws';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import Toast from '@arcblock/ux/lib/Toast';
 import { Table } from '@blocklet/aigne-hub/components';
-import { formatNumber } from '@blocklet/aigne-hub/utils/util';
+import { CREDIT_DISPLAY_DECIMAL_PLACES, formatNumber } from '@blocklet/aigne-hub/utils/util';
 import { formatError } from '@blocklet/error';
 import Header from '@blocklet/ui-react/lib/Header';
 import styled from '@emotion/styled';
@@ -390,7 +390,7 @@ export default function PricingPage() {
                     color: 'primary.main',
                   }}>
                   {creditPrefix}
-                  {getPrice(model.input_credits_per_token, 0, model.type)} credits
+                  {getPrice(model.input_credits_per_token, CREDIT_DISPLAY_DECIMAL_PLACES, model.type)} credits
                 </Typography>
                 <Typography
                   sx={{
@@ -466,7 +466,7 @@ export default function PricingPage() {
                     fontWeight: '700',
                   }}>
                   {creditPrefix}
-                  {getPrice(model.output_credits_per_token, 0, model.type)} credits
+                  {getPrice(model.output_credits_per_token, CREDIT_DISPLAY_DECIMAL_PLACES, model.type)} credits
                 </Typography>
                 <Typography
                   sx={{
