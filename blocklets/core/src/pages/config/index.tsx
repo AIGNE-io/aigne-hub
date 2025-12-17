@@ -89,6 +89,7 @@ export default function WrappedIntegrations() {
     if (session.user && ['owner', 'admin'].includes(session.user.role) === false) {
       navigate('/');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.user]);
 
   return (

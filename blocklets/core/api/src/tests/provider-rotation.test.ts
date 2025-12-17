@@ -712,12 +712,12 @@ describe('libs/ai-provider - Provider Rotation', () => {
   describe('supported model families', () => {
     test('should support all major model families', () => {
       const modelFamilies = [
-        { pattern: 'gpt-', expected: 'openai' },
-        { pattern: 'gemini-', expected: 'google' },
-        { pattern: 'claude-', expected: 'anthropic' },
-        { pattern: 'deepseek-', expected: 'deepseek' },
-        { pattern: 'grok-', expected: 'xai' },
-        { pattern: 'doubao-', expected: 'doubao' },
+        { pattern: 'gpt-', expected: 'openai' as const },
+        { pattern: 'gemini-', expected: 'google' as const },
+        { pattern: 'claude-', expected: 'anthropic' as const },
+        { pattern: 'deepseek-', expected: 'deepseek' as const },
+        { pattern: 'grok-', expected: 'xai' as const },
+        { pattern: 'doubao-', expected: 'doubao' as const },
       ];
 
       modelFamilies.forEach(({ pattern, expected }) => {

@@ -36,5 +36,6 @@ export const useSubscription = (event: string, cb: (...rest: any) => void = () =
     return () => {
       client.off(event, cb);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [...deps, session.user]);
 };
