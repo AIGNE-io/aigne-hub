@@ -122,6 +122,7 @@ export default function Chat() {
     if (!session.user) {
       session.login();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

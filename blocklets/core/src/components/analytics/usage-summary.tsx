@@ -67,7 +67,7 @@ export interface UsageSummaryProps {
 
 interface SummaryCardProps {
   title: string;
-  value: string;
+  value?: string;
   trend?: string;
   trendDescription?: string;
   tooltip?: React.ReactNode;

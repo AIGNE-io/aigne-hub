@@ -124,6 +124,7 @@ function CreditBoard() {
                           ? [
                               part,
                               <Link
+                                // eslint-disable-next-line react/no-array-index-key
                                 key={`aigne-link-${i}`}
                                 href={AIGNE_WEBSITE_URL}
                                 target="_blank"

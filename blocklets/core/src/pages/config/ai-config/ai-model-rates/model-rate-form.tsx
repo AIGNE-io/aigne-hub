@@ -50,7 +50,7 @@ function TokenCostInput({
   onCostChange,
 }: {
   label: string;
-  costValue: number;
+  costValue?: number;
   onCostChange: (value: number) => void;
 }) {
   const [value, setValue] = useState<number | string>(() => formatMillionTokenCost(costValue, 10));
@@ -104,7 +104,7 @@ function CreditRateInput({
 }: {
   label: string;
   description?: string;
-  rateValue: number;
+  rateValue?: number;
   onRateChange: (value: number) => void;
   profitRate?: number;
   profitRateLabel?: string;
@@ -320,17 +320,19 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
 
   // Computed profit rates for display
   const inputProfitRate =
-    inputRate > 0 && unitCostsInput > 0 ? calculateProfitRate(inputRate, unitCostsInput) : undefined;
+    inputRate > 0 && unitCostsInput && unitCostsInput > 0 ? calculateProfitRate(inputRate, unitCostsInput) : undefined;
   const outputProfitRate =
-    outputRate > 0 && unitCostsOutput > 0 ? calculateProfitRate(outputRate, unitCostsOutput) : undefined;
+    outputRate > 0 && unitCostsOutput && unitCostsOutput > 0
+      ? calculateProfitRate(outputRate, unitCostsOutput)
+      : undefined;
 
   // 自动计算费率的函数
   const autoCalculateRates = () => {
-    const calculatedInputRate = new BigNumber(unitCostsInput)
+    const calculatedInputRate = new BigNumber(unitCostsInput || 0)
       .multipliedBy(1 + targetProfitMargin / 100)
       .dividedBy(baseCreditPrice)
       .toNumber();
-    const calculatedOutputRate = new BigNumber(unitCostsOutput)
+    const calculatedOutputRate = new BigNumber(unitCostsOutput || 0)
       .multipliedBy(1 + targetProfitMargin / 100)
       .dividedBy(baseCreditPrice)
       .toNumber();
@@ -768,12 +770,12 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
                 </Typography>
                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mt: 1.5 }}>
                   <TokenCostInput
-                    costValue={unitCostsInput}
+                    costValue={unitCostsInput || 0}
                     label={t('config.modelRates.fields.inputRate')}
                     onCostChange={(value) => setValue('unitCosts.input', value)}
                   />
                   <TokenCostInput
-                    costValue={unitCostsOutput}
+                    costValue={unitCostsOutput || 0}
                     label={t('config.modelRates.fields.outputRate')}
                     onCostChange={(value) => setValue('unitCosts.output', value)}
                   />

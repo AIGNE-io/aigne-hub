@@ -30,8 +30,8 @@ const getStringify = ({
   timestamp: number;
   data: object;
   userDid?: string;
-}) => {
-  return stringify({ appId, timestamp, data: data || {}, userDid });
+}): string => {
+  return stringify({ appId, timestamp, data: data || {}, userDid }) || '';
 };
 
 function hashData({
