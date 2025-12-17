@@ -261,9 +261,6 @@ async function executeOriginalReportLogicWithProtection({ appId, userDid }: { ap
       return;
     }
 
-    const { pricing } = Config;
-    if (!pricing) throw new CustomError(400, 'Missing required preference `pricing`');
-
     const start = await Usage.findOne({
       where: { appId, userDid, usageReportStatus: { [Op.not]: null } },
       order: [['id', 'desc']],
