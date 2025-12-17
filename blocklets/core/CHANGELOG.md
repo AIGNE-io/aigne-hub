@@ -1,3 +1,7 @@
+## 0.7.3 (2025-12-17)
+
+- chore: update deps
+
 ## 0.7.2 (2025-12-17)
 
 - fix: remove pricing check from usage report logic
