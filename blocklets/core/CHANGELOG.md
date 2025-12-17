@@ -1,3 +1,7 @@
+## 0.7.1 (2025-12-17)
+
+- chore: update dependencies
+
 ## 0.7.0 (2025-12-11)
 
 - feat: switch to USD-based pricing mode
