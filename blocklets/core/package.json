@@ -1,6 +1,6 @@
 {
   "name": "ai-kit",
-  "version": "0.7.2",
+  "version": "0.7.3",
   "author": "Arcblock <blocklet@arcblock.io> https://github.com/blocklet",
   "scripts": {
     "dev": "cross-env COMPONENT_STORE_URL=https://test.store.blocklet.dev blocklet dev",
@@ -43,9 +43,9 @@
     "@aigne/transport": "^0.15.24",
     "@arcblock/did": "^1.27.15",
     "@arcblock/did-connect-js": "^1.27.15",
-    "@arcblock/did-connect-react": "^3.2.15",
+    "@arcblock/did-connect-react": "^3.2.17",
     "@arcblock/did-connect-storage-nedb": "^1.8.0",
-    "@arcblock/ux": "^3.2.15",
+    "@arcblock/ux": "^3.2.17",
     "@arcblock/ws": "^1.27.15",
     "@blocklet/aigne-hub": "workspace:^",
     "@blocklet/constant": "^1.17.6-beta-20251217-011553-818fcc8e",
@@ -55,7 +55,7 @@
     "@blocklet/payment-js": "^1.23.2",
     "@blocklet/payment-react": "^1.23.2",
     "@blocklet/sdk": "^1.17.6-beta-20251217-011553-818fcc8e",
-    "@blocklet/ui-react": "^3.2.15",
+    "@blocklet/ui-react": "^3.2.17",
     "@blocklet/uploader-server": "^0.3.15",
     "@dqbd/tiktoken": "^1.0.16",
     "@emotion/css": "^11.13.5",
