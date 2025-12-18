@@ -1,3 +1,8 @@
+## 0.7.4 (2025-12-18)
+
+- refactor: add migration route for rebuild stats
+- refactor: add migration route for grant
+
 ## 0.7.3 (2025-12-17)
 
 - chore: update deps
