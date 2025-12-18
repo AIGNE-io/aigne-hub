@@ -6,6 +6,7 @@
 import { ENABLE_CREDIT_MIGRATION, NEW_METER_NAME, OLD_METER_NAME } from '@api/libs/env';
 import { isPaymentRunning } from '@api/libs/payment';
 import { ensureAdmin } from '@api/libs/security';
+import { sequelize } from '@api/store/sequelize';
 import payment from '@blocklet/payment-js';
 import config from '@blocklet/sdk/lib/config';
 import { sessionMiddleware } from '@blocklet/sdk/lib/middlewares/session';
@@ -285,6 +286,7 @@ router.get('/status', sessionMiddleware(), ensureAdmin, async (_req, res) => {
           if (
             (grantStatus === 'granted' || grantStatus === 'pending') &&
             !grant.metadata?.migratedTo &&
+            !grant.metadata?.migratedFromGrantId &&
             new BigNumber(remainingAmount).gt(0)
           ) {
             unmigratedGrantCount++;
@@ -323,6 +325,114 @@ router.get('/status', sessionMiddleware(), ensureAdmin, async (_req, res) => {
     });
   } catch (error: any) {
     console.error('grant-migration: Failed to get status:', error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Rebuild ModelCallStats cache for active users
+ * Optimized version: single SQL aggregation query + bulk insert
+ */
+export async function rebuildModelCallStats(days = 7): Promise<void> {
+  console.log(`rebuild-model-call-stats: Rebuilding ${days} days...`);
+
+  try {
+    const since = Math.floor(Date.now() / 1000) - days * 24 * 60 * 60;
+    const currentHour = Math.floor(Date.now() / 1000 / 3600) * 3600;
+
+    // Single query to aggregate all stats by userDid, hour, and type
+    const [rows] = (await sequelize.query(
+      `
+      SELECT 
+        "userDid",
+        ("callTime" / 3600) * 3600 as "hourTimestamp",
+        "type",
+        COALESCE(SUM("totalUsage"), 0) as "totalUsage",
+        COALESCE(SUM("credits"), 0) as "totalCredits",
+        COUNT(*) as "totalCalls",
+        SUM(CASE WHEN "status" = 'success' THEN 1 ELSE 0 END) as "successCalls"
+      FROM "ModelCalls"
+      WHERE "callTime" >= :since AND ("callTime" / 3600) * 3600 < :currentHour
+      GROUP BY "userDid", ("callTime" / 3600) * 3600, "type"
+    `,
+      { replacements: { since, currentHour } }
+    )) as [any[], unknown];
+
+    if (rows.length === 0) {
+      console.log('✅ rebuild-model-call-stats: Complete (0 hourly stats created)');
+      return;
+    }
+
+    // Aggregate data by userDid + hourTimestamp to build stats objects
+    const statsMap = new Map<string, { userDid: string; timestamp: number; stats: any }>();
+
+    for (const row of rows) {
+      const key = `${row.userDid}-${row.hourTimestamp}`;
+
+      if (!statsMap.has(key)) {
+        statsMap.set(key, {
+          userDid: row.userDid,
+          timestamp: row.hourTimestamp,
+          stats: { totalUsage: 0, totalCredits: 0, totalCalls: 0, successCalls: 0, byType: {} },
+        });
+      }
+
+      const entry = statsMap.get(key)!;
+      entry.stats.totalUsage += Number(row.totalUsage);
+      entry.stats.totalCredits += Number(row.totalCredits);
+      entry.stats.totalCalls += Number(row.totalCalls);
+      entry.stats.successCalls += Number(row.successCalls);
+      entry.stats.byType[row.type] = {
+        totalUsage: Number(row.totalUsage),
+        totalCredits: Number(row.totalCredits),
+        totalCalls: Number(row.totalCalls),
+        successCalls: Number(row.successCalls),
+      };
+    }
+
+    // Only delete stats within the time range we're going to rebuild
+    await sequelize.query('DELETE FROM "ModelCallStats" WHERE "timestamp" >= :since AND "timestamp" < :currentHour', {
+      replacements: { since, currentHour },
+    });
+
+    // Bulk insert all stats records
+    const { default: ModelCallStat } = await import('@api/store/models/model-call-stat');
+    const records = Array.from(statsMap.values()).map((value) => ({
+      userDid: value.userDid,
+      timestamp: value.timestamp,
+      timeType: 'hour' as const,
+      stats: value.stats,
+    }));
+
+    await ModelCallStat.bulkCreate(records);
+
+    console.log(`✅ rebuild-model-call-stats: Complete (${records.length} hourly stats created)`);
+  } catch (error: any) {
+    console.error('rebuild-model-call-stats: Failed:', error);
+    throw error;
+  }
+}
+
+/**
+ * POST /api/migration/rebuild-model-call-stats
+ * Rebuild ModelCallStats cache
+ * Requires admin access
+ *
+ * Query params:
+ * - days: number (optional, defaults to 7)
+ */
+router.post('/rebuild-model-call-stats', sessionMiddleware(), ensureAdmin, async (req, res) => {
+  try {
+    const days = parseInt(req.query.days as string, 10) || 7;
+
+    await rebuildModelCallStats(days);
+
+    return res.json({
+      success: true,
+      message: `Successfully rebuilt model call stats for the last ${days} days`,
+    });
+  } catch (error: any) {
+    console.error('rebuild-model-call-stats: API call failed:', error);
     return res.status(500).json({ error: error.message });
   }
 });
