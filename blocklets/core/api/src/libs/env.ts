@@ -386,6 +386,14 @@ export const Config = {
   },
 };
 
+export function buildUsageWithCredits(aigneHubCredits: number | undefined, additionalFields?: Record<string, any>) {
+  return {
+    aigneHubCredits,
+    creditPrefix: config.env.preferences.creditPrefix || '',
+    ...additionalFields,
+  };
+}
+
 config.events.on(config.Events.envUpdate, () => {
   for (const key of Object.keys(Config)) {
     if (key.startsWith('_')) {

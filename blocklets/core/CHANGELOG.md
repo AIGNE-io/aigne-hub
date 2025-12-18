@@ -1,3 +1,7 @@
+## 0.7.5 (2025-12-18)
+
+- feat: add creditPrefix to usage response
+
 ## 0.7.4 (2025-12-18)
 
 - refactor: add migration route for rebuild stats
