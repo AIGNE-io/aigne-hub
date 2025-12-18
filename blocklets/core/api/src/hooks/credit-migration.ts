@@ -316,8 +316,6 @@ export async function runCreditMigration(): Promise<MigrationResult[]> {
 
   await migrateAiModelRates();
   await migrateModelCallsCredits();
-  await migrateUsageCredits();
-  await rebuildModelCallStats();
 
   // Update preferences after migration with retry
   const prefsToUpdate: Record<string, any> = {
@@ -355,6 +353,9 @@ export async function runCreditMigration(): Promise<MigrationResult[]> {
     }
   }
   /* eslint-enable no-await-in-loop */
+
+  await migrateUsageCredits();
+  await rebuildModelCallStats();
 
   return results;
 }
