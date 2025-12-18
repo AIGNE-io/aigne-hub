@@ -1,3 +1,7 @@
+## 0.7.4 (2025-12-18)
+
+- feat: add router for USD based migration
+
 ## 0.7.3 (2025-12-17)
 
 - chore: update deps
