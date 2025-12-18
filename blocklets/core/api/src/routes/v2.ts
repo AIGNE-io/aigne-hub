@@ -9,7 +9,7 @@ import {
   processEmbeddings,
   processImageGeneration,
 } from '@api/libs/ai-routes';
-import { Config } from '@api/libs/env';
+import { Config, buildUsageWithCredits } from '@api/libs/env';
 import logger from '@api/libs/logger';
 import { checkUserCreditBalance, isPaymentRunning } from '@api/libs/payment';
 import { withModelStatus } from '@api/libs/status';
@@ -196,8 +196,8 @@ router.post(
               if (data.output.usage && Config.creditBasedBillingEnabled && usage) {
                 data.output.usage = {
                   ...data.output.usage,
-                  aigneHubCredits: usage,
                   modelCallId: req.modelCallContext?.id,
+                  ...buildUsageWithCredits(usage, { modelCallId: req.modelCallContext?.id }),
                 } as any;
               }
 
@@ -274,13 +274,18 @@ router.post(
                     return undefined;
                   });
 
-                  logger.info('usage', data.output.usage, Config.creditBasedBillingEnabled, usage);
+                  logger.info(
+                    'usage',
+                    data.output.usage,
+                    Config.creditBasedBillingEnabled,
+                    JSON.stringify(buildUsageWithCredits(usage))
+                  );
 
                   if (data.output.usage && Config.creditBasedBillingEnabled && usage) {
                     data.output.usage = {
                       ...data.output.usage,
-                      aigneHubCredits: usage,
                       modelCallId: req.modelCallContext?.id,
+                      ...buildUsageWithCredits(usage, { modelCallId: req.modelCallContext?.id }),
                     };
                   }
 
@@ -429,7 +434,11 @@ router.post(
           response.images = list;
         }
 
-        res.json({ ...response, usage: { ...response.usage, aigneHubCredits }, modelWithProvider: getReqModel(req) });
+        res.json({
+          ...response,
+          usage: { ...response.usage, ...buildUsageWithCredits(aigneHubCredits) },
+          modelWithProvider: getReqModel(req),
+        });
       },
     }),
   ])
@@ -539,7 +548,11 @@ router.post(
           response.videos = list;
         }
 
-        res.json({ ...response, usage: { ...response.usage, aigneHubCredits }, modelWithProvider: getReqModel(req) });
+        res.json({
+          ...response,
+          usage: { ...response.usage, ...buildUsageWithCredits(aigneHubCredits) },
+          modelWithProvider: getReqModel(req),
+        });
       },
     }),
   ])
@@ -643,9 +656,7 @@ router.post(
           images: usageData?.images,
           data: usageData?.images,
           model: usageData?.modelName,
-          usage: {
-            aigneHubCredits: Number(aigneHubCredits),
-          },
+          usage: buildUsageWithCredits(Number(aigneHubCredits)),
         });
       },
     }),
