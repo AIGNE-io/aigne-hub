@@ -197,7 +197,7 @@ router.post(
                 data.output.usage = {
                   ...data.output.usage,
                   modelCallId: req.modelCallContext?.id,
-                  ...buildUsageWithCredits(usage, { modelCallId: req.modelCallContext?.id }),
+                  ...buildUsageWithCredits(usage),
                 } as any;
               }
 
@@ -285,7 +285,7 @@ router.post(
                     data.output.usage = {
                       ...data.output.usage,
                       modelCallId: req.modelCallContext?.id,
-                      ...buildUsageWithCredits(usage, { modelCallId: req.modelCallContext?.id }),
+                      ...buildUsageWithCredits(usage),
                     };
                   }
 
