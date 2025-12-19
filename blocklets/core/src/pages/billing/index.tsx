@@ -10,14 +10,15 @@ export default function BillingRoutes() {
     <AdminLayout
       footerProps={{ className: 'dashboard-footer' }}
       sx={{ bgcolor: 'background.paper' }}
-      // FIXME: remove following undefined props after issue https://github.com/ArcBlock/ux/issues/1136 solved
       meta={undefined}
       fallbackUrl={undefined}
       invalidPathFallback={undefined}
       headerAddons={undefined}
       sessionManagerProps={undefined}
       links={undefined}
-      showDomainWarningDialog={undefined}>
+      showDomainWarningDialog={false}>
+      {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
+      {/* @ts-ignore FIXME: Dashboard type issue - remove after https://github.com/ArcBlock/ux/issues/1136 solved */}
       <ErrorBoundary>
         <Routes>
           <Route index element={<BillingPage />} />
