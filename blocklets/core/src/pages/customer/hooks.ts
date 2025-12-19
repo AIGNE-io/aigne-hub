@@ -126,7 +126,12 @@ export function useCreditBalance() {
   };
 }
 
-export function useUsageStats(params: { startTime: string; endTime: string; allUsers?: boolean }) {
+export function useUsageStats(params: {
+  startTime: string;
+  endTime: string;
+  allUsers?: boolean;
+  timezoneOffset?: number;
+}) {
   const {
     data,
     loading,
@@ -138,9 +143,7 @@ export function useUsageStats(params: { startTime: string; endTime: string; allU
         .get(params.allUsers ? '/api/user/admin/user-stats' : '/api/user/usage-stats', { params })
         .then((res) => res.data),
     {
-      refreshDeps: [params.startTime, params.endTime],
-      pollingInterval: POLLING_INTERVAL,
-      pollingWhenHidden: false,
+      refreshDeps: [params.startTime, params.endTime, params.timezoneOffset],
       onError: (error) => {
         console.error('Failed to fetch usage stats:', error);
         Toast.error(error?.message);

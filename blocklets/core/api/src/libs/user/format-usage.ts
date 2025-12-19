@@ -25,7 +25,15 @@ export function addToTotals(
   }
 }
 
-export function formatUsageStats({ hourlyStatsRaw, hours }: { hourlyStatsRaw: DailyStats[]; hours: number[] }) {
+export function formatUsageStats({
+  hourlyStatsRaw,
+  hours,
+  timezoneOffset,
+}: {
+  hourlyStatsRaw: DailyStats[];
+  hours: number[];
+  timezoneOffset?: number; // Timezone offset in minutes (e.g., -480 for PST/UTC-8)
+}) {
   const usageStats: Stats = {
     byType: initByType(),
     totalUsage: new BigNumber(0),
@@ -44,7 +52,16 @@ export function formatUsageStats({ hourlyStatsRaw, hours }: { hourlyStatsRaw: Da
     addToTotals(usageStats, hourStats);
 
     if (!hourTimestamp) return;
-    const date = new Date(hourTimestamp * 1000).toISOString().split('T')[0];
+
+    // If timezoneOffset is provided, adjust the timestamp to user's local timezone
+    // before extracting the date string
+    let adjustedTimestamp = hourTimestamp;
+    if (timezoneOffset !== undefined) {
+      // timezoneOffset is in minutes, convert to seconds
+      adjustedTimestamp = hourTimestamp - timezoneOffset * 60;
+    }
+
+    const date = new Date(adjustedTimestamp * 1000).toISOString().split('T')[0];
     if (!date) return;
     if (!dailyStatsMap.has(date)) {
       dailyStatsMap.set(date, {
