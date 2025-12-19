@@ -1,3 +1,7 @@
+## 0.7.6 (2025-12-20)
+
+- fix(core): add timezone offset support for usage stats aggregation
+
 ## 0.7.5 (2025-12-18)
 
 - feat: add creditPrefix to usage response
