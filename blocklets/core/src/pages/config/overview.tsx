@@ -70,17 +70,8 @@ export default function Overview() {
     <Box>
       <Box
         sx={{
-          mb: 4,
+          mb: 2,
         }}>
-        <Typography
-          variant="h2"
-          gutterBottom
-          sx={{
-            fontWeight: 'bold',
-            mb: 1,
-          }}>
-          {t('welcome')}
-        </Typography>
         <Typography
           variant="body2"
           sx={{
