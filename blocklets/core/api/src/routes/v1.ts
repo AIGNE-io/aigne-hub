@@ -14,7 +14,7 @@ import compression from 'compression';
 import { Router } from 'express';
 import proxy from 'express-http-proxy';
 
-import { Config } from '../libs/env';
+import { Config, buildUsageWithCredits } from '../libs/env';
 import onError from '../libs/on-error';
 import { ensureAdmin, ensureComponentCall } from '../libs/security';
 
@@ -53,7 +53,7 @@ router.post(
           });
 
           if (data.output.usage && usage) {
-            data.output.usage = { ...data.output.usage, aigneHubCredits: usage };
+            data.output.usage = { ...data.output.usage, ...buildUsageWithCredits(usage) };
           }
         }
 
@@ -130,9 +130,7 @@ router.post(
       images: usageData?.images,
       data: usageData?.images,
       model: usageData?.modelName,
-      usage: {
-        aigneHubCredits: Number(aigneHubCredits),
-      },
+      usage: buildUsageWithCredits(Number(aigneHubCredits)),
     });
   })
 );

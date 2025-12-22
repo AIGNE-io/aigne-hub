@@ -1,6 +1,19 @@
+## 0.7.7 (2025-12-22)
+
+- chore: update deps
+
+## 0.7.6 (2025-12-20)
+
+- fix(core): add timezone offset support for usage stats aggregation
+
+## 0.7.5 (2025-12-18)
+
+- feat: add creditPrefix to usage response
+
 ## 0.7.4 (2025-12-18)
 
-- feat: add router for USD based migration
+- refactor: add migration route for rebuild stats
+- refactor: add migration route for grant
 
 ## 0.7.3 (2025-12-17)
 

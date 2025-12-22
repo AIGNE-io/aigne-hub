@@ -34,6 +34,7 @@ export default function UsageStatsBoard() {
     allUsers: true,
     startTime: dateRange.from.toString(),
     endTime: dateRange.to.toString(),
+    timezoneOffset: new Date().getTimezoneOffset(),
   });
 
   const handleQuickDateSelect = (range: { start: dayjs.Dayjs; end: dayjs.Dayjs }) => {

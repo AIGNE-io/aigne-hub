@@ -214,7 +214,12 @@ export async function getTrendComparisonOptimized({
 }
 
 // New optimized usage stats using hourly ModelCallStat data
-export async function getUsageStatsHourlyOptimized(userDid: string, startTime: number, endTime: number) {
+export async function getUsageStatsHourlyOptimized(
+  userDid: string,
+  startTime: number,
+  endTime: number,
+  timezoneOffset?: number
+) {
   try {
     // Generate hourly range from user's local time timestamps
     const hours = generateHourRangeFromTimestamps(startTime, endTime);
@@ -222,14 +227,14 @@ export async function getUsageStatsHourlyOptimized(userDid: string, startTime: n
     // Fetch hourly stats with cache optimization
     const hourlyStatsRaw = await fetchHourlyStatsWithCache(userDid, hours);
 
-    return formatUsageStats({ hourlyStatsRaw, hours });
+    return formatUsageStats({ hourlyStatsRaw, hours, timezoneOffset });
   } catch (error) {
     logger.error('Failed to get hourly optimized usage stats, falling back to legacy method:', error);
     throw error;
   }
 }
 
-export async function getUsageStatsHourlyOptimizedAdmin(startTime: number, endTime: number) {
+export async function getUsageStatsHourlyOptimizedAdmin(startTime: number, endTime: number, timezoneOffset?: number) {
   try {
     // Batch query the hourly statistics of all users within the specified time range
     const existingStat = await ModelCallStat.findAll({
@@ -244,6 +249,7 @@ export async function getUsageStatsHourlyOptimizedAdmin(startTime: number, endTi
     return formatUsageStats({
       hourlyStatsRaw: statsWithTimestamp,
       hours: statsWithTimestamp.map((stat) => stat.timestamp!),
+      timezoneOffset,
     });
   } catch (error) {
     logger.error('Failed to get hourly optimized usage stats, falling back to legacy method:', error);
