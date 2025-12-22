@@ -73,7 +73,8 @@ export default flatten({
   // AIGNE Hub integrations
   welcome: '欢迎使用 AIGNE Hub',
   welcomeDesc: '开始使用前，请先配置 AI 提供商来启用 AI 服务。您也可以启用 Credits 计费功能来管理用户使用额度。',
-
+  welcomeDesc2:
+    'AIGNE Hub 的核心配置中心，用于管理 AI 服务接入与运行规则，包括 AI 提供商设置、模型费率配置、用量分析等。',
   aiConfig: '配置',
   quickStarts: '快速开始',
   // AI Provider features

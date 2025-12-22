@@ -74,7 +74,8 @@ export default flatten({
   welcome: 'Welcome to AIGNE Hub',
   welcomeDesc:
     'Get started by configuring AI providers to enable AI services. You can also enable Credits billing to manage user usage quotas.',
-
+  welcomeDesc2:
+    'The core configuration center for AIGNE Hub, used to manage AI service access and operation rules, including AI provider settings, model rate configuration, usage analysis, etc.',
   aiConfig: 'Config',
   quickStarts: 'Quick Start',
   // AI Provider features

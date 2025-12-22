@@ -1,5 +1,6 @@
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import Tabs from '@arcblock/ux/lib/Tabs';
+import { useAppInfo } from '@blocklet/ui-react/lib/Dashboard';
 import { Box, Stack } from '@mui/material';
 import React, { useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -19,6 +20,7 @@ function Integrations() {
   const navigate = useNavigate();
   const { t } = useLocaleContext();
   const { group = 'overview' } = useParams();
+  const { updateAppInfo } = useAppInfo();
   const { isPending, startTransition } = useTransitionContext();
   const isAdmin = useIsRole('owner', 'admin');
 
@@ -37,6 +39,13 @@ function Integrations() {
     tabs.push({ label: t('playground'), value: 'playground' });
   }
 
+  useEffect(() => {
+    updateAppInfo({
+      description: t('welcomeDesc2'),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [t]);
+
   return (
     <>
       <ProgressBar pending={isPending} />
@@ -48,6 +57,7 @@ function Integrations() {
           alignItems: 'center',
           justifyContent: 'end',
           flexWrap: 'wrap',
+          mt: -2,
         }}>
         <Tabs
           tabs={tabs}
@@ -56,8 +66,7 @@ function Integrations() {
           scrollButtons="auto"
           variant="scrollable"
           sx={{
-            py: 2,
-            px: 3,
+            pb: 2,
             flex: '1 0 auto',
             maxWidth: '100%',
             '.MuiTab-root': {
@@ -75,7 +84,7 @@ function Integrations() {
         />
       </Stack>
 
-      <Box component="main" sx={{ flex: 1, overflow: 'auto', px: 3 }}>
+      <Box component="main" sx={{ flex: 1, overflow: 'auto' }}>
         {React.isValidElement(TabComponent) ? TabComponent : <TabComponent />}
       </Box>
     </>
