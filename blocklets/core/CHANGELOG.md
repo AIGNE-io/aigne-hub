@@ -1,3 +1,7 @@
+## 0.7.7 (2025-12-22)
+
+- chore: update deps
+
 ## 0.7.6 (2025-12-20)
 
 - fix(core): add timezone offset support for usage stats aggregation
