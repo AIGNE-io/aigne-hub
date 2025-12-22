@@ -1,3 +1,8 @@
+## 0.7.7 (2025-12-22)
+
+- fix: adjust padding and font size in configuration pages
+- chore(deps): upgrade blocklet packages to stable versions
+
 ## 0.7.6 (2025-12-20)
 
 - fix(core): add timezone offset support for usage stats aggregation
