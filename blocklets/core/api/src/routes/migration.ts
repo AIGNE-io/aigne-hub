@@ -180,14 +180,14 @@ async function doCreateMeter(oldMeter: any): Promise<CreateMeterResult> {
       prices: [
         {
           type: 'one_time',
-          unit_amount: '0.5',
+          unit_amount: '1',
           lookup_key: NEW_CREDIT_PRICE_KEY,
           nickname: oldPrice?.nickname || 'Per Unit Credit For AIGNE Hub',
           currency_id: paymentCurrencies[0]!.id,
           // @ts-ignore
           currency_options: paymentCurrencies.map((currency) => ({
             currency_id: currency.id,
-            unit_amount: '0.5',
+            unit_amount: '1',
           })),
           metadata: {
             credit_config: {
@@ -195,7 +195,7 @@ async function doCreateMeter(oldMeter: any): Promise<CreateMeterResult> {
               valid_duration_value: oldPrice?.metadata?.credit_config?.valid_duration_value ?? 0,
               valid_duration_unit: oldPrice?.metadata?.credit_config?.valid_duration_unit || 'days',
               currency_id: meter.currency_id,
-              credit_amount: '0.5',
+              credit_amount: '1',
             },
             meter_id: meter.id,
           },
