@@ -66,7 +66,7 @@ function Integrations() {
           scrollButtons="auto"
           variant="scrollable"
           sx={{
-            pb: 3,
+            pb: 2,
             flex: '1 0 auto',
             maxWidth: '100%',
             '.MuiTab-root': {
