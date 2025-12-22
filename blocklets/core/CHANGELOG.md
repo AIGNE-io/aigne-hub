@@ -1,3 +1,8 @@
+## 0.7.9 (2025-12-22)
+
+- fix: adjust padding and font size in configuration pages
+- chore(deps): upgrade blocklet packages to stable versions
+
 ## 0.7.8 (2025-12-22)
 
 - chore: update aigne deps
