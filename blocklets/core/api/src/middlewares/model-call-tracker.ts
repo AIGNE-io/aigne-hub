@@ -33,6 +33,8 @@ export interface UsageData {
 export interface ModelCallResult {
   promptTokens?: number;
   completionTokens?: number;
+  cacheCreationInputTokens?: number;
+  cacheReadInputTokens?: number;
   numberOfImageGeneration?: number;
   credits?: number;
   usageMetrics?: Record<string, any>;
@@ -268,6 +270,8 @@ async function createModelCallContext({
         } else {
           totalUsage = new BigNumber(result.promptTokens || 0)
             .plus(result.completionTokens || 0)
+            .plus(result.cacheCreationInputTokens || 0)
+            .plus(result.cacheReadInputTokens || 0)
             .decimalPlaces(CREDIT_DECIMAL_PLACES)
             .toNumber();
         }
@@ -309,6 +313,8 @@ async function createModelCallContext({
         } else {
           totalUsage = new BigNumber(partialUsage?.promptTokens || 0)
             .plus(partialUsage?.completionTokens || 0)
+            .plus((partialUsage?.usageMetrics as any)?.cacheCreationInputTokens || 0)
+            .plus((partialUsage?.usageMetrics as any)?.cacheReadInputTokens || 0)
             .decimalPlaces(CREDIT_DECIMAL_PLACES)
             .toNumber();
         }

@@ -69,13 +69,13 @@ export async function createAndReportUsage({
   }
 }
 
-async function getModelRates(model: string) {
+async function getModelRates(model: string): Promise<AiModelRate[]> {
   if (!model) {
     throw new CustomError(400, 'Model is required');
   }
-  const callback = (err: Error) => {
+  const callback = (err: Error): AiModelRate[] => {
     if (Config.pricing?.list) {
-      return Config.pricing?.list;
+      return Config.pricing?.list as AiModelRate[];
     }
     throw err;
   };
@@ -106,7 +106,7 @@ async function getModelRates(model: string) {
   return modelRates;
 }
 
-async function getPrice(type: Usage['type'], model: string) {
+async function getPrice(type: Usage['type'], model: string): Promise<AiModelRate | undefined> {
   if (!model) {
     throw new CustomError(400, 'Model is required');
   }
@@ -123,6 +123,8 @@ export async function createAndReportUsageV2({
   modelParams,
   promptTokens = 0,
   completionTokens = 0,
+  cacheCreationInputTokens = 0,
+  cacheReadInputTokens = 0,
   numberOfImageGeneration = 0,
   appId = wallet.address,
   userDid,
@@ -135,6 +137,8 @@ export async function createAndReportUsageV2({
     >
   > & {
     userDid: string;
+    cacheCreationInputTokens?: number;
+    cacheReadInputTokens?: number;
   }): Promise<number | undefined> {
   try {
     let usedCredits: number | undefined;
@@ -152,9 +156,31 @@ export async function createAndReportUsageV2({
           .decimalPlaces(CREDIT_DECIMAL_PLACES)
           .toNumber();
       } else {
-        const input = new BigNumber(promptTokens).multipliedBy(price.inputRate);
-        const output = new BigNumber(completionTokens).multipliedBy(price.outputRate);
-        usedCredits = input.plus(output).decimalPlaces(CREDIT_DECIMAL_PLACES).toNumber();
+        let inputCredits = new BigNumber(promptTokens).multipliedBy(price.inputRate);
+        const outputCredits = new BigNumber(completionTokens).multipliedBy(price.outputRate);
+
+        // Handle cache tokens
+        if (cacheCreationInputTokens > 0 || cacheReadInputTokens > 0) {
+          const caching = price.caching as { readRate?: number; writeRate?: number } | undefined;
+
+          if (caching?.writeRate) {
+            // Use configured cache write rate for cache creation tokens
+            inputCredits = inputCredits.plus(new BigNumber(cacheCreationInputTokens).multipliedBy(caching.writeRate));
+          } else {
+            // Fallback: add cache creation tokens to regular input tokens
+            inputCredits = inputCredits.plus(new BigNumber(cacheCreationInputTokens).multipliedBy(price.inputRate));
+          }
+
+          if (caching?.readRate) {
+            // Use configured cache read rate for cache read tokens
+            inputCredits = inputCredits.plus(new BigNumber(cacheReadInputTokens).multipliedBy(caching.readRate));
+          } else {
+            // Fallback: add cache read tokens to regular input tokens
+            inputCredits = inputCredits.plus(new BigNumber(cacheReadInputTokens).multipliedBy(price.inputRate));
+          }
+        }
+
+        usedCredits = inputCredits.plus(outputCredits).decimalPlaces(CREDIT_DECIMAL_PLACES).toNumber();
       }
     }
 
@@ -428,6 +454,8 @@ export async function createUsageAndCompleteModelCall({
   modelParams,
   promptTokens = 0,
   completionTokens = 0,
+  cacheCreationInputTokens = 0,
+  cacheReadInputTokens = 0,
   numberOfImageGeneration = 0,
   appId,
   userDid,
@@ -443,6 +471,8 @@ export async function createUsageAndCompleteModelCall({
   modelParams?: Record<string, any>;
   promptTokens?: number;
   completionTokens?: number;
+  cacheCreationInputTokens?: number;
+  cacheReadInputTokens?: number;
   numberOfImageGeneration?: number;
   appId?: string;
   userDid: string;
@@ -464,6 +494,8 @@ export async function createUsageAndCompleteModelCall({
         modelParams,
         promptTokens,
         completionTokens,
+        cacheCreationInputTokens,
+        cacheReadInputTokens,
         numberOfImageGeneration,
         appId,
         userDid,
@@ -473,6 +505,11 @@ export async function createUsageAndCompleteModelCall({
 
     // Always complete ModelCall record regardless of billing mode
     if (req.modelCallContext) {
+      const totalTokens = new BigNumber(promptTokens || 0)
+        .plus(new BigNumber(completionTokens || 0))
+        .plus(new BigNumber(cacheCreationInputTokens || 0))
+        .plus(new BigNumber(cacheReadInputTokens || 0))
+        .toNumber();
       await req.modelCallContext.complete({
         promptTokens,
         completionTokens,
@@ -482,7 +519,9 @@ export async function createUsageAndCompleteModelCall({
         usageMetrics: {
           inputTokens: promptTokens,
           outputTokens: completionTokens,
-          totalTokens: promptTokens + completionTokens,
+          totalTokens,
+          cacheCreationInputTokens,
+          cacheReadInputTokens,
           numberOfImageGeneration,
           ...additionalMetrics,
         },
@@ -504,6 +543,8 @@ export async function createUsageAndCompleteModelCall({
         usageMetrics: {
           inputTokens: promptTokens,
           outputTokens: completionTokens,
+          cacheCreationInputTokens,
+          cacheReadInputTokens,
           numberOfImageGeneration,
           ...additionalMetrics,
         },

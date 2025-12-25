@@ -42,6 +42,11 @@ export default class AiModelRate extends Model<InferAttributes<AiModelRate>, Inf
     output: number;
   };
 
+  declare caching?: {
+    readRate?: number;
+    writeRate?: number;
+  };
+
   declare modelMetadata?: ModelMetadata;
 
   public static readonly GENESIS_ATTRIBUTES = {
@@ -72,6 +77,10 @@ export default class AiModelRate extends Model<InferAttributes<AiModelRate>, Inf
       allowNull: false,
     },
     unitCosts: {
+      type: DataTypes.JSON,
+      allowNull: true,
+    },
+    caching: {
       type: DataTypes.JSON,
       allowNull: true,
     },
@@ -153,6 +162,14 @@ AiModelRate.init(AiModelRate.GENESIS_ATTRIBUTES, {
       return {
         input: value.input != null ? new BigNumber(value.input).toFixed() : '0',
         output: value.output != null ? new BigNumber(value.output).toFixed() : '0',
+      };
+    },
+    caching() {
+      const value = this.getDataValue('caching');
+      if (!value) return value;
+      return {
+        readRate: value.readRate != null ? new BigNumber(value.readRate).toFixed() : undefined,
+        writeRate: value.writeRate != null ? new BigNumber(value.writeRate).toFixed() : undefined,
       };
     },
   },

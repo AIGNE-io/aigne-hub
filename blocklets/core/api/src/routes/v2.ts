@@ -174,6 +174,8 @@ router.post(
                 type: 'chatCompletion',
                 promptTokens: usageData.usage?.inputTokens || 0,
                 completionTokens: usageData.usage?.outputTokens || 0,
+                cacheCreationInputTokens: usageData.usage?.cacheCreationInputTokens || 0,
+                cacheReadInputTokens: usageData.usage?.cacheReadInputTokens || 0,
                 model: getReqModel(req),
                 modelParams: req.body?.options?.modelOptions,
                 appId: req.headers['x-aigne-hub-client-did'] as string,
@@ -239,6 +241,7 @@ router.post(
 
         const { modelInstance: model } = await getModel(modelOptions, { modelOptions, req });
         if (modelOptions) {
+          logger.info('modelOptions------', modelOptions);
           delete req.body.input.modelOptions;
         }
 
@@ -252,13 +255,14 @@ router.post(
             hooks: {
               onEnd: async (data) => {
                 const usageData: ChatModelOutput = data.output;
-
                 if (usageData) {
                   const usage = await createUsageAndCompleteModelCall({
                     req,
                     type: 'chatCompletion',
                     promptTokens: usageData.usage?.inputTokens || 0,
                     completionTokens: usageData.usage?.outputTokens || 0,
+                    cacheCreationInputTokens: usageData.usage?.cacheCreationInputTokens || 0,
+                    cacheReadInputTokens: usageData.usage?.cacheReadInputTokens || 0,
                     model: modelOptions?.model,
                     modelParams: modelOptions,
                     userDid: userDid!,
@@ -398,6 +402,8 @@ router.post(
             promptTokens: response.usage.inputTokens,
             completionTokens: response.usage.outputTokens,
             numberOfImageGeneration: response.images.length,
+            cacheCreationInputTokens: response.usage?.cacheCreationInputTokens || 0,
+            cacheReadInputTokens: response.usage?.cacheReadInputTokens || 0,
             appId: req.headers['x-aigne-hub-client-did'] as string,
             userDid: userDid!,
             creditBasedBillingEnabled: Config.creditBasedBillingEnabled,
@@ -514,6 +520,8 @@ router.post(
             promptTokens: response.usage.inputTokens,
             completionTokens: response.usage.outputTokens,
             numberOfImageGeneration: response.videos.length,
+            cacheCreationInputTokens: response.usage?.cacheCreationInputTokens || 0,
+            cacheReadInputTokens: response.usage?.cacheReadInputTokens || 0,
             mediaDuration: response.seconds,
             appId: req.headers['x-aigne-hub-client-did'] as string,
             userDid: userDid!,

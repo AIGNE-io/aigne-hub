@@ -121,6 +121,10 @@ const createModelRateSchema = Joi.object({
     input: Joi.number().min(0).required(),
     output: Joi.number().min(0).required(),
   }).optional(),
+  caching: Joi.object({
+    readRate: Joi.number().min(0).optional(),
+    writeRate: Joi.number().min(0).optional(),
+  }).optional(),
   modelMetadata: Joi.object({
     maxTokens: Joi.number().min(1).allow(null).optional(),
     features: Joi.array()
@@ -143,6 +147,10 @@ const updateModelRateSchema = Joi.object({
   unitCosts: Joi.object({
     input: Joi.number().min(0).required(),
     output: Joi.number().min(0).required(),
+  }).optional(),
+  caching: Joi.object({
+    readRate: Joi.number().min(0).optional(),
+    writeRate: Joi.number().min(0).optional(),
   }).optional(),
   modelMetadata: Joi.object({
     maxTokens: Joi.number().min(1).allow(null).optional(),
@@ -567,6 +575,7 @@ router.post('/:providerId/model-rates', ensureAdmin, async (req, res) => {
       description: value.description,
       modelMetadata: value.modelMetadata,
       unitCosts: value.unitCosts,
+      caching: value.caching,
     });
 
     modelStatusQueue.push({
@@ -586,7 +595,15 @@ router.post('/:providerId/model-rates', ensureAdmin, async (req, res) => {
 router.put('/:providerId/model-rates/:rateId', ensureAdmin, async (req, res) => {
   try {
     const { error, value } = updateModelRateSchema.validate(
-      pick(req.body, ['modelDisplay', 'inputRate', 'outputRate', 'description', 'modelMetadata', 'unitCosts'])
+      pick(req.body, [
+        'modelDisplay',
+        'inputRate',
+        'outputRate',
+        'description',
+        'modelMetadata',
+        'unitCosts',
+        'caching',
+      ])
     );
     if (error) {
       return res.status(400).json({
@@ -655,6 +672,10 @@ const batchCreateSchema = Joi.object({
   unitCosts: Joi.object({
     input: Joi.number().min(0).required(),
     output: Joi.number().min(0).required(),
+  }).optional(),
+  caching: Joi.object({
+    readRate: Joi.number().min(0).allow(null).optional(),
+    writeRate: Joi.number().min(0).allow(null).optional(),
   }).optional(),
   modelMetadata: Joi.object({
     maxTokens: Joi.number().min(1).allow(null).optional(),
@@ -727,6 +748,7 @@ router.post('/model-rates', ensureAdmin, async (req, res) => {
           description: value.description,
           unitCosts: value.unitCosts ?? {},
           modelMetadata: value.modelMetadata,
+          caching: value.caching,
         });
 
         return modelRate.toJSON();

@@ -1,5 +1,12 @@
 import UnitDisplay from '@app/components/unit-display';
-import { formatMillionTokenCost, getPrefix, parseMillionTokenCost } from '@app/libs/util';
+import {
+  ModelPriceUnit,
+  formatMillionTokenCost,
+  formatPriceByUnit,
+  getModelPriceUnit,
+  getPrefix,
+  parsePriceByUnit,
+} from '@app/libs/util';
 /* eslint-disable react-hooks/exhaustive-deps */
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import { FormLabel } from '@blocklet/aigne-hub/components';
@@ -48,47 +55,83 @@ function TokenCostInput({
   label,
   costValue = 0,
   onCostChange,
+  modelType = 'chatCompletion',
+  rateType = 'input',
 }: {
   label: string;
   costValue?: number;
   onCostChange: (value: number) => void;
+  modelType?: 'chatCompletion' | 'imageGeneration' | 'embedding' | 'video';
+  rateType?: 'input' | 'output';
 }) {
-  const [value, setValue] = useState<number | string>(() => formatMillionTokenCost(costValue, 10));
+  const { t } = useLocaleContext();
+  // Get appropriate unit based on model type
+  const priceUnit = getModelPriceUnit(modelType);
+  // Default to appropriate unit:
+  // - input: always mtokens
+  // - output: mtokens for chat/embedding, image/second for image/video
+  const defaultUnit =
+    rateType === 'input' ? 'mtokens' : modelType === 'imageGeneration' || modelType === 'video' ? priceUnit : 'mtokens';
+  const [unit, setUnit] = useState<ModelPriceUnit>(defaultUnit);
+  const [value, setValue] = useState<number | string>(() => {
+    return formatPriceByUnit(costValue, unit, 10).toString();
+  });
 
   const handleBlur = (e: FocusEvent<HTMLInputElement>) => {
-    onCostChange(parseMillionTokenCost(e.target.value));
+    const inputValue = e.target.value;
+    onCostChange(parsePriceByUnit(inputValue, unit));
   };
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     setValue(e.target.value);
   };
 
+  const handleUnitChange = (newUnit: ModelPriceUnit) => {
+    setUnit(newUnit);
+    // Update display value when unit changes
+    setValue(formatPriceByUnit(costValue, newUnit, 10).toString());
+  };
+
   useEffect(() => {
-    // Use precision 10 to preserve small decimal values
-    setValue(formatMillionTokenCost(costValue, 10));
-  }, [costValue]);
+    // Update value when costValue or unit changes
+    setValue(formatPriceByUnit(costValue, unit, 10).toString());
+  }, [costValue, unit]);
 
   return (
     <Box>
       <FormLabel>{label}</FormLabel>
-      <TextField
-        value={value}
-        onBlur={handleBlur}
-        onChange={handleChange}
-        size="small"
-        slotProps={{
-          // Use type="text" with inputMode="decimal" to avoid HTML5 number validation issues
-          htmlInput: { type: 'text', inputMode: 'decimal' },
-          input: {
-            endAdornment: (
-              <InputAdornment position="end">
-                <UnitDisplay value="" type="token" addon="Tokens" />
-              </InputAdornment>
-            ),
-            startAdornment: <InputAdornment position="start">$</InputAdornment>,
-          },
-        }}
-      />
+      <Stack direction="row" spacing={1}>
+        <TextField
+          value={value}
+          onBlur={handleBlur}
+          onChange={handleChange}
+          size="small"
+          sx={{ flex: 1 }}
+          slotProps={{
+            htmlInput: { type: 'text', inputMode: 'decimal' },
+            input: {
+              startAdornment: <InputAdornment position="start">$</InputAdornment>,
+              endAdornment: (
+                <Select
+                  value={unit}
+                  onChange={(e) => handleUnitChange(e.target.value as ModelPriceUnit)}
+                  size="small"
+                  renderValue={() => <UnitDisplay value="" type="token" addon={unit} />}
+                  sx={{ '.MuiOutlinedInput-notchedOutline': { border: 'none' } }}>
+                  <MenuItem value="mtokens">{t('config.modelRates.fields.perMillionTokens')}</MenuItem>
+                  {(modelType === 'imageGeneration' || modelType === 'video') && (
+                    <MenuItem value={priceUnit}>
+                      {priceUnit === 'image'
+                        ? t('config.modelRates.fields.perImage')
+                        : t('config.modelRates.fields.perSecond')}
+                    </MenuItem>
+                  )}
+                </Select>
+              ),
+            },
+          }}
+        />
+      </Stack>
     </Box>
   );
 }
@@ -101,6 +144,9 @@ function CreditRateInput({
   onRateChange,
   profitRate = undefined,
   profitRateLabel = '',
+  required = true,
+  modelType = 'chatCompletion',
+  rateType = 'input',
 }: {
   label: string;
   description?: string;
@@ -108,27 +154,46 @@ function CreditRateInput({
   onRateChange: (value: number) => void;
   profitRate?: number;
   profitRateLabel?: string;
+  required?: boolean;
+  modelType?: 'chatCompletion' | 'imageGeneration' | 'embedding' | 'video';
+  rateType?: 'input' | 'output';
 }) {
-  // Initialize with formatted value to avoid flicker on first render
-  const [value, setValue] = useState<number | string>(() => formatMillionTokenCost(rateValue, 10));
+  const { t } = useLocaleContext();
+  // Get appropriate unit based on model type
+  const priceUnit = getModelPriceUnit(modelType);
+  // Default to appropriate unit:
+  // - input: always mtokens
+  // - output: mtokens for chat/embedding, image/second for image/video
+  const defaultUnit =
+    rateType === 'input' ? 'mtokens' : modelType === 'imageGeneration' || modelType === 'video' ? priceUnit : 'mtokens';
+  const [unit, setUnit] = useState<ModelPriceUnit>(defaultUnit);
+  const [value, setValue] = useState<number | string>(() => {
+    return formatPriceByUnit(rateValue, unit, 10).toString();
+  });
 
   const handleBlur = (e: FocusEvent<HTMLInputElement>) => {
-    // Convert from "Credits / 1M Token" to "Credits / Token"
-    onRateChange(parseMillionTokenCost(e.target.value));
+    const inputValue = e.target.value;
+    onRateChange(parsePriceByUnit(inputValue, unit));
   };
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     setValue(e.target.value);
   };
 
+  const handleUnitChange = (newUnit: ModelPriceUnit) => {
+    setUnit(newUnit);
+    // Update display value when unit changes
+    setValue(formatPriceByUnit(rateValue, newUnit, 10).toString());
+  };
+
   useEffect(() => {
-    // Convert from "Credits / Token" to "Credits / 1M Token" for display
-    setValue(formatMillionTokenCost(rateValue, 10));
-  }, [rateValue]);
+    // Update value when rateValue or unit changes
+    setValue(formatPriceByUnit(rateValue, unit, 10).toString());
+  }, [rateValue, unit]);
 
   return (
     <Box sx={{ flex: 1 }}>
-      <FormLabel required>{label}</FormLabel>
+      <FormLabel required={required}>{label}</FormLabel>
       {description && (
         <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 0.5 }}>
           {description}
@@ -140,15 +205,27 @@ function CreditRateInput({
         onChange={handleChange}
         size="small"
         fullWidth
-        required
+        required={required}
         slotProps={{
           // Use type="text" with inputMode="decimal" to avoid HTML5 number validation issues
           htmlInput: { type: 'text', inputMode: 'decimal' },
           input: {
             endAdornment: (
-              <InputAdornment position="end">
-                <UnitDisplay value="" type="token" addon="Tokens" />
-              </InputAdornment>
+              <Select
+                value={unit}
+                onChange={(e) => handleUnitChange(e.target.value as ModelPriceUnit)}
+                size="small"
+                renderValue={() => <UnitDisplay value="" type="credit" addon={unit} />}
+                sx={{ '.MuiOutlinedInput-notchedOutline': { border: 'none' } }}>
+                <MenuItem value="mtokens">{t('config.modelRates.fields.perMillionTokens')}</MenuItem>
+                {(modelType === 'imageGeneration' || modelType === 'video') && (
+                  <MenuItem value={priceUnit}>
+                    {priceUnit === 'image'
+                      ? t('config.modelRates.fields.perImage')
+                      : t('config.modelRates.fields.perSecond')}
+                  </MenuItem>
+                )}
+              </Select>
             ),
             startAdornment: <InputAdornment position="start">$</InputAdornment>,
           },
@@ -283,6 +360,10 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
         input: rate?.unitCosts?.input || 0,
         output: rate?.unitCosts?.output || 0,
       },
+      caching: {
+        readRate: rate?.caching?.readRate,
+        writeRate: rate?.caching?.writeRate,
+      },
       modelMetadata: {
         maxTokens: rate?.modelMetadata?.maxTokens,
         features: rate?.modelMetadata?.features || [],
@@ -302,6 +383,8 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
   const outputRate = watch('outputRate');
   const unitCostsInput = watch('unitCosts.input');
   const unitCostsOutput = watch('unitCosts.output');
+  const cacheReadRate = watch('caching.readRate');
+  const cacheWriteRate = watch('caching.writeRate');
   const rateType = watch('type');
 
   // 计算预估收益率
@@ -468,6 +551,15 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
         input: data.unitCosts?.input || 0,
         output: data.unitCosts?.output || 0,
       },
+      caching:
+        data.caching?.readRate !== undefined || data.caching?.writeRate !== undefined
+          ? {
+              readRate:
+                data.caching?.readRate !== undefined ? new BigNumber(data.caching.readRate).toFixed() : undefined,
+              writeRate:
+                data.caching?.writeRate !== undefined ? new BigNumber(data.caching.writeRate).toFixed() : undefined,
+            }
+          : undefined,
       modelMetadata: {
         maxTokens: data.modelMetadata?.maxTokens || undefined,
         features: data.modelMetadata?.features || [],
@@ -773,11 +865,15 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
                     costValue={unitCostsInput || 0}
                     label={t('config.modelRates.fields.inputRate')}
                     onCostChange={(value) => setValue('unitCosts.input', value)}
+                    modelType={rateType}
+                    rateType="input"
                   />
                   <TokenCostInput
                     costValue={unitCostsOutput || 0}
                     label={t('config.modelRates.fields.outputRate')}
                     onCostChange={(value) => setValue('unitCosts.output', value)}
+                    modelType={rateType}
+                    rateType="output"
                   />
                 </Stack>
               </Box>
@@ -884,6 +980,8 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
                     onRateChange={(value) => setValue('inputRate', value)}
                     profitRate={inputProfitRate}
                     profitRateLabel={t('config.modelRates.configInfo.estimatedProfitRate')}
+                    modelType={rateType}
+                    rateType="input"
                   />
                   <CreditRateInput
                     label={t('config.modelRates.fields.outputRate')}
@@ -892,9 +990,91 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
                     onRateChange={(value) => setValue('outputRate', value)}
                     profitRate={outputProfitRate}
                     profitRateLabel={t('config.modelRates.configInfo.estimatedProfitRate')}
+                    modelType={rateType}
+                    rateType="output"
                   />
                 </Stack>
               </Box>
+
+              {/* Cache Rates Configuration - Only show for chatCompletion and embedding types */}
+              {(rateType === 'chatCompletion' || rateType === 'embedding') && (
+                <Box
+                  sx={{
+                    p: 2.5,
+                    borderRadius: 2,
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    boxShadow: 1,
+                    backgroundColor: 'background.paper',
+                  }}>
+                  <Stack spacing={1.5}>
+                    <Typography
+                      variant="h6"
+                      sx={{
+                        fontWeight: 600,
+                        display: 'flex',
+                        gap: 1,
+                        alignItems: 'center',
+                      }}>
+                      {t('config.modelRates.configInfo.caching.title')}
+                      <Tooltip
+                        title={
+                          <Box>
+                            <Typography variant="body2" sx={{ mb: 1 }}>
+                              <strong>{t('config.modelRates.configInfo.caching.aboutTitle')}</strong>
+                            </Typography>
+                            <Typography variant="body2" sx={{ mb: 1 }}>
+                              {t('config.modelRates.configInfo.caching.aboutDesc')}
+                            </Typography>
+                            <Typography variant="body2">
+                              {t('config.modelRates.configInfo.caching.fallbackExplain')}
+                            </Typography>
+                          </Box>
+                        }
+                        slotProps={{
+                          tooltip: {
+                            sx: {
+                              bgcolor: 'background.paper',
+                              color: 'text.primary',
+                              boxShadow: 2,
+                              padding: '10px 16px',
+                              maxWidth: 480,
+                              minWidth: 350,
+                              wordBreak: 'break-word',
+                              border: '1px solid',
+                              borderColor: 'divider',
+                              borderRadius: 2,
+                            },
+                          },
+                        }}
+                        placement="right">
+                        <InfoOutlined fontSize="small" sx={{ opacity: 0.7, fontSize: '1rem' }} />
+                      </Tooltip>
+                    </Typography>
+
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                      <CreditRateInput
+                        label={t('config.modelRates.configInfo.caching.readRateLabel')}
+                        description={t('config.modelRates.configInfo.caching.readRateDesc')}
+                        rateValue={cacheReadRate || 0}
+                        onRateChange={(value) => setValue('caching.readRate', value || undefined)}
+                        required={false}
+                        modelType={rateType}
+                        rateType="input"
+                      />
+                      <CreditRateInput
+                        label={t('config.modelRates.configInfo.caching.writeRateLabel')}
+                        description={t('config.modelRates.configInfo.caching.writeRateDesc')}
+                        rateValue={cacheWriteRate || 0}
+                        onRateChange={(value) => setValue('caching.writeRate', value || undefined)}
+                        required={false}
+                        modelType={rateType}
+                        rateType="input"
+                      />
+                    </Stack>
+                  </Stack>
+                </Box>
+              )}
 
               <FormInput
                 name="description"
