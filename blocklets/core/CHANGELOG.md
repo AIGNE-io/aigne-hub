@@ -1,3 +1,7 @@
+## 0.7.10 (2025-12-25)
+
+- feat(core): add prompt caching support with configurable rates
+
 ## 0.7.9 (2025-12-22)
 
 - fix: adjust padding and font size in configuration pages
