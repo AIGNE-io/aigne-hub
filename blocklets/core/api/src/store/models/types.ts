@@ -4,6 +4,9 @@ export type CallType = 'chatCompletion' | 'embedding' | 'imageGeneration' | 'aud
 export interface UsageMetrics {
   inputTokens?: number;
   outputTokens?: number;
+  cacheCreationInputTokens?: number;
+  cacheReadInputTokens?: number;
+  totalTokens?: number;
   imageQuality?: string;
   imageSize?: string;
   audioFormat?: string;

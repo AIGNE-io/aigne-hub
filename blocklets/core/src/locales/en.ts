@@ -152,6 +152,9 @@ export default flatten({
         outputRate: 'Output',
         description: 'Description',
         actions: 'Actions',
+        perMillionTokens: '/ 1M tokens',
+        perImage: '/ image',
+        perSecond: '/ second',
       },
 
       // Form
@@ -288,6 +291,16 @@ export default flatten({
         unitTooltip: {
           credit: '1M = 1,000,000 AIGNE Hub Credits (per million AIGNE Hub Credits)',
           token: '1M = 1,000,000 tokens (per million tokens)',
+        },
+        caching: {
+          title: 'Cache Rates (Optional)',
+          aboutTitle: 'Prompt Caching',
+          aboutDesc: 'Some models support caching frequently used context to reduce costs',
+          writeRateLabel: 'Cache Write',
+          writeRateDesc: 'Rate for cache write',
+          readRateLabel: 'Cache Read',
+          readRateDesc: 'Rate for cached input (cache hits & refreshes)',
+          fallbackExplain: 'Defaults to Input Rate if not configured',
         },
       },
 

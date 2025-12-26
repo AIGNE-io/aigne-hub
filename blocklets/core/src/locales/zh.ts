@@ -140,6 +140,9 @@ export default flatten({
         outputRate: '输出',
         description: '描述',
         actions: '操作',
+        perMillionTokens: '/ 1M tokens',
+        perImage: '/ image',
+        perSecond: '/ second',
       },
 
       // Form
@@ -275,6 +278,16 @@ export default flatten({
         unitTooltip: {
           credit: '1M 表示每百万 AIGNE Hub Credits',
           token: '1M 表示每百万 Token',
+        },
+        caching: {
+          title: '缓存费率（可选）',
+          aboutTitle: 'Prompt Caching',
+          aboutDesc: '部分模型支持缓存常用上下文以降低成本',
+          writeRateLabel: 'Cache Write',
+          writeRateDesc: '缓存写入费率',
+          readRateLabel: 'Cache Read',
+          readRateDesc: '缓存读取费率（缓存命中 & 刷新）',
+          fallbackExplain: '未配置时按输入费率计费',
         },
       },
 

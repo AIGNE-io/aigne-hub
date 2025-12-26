@@ -37,6 +37,10 @@ export interface ModelRate {
     input: number;
     output: number;
   };
+  caching?: {
+    readRate?: number;
+    writeRate?: number;
+  };
   modelMetadata?: ModelMetadata;
 }
 
@@ -78,6 +82,10 @@ export interface ModelRateFormData {
   unitCosts?: {
     input: number;
     output: number;
+  };
+  caching?: {
+    readRate?: number;
+    writeRate?: number;
   };
   modelMetadata?: ModelMetadata;
 }

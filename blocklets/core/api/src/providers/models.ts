@@ -191,7 +191,6 @@ export const getModel = async (
 ) => {
   const { modelName: model, providerName: provider } = await getModelAndProviderId(input.model);
 
-  // delete or reset
   if (options?.modelOptions) {
     options.modelOptions.model = model;
   }
