@@ -116,6 +116,22 @@ async function getPrice(type: Usage['type'], model: string): Promise<AiModelRate
   return price;
 }
 
+export function getTotalTokens(usageMetrics: {
+  inputTokens?: number | string;
+  outputTokens?: number | string;
+  cacheCreationInputTokens?: number | string;
+  cacheReadInputTokens?: number | string;
+}) {
+  if (!usageMetrics) {
+    return 0;
+  }
+  return new BigNumber(usageMetrics.inputTokens || 0)
+    .plus(new BigNumber(usageMetrics.outputTokens || 0))
+    .plus(new BigNumber(usageMetrics.cacheCreationInputTokens || 0))
+    .plus(new BigNumber(usageMetrics.cacheReadInputTokens || 0))
+    .toNumber();
+}
+
 // v2 version with userDid support for proper credit tracking
 export async function createAndReportUsageV2({
   type,
@@ -145,43 +161,45 @@ export async function createAndReportUsageV2({
 
     const price = await getPrice(type, model);
     if (price) {
+      let creditsTotalBN = new BigNumber(0);
       if (type === 'imageGeneration') {
-        usedCredits = new BigNumber(numberOfImageGeneration)
-          .multipliedBy(price.outputRate)
-          .decimalPlaces(CREDIT_DECIMAL_PLACES)
-          .toNumber();
+        creditsTotalBN = creditsTotalBN.plus(new BigNumber(numberOfImageGeneration).multipliedBy(price.outputRate));
       } else if (type === 'video') {
-        usedCredits = new BigNumber(mediaDuration || 0)
-          .multipliedBy(price.outputRate)
-          .decimalPlaces(CREDIT_DECIMAL_PLACES)
-          .toNumber();
+        creditsTotalBN = creditsTotalBN.plus(new BigNumber(mediaDuration || 0).multipliedBy(price.outputRate));
       } else {
-        let inputCredits = new BigNumber(promptTokens).multipliedBy(price.inputRate);
-        const outputCredits = new BigNumber(completionTokens).multipliedBy(price.outputRate);
+        const outputCredits = new BigNumber(completionTokens || 0).multipliedBy(price.outputRate);
+        creditsTotalBN = creditsTotalBN.plus(outputCredits);
+      }
+      const inputCredits = new BigNumber(promptTokens || 0).multipliedBy(price.inputRate);
+      creditsTotalBN = creditsTotalBN.plus(inputCredits);
+      // Handle cache tokens
+      if (cacheCreationInputTokens > 0 || cacheReadInputTokens > 0) {
+        const caching = price.caching as { readRate?: number; writeRate?: number } | undefined;
 
-        // Handle cache tokens
-        if (cacheCreationInputTokens > 0 || cacheReadInputTokens > 0) {
-          const caching = price.caching as { readRate?: number; writeRate?: number } | undefined;
-
-          if (caching?.writeRate) {
-            // Use configured cache write rate for cache creation tokens
-            inputCredits = inputCredits.plus(new BigNumber(cacheCreationInputTokens).multipliedBy(caching.writeRate));
-          } else {
-            // Fallback: add cache creation tokens to regular input tokens
-            inputCredits = inputCredits.plus(new BigNumber(cacheCreationInputTokens).multipliedBy(price.inputRate));
-          }
-
-          if (caching?.readRate) {
-            // Use configured cache read rate for cache read tokens
-            inputCredits = inputCredits.plus(new BigNumber(cacheReadInputTokens).multipliedBy(caching.readRate));
-          } else {
-            // Fallback: add cache read tokens to regular input tokens
-            inputCredits = inputCredits.plus(new BigNumber(cacheReadInputTokens).multipliedBy(price.inputRate));
-          }
+        if (caching?.writeRate) {
+          // Use configured cache write rate for cache creation tokens
+          creditsTotalBN = creditsTotalBN.plus(
+            new BigNumber(cacheCreationInputTokens || 0).multipliedBy(caching.writeRate || 0)
+          );
+        } else {
+          // Fallback: add cache creation tokens to regular input tokens
+          creditsTotalBN = creditsTotalBN.plus(
+            new BigNumber(cacheCreationInputTokens || 0).multipliedBy(price.inputRate || 0)
+          );
         }
 
-        usedCredits = inputCredits.plus(outputCredits).decimalPlaces(CREDIT_DECIMAL_PLACES).toNumber();
+        if (caching?.readRate) {
+          // Use configured cache read rate for cache read tokens
+          creditsTotalBN = creditsTotalBN.plus(new BigNumber(cacheReadInputTokens || 0).multipliedBy(caching.readRate));
+        } else {
+          // Fallback: add cache read tokens to regular input tokens
+          creditsTotalBN = creditsTotalBN.plus(
+            new BigNumber(cacheReadInputTokens || 0).multipliedBy(price.inputRate || 0)
+          );
+        }
       }
+
+      usedCredits = creditsTotalBN.decimalPlaces(CREDIT_DECIMAL_PLACES).toNumber();
     }
 
     const params = {
@@ -190,6 +208,8 @@ export async function createAndReportUsageV2({
       modelParams,
       promptTokens,
       completionTokens,
+      cacheCreationInputTokens,
+      cacheReadInputTokens,
       numberOfImageGeneration,
       appId,
       usedCredits,
@@ -335,6 +355,14 @@ async function executeOriginalReportLogicWithProtection({ appId, userDid }: { ap
         [sequelize.fn('COALESCE', sequelize.fn('SUM', sequelize.col('promptTokens')), 0), 'promptTokens'],
         [sequelize.fn('COALESCE', sequelize.fn('SUM', sequelize.col('completionTokens')), 0), 'completionTokens'],
         [
+          sequelize.fn('COALESCE', sequelize.fn('SUM', sequelize.col('cacheCreationInputTokens')), 0),
+          'cacheCreationInputTokens',
+        ],
+        [
+          sequelize.fn('COALESCE', sequelize.fn('SUM', sequelize.col('cacheReadInputTokens')), 0),
+          'cacheReadInputTokens',
+        ],
+        [
           sequelize.fn('COALESCE', sequelize.fn('SUM', sequelize.col('numberOfImageGeneration')), 0),
           'numberOfImageGeneration',
         ],
@@ -348,11 +376,15 @@ async function executeOriginalReportLogicWithProtection({ appId, userDid }: { ap
       usedCredits: string | number | null;
       promptTokens: string | number | null;
       completionTokens: string | number | null;
+      cacheCreationInputTokens: string | number | null;
+      cacheReadInputTokens: string | number | null;
       numberOfImageGeneration: string | number | null;
     };
     const quantity = sums?.usedCredits ?? 0;
     const inputTokens = sums?.promptTokens ?? 0;
     const outputTokens = sums?.completionTokens ?? 0;
+    const cacheCreationInputTokens = sums?.cacheCreationInputTokens ?? 0;
+    const cacheReadInputTokens = sums?.cacheReadInputTokens ?? 0;
     const imagesGenerated = sums?.numberOfImageGeneration ?? 0;
 
     logger.info('create meter event', {
@@ -387,7 +419,7 @@ async function executeOriginalReportLogicWithProtection({ appId, userDid }: { ap
           {
             key: 'total_tokens',
             label: { en: 'Total Tokens', zh: 'Token数量' },
-            value: `${new BigNumber(inputTokens || 0).plus(new BigNumber(outputTokens || 0)).toNumber()}`,
+            value: `${getTotalTokens({ inputTokens, outputTokens, cacheCreationInputTokens, cacheReadInputTokens })}`,
           },
           ...(imagesGeneratedNum > 0
             ? [
@@ -505,16 +537,19 @@ export async function createUsageAndCompleteModelCall({
 
     // Always complete ModelCall record regardless of billing mode
     if (req.modelCallContext) {
-      const totalTokens = new BigNumber(promptTokens || 0)
-        .plus(new BigNumber(completionTokens || 0))
-        .plus(new BigNumber(cacheCreationInputTokens || 0))
-        .plus(new BigNumber(cacheReadInputTokens || 0))
-        .toNumber();
+      const totalTokens = getTotalTokens({
+        inputTokens: promptTokens,
+        outputTokens: completionTokens,
+        cacheCreationInputTokens,
+        cacheReadInputTokens,
+      });
       await req.modelCallContext.complete({
         promptTokens,
         completionTokens,
         numberOfImageGeneration,
         mediaDuration,
+        cacheCreationInputTokens,
+        cacheReadInputTokens,
         credits: credits || 0,
         usageMetrics: {
           inputTokens: promptTokens,

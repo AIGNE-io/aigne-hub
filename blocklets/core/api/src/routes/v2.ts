@@ -13,7 +13,7 @@ import { Config, buildUsageWithCredits } from '@api/libs/env';
 import logger from '@api/libs/logger';
 import { checkUserCreditBalance, isPaymentRunning } from '@api/libs/payment';
 import { withModelStatus } from '@api/libs/status';
-import { createUsageAndCompleteModelCall } from '@api/libs/usage';
+import { createUsageAndCompleteModelCall, getTotalTokens } from '@api/libs/usage';
 import { createModelCallMiddleware, getMaxProviderRetriesMiddleware } from '@api/middlewares/model-call-tracker';
 import { checkModelRateAvailable } from '@api/providers';
 import AiCredential from '@api/store/models/ai-credential';
@@ -166,6 +166,8 @@ router.post(
           await checkUserCreditBalance({ userDid });
         }
 
+        await checkModelRateAvailable(getReqModel(req));
+
         await processChatCompletion(req, res, 'v2', {
           onEnd: async (data) => {
             if (data?.output) {
@@ -184,7 +186,12 @@ router.post(
                 userDid: userDid!,
                 creditBasedBillingEnabled: Config.creditBasedBillingEnabled,
                 additionalMetrics: {
-                  totalTokens: (usageData.usage?.inputTokens || 0) + (usageData.usage?.outputTokens || 0),
+                  totalTokens: getTotalTokens({
+                    inputTokens: usageData.usage?.inputTokens || 0,
+                    outputTokens: usageData.usage?.outputTokens || 0,
+                    cacheCreationInputTokens: usageData.usage?.cacheCreationInputTokens || 0,
+                    cacheReadInputTokens: usageData.usage?.cacheReadInputTokens || 0,
+                  }),
                 },
                 metadata: {
                   endpoint: req.path,
@@ -230,10 +237,8 @@ router.post(
     withModelStatus({
       type: 'chatCompletion',
       handler: async (req, res) => {
-        logger.info('chat completions request body------', req.body);
         const value = aigneHubModelBodyValidate(req.body);
 
-        logger.info('chat completions value------', value);
         const userDid = req.user?.did;
 
         if (userDid && Config.creditBasedBillingEnabled) {
@@ -245,19 +250,14 @@ router.post(
         await checkModelRateAvailable(modelOptions.model);
 
         const { modelInstance: model } = await getModel(modelOptions, { modelOptions, req });
-        logger.info('chat completions model------', model);
-        logger.info('chat completions modelOptions------', modelOptions);
-        if (modelOptions && req.body.input.modelOptions.model) {
+
+        if (modelOptions && req.body.input?.modelOptions?.model) {
           delete req.body.input.modelOptions.model;
         }
 
-        logger.info('chat completions req.body.input.modelOptions------', req.body.input.modelOptions);
-
         const engine = new AIGNE({ model });
-        logger.info('chat completions engine------', engine);
+
         const aigneServer = new AIGNEHTTPServer(engine);
-        logger.info('chat completions aigneServer------', aigneServer);
-        logger.info('chat completions model with provider', getReqModel(req));
 
         await new Promise((resolve, reject) => {
           aigneServer.invoke(req, res, {
@@ -265,7 +265,6 @@ router.post(
             hooks: {
               onEnd: async (data) => {
                 const usageData: ChatModelOutput = data.output;
-                logger.info('chat completions usageData------', usageData);
                 if (usageData) {
                   const usage = await createUsageAndCompleteModelCall({
                     req,
@@ -274,13 +273,18 @@ router.post(
                     completionTokens: usageData.usage?.outputTokens || 0,
                     cacheCreationInputTokens: usageData.usage?.cacheCreationInputTokens || 0,
                     cacheReadInputTokens: usageData.usage?.cacheReadInputTokens || 0,
-                    model: modelOptions?.model,
+                    model: getReqModel(req),
                     modelParams: modelOptions,
                     userDid: userDid!,
                     appId: req.headers['x-aigne-hub-client-did'] as string,
                     creditBasedBillingEnabled: Config.creditBasedBillingEnabled,
                     additionalMetrics: {
-                      totalTokens: (usageData.usage?.inputTokens || 0) + (usageData.usage?.outputTokens || 0),
+                      totalTokens: getTotalTokens({
+                        inputTokens: usageData.usage?.inputTokens || 0,
+                        outputTokens: usageData.usage?.outputTokens || 0,
+                        cacheCreationInputTokens: usageData.usage?.cacheCreationInputTokens || 0,
+                        cacheReadInputTokens: usageData.usage?.cacheReadInputTokens || 0,
+                      }),
                       endpoint: req.path,
                     },
                     traceId: data.context?.id,
@@ -288,13 +292,6 @@ router.post(
                     logger.error('Create usage and complete model call error', { error: err });
                     return undefined;
                   });
-
-                  logger.info(
-                    'usage',
-                    data.output.usage,
-                    Config.creditBasedBillingEnabled,
-                    JSON.stringify(buildUsageWithCredits(usage))
-                  );
 
                   if (data.output.usage && Config.creditBasedBillingEnabled && usage) {
                     data.output.usage = {
@@ -422,7 +419,12 @@ router.post(
               imageSize: (input as Message).size,
               imageQuality: (input as Message).quality,
               imageStyle: (input as Message).style,
-              totalTokens: (response.usage?.inputTokens || 0) + (response.usage?.outputTokens || 0),
+              totalTokens: getTotalTokens({
+                inputTokens: response.usage?.inputTokens || 0,
+                outputTokens: response.usage?.outputTokens || 0,
+                cacheCreationInputTokens: response.usage?.cacheCreationInputTokens || 0,
+                cacheReadInputTokens: response.usage?.cacheReadInputTokens || 0,
+              }),
             },
             metadata: {
               endpoint: req.path,
@@ -538,7 +540,12 @@ router.post(
             userDid: userDid!,
             creditBasedBillingEnabled: Config.creditBasedBillingEnabled,
             additionalMetrics: {
-              totalTokens: (response.usage?.inputTokens || 0) + (response.usage?.outputTokens || 0),
+              totalTokens: getTotalTokens({
+                inputTokens: response.usage?.inputTokens || 0,
+                outputTokens: response.usage?.outputTokens || 0,
+                cacheCreationInputTokens: response.usage?.cacheCreationInputTokens || 0,
+                cacheReadInputTokens: response.usage?.cacheReadInputTokens || 0,
+              }),
             },
             metadata: {
               endpoint: req.path,
@@ -592,6 +599,7 @@ router.post(
         if (userDid && Config.creditBasedBillingEnabled) {
           await checkUserCreditBalance({ userDid });
         }
+        await checkModelRateAvailable(getReqModel(req));
 
         const usageData = await processEmbeddings(req);
 
@@ -605,7 +613,9 @@ router.post(
             userDid: userDid!,
             appId: req.headers['x-aigne-hub-client-did'] as string,
             creditBasedBillingEnabled: Config.creditBasedBillingEnabled,
-            additionalMetrics: {},
+            additionalMetrics: {
+              totalTokens: usageData.promptTokens,
+            },
             metadata: {
               endpoint: req.path,
               inputText: Array.isArray(req.body?.input) ? req.body.input.length : 1,
@@ -637,6 +647,8 @@ router.post(
         if (userDid && Config.creditBasedBillingEnabled) {
           await checkUserCreditBalance({ userDid });
         }
+
+        await checkModelRateAvailable(getReqModel(req));
 
         const usageData = await processImageGeneration({
           req,
