@@ -600,6 +600,14 @@ export default function AIModelRates() {
     },
   ].filter(Boolean);
 
+  const getDecimalPlaces = (num: number) => {
+    if (Math.floor(num) === num) return 0;
+    const str = num.toFixed(10).replace(/0+$/, '');
+    return str.split('.')[1]?.length || 0;
+  };
+
+  const needFormatCreditBase = baseCreditPrice && getDecimalPlaces(baseCreditPrice) > 4;
+
   return (
     <Box>
       <Typography variant="body1">{t('config.modelRates.description')}</Typography>
@@ -678,7 +686,11 @@ export default function AIModelRates() {
               <Typography component="span">
                 {t('config.modelRates.configInfo.creditValue')} {creditPrefix}
               </Typography>
-              <UnitDisplay value={formatMillionTokenCost(baseCreditPrice)} type="credit" addon="mtokens" />
+              <UnitDisplay
+                value={needFormatCreditBase ? formatMillionTokenCost(baseCreditPrice) : baseCreditPrice}
+                type="credit"
+                addon={needFormatCreditBase ? 'mtokens' : undefined}
+              />
               <Typography component="span" sx={{ ml: 1 }}>
                 • {t('config.modelRates.configInfo.profitMargin')}
                 {targetProfitMargin}%

@@ -36,7 +36,9 @@ const router = Router();
 
 const aigneHubModelCallSchema = Joi.object({
   input: Joi.object({
-    modelOptions: Joi.object({ model: Joi.string().required() }).pattern(Joi.string(), Joi.any()).required(),
+    modelOptions: Joi.object({ model: Joi.string().required(), cacheConfig: Joi.object().unknown(true).optional() })
+      .pattern(Joi.string(), Joi.any())
+      .required(),
   })
     .pattern(Joi.string(), Joi.any())
     .required(),
@@ -228,8 +230,10 @@ router.post(
     withModelStatus({
       type: 'chatCompletion',
       handler: async (req, res) => {
+        logger.info('chat completions request body------', req.body);
         const value = aigneHubModelBodyValidate(req.body);
 
+        logger.info('chat completions value------', value);
         const userDid = req.user?.did;
 
         if (userDid && Config.creditBasedBillingEnabled) {
@@ -237,16 +241,22 @@ router.post(
         }
 
         const { modelOptions } = value.input;
+
         await checkModelRateAvailable(modelOptions.model);
 
         const { modelInstance: model } = await getModel(modelOptions, { modelOptions, req });
-        if (modelOptions) {
-          logger.info('modelOptions------', modelOptions);
-          delete req.body.input.modelOptions;
+        logger.info('chat completions model------', model);
+        logger.info('chat completions modelOptions------', modelOptions);
+        if (modelOptions && req.body.input.modelOptions.model) {
+          delete req.body.input.modelOptions.model;
         }
 
+        logger.info('chat completions req.body.input.modelOptions------', req.body.input.modelOptions);
+
         const engine = new AIGNE({ model });
+        logger.info('chat completions engine------', engine);
         const aigneServer = new AIGNEHTTPServer(engine);
+        logger.info('chat completions aigneServer------', aigneServer);
         logger.info('chat completions model with provider', getReqModel(req));
 
         await new Promise((resolve, reject) => {
@@ -255,6 +265,7 @@ router.post(
             hooks: {
               onEnd: async (data) => {
                 const usageData: ChatModelOutput = data.output;
+                logger.info('chat completions usageData------', usageData);
                 if (usageData) {
                   const usage = await createUsageAndCompleteModelCall({
                     req,

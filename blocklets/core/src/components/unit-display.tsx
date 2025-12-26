@@ -8,24 +8,35 @@ interface UnitDisplayProps {
   type: 'credit' | 'token';
   variant?: 'body1' | 'body2' | 'caption';
   sx?: any;
-  addon?: ModelPriceUnit;
+  addon?: ModelPriceUnit | string;
 }
 
-export default function UnitDisplay({ value, type, variant = 'body2', addon = 'mtokens', sx = {} }: UnitDisplayProps) {
+export default function UnitDisplay({ value, type, variant = 'body2', addon = '', sx = {} }: UnitDisplayProps) {
   const { t } = useLocaleContext();
 
   const tooltipTitle = t(`config.modelRates.configInfo.unitTooltip.${type}`);
 
   const getDisplayText = () => {
+    if (type === 'credit') {
+      return `${value} / 1M`;
+    }
     const unitTexts = {
       mtokens: t('config.modelRates.fields.perMillionTokens'),
       image: t('config.modelRates.fields.perImage'),
       second: t('config.modelRates.fields.perSecond'),
     };
 
-    const unitText = unitTexts[addon] || unitTexts.mtokens;
+    const unitText = unitTexts[addon as ModelPriceUnit] || addon || '';
     return `${value} ${unitText}`;
   };
+
+  if (type === 'credit' && !addon) {
+    return (
+      <Typography variant={variant} component="span">
+        {value}
+      </Typography>
+    );
+  }
 
   return (
     <Tooltip

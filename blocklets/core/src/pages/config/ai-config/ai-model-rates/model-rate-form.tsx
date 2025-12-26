@@ -215,7 +215,7 @@ function CreditRateInput({
                 value={unit}
                 onChange={(e) => handleUnitChange(e.target.value as ModelPriceUnit)}
                 size="small"
-                renderValue={() => <UnitDisplay value="" type="credit" addon={unit} />}
+                renderValue={() => <UnitDisplay value="" type="token" addon={unit} />}
                 sx={{ '.MuiOutlinedInput-notchedOutline': { border: 'none' } }}>
                 <MenuItem value="mtokens">{t('config.modelRates.fields.perMillionTokens')}</MenuItem>
                 {(modelType === 'imageGeneration' || modelType === 'video') && (
