@@ -28,7 +28,7 @@ export function chatCompletion(
   return result;
 }
 
-export function checkModelAvailable(model: string) {
+export function checkModelAvailable(model: string, error?: Error) {
   if (!model) {
     throw new CustomError(400, 'Model is required');
   }
@@ -37,6 +37,8 @@ export function checkModelAvailable(model: string) {
     if (!Config.pricing.list.some((i) => i.model === modelName)) {
       throw new CustomError(400, `Unsupported model ${model}`);
     }
+  } else {
+    throw error || new CustomError(400, `Unsupported model ${model}`);
   }
 }
 
@@ -44,7 +46,7 @@ export async function checkModelRateAvailable(model: string, providerName?: stri
   const { providerName: provider, modelName } = getModelNameWithProvider(model);
   const callback = (err: Error) => {
     try {
-      checkModelAvailable(model);
+      checkModelAvailable(model, err);
     } catch {
       throw err;
     }

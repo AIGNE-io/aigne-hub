@@ -15,6 +15,10 @@ export default class Usage extends Model<InferAttributes<Usage>, InferCreationAt
 
   declare completionTokens: number;
 
+  declare cacheCreationInputTokens?: number;
+
+  declare cacheReadInputTokens?: number;
+
   declare numberOfImageGeneration?: number;
 
   declare mediaDuration?: number;
@@ -98,6 +102,16 @@ Usage.init(
     completionTokens: {
       type: DataTypes.INTEGER,
       allowNull: false,
+    },
+    cacheCreationInputTokens: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: 0,
+    },
+    cacheReadInputTokens: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: 0,
     },
     numberOfImageGeneration: {
       type: DataTypes.INTEGER,
