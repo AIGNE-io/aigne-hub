@@ -1,3 +1,7 @@
+## 0.7.11 (2026-1-1)
+
+- chore: upgrade aigne deps
+
 ## 0.7.10 (2025-12-25)
 
 - feat(core): add prompt caching support with configurable rates
