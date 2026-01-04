@@ -46,7 +46,7 @@ export async function getUserInfo({
     .then((res) => res.data);
 }
 
-export async function checkStatus({
+export async function checkConnection({
   baseUrl,
   accessKey,
   model,
