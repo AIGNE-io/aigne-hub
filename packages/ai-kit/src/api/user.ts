@@ -72,7 +72,8 @@ export async function checkConnection({
     throw new Error('baseUrl or accessKey is not set');
   }
 
-  const response = await axios.get(joinURL(finalBaseUrl, '/api/v2/status', model ? `?model=${model}` : ''), {
+  const response = await axios.get(joinURL(finalBaseUrl, '/api/v2/status'), {
+    params: model ? { model } : {},
     headers: {
       Authorization: `Bearer ${accessKey}`,
     },

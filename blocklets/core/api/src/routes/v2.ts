@@ -132,7 +132,7 @@ router.get('/status', user, async (req, res) => {
   if (modelName && Config.creditBasedBillingEnabled) {
     const modelRate = await AiModelRate.findOne({ where: { model: modelName } });
     if (!modelRate) {
-      return res.json({ available: false, error: 'Model rate not available' });
+      return res.json({ available: false, error: 'Model not supported' });
     }
 
     const modelStatus = await AiModelStatus.findOne({ where: { model: modelName } });
