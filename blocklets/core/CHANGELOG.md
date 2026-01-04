@@ -1,3 +1,7 @@
+## 0.7.13 (2026-1-4)
+
+- chore: update deps
+
 ## 0.7.12 (2026-1-4)
 
 - chore(deps): upgrade blocklet and related dependencies to latest versions
