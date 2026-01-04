@@ -364,7 +364,7 @@ export default function PricingPage() {
           const { value: formattedPrice, unit } = formatModelPrice(
             model.input_credits_per_token,
             model.type,
-            CREDIT_DISPLAY_DECIMAL_PLACES,
+            2,
             'input'
           );
 
@@ -387,7 +387,7 @@ export default function PricingPage() {
                   sx={{
                     color: 'primary.main',
                   }}>
-                  {getPrice(model.input_credits_per_token, undefined, model.type)} credits
+                  {formatNumber(formattedPrice.toString())} credits
                 </Typography>
                 <Typography
                   sx={{
@@ -442,7 +442,7 @@ export default function PricingPage() {
           const { value: formattedPrice, unit } = formatModelPrice(
             model.output_credits_per_token,
             model.type,
-            CREDIT_DISPLAY_DECIMAL_PLACES,
+            2,
             'output'
           );
 
@@ -466,7 +466,7 @@ export default function PricingPage() {
                     color: 'primary.main',
                     fontWeight: '700',
                   }}>
-                  {getPrice(model.output_credits_per_token, undefined, model.type)} credits
+                  {formatNumber(formattedPrice.toString())} credits
                 </Typography>
                 <Typography
                   sx={{

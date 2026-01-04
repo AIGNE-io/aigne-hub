@@ -26,8 +26,12 @@ export function formatNumber(
 
   let result = value.toString();
 
-  for (let p = precision; p <= maxPrecision; p += 1) {
-    result = num.format({ thousandSeparated, mantissa: p });
+  for (let p = precision; p <= Math.max(precision, maxPrecision); p += 1) {
+    result = num.format({
+      thousandSeparated,
+      mantissa: p,
+      roundingFunction: (n) => (n < 0 ? Math.ceil(n) : Math.floor(n)),
+    });
     if (!isZeroString(result)) break;
   }
 
