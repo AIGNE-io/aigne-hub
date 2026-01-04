@@ -212,7 +212,6 @@ export async function getUserCreditInfo(): Promise<UserInfoResult> {
   return response.data;
 }
 
-export async function checkStatus({ model }: { model?: string }): Promise<StatusResponse>;
 export async function checkStatus({ model }: { model?: string } = {}): Promise<StatusResponse> {
   const response = await callRemoteApi(model ? { model } : {}, { endpoint: 'api/v2/status', method: 'GET' });
   return response.data as StatusResponse;
