@@ -1,3 +1,8 @@
+## 0.7.14 (2026-1-5)
+
+- fix: increase chunk size limit for blocklet plugin
+- fix: simplify number formatting and enhance dateRange component
+
 ## 0.7.13 (2026-1-4)
 
 - chore: update deps
