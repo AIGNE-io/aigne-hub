@@ -20,6 +20,7 @@
     "clean": "pnpm -r run clean",
     "bump-version": "zx scripts/bump-version.mjs",
     "update:deps": "npx -y taze latest -r -w -n '/blocklet|abtnode|arcblock|ocap|aigne/' && pnpm install && pnpm dedupe",
+    "verify": "npm run lint && npm run build",
     "postinstall": "npx simple-git-hooks",
     "test": "pnpm -r run test",
     "test:coverage": "pnpm -r run test:coverage"
