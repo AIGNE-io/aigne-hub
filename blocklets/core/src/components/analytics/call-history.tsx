@@ -8,7 +8,7 @@ import Toast from '@arcblock/ux/lib/Toast';
 import UserCard from '@arcblock/ux/lib/UserCard';
 import { CardType, InfoType } from '@arcblock/ux/lib/UserCard/types';
 import { Table } from '@blocklet/aigne-hub/components';
-import { CREDIT_DISPLAY_DECIMAL_PLACES, formatNumber } from '@blocklet/aigne-hub/utils/util';
+import { formatNumber } from '@blocklet/aigne-hub/utils/util';
 import { formatError } from '@blocklet/error';
 import styled from '@emotion/styled';
 import { Download, FilterAltOutlined, OpenInNew, Search } from '@mui/icons-material';
@@ -70,6 +70,8 @@ interface CallHistoryProps {
   refreshKey?: number;
   appDid?: string;
   allUsers?: boolean;
+  dateRange: { from: number; to: number };
+  onDateRangeChange: (range: { from: number; to: number }) => void;
 }
 
 function formatDuration(duration?: number) {
@@ -117,14 +119,12 @@ export function CallHistory({
   refreshKey = 0,
   appDid = undefined,
   allUsers = false,
+  dateRange,
+  onDateRangeChange,
 }: CallHistoryProps) {
   const { t, locale } = useLocaleContext();
   const { api } = useSessionContext();
 
-  const [dateRange, setDateRange] = useState({
-    from: toUTCTimestamp(dayjs().subtract(6, 'day')),
-    to: toUTCTimestamp(dayjs(), true),
-  });
   // Local state for search and pagination
   const [searchTerm, setSearchTerm] = useState('');
   const [searchValue, setSearchValue] = useState(appDid || '');
@@ -153,7 +153,7 @@ export function CallHistory({
   );
 
   const handleQuickDateSelect = (range: { start: dayjs.Dayjs; end: dayjs.Dayjs }) => {
-    setDateRange({
+    onDateRangeChange({
       from: toUTCTimestamp(range.start),
       to: toUTCTimestamp(range.end, true),
     });
@@ -167,10 +167,8 @@ export function CallHistory({
       allUsers,
     };
 
-    if (dateRange) {
-      query.startTime = dateRange.from.toString();
-      query.endTime = dateRange.to.toString();
-    }
+    query.startTime = dateRange.from.toString();
+    query.endTime = dateRange.to.toString();
 
     if (searchTerm.trim()) {
       query.search = searchTerm.trim();
@@ -370,7 +368,7 @@ export function CallHistory({
           return (
             <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
               {creditPrefix}
-              {formatNumber(call.credits, CREDIT_DISPLAY_DECIMAL_PLACES)}
+              {formatNumber(call.credits)}
             </Typography>
           );
         },
@@ -524,10 +522,10 @@ export function CallHistory({
   // Custom empty state with Playground guide
   const renderEmptyState = () => {
     const emptyText =
-      dateRange?.from && dateRange?.to
+      dateRange.from && dateRange.to
         ? t('analytics.noCallsFoundBetween', {
-            startTime: dayjs((dateRange?.from || 0) * 1000).format('YYYY-MM-DD'),
-            endTime: dayjs((dateRange?.to || 0) * 1000).format('YYYY-MM-DD'),
+            startTime: dayjs(dateRange.from * 1000).format('YYYY-MM-DD'),
+            endTime: dayjs(dateRange.to * 1000).format('YYYY-MM-DD'),
           })
         : t('analytics.noCallsFound');
 
@@ -600,10 +598,10 @@ export function CallHistory({
             startDate={dayjs.unix(dateRange.from).local()}
             endDate={dayjs.unix(dateRange.to).local()}
             onStartDateChange={(date: dayjs.Dayjs | null) =>
-              setDateRange((prev) => ({ ...prev, from: toUTCTimestamp(date || dayjs()) }))
+              onDateRangeChange({ ...dateRange, from: toUTCTimestamp(date || dayjs()) })
             }
             onEndDateChange={(date: dayjs.Dayjs | null) =>
-              setDateRange((prev) => ({ ...prev, to: toUTCTimestamp(date || dayjs(), true) }))
+              onDateRangeChange({ ...dateRange, to: toUTCTimestamp(date || dayjs(), true) })
             }
             onQuickSelect={handleQuickDateSelect}
             sx={{

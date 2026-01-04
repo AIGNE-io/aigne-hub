@@ -1,6 +1,6 @@
 import Empty from '@arcblock/ux/lib/Empty';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
-import { CREDIT_DISPLAY_DECIMAL_PLACES, formatNumber } from '@blocklet/aigne-hub/utils/util';
+import { formatNumber } from '@blocklet/aigne-hub/utils/util';
 import { Card, CardContent, CardHeader, useTheme } from '@mui/material';
 import dayjs from 'dayjs';
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis } from 'recharts';
@@ -167,7 +167,7 @@ function CustomTooltip({
                   fontWeight: 600,
                 }}>
                 {creditPrefix}
-                {formatNumber(data.totalCredits, CREDIT_DISPLAY_DECIMAL_PLACES)}
+                {formatNumber(data.totalCredits)}
               </span>
             </div>
           ) : (
