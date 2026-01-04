@@ -1,3 +1,8 @@
+## 0.7.12 (2026-1-4)
+
+- chore(deps): upgrade blocklet and related dependencies to latest versions
+- feat(core): add status check endpoint with model availability
+
 ## 0.7.11 (2026-1-1)
 
 - chore: upgrade aigne deps
