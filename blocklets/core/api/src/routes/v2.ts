@@ -12,6 +12,7 @@ import {
 import { Config, buildUsageWithCredits } from '@api/libs/env';
 import logger from '@api/libs/logger';
 import { checkUserCreditBalance, isPaymentRunning } from '@api/libs/payment';
+import { ensureModelWithProvider } from '@api/libs/provider-rotation';
 import { withModelStatus } from '@api/libs/status';
 import { createUsageAndCompleteModelCall, getTotalTokens } from '@api/libs/usage';
 import { createModelCallMiddleware, getMaxProviderRetriesMiddleware } from '@api/middlewares/model-call-tracker';
@@ -102,7 +103,13 @@ router.get('/status', user, async (req, res) => {
   };
   let modelName = '';
   if (req.query.model) {
-    const { modelName: modelNameQuery, providerName } = getModelNameWithProvider(req.query.model as string);
+    req.body.model = req.query.model as string;
+    try {
+      await ensureModelWithProvider(req);
+    } catch (error) {
+      logger.error('Failed to ensure model with provider', { error });
+    }
+    const { modelName: modelNameQuery, providerName } = getModelNameWithProvider(req.body.model as string);
     where.name = providerName;
     modelName = modelNameQuery;
   }
@@ -119,7 +126,7 @@ router.get('/status', user, async (req, res) => {
   });
 
   if (providers.length === 0) {
-    return res.json({ available: false });
+    return res.json({ available: false, error: 'No providers available' });
   }
 
   if (modelName && Config.creditBasedBillingEnabled) {

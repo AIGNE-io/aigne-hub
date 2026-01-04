@@ -158,7 +158,7 @@ function CustomTooltip({
                     color: theme.palette.text.primary,
                     fontWeight: 500,
                   }}>
-                  {t('analytics.totalCreditsUsed')}
+                  {t('analytics.totalCreditsUsed')} &nbsp;
                 </span>
               </div>
               <span
