@@ -361,12 +361,7 @@ export default function PricingPage() {
 
           if (model.input_credits_per_token === 0) return '-';
 
-          const { value: formattedPrice, unit } = formatModelPrice(
-            model.input_credits_per_token,
-            model.type,
-            2,
-            'input'
-          );
+          const { value: formattedPrice, unit } = formatModelPrice(model.input_credits_per_token, model.type, 'input');
 
           return (
             <Box
@@ -442,7 +437,6 @@ export default function PricingPage() {
           const { value: formattedPrice, unit } = formatModelPrice(
             model.output_credits_per_token,
             model.type,
-            2,
             'output'
           );
 

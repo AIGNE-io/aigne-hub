@@ -121,8 +121,8 @@ export const parsePriceByUnit = (displayValue: number | string, unit: ModelPrice
 export const formatModelPrice = (
   price: number,
   modelType: string,
-  precision?: number,
-  rateType: 'input' | 'output' = 'output'
+  rateType: 'input' | 'output' = 'output',
+  precision: number = 2
 ): { value: number; unit: ModelPriceUnit } => {
   // Input always uses mtokens, output uses appropriate unit based on model type
   const unit = rateType === 'input' ? 'mtokens' : getModelPriceUnit(modelType);
