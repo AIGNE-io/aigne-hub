@@ -291,7 +291,7 @@ export function UsageSummary({
                     color: 'text.primary',
                     fontWeight: 600,
                   }}>
-                  {formatNumber(stats?.totalUsage || 0)} {unit}
+                  {formatNumber(stats?.totalUsage || 0, 0, true)} {unit}
                 </Typography>
               </Box>
             );
@@ -315,7 +315,7 @@ export function UsageSummary({
     },
     {
       title: t('analytics.totalUsage'),
-      value: formatNumber(trendComparison?.current?.totalUsage || totalUsage || 0),
+      value: formatNumber(trendComparison?.current?.totalUsage || totalUsage || 0, 0, true),
       trend: trendComparison ? formatTrend(trendComparison.growth.usageGrowth) : undefined,
       trendDescription: trendComparison ? getTrendDescription(periodDays) : undefined,
       icon: <TrendingUp color="success" />,
@@ -326,7 +326,7 @@ export function UsageSummary({
     },
     {
       title: t('analytics.totalRequests'),
-      value: formatNumber(trendComparison?.current?.totalCalls || totalCalls || 0),
+      value: formatNumber(trendComparison?.current?.totalCalls || totalCalls || 0, 0, true),
       trend: trendComparison ? formatTrend(trendComparison.growth.callsGrowth) : undefined,
       trendDescription: trendComparison ? getTrendDescription(periodDays) : undefined,
       icon: <AccountBalance color="warning" />,

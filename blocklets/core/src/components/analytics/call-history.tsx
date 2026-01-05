@@ -351,7 +351,7 @@ export function CallHistory({
 
           return (
             <Typography variant="body2">
-              {formatNumber(call.totalUsage)} {unit}
+              {formatNumber(call.totalUsage, 0, true)} {unit}
             </Typography>
           );
         },
