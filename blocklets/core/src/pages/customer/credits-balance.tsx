@@ -1,7 +1,7 @@
 import { getPaymentUrl } from '@app/libs/env';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import { UserInfoResult } from '@blocklet/aigne-hub/api/types/user';
-import { CREDIT_DISPLAY_DECIMAL_PLACES, formatNumber } from '@blocklet/aigne-hub/utils/util';
+import { formatNumber } from '@blocklet/aigne-hub/utils/util';
 import { AutoTopup, PaymentProvider, SafeGuard } from '@blocklet/payment-react';
 import { Add, CreditCard, InfoOutlined, Receipt } from '@mui/icons-material';
 import { Box, Button, Card, CardContent, CardHeader, Stack, Tooltip, Typography, alpha, useTheme } from '@mui/material';
@@ -201,7 +201,7 @@ export function CreditsBalance({ data = undefined as UserInfoResult | undefined 
       return (
         <Typography variant="h1" sx={{ fontWeight: 'bold', mb: 1, color: 'error.main' }}>
           -{creditPrefix}
-          {formatNumber(creditBalance?.pendingCredit || 0, CREDIT_DISPLAY_DECIMAL_PLACES)}
+          {formatNumber(creditBalance?.pendingCredit || 0)}
         </Typography>
       );
     }
@@ -214,7 +214,7 @@ export function CreditsBalance({ data = undefined as UserInfoResult | undefined 
           color: isNegative ? 'error.main' : 'text.primary',
         }}>
         {isNegative ? `-${creditPrefix}` : creditPrefix}
-        {formatNumber(Math.abs(balance), CREDIT_DISPLAY_DECIMAL_PLACES)}
+        {formatNumber(Math.abs(balance))}
       </Typography>
     );
   };
@@ -254,7 +254,7 @@ export function CreditsBalance({ data = undefined as UserInfoResult | undefined 
               </Tooltip>
               <Typography variant="caption" color="text.secondary">
                 {t('analytics.currentEffectiveTotal', {
-                  total: `${creditPrefix}${formatNumber(total, CREDIT_DISPLAY_DECIMAL_PLACES)}`,
+                  total: `${creditPrefix}${formatNumber(total)}`,
                 })}
               </Typography>
             </Box>

@@ -153,7 +153,13 @@ export default function UsageStatsBoard() {
 
           <Box sx={{ my: 2 }} />
 
-          <CallHistory refreshKey={refreshKey} enableExport allUsers />
+          <CallHistory
+            refreshKey={refreshKey}
+            enableExport
+            allUsers
+            dateRange={dateRange}
+            onDateRangeChange={setDateRange}
+          />
         </Stack>
       </Box>
     </LocalizationProvider>

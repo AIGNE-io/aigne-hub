@@ -5,7 +5,7 @@ import { useSubscription } from '@app/libs/ws';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import Toast from '@arcblock/ux/lib/Toast';
 import { Table } from '@blocklet/aigne-hub/components';
-import { CREDIT_DISPLAY_DECIMAL_PLACES, formatNumber } from '@blocklet/aigne-hub/utils/util';
+import { formatNumber } from '@blocklet/aigne-hub/utils/util';
 import { formatError } from '@blocklet/error';
 import Header from '@blocklet/ui-react/lib/Header';
 import styled from '@emotion/styled';
@@ -361,12 +361,7 @@ export default function PricingPage() {
 
           if (model.input_credits_per_token === 0) return '-';
 
-          const { value: formattedPrice, unit } = formatModelPrice(
-            model.input_credits_per_token,
-            model.type,
-            CREDIT_DISPLAY_DECIMAL_PLACES,
-            'input'
-          );
+          const { value: formattedPrice, unit } = formatModelPrice(model.input_credits_per_token, model.type, 'input');
 
           return (
             <Box
@@ -442,7 +437,6 @@ export default function PricingPage() {
           const { value: formattedPrice, unit } = formatModelPrice(
             model.output_credits_per_token,
             model.type,
-            CREDIT_DISPLAY_DECIMAL_PLACES,
             'output'
           );
 

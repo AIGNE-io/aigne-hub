@@ -1,5 +1,5 @@
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
-import { CREDIT_DISPLAY_DECIMAL_PLACES, formatNumber } from '@blocklet/aigne-hub/utils/util';
+import { formatNumber } from '@blocklet/aigne-hub/utils/util';
 import { AccountBalance, CallMade, InfoOutlined, TrendingUp } from '@mui/icons-material';
 import { Box, Card, CardContent, Grid, Tooltip, Typography } from '@mui/material';
 import BigNumber from 'bignumber.js';
@@ -291,7 +291,7 @@ export function UsageSummary({
                     color: 'text.primary',
                     fontWeight: 600,
                   }}>
-                  {formatNumber(stats?.totalUsage || 0)} {unit}
+                  {formatNumber(stats?.totalUsage || 0, 0, true)} {unit}
                 </Typography>
               </Box>
             );
@@ -304,7 +304,7 @@ export function UsageSummary({
   const metrics = customMetrics || [
     {
       title: t('analytics.totalCreditsUsed'),
-      value: `${creditPrefix}${formatNumber(new BigNumber(trendComparison?.current?.totalCredits || totalCredits || 0).dp(CREDIT_DISPLAY_DECIMAL_PLACES).toString())}`,
+      value: `${creditPrefix}${formatNumber(new BigNumber(trendComparison?.current?.totalCredits || totalCredits || 0).toString())}`,
       trend: trendComparison ? formatTrend(trendComparison.growth.creditsGrowth) : undefined,
       trendDescription: trendComparison ? getTrendDescription(periodDays) : undefined,
       icon: <CallMade color="primary" />,
@@ -315,7 +315,7 @@ export function UsageSummary({
     },
     {
       title: t('analytics.totalUsage'),
-      value: formatNumber(trendComparison?.current?.totalUsage || totalUsage || 0),
+      value: formatNumber(trendComparison?.current?.totalUsage || totalUsage || 0, 0, true),
       trend: trendComparison ? formatTrend(trendComparison.growth.usageGrowth) : undefined,
       trendDescription: trendComparison ? getTrendDescription(periodDays) : undefined,
       icon: <TrendingUp color="success" />,
@@ -326,7 +326,7 @@ export function UsageSummary({
     },
     {
       title: t('analytics.totalRequests'),
-      value: formatNumber(trendComparison?.current?.totalCalls || totalCalls || 0),
+      value: formatNumber(trendComparison?.current?.totalCalls || totalCalls || 0, 0, true),
       trend: trendComparison ? formatTrend(trendComparison.growth.callsGrowth) : undefined,
       trendDescription: trendComparison ? getTrendDescription(periodDays) : undefined,
       icon: <AccountBalance color="warning" />,

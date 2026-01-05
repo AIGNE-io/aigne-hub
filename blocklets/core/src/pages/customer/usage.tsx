@@ -261,7 +261,13 @@ function CreditBoard() {
 
           <Box sx={{ my: 2 }} />
 
-          <CallHistory refreshKey={refreshKey} enableExport appDid={appDid ?? undefined} />
+          <CallHistory
+            refreshKey={refreshKey}
+            enableExport
+            appDid={appDid ?? undefined}
+            dateRange={dateRange}
+            onDateRangeChange={setDateRange}
+          />
         </Stack>
       </Box>
     </LocalizationProvider>
