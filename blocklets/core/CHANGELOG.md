@@ -1,3 +1,7 @@
+## 0.7.15 (2026-1-6)
+
+- chore: upgrade aigne deps
+
 ## 0.7.14 (2026-1-5)
 
 - fix: increase chunk size limit for blocklet plugin
