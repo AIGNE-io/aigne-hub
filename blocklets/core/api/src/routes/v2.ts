@@ -164,7 +164,7 @@ router.get('/status', user, async (req, res) => {
     if (!modelRate) {
       return res.json({
         available: false,
-        error: `Model not supported for ${modelName}`,
+        error: `Model ${modelName} is not supported`,
         code: 400,
       });
     }
