@@ -58,4 +58,47 @@ descriptions:
       Google Gemini. At the bottom, a chat input field allows users to select an
       AI model, such as 'gpt-4o-mini,' and interact with the system.
     generatedAt: 2025-10-23T13:13:23.016Z
-lastUpdated: 2025-10-23T13:13:23.016Z
+  a4381f1b70efa48fe13a0c9eca2fa260d40d598b8dafad06a7f6e0923a7cee1b:
+    path: ../../../blocklets/core/src/icons/icon-text.svg
+    description: This SVG icon displays two stylized 'T' shapes, rendered in a dark
+      grey stroke with rounded caps, against a transparent background. The left
+      'T' is slightly larger and positioned to the left of a smaller, more
+      compact 'T' shape on the right. This icon visually represents text,
+      typing, or editing functions.
+    generatedAt: 2025-12-10T14:53:11.707Z
+  6995c82e2bea046ee91b0b3a25354fbbfeabc1c6b331768d2fd7b01f7c5a8810:
+    path: ../../../blocklets/core/src/logo.svg
+    description: This SVG image depicts a blue-stroked hexagonal outline. Inside
+      this hexagon, three intersecting lines form an isometric-style grid or
+      star pattern, dividing the space into multiple diamond and triangular
+      segments. A smaller, inverted triangle is nested within the lower portion
+      of the larger hexagon, all rendered with a consistent blue stroke and no
+      fill.
+    generatedAt: 2025-12-10T14:53:11.707Z
+  ea664bc1d0d2ea1a3a1524b561279859f50ff43a7b31d7917060f1648055bcda:
+    path: ../../../blocklets/core/src/icons/icon-image.svg
+    description: This SVG icon depicts a simplified representation of an image or
+      photo. It features a rounded rectangular frame with a stylized landscape
+      inside, including a small mountain peak and a circular element
+      representing a sun or moon in the upper left corner. The icon uses a solid
+      `#71717b` fill color, making it suitable for a monochrome user interface
+      element.
+    generatedAt: 2025-12-10T14:53:11.707Z
+  bcb18805ba324b50f9797f60c7f5d3b001f7dc2924a7f2a5b9a50bb746fa4415:
+    path: ../../../blocklets/core/src/icons/icon-video.svg
+    description: This SVG graphic is a dark gray icon depicting a video symbol. It
+      features a horizontal rectangular shape, reminiscent of a video screen or
+      camera body, with a triangular element extending from its right side. This
+      icon is commonly used to represent video content, playback, or recording
+      functionality.
+    generatedAt: 2025-12-10T14:53:11.707Z
+  16987843ade6e65b32bc9efa9c16ff2ae1cb3da20bd26a57d7e8e75caefb9c31:
+    path: ../../../blocklets/core/src/icons/icon-embedding.svg
+    description: This SVG icon depicts a grid-like structure composed of four small,
+      slightly rounded squares positioned at each corner, connected by four
+      shorter lines extending from their inner edges. The overall design
+      suggests a framework or a modular system, commonly used to represent
+      embedding, linking, or integration of components. It has a minimalist
+      style with a neutral stroke color.
+    generatedAt: 2025-12-10T14:53:11.707Z
+lastUpdated: 2025-12-10T14:53:11.708Z

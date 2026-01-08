@@ -67,7 +67,7 @@ export interface UsageSummaryProps {
 
 interface SummaryCardProps {
   title: string;
-  value: string;
+  value?: string;
   trend?: string;
   trendDescription?: string;
   tooltip?: React.ReactNode;
@@ -190,6 +190,7 @@ export function UsageSummary({
   customMetrics = undefined,
 }: UsageSummaryProps) {
   const { t } = useLocaleContext();
+  const creditPrefix = window.blocklet?.preferences?.creditPrefix || '';
 
   const formatTrend = (growth: number): string => {
     if (growth === 0) return '0%';
@@ -290,7 +291,7 @@ export function UsageSummary({
                     color: 'text.primary',
                     fontWeight: 600,
                   }}>
-                  {formatNumber(stats?.totalUsage || 0)} {unit}
+                  {formatNumber(stats?.totalUsage || 0, 0, true)} {unit}
                 </Typography>
               </Box>
             );
@@ -303,7 +304,7 @@ export function UsageSummary({
   const metrics = customMetrics || [
     {
       title: t('analytics.totalCreditsUsed'),
-      value: formatNumber(new BigNumber(trendComparison?.current?.totalCredits || totalCredits || 0).dp(2).toString()),
+      value: `${creditPrefix}${formatNumber(new BigNumber(trendComparison?.current?.totalCredits || totalCredits || 0).toString())}`,
       trend: trendComparison ? formatTrend(trendComparison.growth.creditsGrowth) : undefined,
       trendDescription: trendComparison ? getTrendDescription(periodDays) : undefined,
       icon: <CallMade color="primary" />,
@@ -314,7 +315,7 @@ export function UsageSummary({
     },
     {
       title: t('analytics.totalUsage'),
-      value: formatNumber(trendComparison?.current?.totalUsage || totalUsage || 0),
+      value: formatNumber(trendComparison?.current?.totalUsage || totalUsage || 0, 0, true),
       trend: trendComparison ? formatTrend(trendComparison.growth.usageGrowth) : undefined,
       trendDescription: trendComparison ? getTrendDescription(periodDays) : undefined,
       icon: <TrendingUp color="success" />,
@@ -325,7 +326,7 @@ export function UsageSummary({
     },
     {
       title: t('analytics.totalRequests'),
-      value: formatNumber(trendComparison?.current?.totalCalls || totalCalls || 0),
+      value: formatNumber(trendComparison?.current?.totalCalls || totalCalls || 0, 0, true),
       trend: trendComparison ? formatTrend(trendComparison.growth.callsGrowth) : undefined,
       trendDescription: trendComparison ? getTrendDescription(periodDays) : undefined,
       icon: <AccountBalance color="warning" />,

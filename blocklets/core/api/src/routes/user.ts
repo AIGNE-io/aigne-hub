@@ -119,12 +119,17 @@ export interface UsageStatsQuery {
   startTime?: string;
   endTime?: string;
   allUsers?: boolean;
+  timezoneOffset?: string; // Client timezone offset in minutes
 }
 
 const usageStatsSchema = Joi.object<UsageStatsQuery>({
   startTime: Joi.string().pattern(/^\d+$/).required(),
   endTime: Joi.string().pattern(/^\d+$/).required(),
   allUsers: Joi.boolean().optional().empty([null, '']),
+  timezoneOffset: Joi.string()
+    .pattern(/^-?\d+$/)
+    .optional()
+    .empty([null, '']),
 });
 
 router.get('/credit/grants', user, async (req, res) => {
@@ -499,7 +504,7 @@ router.get(
 
 router.get('/usage-stats', user, async (req, res) => {
   try {
-    const { startTime, endTime } = await usageStatsSchema.validateAsync(req.query, {
+    const { startTime, endTime, timezoneOffset } = await usageStatsSchema.validateAsync(req.query, {
       stripUnknown: true,
     });
     const userDid = req.user?.did;
@@ -510,6 +515,7 @@ router.get('/usage-stats', user, async (req, res) => {
 
     const startTimeNum = startTime ? Number(startTime) : undefined;
     const endTimeNum = endTime ? Number(endTime) : undefined;
+    const timezoneOffsetNum = timezoneOffset ? Number(timezoneOffset) : undefined;
 
     if (!startTimeNum || !endTimeNum) {
       return res.status(400).json({ error: 'startTime and endTime are required' });
@@ -518,7 +524,8 @@ router.get('/usage-stats', user, async (req, res) => {
     const { usageStats, totalCredits, dailyStats, totalUsage } = await getUsageStatsHourlyOptimized(
       userDid,
       startTimeNum,
-      endTimeNum
+      endTimeNum,
+      timezoneOffsetNum
     );
 
     // Get model stats (optimized query without JOIN)
@@ -554,7 +561,9 @@ router.get('/usage-stats', user, async (req, res) => {
 
 router.get('/admin/user-stats', user, ensureAdmin, async (req, res) => {
   try {
-    const { startTime, endTime } = await usageStatsSchema.validateAsync(req.query, { stripUnknown: true });
+    const { startTime, endTime, timezoneOffset } = await usageStatsSchema.validateAsync(req.query, {
+      stripUnknown: true,
+    });
     const userDid = req.user?.did;
 
     if (!userDid) {
@@ -563,6 +572,7 @@ router.get('/admin/user-stats', user, ensureAdmin, async (req, res) => {
 
     const startTimeNum = startTime ? Number(startTime) : undefined;
     const endTimeNum = endTime ? Number(endTime) : undefined;
+    const timezoneOffsetNum = timezoneOffset ? Number(timezoneOffset) : undefined;
 
     if (!startTimeNum || !endTimeNum) {
       return res.status(400).json({ error: 'startTime and endTime are required' });
@@ -570,7 +580,8 @@ router.get('/admin/user-stats', user, ensureAdmin, async (req, res) => {
 
     const { usageStats, totalCredits, dailyStats, totalUsage } = await getUsageStatsHourlyOptimizedAdmin(
       startTimeNum,
-      endTimeNum
+      endTimeNum,
+      timezoneOffsetNum
     );
 
     const modelStatsResult = await ModelCall.getModelUsageStats({

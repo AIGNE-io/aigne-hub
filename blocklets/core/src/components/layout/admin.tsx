@@ -16,7 +16,7 @@ const Root = styled(Dashboard)<{ padding: string }>`
     overflow: hidden;
 
     > .dashboard-content {
-      padding: 0;
+      padding: ${(props) => props.padding || '0 24px'};
       height: 0;
       display: flex;
       flex-direction: column;

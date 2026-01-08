@@ -3,7 +3,7 @@ import { CreditRateFormula } from '@app/components/credit-rate-farmula';
 import { Status, TestModelButton } from '@app/components/status';
 import UnitDisplay from '@app/components/unit-display';
 import { useSessionContext } from '@app/contexts/session';
-import { formatMillionTokenCost, getPrefix, multiply } from '@app/libs/util';
+import { formatMillionTokenCost, getModelPriceUnit, getPrefix, multiply } from '@app/libs/util';
 import { useSubscription } from '@app/libs/ws';
 import { getDurableData } from '@arcblock/ux/lib/Datatable';
 import Dialog from '@arcblock/ux/lib/Dialog';
@@ -54,8 +54,9 @@ export default function AIModelRates() {
   const [modelSearchValue, setModelSearchValue] = useState('');
   const [statusLoading, setStatusLoading] = useState(false);
 
-  const baseCreditPrice = window.blocklet?.preferences?.baseCreditPrice || 0.0000025;
+  const baseCreditPrice = window.blocklet?.preferences?.baseCreditPrice ?? 1;
   const targetProfitMargin = window.blocklet?.preferences?.targetProfitMargin || 0;
+  const creditPrefix = window.blocklet?.preferences?.creditPrefix || '';
 
   const persisted = getDurableData(listKey);
   const [search, setSearch] = useLocalStorageState<ModelRatesQuery>(listKey, {
@@ -369,11 +370,13 @@ export default function AIModelRates() {
               title={
                 <Stack spacing={1}>
                   <Typography variant="caption">
-                    <strong>{t('config.modelRates.configInfo.creditCost')}</strong>$
+                    <strong>{t('config.modelRates.configInfo.creditCost')}</strong>
+                    {creditPrefix}
                     {formatMillionTokenCost(multiply(rate.inputRate, baseCreditPrice))} / 1M Tokens
                   </Typography>
                   <Typography variant="caption">
-                    <strong>{t('config.modelRates.configInfo.actualCost')}</strong>$
+                    <strong>{t('config.modelRates.configInfo.actualCost')}</strong>
+                    {creditPrefix}
                     {formatMillionTokenCost(actualInputCost)} / 1M Tokens
                   </Typography>
                   <Typography variant="caption">
@@ -395,8 +398,14 @@ export default function AIModelRates() {
                 },
               }}
               placement="bottom">
-              <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                <Typography variant="body2">{rate.inputRate}</Typography>
+              <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+                <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                  {creditPrefix}
+                  {formatMillionTokenCost(multiply(rate.inputRate, baseCreditPrice))}
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                  {t('config.modelRates.fields.perMillionTokens')}
+                </Typography>
                 <Typography
                   variant="body2"
                   sx={{
@@ -440,17 +449,51 @@ export default function AIModelRates() {
                   .multipliedBy(100)
                   .toNumber()
               : 0;
+
+          // Get unit for output based on model type
+          const outputUnit = getModelPriceUnit(rate.type);
+          const isTokenUnit = outputUnit === 'mtokens';
+          const displayValue = isTokenUnit
+            ? formatMillionTokenCost(multiply(rate.outputRate, baseCreditPrice))
+            : multiply(rate.outputRate, baseCreditPrice).toFixed(2);
+          const actualDisplayValue = isTokenUnit
+            ? formatMillionTokenCost(actualOutputCost)
+            : actualOutputCost.toFixed(2);
+
+          // Get unit text from locale
+          const getUnitText = (unit: string, withSlash = true) => {
+            if (unit === 'mtokens') {
+              const text = t('config.modelRates.fields.perMillionTokens');
+              return withSlash ? text : text.replace('/ ', '');
+            }
+            if (unit === 'image') {
+              const text = t('config.modelRates.fields.perImage');
+              return withSlash ? text : text.replace('/ ', '');
+            }
+            if (unit === 'second') {
+              const text = t('config.modelRates.fields.perSecond');
+              return withSlash ? text : text.replace('/ ', '');
+            }
+            const text = t('config.modelRates.fields.perMillionTokens');
+            return withSlash ? text : text.replace('/ ', '');
+          };
+
+          const displayUnitText = getUnitText(outputUnit);
+          const tooltipUnitText = getUnitText(outputUnit, false);
+
           return (
             <Tooltip
               title={
                 <Stack spacing={1}>
                   <Typography variant="caption">
-                    <strong>{t('config.modelRates.configInfo.creditCost')}</strong>$
-                    {formatMillionTokenCost(multiply(rate.outputRate, baseCreditPrice))} / 1M Tokens
+                    <strong>{t('config.modelRates.configInfo.creditCost')}</strong>
+                    {creditPrefix}
+                    {displayValue} / {tooltipUnitText}
                   </Typography>
                   <Typography variant="caption">
-                    <strong>{t('config.modelRates.configInfo.actualCost')}</strong>$
-                    {formatMillionTokenCost(actualOutputCost)} / 1M Tokens
+                    <strong>{t('config.modelRates.configInfo.actualCost')}</strong>
+                    {creditPrefix}
+                    {actualDisplayValue} / {tooltipUnitText}
                   </Typography>
                   <Typography variant="caption">
                     <strong>{t('config.modelRates.configInfo.profitRate')}</strong>
@@ -471,8 +514,14 @@ export default function AIModelRates() {
                   },
                 },
               }}>
-              <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                <Typography variant="body2">{rate.outputRate}</Typography>
+              <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+                <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                  {creditPrefix}
+                  {displayValue}
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                  {displayUnitText}
+                </Typography>
                 <Typography
                   variant="caption"
                   sx={{
@@ -551,6 +600,14 @@ export default function AIModelRates() {
     },
   ].filter(Boolean);
 
+  const getDecimalPlaces = (num: number) => {
+    if (Math.floor(num) === num) return 0;
+    const str = num.toFixed(10).replace(/0+$/, '');
+    return str.split('.')[1]?.length || 0;
+  };
+
+  const needFormatCreditBase = baseCreditPrice && getDecimalPlaces(baseCreditPrice) > 4;
+
   return (
     <Box>
       <Typography variant="body1">{t('config.modelRates.description')}</Typography>
@@ -626,8 +683,14 @@ export default function AIModelRates() {
               sx={{
                 color: 'text.secondary',
               }}>
-              <Typography component="span">{t('config.modelRates.configInfo.creditValue')} $</Typography>
-              <UnitDisplay value={formatMillionTokenCost(baseCreditPrice)} type="credit" />
+              <Typography component="span">
+                {t('config.modelRates.configInfo.creditValue')} {creditPrefix}
+              </Typography>
+              <UnitDisplay
+                value={needFormatCreditBase ? formatMillionTokenCost(baseCreditPrice) : baseCreditPrice}
+                type="credit"
+                addon={needFormatCreditBase ? 'mtokens' : undefined}
+              />
               <Typography component="span" sx={{ ml: 1 }}>
                 • {t('config.modelRates.configInfo.profitMargin')}
                 {targetProfitMargin}%

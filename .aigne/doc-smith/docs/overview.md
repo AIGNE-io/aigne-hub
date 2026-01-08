@@ -11,66 +11,9 @@ Integrating multiple AI services into an organization's infrastructure introduce
 
 The diagram below illustrates how AIGNE Hub sits between your applications and various AI providers to solve these challenges:
 
-```d2
-direction: right
-
-Applications: {
-  label: "Your Applications"
-  shape: rectangle
-
-  internal-tools: {
-    label: "Internal Tools"
-    shape: rectangle
-  }
-
-  customer-apps: {
-    label: "Customer-facing Apps"
-    shape: rectangle
-  }
-
-  chatbots: {
-    label: "Chatbots & Agents"
-    shape: rectangle
-  }
-}
-
-AIGNE-Hub: {
-  label: "AIGNE Hub"
-  shape: rectangle
-
-  unified-api: {
-    label: "Unified API Endpoint"
-  }
-
-  security: {
-    label: "Centralized Security & Keys"
-  }
-
-  analytics: {
-    label: "Usage & Cost Analytics"
-  }
-
-  billing: {
-    label: "Flexible Billing System"
-  }
-}
-
-AI-Providers: {
-  label: "AI Providers"
-  shape: rectangle
-  grid-columns: 2
-
-  openai: "OpenAI"
-  anthropic: "Anthropic"
-  google: "Google Gemini"
-  aws: "Amazon Bedrock"
-  deepseek: "DeepSeek"
-  others: "... and more"
-}
-
-Applications -> AIGNE-Hub: "Single, Consistent API"
-AIGNE-Hub -> AI-Providers: "Routes to any provider"
-```
+<!-- DIAGRAM_IMAGE_START:architecture:16:9 -->
+![Overview](assets/diagram/overview-diagram-0.jpg)
+<!-- DIAGRAM_IMAGE_END -->
 
 AIGNE Hub is designed to solve these specific challenges by providing:
 

@@ -32,7 +32,6 @@ export default function AIConfig() {
           alignItems: 'flex-start',
           justifyContent: 'end',
           flexWrap: 'wrap',
-          mb: 1,
         }}>
         {/* @ts-ignore */}
         <Tabs
@@ -55,7 +54,7 @@ export default function AIConfig() {
               display: 'none',
             },
             '.Mui-selected': {
-              fontSize: 24,
+              fontSize: '1.175rem !important',
               color: 'text.primary',
             },
             '.MuiTabs-hideScrollbar': {

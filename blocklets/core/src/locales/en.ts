@@ -74,7 +74,8 @@ export default flatten({
   welcome: 'Welcome to AIGNE Hub',
   welcomeDesc:
     'Get started by configuring AI providers to enable AI services. You can also enable Credits billing to manage user usage quotas.',
-
+  welcomeDesc2:
+    'The core configuration center for AIGNE Hub, used to manage AI service access and operation rules, including AI provider settings, model rate configuration, usage analysis, etc.',
   aiConfig: 'Config',
   quickStarts: 'Quick Start',
   // AI Provider features
@@ -151,6 +152,9 @@ export default flatten({
         outputRate: 'Output',
         description: 'Description',
         actions: 'Actions',
+        perMillionTokens: '/ 1M tokens',
+        perImage: '/ image',
+        perSecond: '/ second',
       },
 
       // Form
@@ -265,8 +269,8 @@ export default flatten({
         profitMarginDesc: 'Percentage added on top of cost',
         modelCostDesc: 'Actual cost per token charged by AI providers',
         aicRateConfig: 'AIGNE Hub Credits Rate Configuration',
-        inputTokenConsumption: 'AIGNE Hub Credits consumption per input token',
-        outputTokenConsumption: 'AIGNE Hub Credits consumption per output token',
+        inputTokenConsumption: 'AIGNE Hub Credits consumption per 1M input tokens',
+        outputTokenConsumption: 'AIGNE Hub Credits consumption per 1M output tokens',
         currentModelCost: 'Current Model Cost',
         estimatedProfitRate: 'Estimated Profit Rate',
         inputCost: 'Input Cost',
@@ -287,6 +291,16 @@ export default flatten({
         unitTooltip: {
           credit: '1M = 1,000,000 AIGNE Hub Credits (per million AIGNE Hub Credits)',
           token: '1M = 1,000,000 tokens (per million tokens)',
+        },
+        caching: {
+          title: 'Cache Rates (Optional)',
+          aboutTitle: 'Prompt Caching',
+          aboutDesc: 'Some models support caching frequently used context to reduce costs',
+          writeRateLabel: 'Cache Write',
+          writeRateDesc: 'Rate for cache write',
+          readRateLabel: 'Cache Read',
+          readRateDesc: 'Rate for cached input (cache hits & refreshes)',
+          fallbackExplain: 'Defaults to Input Rate if not configured',
         },
       },
 

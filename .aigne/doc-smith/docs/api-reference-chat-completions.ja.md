@@ -6,43 +6,9 @@
 
 以下の図は、標準およびストリーミング API 呼び出しの両方におけるリクエストとレスポンスのフローを示しています。
 
-```d2
-shape: sequence_diagram
-
-Client: {
-  label: "クライアントアプリケーション"
-  shape: c4-person
-}
-
-AIGNE-Hub-API: {
-  label: "AIGNE Hub API"
-}
-
-AI-Model: {
-  label: "AI モデル"
-}
-
-Standard-Request: {
-  label: "標準リクエスト (stream: false)"
-  Client -> AIGNE-Hub-API: "1. POST /api/chat/completions"
-  AIGNE-Hub-API -> AI-Model: "2. メッセージを処理"
-  AI-Model -> AIGNE-Hub-API: "3. 完全な補完を返す"
-  AIGNE-Hub-API -> Client: "4. 単一の JSON 応答を送信"
-}
-
-Streaming-Request: {
-  label: "ストリーミングリクエスト (stream: true)"
-  Client -> AIGNE-Hub-API: "1. POST /api/chat/completions\n(stream=true)"
-  AIGNE-Hub-API -> AI-Model: "2. メッセージを処理"
-  loop: "生成中" {
-    AI-Model -> AIGNE-Hub-API: "3a. トークン差分をストリーム"
-    AIGNE-Hub-API -> Client: "3b. チャンクをストリーム (SSE)"
-  }
-  AI-Model -> AIGNE-Hub-API: "4. 使用状況を含む最終チャンクを送信"
-  AIGNE-Hub-API -> Client: "5. [DONE] メッセージをストリーム"
-}
-
-```
+<!-- DIAGRAM_IMAGE_START:sequence:16:9 -->
+![Chat Completions](assets/diagram/chat-completions-diagram-0.jpg)
+<!-- DIAGRAM_IMAGE_END -->
 
 関連機能については、[画像生成](./api-reference-image-generation.md)および[埋め込み](./api-reference-embeddings.md) API ドキュメントを参照してください。
 

@@ -15,6 +15,7 @@ import {
   ImageGenerationResponse,
   isChatCompletionError,
 } from '../types';
+import { StatusResponse } from '../types/status';
 import { UserInfoResult } from '../types/user';
 import { EventSourceParserStream, readableToWeb } from '../utils/event-stream';
 import { getRemoteBaseUrl } from '../utils/util';
@@ -209,4 +210,9 @@ export async function getUserCreditInfo(): Promise<UserInfoResult>;
 export async function getUserCreditInfo(): Promise<UserInfoResult> {
   const response = await callRemoteApi({}, { endpoint: 'api/user/info', method: 'GET' });
   return response.data;
+}
+
+export async function checkStatus({ model }: { model?: string } = {}): Promise<StatusResponse> {
+  const response = await callRemoteApi(model ? { model } : {}, { endpoint: 'api/v2/status', method: 'GET' });
+  return response.data as StatusResponse;
 }

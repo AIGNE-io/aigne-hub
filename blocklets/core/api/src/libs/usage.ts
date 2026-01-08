@@ -13,7 +13,7 @@ import { Op } from 'sequelize';
 
 import { getModelNameWithProvider } from './ai-provider';
 import { wallet } from './auth';
-import { Config } from './env';
+import { CREDIT_DECIMAL_PLACES, Config } from './env';
 import logger from './logger';
 import { createMeterEvent, getActiveSubscriptionOfApp, isPaymentRunning } from './payment';
 
@@ -69,13 +69,13 @@ export async function createAndReportUsage({
   }
 }
 
-async function getModelRates(model: string) {
+async function getModelRates(model: string): Promise<AiModelRate[]> {
   if (!model) {
     throw new CustomError(400, 'Model is required');
   }
-  const callback = (err: Error) => {
+  const callback = (err: Error): AiModelRate[] => {
     if (Config.pricing?.list) {
-      return Config.pricing?.list;
+      return Config.pricing?.list as AiModelRate[];
     }
     throw err;
   };
@@ -106,7 +106,7 @@ async function getModelRates(model: string) {
   return modelRates;
 }
 
-async function getPrice(type: Usage['type'], model: string) {
+async function getPrice(type: Usage['type'], model: string): Promise<AiModelRate | undefined> {
   if (!model) {
     throw new CustomError(400, 'Model is required');
   }
@@ -116,6 +116,22 @@ async function getPrice(type: Usage['type'], model: string) {
   return price;
 }
 
+export function getTotalTokens(usageMetrics: {
+  inputTokens?: number | string;
+  outputTokens?: number | string;
+  cacheCreationInputTokens?: number | string;
+  cacheReadInputTokens?: number | string;
+}) {
+  if (!usageMetrics) {
+    return 0;
+  }
+  return new BigNumber(usageMetrics.inputTokens || 0)
+    .plus(new BigNumber(usageMetrics.outputTokens || 0))
+    .plus(new BigNumber(usageMetrics.cacheCreationInputTokens || 0))
+    .plus(new BigNumber(usageMetrics.cacheReadInputTokens || 0))
+    .toNumber();
+}
+
 // v2 version with userDid support for proper credit tracking
 export async function createAndReportUsageV2({
   type,
@@ -123,6 +139,8 @@ export async function createAndReportUsageV2({
   modelParams,
   promptTokens = 0,
   completionTokens = 0,
+  cacheCreationInputTokens = 0,
+  cacheReadInputTokens = 0,
   numberOfImageGeneration = 0,
   appId = wallet.address,
   userDid,
@@ -135,21 +153,53 @@ export async function createAndReportUsageV2({
     >
   > & {
     userDid: string;
+    cacheCreationInputTokens?: number;
+    cacheReadInputTokens?: number;
   }): Promise<number | undefined> {
   try {
     let usedCredits: number | undefined;
 
     const price = await getPrice(type, model);
     if (price) {
+      let creditsTotalBN = new BigNumber(0);
       if (type === 'imageGeneration') {
-        usedCredits = new BigNumber(numberOfImageGeneration).multipliedBy(price.outputRate).decimalPlaces(2).toNumber();
+        creditsTotalBN = creditsTotalBN.plus(new BigNumber(numberOfImageGeneration).multipliedBy(price.outputRate));
       } else if (type === 'video') {
-        usedCredits = new BigNumber(mediaDuration || 0).multipliedBy(price.outputRate).decimalPlaces(2).toNumber();
+        creditsTotalBN = creditsTotalBN.plus(new BigNumber(mediaDuration || 0).multipliedBy(price.outputRate));
       } else {
-        const input = new BigNumber(promptTokens).multipliedBy(price.inputRate);
-        const output = new BigNumber(completionTokens).multipliedBy(price.outputRate);
-        usedCredits = input.plus(output).decimalPlaces(2).toNumber();
+        const outputCredits = new BigNumber(completionTokens || 0).multipliedBy(price.outputRate);
+        creditsTotalBN = creditsTotalBN.plus(outputCredits);
       }
+      const inputCredits = new BigNumber(promptTokens || 0).multipliedBy(price.inputRate);
+      creditsTotalBN = creditsTotalBN.plus(inputCredits);
+      // Handle cache tokens
+      if (cacheCreationInputTokens > 0 || cacheReadInputTokens > 0) {
+        const caching = price.caching as { readRate?: number; writeRate?: number } | undefined;
+
+        if (caching?.writeRate) {
+          // Use configured cache write rate for cache creation tokens
+          creditsTotalBN = creditsTotalBN.plus(
+            new BigNumber(cacheCreationInputTokens || 0).multipliedBy(caching.writeRate || 0)
+          );
+        } else {
+          // Fallback: add cache creation tokens to regular input tokens
+          creditsTotalBN = creditsTotalBN.plus(
+            new BigNumber(cacheCreationInputTokens || 0).multipliedBy(price.inputRate || 0)
+          );
+        }
+
+        if (caching?.readRate) {
+          // Use configured cache read rate for cache read tokens
+          creditsTotalBN = creditsTotalBN.plus(new BigNumber(cacheReadInputTokens || 0).multipliedBy(caching.readRate));
+        } else {
+          // Fallback: add cache read tokens to regular input tokens
+          creditsTotalBN = creditsTotalBN.plus(
+            new BigNumber(cacheReadInputTokens || 0).multipliedBy(price.inputRate || 0)
+          );
+        }
+      }
+
+      usedCredits = creditsTotalBN.decimalPlaces(CREDIT_DECIMAL_PLACES).toNumber();
     }
 
     const params = {
@@ -158,6 +208,8 @@ export async function createAndReportUsageV2({
       modelParams,
       promptTokens,
       completionTokens,
+      cacheCreationInputTokens,
+      cacheReadInputTokens,
       numberOfImageGeneration,
       appId,
       usedCredits,
@@ -250,10 +302,10 @@ async function reportUsageV2({ appId, userDid }: { appId: string; userDid: strin
 
 async function executeOriginalReportLogicWithProtection({ appId, userDid }: { appId: string; userDid: string }) {
   try {
-    if (!isPaymentRunning()) return;
-
-    const { pricing } = Config;
-    if (!pricing) throw new CustomError(400, 'Missing required preference `pricing`');
+    if (!isPaymentRunning()) {
+      logger.info('Payment is not running, skipping usage report', { appId, userDid });
+      return;
+    }
 
     const start = await Usage.findOne({
       where: { appId, userDid, usageReportStatus: { [Op.not]: null } },
@@ -303,6 +355,14 @@ async function executeOriginalReportLogicWithProtection({ appId, userDid }: { ap
         [sequelize.fn('COALESCE', sequelize.fn('SUM', sequelize.col('promptTokens')), 0), 'promptTokens'],
         [sequelize.fn('COALESCE', sequelize.fn('SUM', sequelize.col('completionTokens')), 0), 'completionTokens'],
         [
+          sequelize.fn('COALESCE', sequelize.fn('SUM', sequelize.col('cacheCreationInputTokens')), 0),
+          'cacheCreationInputTokens',
+        ],
+        [
+          sequelize.fn('COALESCE', sequelize.fn('SUM', sequelize.col('cacheReadInputTokens')), 0),
+          'cacheReadInputTokens',
+        ],
+        [
           sequelize.fn('COALESCE', sequelize.fn('SUM', sequelize.col('numberOfImageGeneration')), 0),
           'numberOfImageGeneration',
         ],
@@ -316,11 +376,15 @@ async function executeOriginalReportLogicWithProtection({ appId, userDid }: { ap
       usedCredits: string | number | null;
       promptTokens: string | number | null;
       completionTokens: string | number | null;
+      cacheCreationInputTokens: string | number | null;
+      cacheReadInputTokens: string | number | null;
       numberOfImageGeneration: string | number | null;
     };
     const quantity = sums?.usedCredits ?? 0;
     const inputTokens = sums?.promptTokens ?? 0;
     const outputTokens = sums?.completionTokens ?? 0;
+    const cacheCreationInputTokens = sums?.cacheCreationInputTokens ?? 0;
+    const cacheReadInputTokens = sums?.cacheReadInputTokens ?? 0;
     const imagesGenerated = sums?.numberOfImageGeneration ?? 0;
 
     logger.info('create meter event', {
@@ -332,7 +396,7 @@ async function executeOriginalReportLogicWithProtection({ appId, userDid }: { ap
       recordCount: updatedRows,
     });
 
-    const reportQuantity = new BigNumber(quantity || 0).decimalPlaces(2).toNumber();
+    const reportQuantity = new BigNumber(quantity || 0).decimalPlaces(CREDIT_DECIMAL_PLACES).toNumber();
     const imagesGeneratedNum = Number(imagesGenerated) || 0;
     try {
       await createMeterEvent({
@@ -355,7 +419,7 @@ async function executeOriginalReportLogicWithProtection({ appId, userDid }: { ap
           {
             key: 'total_tokens',
             label: { en: 'Total Tokens', zh: 'Token数量' },
-            value: `${new BigNumber(inputTokens || 0).plus(new BigNumber(outputTokens || 0)).toNumber()}`,
+            value: `${getTotalTokens({ inputTokens, outputTokens, cacheCreationInputTokens, cacheReadInputTokens })}`,
           },
           ...(imagesGeneratedNum > 0
             ? [
@@ -422,6 +486,8 @@ export async function createUsageAndCompleteModelCall({
   modelParams,
   promptTokens = 0,
   completionTokens = 0,
+  cacheCreationInputTokens = 0,
+  cacheReadInputTokens = 0,
   numberOfImageGeneration = 0,
   appId,
   userDid,
@@ -437,6 +503,8 @@ export async function createUsageAndCompleteModelCall({
   modelParams?: Record<string, any>;
   promptTokens?: number;
   completionTokens?: number;
+  cacheCreationInputTokens?: number;
+  cacheReadInputTokens?: number;
   numberOfImageGeneration?: number;
   appId?: string;
   userDid: string;
@@ -458,6 +526,8 @@ export async function createUsageAndCompleteModelCall({
         modelParams,
         promptTokens,
         completionTokens,
+        cacheCreationInputTokens,
+        cacheReadInputTokens,
         numberOfImageGeneration,
         appId,
         userDid,
@@ -467,16 +537,26 @@ export async function createUsageAndCompleteModelCall({
 
     // Always complete ModelCall record regardless of billing mode
     if (req.modelCallContext) {
+      const totalTokens = getTotalTokens({
+        inputTokens: promptTokens,
+        outputTokens: completionTokens,
+        cacheCreationInputTokens,
+        cacheReadInputTokens,
+      });
       await req.modelCallContext.complete({
         promptTokens,
         completionTokens,
         numberOfImageGeneration,
         mediaDuration,
+        cacheCreationInputTokens,
+        cacheReadInputTokens,
         credits: credits || 0,
         usageMetrics: {
           inputTokens: promptTokens,
           outputTokens: completionTokens,
-          totalTokens: promptTokens + completionTokens,
+          totalTokens,
+          cacheCreationInputTokens,
+          cacheReadInputTokens,
           numberOfImageGeneration,
           ...additionalMetrics,
         },
@@ -498,6 +578,8 @@ export async function createUsageAndCompleteModelCall({
         usageMetrics: {
           inputTokens: promptTokens,
           outputTokens: completionTokens,
+          cacheCreationInputTokens,
+          cacheReadInputTokens,
           numberOfImageGeneration,
           ...additionalMetrics,
         },

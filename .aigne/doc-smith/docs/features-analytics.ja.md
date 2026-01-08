@@ -10,71 +10,9 @@ AIGNE Hub は、すべての API インタラクションを `ModelCall` エン�
 
 分析データを効果的にクエリし、解釈するためには、基礎となるデータ構造を理解することが不可欠です。以下の図は、`ModelCall` レコードがどのように生成され、分析エンドポイントによって使用されるかを示しています。
 
-```d2
-direction: down
-
-User: {
-  shape: c4-person
-}
-
-App: {
-  label: "ユーザーアプリケーション"
-  shape: rectangle
-}
-
-Aigne-Hub: {
-  label: "AIGNE Hub"
-  shape: rectangle
-
-  Model-Call-Logger: {
-    label: "モデルコールロガー"
-  }
-
-  Analytics-API: {
-    label: "分析 API"
-    shape: rectangle
-
-    Usage-Stats-Endpoint: {
-      label: "GET /api/user/usage-stats"
-    }
-
-    Model-Calls-Endpoint: {
-      label: "GET /api/user/model-calls"
-    }
-
-    Export-Endpoint: {
-      label: "GET /.../export"
-    }
-  }
-}
-
-AI-Provider: {
-  label: "AI プロバイダー\n(例: OpenAI)"
-  shape: rectangle
-}
-
-DB: {
-  label: "データベース"
-  shape: cylinder
-
-  Model-Call-Table: {
-    label: "ModelCall レコード"
-  }
-}
-
-App -> Aigne-Hub: "1. API コール"
-Aigne-Hub -> AI-Provider: "2. リクエストを転送"
-AI-Provider -> Aigne-Hub: "3. レスポンスを返す"
-Aigne-Hub.Model-Call-Logger -> DB.Model-Call-Table: "4. 'ModelCall' レコードを記録"
-
-User -> Aigne-Hub.Analytics-API: "5. 分析をリクエスト"
-Aigne-Hub.Analytics-API.Usage-Stats-Endpoint -> DB.Model-Call-Table: "6. データをクエリ & 集計"
-Aigne-Hub.Analytics-API.Model-Calls-Endpoint -> DB.Model-Call-Table: "6. データをクエリ & フィルタリング"
-Aigne-Hub.Analytics-API.Export-Endpoint -> DB.Model-Call-Table: "6. データをクエリ & エクスポート"
-DB.Model-Call-Table -> Aigne-Hub.Analytics-API: "7. データを返す"
-Aigne-Hub.Analytics-API -> User: "8. 統計 / ログ / CSV を返す"
-
-```
+<!-- DIAGRAM_IMAGE_START:flowchart:16:9 -->
+![Usage & Cost Analytics](assets/diagram/features-analytics-01.jpg)
+<!-- DIAGRAM_IMAGE_END -->
 
 ### `ModelCall` オブジェクト
 

@@ -4,35 +4,9 @@ Effective management of upstream AI providers is crucial for maintaining a relia
 
 The following diagram illustrates how Providers, Credentials, and Model Rates are interconnected within AIGNE Hub:
 
-```d2
-direction: down
-
-AIGNE-Hub: {
-  label: "AIGNE Hub Management"
-  shape: rectangle
-
-  Provider: {
-    label: "Provider\n(e.g., OpenAI, Google)"
-    shape: rectangle
-    style.fill: "#f0f4ff"
-  }
-
-  Credential: {
-    label: "Credential\n(e.g., API Key)"
-    shape: rectangle
-    style.fill: "#e6fffa"
-  }
-
-  Model-Rate: {
-    label: "Model Rate\n(e.g., gpt-4o-mini cost)"
-    shape: rectangle
-    style.fill: "#fffbe6"
-  }
-}
-
-AIGNE-Hub.Provider -> AIGNE-Hub.Credential: "Has one or more"
-AIGNE-Hub.Provider <-> AIGNE-Hub.Model-Rate: "Is associated with"
-```
+<!-- DIAGRAM_IMAGE_START:architecture:16:9 -->
+![Provider Management](assets/diagram/provider-management-diagram-0.jpg)
+<!-- DIAGRAM_IMAGE_END -->
 
 ## Provider Configuration
 
@@ -152,7 +126,7 @@ You can define rates for any model supported by a configured provider. This incl
   <x-field data-name="modelMetadata" data-type="object" data-required="false">
     <x-field-desc markdown>Additional metadata about the model's capabilities.</x-field-desc>
     <x-field data-name="maxTokens" data-type="number" data-required="false" data-desc="The maximum context window size."></x-field>
-    <x-field data-name="features" data-type="array" data-required="false" data-desc="An array of supported features, such as `tools` or `vision`."></x-field>
+    <x-field data-name="features" data-type="array" data-required="false" data-desc="An array of supported features, such as `tools` or `vision`. "></x-field>
   </x-field>
 </x-field-group>
 

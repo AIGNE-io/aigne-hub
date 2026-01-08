@@ -10,46 +10,9 @@
 
 启用服务提供商模式后，AIGNE Hub 将基于预付费的积分系统运行。下图说明了其工作流程：
 
-```d2
-direction: down
-
-User: {
-  shape: c4-person
-}
-
-Service-Provider-Platform: {
-  label: "服务提供商平台"
-  shape: rectangle
-
-  AIGNE-Hub: {
-    label: "AIGNE Hub"
-    icon: "https://www.arcblock.io/image-bin/uploads/89a24f04c34eca94f26c9dd30aec44fc.png"
-  }
-
-  Payment-Kit: {
-    label: "Payment Kit"
-    shape: rectangle
-  }
-}
-
-Upstream-AI-Providers: {
-  label: "上游 AI 提供商"
-  shape: rectangle
-
-  OpenAI: { label: "OpenAI" }
-  Claude: { label: "Claude" }
-  Google: { label: "Google" }
-  More: { label: "..." }
-}
-
-User -> Service-Provider-Platform.Payment-Kit: "1. 购买积分"
-Service-Provider-Platform.Payment-Kit -> Service-Provider-Platform.AIGNE-Hub: "2. 更新积分余额"
-User -> Service-Provider-Platform.AIGNE-Hub: "3. 发起 API 调用\n（使用 AI 模型）"
-Service-Provider-Platform.AIGNE-Hub -> Upstream-AI-Providers: "4. 转发请求"
-Upstream-AI-Providers -> Service-Provider-Platform.AIGNE-Hub: "5. 返回响应"
-Service-Provider-Platform.AIGNE-Hub -> Service-Provider-Platform.AIGNE-Hub: "6. 从用户余额中\n扣除积分"
-Service-Provider-Platform.AIGNE-Hub -> User: "7. 向用户返回响应"
-```
+<!-- DIAGRAM_IMAGE_START:flowchart:16:9 -->
+![Service Provider Mode](assets/diagram/service-provider-diagram-0.jpg)
+<!-- DIAGRAM_IMAGE_END -->
 
 工作流程如下：
 

@@ -73,7 +73,8 @@ export default flatten({
   // AIGNE Hub integrations
   welcome: '欢迎使用 AIGNE Hub',
   welcomeDesc: '开始使用前，请先配置 AI 提供商来启用 AI 服务。您也可以启用 Credits 计费功能来管理用户使用额度。',
-
+  welcomeDesc2:
+    'AIGNE Hub 的核心配置中心，用于管理 AI 服务接入与运行规则，包括 AI 提供商设置、模型费率配置、用量分析等。',
   aiConfig: '配置',
   quickStarts: '快速开始',
   // AI Provider features
@@ -139,6 +140,9 @@ export default flatten({
         outputRate: '输出',
         description: '描述',
         actions: '操作',
+        perMillionTokens: '/ 1M tokens',
+        perImage: '/ image',
+        perSecond: '/ second',
       },
 
       // Form
@@ -253,8 +257,8 @@ export default flatten({
         profitMarginDesc: '在成本基础上的加价百分比',
         modelCostDesc: 'AI 提供商对该模型每 Token 的实际收费',
         aicRateConfig: 'AIGNE Hub Credits 费率配置',
-        inputTokenConsumption: '每个输入 Token 消耗的 AIGNE Hub Credits 数量',
-        outputTokenConsumption: '每个输出 Token 消耗的 AIGNE Hub Credits 数量',
+        inputTokenConsumption: '每100万个输入 Token 消耗的 AIGNE Hub Credits 数量',
+        outputTokenConsumption: '每100万个输出 Token 消耗的 AIGNE Hub Credits 数量',
         currentModelCost: '当前模型成本',
         estimatedProfitRate: '预估收益率',
         inputCost: '输入成本',
@@ -274,6 +278,16 @@ export default flatten({
         unitTooltip: {
           credit: '1M 表示每百万 AIGNE Hub Credits',
           token: '1M 表示每百万 Token',
+        },
+        caching: {
+          title: '缓存费率（可选）',
+          aboutTitle: 'Prompt Caching',
+          aboutDesc: '部分模型支持缓存常用上下文以降低成本',
+          writeRateLabel: 'Cache Write',
+          writeRateDesc: '缓存写入费率',
+          readRateLabel: 'Cache Read',
+          readRateDesc: '缓存读取费率（缓存命中 & 刷新）',
+          fallbackExplain: '未配置时按输入费率计费',
         },
       },
 

@@ -34,6 +34,7 @@ export default function UsageStatsBoard() {
     allUsers: true,
     startTime: dateRange.from.toString(),
     endTime: dateRange.to.toString(),
+    timezoneOffset: new Date().getTimezoneOffset(),
   });
 
   const handleQuickDateSelect = (range: { start: dayjs.Dayjs; end: dayjs.Dayjs }) => {
@@ -152,7 +153,13 @@ export default function UsageStatsBoard() {
 
           <Box sx={{ my: 2 }} />
 
-          <CallHistory refreshKey={refreshKey} enableExport allUsers />
+          <CallHistory
+            refreshKey={refreshKey}
+            enableExport
+            allUsers
+            dateRange={dateRange}
+            onDateRangeChange={setDateRange}
+          />
         </Stack>
       </Box>
     </LocalizationProvider>

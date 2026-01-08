@@ -1,6 +1,6 @@
 import { Status } from '@app/components/status';
 /* eslint-disable react/no-unstable-nested-components */
-import { getPrefix } from '@app/libs/util';
+import { formatModelPrice, getPrefix, getUnitLabel } from '@app/libs/util';
 import { useSubscription } from '@app/libs/ws';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import Toast from '@arcblock/ux/lib/Toast';
@@ -34,14 +34,6 @@ import { ReactComponent as EmbeddingIcon } from '../../icons/icon-embedding.svg'
 import { ReactComponent as ImageIcon } from '../../icons/icon-image.svg';
 import { ReactComponent as ChatIcon } from '../../icons/icon-text.svg';
 import { ReactComponent as VideoIcon } from '../../icons/icon-video.svg';
-
-const ONE_MILLION = new BigNumber(1000000);
-const MEDIA_TYPES = ['image_generation', 'video'];
-
-const getPrice = (price: number | BigNumber.Value, fixed?: number, type?: string) => {
-  const priceBN = new BigNumber(price).multipliedBy(MEDIA_TYPES.includes(type || '') ? 1 : ONE_MILLION);
-  return formatNumber(fixed !== undefined ? priceBN.toFixed(fixed) : priceBN.toString());
-};
 
 interface ModelData {
   key: string;
@@ -369,6 +361,8 @@ export default function PricingPage() {
 
           if (model.input_credits_per_token === 0) return '-';
 
+          const { value: formattedPrice, unit } = formatModelPrice(model.input_credits_per_token, model.type, 'input');
+
           return (
             <Box
               sx={{
@@ -388,19 +382,23 @@ export default function PricingPage() {
                   sx={{
                     color: 'primary.main',
                   }}>
-                  {getPrice(model.input_credits_per_token, 0, model.type)} credits
+                  {formatNumber(formattedPrice.toString())} credits
                 </Typography>
                 <Typography
                   sx={{
                     color: 'text.secondary',
                     fontSize: 14,
                   }}>
-                  / 1M tokens
+                  {getUnitLabel(unit, t)}
                 </Typography>
               </Box>
               {window.blocklet.preferences.baseCreditPrice && (
                 <Box sx={{ color: 'text.secondary', fontSize: 14 }}>
-                  {`$${getPrice(new BigNumber(model.input_credits_per_token).multipliedBy(new BigNumber(window.blocklet.preferences.baseCreditPrice || 0)), 2, model.type)}`}
+                  {`$${formatNumber(
+                    new BigNumber(formattedPrice)
+                      .multipliedBy(new BigNumber(window.blocklet.preferences.baseCreditPrice || 0))
+                      .toFixed(4)
+                  )}`}
                 </Box>
               )}
             </Box>
@@ -436,12 +434,11 @@ export default function PricingPage() {
 
           if (model.output_credits_per_token === 0) return '-';
 
-          let unit = '1M tokens';
-          if (model.type === 'image_generation') {
-            unit = 'image';
-          } else if (model.type === 'video') {
-            unit = 'second';
-          }
+          const { value: formattedPrice, unit } = formatModelPrice(
+            model.output_credits_per_token,
+            model.type,
+            'output'
+          );
 
           return (
             <Box
@@ -463,19 +460,23 @@ export default function PricingPage() {
                     color: 'primary.main',
                     fontWeight: '700',
                   }}>
-                  {getPrice(model.output_credits_per_token, 0, model.type)} credits
+                  {formatNumber(formattedPrice.toString())} credits
                 </Typography>
                 <Typography
                   sx={{
                     color: 'text.secondary',
                     fontSize: 14,
                   }}>
-                  / {unit}
+                  {getUnitLabel(unit, t)}
                 </Typography>
               </Box>
               {window.blocklet.preferences.baseCreditPrice && (
                 <Box sx={{ color: 'text.secondary', fontSize: 14 }}>
-                  {`$${getPrice(new BigNumber(model.output_credits_per_token).multipliedBy(new BigNumber(window.blocklet.preferences.baseCreditPrice || 0)), 2, model.type)}`}
+                  {`$${formatNumber(
+                    new BigNumber(formattedPrice)
+                      .multipliedBy(new BigNumber(window.blocklet.preferences.baseCreditPrice || 0))
+                      .toFixed(4)
+                  )}`}
                 </Box>
               )}
             </Box>

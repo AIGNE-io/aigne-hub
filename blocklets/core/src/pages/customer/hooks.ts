@@ -100,6 +100,9 @@ export interface ModelCallsResponse {
   };
 }
 
+// Polling interval for all queries (30 seconds)
+const POLLING_INTERVAL = 30 * 1000;
+
 // Custom hooks
 export function useCreditBalance() {
   const {
@@ -108,6 +111,8 @@ export function useCreditBalance() {
     error,
     runAsync: refetch,
   } = useRequest(() => api.get('/api/user/info').then((res) => res.data), {
+    pollingInterval: POLLING_INTERVAL,
+    pollingWhenHidden: false,
     onError: (error) => {
       console.error('Failed to fetch credit balance:', error);
     },
@@ -121,7 +126,12 @@ export function useCreditBalance() {
   };
 }
 
-export function useUsageStats(params: { startTime: string; endTime: string; allUsers?: boolean }) {
+export function useUsageStats(params: {
+  startTime: string;
+  endTime: string;
+  allUsers?: boolean;
+  timezoneOffset?: number;
+}) {
   const {
     data,
     loading,
@@ -133,7 +143,7 @@ export function useUsageStats(params: { startTime: string; endTime: string; allU
         .get(params.allUsers ? '/api/user/admin/user-stats' : '/api/user/usage-stats', { params })
         .then((res) => res.data),
     {
-      refreshDeps: [params.startTime, params.endTime],
+      refreshDeps: [params.startTime, params.endTime, params.timezoneOffset],
       onError: (error) => {
         console.error('Failed to fetch usage stats:', error);
         Toast.error(error?.message);
@@ -238,6 +248,8 @@ export function useCreditGrants(isCreditBillingEnabled: boolean) {
   } = useRequest(
     () => api.get('/api/user/credit/grants', { params: { page: 1, pageSize: 10 } }).then((res) => res.data),
     {
+      pollingInterval: POLLING_INTERVAL,
+      pollingWhenHidden: false,
       onError: (error) => {
         console.error('Failed to fetch credit grants:', error);
       },

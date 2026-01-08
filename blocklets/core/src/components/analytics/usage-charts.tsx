@@ -108,6 +108,8 @@ function CustomTooltip({
     padding: 0,
   };
 
+  const creditPrefix = (typeof window !== 'undefined' && window.blocklet?.preferences?.creditPrefix) || '';
+
   return (
     <div style={tooltipStyle}>
       {/* Header */}
@@ -156,7 +158,7 @@ function CustomTooltip({
                     color: theme.palette.text.primary,
                     fontWeight: 500,
                   }}>
-                  {t('analytics.totalCreditsUsed')}
+                  {t('analytics.totalCreditsUsed')} &nbsp;
                 </span>
               </div>
               <span
@@ -164,6 +166,7 @@ function CustomTooltip({
                   fontSize: '14px',
                   fontWeight: 600,
                 }}>
+                {creditPrefix}
                 {formatNumber(data.totalCredits)}
               </span>
             </div>
@@ -192,7 +195,7 @@ function CustomTooltip({
                   fontSize: '14px',
                   fontWeight: 600,
                 }}>
-                {formatNumber(data.totalUsage)}
+                {formatNumber(data.totalUsage, 0, true)}
               </span>
             </div>
           )}
@@ -213,7 +216,7 @@ function CustomTooltip({
                   fontWeight: 600,
                   color: theme.palette.text.secondary,
                 }}>
-                {formatNumber(data.totalCalls)}
+                {formatNumber(data.totalCalls, 0, true)}
               </span>
             </div>
           )}
@@ -265,7 +268,7 @@ function CustomTooltip({
                           color: theme.palette.text.primary,
                           fontWeight: 600,
                         }}>
-                        {formatNumber(stats.totalUsage)} {unit}
+                        {formatNumber(stats.totalUsage, 0, true)} {unit}
                       </span>
                     </div>
                   );

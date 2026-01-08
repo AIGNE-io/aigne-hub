@@ -119,7 +119,7 @@ export function ModelUsageStats({
 
                   {/* 调用次数 */}
                   <Typography variant="body1" sx={{ fontWeight: 'bold', color: 'text.primary' }}>
-                    {formatNumber(model.totalCalls)} calls
+                    {formatNumber(model.totalCalls, 0, true)} calls
                   </Typography>
                 </Stack>
               );

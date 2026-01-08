@@ -1,4 +1,5 @@
 import { formatNumber } from '@blocklet/aigne-hub/utils/util';
+import { formatCreditAmount } from '@blocklet/payment-js';
 import { fromUnitToToken } from '@ocap/util';
 
 import { Config } from '../../env';
@@ -222,7 +223,10 @@ export class CreditGrantedNotificationTemplate extends BaseNotificationTemplate<
       locale,
       userDid,
       currencySymbol,
-      grantedAmount: `${formatNumber(fromUnitToToken(creditGrant.amount.toString(), paymentCurrency.decimal))} ${currencySymbol}`,
+      grantedAmount: formatCreditAmount(
+        formatNumber(fromUnitToToken(creditGrant.amount.toString() ?? '0', paymentCurrency.decimal ?? 0)) || '0',
+        currencySymbol ?? ''
+      ),
       expiresAt,
       neverExpires,
       isWelcomeCredit: isWelcomeCreditFlag,

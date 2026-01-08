@@ -1,3 +1,98 @@
+## 0.7.15 (2026-1-6)
+
+- chore: upgrade aigne deps
+
+## 0.7.14 (2026-1-5)
+
+- fix: increase chunk size limit for blocklet plugin
+- fix: simplify number formatting and enhance dateRange component
+
+## 0.7.13 (2026-1-4)
+
+- chore: update deps
+
+## 0.7.12 (2026-1-4)
+
+- chore(deps): upgrade blocklet and related dependencies to latest versions
+- feat(core): add status check endpoint with model availability
+
+## 0.7.11 (2026-1-1)
+
+- chore: upgrade aigne deps
+
+## 0.7.10 (2025-12-25)
+
+- feat(core): add prompt caching support with configurable rates
+
+## 0.7.9 (2025-12-22)
+
+- fix: adjust padding and font size in configuration pages
+- chore(deps): upgrade blocklet packages to stable versions
+
+## 0.7.8 (2025-12-22)
+
+- chore: update aigne deps
+
+## 0.7.7 (2025-12-22)
+
+- chore: update deps
+
+## 0.7.6 (2025-12-20)
+
+- fix(core): add timezone offset support for usage stats aggregation
+
+## 0.7.5 (2025-12-18)
+
+- feat: add creditPrefix to usage response
+
+## 0.7.4 (2025-12-18)
+
+- refactor: add migration route for rebuild stats
+- refactor: add migration route for grant
+
+## 0.7.3 (2025-12-17)
+
+- chore: update deps
+
+## 0.7.2 (2025-12-17)
+
+- fix: remove pricing check from usage report logic
+
+## 0.7.1 (2025-12-17)
+
+- chore: update dependencies
+
+## 0.7.0 (2025-12-11)
+
+- feat: switch to USD-based pricing mode
+
+## 0.6.26 (2025-12-10)
+
+- feat: implement meter caching and clear cache functionality in payment module
+- docs: update docs with new diagram
+
+## 0.6.25 (2025-12-8)
+
+- feat: add auto-login for unauthenticated users in chat playground
+
+## 0.6.24 (2025-12-8)
+
+- chore: update  dependencies
+- feat: add model availability check in API status route and refine welcome credit validation
+- fix: handle optional chaining for payment settings and return correct payment link
+
+## 0.6.23 (2025-12-8)
+
+- fix: move response handling from processEmbeddings to route layer
+
+## 0.6.22 (2025-12-7)
+
+- chore: update deps
+
+## 0.6.21 (2025-12-3)
+
+- fix: optimize database indexes for model call queries
+  
 ## 0.6.20 (2025-11-28)
 
 - chore: update dependencies

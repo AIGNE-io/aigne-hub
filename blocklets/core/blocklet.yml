@@ -24,7 +24,7 @@ repository:
   type: git
   url: git+https://github.com/AIGNE-io/aigne-hub.git
 specVersion: 1.2.8
-version: 0.6.20
+version: 0.7.15
 logo: screenshots/logo.png
 files:
   - dist
@@ -54,7 +54,7 @@ payment:
   price: []
   share: []
 timeout:
-  start: 60
+  start: 300
 requirements:
   server: '>=1.16.0'
   os: '*'

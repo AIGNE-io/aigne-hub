@@ -10,14 +10,7 @@ import difference from 'lodash/difference';
 import { joinURL, parseURL, withQuery } from 'ufo';
 
 import { getConnectQueryParam } from './auth';
-import {
-  AIGNE_HUB_DID,
-  Config,
-  DEFAULT_CREDIT_PAYMENT_LINK_KEY,
-  DEFAULT_CREDIT_PRICE_KEY,
-  METER_NAME,
-  METER_UNIT,
-} from './env';
+import { AIGNE_HUB_DID, CREDIT_PAYMENT_LINK_KEY, CREDIT_PRICE_KEY, Config, METER_NAME, METER_UNIT } from './env';
 import logger from './logger';
 import { formatToShortUrl } from './url';
 
@@ -32,10 +25,23 @@ export const getPaymentKitPrefix = () => {
   return joinURL(config.env.appUrl, getComponentMountPoint(PAYMENT_DID));
 };
 
+let meterCache: {
+  meter: Awaited<ReturnType<typeof payment.meters.retrieve>> | null;
+  timestamp: number;
+  eventName: string;
+} | null = null;
+
+const METER_CACHE_TTL = 24 * 60 * 60 * 1000;
+
+export const clearMeterCache = () => {
+  meterCache = null;
+  logger.info('meter cache cleared');
+};
+
 const selfNotificationEvents = ['customer.credit_grant.granted', 'checkout.session.completed'];
 const ensureNotificationSettings = async () => {
   const settings = await payment.settings.retrieve(AIGNE_HUB_DID);
-  const missingEvents = difference(selfNotificationEvents, settings.settings.include_events || []);
+  const missingEvents = difference(selfNotificationEvents, settings?.settings?.include_events || []);
   if (settings && missingEvents.length > 0) {
     await payment.settings.update(settings.id, {
       settings: {
@@ -61,8 +67,18 @@ const ensureNotificationSettings = async () => {
   return settings;
 };
 
-export const ensureMeter = async () => {
+export const ensureMeter = async (forceRefresh = false) => {
   if (!isPaymentRunning()) return null;
+
+  if (
+    !forceRefresh &&
+    meterCache &&
+    meterCache.eventName === METER_NAME &&
+    Date.now() - meterCache.timestamp < METER_CACHE_TTL
+  ) {
+    return meterCache.meter;
+  }
+
   try {
     const meter = await payment.meters.retrieve(METER_NAME);
     const settings = await ensureNotificationSettings();
@@ -80,6 +96,13 @@ export const ensureMeter = async () => {
       logger.info('update meter unit to AIGNE Hub Credits', { meterId: meter.id });
       await updateMeterCurrency(meter.currency_id!);
     }
+
+    meterCache = {
+      meter,
+      timestamp: Date.now(),
+      eventName: METER_NAME,
+    };
+
     return meter;
   } catch (error) {
     if (error instanceof Error && error.message.includes('is not running')) {
@@ -98,6 +121,13 @@ export const ensureMeter = async () => {
         setting_id: settings.id,
       },
     });
+
+    meterCache = {
+      meter,
+      timestamp: Date.now(),
+      eventName: METER_NAME,
+    };
+
     return meter;
   }
 };
@@ -116,6 +146,7 @@ export async function updateMeterCurrency(currencyId: string) {
       name: METER_UNIT,
     });
     logger.info('update currency symbol to AIGNE Hub Credits', { currencyId });
+    clearMeterCache();
   } catch (error) {
     logger.error('failed to retrieve currency', { error });
   }
@@ -215,7 +246,7 @@ export async function createMeterEvent({
 
 export async function ensureDefaultCreditPrice() {
   try {
-    const price = await payment.prices.retrieve(DEFAULT_CREDIT_PRICE_KEY);
+    const price = await payment.prices.retrieve(CREDIT_PRICE_KEY);
     return price;
   } catch {
     try {
@@ -236,14 +267,14 @@ export async function ensureDefaultCreditPrice() {
         prices: [
           {
             type: 'one_time',
-            unit_amount: '0.0025',
+            unit_amount: '1',
             currency_id: paymentCurrencies[0]!.id,
             // @ts-ignore
             currency_options: paymentCurrencies.map((currency) => ({
               currency_id: currency.id,
-              unit_amount: '0.5',
+              unit_amount: '1',
             })),
-            lookup_key: DEFAULT_CREDIT_PRICE_KEY,
+            lookup_key: CREDIT_PRICE_KEY,
             nickname: 'Per Unit Credit For AIGNE Hub',
             metadata: {
               credit_config: {
@@ -251,14 +282,14 @@ export async function ensureDefaultCreditPrice() {
                 valid_duration_value: 0,
                 valid_duration_unit: 'days',
                 currency_id: meter.currency_id,
-                credit_amount: '200000',
+                credit_amount: '1',
               },
               meter_id: meter.id,
             },
           },
         ],
       });
-      const price = await payment.prices.retrieve(DEFAULT_CREDIT_PRICE_KEY);
+      const price = await payment.prices.retrieve(CREDIT_PRICE_KEY);
       return price;
     } catch (error) {
       logger.error('failed to ensure credit price', { error });
@@ -294,7 +325,7 @@ export async function updateCreditConfig({
     const currency = await payment.paymentCurrencies.getRechargeConfig(meterCurrencyId);
     const rechargeConfig = currency?.recharge_config;
     if (!rechargeConfig || !rechargeConfig?.base_price_id) {
-      const defaultPrice = await payment.prices.retrieve(priceId || DEFAULT_CREDIT_PRICE_KEY);
+      const defaultPrice = await payment.prices.retrieve(priceId || CREDIT_PRICE_KEY);
       if (!defaultPrice) {
         return;
       }
@@ -308,6 +339,7 @@ export async function updateCreditConfig({
         updates.checkout_url = paymentLink;
       }
       await payment.paymentCurrencies.updateRechargeConfig(meterCurrencyId, updates);
+      clearMeterCache();
       return;
     }
     if (!priceId) {
@@ -334,6 +366,7 @@ export async function updateCreditConfig({
       base_price_id: priceId,
       checkout_url: paymentLink || '',
     });
+    clearMeterCache();
   } catch (error) {
     logger.error('failed to update credit config', { error });
   }
@@ -346,7 +379,7 @@ export async function ensureDefaultCreditPaymentLink() {
     throw new CustomError(404, 'Default credit price not found');
   }
   try {
-    const existingPaymentLink = await payment.paymentLinks.retrieve(DEFAULT_CREDIT_PAYMENT_LINK_KEY);
+    const existingPaymentLink = await payment.paymentLinks.retrieve(CREDIT_PAYMENT_LINK_KEY);
     if (!existingPaymentLink) {
       throw new CustomError(404, 'Default credit payment link not found');
     }
@@ -361,7 +394,7 @@ export async function ensureDefaultCreditPaymentLink() {
     const paymentLink = await payment.paymentLinks.create({
       name: price.product.name,
       // @ts-ignore
-      lookup_key: DEFAULT_CREDIT_PAYMENT_LINK_KEY,
+      lookup_key: CREDIT_PAYMENT_LINK_KEY,
       line_items: [
         {
           price_id: price.id,
@@ -423,7 +456,7 @@ export async function getCreditPaymentLink() {
       paymentLink: url,
     });
     await updateCreditPaymentLinkNotificationSettings(url);
-    return Config.creditPaymentLink;
+    return url;
   }
   // fallback to default payment link
   const link = await ensureDefaultCreditPaymentLink();

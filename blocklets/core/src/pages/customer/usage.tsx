@@ -57,6 +57,7 @@ function CreditBoard() {
   } = useUsageStats({
     startTime: dateRange.from.toString(),
     endTime: dateRange.to.toString(),
+    timezoneOffset: new Date().getTimezoneOffset(), // Send timezone offset in minutes
   });
 
   const handleQuickDateSelect = (range: { start: dayjs.Dayjs; end: dayjs.Dayjs }) => {
@@ -79,14 +80,14 @@ function CreditBoard() {
     Toast.success(t('analytics.refreshSuccess'));
   };
 
-  const dailyStats = usageStats?.dailyStats?.filter(
-    (stat: any) => stat.timestamp >= dateRange.from && stat.timestamp <= dateRange.to
-  );
+  // Backend now returns data aggregated by user's local timezone
+  // No filtering needed on the frontend
+  const dailyStats = usageStats?.dailyStats;
 
   // Check if user has welcome credit and no transactions
   const hasWelcomeCredit = useMemo(() => {
     if (!creditGrants?.list || creditGrants.list.length === 0) return false;
-    return creditGrants.list.some((grant: any) => grant.metadata?.welcomeCredit === true);
+    return creditGrants.list.some((grant: any) => grant.metadata?.welcomeCredit === true && grant.status === 'granted');
   }, [creditGrants]);
 
   const hasNoTransactions = useMemo(() => {
@@ -124,6 +125,7 @@ function CreditBoard() {
                           ? [
                               part,
                               <Link
+                                // eslint-disable-next-line react/no-array-index-key
                                 key={`aigne-link-${i}`}
                                 href={AIGNE_WEBSITE_URL}
                                 target="_blank"
@@ -259,7 +261,13 @@ function CreditBoard() {
 
           <Box sx={{ my: 2 }} />
 
-          <CallHistory refreshKey={refreshKey} enableExport appDid={appDid ?? undefined} />
+          <CallHistory
+            refreshKey={refreshKey}
+            enableExport
+            appDid={appDid ?? undefined}
+            dateRange={dateRange}
+            onDateRangeChange={setDateRange}
+          />
         </Stack>
       </Box>
     </LocalizationProvider>
