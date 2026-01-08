@@ -1,3 +1,7 @@
+## 0.7.16 (2026-1-8)
+
+- feat(core): enhance status endpoint with detailed error handling
+
 ## 0.7.15 (2026-1-6)
 
 - chore: upgrade aigne deps
