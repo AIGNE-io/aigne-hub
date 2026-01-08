@@ -275,6 +275,7 @@ router.get('/info', user, async (req, res) => {
       currency: meter.paymentCurrency,
       enableCredit: true,
       profileLink: shortProfileLink,
+      creditPrefix: config.env.preferences?.creditPrefix || '',
     });
   }
 
@@ -287,6 +288,7 @@ router.get('/info', user, async (req, res) => {
     paymentLink: null,
     enableCredit: false,
     profileLink: shortProfileLink,
+    creditPrefix: config.env.preferences?.creditPrefix || '',
   });
 });
 

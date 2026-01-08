@@ -3,6 +3,7 @@ import { camelize } from '@aigne/core/utils/camelize';
 import { checkModelRateAvailable } from '@api/providers';
 import { chatCompletionByFrameworkModel, getImageModel } from '@api/providers/models';
 import { getModelAndProviderId } from '@api/providers/util';
+import { CreditError, CreditErrorType } from '@blocklet/aigne-hub/api';
 import {
   ChatCompletionChunk,
   ChatCompletionInput,
@@ -164,8 +165,16 @@ export const imageGenerationRequestSchema = Joi.object<
 type Middleware = (req: Request, res: Response, next: NextFunction) => Promise<void>;
 const defaultOptions = { maxRetries: 1 };
 
-function canRetry(retries: number, maxRetries: number) {
-  return retries < maxRetries;
+function canRetry(retries: number, maxRetries: number, error?: any) {
+  if (retries >= maxRetries) {
+    return false;
+  }
+
+  if (error instanceof CreditError && error.type === CreditErrorType.NOT_ENOUGH) {
+    return false;
+  }
+
+  return true;
 }
 
 export const createRetryHandler = (
@@ -205,10 +214,10 @@ export const createRetryHandler = (
     } catch (error) {
       const currentModel = getReqModel(req);
       const maxRetries = req.maxProviderRetries !== undefined ? req.maxProviderRetries : defaultOptions.maxRetries;
-      const errorStatus = error.response?.status || error.status || 500;
+      const errorStatus = error.response?.status || error.status || error.statusCode || 500;
       const nextCount = count + 1;
 
-      if (canRetry(nextCount, maxRetries)) {
+      if (canRetry(nextCount, maxRetries, error)) {
         const filteredModels = (req.availableModelsWithProvider || []).filter((m) => m !== currentModel);
         req.availableModelsWithProvider = filteredModels || [];
 

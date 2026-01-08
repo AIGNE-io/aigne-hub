@@ -21,7 +21,8 @@ import AiCredential from '@api/store/models/ai-credential';
 import AiModelRate from '@api/store/models/ai-model-rate';
 import AiModelStatus from '@api/store/models/ai-model-status';
 import AiProvider from '@api/store/models/ai-provider';
-import { CustomError } from '@blocklet/error';
+import { CreditError } from '@blocklet/aigne-hub/api';
+import { CustomError, formatError, getStatusFromError } from '@blocklet/error';
 import { sessionMiddleware } from '@blocklet/sdk/lib/middlewares/session';
 import compression from 'compression';
 import { NextFunction, Request, Response, Router } from 'express';
@@ -90,12 +91,37 @@ router.get('/status', user, async (req, res) => {
   const userDid = req.user?.did;
   if (userDid && Config.creditBasedBillingEnabled) {
     if (!isPaymentRunning()) {
-      return res.json({ available: false, error: 'Payment kit is not Running' });
+      return res.json({
+        available: false,
+        error: 'Payment kit is not Running',
+        code: 503,
+      });
     }
     try {
       await checkUserCreditBalance({ userDid });
     } catch (err) {
-      return res.json({ available: false, error: err.message });
+      if (err instanceof CreditError) {
+        return res.json({
+          available: false,
+          error: err.message,
+          code: err.statusCode,
+          link: err.link,
+          type: err.type,
+        });
+      }
+      if (err instanceof CustomError) {
+        const statusCode = getStatusFromError(err);
+        return res.json({
+          available: false,
+          error: formatError(err),
+          code: statusCode,
+        });
+      }
+      return res.json({
+        available: false,
+        error: err?.message || 'Unknown error',
+        code: 500,
+      });
     }
   }
   const where: any = {
@@ -126,18 +152,30 @@ router.get('/status', user, async (req, res) => {
   });
 
   if (providers.length === 0) {
-    return res.json({ available: false, error: 'No providers available' });
+    return res.json({
+      available: false,
+      error: 'No providers available',
+      code: 503,
+    });
   }
 
   if (modelName && Config.creditBasedBillingEnabled) {
     const modelRate = await AiModelRate.findOne({ where: { model: modelName } });
     if (!modelRate) {
-      return res.json({ available: false, error: 'Model not supported' });
+      return res.json({
+        available: false,
+        error: `Model not supported for ${modelName}`,
+        code: 400,
+      });
     }
 
     const modelStatus = await AiModelStatus.findOne({ where: { model: modelName } });
     if (modelStatus?.available === false) {
-      return res.json({ available: false, error: 'Model is not available' });
+      return res.json({
+        available: false,
+        error: 'Model is not available',
+        code: 503,
+      });
     }
   }
 

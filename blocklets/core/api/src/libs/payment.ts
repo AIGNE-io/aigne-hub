@@ -183,13 +183,15 @@ export async function getUserCredits({ userDid }: { userDid: string }) {
       pendingCredit: '0',
     };
   }
-  const creditBalance = await payment.creditGrants.summary({
-    customer_id: customer.id,
-  });
 
-  const pendingCredit = await payment.meterEvents.pendingAmount({
-    customer_id: customer.id,
-  });
+  const [creditBalance, pendingCredit] = await Promise.all([
+    payment.creditGrants.summary({
+      customer_id: customer.id,
+    }),
+    payment.meterEvents.pendingAmount({
+      customer_id: customer.id,
+    }),
+  ]);
 
   let balance = creditBalance?.[meter.currency_id!]?.remainingAmount ?? '0';
   let pending = pendingCredit?.[meter.currency_id!] ?? '0';
@@ -205,7 +207,7 @@ export async function getUserCredits({ userDid }: { userDid: string }) {
   return {
     balance,
     currency: meter.paymentCurrency,
-    total: creditBalance?.[meter.currency_id!]?.totalAmount ?? '0',
+    total: toBN(pending).gt(toBN(0)) ? '0' : (creditBalance?.[meter.currency_id!]?.totalAmount ?? '0'),
     grantCount: creditBalance?.[meter.currency_id!]?.grantCount ?? 0,
     pendingCredit: pending,
   };
