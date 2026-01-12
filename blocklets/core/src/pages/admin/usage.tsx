@@ -5,8 +5,8 @@ import {
   UsageSummarySkeleton,
   toUTCTimestamp,
 } from '@app/components/analytics/skeleton';
-import { Toast } from '@arcblock/ux';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
+import Toast from '@arcblock/ux/lib/Toast';
 import { formatError } from '@blocklet/error';
 import { RefreshOutlined } from '@mui/icons-material';
 import { Alert, Box, IconButton, Stack, Tooltip, Typography } from '@mui/material';

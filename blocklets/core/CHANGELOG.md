@@ -1,3 +1,7 @@
+## 0.7.17 (2026-1-12)
+
+- feat(core): optimize bundle size
+
 ## 0.7.16 (2026-1-8)
 
 - feat(core): enhance status endpoint with detailed error handling

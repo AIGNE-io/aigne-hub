@@ -23,11 +23,40 @@ export default defineConfig(() => {
         include: '**/*.svg',
       }),
     ],
+    resolve: {
+      alias: {
+        lodash: 'lodash-es',
+      },
+      dedupe: [
+        //
+        '@mui/material',
+        '@mui/utils',
+        '@mui/icons-material',
+        'react',
+        'react-dom',
+        'bn.js',
+        'axios',
+      ],
+    },
     build: {
-      // 禁用模块预加载以优化 CDN 集成
-      modulePreload: false,
-      commonjsOptions: {
-        transformMixedEsModules: true,
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'vendor-mui': [
+              'react',
+              'react-dom',
+              'react-router-dom',
+              '@mui/material',
+              '@mui/icons-material',
+              '@mui/system',
+              '@mui/lab',
+              '@mui/styled-engine',
+              '@mui/utils',
+            ],
+            'vendor-arcblock': ['@arcblock/did-connect-react', '@arcblock/ux'],
+            'vendor-blocklet': ['@blocklet/ui-react'],
+          },
+        },
       },
     },
   };
