@@ -7,8 +7,8 @@ import {
   toUTCTimestamp,
   useSmartLoading,
 } from '@app/components/analytics/skeleton';
-import { Toast } from '@arcblock/ux';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
+import Toast from '@arcblock/ux/lib/Toast';
 import { UserInfoResult } from '@blocklet/aigne-hub/api/types/user';
 import { getPrefix } from '@blocklet/aigne-hub/api/utils/util';
 import { formatError } from '@blocklet/error';

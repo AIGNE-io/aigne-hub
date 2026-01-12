@@ -23,11 +23,32 @@ export default defineConfig(() => {
         include: '**/*.svg',
       }),
     ],
+    resolve: {
+      alias: {
+        lodash: 'lodash-es',
+      },
+      dedupe: [
+        //
+        '@mui/material',
+        '@mui/utils',
+        '@mui/icons-material',
+        'react',
+        'react-dom',
+        'bn.js',
+        'axios',
+      ],
+    },
     build: {
-      // 禁用模块预加载以优化 CDN 集成
-      modulePreload: false,
-      commonjsOptions: {
-        transformMixedEsModules: true,
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'awesome-phonenumber': ['awesome-phonenumber'],
+            mui: ['@mui/material', '@mui/system', '@mui/icons-material', 'notistack'],
+            'arcblock-ux': ['@arcblock/ux'],
+            'blocklet-ui-react': ['@blocklet/ui-react'],
+            'arcblock-did-connect': ['@arcblock/did-connect-react'],
+          },
+        },
       },
     },
   };
