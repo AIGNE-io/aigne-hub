@@ -42,11 +42,19 @@ export default defineConfig(() => {
       rollupOptions: {
         output: {
           manualChunks: {
-            'awesome-phonenumber': ['awesome-phonenumber'],
-            mui: ['@mui/material', '@mui/system', '@mui/icons-material', 'notistack'],
-            'arcblock-ux': ['@arcblock/ux'],
-            'blocklet-ui-react': ['@blocklet/ui-react'],
-            'arcblock-did-connect': ['@arcblock/did-connect-react'],
+            'vendor-mui': [
+              'react',
+              'react-dom',
+              'react-router-dom',
+              '@mui/material',
+              '@mui/icons-material',
+              '@mui/system',
+              '@mui/lab',
+              '@mui/styled-engine',
+              '@mui/utils',
+            ],
+            'vendor-arcblock': ['@arcblock/did-connect-react', '@arcblock/ux'],
+            'vendor-blocklet': ['@blocklet/ui-react'],
           },
         },
       },
