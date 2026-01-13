@@ -1,3 +1,7 @@
+## 0.7.18 (2026-1-13)
+
+- chore: upgrade aigne deps
+
 ## 0.7.17 (2026-1-12)
 
 - feat(core): optimize bundle size
