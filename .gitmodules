@@ -1,0 +1,3 @@
+[submodule ".aigne/doc-smith"]
+	path = .aigne/doc-smith
+	url = git@github.com:AIGNE-io/docs-aigne-hub.git
