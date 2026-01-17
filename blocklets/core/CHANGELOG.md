@@ -1,3 +1,7 @@
+## 0.7.19 (2026-1-17)
+
+- chore: upgrade aigne deps
+
 ## 0.7.18 (2026-1-13)
 
 - chore: upgrade aigne deps
