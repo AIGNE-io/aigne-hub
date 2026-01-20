@@ -1,3 +1,7 @@
+## 0.7.20 (2026-1-20)
+
+- fix(core): distinguish non-credential 403 errors from real credential failures
+
 ## 0.7.19 (2026-1-17)
 
 - chore: upgrade aigne deps

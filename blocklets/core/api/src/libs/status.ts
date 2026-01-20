@@ -46,6 +46,66 @@ interface ProviderWithCredentials extends AiProvider {
   credentials: AiCredential[];
 }
 
+/**
+ * 403 error classification for distinguishing credential issues from other errors.
+ *
+ * Known patterns (documented sources):
+ * - x.ai/Grok: "Content violates usage guidelines", "SAFETY_CHECK", "Failed check"
+ *   (Observed behavior, not explicitly documented at https://docs.x.ai/docs/key-information/debugging)
+ *
+ * Note: Most providers use different status codes for content violations:
+ * - Azure OpenAI: Uses 400 with "ResponsibleAIPolicyViolation" (not 403)
+ *   https://learn.microsoft.com/en-us/azure/ai-services/openai/reference
+ * - Anthropic: 403 is only for permission errors, not content safety
+ *   https://platform.claude.com/docs/en/api/errors
+ * - Google Gemini: Uses response fields (blockReason, finishReason) not HTTP errors
+ *   https://ai.google.dev/gemini-api/docs/safety-settings
+ */
+
+// Content policy violations - user input triggers safety checks
+const CONTENT_VIOLATION_KEYWORDS = [
+  // x.ai / Grok specific (observed in actual API responses)
+  'content violates',
+  'usage guidelines',
+  'safety_check',
+  'failed check',
+];
+
+// Region/geographic restrictions - service availability issue
+const REGION_RESTRICTION_KEYWORDS = [
+  'not available in your region',
+  'not supported in your country',
+  'geographic restriction',
+  'region restriction',
+];
+
+// Temporary blocks - recoverable, should retry
+const TEMPORARY_BLOCK_KEYWORDS = ['temporarily blocked', 'temporary block', 'try again later'];
+
+type NonCredential403Type = 'content_violation' | 'region_restriction' | 'temporary_block' | null;
+
+/**
+ * Classify a 403 error message to determine if it's NOT a credential issue.
+ * Returns the specific type if matched, or null if it's a real credential error.
+ */
+const classifyNonCredential403 = (message: string): NonCredential403Type => {
+  const lowerMessage = message.toLowerCase();
+
+  if (CONTENT_VIOLATION_KEYWORDS.some((keyword) => lowerMessage.includes(keyword))) {
+    return 'content_violation';
+  }
+
+  if (REGION_RESTRICTION_KEYWORDS.some((keyword) => lowerMessage.includes(keyword))) {
+    return 'region_restriction';
+  }
+
+  if (TEMPORARY_BLOCK_KEYWORDS.some((keyword) => lowerMessage.includes(keyword))) {
+    return 'temporary_block';
+  }
+
+  return null; // Real credential error
+};
+
 function classifyError(error: Error & { status?: number; code?: number; statusCode?: number }): ModelError {
   const errorMessage = error.message || error.toString();
   const errorCode = error.status || error.code || error.statusCode;
@@ -67,11 +127,21 @@ function classifyError(error: Error & { status?: number; code?: number; statusCo
           code: ModelErrorType.NO_CREDITS_AVAILABLE,
           message: errorMessage,
         };
-      case 403:
-        return {
-          code: ModelErrorType.EXPIRED_CREDENTIAL,
-          message: errorMessage,
-        };
+      case 403: {
+        // Classify 403 errors to distinguish credential issues from other errors
+        const nonCredentialType = classifyNonCredential403(errorMessage);
+        if (nonCredentialType === 'content_violation') {
+          return { code: ModelErrorType.CONTENT_POLICY_VIOLATION, message: errorMessage };
+        }
+        if (nonCredentialType === 'region_restriction') {
+          return { code: ModelErrorType.REGION_RESTRICTION, message: errorMessage };
+        }
+        if (nonCredentialType === 'temporary_block') {
+          return { code: ModelErrorType.TEMPORARY_BLOCK, message: errorMessage };
+        }
+        // Default: real credential error
+        return { code: ModelErrorType.EXPIRED_CREDENTIAL, message: errorMessage };
+      }
       case 404:
         return {
           code: ModelErrorType.MODEL_NOT_FOUND,
@@ -148,6 +218,18 @@ function classifyError(error: Error & { status?: number; code?: number; statusCo
   };
 }
 
+/**
+ * Check if a 403 error is NOT a credential issue.
+ * These errors should not invalidate the credential.
+ */
+const is403NonCredentialError = (error: Error & { status?: number }): boolean => {
+  if (Number(error.status) !== 403) {
+    return false;
+  }
+
+  return classifyNonCredential403(error.message || '') !== null;
+};
+
 const sendCredentialInvalidNotification = async ({
   model,
   provider,
@@ -163,7 +245,11 @@ const sendCredentialInvalidNotification = async ({
     const errorMessage = formatError(error);
     const isProvider402 =
       Number(error.status) === 402 && errorMessage && errorMessage.indexOf(CreditErrorType.NOT_ENOUGH) !== -1;
-    if (credentialId && ([401, 403].includes(Number(error.status)) || isProvider402)) {
+
+    // 403 errors that are NOT credential issues should not invalidate the credential
+    const is403CredentialError = Number(error.status) === 403 && !is403NonCredentialError(error);
+
+    if (credentialId && ([401].includes(Number(error.status)) || is403CredentialError || isProvider402)) {
       logger.info('update credential status and send credential invalid notification', {
         credentialId,
         provider,
