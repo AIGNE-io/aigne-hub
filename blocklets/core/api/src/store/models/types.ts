@@ -27,6 +27,12 @@ export interface DailyStats {
   totalCredits: number;
   totalCalls: number;
   successCalls: number;
+  // Duration metrics for latency statistics
+  totalDuration?: number; // Sum of all durations (for calculating averages)
+  avgDuration?: number; // Average duration in ms
+  p95Duration?: number; // P95 latency in ms (pre-aggregated)
+  // Duration distribution for P95 calculation during aggregation
+  durationBuckets?: number[]; // Sorted array of durations for percentile calculation
 
   byType: Partial<Record<CallType, TypeStats>>;
 }

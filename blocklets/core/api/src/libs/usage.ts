@@ -236,7 +236,10 @@ async function reportUsage({ appId }: { appId: string }) {
   tasks[appId] ??= throttle(
     async ({ appId }: { appId: string }) => {
       try {
-        if (!isPaymentRunning()) return;
+        if (!isPaymentRunning()) {
+          logger.info('Payment is not running, skipping usage report', { appId });
+          return;
+        }
 
         const { pricing } = Config;
         if (!pricing) throw new CustomError(400, 'Missing required preference `pricing`');
