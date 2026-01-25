@@ -1,15 +1,29 @@
 import { DateRangePicker } from '@app/components/analytics';
 import { toUTCTimestamp } from '@app/components/analytics/skeleton';
 import api from '@app/libs/api';
+import DID from '@arcblock/ux/lib/DID';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import { Table } from '@blocklet/aigne-hub/components';
 import { formatNumber } from '@blocklet/aigne-hub/utils/util';
-import { Search } from '@mui/icons-material';
-import { Box, Chip, Stack, TextField, Tooltip, Typography, useTheme } from '@mui/material';
+import { Close, Search } from '@mui/icons-material';
+import {
+  Avatar,
+  Box,
+  Chip,
+  Divider,
+  Drawer,
+  IconButton,
+  Stack,
+  TextField,
+  Tooltip,
+  Typography,
+  useTheme,
+} from '@mui/material';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { useDebounceEffect, useRequest } from 'ahooks';
-import { useEffect, useState } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
+import { joinURL } from 'ufo';
 
 import dayjs from '../../../../libs/dayjs';
 
@@ -25,12 +39,20 @@ interface ModelCallItem {
   traceId?: string;
   createdAt: string;
   model: string;
+  providerId?: string;
+  provider?: { name?: string; displayName?: string };
   type: string;
   status: 'success' | 'failed' | 'processing';
   totalUsage: number;
+  usageMetrics?: { inputTokens?: number; outputTokens?: number };
   credits: number;
   duration?: number;
   errorReason?: string;
+  appDid?: string;
+  appInfo?: { appName: string; appDid: string; appLogo?: string; appUrl?: string };
+  userDid?: string;
+  requestId?: string;
+  metadata?: Record<string, any>;
 }
 
 export function ProjectCallHistory({
@@ -47,6 +69,8 @@ export function ProjectCallHistory({
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'errors' | 'slow'>('all');
   const [pagination, setPagination] = useState({ page: 1, pageSize: 20 });
+  const [selectedCall, setSelectedCall] = useState<ModelCallItem | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const slowThresholdSeconds = 30;
   const searchFields = 'traceId,model,id,userDid';
   const startDate = dayjs.unix(externalDateRange.from).local();
@@ -79,13 +103,12 @@ export function ProjectCallHistory({
   const { data = { list: [], count: 0 }, loading } = useRequest(
     () =>
       api
-        .get('/api/user/model-calls', {
+        .get(`/api/usage/projects/${encodeURIComponent(appDid)}/calls`, {
           params: {
             page: pagination.page,
             pageSize: pagination.pageSize,
             startTime: externalDateRange.from,
             endTime: externalDateRange.to,
-            appDid,
             ...(allUsers ? { allUsers } : {}),
             ...(searchTerm ? { search: searchTerm } : {}),
             ...(searchTerm ? { searchFields } : {}),
@@ -105,6 +128,12 @@ export function ProjectCallHistory({
   const formatLatency = (duration?: number) => {
     if (duration === undefined || duration === null) return '-';
     return `${Number(duration).toFixed(1)}s`;
+  };
+
+  const formatTraceId = (value?: string) => {
+    if (!value) return '-';
+    if (value.length <= 8) return value;
+    return `${value.slice(0, 4)}...${value.slice(-4)}`;
   };
 
   const getStatusColor = (call: ModelCallItem) => {
@@ -159,7 +188,8 @@ export function ProjectCallHistory({
         customBodyRender: (_value: any, tableMeta: any) => {
           const call = modelCalls[tableMeta.rowIndex];
           if (!call) return null;
-          const traceId = call.traceId || call.id;
+          const rawTraceId = call.traceId || call.id;
+          const traceId = allUsers ? formatTraceId(rawTraceId) : rawTraceId;
           const color = call.status === 'failed' ? theme.palette.error.main : 'primary.main';
           return (
             <Typography
@@ -178,6 +208,21 @@ export function ProjectCallHistory({
         },
       },
     },
+    ...(allUsers
+      ? [
+          {
+            name: 'userDid',
+            label: t('analytics.userDid'),
+            options: {
+              customBodyRender: (_value: any, tableMeta: any) => {
+                const call = modelCalls[tableMeta.rowIndex];
+                if (!call?.userDid) return '-';
+                return <DID did={call.userDid} compact size={14} />;
+              },
+            },
+          },
+        ]
+      : []),
     {
       name: 'model',
       label: t('model'),
@@ -267,6 +312,50 @@ export function ProjectCallHistory({
   const handlePageSizeChange = (pageSize: number) => {
     setPagination({ page: 1, pageSize });
   };
+
+  const handleRowClick = (_rowData: any, rowMeta: any) => {
+    const call = modelCalls[rowMeta.dataIndex];
+    if (!call) return;
+    setSelectedCall(call);
+    setDrawerOpen(true);
+  };
+
+  const cardSx = {
+    borderRadius: 3,
+    border: '1px solid',
+    borderColor: 'divider',
+    px: 2.5,
+    py: 2,
+    bgcolor: 'background.paper',
+    // boxShadow: '0 1px 2px rgba(16, 24, 40, 0.04), 0 4px 8px rgba(16, 24, 40, 0.06)',
+  } as const;
+
+  const renderMetricCard = (label: string, value?: ReactNode) => {
+    return (
+      <Box sx={cardSx}>
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+          <Typography variant="subtitle2" color="text.secondary">
+            {label}
+          </Typography>
+        </Stack>
+        <Typography variant="h6" sx={{ mt: 0.5, fontWeight: 500, letterSpacing: 0.2 }}>
+          {value ?? '-'}
+        </Typography>
+      </Box>
+    );
+  };
+
+  const statusColor =
+    selectedCall?.status === 'failed'
+      ? theme.palette.error.main
+      : selectedCall?.status === 'processing'
+        ? theme.palette.warning.main
+        : theme.palette.success.main;
+
+  const appLogoSrc =
+    selectedCall?.appInfo?.appUrl && selectedCall?.appInfo?.appLogo
+      ? joinURL(selectedCall.appInfo.appUrl, selectedCall.appInfo.appLogo)
+      : selectedCall?.appInfo?.appLogo;
 
   return (
     <Stack spacing={2}>
@@ -393,6 +482,7 @@ export function ProjectCallHistory({
             rowsPerPage: pagination.pageSize,
             onChangePage: handlePageChange,
             onChangeRowsPerPage: handlePageSizeChange,
+            onRowClick: handleRowClick,
             serverSide: true,
             search: false,
             download: false,
@@ -415,6 +505,140 @@ export function ProjectCallHistory({
           mobileTDFlexDirection="row"
         />
       </Box>
+
+      <Drawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        anchor="right"
+        slotProps={{
+          paper: {
+            sx: {
+              width: { xs: '100%', sm: 520, md: 640 },
+              height: '100%',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
+            },
+          },
+        }}>
+        <Stack spacing={2.5} sx={{ p: 3, height: '100%', overflow: 'auto' }}>
+          <Stack direction="row" spacing={2} sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
+            <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+              <Box
+                sx={{
+                  width: 12,
+                  height: 12,
+                  borderRadius: '50%',
+                  bgcolor: statusColor,
+                }}
+              />
+              <Box>
+                <Typography variant="h5" sx={{ fontWeight: 700, letterSpacing: 0.3 }}>
+                  {t('analytics.callDetailTitle')}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {selectedCall?.createdAt ? dayjs(selectedCall.createdAt).format('YYYY-MM-DD HH:mm:ss') : '-'}
+                </Typography>
+              </Box>
+            </Stack>
+            <IconButton onClick={() => setDrawerOpen(false)} size="small">
+              <Close fontSize="small" />
+            </IconButton>
+          </Stack>
+
+          <Divider />
+
+          <Stack spacing={2.5}>
+            {selectedCall?.errorReason && (
+              <Box
+                sx={{
+                  p: 2,
+                  bgcolor: 'error.light',
+                  border: '1px solid',
+                  borderColor: 'error.main',
+                  borderRadius: 2,
+                  color: 'error.contrastText',
+                  wordBreak: 'break-word',
+                }}>
+                {selectedCall.errorReason}
+              </Box>
+            )}
+
+            <Stack spacing={1.5}>
+              <Box sx={cardSx}>
+                <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+                  <Avatar
+                    src={appLogoSrc}
+                    alt={selectedCall?.appInfo?.appName || selectedCall?.appDid || 'app'}
+                    sx={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 2,
+                      bgcolor: 'action.hover',
+                      color: 'text.secondary',
+                      fontSize: 16,
+                    }}>
+                    {(selectedCall?.appInfo?.appName || selectedCall?.appDid || '?').slice(0, 1)}
+                  </Avatar>
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography variant="h6" sx={{ fontWeight: 600, wordBreak: 'break-word' }}>
+                      {selectedCall?.appInfo?.appName || selectedCall?.appDid || '-'}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
+                      {selectedCall?.appDid || selectedCall?.appInfo?.appDid || '-'}
+                    </Typography>
+                  </Box>
+                </Stack>
+              </Box>
+            </Stack>
+
+            {renderMetricCard(t('analytics.traceId'), selectedCall?.traceId || selectedCall?.id || '-')}
+            {renderMetricCard(t('analytics.userDid'), selectedCall?.userDid || '-')}
+
+            <Stack spacing={1.5}>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                  gap: 2,
+                }}>
+                {renderMetricCard(
+                  t('analytics.inputTokens'),
+                  selectedCall?.usageMetrics?.inputTokens !== undefined
+                    ? formatNumber(selectedCall.usageMetrics.inputTokens, 0, true)
+                    : '-'
+                )}
+                {renderMetricCard(
+                  t('analytics.outputTokens'),
+                  selectedCall?.usageMetrics?.outputTokens !== undefined
+                    ? formatNumber(selectedCall.usageMetrics.outputTokens, 0, true)
+                    : '-'
+                )}
+                {renderMetricCard(
+                  t('creditsValue'),
+                  selectedCall ? `${creditPrefix}${formatNumber(selectedCall.credits)}` : '-'
+                )}
+                {renderMetricCard(t('duration'), formatLatency(selectedCall?.duration))}
+              </Box>
+            </Stack>
+
+            <Stack spacing={1.5}>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                  gap: 2,
+                }}>
+                {renderMetricCard(
+                  t('provider'),
+                  selectedCall?.provider?.displayName || selectedCall?.providerId || '-'
+                )}
+                {renderMetricCard(t('model'), selectedCall?.model || '-')}
+              </Box>
+            </Stack>
+          </Stack>
+        </Stack>
+      </Drawer>
     </Stack>
   );
 }

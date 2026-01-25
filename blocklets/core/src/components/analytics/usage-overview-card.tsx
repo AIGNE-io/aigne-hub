@@ -1,6 +1,6 @@
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import { formatNumber } from '@blocklet/aigne-hub/utils/util';
-import { AttachMoney, InfoOutlined, QueryStats, Speed } from '@mui/icons-material';
+import { AttachMoney, InfoOutlined, QueryStats } from '@mui/icons-material';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import { Box, ButtonBase, Card, Stack, Tooltip, Typography } from '@mui/material';
 import { alpha, useTheme } from '@mui/material/styles';
@@ -63,18 +63,14 @@ const computeGrowth = (current: number, previous: number): number => {
   return current > 0 ? 1 : 0;
 };
 
-const sumUsageTrends = (
-  trends?: Array<{ calls: number; successCalls: number; avgDuration: number; totalCredits: number; totalUsage: number }>
-) => {
+const sumUsageTrends = (trends?: Array<{ calls: number; totalCredits: number; totalUsage: number }>) => {
   return (trends || []).reduce(
     (acc, trend) => ({
       totalCalls: acc.totalCalls + (trend.calls || 0),
-      totalSuccessCalls: acc.totalSuccessCalls + (trend.successCalls || 0),
-      totalDuration: acc.totalDuration + (trend.avgDuration || 0) * (trend.successCalls || 0),
       totalCredits: acc.totalCredits + (trend.totalCredits || 0),
       totalUsage: acc.totalUsage + (trend.totalUsage || 0),
     }),
-    { totalCalls: 0, totalSuccessCalls: 0, totalDuration: 0, totalCredits: 0, totalUsage: 0 }
+    { totalCalls: 0, totalCredits: 0, totalUsage: 0 }
   );
 };
 
@@ -83,14 +79,12 @@ const sumProjectGroupedTrends = (trends?: ProjectGroupedTrend[]) => {
     (acc, trend) => {
       Object.values(trend.byProject || {}).forEach((stats) => {
         acc.totalCalls += stats.totalCalls || 0;
-        acc.totalSuccessCalls += stats.successCalls || 0;
-        acc.totalDuration += (stats.avgDuration || 0) * (stats.successCalls || 0);
         acc.totalCredits += stats.totalCredits || 0;
         acc.totalUsage += stats.totalUsage || 0;
       });
       return acc;
     },
-    { totalCalls: 0, totalSuccessCalls: 0, totalDuration: 0, totalCredits: 0, totalUsage: 0 }
+    { totalCalls: 0, totalCredits: 0, totalUsage: 0 }
   );
 };
 
@@ -156,42 +150,29 @@ export function UsageOverviewCard({
   const currentTotalCalls = currentTotals.totalCalls;
   const currentTotalCredits = currentTotals.totalCredits;
   const currentTotalUsage = currentTotals.totalUsage;
-  const currentTotalSuccessCalls = currentTotals.totalSuccessCalls;
-  const currentTotalDuration = currentTotals.totalDuration;
   const avgRequestsPerHour = currentTotalCalls > 0 ? currentTotalCalls / (periodDays * 24) : 0;
   const creditsPer1k = currentTotalCalls > 0 ? (currentTotalCredits / currentTotalCalls) * 1000 : 0;
   const avgUsagePerHour = currentTotalUsage > 0 ? currentTotalUsage / (periodDays * 24) : 0;
-  const avgDuration =
-    currentTotalSuccessCalls > 0 ? Math.round((currentTotalDuration / currentTotalSuccessCalls) * 10) / 10 : undefined;
-  const successRate = currentTotalCalls > 0 ? (currentTotalSuccessCalls / currentTotalCalls) * 100 : 0;
-  const previousAvgDuration =
-    previousTotals.totalSuccessCalls > 0 ? previousTotals.totalDuration / previousTotals.totalSuccessCalls : 0;
 
   const formatTrend = (growth: number): string => {
     if (growth === 0) return '0%';
     const sign = growth > 0 ? '+' : '';
     return `${sign}${(growth * 100).toFixed(1)}%`;
   };
-  const formatDuration = (seconds?: number) => {
-    if (seconds === undefined || seconds === null) return '-';
-    return `${Number(seconds).toFixed(1)}s`;
-  };
-
-  const getTrendDescription = (days: number): string => {
-    if (days <= 1) return t('analytics.fromPreviousDay');
-    if (days <= 7) return t('analytics.fromPreviousWeek');
-    if (days <= 31) return t('analytics.fromPreviousMonth');
-    return t('analytics.fromPreviousPeriod');
-  };
 
   const creditsGrowth = hasComparison ? computeGrowth(currentTotalCredits, previousTotals.totalCredits) : undefined;
   const usageGrowth = hasComparison ? computeGrowth(currentTotalUsage, previousTotals.totalUsage) : undefined;
   const callsGrowth = hasComparison ? computeGrowth(currentTotalCalls, previousTotals.totalCalls) : undefined;
-  const avgDurationGrowth =
-    hasComparison && avgDuration !== undefined ? computeGrowth(avgDuration, previousAvgDuration) : undefined;
 
-  const metrics = useMemo(
-    () => [
+  const metrics = useMemo(() => {
+    const getTrendDescription = (days: number): string => {
+      if (days <= 1) return t('analytics.fromPreviousDay');
+      if (days <= 7) return t('analytics.fromPreviousWeek');
+      if (days <= 31) return t('analytics.fromPreviousMonth');
+      return t('analytics.fromPreviousPeriod');
+    };
+
+    return [
       {
         key: 'credits' as const,
         title: t('analytics.totalCreditsUsed'),
@@ -238,42 +219,23 @@ export function UsageOverviewCard({
         infoTooltip: undefined,
         accent: theme.palette.primary.main,
       },
-      {
-        key: 'avgDuration' as const,
-        title: t('analytics.avgDuration'),
-        icon: Speed,
-        value: formatDuration(avgDuration),
-        trend: avgDurationGrowth !== undefined ? formatTrend(avgDurationGrowth) : undefined,
-        trendTooltip: hasComparison ? getTrendDescription(periodDays) : undefined,
-        subLabel: currentTotalCalls > 0 ? `${t('successRate')} ${successRate.toFixed(1)}%` : '-',
-        tooltip: null,
-        showInfoIcon: false,
-        infoTooltip: undefined,
-        accent: theme.palette.primary.main,
-      },
-    ],
-    [
-      creditPrefix,
-      periodDays,
-      avgRequestsPerHour,
-      avgUsagePerHour,
-      avgDuration,
-      avgDurationGrowth,
-      creditsPer1k,
-      currentTotalCalls,
-      currentTotalCredits,
-      currentTotalDuration,
-      currentTotalSuccessCalls,
-      currentTotalUsage,
-      creditsGrowth,
-      usageGrowth,
-      callsGrowth,
-      hasComparison,
-      successRate,
-      t,
-      theme.palette.primary.main,
-    ]
-  );
+    ];
+  }, [
+    t,
+    creditPrefix,
+    currentTotalCredits,
+    creditsGrowth,
+    hasComparison,
+    periodDays,
+    currentTotalCalls,
+    creditsPer1k,
+    theme.palette.primary.main,
+    currentTotalUsage,
+    usageGrowth,
+    avgUsagePerHour,
+    callsGrowth,
+    avgRequestsPerHour,
+  ]);
 
   const activeMetric = metrics.find((metric) => metric.key === selectedMetric) ?? metrics[0]!;
 
@@ -326,7 +288,7 @@ export function UsageOverviewCard({
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ mt: 2.5 }}>
           {metrics.map((metric) => {
             const isActive = metric.key === selectedMetric;
-            const trendColor = getTrendColor(metric.trend, theme, { invert: metric.key === 'avgDuration' });
+            const trendColor = getTrendColor(metric.trend, theme);
             const backgroundColor = theme.palette.action.hover;
             const valueNode = metric.tooltip ? (
               <Tooltip

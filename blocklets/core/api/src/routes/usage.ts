@@ -153,7 +153,8 @@ router.get('/projects', user, async (req, res) => {
     const rangeDays = timeRange;
     const page = parseInt(req.query.page as string, 10) || 1;
     const pageSize = Math.min(parseInt(req.query.pageSize as string, 10) || 20, 100);
-    const sortBy = (req.query.sortBy as 'totalCalls' | 'totalCredits' | 'lastCallTime') || 'totalCalls';
+    const rawSortBy = req.query.sortBy as string | undefined;
+    const sortBy = rawSortBy === 'totalCredits' ? 'totalCredits' : 'totalCalls';
     const rawSortOrder = String(req.query.sortOrder || '').toLowerCase();
     const sortOrder = rawSortOrder === 'asc' ? 'asc' : 'desc';
 
@@ -592,6 +593,10 @@ router.get('/projects/:appDid(.*)/calls', user, async (req, res) => {
     const pageSize = Math.min(parseInt(req.query.pageSize as string, 10) || 20, 100);
     const model = req.query.model as string | undefined;
     const status = req.query.status as string | undefined;
+    const search = typeof req.query.search === 'string' ? req.query.search.trim() : undefined;
+    const searchFields = typeof req.query.searchFields === 'string' ? req.query.searchFields : undefined;
+    const minDurationSeconds =
+      req.query.minDurationSeconds !== undefined ? Number(req.query.minDurationSeconds) : undefined;
 
     // Build query params
     const queryParams: any = {
@@ -609,20 +614,55 @@ router.get('/projects/:appDid(.*)/calls', user, async (req, res) => {
     if (status && ['success', 'failed', 'processing'].includes(status)) {
       queryParams.status = status;
     }
+    if (search) {
+      queryParams.search = search;
+      if (searchFields) {
+        queryParams.searchFields = searchFields;
+      }
+    }
+    if (Number.isFinite(minDurationSeconds)) {
+      queryParams.minDurationSeconds = minDurationSeconds;
+    }
 
-    const calls = await ModelCall.getCallsByDateRange(queryParams);
+    const calls = await ModelCall.getCallsByDateRange({
+      ...queryParams,
+      includeProvider: false,
+      attributes: [
+        'id',
+        'callTime',
+        'createdAt',
+        'traceId',
+        'model',
+        'providerId',
+        'type',
+        'status',
+        'duration',
+        'totalUsage',
+        'usageMetrics',
+        'credits',
+        'errorReason',
+        'appDid',
+        'userDid',
+      ],
+    });
 
     return res.json({
       list: calls.list.map((call: any) => ({
         id: call.id,
         callTime: call.callTime,
+        createdAt: call.createdAt,
+        traceId: call.traceId,
         model: call.model,
+        providerId: call.providerId,
         type: call.type,
         status: call.status,
         duration: call.duration !== undefined && call.duration !== null ? Number(call.duration) : call.duration,
         totalUsage: call.totalUsage,
+        usageMetrics: call.usageMetrics,
         credits: parseFloat(call.credits || '0'),
         errorReason: call.errorReason,
+        appDid: call.appDid,
+        userDid: call.userDid,
       })),
       count: calls.count,
       page,

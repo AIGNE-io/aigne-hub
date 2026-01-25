@@ -153,6 +153,8 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
     appDid,
     minDurationSeconds,
     searchFields,
+    attributes,
+    includeProvider = true,
   }: {
     userDid?: string;
     startTime?: number;
@@ -166,6 +168,8 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
     appDid?: string | null;
     minDurationSeconds?: number;
     searchFields?: string[] | string;
+    attributes?: string[];
+    includeProvider?: boolean;
   }): Promise<{
     count: number;
     list: (ModelCall & { provider?: AiProvider })[];
@@ -235,20 +239,29 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
       whereClause[Op.and] = (whereClause[Op.and] || []).concat(andConditions);
     }
 
-    const { rows, count } = await ModelCall.findAndCountAll({
+    const queryOptions: any = {
       where: whereClause,
       order: [['callTime', 'DESC']],
       limit,
       offset,
-      include: [
+    };
+
+    if (attributes && attributes.length > 0) {
+      queryOptions.attributes = attributes;
+    }
+
+    if (includeProvider) {
+      queryOptions.include = [
         {
           model: AiProvider,
           as: 'provider',
           attributes: ['id', 'name', 'displayName', 'baseUrl', 'region', 'enabled'],
           required: false,
         },
-      ],
-    });
+      ];
+    }
+
+    const { rows, count } = await ModelCall.findAndCountAll(queryOptions);
     return {
       count,
       list: rows,

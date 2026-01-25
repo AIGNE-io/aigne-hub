@@ -318,7 +318,7 @@ export function useUsageProjects(params: {
   endTime?: number;
   page?: number;
   pageSize?: number;
-  sortBy?: 'totalCalls' | 'totalCredits' | 'lastCallTime';
+  sortBy?: 'totalCalls' | 'totalCredits';
   sortOrder?: 'asc' | 'desc';
   allUsers?: boolean;
   enabled?: boolean;

@@ -1057,7 +1057,7 @@ export default class ModelCallStat extends Model<
     options?: {
       page?: number;
       pageSize?: number;
-      sortBy?: 'totalCalls' | 'totalCredits' | 'lastCallTime';
+      sortBy?: 'totalCalls' | 'totalCredits';
       sortOrder?: 'asc' | 'desc';
       rangeDays?: number;
     }
@@ -1080,137 +1080,10 @@ export default class ModelCallStat extends Model<
     const rawSortOrder = options?.sortOrder;
     const sortOrder = rawSortOrder === 'asc' || rawSortOrder === 'desc' ? rawSortOrder : 'desc';
     const orderDirection = sortOrder === 'asc' ? 'ASC' : 'DESC';
-    const rangeSeconds = Math.max(0, endTime - startTime);
-    const rangeDays = options?.rangeDays ?? Math.max(1, Math.ceil(rangeSeconds / 86400));
-
-    if (rangeDays <= 1) {
-      // Step 1: Fast query to get project list with complete stats for sorting/pagination
-      const sortColumn =
-        sortBy === 'totalCalls' ? 'totalCalls' : sortBy === 'totalCredits' ? 'totalCredits' : 'lastCallTime';
-
-      const whereConditions = ['"callTime" >= :startTime', '"callTime" <= :endTime'];
-      const replacements: Record<string, any> = { startTime, endTime };
-      if (userDid === null) {
-        whereConditions.unshift('"userDid" IS NOT NULL');
-      } else if (userDid !== undefined) {
-        whereConditions.unshift('"userDid" = :userDid');
-        replacements.userDid = userDid;
-      }
-      const whereClause = whereConditions.join(' AND ');
-
-      const query = `
-      WITH project_calls AS (
-        SELECT
-          "appDid" as "appDid",
-          COUNT(*) as "totalCalls",
-          SUM("credits") as "totalCredits",
-          SUM("totalUsage") as "totalUsage",
-          SUM(CASE WHEN "status" = 'success' THEN 1 ELSE 0 END) as "successCalls",
-          AVG(CASE WHEN "status" = 'success' THEN "duration" ELSE NULL END) as "avgDuration",
-          MAX("callTime") as "lastCallTime"
-        FROM "ModelCalls"
-        WHERE ${whereClause}
-        GROUP BY "appDid"
-        HAVING "appDid" IS NOT NULL
-      ),
-      total_count AS (
-        SELECT COUNT(*) as total FROM project_calls
-      )
-      SELECT
-        pc."appDid",
-        pc."totalCalls",
-        pc."totalCredits",
-        pc."totalUsage",
-        pc."successCalls",
-        pc."avgDuration",
-        pc."lastCallTime",
-        tc.total
-      FROM project_calls pc
-      CROSS JOIN total_count tc
-      ORDER BY pc."${sortColumn}" ${orderDirection}
-      LIMIT :limit OFFSET :offset
-    `;
-
-      const limit = pageSize;
-      const offset = (page - 1) * pageSize;
-
-      const results = (await sequelize.query(query, {
-        type: QueryTypes.SELECT,
-        replacements: { ...replacements, limit, offset },
-      })) as Array<{
-        appDid: string | null;
-        totalCalls: string;
-        totalCredits: string;
-        totalUsage: string;
-        successCalls: string;
-        avgDuration: string | null;
-        lastCallTime: number;
-        total: string;
-      }>;
-
-      if (results.length === 0) {
-        return { projects: [], total: 0, page, pageSize };
-      }
-
-      const total = parseInt(results[0]!.total, 10);
-
-      // Step 2: Get project info for the paginated appDids
-      const appDids = results.map((r) => r.appDid).filter(Boolean) as string[];
-      const projects = appDids.length
-        ? await Project.findAll({
-            where: { appDid: { [Op.in]: appDids } },
-          })
-        : [];
-
-      const projectMap = new Map(projects.map((p) => [p.appDid, p]));
-
-      // Step 3: Build project list
-      const projectList = await Promise.all(
-        results.map(async (result) => {
-          const { appDid } = result;
-          const project = appDid ? projectMap.get(appDid) : undefined;
-
-          // If project info not found, push to queue
-          if (!project && appDid) {
-            pushProjectFetchJob(appDid);
-          }
-
-          const totalCredits = new BigNumber(result.totalCredits || '0');
-
-          const stats: DailyStats = {
-            totalUsage: parseInt(result.totalUsage || '0', 10),
-            totalCredits: totalCredits.toNumber(),
-            totalCalls: parseInt(result.totalCalls || '0', 10),
-            successCalls: parseInt(result.successCalls || '0', 10),
-            totalDuration: 0,
-            avgDuration: Math.round(parseFloat(result.avgDuration || '0') * 10) / 10,
-            byType: {},
-          };
-
-          return {
-            appDid,
-            appName: project?.appName || appDid || undefined,
-            appLogo: project?.appLogo || undefined,
-            appUrl: project?.appUrl || undefined,
-            stats,
-            lastCallTime: result.lastCallTime,
-          };
-        })
-      );
-
-      return {
-        projects: projectList,
-        total,
-        page,
-        pageSize,
-      };
-    }
-
     const currentDay = Math.floor(Date.now() / 1000 / 86400) * 86400;
     const statsStart = Math.floor(startTime / 86400) * 86400;
     const statsEnd = Math.min(Math.floor(endTime / 86400) * 86400, currentDay - 86400);
     const statsByApp = new Map<string, DailyStats>();
-    const lastCallByApp = new Map<string, number>();
 
     if (statsStart <= statsEnd) {
       const whereClause: any = {
@@ -1237,8 +1110,6 @@ export default class ModelCallStat extends Model<
         if (!appDid) return;
         const stats = ModelCallStat.parseStats(row.stats);
         const target = statsByApp.get(appDid) || ModelCallStat.getEmptyStats();
-        const timestamp = Number(row.timestamp);
-
         target.totalUsage += stats.totalUsage || 0;
         target.totalCredits += stats.totalCredits || 0;
         target.totalCalls += stats.totalCalls || 0;
@@ -1250,16 +1121,6 @@ export default class ModelCallStat extends Model<
         }
 
         statsByApp.set(appDid, target);
-
-        if (Number.isFinite(timestamp)) {
-          if ((stats.totalCalls || 0) > 0) {
-            const approximateLastCall = timestamp + 86399;
-            const existing = lastCallByApp.get(appDid) || 0;
-            if (approximateLastCall > existing) {
-              lastCallByApp.set(appDid, approximateLastCall);
-            }
-          }
-        }
       });
     }
 
@@ -1325,14 +1186,6 @@ export default class ModelCallStat extends Model<
         }
 
         statsByApp.set(appDid, target);
-
-        const lastCallTime = Number(row.lastCallTime || 0);
-        if (Number.isFinite(lastCallTime) && lastCallTime > 0) {
-          const existing = lastCallByApp.get(appDid) || 0;
-          if (lastCallTime > existing) {
-            lastCallByApp.set(appDid, lastCallTime);
-          }
-        }
       });
     }
 
@@ -1357,29 +1210,31 @@ export default class ModelCallStat extends Model<
         appLogo: project?.appLogo || undefined,
         appUrl: project?.appUrl || undefined,
         stats,
-        lastCallTime: lastCallByApp.get(appDid) || 0,
+        lastCallTime: 0,
       };
     });
 
     const sortedProjects = projectList.sort((a, b) => {
-      const aValue =
-        sortBy === 'lastCallTime'
-          ? a.lastCallTime
-          : sortBy === 'totalCredits'
-            ? a.stats.totalCredits
-            : a.stats.totalCalls;
-      const bValue =
-        sortBy === 'lastCallTime'
-          ? b.lastCallTime
-          : sortBy === 'totalCredits'
-            ? b.stats.totalCredits
-            : b.stats.totalCalls;
+      const aValue = sortBy === 'totalCredits' ? a.stats.totalCredits : a.stats.totalCalls;
+      const bValue = sortBy === 'totalCredits' ? b.stats.totalCredits : b.stats.totalCalls;
       return orderDirection === 'ASC' ? aValue - bValue : bValue - aValue;
     });
 
     const total = sortedProjects.length;
     const offset = (page - 1) * pageSize;
     const pagedProjects = sortedProjects.slice(offset, offset + pageSize);
+
+    const pageAppDids = pagedProjects.map((project) => project.appDid).filter(Boolean) as string[];
+    const overallMap = await ModelCallStat.fetchOverallLastCall(pageAppDids, userDid);
+    if (overallMap.size > 0) {
+      pagedProjects.forEach((project) => {
+        if (!project.appDid) return;
+        const overallLastCall = overallMap.get(project.appDid);
+        if (overallLastCall !== undefined) {
+          project.lastCallTime = overallLastCall;
+        }
+      });
+    }
 
     return {
       projects: pagedProjects,
@@ -1433,6 +1288,43 @@ export default class ModelCallStat extends Model<
   private static applyStatsAppDidCondition(whereClause: Record<string, any>, appDid?: string | null) {
     if (appDid === undefined) return;
     whereClause.appDid = appDid;
+  }
+
+  private static async fetchOverallLastCall(appDids: string[], userDid: string | null | undefined) {
+    if (!appDids.length) return new Map<string, number>();
+    const overallWhereConditions: string[] = ['"appDid" IN (:appDids)'];
+    const replacements: Record<string, any> = { appDids };
+    if (userDid === null) {
+      overallWhereConditions.unshift('"userDid" IS NOT NULL');
+    } else if (userDid !== undefined) {
+      overallWhereConditions.unshift('"userDid" = :overallUserDid');
+      replacements.overallUserDid = userDid;
+    }
+
+    const overallQuery = `
+      SELECT
+        "appDid" as "appDid",
+        MAX("callTime") as "lastCallTime"
+      FROM "ModelCalls"
+      WHERE ${overallWhereConditions.join(' AND ')}
+      GROUP BY "appDid"
+    `;
+
+    const overallRows = (await sequelize.query(overallQuery, {
+      type: QueryTypes.SELECT,
+      replacements,
+    })) as Array<{ appDid: string | null; lastCallTime: number | string | null }>;
+
+    const overallMap = new Map<string, number>();
+    overallRows.forEach((row) => {
+      if (!row.appDid) return;
+      const lastCallTime = Number(row.lastCallTime || 0);
+      if (Number.isFinite(lastCallTime) && lastCallTime > 0) {
+        overallMap.set(row.appDid, lastCallTime);
+      }
+    });
+
+    return overallMap;
   }
 
   private static buildTimeRangeCondition(
