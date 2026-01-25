@@ -1077,8 +1077,9 @@ export default class ModelCallStat extends Model<
     const page = options?.page || 1;
     const pageSize = Math.min(options?.pageSize || 20, 100);
     const sortBy = options?.sortBy || 'totalCalls';
-    const sortOrder = options?.sortOrder || 'desc';
-    const orderDirection = sortOrder.toUpperCase();
+    const rawSortOrder = options?.sortOrder;
+    const sortOrder = rawSortOrder === 'asc' || rawSortOrder === 'desc' ? rawSortOrder : 'desc';
+    const orderDirection = sortOrder === 'asc' ? 'ASC' : 'DESC';
     const rangeSeconds = Math.max(0, endTime - startTime);
     const rangeDays = options?.rangeDays ?? Math.max(1, Math.ceil(rangeSeconds / 86400));
 

@@ -9,7 +9,6 @@ import { Migration, createIndexIfNotExists } from '../migrate';
  * 2. Update ModelCalls.duration precision
  * 3. Add index for ModelCalls GROUP BY appDid queries
  * 4. Allow null userDid in ModelCallStats
- * 5. Remove modelId from ModelCallStats and update indexes
  */
 export const up: Migration = async ({ context: queryInterface }) => {
   // 1. Create Projects table

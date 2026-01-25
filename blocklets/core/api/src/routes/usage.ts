@@ -154,7 +154,8 @@ router.get('/projects', user, async (req, res) => {
     const page = parseInt(req.query.page as string, 10) || 1;
     const pageSize = Math.min(parseInt(req.query.pageSize as string, 10) || 20, 100);
     const sortBy = (req.query.sortBy as 'totalCalls' | 'totalCredits' | 'lastCallTime') || 'totalCalls';
-    const sortOrder = (req.query.sortOrder as 'asc' | 'desc') || 'desc';
+    const rawSortOrder = String(req.query.sortOrder || '').toLowerCase();
+    const sortOrder = rawSortOrder === 'asc' ? 'asc' : 'desc';
 
     const result = await ModelCallStat.getProjects(allUsers ? null : userDid, startTime, endTime, {
       page,

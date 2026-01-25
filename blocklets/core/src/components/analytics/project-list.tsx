@@ -250,6 +250,7 @@ export function ProjectList({
     {
       name: 'totalCalls',
       label: t('analytics.totalRequests'),
+      align: 'right',
       options: {
         customBodyRender: (_value: any, tableMeta: any) => {
           const project = projects[tableMeta.rowIndex];
@@ -261,6 +262,7 @@ export function ProjectList({
     {
       name: 'totalCredits',
       label: t('analytics.totalCreditsUsed'),
+      align: 'right',
       options: {
         customBodyRender: (_value: any, tableMeta: any) => {
           const project = projects[tableMeta.rowIndex];
@@ -277,6 +279,7 @@ export function ProjectList({
     {
       name: 'avgDuration',
       label: t('analytics.avgDuration'),
+      align: 'right',
       options: {
         customBodyRender: (_value: any, tableMeta: any) => {
           const project = projects[tableMeta.rowIndex];
@@ -292,6 +295,7 @@ export function ProjectList({
     {
       name: 'successRate',
       label: t('successRate'),
+      align: 'right',
       options: {
         customBodyRender: (_value: any, tableMeta: any) => {
           const project = projects[tableMeta.rowIndex];
@@ -312,6 +316,7 @@ export function ProjectList({
     {
       name: 'lastCallTime',
       label: t('analytics.lastCalled'),
+      align: 'right',
       options: {
         customBodyRender: (_value: any, tableMeta: any) => {
           const project = projects[tableMeta.rowIndex];

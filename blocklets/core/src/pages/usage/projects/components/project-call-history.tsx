@@ -210,6 +210,7 @@ export function ProjectCallHistory({
     {
       name: 'tokens',
       label: 'Tokens',
+      align: 'right',
       options: {
         customBodyRender: (_value: any, tableMeta: any) => {
           const call = modelCalls[tableMeta.rowIndex];
@@ -221,6 +222,7 @@ export function ProjectCallHistory({
     {
       name: 'latency',
       label: t('duration'),
+      align: 'right',
       options: {
         customBodyRender: (_value: any, tableMeta: any) => {
           const call = modelCalls[tableMeta.rowIndex];
@@ -242,6 +244,7 @@ export function ProjectCallHistory({
     {
       name: 'cost',
       label: t('creditsValue'),
+      align: 'right',
       options: {
         customBodyRender: (_value: any, tableMeta: any) => {
           const call = modelCalls[tableMeta.rowIndex];
