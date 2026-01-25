@@ -76,7 +76,7 @@ interface CallHistoryProps {
 
 function formatDuration(duration?: number) {
   if (!duration) return '-';
-  return `${duration.toFixed(1)}s`;
+  return `${Number(duration).toFixed(1)}s`;
 }
 
 function AppInfo({ appInfo }: { appInfo: { appName: string; appUrl: string; appLogo: string; appDid: string } }) {

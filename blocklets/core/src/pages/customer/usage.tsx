@@ -1,88 +1,84 @@
-import { CallHistory, DateRangePicker, ModelUsageStats, UsageCharts, UsageSummary } from '@app/components/analytics';
+import { ModelUsageStats, ProjectList, UsageOverviewCard } from '@app/components/analytics';
 import {
   CreditsBalanceSkeleton,
   ModelUsageStatsSkeleton,
-  UsageChartsSkeleton,
-  UsageSummarySkeleton,
   toUTCTimestamp,
   useSmartLoading,
 } from '@app/components/analytics/skeleton';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
-import Toast from '@arcblock/ux/lib/Toast';
 import { UserInfoResult } from '@blocklet/aigne-hub/api/types/user';
 import { getPrefix } from '@blocklet/aigne-hub/api/utils/util';
 import { formatError } from '@blocklet/error';
-import { RefreshOutlined } from '@mui/icons-material';
-import { Alert, Box, Button, IconButton, Link, Stack, Tooltip, Typography } from '@mui/material';
+import { Alert, Box, Button, Link, Stack, Typography } from '@mui/material';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
 import { joinURL } from 'ufo';
 
 import dayjs from '../../libs/dayjs';
 import { CreditsBalance } from './credits-balance';
-import { useCreditBalance, useCreditGrants, useCreditTransactions, useUsageStats } from './hooks';
+import {
+  useCreditBalance,
+  useCreditGrants,
+  useCreditTransactions,
+  useProjectGroupedTrends,
+  useUsageQuota,
+  useUsageStats,
+} from './hooks';
 
 const INTRO_ARTICLE_URL = 'https://www.arcblock.io/content/tags/en/ai-kit';
 const AIGNE_WEBSITE_URL = 'https://www.aigne.io/';
 
 function CreditBoard() {
   const { t } = useLocaleContext();
-  const [dateRange, setDateRange] = useState({
-    from: toUTCTimestamp(dayjs().subtract(6, 'day')),
-    to: toUTCTimestamp(dayjs(), true),
-  });
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [searchParams] = useSearchParams();
-  const appDid = searchParams.get('appDid') || searchParams.get('appdid');
+  const [dateRange, setDateRange] = useState(() => ({
+    start: dayjs().subtract(6, 'day'),
+    end: dayjs(),
+  }));
+  const rangeStart = dateRange.start.startOf('day');
+  const rangeEnd = dateRange.end.endOf('day');
+  const rangeDays = Math.max(1, rangeEnd.diff(rangeStart, 'day') + 1);
+  const chartGranularity = rangeDays <= 1 ? 'hour' : 'day';
+  const rangeFrom = toUTCTimestamp(rangeStart);
+  const rangeTo = toUTCTimestamp(rangeEnd, true);
+  const periodSeconds = rangeTo - rangeFrom;
+  const previousRangeTo = rangeFrom - 1;
+  const previousRangeFrom = previousRangeTo - periodSeconds;
 
   // API hooks
-  const {
-    data: creditBalance,
-    loading: balanceLoading,
-    error: balanceError,
-    refetch: refetchBalance,
-  } = useCreditBalance();
+  const { data: creditBalance, loading: balanceLoading, error: balanceError } = useCreditBalance();
   const isCreditBillingEnabled = window.blocklet?.preferences?.creditBasedBillingEnabled;
 
   const { data: creditGrants } = useCreditGrants(isCreditBillingEnabled);
   const { data: creditTransactions } = useCreditTransactions(isCreditBillingEnabled);
 
+  // New usage API hooks
+  const { data: usageQuota } = useUsageQuota();
   const {
     data: usageStats,
     loading: statsLoading,
     error: statsError,
-    refetch: refetchStats,
   } = useUsageStats({
-    startTime: dateRange.from.toString(),
-    endTime: dateRange.to.toString(),
+    startTime: rangeFrom.toString(),
+    endTime: rangeTo.toString(),
     timezoneOffset: new Date().getTimezoneOffset(), // Send timezone offset in minutes
   });
-
-  const handleQuickDateSelect = (range: { start: dayjs.Dayjs; end: dayjs.Dayjs }) => {
-    setDateRange({
-      from: toUTCTimestamp(range.start),
-      to: toUTCTimestamp(range.end, true),
-    });
-  };
+  const { data: projectGroupedTrends, loading: projectTrendsLoading } = useProjectGroupedTrends({
+    startTime: rangeFrom,
+    endTime: rangeTo,
+    granularity: chartGranularity,
+  });
+  const { data: previousProjectGroupedTrends } = useProjectGroupedTrends({
+    startTime: previousRangeFrom,
+    endTime: previousRangeTo,
+    granularity: chartGranularity,
+  });
 
   const hasError = balanceError || statsError;
 
   // Smart loading states to prevent flickering
   const showBalanceSkeleton = useSmartLoading(balanceLoading, creditBalance);
   const showStatsSkeleton = statsLoading;
-
-  const onRefresh = () => {
-    refetchBalance();
-    refetchStats();
-    setRefreshKey((prev) => prev + 1);
-    Toast.success(t('analytics.refreshSuccess'));
-  };
-
-  // Backend now returns data aggregated by user's local timezone
-  // No filtering needed on the frontend
-  const dailyStats = usageStats?.dailyStats;
 
   // Check if user has welcome credit and no transactions
   const hasWelcomeCredit = useMemo(() => {
@@ -101,7 +97,7 @@ function CreditBoard() {
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-        <Stack spacing={3}>
+        <Stack spacing={3} sx={{ pb: 20 }}>
           {/* Header */}
           {shouldShowWelcomeGuide && (
             <Alert
@@ -170,7 +166,7 @@ function CreditBoard() {
             }}>
             <Stack>
               <Typography variant="h3">{t('analytics.creditUsage')}</Typography>
-              <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+              <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mt: 0.5 }}>
                 <Typography
                   variant="body2"
                   sx={{
@@ -179,34 +175,6 @@ function CreditBoard() {
                   {t('analytics.creditBoardDescription')}
                 </Typography>
               </Stack>
-            </Stack>
-            <Stack direction="row" spacing={1}>
-              <DateRangePicker
-                startDate={dayjs.unix(dateRange.from).local()}
-                endDate={dayjs.unix(dateRange.to).local()}
-                onStartDateChange={(date: dayjs.Dayjs | null) =>
-                  setDateRange((prev) => ({ ...prev, from: toUTCTimestamp(date || dayjs()) }))
-                }
-                onEndDateChange={(date: dayjs.Dayjs | null) =>
-                  setDateRange((prev) => ({ ...prev, to: toUTCTimestamp(date || dayjs(), true) }))
-                }
-                onQuickSelect={handleQuickDateSelect}
-                sx={{
-                  alignSelf: 'flex-end',
-                }}
-              />
-              <Tooltip title={t('analytics.refresh')}>
-                <IconButton
-                  onClick={onRefresh}
-                  size="small"
-                  sx={{
-                    color: 'grey.400',
-                    '&:hover': { color: 'primary.main' },
-                    transition: 'color 0.2s ease',
-                  }}>
-                  <RefreshOutlined />
-                </IconButton>
-              </Tooltip>
             </Stack>
           </Stack>
 
@@ -221,28 +189,23 @@ function CreditBoard() {
           {showBalanceSkeleton ? (
             <CreditsBalanceSkeleton />
           ) : (
-            <CreditsBalance data={creditBalance as unknown as UserInfoResult} />
+            <CreditsBalance
+              data={creditBalance as unknown as UserInfoResult}
+              estimatedDaysRemaining={usageQuota?.estimatedDaysRemaining}
+              dailyAvgCredits={usageQuota?.dailyAvgCredits}
+            />
           )}
 
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '2fr 1fr' }, gap: 3 }}>
             <Stack spacing={3}>
-              {showStatsSkeleton ? (
-                <UsageSummarySkeleton />
-              ) : (
-                <UsageSummary
-                  totalCredits={usageStats?.summary?.totalCredits}
-                  totalUsage={usageStats?.summary?.totalUsage}
-                  totalCalls={usageStats?.summary?.totalCalls}
-                  trendComparison={usageStats?.trendComparison}
-                  periodDays={Math.ceil((dateRange.to - dateRange.from) / (24 * 60 * 60))}
-                />
-              )}
-
-              {showStatsSkeleton ? (
-                <UsageChartsSkeleton />
-              ) : (
-                <UsageCharts dailyStats={dailyStats} showCredits={isCreditBillingEnabled} showRequests={false} />
-              )}
+              <UsageOverviewCard
+                title={t('analytics.creditOverview')}
+                dateRange={dateRange}
+                onDateRangeChange={setDateRange}
+                projectTrends={projectGroupedTrends}
+                previousProjectTrends={previousProjectGroupedTrends}
+                trendsLoading={projectTrendsLoading}
+              />
             </Stack>
 
             <Stack spacing={3}>
@@ -250,8 +213,8 @@ function CreditBoard() {
                 <ModelUsageStatsSkeleton />
               ) : (
                 <ModelUsageStats
-                  modelStats={usageStats?.modelStats}
-                  totalModelCount={usageStats?.summary?.modelCount}
+                  modelStats={usageStats?.modelStats?.list}
+                  totalModelCount={usageStats?.modelStats?.totalModelCount}
                   title={t('analytics.modelUsageStats')}
                   subtitle={t('analytics.modelUsageStatsDescription')}
                 />
@@ -259,14 +222,13 @@ function CreditBoard() {
             </Stack>
           </Box>
 
-          <Box sx={{ my: 2 }} />
-
-          <CallHistory
-            refreshKey={refreshKey}
-            enableExport
-            appDid={appDid ?? undefined}
+          {/* Project List - replaces CallHistory */}
+          <ProjectList
             dateRange={dateRange}
             onDateRangeChange={setDateRange}
+            dataSource="trends"
+            trendsData={projectGroupedTrends}
+            trendsLoading={projectTrendsLoading}
           />
         </Stack>
       </Box>

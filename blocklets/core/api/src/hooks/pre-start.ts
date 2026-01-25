@@ -11,9 +11,6 @@ if (process.env.NODE_ENV === 'development') {
     // Run database migrations
     await import('../store/migrate').then((m) => m.default());
 
-    // const { runCreditMigration } = await import('./credit-migration');
-    // await runCreditMigration();
-
     process.exit(0);
   } catch (err) {
     console.error('pre-start error', err);

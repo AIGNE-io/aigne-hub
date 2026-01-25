@@ -49,6 +49,7 @@
     "@arcblock/ws": "^1.28.5",
     "@blocklet/aigne-hub": "workspace:^",
     "@blocklet/constant": "^1.17.7",
+    "@blocklet/env": "^1.17.7",
     "@blocklet/error": "0.3.5",
     "@blocklet/js-sdk": "^1.17.7",
     "@blocklet/logger": "^1.17.7",

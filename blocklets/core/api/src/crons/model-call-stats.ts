@@ -1,14 +1,15 @@
 import dayjs from '@api/libs/dayjs';
 import logger from '@api/libs/logger';
-import { getCurrentUnixTimestamp } from '@api/libs/timestamp';
 import ModelCallStat from '@api/store/models/model-call-stat';
+import { Op, QueryTypes } from 'sequelize';
 
 import { sequelize } from '../store/sequelize';
 
-const HOUR_IN_SECONDS = 3600;
+const DAY_IN_SECONDS = 86400;
 
-export async function getHoursToWarmup(): Promise<number[]> {
+export async function getDaysToWarmup(): Promise<number[]> {
   const item = await ModelCallStat.findOne({
+    where: { timeType: 'day', userDid: { [Op.not]: null } },
     order: [['timestamp', 'DESC']],
     limit: 1,
     offset: 0,
@@ -16,64 +17,73 @@ export async function getHoursToWarmup(): Promise<number[]> {
   });
 
   const now = dayjs.utc().unix();
-  const currentHour = Math.floor(now / HOUR_IN_SECONDS) * HOUR_IN_SECONDS;
-  const previousHour = currentHour - HOUR_IN_SECONDS;
+  const currentDay = Math.floor(now / DAY_IN_SECONDS) * DAY_IN_SECONDS;
+  const previousDay = currentDay - DAY_IN_SECONDS;
 
   if (item) {
-    const hours: number[] = [];
-    let current = item.timestamp + HOUR_IN_SECONDS;
+    const days: number[] = [];
+    let current = item.timestamp + DAY_IN_SECONDS;
 
-    // Include all missing hours up to the previous hour
-    while (current <= previousHour) {
-      hours.push(current);
-      current += HOUR_IN_SECONDS;
+    // Include all missing days up to the previous day
+    while (current <= previousDay) {
+      days.push(current);
+      current += DAY_IN_SECONDS;
     }
 
-    // Always include previous hour to ensure it's updated with final data
-    if (!hours.includes(previousHour)) {
-      hours.push(previousHour);
+    // Always include previous day to ensure it's updated with final data
+    if (!days.includes(previousDay)) {
+      days.push(previousDay);
     }
 
-    return hours;
+    return days;
   }
 
-  // If no existing stats, start with previous hour
-  return [previousHour];
+  // If no existing stats, start with previous day
+  return [previousDay];
 }
 
-// 创建指定小时的缓存统计
-export async function createModelCallStats(hourTimestamp?: number) {
-  const hours = hourTimestamp ? [hourTimestamp] : await getHoursToWarmup();
-
-  // 获取所有活跃用户（最近7天有调用的用户）
-  const activeUsers = (await sequelize.query(
-    `
-    SELECT DISTINCT "userDid" 
-    FROM "ModelCalls" 
-    WHERE "callTime" >= :sevenDaysAgo
-  `,
-    {
-      type: 'SELECT',
-      replacements: {
-        sevenDaysAgo: getCurrentUnixTimestamp() - 7 * 24 * 60 * 60,
-      },
-    }
-  )) as any[];
+// 创建指定天的缓存统计
+export async function createModelCallStats(dayTimestamp?: number) {
+  const days = dayTimestamp ? [dayTimestamp] : await getDaysToWarmup();
 
   await Promise.all(
-    hours.map(async (hourTimestamp) => {
+    days.map(async (dayTimestamp) => {
+      const startTime = dayTimestamp;
+      const endTime = dayTimestamp + DAY_IN_SECONDS - 1;
+      const calls = (await sequelize.query(
+        `
+        SELECT DISTINCT "userDid", "appDid"
+        FROM "ModelCalls"
+        WHERE "callTime" >= :startTime
+          AND "callTime" <= :endTime
+      `,
+        {
+          type: QueryTypes.SELECT,
+          replacements: { startTime, endTime },
+        }
+      )) as Array<{ userDid: string; appDid: string | null }>;
+
+      const uniquePairs = new Map<string, { userDid: string; appDid: string | null }>();
+      calls.forEach((call) => {
+        const { appDid } = call;
+        const key = `${call.userDid}::${appDid || ''}`;
+        uniquePairs.set(key, { userDid: call.userDid, appDid });
+      });
+
       await Promise.all(
-        activeUsers.map(async (user) => {
+        Array.from(uniquePairs.values()).map(async ({ userDid, appDid }) => {
           try {
-            await ModelCallStat.getHourlyStats(user.userDid, hourTimestamp);
-            logger.info('ModelCallStat hourly processed', {
-              hour: new Date(hourTimestamp * 1000).toISOString(),
-              userDid: user.userDid,
+            await ModelCallStat.getDailyStatsByApp(userDid, appDid, dayTimestamp);
+            logger.info('ModelCallStat daily processed', {
+              day: new Date(dayTimestamp * 1000).toISOString(),
+              userDid,
+              appDid,
             });
           } catch (error) {
-            logger.error('Failed to process hourly stats', {
-              hour: new Date(hourTimestamp * 1000).toISOString(),
-              userDid: user.userDid,
+            logger.error('Failed to process daily stats', {
+              day: new Date(dayTimestamp * 1000).toISOString(),
+              userDid,
+              appDid,
               error,
             });
           }
@@ -81,4 +91,103 @@ export async function createModelCallStats(hourTimestamp?: number) {
       );
     })
   );
+}
+
+export async function backfillModelCallStats({
+  dayTimestamp,
+  userDid,
+  appDid,
+}: {
+  dayTimestamp: number;
+  userDid?: string | null;
+  appDid?: string | null;
+}): Promise<void> {
+  if (!Number.isFinite(dayTimestamp)) return;
+
+  const normalizedUserDid = userDid ?? null;
+  const startTime = dayTimestamp;
+  const endTime = dayTimestamp + DAY_IN_SECONDS - 1;
+
+  if (appDid === undefined) {
+    if (!normalizedUserDid) {
+      // Admin triggered: aggregate all (userDid, appDid) combinations
+      const calls = (await sequelize.query(
+        `
+          SELECT DISTINCT "userDid", "appDid"
+          FROM "ModelCalls"
+          WHERE "callTime" >= :startTime
+            AND "callTime" <= :endTime
+        `,
+        {
+          type: QueryTypes.SELECT,
+          replacements: { startTime, endTime },
+        }
+      )) as Array<{ userDid: string; appDid: string | null }>;
+
+      const uniquePairs = new Map<string, { userDid: string; appDid: string | null }>();
+      calls.forEach((call) => {
+        const { appDid } = call;
+        const key = `${call.userDid}::${appDid || ''}`;
+        uniquePairs.set(key, { userDid: call.userDid, appDid });
+      });
+
+      await Promise.all(
+        Array.from(uniquePairs.values()).map(({ userDid: uid, appDid: aid }) =>
+          ModelCallStat.getDailyStatsByApp(uid, aid, dayTimestamp)
+        )
+      );
+
+      return;
+    }
+
+    // User triggered: aggregate all appDids for this user
+    const calls = (await sequelize.query(
+      `
+        SELECT DISTINCT "appDid"
+        FROM "ModelCalls"
+        WHERE "userDid" = :userDid
+          AND "callTime" >= :startTime
+          AND "callTime" <= :endTime
+      `,
+      {
+        type: QueryTypes.SELECT,
+        replacements: { userDid: normalizedUserDid, startTime, endTime },
+      }
+    )) as Array<{ appDid: string | null }>;
+
+    const appDids = new Set<string>();
+    calls.forEach((call) => {
+      if (call.appDid) {
+        appDids.add(call.appDid);
+      }
+    });
+
+    await Promise.all(
+      Array.from(appDids.values()).map((appDidValue) =>
+        ModelCallStat.getDailyStatsByApp(normalizedUserDid, appDidValue, dayTimestamp)
+      )
+    );
+
+    return;
+  }
+
+  await ModelCallStat.getDailyStatsByApp(normalizedUserDid, appDid, dayTimestamp);
+}
+
+export async function backfillModelCallStatsBatch({
+  dayTimestamps,
+  userDid,
+  appDid,
+}: {
+  dayTimestamps: number[];
+  userDid?: string | null;
+  appDid?: string | null;
+}): Promise<void> {
+  if (!Array.isArray(dayTimestamps) || dayTimestamps.length === 0) {
+    return;
+  }
+
+  for (const dayTimestamp of dayTimestamps) {
+    await backfillModelCallStats({ dayTimestamp, userDid, appDid });
+  }
 }

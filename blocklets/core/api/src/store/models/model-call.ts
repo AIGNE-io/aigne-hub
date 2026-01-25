@@ -38,7 +38,7 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
 
   declare errorReason?: string;
 
-  declare appDid?: string;
+  declare appDid: string | null;
 
   declare userDid: string;
 
@@ -98,7 +98,7 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
       defaultValue: 'processing',
     },
     duration: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.DECIMAL(10, 1),
       allowNull: true,
     },
     errorReason: {
@@ -151,6 +151,8 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
     model,
     providerId,
     appDid,
+    minDurationSeconds,
+    searchFields,
   }: {
     userDid?: string;
     startTime?: number;
@@ -161,19 +163,26 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
     status?: 'success' | 'failed' | 'all';
     model?: string;
     providerId?: string;
-    appDid?: string;
+    appDid?: string | null;
+    minDurationSeconds?: number;
+    searchFields?: string[] | string;
   }): Promise<{
     count: number;
     list: (ModelCall & { provider?: AiProvider })[];
   }> {
     const whereClause: any = {};
+    const andConditions: any[] = [];
 
     if (userDid) {
       whereClause.userDid = userDid;
     }
 
-    if (appDid) {
-      whereClause.appDid = appDid;
+    if (appDid !== undefined) {
+      if (appDid === null) {
+        andConditions.push({ [Op.or]: [{ appDid: { [Op.is]: null } }, { appDid: '' }] });
+      } else if (appDid) {
+        whereClause.appDid = appDid;
+      }
     }
 
     if (startTime || endTime) {
@@ -194,12 +203,36 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
       whereClause.providerId = providerId;
     }
 
+    if (minDurationSeconds !== undefined) {
+      whereClause.duration = { [Op.gte]: Number(minDurationSeconds) };
+    }
+
     if (search) {
-      whereClause[Op.or] = [
-        { model: { [Op.like]: `%${search}%` } },
-        { appDid: { [Op.like]: `%${search}%` } },
-        { userDid: { [Op.like]: `%${search}%` } },
-      ];
+      const searchFieldMap: Record<string, any> = {
+        model: { model: { [Op.like]: `%${search}%` } },
+        traceId: { traceId: { [Op.like]: `%${search}%` } },
+        id: { id: { [Op.like]: `%${search}%` } },
+        userDid: { userDid: { [Op.like]: `%${search}%` } },
+      };
+
+      const normalizedFields = Array.isArray(searchFields)
+        ? searchFields
+        : typeof searchFields === 'string'
+          ? searchFields.split(',')
+          : [];
+
+      const cleanedFields = normalizedFields.map((field) => field.trim()).filter(Boolean);
+      const activeFields = cleanedFields.length > 0 ? cleanedFields : Object.keys(searchFieldMap);
+
+      const searchClauses = activeFields.map((field) => searchFieldMap[field]).filter(Boolean);
+
+      if (searchClauses.length > 0) {
+        andConditions.push({ [Op.or]: searchClauses });
+      }
+    }
+
+    if (andConditions.length > 0) {
+      whereClause[Op.and] = (whereClause[Op.and] || []).concat(andConditions);
     }
 
     const { rows, count } = await ModelCall.findAndCountAll({
