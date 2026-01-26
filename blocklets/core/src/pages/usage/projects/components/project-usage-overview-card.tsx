@@ -290,13 +290,29 @@ export function ProjectUsageOverviewCard({
       }}>
       <Box>
         <Stack spacing={2.5}>
-          <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
-            <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
-              <Avatar src={projectLogo} variant="rounded" sx={{ width: 44, height: 44 }}>
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            sx={{
+              alignItems: { xs: 'flex-start', sm: 'center' },
+              justifyContent: 'space-between',
+              gap: { xs: 1.5, sm: 2 },
+            }}>
+            <Stack direction="row" spacing={2} sx={{ alignItems: 'center', width: '100%' }}>
+              <Avatar
+                src={projectLogo}
+                variant="rounded"
+                sx={{ width: { xs: 40, sm: 44 }, height: { xs: 40, sm: 44 } }}>
                 {projectName?.charAt(0)?.toUpperCase()}
               </Avatar>
-              <Stack spacing={0.5}>
-                <Typography variant="h4" sx={{ fontWeight: 700 }}>
+              <Stack spacing={0.5} sx={{ minWidth: 0, flex: 1 }}>
+                <Typography
+                  variant="h4"
+                  sx={{
+                    fontWeight: 700,
+                    fontSize: { xs: '1.25rem', sm: '1.5rem' },
+                    lineHeight: 1.2,
+                    wordBreak: 'break-word',
+                  }}>
                   {projectName}
                 </Typography>
                 <Typography
@@ -311,16 +327,18 @@ export function ProjectUsageOverviewCard({
               </Stack>
             </Stack>
 
-            <LocalizationProvider dateAdapter={AdapterDayjs}>
-              <DateRangePicker
-                startDate={dateRange.start}
-                endDate={dateRange.end}
-                onStartDateChange={(date) => setDateRange({ start: date || dayjs(), end: dateRange.end })}
-                onEndDateChange={(date) => setDateRange({ start: dateRange.start, end: date || dayjs() })}
-                onQuickSelect={(range) => setDateRange({ start: range.start, end: range.end })}
-                sx={{ alignSelf: 'flex-end' }}
-              />
-            </LocalizationProvider>
+            <Box sx={{ width: { xs: '100%', sm: 'auto' }, alignSelf: { xs: 'stretch', sm: 'flex-end' } }}>
+              <LocalizationProvider dateAdapter={AdapterDayjs}>
+                <DateRangePicker
+                  startDate={dateRange.start}
+                  endDate={dateRange.end}
+                  onStartDateChange={(date) => setDateRange({ start: date || dayjs(), end: dateRange.end })}
+                  onEndDateChange={(date) => setDateRange({ start: dateRange.start, end: date || dayjs() })}
+                  onQuickSelect={(range) => setDateRange({ start: range.start, end: range.end })}
+                  sx={{ width: { xs: '100%', sm: 'auto' } }}
+                />
+              </LocalizationProvider>
+            </Box>
           </Stack>
 
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>

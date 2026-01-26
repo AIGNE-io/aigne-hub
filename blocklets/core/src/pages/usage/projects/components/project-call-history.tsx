@@ -1,6 +1,7 @@
 import { DateRangePicker } from '@app/components/analytics';
 import { toUTCTimestamp } from '@app/components/analytics/skeleton';
 import api from '@app/libs/api';
+import { useAdminUserInfo } from '@app/pages/customer/hooks';
 import DID from '@arcblock/ux/lib/DID';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import { Table } from '@blocklet/aigne-hub/components';
@@ -125,6 +126,11 @@ export function ProjectCallHistory({
   const modelCalls = data?.list || [];
   const total = data?.count || 0;
 
+  const { userInfoMap } = useAdminUserInfo({
+    userDids: modelCalls.map((call) => call.userDid).filter((did): did is string => Boolean(did)),
+    enabled: allUsers,
+  });
+
   const formatLatency = (duration?: number) => {
     if (duration === undefined || duration === null) return '-';
     return `${Number(duration).toFixed(1)}s`;
@@ -217,7 +223,34 @@ export function ProjectCallHistory({
               customBodyRender: (_value: any, tableMeta: any) => {
                 const call = modelCalls[tableMeta.rowIndex];
                 if (!call?.userDid) return '-';
-                return <DID did={call.userDid} compact size={14} />;
+                const userInfo = userInfoMap[call.userDid];
+                const displayName = userInfo?.fullName || '-';
+                const avatarText = (userInfo?.fullName || call.userDid || '?').slice(0, 1);
+
+                return (
+                  <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-end' }}>
+                    <Stack direction="row" spacing={1} sx={{ alignItems: 'center', minWidth: 0 }}>
+                      <Avatar
+                        src={userInfo?.avatar}
+                        alt={displayName}
+                        sx={{
+                          width: 34,
+                          height: 34,
+                          fontSize: 12,
+                          bgcolor: 'action.hover',
+                          color: 'text.secondary',
+                        }}>
+                        {avatarText}
+                      </Avatar>
+                      <Box sx={{ minWidth: 0, textAlign: 'left' }}>
+                        <Typography variant="body2" sx={{ fontWeight: 500, wordBreak: 'break-word' }}>
+                          {displayName}
+                        </Typography>
+                        <DID did={call.userDid} compact size={14} />
+                      </Box>
+                    </Stack>
+                  </Box>
+                );
               },
             },
           },
@@ -356,6 +389,10 @@ export function ProjectCallHistory({
     selectedCall?.appInfo?.appUrl && selectedCall?.appInfo?.appLogo
       ? joinURL(selectedCall.appInfo.appUrl, selectedCall.appInfo.appLogo)
       : selectedCall?.appInfo?.appLogo;
+  const selectedUser = selectedCall?.userDid ? userInfoMap[selectedCall.userDid] : undefined;
+  const selectedUserName = selectedUser?.fullName || '-';
+  const selectedUserAvatarText = (selectedUser?.fullName || selectedCall?.userDid || '?').slice(0, 1);
+  const showUserCard = Boolean(selectedUser && (selectedUser.fullName || selectedUser.avatar || selectedUser.email));
 
   return (
     <Stack spacing={2}>
@@ -559,6 +596,7 @@ export function ProjectCallHistory({
                   borderRadius: 2,
                   color: 'error.contrastText',
                   wordBreak: 'break-word',
+                  fontSize: 14,
                 }}>
                 {selectedCall.errorReason}
               </Box>
@@ -573,7 +611,7 @@ export function ProjectCallHistory({
                     sx={{
                       width: 40,
                       height: 40,
-                      borderRadius: 2,
+                      borderRadius: 4,
                       bgcolor: 'action.hover',
                       color: 'text.secondary',
                       fontSize: 16,
@@ -592,8 +630,33 @@ export function ProjectCallHistory({
               </Box>
             </Stack>
 
+            {showUserCard && selectedCall?.userDid && (
+              <Box sx={cardSx}>
+                <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+                  <Avatar
+                    src={selectedUser?.avatar}
+                    alt={selectedUserName}
+                    sx={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 4,
+                      bgcolor: 'action.hover',
+                      color: 'text.secondary',
+                      fontSize: 16,
+                    }}>
+                    {selectedUserAvatarText}
+                  </Avatar>
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography variant="h6" sx={{ fontWeight: 600, wordBreak: 'break-word' }}>
+                      {selectedUserName}
+                    </Typography>
+                    <DID did={selectedCall.userDid} compact size={14} />
+                  </Box>
+                </Stack>
+              </Box>
+            )}
+
             {renderMetricCard(t('analytics.traceId'), selectedCall?.traceId || selectedCall?.id || '-')}
-            {renderMetricCard(t('analytics.userDid'), selectedCall?.userDid || '-')}
 
             <Stack spacing={1.5}>
               <Box

@@ -198,14 +198,17 @@ const Wrapped = styled(Datatable)`
         mobileTDFlexDirection === 'column' ? 'flex-start' : 'center'};
       justify-content: ${({ mobileTDFlexDirection = 'column' }) =>
         mobileTDFlexDirection === 'column' ? 'flex-start' : 'space-between'};
+      gap: ${({ mobileTDFlexDirection = 'column' }) => (mobileTDFlexDirection === 'row' ? '8px' : '0')};
+      min-height: ${({ mobileTDFlexDirection = 'column' }) => (mobileTDFlexDirection === 'row' ? '36px' : 'auto')};
     }
     td.MuiTableCell-root > div {
-      margin-bottom: 4px;
+      margin-bottom: ${({ mobileTDFlexDirection = 'column' }) => (mobileTDFlexDirection === 'row' ? '0' : '4px')};
     }
     .MuiTable-root > .MuiTableBody-root > .MuiTableRow-root > td.MuiTableCell-root {
       display: flex;
       flex-direction: ${({ mobileTDFlexDirection = 'column' }) => mobileTDFlexDirection || 'row'};
-      align-items: flex-start;
+      align-items: ${({ mobileTDFlexDirection = 'column' }) =>
+        mobileTDFlexDirection === 'row' ? 'center' : 'flex-start'};
       justify-content: ${({ mobileTDFlexDirection = 'column' }) =>
         mobileTDFlexDirection === 'row' ? 'space-between' : 'flex-start'};
       flex-wrap: ${({ mobileTDFlexDirection = 'column' }) => (mobileTDFlexDirection === 'row' ? 'nowrap' : 'wrap')};
@@ -213,6 +216,12 @@ const Wrapped = styled(Datatable)`
       &.datatables-noprint {
         justify-content: center;
       }
+    }
+    .MuiTableCell-body > div:last-of-type {
+      text-align: ${({ mobileTDFlexDirection = 'column' }) => (mobileTDFlexDirection === 'row' ? 'right' : 'left')};
+      display: flex;
+      justify-content: ${({ mobileTDFlexDirection = 'column' }) =>
+        mobileTDFlexDirection === 'row' ? 'flex-end' : 'flex-start'};
     }
     [class*='MUIDataTable-responsiveBase'] tr:not([class*='responsiveSimple']) td.MuiTableCell-body > div {
       width: inherit;

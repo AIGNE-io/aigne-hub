@@ -333,16 +333,32 @@ export function DateRangePicker({
         sx={{
           justifyContent: 'space-between',
           minWidth: 200,
+          maxWidth: '100%',
           textTransform: 'none',
           bgcolor: 'background.paper',
           borderColor: 'divider',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          '& .MuiButton-startIcon, & .MuiButton-endIcon': {
+            flexShrink: 0,
+          },
           '&:hover': {
             borderColor: 'primary.main',
             bgcolor: 'action.hover',
           },
           ...sx,
         }}>
-        {formatDateRange()}
+        <Box
+          component="span"
+          sx={{
+            minWidth: 0,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}>
+          {formatDateRange()}
+        </Box>
       </Button>
 
       {isMobile ? (

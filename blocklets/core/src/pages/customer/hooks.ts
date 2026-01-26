@@ -2,6 +2,7 @@ import api from '@app/libs/api';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import Toast from '@arcblock/ux/lib/Toast';
 import { useRequest } from 'ahooks';
+import { useMemo, useState } from 'react';
 // Types
 export interface CreditBalance {
   balance: number;
@@ -50,6 +51,13 @@ export interface ModelCallsResponse {
     pageSize: number;
     total: number;
   };
+}
+
+export interface UserInfoItem {
+  did: string;
+  fullName?: string;
+  email?: string;
+  avatar?: string;
 }
 
 // Polling interval for all queries (30 seconds)
@@ -457,4 +465,49 @@ export function useProjectTrends(
   );
 
   return { data, loading, error, refetch };
+}
+
+export function useAdminUserInfo(params: { userDids: string[]; enabled?: boolean }) {
+  const enabled = params.enabled ?? true;
+  const [userInfoMap, setUserInfoMap] = useState<Record<string, UserInfoItem>>({});
+
+  const userDidsToFetch = useMemo(() => {
+    if (!enabled) return [];
+    const dids = (params.userDids || []).filter(Boolean);
+    const uniqueDids = Array.from(new Set(dids)).sort();
+    return uniqueDids.filter((did) => !userInfoMap[did]);
+  }, [params.userDids, userInfoMap, enabled]);
+
+  const {
+    loading,
+    error,
+    runAsync: refetch,
+  } = useRequest(
+    async () => {
+      if (!enabled || userDidsToFetch.length === 0) return [];
+      const { data } = await api.post('/api/user/admin/user-info', { userDids: userDidsToFetch });
+      return data?.users || [];
+    },
+    {
+      refreshDeps: [enabled, userDidsToFetch.join('|')],
+      onSuccess: (users: UserInfoItem[] = []) => {
+        if (!enabled || userDidsToFetch.length === 0) return;
+        setUserInfoMap((prev) => {
+          const next = { ...prev };
+          users.forEach((info) => {
+            if (info?.did) next[info.did] = info;
+          });
+          userDidsToFetch.forEach((did) => {
+            if (did && !next[did]) next[did] = { did, fullName: '', avatar: '' };
+          });
+          return next;
+        });
+      },
+      onError: (error) => {
+        console.error('Failed to fetch user info:', error);
+      },
+    }
+  );
+
+  return { userInfoMap, loading, error, refetch };
 }

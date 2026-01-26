@@ -23,6 +23,7 @@ import { fromUnitToToken } from '@ocap/util';
 import { Router } from 'express';
 import Joi from 'joi';
 import { pick } from 'lodash';
+import pAll from 'p-all';
 import { Op } from 'sequelize';
 import { joinURL, withQuery } from 'ufo';
 
@@ -128,6 +129,14 @@ const usageStatsSchema = Joi.object<UsageStatsQuery>({
     .pattern(/^-?\d+$/)
     .optional()
     .empty([null, '']),
+});
+
+interface BatchUserInfoBody {
+  userDids: string[];
+}
+
+const batchUserInfoSchema = Joi.object<BatchUserInfoBody>({
+  userDids: Joi.array().items(Joi.string().max(200)).min(1).max(200).required(),
 });
 
 router.get('/credit/grants', user, async (req, res) => {
@@ -288,6 +297,32 @@ router.get('/info', user, async (req, res) => {
     profileLink: shortProfileLink,
     creditPrefix: config.env.preferences?.creditPrefix || '',
   });
+});
+
+router.post('/admin/user-info', user, ensureAdmin, async (req, res) => {
+  try {
+    const { userDids } = await batchUserInfoSchema.validateAsync(req.body, { stripUnknown: true });
+    const uniqueUserDids = [...new Set(userDids.filter(Boolean))];
+    const users = await pAll(
+      uniqueUserDids.map((userDid) => async () => {
+        try {
+          const { user } = await blocklet.getUser(userDid);
+          if (user) {
+            user.avatar = user.avatar?.startsWith('/') ? joinURL(config.env.appUrl, user.avatar) : user.avatar;
+            return pick(user, ['did', 'fullName', 'email', 'avatar']);
+          }
+          return { did: userDid, fullName: 'Unknown User', email: '' };
+        } catch (error) {
+          return { did: userDid, fullName: 'Unknown User', email: '' };
+        }
+      }),
+      { concurrency: 5, stopOnError: false }
+    );
+
+    return res.json({ users });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
 });
 
 router.get(
