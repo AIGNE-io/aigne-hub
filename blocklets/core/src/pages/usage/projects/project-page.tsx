@@ -10,20 +10,17 @@ import { useProjectTrends } from '../../customer/hooks';
 import { ProjectCallHistory } from './components/project-call-history';
 import { ProjectUsageOverviewCard } from './components/project-usage-overview-card';
 
-const USAGE_DATE_RANGE_SESSION_KEY = 'usage:date-range';
+const ADMIN_USAGE_DATE_RANGE_SESSION_KEY = 'usage:date-range:admin';
+const CUSTOMER_USAGE_DATE_RANGE_SESSION_KEY = 'usage:date-range:customer';
 
-const readUsageDateRangeFromSession = () => {
+const readUsageDateRangeFromSession = (isAdmin: boolean) => {
   if (typeof window === 'undefined') return null;
   try {
-    const raw = sessionStorage.getItem(USAGE_DATE_RANGE_SESSION_KEY);
+    const storageKey = isAdmin ? ADMIN_USAGE_DATE_RANGE_SESSION_KEY : CUSTOMER_USAGE_DATE_RANGE_SESSION_KEY;
+    const raw = sessionStorage.getItem(storageKey);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    if (typeof parsed?.start !== 'string' || typeof parsed?.end !== 'string') return null;
-    const start = dayjs(parsed.start);
-    const end = dayjs(parsed.end);
-    if (!start.isValid() || !end.isValid()) return null;
-    if (end.isBefore(start, 'day')) return null;
-    return { start, end };
+    return { start: dayjs(parsed.start), end: dayjs(parsed.end) };
   } catch {
     return null;
   }
@@ -46,8 +43,7 @@ export default function ProjectPage({ appDid: appDidProp, emptyStateText, isAdmi
       from: toUTCTimestamp(dayjs().subtract(29, 'day')),
       to: toUTCTimestamp(dayjs(), true),
     };
-    if (!isAdmin) return fallbackRange;
-    const storedRange = readUsageDateRangeFromSession();
+    const storedRange = readUsageDateRangeFromSession(isAdmin);
     return storedRange
       ? { from: toUTCTimestamp(storedRange.start), to: toUTCTimestamp(storedRange.end, true) }
       : fallbackRange;

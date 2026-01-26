@@ -6,7 +6,6 @@ export { CallHistory } from './call-history';
 export { DateRangePicker } from './date-range-picker';
 export { UsageSummary } from './usage-summary';
 export { ProjectList } from './project-list';
-export { ProjectStackedChart } from './project-stacked-chart';
 export { ProjectUsageCharts } from './project-usage-charts';
 
 // Export types

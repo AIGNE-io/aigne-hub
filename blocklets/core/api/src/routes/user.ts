@@ -11,10 +11,9 @@ import {
 } from '@api/libs/payment';
 import { ensureAdmin } from '@api/libs/security';
 import { formatToShortUrl } from '@api/libs/url';
-import { generateHourRangeFromTimestamps, getAppName } from '@api/libs/user';
+import { getAppName } from '@api/libs/user';
 import ModelCall from '@api/store/models/model-call';
 import ModelCallStat from '@api/store/models/model-call-stat';
-import { sequelize } from '@api/store/sequelize';
 import { isValid as isValidDid } from '@arcblock/did';
 import { proxyToAIKit } from '@blocklet/aigne-hub/api/call';
 import { CustomError } from '@blocklet/error';
@@ -24,7 +23,7 @@ import { fromUnitToToken } from '@ocap/util';
 import { Router } from 'express';
 import Joi from 'joi';
 import { pick } from 'lodash';
-import { Op, QueryTypes } from 'sequelize';
+import { Op } from 'sequelize';
 import { joinURL, withQuery } from 'ufo';
 
 const router = Router();
@@ -590,145 +589,6 @@ router.get('/admin/user-stats', user, ensureAdmin, async (req, res) => {
       modelStats: modelStatsResult,
     });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
-  }
-});
-
-router.get('/weekly-comparison', user, async (req, res) => {
-  try {
-    const userDid = req.user?.did;
-
-    if (!userDid) {
-      return res.status(401).json({ error: 'User not authenticated' });
-    }
-
-    const comparison = await ModelCall.getWeeklyComparison(userDid);
-    return res.json(comparison);
-  } catch (error) {
-    return res.status(500).json({ message: error.message });
-  }
-});
-
-router.get('/monthly-comparison', user, async (req, res) => {
-  try {
-    const userDid = req.user?.did;
-
-    if (!userDid) {
-      return res.status(401).json({ error: 'User not authenticated' });
-    }
-
-    const comparison = await ModelCall.getMonthlyComparison(userDid);
-    return res.json(comparison);
-  } catch (error) {
-    return res.status(500).json({ message: error.message });
-  }
-});
-
-// Admin interface: Recalculate user statistics (general rebuild interface)
-router.post('/recalculate-stats', ensureAdmin, async (req, res) => {
-  try {
-    const { userDid, startTime, endTime, dryRun = false } = req.body;
-
-    if (!userDid || !startTime || !endTime) {
-      return res.status(400).json({
-        error: 'userDid, startTime, endTime are required',
-      });
-    }
-
-    const startTimeNum = Number(startTime);
-    const endTimeNum = Number(endTime);
-
-    if (Number.isNaN(startTimeNum) || Number.isNaN(endTimeNum)) {
-      return res.status(400).json({
-        error: 'startTime and endTime must be valid timestamps',
-      });
-    }
-
-    // Generate hour list for recalculation
-    const hours = generateHourRangeFromTimestamps(startTimeNum, endTimeNum);
-
-    const callBuckets = (await sequelize.query(
-      `
-      SELECT DISTINCT FLOOR("callTime" / 3600) * 3600 as "hour", "appDid"
-      FROM "ModelCalls"
-      WHERE "userDid" = :userDid
-        AND "callTime" >= :startTime
-        AND "callTime" <= :endTime
-    `,
-      {
-        type: QueryTypes.SELECT,
-        replacements: {
-          userDid,
-          startTime: startTimeNum,
-          endTime: endTimeNum,
-        },
-      }
-    )) as Array<{ hour: number | string; appDid: string | null }>;
-
-    const bucketMap = new Map<number, Set<string>>();
-    callBuckets.forEach((bucket) => {
-      const hour = Number(bucket.hour);
-      if (!Number.isFinite(hour)) return;
-      const { appDid } = bucket;
-      if (!appDid) return;
-      if (!bucketMap.has(hour)) {
-        bucketMap.set(hour, new Set());
-      }
-      bucketMap.get(hour)!.add(appDid);
-    });
-
-    const recalculationCount = Array.from(bucketMap.values()).reduce((sum, set) => sum + set.size, 0);
-
-    // Delete all stat cache in the specified time range (including day and hour types)
-    const deleteConditions = {
-      userDid,
-      timestamp: {
-        [Op.gte]: startTimeNum,
-        [Op.lte]: endTimeNum,
-      },
-    };
-
-    const existingStats = await ModelCallStat.findAll({
-      where: deleteConditions,
-      raw: true,
-    });
-
-    // Preview mode
-    if (dryRun) {
-      return res.json({
-        message: 'Preview mode - will rebuild hourly data',
-        userDid,
-        willDeleteStats: existingStats.length,
-        willRecalculateHours: hours.length,
-        willRecalculateStats: recalculationCount,
-      });
-    }
-
-    // Delete old cache and rebuild
-    const deletedCount = await ModelCallStat.destroy({ where: deleteConditions });
-
-    const tasks = Array.from(bucketMap.entries()).flatMap(([hour, appDids]) =>
-      Array.from(appDids).map(async (appDid) => {
-        try {
-          await ModelCallStat.getHourlyStatsByApp(userDid, appDid, hour);
-          return true;
-        } catch (error) {
-          return false;
-        }
-      })
-    );
-    const results = await Promise.all(tasks);
-
-    const successCount = results.filter(Boolean).length;
-    const failedCount = results.length - successCount;
-
-    return res.json({
-      message: 'Rebuild completed',
-      deleted: deletedCount,
-      success: successCount,
-      failed: failedCount,
-    });
-  } catch (error: any) {
     return res.status(500).json({ message: error.message });
   }
 });

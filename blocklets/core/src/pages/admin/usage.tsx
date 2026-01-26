@@ -12,7 +12,7 @@ import { useNavigate } from 'react-router-dom';
 import dayjs from '../../libs/dayjs';
 import { useUsageStats, useUsageTrends } from '../customer/hooks';
 
-const USAGE_DATE_RANGE_SESSION_KEY = 'usage:date-range';
+const USAGE_DATE_RANGE_SESSION_KEY = 'usage:date-range:admin';
 
 const readUsageDateRangeFromSession = () => {
   if (typeof window === 'undefined') return null;
@@ -20,12 +20,7 @@ const readUsageDateRangeFromSession = () => {
     const raw = sessionStorage.getItem(USAGE_DATE_RANGE_SESSION_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    if (typeof parsed?.start !== 'string' || typeof parsed?.end !== 'string') return null;
-    const start = dayjs(parsed.start);
-    const end = dayjs(parsed.end);
-    if (!start.isValid() || !end.isValid()) return null;
-    if (end.isBefore(start, 'day')) return null;
-    return { start, end };
+    return { start: dayjs(parsed.start), end: dayjs(parsed.end) };
   } catch {
     return null;
   }

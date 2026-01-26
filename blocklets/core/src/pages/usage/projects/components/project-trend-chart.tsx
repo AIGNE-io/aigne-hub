@@ -121,17 +121,15 @@ function CustomTooltip({ active = false, payload = [], label = '' }: CustomToolt
 }
 
 export function ProjectTrendChart({ trends = [], comparisonTrends = [], timeRange = 30 }: ProjectTrendChartProps) {
-  const { t, locale } = useLocaleContext();
+  const { t } = useLocaleContext();
   const theme = useTheme();
 
   const formatXAxisLabel = (timestamp: number) => {
     const date = dayjs.unix(timestamp);
     if (timeRange <= 7) {
-      // 7天内显示日期+时间
-      return locale === 'zh' ? date.format('M/D HH:mm') : date.format('M/D HH:mm');
+      return date.format('HH:mm');
     }
-    // 大于7天只显示日期
-    return locale === 'zh' ? date.format('M月D日') : date.format('MMM D');
+    return date.format('MM-DD');
   };
 
   const formatDuration = (seconds?: number) => {

@@ -1,17 +1,15 @@
 import { sessionMiddleware } from '@blocklet/sdk/lib/middlewares/session';
 import { fromUnitToToken } from '@ocap/util';
 import { Router } from 'express';
-import { Op } from 'sequelize';
 
 import { backfillModelCallStatsBatch } from '../crons/model-call-stats';
 import { normalizeProjectAppDid } from '../libs/env';
 import logger from '../libs/logger';
-import { getCreditTransactions, getUserCredits } from '../libs/payment';
+import { getUserCredits } from '../libs/payment';
 import { pushProjectFetchJob } from '../queue/projects';
 import ModelCall from '../store/models/model-call';
 import ModelCallStat from '../store/models/model-call-stat';
 import Project from '../store/models/project';
-import { sequelize } from '../store/sequelize';
 
 const router = Router();
 
@@ -91,7 +89,7 @@ router.get('/quota', user, async (req, res) => {
     const { startTime, endTime, timeRange } = getTimeRange(req.query, 30);
 
     // Calculate estimated days remaining based on recent usage
-    const stats = await ModelCallStat.getUserAggregatedStats(userDid, startTime, endTime);
+    const stats = await ModelCallStat.getStatsByCalls(userDid, undefined, startTime, endTime);
     const daysInRange = 30;
     const dailyAvgCredits = stats.totalCredits / daysInRange;
 
@@ -205,161 +203,17 @@ router.get('/projects/trends', user, async (req, res) => {
     const allUsers = allUsersFlag;
 
     const { startTime, endTime, timeRange } = getTimeRange(req.query);
-    const rangeDays = timeRange;
-    const granularity = rangeDays <= 1 ? 'hour' : 'day';
+    const granularity = timeRange <= 1 ? 'hour' : 'day';
     const scopedUserDid = allUsers ? null : userDid;
 
-    let sortedProjects: Array<{ appDid: string; lastCallTime: number }> = [];
-    let appDids: string[] = [];
-
-    if (granularity === 'hour') {
-      const whereClause: any = {
-        callTime: { [Op.between]: [startTime, endTime] },
-      };
-      if (!allUsers) {
-        whereClause.userDid = userDid;
-      }
-
-      const projectCalls = (await ModelCall.findAll({
-        attributes: ['appDid', [sequelize.fn('MAX', sequelize.col('callTime')), 'lastCallTime']],
-        where: whereClause,
-        group: ['appDid'],
-        raw: true,
-      })) as unknown as Array<{ appDid: string | null; lastCallTime: number }>;
-
-      const projectCallsMap = new Map<string, { appDid: string; lastCallTime: number }>();
-      projectCalls.forEach((item) => {
-        const { appDid } = item;
-        if (!appDid) return;
-        const key = appDid;
-        const existing = projectCallsMap.get(key);
-        const lastCallTime = Math.max(existing?.lastCallTime || 0, item.lastCallTime || 0);
-        projectCallsMap.set(key, { appDid, lastCallTime });
-      });
-
-      const projectCallsList = Array.from(projectCallsMap.values());
-      sortedProjects = projectCallsList.sort((a, b) => (b.lastCallTime || 0) - (a.lastCallTime || 0));
-      appDids = sortedProjects.map((item) => item.appDid).filter(Boolean) as string[];
-    } else {
-      const startBucket = Math.floor(startTime / 86400) * 86400;
-      const endBucket = Math.floor(endTime / 86400) * 86400;
-      const currentDay = Math.floor(Date.now() / 1000 / 86400) * 86400;
-      const statsWhere: any = {
-        timeType: 'day',
-        timestamp: { [Op.between]: [startBucket, endBucket] },
-      };
-      if (allUsers) {
-        statsWhere.userDid = { [Op.not]: null };
-      } else {
-        statsWhere.userDid = userDid;
-      }
-      const statsRows = (await ModelCallStat.findAll({
-        attributes: ['appDid'],
-        where: statsWhere,
-        group: ['appDid'],
-        raw: true,
-      })) as Array<{ appDid: string | null }>;
-
-      const statsAppDids = Array.from(
-        new Set(
-          statsRows
-            .map((row) => row.appDid)
-            .filter((appDid): appDid is string => typeof appDid === 'string' && appDid.length > 0)
-        )
-      );
-      const realtimeAppDids = new Set<string>();
-      const lastCallMap = new Map<string, number>();
-
-      if (endTime >= currentDay) {
-        const realtimeStart = Math.max(startTime, currentDay);
-        const realtimeEnd = endTime;
-        const whereClause: any = {
-          callTime: { [Op.between]: [realtimeStart, realtimeEnd] },
-        };
-        if (!allUsers) {
-          whereClause.userDid = userDid;
-        }
-
-        const projectCalls = (await ModelCall.findAll({
-          attributes: ['appDid', [sequelize.fn('MAX', sequelize.col('callTime')), 'lastCallTime']],
-          where: whereClause,
-          group: ['appDid'],
-          raw: true,
-        })) as unknown as Array<{ appDid: string | null; lastCallTime: number }>;
-
-        projectCalls.forEach((item) => {
-          const { appDid } = item;
-          if (!appDid) return;
-          realtimeAppDids.add(appDid);
-          const existing = lastCallMap.get(appDid) || 0;
-          lastCallMap.set(appDid, Math.max(existing, item.lastCallTime || 0));
-        });
-      }
-
-      const appDidList = Array.from(new Set([...statsAppDids, ...realtimeAppDids]));
-      if (appDidList.length === 0) {
-        return res.json({ projects: [], trends: [], granularity });
-      }
-
-      sortedProjects = appDidList
-        .map((appDid) => ({ appDid, lastCallTime: lastCallMap.get(appDid) || 0 }))
-        .sort((a, b) => (b.lastCallTime || 0) - (a.lastCallTime || 0));
-      appDids = sortedProjects.map((item) => item.appDid).filter(Boolean) as string[];
-    }
-
-    if (sortedProjects.length === 0) {
-      return res.json({ projects: [], trends: [], granularity });
-    }
-
-    const projects = appDids.length
-      ? await Project.findAll({
-          where: { appDid: { [Op.in]: appDids } },
-        })
-      : [];
-    const projectMap = new Map(projects.map((project) => [project.appDid, project]));
-
-    const projectList = sortedProjects.map(({ appDid, lastCallTime }) => {
-      const project = projectMap.get(appDid);
-      if (!project && appDid) {
-        pushProjectFetchJob(appDid);
-      }
-      return {
-        appDid,
-        appName: project?.appName || appDid || undefined,
-        appLogo: project?.appLogo || undefined,
-        appUrl: project?.appUrl || undefined,
-        lastCallTime,
-      };
-    });
-
-    const trendBuckets = await ModelCallStat.getProjectTrendsBatch(
-      scopedUserDid,
-      sortedProjects.map((project) => project.appDid),
+    const result = await ModelCallStat.getTrendGroupByProjects({
+      userDid: scopedUserDid,
       startTime,
       endTime,
-      granularity
-    );
-
-    const trends = trendBuckets.map(({ timestamp, byProject }) => {
-      const normalizedByProject: Record<
-        string,
-        { totalUsage: number; totalCredits: number; totalCalls: number; successCalls: number; avgDuration: number }
-      > = {};
-
-      Object.entries(byProject).forEach(([appDidKey, stats]) => {
-        normalizedByProject[appDidKey] = {
-          totalUsage: stats.totalUsage,
-          totalCredits: stats.totalCredits,
-          totalCalls: stats.totalCalls,
-          successCalls: stats.successCalls,
-          avgDuration: stats.avgDuration || 0,
-        };
-      });
-
-      return { timestamp, byProject: normalizedByProject };
+      granularity,
     });
 
-    return res.json({ projects: projectList, trends, granularity });
+    return res.json(result);
   } catch (error: any) {
     logger.error('Failed to get project trends', { error, userDid: req.user?.did });
     return res.status(500).json({ message: error.message });
@@ -457,52 +311,6 @@ router.post('/stats/backfill', user, async (req, res) => {
 });
 
 /**
- * GET /api/usage/quota-details
- * Get credit transaction details (from payment-kit)
- * NOTE: This endpoint is implemented last as it depends on payment-kit API
- */
-router.get('/quota-details', user, async (req, res) => {
-  try {
-    const userDid = req.user?.did;
-    if (!userDid) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    const page = parseInt(req.query.page as string, 10) || 1;
-    const pageSize = parseInt(req.query.pageSize as string, 10) || 20;
-
-    const transactions = await getCreditTransactions({
-      customer_id: userDid,
-      page,
-      pageSize,
-    });
-
-    return res.json({
-      list: (transactions.list || []).map((t: any) => ({
-        id: t.id,
-        amount: parseFloat(t.amount || '0'),
-        type: t.type || 'unknown',
-        createdAt: t.created_at ? new Date(t.created_at).getTime() : Date.now(),
-        description: t.description || '',
-        metadata: t.metadata,
-      })),
-      count: transactions.count || 0,
-      page,
-      pageSize,
-    });
-  } catch (error: any) {
-    logger.error('Failed to get quota details', { error, userDid: req.user?.did });
-    // Return empty result if payment-kit is not available
-    return res.json({
-      list: [],
-      count: 0,
-      page: parseInt(req.query.page as string, 10) || 1,
-      pageSize: parseInt(req.query.pageSize as string, 10) || 20,
-    });
-  }
-});
-
-/**
  * GET /api/usage/projects/:appDid/trends
  * Get trends for a specific project
  */
@@ -525,7 +333,7 @@ router.get('/projects/:appDid(.*)/trends', user, async (req, res) => {
     const rangeDays = getRangeDays(startTime, endTime);
     const granularity = rangeDays <= 1 ? 'hour' : 'day';
 
-    const trendBuckets = await ModelCallStat.getProjectTrendsBatch(
+    const trendBuckets = await ModelCallStat.getProjectTrends(
       allUsers ? null : userDid,
       [appDid],
       startTime,

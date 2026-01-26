@@ -484,8 +484,8 @@ export default flatten({
     totalRequests: 'Total Calls',
     dateLabel: 'Date',
     creditsPer1kRequests: '{credits} / 1k requests',
-    usagePerHour: '~{usage} usage/hour',
-    requestsPerHour: '~{requests} req/hour',
+    usagePerHour: '{usage} usage/hour',
+    requestsPerHour: '≈{requests} req/hour',
     requestsCount: '{success} / {total} requests',
     dailyCreditsUsage: 'Daily Credits Trend',
     dailyUsage: 'Daily Usage Trend',
@@ -560,6 +560,7 @@ export default flatten({
 
   quickSelect: 'Quick Select',
   selectDateRange: 'Select Date Range',
+  utcTimeLabel: 'UTC Time',
   customRange: 'Custom Range',
   dataAvailableFrom: 'Data available from 3 months ago',
   usedBy: 'Used By',

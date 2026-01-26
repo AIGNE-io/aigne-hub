@@ -1,11 +1,13 @@
 import dayjs from '@api/libs/dayjs';
 import logger from '@api/libs/logger';
 import ModelCallStat from '@api/store/models/model-call-stat';
+import pAll from 'p-all';
 import { Op, QueryTypes } from 'sequelize';
 
 import { sequelize } from '../store/sequelize';
 
 const DAY_IN_SECONDS = 86400;
+const CALC_DAILY_STATS_CONCURRENCY = 10;
 
 export async function getDaysToWarmup(): Promise<number[]> {
   const item = await ModelCallStat.findOne({
@@ -61,19 +63,20 @@ export async function createModelCallStats(dayTimestamp?: number) {
           type: QueryTypes.SELECT,
           replacements: { startTime, endTime },
         }
-      )) as Array<{ userDid: string; appDid: string | null }>;
+      )) as Array<{ userDid: string | null; appDid: string | null }>;
 
-      const uniquePairs = new Map<string, { userDid: string; appDid: string | null }>();
+      const uniquePairs = new Map<string, { userDid: string; appDid: string }>();
       calls.forEach((call) => {
-        const { appDid } = call;
-        const key = `${call.userDid}::${appDid || ''}`;
-        uniquePairs.set(key, { userDid: call.userDid, appDid });
+        const { userDid, appDid } = call;
+        if (!userDid || !appDid) return;
+        const key = `${userDid}::${appDid}`;
+        uniquePairs.set(key, { userDid, appDid });
       });
 
-      await Promise.all(
-        Array.from(uniquePairs.values()).map(async ({ userDid, appDid }) => {
+      await pAll(
+        Array.from(uniquePairs.values()).map(({ userDid, appDid }) => async () => {
           try {
-            await ModelCallStat.getDailyStatsByApp(userDid, appDid, dayTimestamp);
+            await ModelCallStat.calcDailyStats(userDid, appDid, dayTimestamp);
             logger.info('ModelCallStat daily processed', {
               day: new Date(dayTimestamp * 1000).toISOString(),
               userDid,
@@ -87,7 +90,8 @@ export async function createModelCallStats(dayTimestamp?: number) {
               error,
             });
           }
-        })
+        }),
+        { concurrency: CALC_DAILY_STATS_CONCURRENCY, stopOnError: false }
       );
     })
   );
@@ -122,18 +126,19 @@ export async function backfillModelCallStats({
           type: QueryTypes.SELECT,
           replacements: { startTime, endTime },
         }
-      )) as Array<{ userDid: string; appDid: string | null }>;
+      )) as Array<{ userDid: string | null; appDid: string | null }>;
 
-      const uniquePairs = new Map<string, { userDid: string; appDid: string | null }>();
+      const uniquePairs = new Map<string, { userDid: string; appDid: string }>();
       calls.forEach((call) => {
-        const { appDid } = call;
-        const key = `${call.userDid}::${appDid || ''}`;
-        uniquePairs.set(key, { userDid: call.userDid, appDid });
+        const { userDid, appDid } = call;
+        if (!userDid || !appDid) return;
+        const key = `${userDid}::${appDid}`;
+        uniquePairs.set(key, { userDid, appDid });
       });
 
       await Promise.all(
         Array.from(uniquePairs.values()).map(({ userDid: uid, appDid: aid }) =>
-          ModelCallStat.getDailyStatsByApp(uid, aid, dayTimestamp)
+          ModelCallStat.calcDailyStats(uid, aid, dayTimestamp)
         )
       );
 
@@ -164,14 +169,40 @@ export async function backfillModelCallStats({
 
     await Promise.all(
       Array.from(appDids.values()).map((appDidValue) =>
-        ModelCallStat.getDailyStatsByApp(normalizedUserDid, appDidValue, dayTimestamp)
+        ModelCallStat.calcDailyStats(normalizedUserDid, appDidValue, dayTimestamp)
       )
     );
 
     return;
   }
 
-  await ModelCallStat.getDailyStatsByApp(normalizedUserDid, appDid, dayTimestamp);
+  if (!appDid) return;
+  if (normalizedUserDid) {
+    await ModelCallStat.calcDailyStats(normalizedUserDid, appDid, dayTimestamp);
+    return;
+  }
+
+  const users = (await sequelize.query(
+    `
+      SELECT DISTINCT "userDid"
+      FROM "ModelCalls"
+      WHERE "appDid" = :appDid
+        AND "callTime" >= :startTime
+        AND "callTime" <= :endTime
+        AND "userDid" IS NOT NULL
+    `,
+    {
+      type: QueryTypes.SELECT,
+      replacements: { appDid, startTime, endTime },
+    }
+  )) as Array<{ userDid: string | null }>;
+
+  await Promise.all(
+    users
+      .map((row) => row.userDid)
+      .filter((userDid): userDid is string => !!userDid && userDid.length > 0)
+      .map((userDid) => ModelCallStat.calcDailyStats(userDid, appDid, dayTimestamp))
+  );
 }
 
 export async function backfillModelCallStatsBatch({

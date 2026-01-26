@@ -277,17 +277,14 @@ export function UsageCharts({
   showCredits = true,
   showRequests = false,
 }: UsageChartsProps) {
-  const { t, locale } = useLocaleContext();
+  const { t } = useLocaleContext();
   const theme = useTheme();
 
   const formatXAxisLabel = (label: string) => {
     if (xAxisGranularity === 'hour') {
       return dayjs(label).format('HH:mm');
     }
-    if (locale === 'zh') {
-      return dayjs(label).format('M月D日');
-    }
-    return dayjs(label).format('MMM DD');
+    return dayjs(label).format('MM-DD');
   };
 
   const resolvedMetric: UsageChartMetric = metric || (showCredits ? 'credits' : 'usage');

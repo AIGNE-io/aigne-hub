@@ -7,14 +7,20 @@ import {
   Model,
   Op,
   QueryTypes,
+  col,
+  fn,
+  literal,
 } from 'sequelize';
 
-import logger from '../../libs/logger';
 import nextId from '../../libs/next-id';
 import { pushProjectFetchJob } from '../../queue/projects';
 import { sequelize } from '../sequelize';
+import ModelCall from './model-call';
 import Project from './project';
 import { DailyStats } from './types';
+
+const SECONDS_PER_HOUR = 3600;
+const SECONDS_PER_DAY = 86400;
 
 export default class ModelCallStat extends Model<
   InferAttributes<ModelCallStat>,
@@ -75,296 +81,50 @@ export default class ModelCallStat extends Model<
     },
   };
 
-  /**
-   * Get project-level daily stats (appDid = specific value)
-   */
-  static async getDailyStatsByApp(
-    userDid: string | null,
-    appDid: string | null | undefined,
-    dayTimestamp: number
-  ): Promise<DailyStats> {
-    return ModelCallStat.getDailyStatsInternal(userDid, appDid, dayTimestamp);
-  }
-
-  /**
-   * Get project-level hourly stats (appDid = specific value)
-   */
-  static async getHourlyStatsByApp(
-    userDid: string | null,
-    appDid: string | null | undefined,
-    hourTimestamp: number
-  ): Promise<DailyStats> {
-    return ModelCallStat.getHourlyStatsInternal(userDid, appDid, hourTimestamp);
-  }
-
-  /**
-   * Internal method: unified handling of daily aggregation
-   */
-  private static async getDailyStatsInternal(
-    userDid: string | null,
-    appDid: string | null | undefined,
-    dayTimestamp: number
-  ): Promise<DailyStats> {
-    // Part 1: Check if today - compute in real-time
-    if (ModelCallStat.isCurrentDay(dayTimestamp)) {
-      return ModelCallStat.computeDailyStats(userDid, appDid, dayTimestamp);
+  static async calcDailyStats(userDid: string, appDid: string, dayTimestamp: number): Promise<void> {
+    // Check if today - compute in real-time without cache write
+    const currentDay = Math.floor(Date.now() / 1000 / SECONDS_PER_DAY) * SECONDS_PER_DAY;
+    if (dayTimestamp >= currentDay) {
+      return;
     }
 
-    // Part 2: Try to get existing day stats
-    const existingDayStat = await ModelCallStat.findExistingDayStats(userDid, appDid, dayTimestamp);
-    if (existingDayStat) {
-      return existingDayStat.stats;
-    }
-
-    // Part 3: Try to merge from hour stats (for backward compatibility)
-    const dayStart = dayTimestamp;
-
-    const whereClause: any = {
-      userDid,
-      timestamp: { [Op.between]: [dayStart, dayStart + 86399] },
-      timeType: 'hour',
-    };
-
-    ModelCallStat.applyStatsAppDidCondition(whereClause, appDid);
-
-    const hourlyStats = await ModelCallStat.findAll({ where: whereClause });
-
-    if (hourlyStats.length > 0) {
-      // Merge hour stats into day stats
-      return ModelCallStat.mergeStats(hourlyStats.map((s) => s.stats));
-    }
-
-    // Part 4: Compute and save if not found
-    return ModelCallStat.computeAndSaveDailyStats(userDid, appDid, dayTimestamp);
-  }
-
-  /**
-   * Internal method: unified handling of project-level aggregation
-   */
-  private static async getHourlyStatsInternal(
-    userDid: string | null,
-    appDid: string | null | undefined,
-    hourTimestamp: number
-  ): Promise<DailyStats> {
-    // Part 1: Check if current hour - compute in real-time
-    if (ModelCallStat.isCurrentHour(hourTimestamp)) {
-      return ModelCallStat.computeHourlyStats(userDid, appDid, hourTimestamp);
-    }
-
-    // Part 2: Try to get existing stats
-    const existingStat = await ModelCallStat.findExistingHourlyStats(userDid, appDid, hourTimestamp);
-    if (existingStat) {
-      return existingStat.stats;
-    }
-
-    // Part 3: Compute and save if not found (lazy loading)
-    return ModelCallStat.computeAndSaveHourlyStats(userDid, appDid, hourTimestamp);
-  }
-
-  private static isCurrentHour(hourTimestamp: number): boolean {
-    const currentHour = Math.floor(Date.now() / 1000 / 3600) * 3600;
-    return hourTimestamp >= currentHour;
-  }
-
-  private static isCurrentDay(dayTimestamp: number): boolean {
-    const currentDay = Math.floor(Date.now() / 1000 / 86400) * 86400;
-    return dayTimestamp >= currentDay;
-  }
-
-  private static async findExistingDayStats(
-    userDid: string | null,
-    appDid: string | null | undefined,
-    dayTimestamp: number
-  ): Promise<ModelCallStat | null> {
-    const whereClause: any = {
-      userDid,
-      timestamp: dayTimestamp,
-      timeType: 'day',
-    };
-
-    ModelCallStat.applyStatsAppDidCondition(whereClause, appDid);
-
-    return ModelCallStat.findOne({ where: whereClause });
-  }
-
-  private static async findExistingHourlyStats(
-    userDid: string | null,
-    appDid: string | null | undefined,
-    hourTimestamp: number
-  ): Promise<ModelCallStat | null> {
-    const whereClause: any = {
-      userDid,
-      timestamp: hourTimestamp,
-      timeType: 'hour',
-    };
-
-    ModelCallStat.applyStatsAppDidCondition(whereClause, appDid);
-
-    return ModelCallStat.findOne({ where: whereClause });
-  }
-
-  static async computeAndSaveDailyStats(
-    userDid: string | null,
-    appDid: string | null | undefined,
-    dayTimestamp: number
-  ): Promise<DailyStats> {
-    const stats = await ModelCallStat.computeDailyStats(userDid, appDid, dayTimestamp);
-
-    // Generate unique key including appDid
-    const appPart = appDid ? `-${appDid}` : '';
-    const dayKey = `${userDid}${appPart}-day-${dayTimestamp}`;
-
-    try {
-      await ModelCallStat.create({
-        id: dayKey,
+    const existingDayStat = await ModelCallStat.findOne({
+      where: {
         userDid,
-        appDid: appDid ?? null,
+        appDid,
         timestamp: dayTimestamp,
         timeType: 'day',
-        stats,
-      });
-    } catch (error: any) {
-      // Handle duplicate key error (race condition)
-      if (error.name === 'SequelizeUniqueConstraintError') {
-        const existing = await ModelCallStat.findExistingDayStats(userDid, appDid, dayTimestamp);
-        if (existing) {
-          return existing.stats;
-        }
-      }
-      throw error;
+      },
+    });
+    if (existingDayStat) {
+      return;
     }
 
-    return stats;
-  }
-
-  static async computeAndSaveHourlyStats(
-    userDid: string | null,
-    appDid: string | null | undefined,
-    hourTimestamp: number
-  ): Promise<DailyStats> {
-    const stats = await ModelCallStat.computeHourlyStats(userDid, appDid, hourTimestamp);
-    if (stats.totalCalls === 0) {
-      return stats;
-    }
+    const stats = await ModelCallStat.getStatsByCalls(
+      userDid,
+      appDid,
+      dayTimestamp,
+      dayTimestamp + SECONDS_PER_DAY - 1
+    );
 
     // Generate unique key including appDid
-    const appPart = appDid ? `-${appDid}` : '';
-    const hourKey = `${userDid}${appPart}-${hourTimestamp}`;
+    const dayKey = `${userDid}-${appDid}-day-${dayTimestamp}`;
 
-    try {
-      await ModelCallStat.create({
-        id: hourKey,
-        userDid,
-        appDid: appDid ?? null,
-        timestamp: hourTimestamp,
-        timeType: 'hour',
-        stats,
-      });
-    } catch (error: any) {
-      // Handle duplicate key error (race condition)
-      if (error.name === 'SequelizeUniqueConstraintError') {
-        const existing = await ModelCallStat.findExistingHourlyStats(userDid, appDid, hourTimestamp);
-        if (existing) {
-          return existing.stats;
-        }
-      }
-      throw error;
-    }
-
-    return stats;
-  }
-
-  /**
-   * Get user-level aggregated stats across all projects (no cache write)
-   */
-  static async getUserAggregatedStats(userDid: string, startTime: number, endTime: number): Promise<DailyStats> {
-    return ModelCallStat.executeStatsQueries(userDid, undefined, startTime, endTime);
-  }
-
-  /**
-   * Get aggregated stats for a time range (past days use daily aggregation, current day uses realtime)
-   */
-  static async getAggregatedStats(
-    userDid: string | null,
-    appDid: string | null | undefined,
-    startTime: number,
-    endTime: number
-  ): Promise<DailyStats> {
-    const safeStart = Math.min(startTime, endTime);
-    const safeEnd = Math.max(startTime, endTime);
-    const startDay = Math.floor(safeStart / 86400) * 86400;
-    const endDay = Math.floor(safeEnd / 86400) * 86400;
-    const currentDay = Math.floor(Date.now() / 1000 / 86400) * 86400;
-
-    let fullStartDay = startDay;
-    if (safeStart > startDay) {
-      fullStartDay = startDay + 86400;
-    }
-
-    let fullEndDay = endDay;
-    if (safeEnd < endDay + 86400 - 1) {
-      fullEndDay = endDay - 86400;
-    }
-
-    fullEndDay = Math.min(fullEndDay, currentDay - 86400);
-
-    const statsList: DailyStats[] = [];
-
-    // Aggregate full past days via daily stats
-    if (fullStartDay <= fullEndDay) {
-      const dayTrends = await ModelCallStat.getTrendsDaily(userDid, appDid, fullStartDay, fullEndDay);
-      statsList.push(...dayTrends.map((trend) => trend.stats));
-    }
-
-    const ranges: Array<{ start: number; end: number }> = [];
-    if (fullStartDay <= fullEndDay) {
-      const preEnd = Math.min(safeEnd, fullStartDay - 1);
-      if (safeStart <= preEnd) {
-        ranges.push({ start: safeStart, end: preEnd });
-      }
-
-      const postStart = Math.max(safeStart, fullEndDay + 86400);
-      if (postStart <= safeEnd) {
-        ranges.push({ start: postStart, end: safeEnd });
-      }
-    } else {
-      ranges.push({ start: safeStart, end: safeEnd });
-    }
-
-    // Partial days or current day: realtime calculation (no cache write)
-    for (const range of ranges) {
-      if (range.start > range.end) continue;
-      const stats = await ModelCallStat.executeStatsQueries(userDid, appDid, range.start, range.end);
-      statsList.push(stats);
-    }
-
-    return ModelCallStat.mergeStats(statsList);
-  }
-
-  /**
-   * Get trends data with specified granularity
-   */
-  static async getTrends(
-    userDid: string | null,
-    appDid: string | null | undefined,
-    startTime: number,
-    endTime: number,
-    granularity: 'hour' | 'day' = 'day'
-  ): Promise<Array<{ timestamp: number; stats: DailyStats }>> {
-    if (granularity === 'hour') {
-      // Hour granularity: use lazy loading
-      return ModelCallStat.getTrendsHourly(userDid, appDid, startTime, endTime);
-    }
-
-    // Day granularity: prioritize day stats, fallback to merged hour stats
-    return ModelCallStat.getTrendsDaily(userDid, appDid, startTime, endTime);
+    await ModelCallStat.upsert({
+      id: dayKey,
+      userDid,
+      appDid,
+      timestamp: dayTimestamp,
+      timeType: 'day',
+      stats,
+    });
   }
 
   /**
    * Get trends for multiple projects in a single query (cache-first)
    * This avoids per-project loops and heavy realtime aggregation for missing stats.
    */
-  static async getProjectTrendsBatch(
+  static async getProjectTrends(
     userDid: string | null | undefined,
     appDids: Array<string | null | undefined>,
     startTime: number,
@@ -378,32 +138,11 @@ export default class ModelCallStat extends Model<
       return [];
     }
 
-    const bucketSize = granularity === 'hour' ? 3600 : 86400;
-    const startBucket = Math.floor(startTime / bucketSize) * bucketSize;
-    const endBucket = Math.floor(endTime / bucketSize) * bucketSize;
-    const projectKeys = appDidList.map((appDid) => ModelCallStat.getProjectKey(appDid));
+    const { bucketSize, startBucket, endBucket } = ModelCallStat.getBucketRange(startTime, endTime, granularity);
+    const projectKeys = appDidList;
 
     if (granularity === 'hour') {
-      const trendsByTimestamp = await ModelCallStat.getRealtimeProjectTrendsRange(
-        userDid,
-        appDidList,
-        startTime,
-        endTime,
-        granularity
-      );
-
-      const result: Array<{ timestamp: number; byProject: Record<string, DailyStats> }> = [];
-      for (let bucket = startBucket; bucket <= endBucket; bucket += bucketSize) {
-        const byProject = trendsByTimestamp.get(bucket) || {};
-        projectKeys.forEach((projectKey) => {
-          if (!byProject[projectKey]) {
-            byProject[projectKey] = ModelCallStat.getEmptyStats();
-          }
-        });
-        result.push({ timestamp: bucket, byProject });
-      }
-
-      return result;
+      return ModelCallStat.getProjectTrendsByCalls(userDid, appDidList, startTime, endTime, granularity);
     }
 
     const timeType = 'day';
@@ -412,10 +151,8 @@ export default class ModelCallStat extends Model<
       timeType,
     };
 
-    if (userDid === null) {
-      whereClause.userDid = { [Op.not]: null };
-    } else if (userDid !== undefined) {
-      whereClause.userDid = userDid;
+    if (userDid !== undefined) {
+      whereClause.userDid = userDid === null ? { [Op.not]: null } : userDid;
     }
 
     if (appDidList.length) {
@@ -436,7 +173,7 @@ export default class ModelCallStat extends Model<
 
       const { appDid } = row;
       if (!appDid) return;
-      const projectKey = ModelCallStat.getProjectKey(appDid);
+      const projectKey = appDid;
       const stats = ModelCallStat.parseStats(row.stats);
       const prepared = ModelCallStat.prepareTrendStats(stats);
 
@@ -453,15 +190,20 @@ export default class ModelCallStat extends Model<
     });
 
     // Merge current bucket realtime stats (cache-only for historical data)
-    const realtimeMap = await ModelCallStat.getRealtimeProjectTrends(
-      userDid,
-      appDidList,
-      startTime,
-      endTime,
-      granularity
-    );
+    const currentBucket = Math.floor(Date.now() / 1000 / bucketSize) * bucketSize;
+    const realtimeEndBucket = Math.floor(endTime / bucketSize) * bucketSize;
+    const realtimeBuckets =
+      realtimeEndBucket < currentBucket
+        ? []
+        : await ModelCallStat.getProjectTrendsByCalls(
+            userDid,
+            appDidList,
+            currentBucket,
+            Math.min(endTime, currentBucket + bucketSize - 1),
+            granularity
+          );
 
-    realtimeMap.forEach((byProject, timestamp) => {
+    realtimeBuckets.forEach(({ timestamp, byProject }) => {
       if (!trendsByTimestamp.has(timestamp)) {
         trendsByTimestamp.set(timestamp, {});
       }
@@ -476,263 +218,128 @@ export default class ModelCallStat extends Model<
       });
     });
 
-    const result: Array<{ timestamp: number; byProject: Record<string, DailyStats> }> = [];
-    for (let bucket = startBucket; bucket <= endBucket; bucket += bucketSize) {
-      const byProject = trendsByTimestamp.get(bucket) || {};
-      projectKeys.forEach((projectKey) => {
-        if (!byProject[projectKey]) {
-          byProject[projectKey] = ModelCallStat.getEmptyStats();
-        }
-      });
-      result.push({ timestamp: bucket, byProject });
-    }
-
-    return result;
+    return ModelCallStat.buildProjectTrendBuckets(trendsByTimestamp, projectKeys, startBucket, endBucket, bucketSize);
   }
 
-  /**
-   * Get hourly trends (lazy loading)
-   */
-  private static async getTrendsHourly(
-    userDid: string | null,
-    appDid: string | null | undefined,
-    startTime: number,
-    endTime: number
-  ): Promise<Array<{ timestamp: number; stats: DailyStats }>> {
-    const startHour = Math.floor(startTime / 3600) * 3600;
-    const endHour = Math.floor(endTime / 3600) * 3600;
-    const currentHour = Math.floor(Date.now() / 1000 / 3600) * 3600;
-
-    const result: Array<{ timestamp: number; stats: DailyStats }> = [];
-
-    for (let hour = startHour; hour <= endHour; hour += 3600) {
-      if (hour >= currentHour) {
-        // Current hour: compute in real-time
-        const stats = await ModelCallStat.computeHourlyStats(userDid, appDid, hour);
-        result.push({ timestamp: hour, stats });
-      } else {
-        // Past hour: use lazy loading (check cache first, then compute and save)
-        const stats = await ModelCallStat.getHourlyStatsInternal(userDid, appDid, hour);
-        result.push({ timestamp: hour, stats });
-      }
-    }
-
-    return result;
-  }
-
-  /**
-   * Get daily trends from day stats
-   */
-  private static async getTrendsDaily(
-    userDid: string | null,
-    appDid: string | null | undefined,
-    startTime: number,
-    endTime: number
-  ): Promise<Array<{ timestamp: number; stats: DailyStats }>> {
-    const startDay = Math.floor(startTime / 86400) * 86400;
-    const endDay = Math.floor(endTime / 86400) * 86400;
-    const currentDay = Math.floor(Date.now() / 1000 / 86400) * 86400;
-
-    // Step 1: Batch query all day stats in the range
-    const whereClause: any = {
-      timestamp: { [Op.between]: [startDay, endDay] },
-      timeType: 'day',
-    };
-    if (userDid === null) {
-      whereClause.userDid = { [Op.not]: null };
-    } else if (userDid !== undefined) {
-      whereClause.userDid = userDid;
-    }
-    ModelCallStat.applyStatsAppDidCondition(whereClause, appDid);
-
-    const dayStats = await ModelCallStat.findAll({
-      where: whereClause,
-      order: [['timestamp', 'ASC']],
-    });
-
-    // Create a map of existing day stats (merge duplicates for admin aggregation)
-    const dayStatsMap = new Map<number, DailyStats>();
-    dayStats.forEach((stat) => {
-      const existing = dayStatsMap.get(stat.timestamp);
-      if (existing) {
-        dayStatsMap.set(stat.timestamp, ModelCallStat.mergeStats([existing, stat.stats]));
-      } else {
-        dayStatsMap.set(stat.timestamp, stat.stats);
-      }
-    });
-
-    // Step 2: Build result array
-    const result: Array<{ timestamp: number; stats: DailyStats }> = [];
-    for (let day = startDay; day <= endDay; day += 86400) {
-      if (day >= currentDay) {
-        // Today or future: compute in real-time
-        const stats = await ModelCallStat.computeDailyStats(userDid, appDid, day);
-        result.push({ timestamp: day, stats });
-      } else {
-        // Past day: get from map (day stats or empty)
-        const stats = dayStatsMap.get(day) || ModelCallStat.getEmptyStats();
-        result.push({ timestamp: day, stats });
-      }
-    }
-
-    return result;
-  }
-
-  /**
-   * Get user-level trends across all projects (no cache write)
-   */
-  static async getUserTrends(
-    userDid: string,
-    startTime: number,
-    endTime: number,
-    granularity: 'hour' | 'day' = 'day'
-  ): Promise<Array<{ timestamp: number; stats: DailyStats }>> {
-    const bucketSize = granularity === 'hour' ? 3600 : 86400;
-    const startBucket = Math.floor(startTime / bucketSize) * bucketSize;
-    const endBucket = Math.floor(endTime / bucketSize) * bucketSize;
-
-    const query = `
-      SELECT
-        FLOOR("callTime" / ${bucketSize}) * ${bucketSize} as "timestamp",
-        SUM("totalUsage") as "totalUsage",
-        SUM("credits") as "totalCredits",
-        COUNT(*) as "totalCalls",
-        SUM(CASE WHEN "status" = 'success' THEN 1 ELSE 0 END) as "successCalls",
-        SUM(CASE WHEN "status" = 'success' THEN "duration" ELSE 0 END) as "totalDuration",
-        AVG(CASE WHEN "status" = 'success' THEN "duration" ELSE NULL END) as "avgDuration"
-      FROM "ModelCalls"
-      WHERE "userDid" = :userDid
-        AND "callTime" >= :startTime
-        AND "callTime" <= :endTime
-      GROUP BY "timestamp"
-      ORDER BY "timestamp" ASC
-    `;
-
-    const rows = (await sequelize.query(query, {
-      type: QueryTypes.SELECT,
-      replacements: { userDid, startTime, endTime },
-    })) as Array<{
-      timestamp: number | string;
-      totalUsage: string | number | null;
-      totalCredits: string | number | null;
-      totalCalls: string | number | null;
-      successCalls: string | number | null;
-      totalDuration: string | number | null;
-      avgDuration: string | number | null;
+  static async getTrendGroupByProjects({
+    userDid,
+    startTime,
+    endTime,
+    granularity = 'day',
+  }: {
+    userDid: string | null | undefined;
+    startTime: number;
+    endTime: number;
+    granularity?: 'hour' | 'day';
+  }): Promise<{
+    projects: Array<{
+      appDid: string;
+      appName?: string;
+      appLogo?: string;
+      appUrl?: string;
+      lastCallTime: number;
     }>;
-
-    const statsMap = new Map<number, DailyStats>();
-    rows.forEach((row) => {
-      const timestamp = Number(row.timestamp);
-      if (!Number.isFinite(timestamp)) return;
-
-      const totalCredits = new BigNumber(row.totalCredits || '0').toNumber();
-      const totalUsage = parseInt(String(row.totalUsage || '0'), 10);
-      const totalCalls = parseInt(String(row.totalCalls || '0'), 10);
-      const successCalls = parseInt(String(row.successCalls || '0'), 10);
-      const totalDuration = parseFloat(String(row.totalDuration || '0'));
-      const avgDuration = Math.round(parseFloat(String(row.avgDuration || '0')) * 10) / 10;
-
-      statsMap.set(timestamp, {
-        totalUsage,
-        totalCredits,
-        totalCalls,
-        successCalls,
-        totalDuration,
-        avgDuration,
-        byType: {},
-      });
-    });
-
-    const result: Array<{ timestamp: number; stats: DailyStats }> = [];
-    for (let bucket = startBucket; bucket <= endBucket; bucket += bucketSize) {
-      result.push({
-        timestamp: bucket,
-        stats: statsMap.get(bucket) || ModelCallStat.getEmptyStats(),
-      });
+    trends: Array<{
+      timestamp: number;
+      byProject: Record<
+        string,
+        { totalUsage: number; totalCredits: number; totalCalls: number; successCalls: number; avgDuration: number }
+      >;
+    }>;
+    granularity: 'hour' | 'day';
+  }> {
+    const appDids = await ModelCallStat.getProjectAppDidsInRange(userDid, startTime, endTime, granularity === 'day');
+    if (appDids.length === 0) {
+      return { projects: [], trends: [], granularity };
     }
 
-    return result;
+    const overallLastCallMap = await ModelCallStat.fetchOverallLastCall(appDids, userDid);
+    const sortedAppDids = appDids.sort((a, b) => (overallLastCallMap.get(b) ?? 0) - (overallLastCallMap.get(a) ?? 0));
+
+    const projects = await Project.findAll({
+      where: { appDid: { [Op.in]: sortedAppDids } },
+    });
+    const projectMap = new Map(projects.map((project) => [project.appDid, project]));
+
+    const projectList = sortedAppDids.map((appDid) => {
+      const project = projectMap.get(appDid);
+      if (!project) {
+        pushProjectFetchJob(appDid);
+      }
+      return {
+        appDid,
+        appName: project?.appName || appDid || undefined,
+        appLogo: project?.appLogo || undefined,
+        appUrl: project?.appUrl || undefined,
+        lastCallTime: overallLastCallMap.get(appDid) ?? 0,
+      };
+    });
+
+    const trendBuckets = await ModelCallStat.getProjectTrends(userDid, sortedAppDids, startTime, endTime, granularity);
+
+    const trends = trendBuckets.map(({ timestamp, byProject }) => {
+      const normalizedByProject: Record<
+        string,
+        { totalUsage: number; totalCredits: number; totalCalls: number; successCalls: number; avgDuration: number }
+      > = {};
+
+      Object.entries(byProject).forEach(([appDidKey, stats]) => {
+        normalizedByProject[appDidKey] = {
+          totalUsage: stats.totalUsage,
+          totalCredits: stats.totalCredits,
+          totalCalls: stats.totalCalls,
+          successCalls: stats.successCalls,
+          avgDuration: stats.avgDuration || 0,
+        };
+      });
+
+      return { timestamp, byProject: normalizedByProject };
+    });
+
+    return { projects: projectList, trends, granularity };
   }
 
-  private static async getGlobalTrendsRealtime(
+  private static async getGlobalTrendByCalls(
     startTime: number,
     endTime: number,
     granularity: 'hour' | 'day'
   ): Promise<Array<{ timestamp: number; stats: DailyStats }>> {
-    const bucketSize = granularity === 'hour' ? 3600 : 86400;
-    const startBucket = Math.floor(startTime / bucketSize) * bucketSize;
-    const endBucket = Math.floor(endTime / bucketSize) * bucketSize;
-
-    const query = `
-      SELECT
-        FLOOR("callTime" / ${bucketSize}) * ${bucketSize} as "timestamp",
-        SUM("totalUsage") as "totalUsage",
-        SUM("credits") as "totalCredits",
-        COUNT(*) as "totalCalls",
-        SUM(CASE WHEN "status" = 'success' THEN 1 ELSE 0 END) as "successCalls",
-        SUM(CASE WHEN "status" = 'success' THEN "duration" ELSE 0 END) as "totalDuration",
-        AVG(CASE WHEN "status" = 'success' THEN "duration" ELSE NULL END) as "avgDuration"
-      FROM "ModelCalls"
-      WHERE "callTime" >= :startTime
-        AND "callTime" <= :endTime
-      GROUP BY "timestamp"
-      ORDER BY "timestamp" ASC
-    `;
-
-    const realtimeQueryStart = Date.now();
-    const rows = (await sequelize.query(query, {
-      type: QueryTypes.SELECT,
-      replacements: { startTime, endTime },
-    })) as Array<{
+    const { bucketSize, startBucket, endBucket } = ModelCallStat.getBucketRange(startTime, endTime, granularity);
+    const bucketExpr = literal(`FLOOR("callTime" / ${bucketSize}) * ${bucketSize}`);
+    const rows = (await ModelCall.findAll({
+      attributes: [
+        [bucketExpr, 'timestamp'],
+        [fn('SUM', col('totalUsage')), 'totalUsage'],
+        [fn('SUM', col('credits')), 'totalCredits'],
+        [fn('COUNT', col('id')), 'totalCalls'],
+        [fn('SUM', literal('CASE WHEN "status" = \'success\' THEN 1 ELSE 0 END')), 'successCalls'],
+        [fn('SUM', literal('CASE WHEN "status" = \'success\' THEN "duration" ELSE 0 END')), 'totalDuration'],
+        [fn('AVG', literal('CASE WHEN "status" = \'success\' THEN "duration" ELSE NULL END')), 'avgDuration'],
+      ],
+      where: {
+        callTime: { [Op.between]: [startTime, endTime] },
+      },
+      group: [bucketExpr as any],
+      order: [[bucketExpr, 'ASC']],
+      raw: true,
+    })) as unknown as Array<{
       timestamp: number | string;
-      totalUsage: string | number | null;
-      totalCredits: string | number | null;
-      totalCalls: string | number | null;
-      successCalls: string | number | null;
-      totalDuration: string | number | null;
-      avgDuration: string | number | null;
+      totalUsage: string | number;
+      totalCredits: string | number;
+      totalCalls: string | number;
+      successCalls: string | number;
+      totalDuration: string | number;
+      avgDuration: string | number;
     }>;
-    logger.info('ModelCallStat global trends realtime SQL', {
-      elapsedMs: Date.now() - realtimeQueryStart,
-      startTime,
-      endTime,
-      bucketSize,
-      rowCount: rows.length,
-    });
 
     const statsMap = new Map<number, DailyStats>();
     rows.forEach((row) => {
       const timestamp = Number(row.timestamp);
       if (!Number.isFinite(timestamp)) return;
-
-      const totalCredits = new BigNumber(row.totalCredits || '0').toNumber();
-      const totalUsage = parseInt(String(row.totalUsage || '0'), 10);
-      const totalCalls = parseInt(String(row.totalCalls || '0'), 10);
-      const successCalls = parseInt(String(row.successCalls || '0'), 10);
-      const totalDuration = parseFloat(String(row.totalDuration || '0'));
-      const avgDuration = Math.round(parseFloat(String(row.avgDuration || '0')) * 10) / 10;
-
-      statsMap.set(timestamp, {
-        totalUsage,
-        totalCredits,
-        totalCalls,
-        successCalls,
-        totalDuration,
-        avgDuration,
-        byType: {},
-      });
+      statsMap.set(timestamp, ModelCallStat.buildStatsFromAggregateRow(row));
     });
 
-    const result: Array<{ timestamp: number; stats: DailyStats }> = [];
-    for (let bucket = startBucket; bucket <= endBucket; bucket += bucketSize) {
-      result.push({
-        timestamp: bucket,
-        stats: statsMap.get(bucket) || ModelCallStat.getEmptyStats(),
-      });
-    }
-
-    return result;
+    return ModelCallStat.buildStatsSeries(statsMap, startBucket, endBucket, bucketSize);
   }
 
   private static parseStats(raw: any): DailyStats {
@@ -745,10 +352,6 @@ export default class ModelCallStat extends Model<
       }
     }
     return raw as DailyStats;
-  }
-
-  private static getProjectKey(appDid: string): string {
-    return appDid;
   }
 
   private static prepareTrendStats(stats: DailyStats): DailyStats {
@@ -781,164 +384,53 @@ export default class ModelCallStat extends Model<
     return merged;
   }
 
-  private static async getRealtimeProjectTrends(
-    userDid: string | null | undefined,
-    appDids: string[],
-    _startTime: number,
-    endTime: number,
-    granularity: 'hour' | 'day'
-  ): Promise<Map<number, Record<string, DailyStats>>> {
-    if (!appDids.length) return new Map();
-
-    const bucketSize = granularity === 'hour' ? 3600 : 86400;
-    const currentBucket = Math.floor(Date.now() / 1000 / bucketSize) * bucketSize;
-    const endBucket = Math.floor(endTime / bucketSize) * bucketSize;
-
-    if (endBucket < currentBucket) {
-      return new Map();
-    }
-
-    const appDidList = appDids;
-
-    const replacements: Record<string, any> = {
-      startTime: currentBucket,
-      endTime: Math.min(endTime, currentBucket + bucketSize - 1),
-    };
-
-    const whereConditions: string[] = ['"callTime" >= :startTime', '"callTime" <= :endTime'];
-    if (userDid === null) {
-      whereConditions.unshift('"userDid" IS NOT NULL');
-    } else if (userDid !== undefined) {
-      whereConditions.unshift('"userDid" = :userDid');
-      replacements.userDid = userDid;
-    }
-
-    if (appDidList.length) {
-      whereConditions.push('"appDid" IN (:appDids)');
-      replacements.appDids = appDidList;
-    }
-
-    const query = `
-      SELECT
-        FLOOR("callTime" / ${bucketSize}) * ${bucketSize} as "timestamp",
-        "appDid" as "appDid",
-        SUM("totalUsage") as "totalUsage",
-        SUM("credits") as "totalCredits",
-        COUNT(*) as "totalCalls",
-        SUM(CASE WHEN "status" = 'success' THEN 1 ELSE 0 END) as "successCalls",
-        SUM(CASE WHEN "status" = 'success' THEN "duration" ELSE 0 END) as "totalDuration",
-        AVG(CASE WHEN "status" = 'success' THEN "duration" ELSE NULL END) as "avgDuration"
-      FROM "ModelCalls"
-      WHERE ${whereConditions.join(' AND ')}
-      GROUP BY "timestamp", "appDid"
-      ORDER BY "timestamp" ASC
-    `;
-
-    const rows = (await sequelize.query(query, {
-      type: QueryTypes.SELECT,
-      replacements,
-    })) as Array<{
-      timestamp: number | string;
-      appDid: string | null;
-      totalUsage: string | number | null;
-      totalCredits: string | number | null;
-      totalCalls: string | number | null;
-      successCalls: string | number | null;
-      totalDuration: string | number | null;
-      avgDuration: string | number | null;
-    }>;
-
-    const result = new Map<number, Record<string, DailyStats>>();
-    rows.forEach((row) => {
-      const timestamp = Number(row.timestamp);
-      if (!Number.isFinite(timestamp)) return;
-      const { appDid } = row;
-      if (!appDid) return;
-      const projectKey = ModelCallStat.getProjectKey(appDid);
-      const totalCredits = new BigNumber(row.totalCredits || '0').toNumber();
-      const totalUsage = parseInt(String(row.totalUsage || '0'), 10);
-      const totalCalls = parseInt(String(row.totalCalls || '0'), 10);
-      const successCalls = parseInt(String(row.successCalls || '0'), 10);
-      const totalDuration = parseFloat(String(row.totalDuration || '0'));
-      const avgDuration = Math.round(parseFloat(String(row.avgDuration || '0')) * 10) / 10;
-
-      const stats: DailyStats = {
-        totalUsage,
-        totalCredits,
-        totalCalls,
-        successCalls,
-        totalDuration,
-        avgDuration,
-        byType: {},
-      };
-
-      if (!result.has(timestamp)) {
-        result.set(timestamp, {});
-      }
-      result.get(timestamp)![projectKey] = stats;
-    });
-
-    return result;
-  }
-
-  private static async getRealtimeProjectTrendsRange(
+  private static async getProjectTrendsByCalls(
     userDid: string | null | undefined,
     appDids: string[],
     startTime: number,
     endTime: number,
     granularity: 'hour' | 'day'
-  ): Promise<Map<number, Record<string, DailyStats>>> {
-    if (!appDids.length) return new Map();
+  ): Promise<Array<{ timestamp: number; byProject: Record<string, DailyStats> }>> {
+    if (!appDids.length) return [];
 
-    const bucketSize = granularity === 'hour' ? 3600 : 86400;
+    const { bucketSize, startBucket, endBucket } = ModelCallStat.getBucketRange(startTime, endTime, granularity);
     const appDidList = appDids;
 
-    const replacements: Record<string, any> = {
-      startTime,
-      endTime,
+    const whereClause: any = {
+      callTime: { [Op.between]: [startTime, endTime] },
     };
-
-    const whereConditions: string[] = ['"callTime" >= :startTime', '"callTime" <= :endTime'];
-    if (userDid === null) {
-      whereConditions.unshift('"userDid" IS NOT NULL');
-    } else if (userDid !== undefined) {
-      whereConditions.unshift('"userDid" = :userDid');
-      replacements.userDid = userDid;
+    if (userDid !== undefined) {
+      whereClause.userDid = userDid === null ? { [Op.not]: null } : userDid;
     }
 
     if (appDidList.length) {
-      whereConditions.push('"appDid" IN (:appDids)');
-      replacements.appDids = appDidList;
+      whereClause.appDid = { [Op.in]: appDidList };
     }
-
-    const query = `
-      SELECT
-        FLOOR("callTime" / ${bucketSize}) * ${bucketSize} as "timestamp",
-        "appDid" as "appDid",
-        SUM("totalUsage") as "totalUsage",
-        SUM("credits") as "totalCredits",
-        COUNT(*) as "totalCalls",
-        SUM(CASE WHEN "status" = 'success' THEN 1 ELSE 0 END) as "successCalls",
-        SUM(CASE WHEN "status" = 'success' THEN "duration" ELSE 0 END) as "totalDuration",
-        AVG(CASE WHEN "status" = 'success' THEN "duration" ELSE NULL END) as "avgDuration"
-      FROM "ModelCalls"
-      WHERE ${whereConditions.join(' AND ')}
-      GROUP BY "timestamp", "appDid"
-      ORDER BY "timestamp" ASC
-    `;
-
-    const rows = (await sequelize.query(query, {
-      type: QueryTypes.SELECT,
-      replacements,
-    })) as Array<{
+    const bucketExpr = literal(`FLOOR("callTime" / ${bucketSize}) * ${bucketSize}`);
+    const rows = (await ModelCall.findAll({
+      attributes: [
+        [bucketExpr, 'timestamp'],
+        'appDid',
+        [fn('SUM', col('totalUsage')), 'totalUsage'],
+        [fn('SUM', col('credits')), 'totalCredits'],
+        [fn('COUNT', col('id')), 'totalCalls'],
+        [fn('SUM', literal('CASE WHEN "status" = \'success\' THEN 1 ELSE 0 END')), 'successCalls'],
+        [fn('SUM', literal('CASE WHEN "status" = \'success\' THEN "duration" ELSE 0 END')), 'totalDuration'],
+        [fn('AVG', literal('CASE WHEN "status" = \'success\' THEN "duration" ELSE NULL END')), 'avgDuration'],
+      ],
+      where: whereClause,
+      group: [bucketExpr as any, 'appDid'],
+      order: [[bucketExpr, 'ASC']],
+      raw: true,
+    })) as unknown as Array<{
       timestamp: number | string;
       appDid: string | null;
-      totalUsage: string | number | null;
-      totalCredits: string | number | null;
-      totalCalls: string | number | null;
-      successCalls: string | number | null;
-      totalDuration: string | number | null;
-      avgDuration: string | number | null;
+      totalUsage: string | number;
+      totalCredits: string | number;
+      totalCalls: string | number;
+      successCalls: string | number;
+      totalDuration: string | number;
+      avgDuration: string | number;
     }>;
 
     const result = new Map<number, Record<string, DailyStats>>();
@@ -947,23 +439,8 @@ export default class ModelCallStat extends Model<
       if (!Number.isFinite(timestamp)) return;
       const { appDid } = row;
       if (!appDid) return;
-      const projectKey = ModelCallStat.getProjectKey(appDid);
-      const totalCredits = new BigNumber(row.totalCredits || '0').toNumber();
-      const totalUsage = parseInt(String(row.totalUsage || '0'), 10);
-      const totalCalls = parseInt(String(row.totalCalls || '0'), 10);
-      const successCalls = parseInt(String(row.successCalls || '0'), 10);
-      const totalDuration = parseFloat(String(row.totalDuration || '0'));
-      const avgDuration = Math.round(parseFloat(String(row.avgDuration || '0')) * 10) / 10;
-
-      const stats: DailyStats = {
-        totalUsage,
-        totalCredits,
-        totalCalls,
-        successCalls,
-        totalDuration,
-        avgDuration,
-        byType: {},
-      };
+      const projectKey = appDid;
+      const stats = ModelCallStat.buildStatsFromAggregateRow(row);
 
       if (!result.has(timestamp)) {
         result.set(timestamp, {});
@@ -971,7 +448,7 @@ export default class ModelCallStat extends Model<
       result.get(timestamp)![projectKey] = stats;
     });
 
-    return result;
+    return ModelCallStat.buildProjectTrendBuckets(result, appDidList, startBucket, endBucket, bucketSize);
   }
 
   /**
@@ -984,15 +461,13 @@ export default class ModelCallStat extends Model<
     granularity: 'hour' | 'day' = 'day'
   ): Promise<Array<{ timestamp: number; stats: DailyStats }>> {
     if (granularity === 'hour') {
-      return ModelCallStat.getGlobalTrendsRealtime(startTime, endTime, granularity);
+      return ModelCallStat.getGlobalTrendByCalls(startTime, endTime, granularity);
     }
 
-    const bucketSize = 86400;
-    const startBucket = Math.floor(startTime / bucketSize) * bucketSize;
-    const endBucket = Math.floor(endTime / bucketSize) * bucketSize;
+    const { bucketSize, startBucket, endBucket } = ModelCallStat.getBucketRange(startTime, endTime, 'day');
     const timeType = 'day';
-    const currentDay = Math.floor(Date.now() / 1000 / 86400) * 86400;
-    const statsEnd = Math.min(endBucket, currentDay - 86400);
+    const currentDay = Math.floor(Date.now() / 1000 / SECONDS_PER_DAY) * SECONDS_PER_DAY;
+    const statsEnd = Math.min(endBucket, currentDay - SECONDS_PER_DAY);
 
     // Aggregate from per-user stats (avoid relying on global aggregates)
     const rows =
@@ -1023,8 +498,8 @@ export default class ModelCallStat extends Model<
     });
 
     if (endBucket >= currentDay) {
-      const realtimeEnd = Math.min(endTime, currentDay + bucketSize - 1);
-      const realtime = await ModelCallStat.getGlobalTrendsRealtime(currentDay, realtimeEnd, 'day');
+      const realtimeEnd = Math.min(endTime, currentDay + SECONDS_PER_DAY - 1);
+      const realtime = await ModelCallStat.getGlobalTrendByCalls(currentDay, realtimeEnd, 'day');
       realtime.forEach((entry) => {
         const existing = statsMap.get(entry.timestamp);
         if (existing) {
@@ -1035,15 +510,7 @@ export default class ModelCallStat extends Model<
       });
     }
 
-    const result: Array<{ timestamp: number; stats: DailyStats }> = [];
-    for (let bucket = startBucket; bucket <= endBucket; bucket += bucketSize) {
-      result.push({
-        timestamp: bucket,
-        stats: statsMap.get(bucket) || ModelCallStat.getEmptyStats(),
-      });
-    }
-
-    return result;
+    return ModelCallStat.buildStatsSeries(statsMap, startBucket, endBucket, bucketSize);
   }
 
   /**
@@ -1080,73 +547,44 @@ export default class ModelCallStat extends Model<
     const rawSortOrder = options?.sortOrder;
     const sortOrder = rawSortOrder === 'asc' || rawSortOrder === 'desc' ? rawSortOrder : 'desc';
     const orderDirection = sortOrder === 'asc' ? 'ASC' : 'DESC';
-    const currentDay = Math.floor(Date.now() / 1000 / 86400) * 86400;
-    const statsStart = Math.floor(startTime / 86400) * 86400;
-    const statsEnd = Math.min(Math.floor(endTime / 86400) * 86400, currentDay - 86400);
+    const currentDay = Math.floor(Date.now() / 1000 / SECONDS_PER_DAY) * SECONDS_PER_DAY;
+    const statsStart = Math.floor(startTime / SECONDS_PER_DAY) * SECONDS_PER_DAY;
+    const statsEnd = Math.min(Math.floor(endTime / SECONDS_PER_DAY) * SECONDS_PER_DAY, currentDay - SECONDS_PER_DAY);
     const statsByApp = new Map<string, DailyStats>();
 
     if (statsStart <= statsEnd) {
-      const whereClause: any = {
-        timestamp: { [Op.between]: [statsStart, statsEnd] },
+      const whereConditions: string[] = [
+        '"timeType" = :timeType',
+        '"timestamp" >= :statsStart',
+        '"timestamp" <= :statsEnd',
+        '"appDid" IS NOT NULL',
+      ];
+      const replacements: Record<string, any> = {
         timeType: 'day',
+        statsStart,
+        statsEnd,
       };
 
       // Admin query: aggregate across per-user stats only (exclude global aggregates)
       // User query: filter by specific userDid
-      if (userDid === null) {
-        whereClause.userDid = { [Op.not]: null };
-      } else if (userDid !== undefined) {
-        whereClause.userDid = userDid;
-      }
-
-      const rows = await ModelCallStat.findAll({
-        where: whereClause,
-        order: [['timestamp', 'ASC']],
-        raw: true,
-      });
-
-      rows.forEach((row: any) => {
-        const { appDid } = row;
-        if (!appDid) return;
-        const stats = ModelCallStat.parseStats(row.stats);
-        const target = statsByApp.get(appDid) || ModelCallStat.getEmptyStats();
-        target.totalUsage += stats.totalUsage || 0;
-        target.totalCredits += stats.totalCredits || 0;
-        target.totalCalls += stats.totalCalls || 0;
-        target.successCalls += stats.successCalls || 0;
-        target.totalDuration = (target.totalDuration || 0) + (stats.totalDuration || 0);
-
-        if (target.successCalls > 0 && target.totalDuration) {
-          target.avgDuration = Math.round((target.totalDuration / target.successCalls) * 10) / 10;
+      if (userDid !== undefined) {
+        if (userDid === null) {
+          whereConditions.push('"userDid" IS NOT NULL');
+        } else {
+          whereConditions.push('"userDid" = :userDid');
+          replacements.userDid = userDid;
         }
-
-        statsByApp.set(appDid, target);
-      });
-    }
-
-    if (endTime >= currentDay) {
-      const currentStart = Math.max(startTime, currentDay);
-      const currentEnd = Math.min(endTime, currentDay + 86400 - 1);
-      const whereConditions = ['"callTime" >= :startTime', '"callTime" <= :endTime'];
-      const replacements: Record<string, any> = { startTime: currentStart, endTime: currentEnd };
-      if (userDid === null) {
-        whereConditions.unshift('"userDid" IS NOT NULL');
-      } else if (userDid !== undefined) {
-        whereConditions.unshift('"userDid" = :userDid');
-        replacements.userDid = userDid;
       }
 
       const query = `
         SELECT
           "appDid" as "appDid",
-          COUNT(*) as "totalCalls",
-          SUM("credits") as "totalCredits",
-          SUM("totalUsage") as "totalUsage",
-          SUM(CASE WHEN "status" = 'success' THEN 1 ELSE 0 END) as "successCalls",
-          SUM(CASE WHEN "status" = 'success' THEN "duration" ELSE 0 END) as "totalDuration",
-          AVG(CASE WHEN "status" = 'success' THEN "duration" ELSE NULL END) as "avgDuration",
-          MAX("callTime") as "lastCallTime"
-        FROM "ModelCalls"
+          SUM(COALESCE(CAST(json_extract("stats",'$.totalUsage') AS INTEGER), 0)) as "totalUsage",
+          SUM(COALESCE(CAST(json_extract("stats",'$.totalCredits') AS REAL), 0)) as "totalCredits",
+          SUM(COALESCE(CAST(json_extract("stats",'$.totalCalls') AS INTEGER), 0)) as "totalCalls",
+          SUM(COALESCE(CAST(json_extract("stats",'$.successCalls') AS INTEGER), 0)) as "successCalls",
+          SUM(COALESCE(CAST(json_extract("stats",'$.totalDuration') AS REAL), 0)) as "totalDuration"
+        FROM "ModelCallStats"
         WHERE ${whereConditions.join(' AND ')}
         GROUP BY "appDid"
       `;
@@ -1156,36 +594,61 @@ export default class ModelCallStat extends Model<
         replacements,
       })) as Array<{
         appDid: string | null;
+        totalUsage: string | number;
+        totalCredits: string | number;
+        totalCalls: string | number;
+        successCalls: string | number;
+        totalDuration: string | number;
+      }>;
+
+      rows.forEach((row) => {
+        const { appDid } = row;
+        if (!appDid) return;
+        statsByApp.set(appDid, ModelCallStat.buildStatsFromAggregateRow(row));
+      });
+    }
+
+    if (endTime >= currentDay) {
+      const currentStart = Math.max(startTime, currentDay);
+      const currentEnd = Math.min(endTime, currentDay + SECONDS_PER_DAY - 1);
+      const whereClause: any = {
+        callTime: { [Op.between]: [currentStart, currentEnd] },
+      };
+      if (userDid !== undefined) {
+        whereClause.userDid = userDid === null ? { [Op.not]: null } : userDid;
+      }
+
+      const rows = (await ModelCall.findAll({
+        attributes: [
+          'appDid',
+          [fn('COUNT', col('id')), 'totalCalls'],
+          [fn('SUM', col('credits')), 'totalCredits'],
+          [fn('SUM', col('totalUsage')), 'totalUsage'],
+          [fn('SUM', literal('CASE WHEN "status" = \'success\' THEN 1 ELSE 0 END')), 'successCalls'],
+          [fn('SUM', literal('CASE WHEN "status" = \'success\' THEN "duration" ELSE 0 END')), 'totalDuration'],
+          [fn('AVG', literal('CASE WHEN "status" = \'success\' THEN "duration" ELSE NULL END')), 'avgDuration'],
+          [fn('MAX', col('callTime')), 'lastCallTime'],
+        ],
+        where: whereClause,
+        group: ['appDid'],
+        raw: true,
+      })) as unknown as Array<{
+        appDid: string | null;
         totalCalls: string;
         totalCredits: string;
         totalUsage: string;
         successCalls: string;
-        totalDuration: string | null;
-        avgDuration: string | null;
-        lastCallTime: number | null;
+        totalDuration: string;
+        avgDuration: string;
+        lastCallTime: number;
       }>;
 
       rows.forEach((row) => {
         const { appDid } = row;
         if (!appDid) return;
         const target = statsByApp.get(appDid) || ModelCallStat.getEmptyStats();
-        const totalCredits = new BigNumber(row.totalCredits || '0').toNumber();
-        const totalUsage = parseInt(String(row.totalUsage || '0'), 10);
-        const totalCalls = parseInt(String(row.totalCalls || '0'), 10);
-        const successCalls = parseInt(String(row.successCalls || '0'), 10);
-        const totalDuration = parseFloat(String(row.totalDuration || '0'));
-
-        target.totalUsage += totalUsage;
-        target.totalCredits += totalCredits;
-        target.totalCalls += totalCalls;
-        target.successCalls += successCalls;
-        target.totalDuration = (target.totalDuration || 0) + totalDuration;
-
-        if (target.successCalls > 0 && target.totalDuration) {
-          target.avgDuration = Math.round((target.totalDuration / target.successCalls) * 10) / 10;
-        }
-
-        statsByApp.set(appDid, target);
+        const realtimeStats = ModelCallStat.buildStatsFromAggregateRow(row);
+        statsByApp.set(appDid, ModelCallStat.mergeTrendStats(target, realtimeStats));
       });
     }
 
@@ -1244,76 +707,19 @@ export default class ModelCallStat extends Model<
     };
   }
 
-  /**
-   * Merge multiple stats objects
-   */
-  static mergeStats(statsList: DailyStats[]): DailyStats {
-    if (statsList.length === 0) {
-      return ModelCallStat.getEmptyStats();
-    }
-
-    const merged: DailyStats = ModelCallStat.getEmptyStats();
-
-    statsList.forEach((stats) => {
-      merged.totalUsage += stats.totalUsage;
-      merged.totalCredits += stats.totalCredits;
-      merged.totalCalls += stats.totalCalls;
-      merged.successCalls += stats.successCalls;
-      merged.totalDuration = (merged.totalDuration || 0) + (stats.totalDuration || 0);
-
-      // Merge byType
-      Object.keys(stats.byType).forEach((type) => {
-        const callType = type as keyof DailyStats['byType'];
-        const typeStats = stats.byType[callType];
-        if (typeStats) {
-          if (!merged.byType[callType]) {
-            merged.byType[callType] = { totalUsage: 0, totalCredits: 0, totalCalls: 0, successCalls: 0 };
-          }
-          merged.byType[callType]!.totalUsage += typeStats.totalUsage;
-          merged.byType[callType]!.totalCredits += typeStats.totalCredits;
-          merged.byType[callType]!.totalCalls += typeStats.totalCalls;
-          merged.byType[callType]!.successCalls += typeStats.successCalls;
-        }
-      });
-    });
-
-    // Calculate average duration
-    if (merged.successCalls > 0 && merged.totalDuration) {
-      merged.avgDuration = Math.round((merged.totalDuration / merged.successCalls) * 10) / 10;
-    }
-
-    return merged;
-  }
-
-  private static applyStatsAppDidCondition(whereClause: Record<string, any>, appDid?: string | null) {
-    if (appDid === undefined) return;
-    whereClause.appDid = appDid;
-  }
-
-  private static async fetchOverallLastCall(appDids: string[], userDid: string | null | undefined) {
+  static async fetchOverallLastCall(appDids: string[], userDid: string | null | undefined) {
     if (!appDids.length) return new Map<string, number>();
-    const overallWhereConditions: string[] = ['"appDid" IN (:appDids)'];
-    const replacements: Record<string, any> = { appDids };
-    if (userDid === null) {
-      overallWhereConditions.unshift('"userDid" IS NOT NULL');
-    } else if (userDid !== undefined) {
-      overallWhereConditions.unshift('"userDid" = :overallUserDid');
-      replacements.overallUserDid = userDid;
+    const whereClause: any = { appDid: { [Op.in]: appDids } };
+    if (userDid !== undefined) {
+      whereClause.userDid = userDid === null ? { [Op.not]: null } : userDid;
     }
 
-    const overallQuery = `
-      SELECT
-        "appDid" as "appDid",
-        MAX("callTime") as "lastCallTime"
-      FROM "ModelCalls"
-      WHERE ${overallWhereConditions.join(' AND ')}
-      GROUP BY "appDid"
-    `;
-
-    const overallRows = (await sequelize.query(overallQuery, {
-      type: QueryTypes.SELECT,
-      replacements,
-    })) as Array<{ appDid: string | null; lastCallTime: number | string | null }>;
+    const overallRows = (await ModelCall.findAll({
+      attributes: ['appDid', [fn('MAX', col('callTime')), 'lastCallTime']],
+      where: whereClause,
+      group: ['appDid'],
+      raw: true,
+    })) as unknown as Array<{ appDid: string | null; lastCallTime: number | string | null }>;
 
     const overallMap = new Map<string, number>();
     overallRows.forEach((row) => {
@@ -1327,30 +733,65 @@ export default class ModelCallStat extends Model<
     return overallMap;
   }
 
-  private static buildTimeRangeCondition(
+  private static async getProjectAppDidsInRange(
     userDid: string | null | undefined,
-    appDid: string | null | undefined,
     startTime: number,
-    endTime: number
-  ) {
-    const whereConditions = ['"callTime" >= :startTime', '"callTime" <= :endTime'];
-    const replacements: any = { startTime, endTime };
-    if (userDid === null) {
-      whereConditions.unshift('"userDid" IS NOT NULL');
-    } else if (userDid !== undefined) {
-      whereConditions.unshift('"userDid" = :userDid');
-      replacements.userDid = userDid;
-    }
-    let whereClause = `WHERE ${whereConditions.join('\n        AND ')}`;
+    endTime: number,
+    includeDailyStats: boolean
+  ): Promise<string[]> {
+    const queryByCallsRange = async (rangeStart: number, rangeEnd: number) => {
+      const whereClause: any = {
+        callTime: { [Op.between]: [rangeStart, rangeEnd] },
+      };
+      if (userDid !== undefined) {
+        whereClause.userDid = userDid === null ? { [Op.not]: null } : userDid;
+      }
 
-    if (appDid === null) {
-      whereClause += ' AND "appDid" IS NULL';
-    } else if (appDid !== undefined) {
-      whereClause += ' AND "appDid" = :appDid';
-      replacements.appDid = appDid;
+      const rows = (await ModelCall.findAll({
+        attributes: ['appDid'],
+        where: whereClause,
+        group: ['appDid'],
+        raw: true,
+      })) as Array<{ appDid: string | null }>;
+
+      return rows.map((row) => row.appDid).filter((appDid): appDid is string => !!appDid && appDid.length > 0);
+    };
+
+    if (!includeDailyStats) {
+      return Array.from(new Set(await queryByCallsRange(startTime, endTime)));
     }
 
-    return { whereClause, replacements };
+    const startBucket = Math.floor(startTime / SECONDS_PER_DAY) * SECONDS_PER_DAY;
+    const endBucket = Math.floor(endTime / SECONDS_PER_DAY) * SECONDS_PER_DAY;
+    const currentDay = Math.floor(Date.now() / 1000 / SECONDS_PER_DAY) * SECONDS_PER_DAY;
+
+    const statsWhere: any = {
+      timeType: 'day',
+      timestamp: { [Op.between]: [startBucket, endBucket] },
+    };
+    if (userDid !== undefined) {
+      statsWhere.userDid = userDid === null ? { [Op.not]: null } : userDid;
+    }
+
+    const statsRows = (await ModelCallStat.findAll({
+      attributes: ['appDid'],
+      where: statsWhere,
+      group: ['appDid'],
+      raw: true,
+    })) as Array<{ appDid: string | null }>;
+
+    const statsAppDids = statsRows
+      .map((row) => row.appDid)
+      .filter((appDid): appDid is string => !!appDid && appDid.length > 0);
+
+    const realtimeAppDids: string[] = [];
+    if (endTime >= currentDay) {
+      const realtimeStart = Math.max(startTime, currentDay);
+      const realtimeEnd = endTime;
+      realtimeAppDids.push(...(await queryByCallsRange(realtimeStart, realtimeEnd)));
+    }
+
+    return Array.from(new Set([...statsAppDids, ...realtimeAppDids]));
   }
 
   static getEmptyStats(): DailyStats {
@@ -1365,123 +806,116 @@ export default class ModelCallStat extends Model<
     };
   }
 
-  private static async executeStatsQueries(
+  static async getStatsByCalls(
     userDid: string | null | undefined,
     appDid: string | null | undefined,
     startTime: number,
     endTime: number
   ): Promise<DailyStats> {
-    const { whereClause, replacements } = this.buildTimeRangeCondition(userDid, appDid, startTime, endTime);
-
-    const countQuery = `
-      SELECT COUNT(*) as count
-      FROM "ModelCalls"
-      ${whereClause}
-    `;
-
-    const countResults = await sequelize.query(countQuery, {
-      type: QueryTypes.SELECT,
-      replacements,
-    });
-
-    const count = parseInt((countResults[0] as any)?.count || '0', 10);
-    if (count === 0) {
-      return this.getEmptyStats();
+    const whereClause: any = {
+      callTime: { [Op.between]: [startTime, endTime] },
+    };
+    if (userDid !== undefined) {
+      whereClause.userDid = userDid === null ? { [Op.not]: null } : userDid;
+    }
+    if (appDid === null) {
+      whereClause.appDid = { [Op.is]: null };
+    } else if (appDid !== undefined) {
+      whereClause.appDid = appDid;
     }
 
-    const totalQuery = `
-      SELECT
-        SUM("totalUsage") as "totalUsage",
-        SUM("credits") as "totalCredits",
-        COUNT(*) as "totalCalls",
-        SUM(CASE WHEN "status" = 'success' THEN 1 ELSE 0 END) as "successCalls",
-        SUM(CASE WHEN "status" = 'success' THEN "duration" ELSE 0 END) as "totalDuration",
-        AVG(CASE WHEN "status" = 'success' THEN "duration" ELSE NULL END) as "avgDuration"
-      FROM "ModelCalls"
-      ${whereClause}
-    `;
+    const totalRows = (await ModelCall.findAll({
+      attributes: [
+        [fn('SUM', col('totalUsage')), 'totalUsage'],
+        [fn('SUM', col('credits')), 'totalCredits'],
+        [fn('COUNT', col('id')), 'totalCalls'],
+        [fn('SUM', literal('CASE WHEN "status" = \'success\' THEN 1 ELSE 0 END')), 'successCalls'],
+        [fn('SUM', literal('CASE WHEN "status" = \'success\' THEN "duration" ELSE 0 END')), 'totalDuration'],
+        [fn('AVG', literal('CASE WHEN "status" = \'success\' THEN "duration" ELSE NULL END')), 'avgDuration'],
+      ],
+      where: whereClause,
+      raw: true,
+    })) as any[];
 
-    const typeQuery = `
-      SELECT
-        "type",
-        SUM("totalUsage") as "totalUsage",
-        SUM("credits") as "totalCredits",
-        COUNT(*) as "totalCalls",
-        SUM(CASE WHEN "status" = 'success' THEN 1 ELSE 0 END) as "successCalls"
-      FROM "ModelCalls"
-      ${whereClause}
-      GROUP BY "type"
-    `;
+    const totalRow = totalRows[0] || {};
+    return ModelCallStat.buildStatsFromAggregateRow(totalRow);
+  }
 
-    const [totalResults, typeResults] = await Promise.all([
-      sequelize.query(totalQuery, {
-        type: QueryTypes.SELECT,
-        replacements,
-      }) as Promise<any[]>,
-      sequelize.query(typeQuery, {
-        type: QueryTypes.SELECT,
-        replacements,
-      }) as Promise<any[]>,
-    ]);
-
-    const totalResult = totalResults[0] || {};
-    const totalCredits = new BigNumber(totalResult.totalCredits || '0');
-    const byType: DailyStats['byType'] = {};
-    typeResults.forEach((result: any) => {
-      const type = result.type as keyof DailyStats['byType'];
-      const typeCredits = new BigNumber(result.totalCredits || '0');
-      byType[type] = {
-        totalUsage: parseInt(result.totalUsage || '0', 10),
-        totalCredits: typeCredits.toNumber(),
-        totalCalls: parseInt(result.totalCalls || '0', 10),
-        successCalls: parseInt(result.successCalls || '0', 10),
-      };
-    });
-
+  private static getBucketRange(startTime: number, endTime: number, granularity: 'hour' | 'day') {
+    const bucketSize = granularity === 'hour' ? SECONDS_PER_HOUR : SECONDS_PER_DAY;
     return {
-      totalUsage: parseInt(totalResult.totalUsage || '0', 10),
-      totalCredits: totalCredits.toNumber(),
-      totalCalls: parseInt(totalResult.totalCalls || '0', 10),
-      successCalls: parseInt(totalResult.successCalls || '0', 10),
-      totalDuration: parseFloat(totalResult.totalDuration || '0'),
-      avgDuration: Math.round(parseFloat(totalResult.avgDuration || '0') * 10) / 10,
-      byType,
+      bucketSize,
+      startBucket: Math.floor(startTime / bucketSize) * bucketSize,
+      endBucket: Math.floor(endTime / bucketSize) * bucketSize,
     };
   }
 
-  /**
-   * Get project stats directly without triggering cache population
-   * Used for single project detail page where we only need totals, not daily breakdown
-   */
-  static async getProjectStats(
-    userDid: string | null | undefined,
-    appDid: string | null | undefined,
-    startTime: number,
-    endTime: number
-  ): Promise<DailyStats> {
-    return this.executeStatsQueries(userDid, appDid, startTime, endTime);
+  private static buildStatsFromAggregateRow(row: {
+    totalUsage?: string | number;
+    totalCredits?: string | number;
+    totalCalls?: string | number;
+    successCalls?: string | number;
+    totalDuration?: string | number;
+    avgDuration?: string | number;
+  }): DailyStats {
+    const totalUsage = parseInt(String(row.totalUsage ?? '0'), 10);
+    const totalCredits = new BigNumber(row.totalCredits || '0').toNumber();
+    const totalCalls = parseInt(String(row.totalCalls ?? '0'), 10);
+    const successCalls = parseInt(String(row.successCalls ?? '0'), 10);
+    const totalDuration = row.totalDuration === undefined ? 0 : parseFloat(String(row.totalDuration ?? '0'));
+
+    let avgDuration = 0;
+    if (row.avgDuration !== undefined && row.avgDuration !== null) {
+      avgDuration = Math.round(parseFloat(String(row.avgDuration ?? '0')) * 10) / 10;
+    } else if (successCalls > 0 && totalDuration) {
+      avgDuration = Math.round((totalDuration / successCalls) * 10) / 10;
+    }
+
+    return {
+      totalUsage,
+      totalCredits,
+      totalCalls,
+      successCalls,
+      totalDuration,
+      avgDuration,
+      byType: {},
+    };
   }
 
-  static async computeDailyStats(
-    userDid: string | null,
-    appDid: string | null | undefined,
-    dayTimestamp: number
-  ): Promise<DailyStats> {
-    const startOfDay = dayTimestamp;
-    const endOfDay = dayTimestamp + 86400 - 1; // 23:59:59 of the same day
-
-    return this.executeStatsQueries(userDid, appDid, startOfDay, endOfDay);
+  private static buildProjectTrendBuckets(
+    trendsByTimestamp: Map<number, Record<string, DailyStats>>,
+    projectKeys: string[],
+    startBucket: number,
+    endBucket: number,
+    bucketSize: number
+  ): Array<{ timestamp: number; byProject: Record<string, DailyStats> }> {
+    const result: Array<{ timestamp: number; byProject: Record<string, DailyStats> }> = [];
+    for (let bucket = startBucket; bucket <= endBucket; bucket += bucketSize) {
+      const byProject = trendsByTimestamp.get(bucket) || {};
+      projectKeys.forEach((projectKey) => {
+        if (!byProject[projectKey]) {
+          byProject[projectKey] = ModelCallStat.getEmptyStats();
+        }
+      });
+      result.push({ timestamp: bucket, byProject });
+    }
+    return result;
   }
 
-  static async computeHourlyStats(
-    userDid: string | null,
-    appDid: string | null | undefined,
-    hourTimestamp: number
-  ): Promise<DailyStats> {
-    const startOfHour = hourTimestamp;
-    const endOfHour = hourTimestamp + 3600 - 1; // 59:59 of the same hour
-
-    return this.executeStatsQueries(userDid, appDid, startOfHour, endOfHour);
+  private static buildStatsSeries(
+    statsMap: Map<number, DailyStats>,
+    startBucket: number,
+    endBucket: number,
+    bucketSize: number
+  ): Array<{ timestamp: number; stats: DailyStats }> {
+    const result: Array<{ timestamp: number; stats: DailyStats }> = [];
+    for (let bucket = startBucket; bucket <= endBucket; bucket += bucketSize) {
+      result.push({
+        timestamp: bucket,
+        stats: statsMap.get(bucket) || ModelCallStat.getEmptyStats(),
+      });
+    }
+    return result;
   }
 }
 

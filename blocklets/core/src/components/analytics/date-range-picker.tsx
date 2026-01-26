@@ -188,16 +188,20 @@ export function DateRangePicker({
 
   const renderContent = () => (
     <Box sx={{ p: isMobile ? 2.5 : 3 }}>
-      <Typography
-        variant="h6"
-        sx={{
-          mb: isMobile ? 1.25 : 2.5,
-          color: 'text.primary',
-          fontWeight: 600,
-          fontSize: isMobile ? '0.875rem' : '1rem',
-        }}>
-        {t('quickSelect')}
-      </Typography>
+      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: isMobile ? 1.25 : 2.5 }}>
+        <Typography
+          variant="h6"
+          sx={{
+            color: 'text.primary',
+            fontWeight: 600,
+            fontSize: isMobile ? '0.875rem' : '1rem',
+          }}>
+          {t('quickSelect')}
+        </Typography>
+        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+          {t('utcTimeLabel')}
+        </Typography>
+      </Stack>
 
       <Box
         sx={{

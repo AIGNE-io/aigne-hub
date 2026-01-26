@@ -475,8 +475,8 @@ export default flatten({
     totalRequests: '总请求数',
     dateLabel: '日期',
     creditsPer1kRequests: '{credits} / 1k 次请求',
-    usagePerHour: '~{usage} 用量/小时',
-    requestsPerHour: '~{requests} 次/小时',
+    usagePerHour: '≈{usage} 用量/小时',
+    requestsPerHour: '≈{requests} 次/小时',
     requestsCount: '{success} / {total} 次请求',
     dailyCreditsUsage: '每日 Credits 用量趋势',
     dailyUsage: '每日使用量趋势',
@@ -551,6 +551,7 @@ export default flatten({
 
   quickSelect: '快速选择',
   selectDateRange: '选择日期范围',
+  utcTimeLabel: 'UTC 时间',
   customRange: '自定义范围',
   dataAvailableFrom: '数据可查询近3个月',
   usedBy: '使用者',

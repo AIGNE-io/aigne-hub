@@ -32,7 +32,7 @@ interface CustomTooltipProps {
 const getProjectKey = (appDid: string | null) => appDid ?? 'null';
 
 function CustomTooltip({ active = false, payload = [], label = 0, metric, granularity, projects }: CustomTooltipProps) {
-  const { locale, t } = useLocaleContext();
+  const { t } = useLocaleContext();
   const theme = useTheme();
   const creditPrefix = (typeof window !== 'undefined' && window.blocklet?.preferences?.creditPrefix) || '';
   const projectMap = new Map(projects.map((project) => [getProjectKey(project.appDid), project]));
@@ -42,14 +42,7 @@ function CustomTooltip({ active = false, payload = [], label = 0, metric, granul
   }
 
   const date = dayjs.unix(Number(label));
-  const dateLabel =
-    granularity === 'hour'
-      ? locale === 'zh'
-        ? date.format('M/D HH:mm')
-        : date.format('M/D HH:mm')
-      : locale === 'zh'
-        ? date.format('M月D日')
-        : date.format('MMM D');
+  const dateLabel = granularity === 'hour' ? date.format('HH:mm') : date.format('MM-DD');
 
   const formatValue = (value: number) => {
     if (metric === 'credits') return `${creditPrefix}${formatNumber(value)}`;
@@ -138,7 +131,7 @@ export function ProjectUsageCharts({
   title,
   variant = 'card',
 }: ProjectUsageChartsProps) {
-  const { locale, t } = useLocaleContext();
+  const { t } = useLocaleContext();
   const theme = useTheme();
   const unknownProjectLabel = t('analytics.unknownProject');
 
@@ -188,9 +181,9 @@ export function ProjectUsageCharts({
   const formatXAxisLabel = (timestamp: number) => {
     const date = dayjs.unix(timestamp);
     if (granularity === 'hour') {
-      return locale === 'zh' ? date.format('M/D HH:mm') : date.format('M/D HH:mm');
+      return date.format('HH:mm');
     }
-    return locale === 'zh' ? date.format('M月D日') : date.format('MMM D');
+    return date.format('MM-DD');
   };
 
   const chartContent = (
