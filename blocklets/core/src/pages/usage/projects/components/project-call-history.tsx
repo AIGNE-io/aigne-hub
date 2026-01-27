@@ -56,6 +56,11 @@ interface ModelCallItem {
   metadata?: Record<string, any>;
 }
 
+interface ModelCallResponse {
+  list: ModelCallItem[];
+  count: number;
+}
+
 export function ProjectCallHistory({
   appDid,
   dateRange: externalDateRange,
@@ -101,7 +106,7 @@ export function ProjectCallHistory({
     });
   };
 
-  const { data = { list: [], count: 0 }, loading } = useRequest(
+  const { data = { list: [], count: 0 }, loading } = useRequest<ModelCallResponse, any>(
     () =>
       api
         .get(`/api/usage/projects/${encodeURIComponent(appDid)}/calls`, {

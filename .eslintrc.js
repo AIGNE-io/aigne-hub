@@ -30,7 +30,7 @@ module.exports = {
     'require-await': 'off',
     'react/require-default-props': 'off',
     'no-continue': 'off',
-    'no-await-in-loop': 'off',
+    'no-await-in-loop': 'warn',
     'consistent-return': 'off',
     'react/no-unstable-nested-components': 'off',
   },
