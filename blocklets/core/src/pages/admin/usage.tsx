@@ -65,6 +65,7 @@ export default function UsageStatsBoard() {
   const periodSeconds = rangeTo - rangeFrom;
   const previousRangeTo = rangeFrom - 1;
   const previousRangeFrom = previousRangeTo - periodSeconds;
+  const timezoneOffset = new Date().getTimezoneOffset();
 
   const {
     data: usageStats,
@@ -74,18 +75,20 @@ export default function UsageStatsBoard() {
     allUsers: true,
     startTime: rangeFrom.toString(),
     endTime: rangeTo.toString(),
-    timezoneOffset: new Date().getTimezoneOffset(),
+    timezoneOffset,
   });
   const { data: usageTrends, loading: usageTrendsLoading } = useUsageTrends({
     startTime: rangeFrom,
     endTime: rangeTo,
     granularity: chartGranularity,
+    timezoneOffset,
     enabled: true,
   });
   const { data: previousUsageTrends } = useUsageTrends({
     startTime: previousRangeFrom,
     endTime: previousRangeTo,
     granularity: chartGranularity,
+    timezoneOffset,
     enabled: true,
   });
 

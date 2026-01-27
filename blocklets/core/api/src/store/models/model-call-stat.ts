@@ -21,6 +21,8 @@ import { DailyStats } from './types';
 
 const SECONDS_PER_HOUR = 3600;
 const SECONDS_PER_DAY = 86400;
+const REALTIME_WINDOW_HOURS = 6;
+const REALTIME_WINDOW_SECONDS = REALTIME_WINDOW_HOURS * SECONDS_PER_HOUR;
 
 export default class ModelCallStat extends Model<
   InferAttributes<ModelCallStat>,
@@ -65,7 +67,7 @@ export default class ModelCallStat extends Model<
     timeType: {
       type: DataTypes.ENUM('day', 'hour'),
       allowNull: false,
-      defaultValue: 'day',
+      defaultValue: 'hour',
     },
     stats: {
       type: DataTypes.JSON,
@@ -81,41 +83,45 @@ export default class ModelCallStat extends Model<
     },
   };
 
-  static async calcDailyStats(userDid: string, appDid: string, dayTimestamp: number): Promise<void> {
-    // Check if today - compute in real-time without cache write
-    const currentDay = Math.floor(Date.now() / 1000 / SECONDS_PER_DAY) * SECONDS_PER_DAY;
-    if (dayTimestamp >= currentDay) {
+  static async calcHourlyStats(
+    userDid: string,
+    appDid: string,
+    hourTimestamp: number,
+    options?: { force?: boolean }
+  ): Promise<void> {
+    const now = Math.floor(Date.now() / 1000);
+    const currentHour = Math.floor(now / SECONDS_PER_HOUR) * SECONDS_PER_HOUR;
+    if (hourTimestamp >= currentHour) {
       return;
     }
 
-    const existingDayStat = await ModelCallStat.findOne({
+    const existingHourStat = await ModelCallStat.findOne({
       where: {
         userDid,
         appDid,
-        timestamp: dayTimestamp,
-        timeType: 'day',
+        timestamp: hourTimestamp,
+        timeType: 'hour',
       },
     });
-    if (existingDayStat) {
+    if (existingHourStat && !options?.force) {
       return;
     }
 
     const stats = await ModelCallStat.getStatsByCalls(
       userDid,
       appDid,
-      dayTimestamp,
-      dayTimestamp + SECONDS_PER_DAY - 1
+      hourTimestamp,
+      hourTimestamp + SECONDS_PER_HOUR - 1
     );
 
-    // Generate unique key including appDid
-    const dayKey = `${userDid}-${appDid}-day-${dayTimestamp}`;
+    const hourKey = `${userDid}-${appDid}-hour-${hourTimestamp}`;
 
     await ModelCallStat.upsert({
-      id: dayKey,
+      id: hourKey,
       userDid,
       appDid,
-      timestamp: dayTimestamp,
-      timeType: 'day',
+      timestamp: hourTimestamp,
+      timeType: 'hour',
       stats,
     });
   }
@@ -129,7 +135,8 @@ export default class ModelCallStat extends Model<
     appDids: Array<string | null | undefined>,
     startTime: number,
     endTime: number,
-    granularity: 'hour' | 'day' = 'day'
+    granularity: 'hour' | 'day' = 'day',
+    timezoneOffset?: number
   ): Promise<Array<{ timestamp: number; byProject: Record<string, DailyStats> }>> {
     const appDidList = Array.from(
       new Set(appDids.filter((appDid): appDid is string => typeof appDid === 'string' && appDid.length > 0))
@@ -138,85 +145,101 @@ export default class ModelCallStat extends Model<
       return [];
     }
 
-    const { bucketSize, startBucket, endBucket } = ModelCallStat.getBucketRange(startTime, endTime, granularity);
+    const now = Math.floor(Date.now() / 1000);
+    const safeEndTime = Math.min(endTime, now);
+    if (safeEndTime < startTime) {
+      return [];
+    }
+
+    const { bucketSize, startBucket, endBucket } = ModelCallStat.getBucketRange(
+      startTime,
+      safeEndTime,
+      granularity,
+      timezoneOffset
+    );
     const projectKeys = appDidList;
-
-    if (granularity === 'hour') {
-      return ModelCallStat.getProjectTrendsByCalls(userDid, appDidList, startTime, endTime, granularity);
-    }
-
-    const timeType = 'day';
-    const whereClause: any = {
-      timestamp: { [Op.between]: [startBucket, endBucket] },
-      timeType,
-    };
-
-    if (userDid !== undefined) {
-      whereClause.userDid = userDid === null ? { [Op.not]: null } : userDid;
-    }
-
-    if (appDidList.length) {
-      whereClause.appDid = { [Op.in]: appDidList };
-    }
-
-    const rows = await ModelCallStat.findAll({
-      where: whereClause,
-      order: [['timestamp', 'ASC']],
-      raw: true,
-    });
+    const offsetSeconds = ModelCallStat.getTimezoneOffsetSeconds(timezoneOffset);
+    const realtimeStart = ModelCallStat.getRealtimeWindowStart(now, timezoneOffset);
+    const cacheEndTime = Math.min(safeEndTime, realtimeStart - 1);
 
     const trendsByTimestamp = new Map<number, Record<string, DailyStats>>();
 
-    rows.forEach((row: any) => {
-      const timestamp = Number(row.timestamp);
-      if (!Number.isFinite(timestamp)) return;
+    if (cacheEndTime >= startTime) {
+      const { startBucket: cacheStartBucket, endBucket: cacheEndBucket } = ModelCallStat.getBucketRange(
+        startTime,
+        cacheEndTime,
+        'hour',
+        timezoneOffset
+      );
+      const whereClause: any = {
+        timestamp: { [Op.between]: [cacheStartBucket, cacheEndBucket] },
+        timeType: 'hour',
+      };
 
-      const { appDid } = row;
-      if (!appDid) return;
-      const projectKey = appDid;
-      const stats = ModelCallStat.parseStats(row.stats);
-      const prepared = ModelCallStat.prepareTrendStats(stats);
-
-      if (!trendsByTimestamp.has(timestamp)) {
-        trendsByTimestamp.set(timestamp, {});
+      if (userDid !== undefined) {
+        whereClause.userDid = userDid === null ? { [Op.not]: null } : userDid;
       }
 
-      const existing = trendsByTimestamp.get(timestamp)![projectKey];
-      if (existing) {
-        trendsByTimestamp.get(timestamp)![projectKey] = ModelCallStat.mergeTrendStats(existing, prepared);
-      } else {
-        trendsByTimestamp.get(timestamp)![projectKey] = prepared;
+      if (appDidList.length) {
+        whereClause.appDid = { [Op.in]: appDidList };
       }
-    });
 
-    // Merge current bucket realtime stats (cache-only for historical data)
-    const currentBucket = Math.floor(Date.now() / 1000 / bucketSize) * bucketSize;
-    const realtimeEndBucket = Math.floor(endTime / bucketSize) * bucketSize;
-    const realtimeBuckets =
-      realtimeEndBucket < currentBucket
-        ? []
-        : await ModelCallStat.getProjectTrendsByCalls(
-            userDid,
-            appDidList,
-            currentBucket,
-            Math.min(endTime, currentBucket + bucketSize - 1),
-            granularity
-          );
+      const rows = await ModelCallStat.findAll({
+        where: whereClause,
+        order: [['timestamp', 'ASC']],
+        raw: true,
+      });
 
-    realtimeBuckets.forEach(({ timestamp, byProject }) => {
-      if (!trendsByTimestamp.has(timestamp)) {
-        trendsByTimestamp.set(timestamp, {});
-      }
-      const target = trendsByTimestamp.get(timestamp)!;
-      Object.entries(byProject).forEach(([projectKey, stats]) => {
-        const existing = target[projectKey];
+      rows.forEach((row: any) => {
+        const timestamp = Number(row.timestamp);
+        if (!Number.isFinite(timestamp)) return;
+
+        const { appDid } = row;
+        if (!appDid) return;
+        const projectKey = appDid;
+        const stats = ModelCallStat.parseStats(row.stats);
+        const prepared = ModelCallStat.prepareTrendStats(stats);
+        const bucketTimestamp = ModelCallStat.alignToBucket(timestamp, bucketSize, offsetSeconds);
+
+        if (!trendsByTimestamp.has(bucketTimestamp)) {
+          trendsByTimestamp.set(bucketTimestamp, {});
+        }
+
+        const existing = trendsByTimestamp.get(bucketTimestamp)![projectKey];
         if (existing) {
-          target[projectKey] = ModelCallStat.mergeTrendStats(existing, stats);
+          trendsByTimestamp.get(bucketTimestamp)![projectKey] = ModelCallStat.mergeTrendStats(existing, prepared);
         } else {
-          target[projectKey] = stats;
+          trendsByTimestamp.get(bucketTimestamp)![projectKey] = prepared;
         }
       });
-    });
+    }
+
+    const realtimeStartTime = Math.max(startTime, realtimeStart);
+    if (realtimeStartTime <= safeEndTime) {
+      const realtimeBuckets = await ModelCallStat.getProjectTrendsByCalls(
+        userDid,
+        appDidList,
+        realtimeStartTime,
+        safeEndTime,
+        granularity,
+        timezoneOffset
+      );
+
+      realtimeBuckets.forEach(({ timestamp, byProject }) => {
+        if (!trendsByTimestamp.has(timestamp)) {
+          trendsByTimestamp.set(timestamp, {});
+        }
+        const target = trendsByTimestamp.get(timestamp)!;
+        Object.entries(byProject).forEach(([projectKey, stats]) => {
+          const existing = target[projectKey];
+          if (existing) {
+            target[projectKey] = ModelCallStat.mergeTrendStats(existing, stats);
+          } else {
+            target[projectKey] = stats;
+          }
+        });
+      });
+    }
 
     return ModelCallStat.buildProjectTrendBuckets(trendsByTimestamp, projectKeys, startBucket, endBucket, bucketSize);
   }
@@ -226,11 +249,13 @@ export default class ModelCallStat extends Model<
     startTime,
     endTime,
     granularity = 'day',
+    timezoneOffset,
   }: {
     userDid: string | null | undefined;
     startTime: number;
     endTime: number;
     granularity?: 'hour' | 'day';
+    timezoneOffset?: number;
   }): Promise<{
     projects: Array<{
       appDid: string;
@@ -248,7 +273,7 @@ export default class ModelCallStat extends Model<
     }>;
     granularity: 'hour' | 'day';
   }> {
-    const appDids = await ModelCallStat.getProjectAppDidsInRange(userDid, startTime, endTime, granularity === 'day');
+    const appDids = await ModelCallStat.getProjectAppDidsInRange(userDid, startTime, endTime, timezoneOffset);
     if (appDids.length === 0) {
       return { projects: [], trends: [], granularity };
     }
@@ -275,7 +300,14 @@ export default class ModelCallStat extends Model<
       };
     });
 
-    const trendBuckets = await ModelCallStat.getProjectTrends(userDid, sortedAppDids, startTime, endTime, granularity);
+    const trendBuckets = await ModelCallStat.getProjectTrends(
+      userDid,
+      sortedAppDids,
+      startTime,
+      endTime,
+      granularity,
+      timezoneOffset
+    );
 
     const trends = trendBuckets.map(({ timestamp, byProject }) => {
       const normalizedByProject: Record<
@@ -302,10 +334,19 @@ export default class ModelCallStat extends Model<
   private static async getGlobalTrendByCalls(
     startTime: number,
     endTime: number,
-    granularity: 'hour' | 'day'
+    granularity: 'hour' | 'day',
+    timezoneOffset?: number
   ): Promise<Array<{ timestamp: number; stats: DailyStats }>> {
-    const { bucketSize, startBucket, endBucket } = ModelCallStat.getBucketRange(startTime, endTime, granularity);
-    const bucketExpr = literal(`FLOOR("callTime" / ${bucketSize}) * ${bucketSize}`);
+    const { bucketSize, startBucket, endBucket } = ModelCallStat.getBucketRange(
+      startTime,
+      endTime,
+      granularity,
+      timezoneOffset
+    );
+    const offsetSeconds = ModelCallStat.getTimezoneOffsetSeconds(timezoneOffset);
+    const bucketExpr = literal(
+      `FLOOR(("callTime" - ${offsetSeconds}) / ${bucketSize}) * ${bucketSize} + ${offsetSeconds}`
+    );
     const rows = (await ModelCall.findAll({
       attributes: [
         [bucketExpr, 'timestamp'],
@@ -389,11 +430,17 @@ export default class ModelCallStat extends Model<
     appDids: string[],
     startTime: number,
     endTime: number,
-    granularity: 'hour' | 'day'
+    granularity: 'hour' | 'day',
+    timezoneOffset?: number
   ): Promise<Array<{ timestamp: number; byProject: Record<string, DailyStats> }>> {
     if (!appDids.length) return [];
 
-    const { bucketSize, startBucket, endBucket } = ModelCallStat.getBucketRange(startTime, endTime, granularity);
+    const { bucketSize, startBucket, endBucket } = ModelCallStat.getBucketRange(
+      startTime,
+      endTime,
+      granularity,
+      timezoneOffset
+    );
     const appDidList = appDids;
 
     const whereClause: any = {
@@ -406,7 +453,10 @@ export default class ModelCallStat extends Model<
     if (appDidList.length) {
       whereClause.appDid = { [Op.in]: appDidList };
     }
-    const bucketExpr = literal(`FLOOR("callTime" / ${bucketSize}) * ${bucketSize}`);
+    const offsetSeconds = ModelCallStat.getTimezoneOffsetSeconds(timezoneOffset);
+    const bucketExpr = literal(
+      `FLOOR(("callTime" - ${offsetSeconds}) / ${bucketSize}) * ${bucketSize} + ${offsetSeconds}`
+    );
     const rows = (await ModelCall.findAll({
       attributes: [
         [bucketExpr, 'timestamp'],
@@ -453,53 +503,72 @@ export default class ModelCallStat extends Model<
 
   /**
    * Get global trends across all users (admin only)
-   * Aggregates from per-user daily stats for performance
+   * Aggregates from per-user hourly stats for performance
    */
   static async getGlobalTrends(
     startTime: number,
     endTime: number,
-    granularity: 'hour' | 'day' = 'day'
+    granularity: 'hour' | 'day' = 'day',
+    timezoneOffset?: number
   ): Promise<Array<{ timestamp: number; stats: DailyStats }>> {
-    if (granularity === 'hour') {
-      return ModelCallStat.getGlobalTrendByCalls(startTime, endTime, granularity);
+    const now = Math.floor(Date.now() / 1000);
+    const safeEndTime = Math.min(endTime, now);
+    if (safeEndTime < startTime) {
+      return [];
     }
 
-    const { bucketSize, startBucket, endBucket } = ModelCallStat.getBucketRange(startTime, endTime, 'day');
-    const timeType = 'day';
-    const currentDay = Math.floor(Date.now() / 1000 / SECONDS_PER_DAY) * SECONDS_PER_DAY;
-    const statsEnd = Math.min(endBucket, currentDay - SECONDS_PER_DAY);
-
-    // Aggregate from per-user stats (avoid relying on global aggregates)
-    const rows =
-      statsEnd >= startBucket
-        ? await ModelCallStat.findAll({
-            where: {
-              timestamp: { [Op.between]: [startBucket, statsEnd] },
-              timeType,
-              userDid: { [Op.not]: null },
-            },
-            order: [['timestamp', 'ASC']],
-            raw: true,
-          })
-        : [];
+    const { bucketSize, startBucket, endBucket } = ModelCallStat.getBucketRange(
+      startTime,
+      safeEndTime,
+      granularity,
+      timezoneOffset
+    );
+    const offsetSeconds = ModelCallStat.getTimezoneOffsetSeconds(timezoneOffset);
+    const realtimeStart = ModelCallStat.getRealtimeWindowStart(now, timezoneOffset);
+    const cacheEndTime = Math.min(safeEndTime, realtimeStart - 1);
 
     const statsMap = new Map<number, DailyStats>();
-    rows.forEach((row: any) => {
-      const timestamp = Number(row.timestamp);
-      if (!Number.isFinite(timestamp)) return;
-      const stats = ModelCallStat.parseStats(row.stats);
-      const prepared = ModelCallStat.prepareTrendStats(stats);
-      const existing = statsMap.get(timestamp);
-      if (existing) {
-        statsMap.set(timestamp, ModelCallStat.mergeTrendStats(existing, prepared));
-      } else {
-        statsMap.set(timestamp, prepared);
-      }
-    });
 
-    if (endBucket >= currentDay) {
-      const realtimeEnd = Math.min(endTime, currentDay + SECONDS_PER_DAY - 1);
-      const realtime = await ModelCallStat.getGlobalTrendByCalls(currentDay, realtimeEnd, 'day');
+    if (cacheEndTime >= startTime) {
+      const { startBucket: cacheStartBucket, endBucket: cacheEndBucket } = ModelCallStat.getBucketRange(
+        startTime,
+        cacheEndTime,
+        'hour',
+        timezoneOffset
+      );
+      const rows = await ModelCallStat.findAll({
+        where: {
+          timestamp: { [Op.between]: [cacheStartBucket, cacheEndBucket] },
+          timeType: 'hour',
+          userDid: { [Op.not]: null },
+        },
+        order: [['timestamp', 'ASC']],
+        raw: true,
+      });
+
+      rows.forEach((row: any) => {
+        const timestamp = Number(row.timestamp);
+        if (!Number.isFinite(timestamp)) return;
+        const stats = ModelCallStat.parseStats(row.stats);
+        const prepared = ModelCallStat.prepareTrendStats(stats);
+        const bucketTimestamp = ModelCallStat.alignToBucket(timestamp, bucketSize, offsetSeconds);
+        const existing = statsMap.get(bucketTimestamp);
+        if (existing) {
+          statsMap.set(bucketTimestamp, ModelCallStat.mergeTrendStats(existing, prepared));
+        } else {
+          statsMap.set(bucketTimestamp, prepared);
+        }
+      });
+    }
+
+    const realtimeStartTime = Math.max(startTime, realtimeStart);
+    if (realtimeStartTime <= safeEndTime) {
+      const realtime = await ModelCallStat.getGlobalTrendByCalls(
+        realtimeStartTime,
+        safeEndTime,
+        granularity,
+        timezoneOffset
+      );
       realtime.forEach((entry) => {
         const existing = statsMap.get(entry.timestamp);
         if (existing) {
@@ -527,6 +596,7 @@ export default class ModelCallStat extends Model<
       sortBy?: 'totalCalls' | 'totalCredits';
       sortOrder?: 'asc' | 'desc';
       rangeDays?: number;
+      timezoneOffset?: number;
     }
   ): Promise<{
     projects: Array<{
@@ -547,9 +617,23 @@ export default class ModelCallStat extends Model<
     const rawSortOrder = options?.sortOrder;
     const sortOrder = rawSortOrder === 'asc' || rawSortOrder === 'desc' ? rawSortOrder : 'desc';
     const orderDirection = sortOrder === 'asc' ? 'ASC' : 'DESC';
-    const currentDay = Math.floor(Date.now() / 1000 / SECONDS_PER_DAY) * SECONDS_PER_DAY;
-    const statsStart = Math.floor(startTime / SECONDS_PER_DAY) * SECONDS_PER_DAY;
-    const statsEnd = Math.min(Math.floor(endTime / SECONDS_PER_DAY) * SECONDS_PER_DAY, currentDay - SECONDS_PER_DAY);
+    const now = Math.floor(Date.now() / 1000);
+    const safeEndTime = Math.min(endTime, now);
+    if (safeEndTime < startTime) {
+      return {
+        projects: [],
+        total: 0,
+        page,
+        pageSize,
+      };
+    }
+
+    const realtimeStart = ModelCallStat.getRealtimeWindowStart(now, options?.timezoneOffset);
+    const cacheEndTime = Math.min(safeEndTime, realtimeStart - 1);
+    const hasCacheRange = cacheEndTime >= startTime;
+    const { startBucket: statsStart, endBucket: statsEnd } = hasCacheRange
+      ? ModelCallStat.getBucketRange(startTime, cacheEndTime, 'hour', options?.timezoneOffset)
+      : { startBucket: 0, endBucket: -1 };
     const statsByApp = new Map<string, DailyStats>();
 
     if (statsStart <= statsEnd) {
@@ -560,7 +644,7 @@ export default class ModelCallStat extends Model<
         '"appDid" IS NOT NULL',
       ];
       const replacements: Record<string, any> = {
-        timeType: 'day',
+        timeType: 'hour',
         statsStart,
         statsEnd,
       };
@@ -608,9 +692,9 @@ export default class ModelCallStat extends Model<
       });
     }
 
-    if (endTime >= currentDay) {
-      const currentStart = Math.max(startTime, currentDay);
-      const currentEnd = Math.min(endTime, currentDay + SECONDS_PER_DAY - 1);
+    if (safeEndTime >= realtimeStart) {
+      const currentStart = Math.max(startTime, realtimeStart);
+      const currentEnd = safeEndTime;
       const whereClause: any = {
         callTime: { [Op.between]: [currentStart, currentEnd] },
       };
@@ -737,7 +821,7 @@ export default class ModelCallStat extends Model<
     userDid: string | null | undefined,
     startTime: number,
     endTime: number,
-    includeDailyStats: boolean
+    timezoneOffset?: number
   ): Promise<string[]> {
     const queryByCallsRange = async (rangeStart: number, rangeEnd: number) => {
       const whereClause: any = {
@@ -757,16 +841,16 @@ export default class ModelCallStat extends Model<
       return rows.map((row) => row.appDid).filter((appDid): appDid is string => !!appDid && appDid.length > 0);
     };
 
-    if (!includeDailyStats) {
-      return Array.from(new Set(await queryByCallsRange(startTime, endTime)));
+    const now = Math.floor(Date.now() / 1000);
+    const safeEndTime = Math.min(endTime, now);
+    if (safeEndTime < startTime) {
+      return [];
     }
 
-    const startBucket = Math.floor(startTime / SECONDS_PER_DAY) * SECONDS_PER_DAY;
-    const endBucket = Math.floor(endTime / SECONDS_PER_DAY) * SECONDS_PER_DAY;
-    const currentDay = Math.floor(Date.now() / 1000 / SECONDS_PER_DAY) * SECONDS_PER_DAY;
+    const { startBucket, endBucket } = ModelCallStat.getBucketRange(startTime, safeEndTime, 'hour', timezoneOffset);
 
     const statsWhere: any = {
-      timeType: 'day',
+      timeType: 'hour',
       timestamp: { [Op.between]: [startBucket, endBucket] },
     };
     if (userDid !== undefined) {
@@ -785,10 +869,11 @@ export default class ModelCallStat extends Model<
       .filter((appDid): appDid is string => !!appDid && appDid.length > 0);
 
     const realtimeAppDids: string[] = [];
-    if (endTime >= currentDay) {
-      const realtimeStart = Math.max(startTime, currentDay);
-      const realtimeEnd = endTime;
-      realtimeAppDids.push(...(await queryByCallsRange(realtimeStart, realtimeEnd)));
+    const realtimeStart = ModelCallStat.getRealtimeWindowStart(now, timezoneOffset);
+    if (safeEndTime >= realtimeStart) {
+      const realtimeStartTime = Math.max(startTime, realtimeStart);
+      const realtimeEndTime = safeEndTime;
+      realtimeAppDids.push(...(await queryByCallsRange(realtimeStartTime, realtimeEndTime)));
     }
 
     return Array.from(new Set([...statsAppDids, ...realtimeAppDids]));
@@ -841,12 +926,33 @@ export default class ModelCallStat extends Model<
     return ModelCallStat.buildStatsFromAggregateRow(totalRow);
   }
 
-  private static getBucketRange(startTime: number, endTime: number, granularity: 'hour' | 'day') {
+  private static getTimezoneOffsetSeconds(timezoneOffset?: number): number {
+    if (!Number.isFinite(timezoneOffset)) return 0;
+    return Math.trunc(timezoneOffset as number) * 60;
+  }
+
+  private static alignToBucket(timestamp: number, bucketSize: number, offsetSeconds: number): number {
+    return Math.floor((timestamp - offsetSeconds) / bucketSize) * bucketSize + offsetSeconds;
+  }
+
+  private static getRealtimeWindowStart(nowSeconds: number, timezoneOffset?: number): number {
+    const offsetSeconds = ModelCallStat.getTimezoneOffsetSeconds(timezoneOffset);
+    const currentHour = ModelCallStat.alignToBucket(nowSeconds, SECONDS_PER_HOUR, offsetSeconds);
+    return currentHour - REALTIME_WINDOW_SECONDS;
+  }
+
+  private static getBucketRange(
+    startTime: number,
+    endTime: number,
+    granularity: 'hour' | 'day',
+    timezoneOffset?: number
+  ) {
     const bucketSize = granularity === 'hour' ? SECONDS_PER_HOUR : SECONDS_PER_DAY;
+    const offsetSeconds = ModelCallStat.getTimezoneOffsetSeconds(timezoneOffset);
     return {
       bucketSize,
-      startBucket: Math.floor(startTime / bucketSize) * bucketSize,
-      endBucket: Math.floor(endTime / bucketSize) * bucketSize,
+      startBucket: ModelCallStat.alignToBucket(startTime, bucketSize, offsetSeconds),
+      endBucket: ModelCallStat.alignToBucket(endTime, bucketSize, offsetSeconds),
     };
   }
 

@@ -198,9 +198,6 @@ export function DateRangePicker({
           }}>
           {t('quickSelect')}
         </Typography>
-        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-          {t('utcTimeLabel')}
-        </Typography>
       </Stack>
 
       <Box

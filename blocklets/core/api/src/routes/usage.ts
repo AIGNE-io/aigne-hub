@@ -2,7 +2,7 @@ import { sessionMiddleware } from '@blocklet/sdk/lib/middlewares/session';
 import { fromUnitToToken } from '@ocap/util';
 import { Router } from 'express';
 
-import { backfillModelCallStatsBatch } from '../crons/model-call-stats';
+import { createModelCallStats } from '../crons/model-call-stats';
 import { normalizeProjectAppDid } from '../libs/env';
 import logger from '../libs/logger';
 import { getUserCredits } from '../libs/payment';
@@ -25,7 +25,8 @@ function getTimeRange(query: any, defaultDays = 30) {
   const parsedEnd = parseInt(query.endTime as string, 10);
   const hasStart = Number.isFinite(parsedStart) && parsedStart > 0;
   const hasEnd = Number.isFinite(parsedEnd) && parsedEnd > 0;
-  const endTime = hasEnd ? parsedEnd : now;
+  const rawEndTime = hasEnd ? parsedEnd : now;
+  const endTime = Math.min(rawEndTime, now);
 
   if (hasStart) {
     const startTime = Math.min(parsedStart, endTime);
@@ -48,6 +49,13 @@ function parseBooleanFlag(value: any): boolean {
   if (typeof value === 'string') return value === 'true' || value === '1';
   if (typeof value === 'number') return value === 1;
   return false;
+}
+
+function parseTimezoneOffset(query: any): number | undefined {
+  const raw = query?.timezoneOffset;
+  if (raw === undefined || raw === null || raw === '') return undefined;
+  const parsed = Number.parseInt(String(raw), 10);
+  return Number.isFinite(parsed) ? parsed : undefined;
 }
 
 function getAllUsersFlag(req: any, res: any): boolean | null {
@@ -148,6 +156,7 @@ router.get('/projects', user, async (req, res) => {
     const allUsers = allUsersFlag;
 
     const { startTime, endTime, timeRange } = getTimeRange(req.query);
+    const timezoneOffset = parseTimezoneOffset(req.query);
     const rangeDays = timeRange;
     const page = parseInt(req.query.page as string, 10) || 1;
     const pageSize = Math.min(parseInt(req.query.pageSize as string, 10) || 20, 100);
@@ -162,6 +171,7 @@ router.get('/projects', user, async (req, res) => {
       sortBy,
       sortOrder,
       rangeDays,
+      timezoneOffset,
     });
 
     return res.json({
@@ -203,6 +213,7 @@ router.get('/projects/trends', user, async (req, res) => {
     const allUsers = allUsersFlag;
 
     const { startTime, endTime, timeRange } = getTimeRange(req.query);
+    const timezoneOffset = parseTimezoneOffset(req.query);
     const granularity = timeRange <= 1 ? 'hour' : 'day';
     const scopedUserDid = allUsers ? null : userDid;
 
@@ -211,6 +222,7 @@ router.get('/projects/trends', user, async (req, res) => {
       startTime,
       endTime,
       granularity,
+      timezoneOffset,
     });
 
     return res.json(result);
@@ -237,10 +249,11 @@ router.get('/trends', user, async (req, res) => {
     const { startTime, endTime, timeRange } = getTimeRange(req.query);
     const rangeDays = timeRange;
     const granularity = rangeDays <= 1 ? 'hour' : 'day';
+    const timezoneOffset = parseTimezoneOffset(req.query);
 
     // Query directly from pre-aggregated ModelCallStat table instead of scanning ModelCalls
     // This is much faster as we aggregate from already-aggregated data
-    const trends = await ModelCallStat.getGlobalTrends(startTime, endTime, granularity);
+    const trends = await ModelCallStat.getGlobalTrends(startTime, endTime, granularity, timezoneOffset);
 
     return res.json({
       trends: trends.map((t) => ({
@@ -283,27 +296,25 @@ router.post('/stats/backfill', user, async (req, res) => {
 
     const safeStart = Math.min(startDate.getTime(), endDate.getTime());
     const safeEnd = Math.max(startDate.getTime(), endDate.getTime());
-    const appDidParam = (req.body?.appDid ?? req.query?.appDid) as string | undefined;
     const userDidParam = (req.body?.userDid ?? req.query?.userDid) as string | undefined;
 
-    const appDid = appDidParam !== undefined ? normalizeProjectAppDid(appDidParam) : undefined;
     const normalizedUserDid =
       userDidParam && userDidParam !== 'null' && userDidParam.trim() !== '' ? userDidParam.trim() : null;
 
     const startDay = Math.floor(safeStart / 1000 / 86400) * 86400;
     const endDay = Math.floor(safeEnd / 1000 / 86400) * 86400;
-    const dayTimestamps: number[] = [];
+    const ranges: Array<{ startTime: number; endTime: number }> = [];
+    let processed = 0;
+
     for (let day = startDay; day <= endDay; day += 86400) {
-      dayTimestamps.push(day);
+      const rangeStart = day;
+      const rangeEnd = day + 86400 - 1;
+      ranges.push({ startTime: rangeStart, endTime: rangeEnd });
+      processed += 24;
+      await createModelCallStats(rangeStart, rangeEnd, normalizedUserDid, true);
     }
 
-    await backfillModelCallStatsBatch({
-      userDid: normalizedUserDid,
-      appDid,
-      dayTimestamps,
-    });
-
-    return res.json({ processed: dayTimestamps.length, dayTimestamps });
+    return res.json({ processed, ranges });
   } catch (error: any) {
     logger.error('Failed to backfill stats', { error, userDid: req.user?.did });
     return res.status(500).json({ message: error.message });
@@ -329,16 +340,19 @@ router.get('/projects/:appDid(.*)/trends', user, async (req, res) => {
     const appDidParam = decodeRouteParam(req.params.appDid);
     const appDid = normalizeProjectAppDid(appDidParam);
     const startTime = parseInt(req.query.startTime as string, 10) || Math.floor(Date.now() / 1000) - 30 * 24 * 3600;
-    const endTime = parseInt(req.query.endTime as string, 10) || Math.floor(Date.now() / 1000);
+    const rawEndTime = parseInt(req.query.endTime as string, 10) || Math.floor(Date.now() / 1000);
+    const endTime = Math.min(rawEndTime, Math.floor(Date.now() / 1000));
     const rangeDays = getRangeDays(startTime, endTime);
     const granularity = rangeDays <= 1 ? 'hour' : 'day';
+    const timezoneOffset = parseTimezoneOffset(req.query);
 
     const trendBuckets = await ModelCallStat.getProjectTrends(
       allUsers ? null : userDid,
       [appDid],
       startTime,
       endTime,
-      granularity
+      granularity,
+      timezoneOffset
     );
     const appDidKey = appDid as string;
     const emptyStats = ModelCallStat.getEmptyStats();

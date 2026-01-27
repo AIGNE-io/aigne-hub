@@ -125,6 +125,9 @@ importers:
       '@blocklet/constant':
         specifier: ^1.17.7
         version: 1.17.7
+      '@blocklet/env':
+        specifier: ^1.17.7
+        version: 1.17.7
       '@blocklet/error':
         specifier: 0.3.5
         version: 0.3.5
@@ -269,6 +272,9 @@ importers:
       p-all:
         specifier: ^5.0.0
         version: 5.0.1
+      p-retry:
+        specifier: ^7.1.1
+        version: 7.1.1
       raw-body:
         specifier: ^3.0.0
         version: 3.0.2

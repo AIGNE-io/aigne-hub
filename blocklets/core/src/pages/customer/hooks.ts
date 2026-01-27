@@ -329,6 +329,7 @@ export function useUsageProjects(params: {
   sortBy?: 'totalCalls' | 'totalCredits';
   sortOrder?: 'asc' | 'desc';
   allUsers?: boolean;
+  timezoneOffset?: number;
   enabled?: boolean;
 }) {
   const { enabled, ...queryParams } = params;
@@ -349,6 +350,7 @@ export function useUsageProjects(params: {
         queryParams.sortBy,
         queryParams.sortOrder,
         queryParams.allUsers,
+        queryParams.timezoneOffset,
       ],
       ready: enabled ?? true,
       onError: (error) => {
@@ -365,6 +367,7 @@ export function useUsageTrends(params: {
   startTime?: number;
   endTime?: number;
   granularity?: 'hour' | 'day';
+  timezoneOffset?: number;
   enabled?: boolean;
 }) {
   const { enabled, ...queryParams } = params;
@@ -376,7 +379,13 @@ export function useUsageTrends(params: {
   } = useRequest<{ trends: UsageTrend[] }, []>(
     () => api.get('/api/usage/trends', { params: queryParams }).then((res) => res.data),
     {
-      refreshDeps: [queryParams.timeRange, queryParams.startTime, queryParams.endTime, queryParams.granularity],
+      refreshDeps: [
+        queryParams.timeRange,
+        queryParams.startTime,
+        queryParams.endTime,
+        queryParams.granularity,
+        queryParams.timezoneOffset,
+      ],
       ready: enabled ?? true,
       onError: (error) => {
         console.error('Failed to fetch usage trends:', error);
@@ -392,6 +401,7 @@ export function useProjectGroupedTrends(params: {
   endTime?: number;
   granularity?: 'hour' | 'day';
   allUsers?: boolean;
+  timezoneOffset?: number;
   enabled?: boolean;
 }) {
   const { enabled, ...queryParams } = params;
@@ -403,7 +413,13 @@ export function useProjectGroupedTrends(params: {
   } = useRequest<{ projects: ProjectTrendSummary[]; trends: ProjectGroupedTrend[]; granularity: 'hour' | 'day' }, []>(
     () => api.get('/api/usage/projects/trends', { params: queryParams }).then((res) => res.data),
     {
-      refreshDeps: [queryParams.startTime, queryParams.endTime, queryParams.granularity, queryParams.allUsers],
+      refreshDeps: [
+        queryParams.startTime,
+        queryParams.endTime,
+        queryParams.granularity,
+        queryParams.allUsers,
+        queryParams.timezoneOffset,
+      ],
       ready: enabled ?? true,
       onError: (error) => {
         console.error('Failed to fetch project trends', error);
@@ -446,7 +462,13 @@ export interface ModelDistribution {
 
 export function useProjectTrends(
   appDid: string,
-  params: { startTime?: number; endTime?: number; granularity?: 'hour' | 'day'; allUsers?: boolean }
+  params: {
+    startTime?: number;
+    endTime?: number;
+    granularity?: 'hour' | 'day';
+    allUsers?: boolean;
+    timezoneOffset?: number;
+  }
 ) {
   const {
     data,
@@ -456,7 +478,14 @@ export function useProjectTrends(
   } = useRequest<{ project?: ProjectTrendSummary | null; trends: ProjectTrend[] }, []>(
     () => api.get(`/api/usage/projects/${encodeURIComponent(appDid)}/trends`, { params }).then((res) => res.data),
     {
-      refreshDeps: [appDid, params.startTime, params.endTime, params.granularity, params.allUsers],
+      refreshDeps: [
+        appDid,
+        params.startTime,
+        params.endTime,
+        params.granularity,
+        params.allUsers,
+        params.timezoneOffset,
+      ],
       ready: !!appDid,
       onError: (error) => {
         console.error('Failed to fetch project trends:', error);

@@ -75,6 +75,7 @@ export function ProjectList({
   const rangeEnd = dateRange.end.endOf('day');
   const rangeFrom = toUTCTimestamp(rangeStart);
   const rangeTo = toUTCTimestamp(rangeEnd, true);
+  const timezoneOffset = new Date().getTimezoneOffset();
 
   const { data: usageProjects, loading: projectsLoading } = useUsageProjects({
     startTime: rangeFrom,
@@ -84,6 +85,7 @@ export function ProjectList({
     sortBy: 'totalCalls',
     sortOrder: 'desc',
     allUsers,
+    timezoneOffset,
     enabled: !useTrends,
   });
   const resolvedTrendsData = trendsData;

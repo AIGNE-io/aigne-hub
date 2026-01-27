@@ -1,4 +1,5 @@
 import Cron from '@abtnode/cron';
+import dayjs from '@api/libs/dayjs';
 import {
   CHECK_MODEL_STATUS_CRON_TIME,
   CLEANUP_STALE_MODEL_CALLS_CRON_TIME,
@@ -8,7 +9,7 @@ import {
 import logger from '../libs/logger';
 import shouldExecuteTask from '../libs/master-cluster';
 import { cleanupStaleProcessingCalls } from '../middlewares/model-call-tracker';
-import { createModelCallStats } from './model-call-stats';
+import { createModelCallStats, getHoursToWarmup } from './model-call-stats';
 
 function init() {
   Cron.init({
@@ -17,11 +18,18 @@ function init() {
       {
         name: 'model.call.stats',
         time: MODEL_CALL_STATS_CRON_TIME,
-        fn: () => {
+        fn: async () => {
           logger.info('cron model.call.stats');
           if (shouldExecuteTask('model.call.stats cron')) {
             logger.info('Executing model.call.stats on cluster:', { instanceId: process.env.BLOCKLET_INSTANCE_ID });
-            createModelCallStats();
+            const range = await getHoursToWarmup();
+            if (!range) {
+              return;
+            }
+            const now = dayjs.utc().unix();
+            const currentHour = Math.floor(now / 3600) * 3600;
+            const isMidnight = currentHour % (24 * 3600) === 0;
+            await createModelCallStats(range.startTime, range.endTime, undefined, isMidnight);
           }
         },
         options: { runOnInit: false },

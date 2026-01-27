@@ -78,6 +78,7 @@ function CreditBoard() {
   const periodSeconds = rangeTo - rangeFrom;
   const previousRangeTo = rangeFrom - 1;
   const previousRangeFrom = previousRangeTo - periodSeconds;
+  const timezoneOffset = new Date().getTimezoneOffset();
 
   // API hooks
   const { data: creditBalance, loading: balanceLoading, error: balanceError } = useCreditBalance();
@@ -95,17 +96,19 @@ function CreditBoard() {
   } = useUsageStats({
     startTime: rangeFrom.toString(),
     endTime: rangeTo.toString(),
-    timezoneOffset: new Date().getTimezoneOffset(), // Send timezone offset in minutes
+    timezoneOffset, // Send timezone offset in minutes
   });
   const { data: projectGroupedTrends, loading: projectTrendsLoading } = useProjectGroupedTrends({
     startTime: rangeFrom,
     endTime: rangeTo,
     granularity: chartGranularity,
+    timezoneOffset,
   });
   const { data: previousProjectGroupedTrends } = useProjectGroupedTrends({
     startTime: previousRangeFrom,
     endTime: previousRangeTo,
     granularity: chartGranularity,
+    timezoneOffset,
   });
 
   const hasError = balanceError || statsError;
