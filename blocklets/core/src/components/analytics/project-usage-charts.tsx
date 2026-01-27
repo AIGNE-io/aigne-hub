@@ -200,6 +200,7 @@ export function ProjectUsageCharts({
         <YAxis hide />
         <Tooltip
           content={<CustomTooltip metric={metric} granularity={granularity} projects={resolvedProjects} />}
+          allowEscapeViewBox={{ x: false, y: true }}
           wrapperStyle={{ zIndex: 1000, pointerEvents: 'none' }}
         />
         {resolvedProjects.map((project, index) => {
@@ -256,6 +257,7 @@ export function ProjectUsageCharts({
         borderColor: 'divider',
         height: '100%',
         backgroundColor: 'background.default',
+        overflow: 'visible',
       }}>
       <CardHeader title={title || t('analytics.projects')} />
       {trends && trends.length > 0 ? (

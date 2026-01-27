@@ -250,6 +250,7 @@ export function UsageOverviewCard({
         border: '1px solid',
         borderColor: 'divider',
         backgroundColor: 'background.default',
+        overflow: 'visible',
       }}>
       <Box sx={{ p: 2, pb: 0 }}>
         <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>

@@ -287,6 +287,7 @@ export function ProjectUsageOverviewCard({
         boxShadow: 1,
         border: 'none',
         backgroundColor: 'background.default',
+        overflow: 'visible',
       }}>
       <Box>
         <Stack spacing={2.5}>
