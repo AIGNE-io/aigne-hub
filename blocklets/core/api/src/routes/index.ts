@@ -13,6 +13,7 @@ import app from './app';
 import meilisearch from './meilisearch';
 import migration from './migration';
 import payment from './payment';
+import usage from './usage';
 import user from './user';
 import v1 from './v1';
 import v2 from './v2';
@@ -85,6 +86,7 @@ router.use('/payment', payment);
 router.use('/meilisearch', meilisearch);
 router.use('/migration', migration);
 router.use('/user', user);
+router.use('/usage', usage);
 router.use('/ai-providers', aiProviders);
 router.use('/ai', aiProviders);
 

@@ -1,9 +1,10 @@
 import { getReqModel } from '@api/libs/ai-provider';
-import { CREDIT_DECIMAL_PLACES } from '@api/libs/env';
+import { CREDIT_DECIMAL_PLACES, normalizeProjectAppDid } from '@api/libs/env';
 import logger from '@api/libs/logger';
 import { ensureModelWithProvider, getProvidersForModel, modelHasProvider } from '@api/libs/provider-rotation';
 import { getCurrentUnixTimestamp } from '@api/libs/timestamp';
 import { getModelAndProviderId } from '@api/providers/util';
+import { pushProjectFetchJob } from '@api/queue/projects';
 import ModelCall from '@api/store/models/model-call';
 import { CallType } from '@api/store/models/types';
 import BigNumber from 'bignumber.js';
@@ -120,9 +121,10 @@ export function createModelCallMiddleware(callType: CallType) {
       };
     }
 
-    const appDid = (req.headers['x-aigne-hub-client-did'] as string) || '';
+    const rawAppDid = req.headers['x-aigne-hub-client-did'];
+    const normalizedAppDid = normalizeProjectAppDid(typeof rawAppDid === 'string' ? rawAppDid : null);
     req.appClient = {
-      appId: appDid,
+      appId: normalizedAppDid || '',
       userDid,
     };
 
@@ -131,7 +133,7 @@ export function createModelCallMiddleware(callType: CallType) {
         type: callType,
         model,
         userDid,
-        appDid,
+        appDid: normalizedAppDid ?? undefined,
         requestId: req.headers['x-request-id'] as string,
         usageMetrics,
         metadata: {
@@ -195,9 +197,11 @@ async function createModelCallContext({
   metadata?: Record<string, any>;
   usageMetrics?: Record<string, any>;
 }): Promise<ModelCallContext | null> {
+  const formatDurationSeconds = (ms: number) => Math.round((ms / 1000) * 10) / 10;
   let p = '';
   let m = '';
   const startTime = getCurrentUnixTimestamp();
+  const startTimeMs = Date.now();
   try {
     const { providerId, modelName } = await getModelAndProviderId(model);
     p = providerId;
@@ -228,6 +232,11 @@ async function createModelCallContext({
       logger.error('Failed to create model call record', { error, params });
       throw error;
     });
+
+    // Push project info fetch job to queue (non-blocking, with deduplication)
+    if (appDid) {
+      pushProjectFetchJob(appDid);
+    }
 
     logger.info('Created processing model call record', {
       id: modelCall.id,
@@ -261,7 +270,7 @@ async function createModelCallContext({
         });
       },
       complete: async (result: ModelCallResult) => {
-        const duration = getCurrentUnixTimestamp() - startTime;
+        const duration = formatDurationSeconds(Date.now() - startTimeMs);
         let totalUsage = 0;
         if (modelCall.type === 'imageGeneration') {
           totalUsage = new BigNumber(result.numberOfImageGeneration || 0).toNumber();
@@ -304,7 +313,7 @@ async function createModelCallContext({
         });
       },
       fail: async (errorReason: string, partialUsage?: Partial<UsageData>) => {
-        const duration = getCurrentUnixTimestamp() - startTime;
+        const duration = formatDurationSeconds(Date.now() - startTimeMs);
         let totalUsage = 0;
         if (modelCall.type === 'imageGeneration') {
           totalUsage = new BigNumber(partialUsage?.numberOfImageGeneration || 0).toNumber();
@@ -385,11 +394,12 @@ export async function cleanupStaleProcessingCalls(timeoutMinutes: number = 30): 
 
     const results = await pAll(
       staleCalls.map((call) => async () => {
+        const durationSeconds = Math.round(((Date.now() - call.callTime * 1000) / 1000) * 10) / 10;
         await ModelCall.update(
           {
             status: 'failed',
             errorReason: `Timeout: Processing exceeded ${timeoutMinutes} minutes`,
-            duration: getCurrentUnixTimestamp() - call.callTime,
+            duration: durationSeconds,
           },
           { where: { id: call.id } }
         );

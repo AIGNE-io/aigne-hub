@@ -2,6 +2,7 @@ import api from '@app/libs/api';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import Toast from '@arcblock/ux/lib/Toast';
 import { useRequest } from 'ahooks';
+import { useMemo, useState } from 'react';
 // Types
 export interface CreditBalance {
   balance: number;
@@ -9,67 +10,19 @@ export interface CreditBalance {
 }
 
 export interface UsageStats {
-  summary: {
-    totalCredits: number;
-    totalCalls: number;
-    modelCount: number;
-    byType: Record<
-      string,
-      {
-        totalUsage: number;
-        totalCredits: number;
-        totalCalls: number;
-        successCalls: number;
-      }
-    >;
+  modelStats: {
+    list: Array<{
+      providerId: string;
+      provider: {
+        id: string;
+        name: string;
+        displayName: string;
+      };
+      model: string;
+      totalCalls: number;
+    }>;
+    totalModelCount: number;
   };
-  dailyStats: Array<{
-    date: string;
-    credits: number;
-    tokens: number;
-    requests: number;
-  }>;
-  modelStats: Array<{
-    providerId: string;
-    provider: {
-      id: string;
-      name: string;
-      displayName: string;
-    };
-    model: string;
-    type: string;
-    totalUsage: number;
-    totalCredits: number;
-    totalCalls: number;
-    successRate: number;
-  }>;
-  trendComparison?: {
-    current: {
-      totalUsage: number;
-      totalCredits: number;
-      totalCalls: number;
-      byType: Record<
-        string,
-        {
-          totalUsage: number;
-          totalCalls: number;
-        }
-      >;
-    };
-    previous: {
-      totalUsage: number;
-      totalCredits: number;
-      totalCalls: number;
-      byType: Record<
-        string,
-        {
-          totalUsage: number;
-          totalCalls: number;
-        }
-      >;
-    };
-    growth: { usageGrowth: number; creditsGrowth: number; callsGrowth: number };
-  } | null;
 }
 
 export interface ModelCall {
@@ -98,6 +51,13 @@ export interface ModelCallsResponse {
     pageSize: number;
     total: number;
   };
+}
+
+export interface UserInfoItem {
+  did: string;
+  fullName?: string;
+  email?: string;
+  avatar?: string;
 }
 
 // Polling interval for all queries (30 seconds)
@@ -137,7 +97,7 @@ export function useUsageStats(params: {
     loading,
     error,
     runAsync: refetch,
-  } = useRequest(
+  } = useRequest<UsageStats, []>(
     () =>
       api
         .get(params.allUsers ? '/api/user/admin/user-stats' : '/api/user/usage-stats', { params })
@@ -287,4 +247,296 @@ export function useCreditTransactions(isCreditBillingEnabled: boolean) {
     error,
     refetch,
   };
+}
+
+// New hooks for usage dashboard APIs
+
+export interface UsageQuota {
+  total: number;
+  remaining: number;
+  used: number;
+  pendingCredit: number;
+  estimatedDaysRemaining: number;
+  dailyAvgCredits?: number;
+  currency: string;
+}
+
+export interface UsageProject {
+  appDid: string | null;
+  appName?: string;
+  totalCalls: number;
+  totalCredits: number;
+  avgDuration?: number;
+  successRate: number;
+  lastCallTime: number;
+}
+
+export interface UsageTrend {
+  timestamp: number;
+  calls: number;
+  successCalls: number;
+  successRate: number;
+  avgDuration: number;
+  totalCredits: number;
+  totalUsage: number;
+}
+
+export interface ProjectGroupedTrend {
+  timestamp: number;
+  byProject: Record<
+    string,
+    {
+      totalUsage: number;
+      totalCredits: number;
+      totalCalls: number;
+      successCalls: number;
+      avgDuration: number;
+    }
+  >;
+}
+
+export interface ProjectTrendSummary {
+  appDid: string | null;
+  appName?: string;
+  appLogo?: string;
+  appUrl?: string;
+  lastCallTime?: number;
+}
+
+export function useUsageQuota() {
+  const {
+    data,
+    loading,
+    error,
+    runAsync: refetch,
+  } = useRequest<UsageQuota, []>(() => api.get('/api/usage/quota').then((res) => res.data), {
+    pollingInterval: POLLING_INTERVAL,
+    pollingWhenHidden: false,
+    onError: (error) => {
+      console.error('Failed to fetch usage quota:', error);
+    },
+  });
+
+  return { data, loading, error, refetch };
+}
+
+export function useUsageProjects(params: {
+  timeRange?: number;
+  startTime?: number;
+  endTime?: number;
+  page?: number;
+  pageSize?: number;
+  sortBy?: 'totalCalls' | 'totalCredits';
+  sortOrder?: 'asc' | 'desc';
+  allUsers?: boolean;
+  timezoneOffset?: number;
+  enabled?: boolean;
+}) {
+  const { enabled, ...queryParams } = params;
+  const {
+    data,
+    loading,
+    error,
+    runAsync: refetch,
+  } = useRequest<{ projects: UsageProject[]; total: number; page: number; pageSize: number }, []>(
+    () => api.get('/api/usage/projects', { params: queryParams }).then((res) => res.data),
+    {
+      refreshDeps: [
+        queryParams.timeRange,
+        queryParams.startTime,
+        queryParams.endTime,
+        queryParams.page,
+        queryParams.pageSize,
+        queryParams.sortBy,
+        queryParams.sortOrder,
+        queryParams.allUsers,
+        queryParams.timezoneOffset,
+      ],
+      ready: enabled ?? true,
+      onError: (error) => {
+        console.error('Failed to fetch usage projects:', error);
+      },
+    }
+  );
+
+  return { data, loading, error, refetch };
+}
+
+export function useUsageTrends(params: {
+  timeRange?: number;
+  startTime?: number;
+  endTime?: number;
+  granularity?: 'hour' | 'day';
+  timezoneOffset?: number;
+  enabled?: boolean;
+}) {
+  const { enabled, ...queryParams } = params;
+  const {
+    data,
+    loading,
+    error,
+    runAsync: refetch,
+  } = useRequest<{ trends: UsageTrend[] }, []>(
+    () => api.get('/api/usage/trends', { params: queryParams }).then((res) => res.data),
+    {
+      refreshDeps: [
+        queryParams.timeRange,
+        queryParams.startTime,
+        queryParams.endTime,
+        queryParams.granularity,
+        queryParams.timezoneOffset,
+      ],
+      ready: enabled ?? true,
+      onError: (error) => {
+        console.error('Failed to fetch usage trends:', error);
+      },
+    }
+  );
+
+  return { data, loading, error, refetch };
+}
+
+export function useProjectGroupedTrends(params: {
+  startTime?: number;
+  endTime?: number;
+  granularity?: 'hour' | 'day';
+  allUsers?: boolean;
+  timezoneOffset?: number;
+  enabled?: boolean;
+}) {
+  const { enabled, ...queryParams } = params;
+  const {
+    data,
+    loading,
+    error,
+    runAsync: refetch,
+  } = useRequest<{ projects: ProjectTrendSummary[]; trends: ProjectGroupedTrend[]; granularity: 'hour' | 'day' }, []>(
+    () => api.get('/api/usage/projects/trends', { params: queryParams }).then((res) => res.data),
+    {
+      refreshDeps: [
+        queryParams.startTime,
+        queryParams.endTime,
+        queryParams.granularity,
+        queryParams.allUsers,
+        queryParams.timezoneOffset,
+      ],
+      ready: enabled ?? true,
+      onError: (error) => {
+        console.error('Failed to fetch project trends', error);
+      },
+    }
+  );
+
+  return { data, loading, error, refetch };
+}
+
+// Project page hooks
+
+export interface ProjectStats {
+  appDid: string | null;
+  appName?: string;
+  appLogo?: string;
+  appUrl?: string;
+  totalCalls: number;
+  totalTokens: number;
+  totalCredits: number;
+  successCalls?: number;
+  successRate: number;
+  avgDuration: number;
+}
+
+export interface ProjectTrend {
+  timestamp: number;
+  calls: number;
+  successCalls: number;
+  avgDuration: number;
+  totalCredits: number;
+  totalUsage: number;
+}
+
+export interface ModelDistribution {
+  model: string;
+  calls: number;
+  percentage: number;
+}
+
+export function useProjectTrends(
+  appDid: string,
+  params: {
+    startTime?: number;
+    endTime?: number;
+    granularity?: 'hour' | 'day';
+    allUsers?: boolean;
+    timezoneOffset?: number;
+  }
+) {
+  const {
+    data,
+    loading,
+    error,
+    runAsync: refetch,
+  } = useRequest<{ project?: ProjectTrendSummary | null; trends: ProjectTrend[] }, []>(
+    () => api.get(`/api/usage/projects/${encodeURIComponent(appDid)}/trends`, { params }).then((res) => res.data),
+    {
+      refreshDeps: [
+        appDid,
+        params.startTime,
+        params.endTime,
+        params.granularity,
+        params.allUsers,
+        params.timezoneOffset,
+      ],
+      ready: !!appDid,
+      onError: (error) => {
+        console.error('Failed to fetch project trends:', error);
+      },
+    }
+  );
+
+  return { data, loading, error, refetch };
+}
+
+export function useAdminUserInfo(params: { userDids: string[]; enabled?: boolean }) {
+  const enabled = params.enabled ?? true;
+  const [userInfoMap, setUserInfoMap] = useState<Record<string, UserInfoItem>>({});
+
+  const userDidsToFetch = useMemo(() => {
+    if (!enabled) return [];
+    const dids = (params.userDids || []).filter(Boolean);
+    const uniqueDids = Array.from(new Set(dids)).sort();
+    return uniqueDids.filter((did) => !userInfoMap[did]);
+  }, [params.userDids, userInfoMap, enabled]);
+
+  const {
+    loading,
+    error,
+    runAsync: refetch,
+  } = useRequest(
+    async () => {
+      if (!enabled || userDidsToFetch.length === 0) return [];
+      const { data } = await api.post('/api/user/admin/user-info', { userDids: userDidsToFetch });
+      return data?.users || [];
+    },
+    {
+      refreshDeps: [enabled, userDidsToFetch.join('|')],
+      onSuccess: (users: UserInfoItem[] = []) => {
+        if (!enabled || userDidsToFetch.length === 0) return;
+        setUserInfoMap((prev) => {
+          const next = { ...prev };
+          users.forEach((info) => {
+            if (info?.did) next[info.did] = info;
+          });
+          userDidsToFetch.forEach((did) => {
+            if (did && !next[did]) next[did] = { did, fullName: '', avatar: '' };
+          });
+          return next;
+        });
+      },
+      onError: (error) => {
+        console.error('Failed to fetch user info:', error);
+      },
+    }
+  );
+
+  return { userInfoMap, loading, error, refetch };
 }

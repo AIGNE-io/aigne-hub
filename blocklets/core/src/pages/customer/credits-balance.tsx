@@ -173,9 +173,15 @@ function WaveChart({ percentage }: { percentage: number }) {
 
 interface CreditsBalanceProps {
   data?: UserInfoResult;
+  estimatedDaysRemaining?: number;
+  dailyAvgCredits?: number;
 }
 
-export function CreditsBalance({ data = undefined as UserInfoResult | undefined }: CreditsBalanceProps) {
+export function CreditsBalance({
+  data = undefined as UserInfoResult | undefined,
+  estimatedDaysRemaining,
+  dailyAvgCredits,
+}: CreditsBalanceProps) {
   const { t } = useLocaleContext();
   const { session, connectApi } = useSessionContext();
   const { creditBalance, paymentLink, currency, profileLink } = data || {};
@@ -242,7 +248,12 @@ export function CreditsBalance({ data = undefined as UserInfoResult | undefined 
 
   const renderBalanceInfo = () => {
     const { status } = getBalanceStatus();
-    const grantCount = creditBalance?.grantCount || 0;
+    const avgConsumptionSuffix =
+      typeof dailyAvgCredits === 'number' && Number.isFinite(dailyAvgCredits)
+        ? t('analytics.averageDailyConsumptionSuffix', {
+            amount: `${creditPrefix}${formatNumber(dailyAvgCredits)}`,
+          })
+        : '';
 
     return (
       <Stack spacing={0.5}>
@@ -258,7 +269,7 @@ export function CreditsBalance({ data = undefined as UserInfoResult | undefined 
                 })}
               </Typography>
             </Box>
-            {grantCount > 0 && (
+            {/* {grantCount > 0 && (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap', pl: 2.5 }}>
                 <Typography variant="caption" color="text.secondary">
                   {t('analytics.fromGrants', {
@@ -282,6 +293,24 @@ export function CreditsBalance({ data = undefined as UserInfoResult | undefined 
                     },
                   }}>
                   {t('analytics.viewDetails')}
+                </Typography>
+              </Box>
+            )} */}
+            {estimatedDaysRemaining !== undefined && balance > 0 && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <Tooltip title={t('analytics.estimatedDaysRemainingTooltip')} arrow placement="top">
+                  <InfoOutlined sx={{ fontSize: 14, color: 'text.secondary', opacity: 0.7, cursor: 'help' }} />
+                </Tooltip>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: estimatedDaysRemaining <= 7 ? 'warning.main' : 'text.secondary',
+                    fontWeight: estimatedDaysRemaining <= 7 ? 500 : 400,
+                  }}>
+                  {estimatedDaysRemaining >= 999
+                    ? t('analytics.estimatedDaysUnlimited')
+                    : t('analytics.estimatedDaysRemaining', { days: estimatedDaysRemaining })}
+                  {avgConsumptionSuffix}
                 </Typography>
               </Box>
             )}

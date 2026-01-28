@@ -4,6 +4,7 @@ import AiProvider from './ai-provider';
 import App from './app';
 import ModelCall from './model-call';
 import ModelCallStat from './model-call-stat';
+import Project from './project';
 import Usage from './usage';
 
 const models = {
@@ -13,6 +14,7 @@ const models = {
   App,
   ModelCall,
   ModelCallStat,
+  Project,
   Usage,
 };
 

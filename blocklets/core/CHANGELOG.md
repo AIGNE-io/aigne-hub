@@ -1,3 +1,7 @@
+## 0.8.0 (2026-1-26)
+
+- feat: add usage tracking and project analytics
+
 ## 0.7.20 (2026-1-20)
 
 - fix(core): distinguish non-credential 403 errors from real credential failures

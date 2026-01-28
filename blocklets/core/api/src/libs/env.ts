@@ -1,4 +1,5 @@
 import Usage from '@api/store/models/usage';
+import { blockletEnv } from '@blocklet/env';
 import config from '@blocklet/sdk/lib/config';
 import Joi from 'joi';
 
@@ -37,9 +38,17 @@ export const METER_UNIT = ENABLE_CREDIT_MIGRATION ? NEW_METER_UNIT : OLD_METER_U
 // Decimal places for credit calculations to avoid precision loss with small values
 export const CREDIT_DECIMAL_PLACES = 10;
 
-export const MODEL_CALL_STATS_CRON_TIME = process.env.MODEL_CALL_STATS_CRON_TIME || '0 1 * * * *'; // every hour at 1 minute past the hour
+export const MODEL_CALL_STATS_CRON_TIME = process.env.MODEL_CALL_STATS_CRON_TIME || '0 1 * * * *'; // every hour at minute 01
 export const CLEANUP_STALE_MODEL_CALLS_CRON_TIME = process.env.CLEANUP_STALE_MODEL_CALLS_CRON_TIME || '*/10 * * * *'; // every 10 minutes
 export const CHECK_MODEL_STATUS_CRON_TIME = process.env.CHECK_MODEL_STATUS_CRON_TIME || '0 0 0 * * *'; // every day at 00:00:00
+
+export const BLOCKLET_APP_PID = blockletEnv.appPid;
+
+export function normalizeProjectAppDid(appDid?: string | null): string | null {
+  const trimmed = appDid?.trim();
+  if (trimmed && trimmed !== 'null') return trimmed;
+  return BLOCKLET_APP_PID || null;
+}
 
 export const MODEL_RATE_TYPE = {
   Text: 'text',

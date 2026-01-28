@@ -27,6 +27,9 @@ export interface DailyStats {
   totalCredits: number;
   totalCalls: number;
   successCalls: number;
+  // Duration metrics for latency statistics
+  totalDuration?: number; // Sum of all durations (for calculating averages)
+  avgDuration?: number; // Average duration in seconds
 
   byType: Partial<Record<CallType, TypeStats>>;
 }

@@ -1,4 +1,3 @@
-import BigNumber from 'bignumber.js';
 import {
   CreationOptional,
   DataTypes,
@@ -38,7 +37,7 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
 
   declare errorReason?: string;
 
-  declare appDid?: string;
+  declare appDid: string | null;
 
   declare userDid: string;
 
@@ -98,7 +97,7 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
       defaultValue: 'processing',
     },
     duration: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.DECIMAL(10, 1),
       allowNull: true,
     },
     errorReason: {
@@ -151,6 +150,10 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
     model,
     providerId,
     appDid,
+    minDurationSeconds,
+    searchFields,
+    attributes,
+    includeProvider = true,
   }: {
     userDid?: string;
     startTime?: number;
@@ -161,19 +164,28 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
     status?: 'success' | 'failed' | 'all';
     model?: string;
     providerId?: string;
-    appDid?: string;
+    appDid?: string | null;
+    minDurationSeconds?: number;
+    searchFields?: string[] | string;
+    attributes?: string[];
+    includeProvider?: boolean;
   }): Promise<{
     count: number;
     list: (ModelCall & { provider?: AiProvider })[];
   }> {
     const whereClause: any = {};
+    const andConditions: any[] = [];
 
     if (userDid) {
       whereClause.userDid = userDid;
     }
 
-    if (appDid) {
-      whereClause.appDid = appDid;
+    if (appDid !== undefined) {
+      if (appDid === null) {
+        andConditions.push({ [Op.or]: [{ appDid: { [Op.is]: null } }, { appDid: '' }] });
+      } else if (appDid) {
+        whereClause.appDid = appDid;
+      }
     }
 
     if (startTime || endTime) {
@@ -194,111 +206,65 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
       whereClause.providerId = providerId;
     }
 
-    if (search) {
-      whereClause[Op.or] = [
-        { model: { [Op.like]: `%${search}%` } },
-        { appDid: { [Op.like]: `%${search}%` } },
-        { userDid: { [Op.like]: `%${search}%` } },
-      ];
+    if (minDurationSeconds !== undefined) {
+      whereClause.duration = { [Op.gte]: Number(minDurationSeconds) };
     }
 
-    const { rows, count } = await ModelCall.findAndCountAll({
+    if (search) {
+      const searchFieldMap: Record<string, any> = {
+        model: { model: { [Op.like]: `%${search}%` } },
+        traceId: { traceId: { [Op.like]: `%${search}%` } },
+        id: { id: { [Op.like]: `%${search}%` } },
+        userDid: { userDid: { [Op.like]: `%${search}%` } },
+      };
+
+      const normalizedFields = Array.isArray(searchFields)
+        ? searchFields
+        : typeof searchFields === 'string'
+          ? searchFields.split(',')
+          : [];
+
+      const cleanedFields = normalizedFields.map((field) => field.trim()).filter(Boolean);
+      const activeFields = cleanedFields.length > 0 ? cleanedFields : Object.keys(searchFieldMap);
+
+      const searchClauses = activeFields.map((field) => searchFieldMap[field]).filter(Boolean);
+
+      if (searchClauses.length > 0) {
+        andConditions.push({ [Op.or]: searchClauses });
+      }
+    }
+
+    if (andConditions.length > 0) {
+      whereClause[Op.and] = (whereClause[Op.and] || []).concat(andConditions);
+    }
+
+    const queryOptions: any = {
       where: whereClause,
       order: [['callTime', 'DESC']],
       limit,
       offset,
-      include: [
+    };
+
+    if (attributes && attributes.length > 0) {
+      queryOptions.attributes = attributes;
+    }
+
+    if (includeProvider) {
+      queryOptions.include = [
         {
           model: AiProvider,
           as: 'provider',
           attributes: ['id', 'name', 'displayName', 'baseUrl', 'region', 'enabled'],
           required: false,
         },
-      ],
-    });
+      ];
+    }
+
+    const { rows, count } = await ModelCall.findAndCountAll(queryOptions);
     return {
       count,
       list: rows,
     };
-  }
-
-  static async getUsageStatsByDateRange({
-    userDid,
-    startTime,
-    endTime,
-  }: {
-    userDid?: string;
-    startTime?: number;
-    endTime?: number;
-  }): Promise<{
-    byType: { [key: string]: { totalUsage: number; totalCalls: number } };
-    totalCalls: number;
-  }> {
-    const whereClause: any = {};
-
-    if (userDid) {
-      whereClause.userDid = userDid;
-    }
-
-    if (startTime || endTime) {
-      whereClause.callTime = {};
-      if (startTime) whereClause.callTime[Op.gte] = Number(startTime);
-      if (endTime) whereClause.callTime[Op.lte] = Number(endTime);
-    }
-
-    const calls = await ModelCall.findAll({
-      where: whereClause,
-      raw: true,
-    });
-
-    const statsByType: { [key: string]: { totalUsage: number; totalCalls: number } } = {};
-    let totalCalls = 0;
-
-    calls.forEach((call: any) => {
-      const type = call.type || 'unknown';
-      if (!statsByType[type]) {
-        statsByType[type] = { totalUsage: 0, totalCalls: 0 };
-      }
-      statsByType[type].totalUsage = new BigNumber(statsByType[type].totalUsage).plus(call.totalUsage || 0).toNumber();
-      statsByType[type].totalCalls = new BigNumber(statsByType[type].totalCalls).plus(1).toNumber();
-      totalCalls = new BigNumber(totalCalls).plus(1).toNumber();
-    });
-
-    return {
-      byType: statsByType,
-      totalCalls,
-    };
-  }
-
-  static async getTotalCreditsByDateRange({
-    userDid,
-    startTime,
-    endTime,
-  }: {
-    userDid?: string;
-    startTime?: number;
-    endTime?: number;
-  }): Promise<number> {
-    const whereClause: any = {};
-
-    if (userDid) {
-      whereClause.userDid = userDid;
-    }
-
-    if (startTime || endTime) {
-      whereClause.callTime = {};
-      if (startTime) whereClause.callTime[Op.gte] = Number(startTime);
-      if (endTime) whereClause.callTime[Op.lte] = Number(endTime);
-    }
-
-    const result = (await ModelCall.findOne({
-      attributes: [[sequelize.fn('COALESCE', sequelize.fn('SUM', sequelize.col('credits')), 0), 'totalCredits']],
-      where: whereClause,
-      raw: true,
-    })) as any;
-
-    const totalCredits = new BigNumber(result?.totalCredits || '0');
-    return totalCredits.toNumber();
   }
 
   static async getModelUsageStats({
@@ -405,208 +371,6 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
     return {
       list,
       totalModelCount,
-    };
-  }
-
-  static async getWeeklyComparison(userDid: string): Promise<{
-    current: { totalUsage: number; totalCredits: number; totalCalls: number };
-    previous: { totalUsage: number; totalCredits: number; totalCalls: number };
-    growth: { usageGrowth: number; creditsGrowth: number; callsGrowth: number };
-  }> {
-    const now = new Date();
-    const currentWeekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
-    const currentWeekEnd = new Date(
-      currentWeekStart.getFullYear(),
-      currentWeekStart.getMonth(),
-      currentWeekStart.getDate() + 6
-    );
-
-    const previousWeekStart = new Date(
-      currentWeekStart.getFullYear(),
-      currentWeekStart.getMonth(),
-      currentWeekStart.getDate() - 7
-    );
-    const previousWeekEnd = new Date(
-      previousWeekStart.getFullYear(),
-      previousWeekStart.getMonth(),
-      previousWeekStart.getDate() + 6
-    );
-
-    const currentStartTimestamp = Math.floor(currentWeekStart.getTime() / 1000);
-    const currentEndTimestamp = Math.floor(currentWeekEnd.getTime() / 1000);
-    const previousStartTimestamp = Math.floor(previousWeekStart.getTime() / 1000);
-    const previousEndTimestamp = Math.floor(previousWeekEnd.getTime() / 1000);
-
-    const [currentStats, previousStats, currentCredits, previousCredits] = await Promise.all([
-      ModelCall.getUsageStatsByDateRange({
-        userDid,
-        startTime: currentStartTimestamp,
-        endTime: currentEndTimestamp,
-      }),
-      ModelCall.getUsageStatsByDateRange({
-        userDid,
-        startTime: previousStartTimestamp,
-        endTime: previousEndTimestamp,
-      }),
-      ModelCall.getTotalCreditsByDateRange({
-        userDid,
-        startTime: currentStartTimestamp,
-        endTime: currentEndTimestamp,
-      }),
-      ModelCall.getTotalCreditsByDateRange({
-        userDid,
-        startTime: previousStartTimestamp,
-        endTime: previousEndTimestamp,
-      }),
-    ]);
-
-    const currentTotals = {
-      totalUsage: Object.values(currentStats.byType).reduce(
-        (sum, type) => new BigNumber(sum).plus(type.totalUsage || 0).toNumber(),
-        0
-      ),
-      totalCredits: currentCredits,
-      totalCalls: currentStats.totalCalls,
-    };
-
-    const previousTotals = {
-      totalUsage: Object.values(previousStats.byType).reduce(
-        (sum, type) => new BigNumber(sum).plus(type.totalUsage || 0).toNumber(),
-        0
-      ),
-      totalCredits: previousCredits,
-      totalCalls: previousStats.totalCalls,
-    };
-
-    const growth = {
-      usageGrowth:
-        previousTotals.totalUsage > 0
-          ? new BigNumber(currentTotals.totalUsage)
-              .minus(previousTotals.totalUsage)
-              .div(previousTotals.totalUsage)
-              .toNumber()
-          : currentTotals.totalUsage > 0
-            ? 1
-            : 0,
-      creditsGrowth:
-        previousTotals.totalCredits > 0
-          ? new BigNumber(currentTotals.totalCredits)
-              .minus(previousTotals.totalCredits)
-              .div(previousTotals.totalCredits)
-              .toNumber()
-          : currentTotals.totalCredits > 0
-            ? 1
-            : 0,
-      callsGrowth:
-        previousTotals.totalCalls > 0
-          ? new BigNumber(currentTotals.totalCalls)
-              .minus(previousTotals.totalCalls)
-              .div(previousTotals.totalCalls)
-              .toNumber()
-          : currentTotals.totalCalls > 0
-            ? 1
-            : 0,
-    };
-
-    return {
-      current: currentTotals,
-      previous: previousTotals,
-      growth,
-    };
-  }
-
-  static async getMonthlyComparison(userDid: string): Promise<{
-    current: { totalUsage: number; totalCredits: number; totalCalls: number };
-    previous: { totalUsage: number; totalCredits: number; totalCalls: number };
-    growth: { usageGrowth: number; creditsGrowth: number; callsGrowth: number };
-  }> {
-    const now = new Date();
-    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-
-    const previousMonthStart = new Date(currentMonthStart.getFullYear(), currentMonthStart.getMonth() - 1, 1);
-    const previousMonthEnd = new Date(previousMonthStart.getFullYear(), previousMonthStart.getMonth() + 1, 0);
-
-    const currentStartTimestamp = Math.floor(currentMonthStart.getTime() / 1000);
-    const currentEndTimestamp = Math.floor(currentMonthEnd.getTime() / 1000);
-    const previousStartTimestamp = Math.floor(previousMonthStart.getTime() / 1000);
-    const previousEndTimestamp = Math.floor(previousMonthEnd.getTime() / 1000);
-
-    const [currentStats, previousStats, currentCredits, previousCredits] = await Promise.all([
-      ModelCall.getUsageStatsByDateRange({
-        userDid,
-        startTime: currentStartTimestamp,
-        endTime: currentEndTimestamp,
-      }),
-      ModelCall.getUsageStatsByDateRange({
-        userDid,
-        startTime: previousStartTimestamp,
-        endTime: previousEndTimestamp,
-      }),
-      ModelCall.getTotalCreditsByDateRange({
-        userDid,
-        startTime: currentStartTimestamp,
-        endTime: currentEndTimestamp,
-      }),
-      ModelCall.getTotalCreditsByDateRange({
-        userDid,
-        startTime: previousStartTimestamp,
-        endTime: previousEndTimestamp,
-      }),
-    ]);
-
-    const currentTotals = {
-      totalUsage: Object.values(currentStats.byType).reduce(
-        (sum, type) => new BigNumber(sum).plus(type.totalUsage || 0).toNumber(),
-        0
-      ),
-      totalCredits: currentCredits,
-      totalCalls: currentStats.totalCalls,
-    };
-
-    const previousTotals = {
-      totalUsage: Object.values(previousStats.byType).reduce(
-        (sum, type) => new BigNumber(sum).plus(type.totalUsage || 0).toNumber(),
-        0
-      ),
-      totalCredits: previousCredits,
-      totalCalls: previousStats.totalCalls,
-    };
-
-    const growth = {
-      usageGrowth:
-        previousTotals.totalUsage > 0
-          ? new BigNumber(currentTotals.totalUsage)
-              .minus(previousTotals.totalUsage)
-              .div(previousTotals.totalUsage)
-              .toNumber()
-          : currentTotals.totalUsage > 0
-            ? 1
-            : 0,
-      creditsGrowth:
-        previousTotals.totalCredits > 0
-          ? new BigNumber(currentTotals.totalCredits)
-              .minus(previousTotals.totalCredits)
-              .div(previousTotals.totalCredits)
-              .toNumber()
-          : currentTotals.totalCredits > 0
-            ? 1
-            : 0,
-      callsGrowth:
-        previousTotals.totalCalls > 0
-          ? new BigNumber(currentTotals.totalCalls)
-              .minus(previousTotals.totalCalls)
-              .div(previousTotals.totalCalls)
-              .toNumber()
-          : currentTotals.totalCalls > 0
-            ? 1
-            : 0,
-    };
-
-    return {
-      current: currentTotals,
-      previous: previousTotals,
-      growth,
     };
   }
 

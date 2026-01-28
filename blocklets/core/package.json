@@ -1,6 +1,6 @@
 {
   "name": "ai-kit",
-  "version": "0.7.20",
+  "version": "0.8.0",
   "author": "Arcblock <blocklet@arcblock.io> https://github.com/blocklet",
   "scripts": {
     "dev": "cross-env COMPONENT_STORE_URL=https://test.store.blocklet.dev blocklet dev",
@@ -49,6 +49,7 @@
     "@arcblock/ws": "^1.28.5",
     "@blocklet/aigne-hub": "workspace:^",
     "@blocklet/constant": "^1.17.7",
+    "@blocklet/env": "^1.17.7",
     "@blocklet/error": "0.3.5",
     "@blocklet/js-sdk": "^1.17.7",
     "@blocklet/logger": "^1.17.7",
@@ -97,6 +98,7 @@
     "nanoid": "^5.0.7",
     "openai": "^4.96.0",
     "p-all": "^5.0.0",
+    "p-retry": "^7.1.1",
     "raw-body": "^3.0.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
