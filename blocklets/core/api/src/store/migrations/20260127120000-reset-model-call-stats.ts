@@ -29,6 +29,7 @@ export const up: Migration = async ({ context: queryInterface }) => {
   for (let hour = startHour; hour <= endHour; hour += 86400) {
     const rangeStart = hour;
     const rangeEnd = Math.min(hour + 86400 - 1, endTime);
+    // eslint-disable-next-line no-await-in-loop
     await createModelCallStats(rangeStart, rangeEnd, undefined, true);
   }
 

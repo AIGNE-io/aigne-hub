@@ -1,6 +1,7 @@
 import Cron from '@abtnode/cron';
 import dayjs from '@api/libs/dayjs';
 import {
+  ARCHIVE_MODEL_DATA_CRON_TIME,
   CHECK_MODEL_STATUS_CRON_TIME,
   CLEANUP_STALE_MODEL_CALLS_CRON_TIME,
   MODEL_CALL_STATS_CRON_TIME,
@@ -9,6 +10,7 @@ import {
 import logger from '../libs/logger';
 import shouldExecuteTask from '../libs/master-cluster';
 import { cleanupStaleProcessingCalls } from '../middlewares/model-call-tracker';
+import { executeArchiveTask } from './archive-task';
 import { createModelCallStats, getHoursToWarmup } from './model-call-stats';
 
 function init() {
@@ -53,6 +55,17 @@ function init() {
         fn: () => {
           // logger.info('start check all model status');
           // checkAllModelStatus();
+        },
+        options: { runOnInit: false },
+      },
+      {
+        name: 'archive.model.data',
+        time: ARCHIVE_MODEL_DATA_CRON_TIME,
+        fn: async () => {
+          if (shouldExecuteTask('archive.model.data cron')) {
+            logger.info('Executing archive task on cluster:', { instanceId: process.env.BLOCKLET_INSTANCE_ID });
+            await executeArchiveTask();
+          }
         },
         options: { runOnInit: false },
       },

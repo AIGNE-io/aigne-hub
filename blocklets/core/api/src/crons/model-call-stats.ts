@@ -82,6 +82,7 @@ export async function createModelCallStats(
 
   const hoursToProcess = Array.from(pairsByHour.keys()).sort((a, b) => a - b);
   for (const hourTimestamp of hoursToProcess) {
+    // eslint-disable-next-line no-await-in-loop
     await pAll(
       (pairsByHour.get(hourTimestamp) || []).map(({ userDid: uid, appDid: aid }) => async () => {
         try {
