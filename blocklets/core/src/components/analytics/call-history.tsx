@@ -349,10 +349,22 @@ export function CallHistory({
             return '-';
           }
 
+          const formatted = formatNumber(call.totalUsage, 0, true);
           return (
-            <Typography variant="body2">
-              {formatNumber(call.totalUsage, 0, true)} {unit}
-            </Typography>
+            <Box
+              sx={{
+                display: 'inline-flex',
+                alignItems: 'baseline',
+                gap: 0.5,
+                whiteSpace: 'nowrap',
+              }}>
+              <Typography variant="body2" sx={{ fontVariantNumeric: 'tabular-nums' }}>
+                {formatted}
+              </Typography>
+              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                {unit}
+              </Typography>
+            </Box>
           );
         },
       },

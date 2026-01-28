@@ -115,7 +115,13 @@ export default function ProjectPage({ appDid: appDidProp, emptyStateText, isAdmi
           projectMeta={projectMeta || undefined}
         />
 
-        <ProjectCallHistory appDid={appDid} dateRange={dateRange} onDateRangeChange={setDateRange} allUsers={isAdmin} />
+        <ProjectCallHistory
+          appDid={appDid}
+          dateRange={dateRange}
+          onDateRangeChange={setDateRange}
+          allUsers={isAdmin}
+          projectMeta={projectMeta || undefined}
+        />
       </Stack>
     </Box>
   );

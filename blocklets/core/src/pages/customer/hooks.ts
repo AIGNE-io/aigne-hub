@@ -44,6 +44,13 @@ export interface ModelCall {
   appDid?: string;
 }
 
+export interface AIProvider {
+  id: string;
+  name: string;
+  displayName: string;
+  enabled?: boolean;
+}
+
 export interface ModelCallsResponse {
   data: ModelCall[];
   pagination: {
@@ -196,6 +203,35 @@ export function useExportModelCalls() {
   return {
     exportCalls,
     loading,
+  };
+}
+
+export function useAIProviders(options: { enabled?: boolean } = {}) {
+  const enabled = options.enabled ?? true;
+
+  const {
+    data,
+    loading,
+    error,
+    runAsync: refetch,
+  } = useRequest<AIProvider[], []>(() => api.get('/api/ai-providers').then((res) => res.data), {
+    ready: enabled,
+    cacheKey: 'ai-providers',
+    staleTime: 5 * 60 * 1000,
+    onError: (error) => {
+      console.error('Failed to fetch providers:', error);
+    },
+  });
+
+  const providers = Array.isArray(data) ? data : [];
+  const providerMap = useMemo(() => new Map(providers.map((provider) => [provider.id, provider])), [providers]);
+
+  return {
+    providers,
+    providerMap,
+    loading,
+    error,
+    refetch,
   };
 }
 
