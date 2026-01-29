@@ -259,31 +259,34 @@ export function ProjectCallHistory({
           const traceId = allUsers ? formatTraceId(rawTraceId) : rawTraceId;
           const canOpenTrace = Boolean(observabilityBlocklet?.mountPoint && call.traceId && allUsers);
           const color = call.status === 'failed' ? theme.palette.error.main : 'primary.main';
+          const showTooltip = traceId !== rawTraceId;
           return (
             <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', minHeight: '30px' }}>
-              <Typography
-                variant="body2"
-                onClick={() => {
-                  if (!canOpenTrace) return;
-                  window.open(
-                    withQuery(joinURL(window.location.origin, observabilityBlocklet!.mountPoint, '/traces'), {
-                      traceId: call.traceId,
-                    }),
-                    '_blank'
-                  );
-                }}
-                sx={{
-                  fontFamily: 'monospace',
-                  color,
-                  fontWeight: 500,
-                  display: 'flex',
-                  alignItems: 'center',
-                  cursor: canOpenTrace ? 'pointer' : 'default',
-                  textDecoration: 'none',
-                  '&:hover': canOpenTrace ? { textDecoration: 'underline' } : undefined,
-                }}>
-                {traceId}
-              </Typography>
+              <Tooltip title={showTooltip ? rawTraceId : ''} placement="top">
+                <Typography
+                  variant="body2"
+                  onClick={() => {
+                    if (!canOpenTrace) return;
+                    window.open(
+                      withQuery(joinURL(window.location.origin, observabilityBlocklet!.mountPoint, '/traces'), {
+                        traceId: call.traceId,
+                      }),
+                      '_blank'
+                    );
+                  }}
+                  sx={{
+                    fontFamily: 'monospace',
+                    color,
+                    fontWeight: 500,
+                    display: 'flex',
+                    alignItems: 'center',
+                    cursor: canOpenTrace ? 'pointer' : 'default',
+                    textDecoration: 'none',
+                    '&:hover': canOpenTrace ? { textDecoration: 'underline' } : undefined,
+                  }}>
+                  {traceId}
+                </Typography>
+              </Tooltip>
             </Stack>
           );
         },
