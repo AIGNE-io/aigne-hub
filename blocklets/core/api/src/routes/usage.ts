@@ -415,6 +415,7 @@ router.get('/projects/:appDid(.*)/calls', user, async (req, res) => {
     const pageSize = Math.min(parseInt(req.query.pageSize as string, 10) || 20, 100);
     const model = req.query.model as string | undefined;
     const status = req.query.status as string | undefined;
+    const type = req.query.type as string | undefined;
     const search = typeof req.query.search === 'string' ? req.query.search.trim() : undefined;
     const searchFields = typeof req.query.searchFields === 'string' ? req.query.searchFields : undefined;
     const minDurationSeconds =
@@ -432,6 +433,9 @@ router.get('/projects/:appDid(.*)/calls', user, async (req, res) => {
 
     if (model) {
       queryParams.model = model;
+    }
+    if (type) {
+      queryParams.type = type;
     }
     if (status && ['success', 'failed', 'processing'].includes(status)) {
       queryParams.status = status;

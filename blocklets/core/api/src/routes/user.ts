@@ -73,6 +73,7 @@ export interface ModelCallsQuery {
   searchFields?: string;
   status?: 'success' | 'failed' | 'all';
   model?: string;
+  type?: string;
   providerId?: string;
   appDid?: string;
   allUsers?: boolean;
@@ -89,6 +90,7 @@ const modelCallsSchema = Joi.object<ModelCallsQuery>({
   searchFields: Joi.string().max(200).empty([null, '']),
   status: Joi.string().valid('success', 'failed', 'all').empty([null, '']),
   model: Joi.string().max(100).empty([null, '']),
+  type: Joi.string().max(100).empty([null, '']),
   providerId: Joi.string().max(100).empty([null, '']),
   appDid: Joi.string().optional().empty([null, '']),
   allUsers: Joi.boolean().optional().empty([null, '']),
@@ -351,6 +353,7 @@ router.get(
         searchFields,
         status,
         model,
+        type,
         providerId,
         appDid,
         allUsers,
@@ -374,6 +377,7 @@ router.get(
         searchFields,
         status,
         model,
+        type,
         providerId,
         appDid,
         minDurationSeconds,
@@ -460,6 +464,7 @@ router.get(
         searchFields,
         status,
         model,
+        type,
         providerId,
         appDid,
         allUsers,
@@ -482,6 +487,7 @@ router.get(
         searchFields,
         status,
         model,
+        type,
         providerId,
         appDid,
         minDurationSeconds,

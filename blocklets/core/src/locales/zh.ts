@@ -100,6 +100,7 @@ export default flatten({
     embedding: '嵌入',
     transcription: '音频转录',
     speech: '文本转语音',
+    custom: '自定义',
   },
 
   // Units
@@ -503,6 +504,10 @@ export default flatten({
     userDid: '用户 DID',
     searchPlaceholder: '按模型 / {did} 搜索...',
     allStatus: '所有状态',
+    success: '成功',
+    errors: '错误',
+    slow: '慢请求（>{seconds}秒）',
+    allTypes: '全部类型',
     timestamp: '时间戳',
     noCallsFoundBetween: '未找到日期在 {startTime} 至 {endTime} 之间的调用记录',
     noCallsFound: '没有找到符合条件的调用记录',

@@ -113,6 +113,7 @@ export default flatten({
     embedding: 'Embedding',
     transcription: 'Audio Transcription',
     speech: 'Text-to-Speech',
+    custom: 'Custom',
   },
 
   // Units
@@ -512,6 +513,10 @@ export default flatten({
     userDid: 'User DID',
     searchPlaceholder: 'Search by model / {did}...',
     allStatus: 'All Status',
+    success: 'Success',
+    errors: 'Errors',
+    slow: 'Slow (> {seconds}s)',
+    allTypes: 'All Types',
     timestamp: 'Timestamp',
     noCallsFoundBetween: 'No matching call records were found between {startTime} and {endTime}',
     noCallsFound: 'No matching call records were found',

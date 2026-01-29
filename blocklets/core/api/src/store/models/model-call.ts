@@ -150,6 +150,7 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
     model,
     providerId,
     appDid,
+    type,
     minDurationSeconds,
     searchFields,
     attributes,
@@ -165,6 +166,7 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
     model?: string;
     providerId?: string;
     appDid?: string | null;
+    type?: string;
     minDurationSeconds?: number;
     searchFields?: string[] | string;
     attributes?: string[];
@@ -204,6 +206,10 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
 
     if (providerId) {
       whereClause.providerId = providerId;
+    }
+
+    if (type) {
+      whereClause.type = type;
     }
 
     if (minDurationSeconds !== undefined) {
