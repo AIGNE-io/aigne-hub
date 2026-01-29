@@ -62,9 +62,6 @@ export default function UsageStatsBoard() {
   const rangeEnd = dateRange.end.endOf('day');
   const rangeDays = Math.max(1, rangeEnd.diff(rangeStart, 'day') + 1);
   const chartGranularity = rangeDays <= 1 ? 'hour' : 'day';
-  const periodSeconds = rangeTo - rangeFrom;
-  const previousRangeTo = rangeFrom - 1;
-  const previousRangeFrom = previousRangeTo - periodSeconds;
   const timezoneOffset = new Date().getTimezoneOffset();
 
   const {
@@ -77,19 +74,17 @@ export default function UsageStatsBoard() {
     endTime: rangeTo.toString(),
     timezoneOffset,
   });
-  const { data: usageTrends, loading: usageTrendsLoading } = useUsageTrends({
+  const {
+    data: usageTrends,
+    comparisonData: previousUsageTrends,
+    loading: usageTrendsLoading,
+  } = useUsageTrends({
     startTime: rangeFrom,
     endTime: rangeTo,
     granularity: chartGranularity,
     timezoneOffset,
     enabled: true,
-  });
-  const { data: previousUsageTrends } = useUsageTrends({
-    startTime: previousRangeFrom,
-    endTime: previousRangeTo,
-    granularity: chartGranularity,
-    timezoneOffset,
-    enabled: true,
+    includeComparison: true,
   });
 
   const showStatsSkeleton = statsLoading;

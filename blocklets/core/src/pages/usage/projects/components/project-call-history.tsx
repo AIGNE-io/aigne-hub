@@ -1,7 +1,9 @@
 import { DateRangePicker } from '@app/components/analytics';
 import { toUTCTimestamp } from '@app/components/analytics/skeleton';
 import api from '@app/libs/api';
-import { useAdminUserInfo } from '@app/pages/customer/hooks';
+import { getPrefix } from '@app/libs/util';
+import type { ProjectTrendSummary } from '@app/pages/customer/hooks';
+import { useAIProviders, useAdminUserInfo } from '@app/pages/customer/hooks';
 import DID from '@arcblock/ux/lib/DID';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import { Table } from '@blocklet/aigne-hub/components';
@@ -10,10 +12,10 @@ import { Close, Search } from '@mui/icons-material';
 import {
   Avatar,
   Box,
-  Chip,
   Divider,
   Drawer,
   IconButton,
+  MenuItem,
   Stack,
   TextField,
   Tooltip,
@@ -24,15 +26,17 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { useDebounceEffect, useRequest } from 'ahooks';
 import { ReactNode, useEffect, useState } from 'react';
-import { joinURL } from 'ufo';
+import { joinURL, withQuery } from 'ufo';
 
 import dayjs from '../../../../libs/dayjs';
+import { getObservabilityBlocklet } from '../../../../libs/env';
 
 interface ProjectCallHistoryProps {
   appDid: string;
   dateRange: { from: number; to: number };
   onDateRangeChange: (dateRange: { from: number; to: number }) => void;
   allUsers?: boolean;
+  projectMeta?: ProjectTrendSummary;
 }
 
 interface ModelCallItem {
@@ -66,14 +70,18 @@ export function ProjectCallHistory({
   dateRange: externalDateRange,
   onDateRangeChange,
   allUsers = false,
+  projectMeta,
 }: ProjectCallHistoryProps) {
   const { t } = useLocaleContext();
   const theme = useTheme();
   const creditPrefix = window.blocklet?.preferences?.creditPrefix || '';
+  const observabilityBlocklet = getObservabilityBlocklet();
+  const { providerMap } = useAIProviders();
 
   const [searchValue, setSearchValue] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'errors' | 'slow'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'errors' | 'slow' | 'success'>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
   const [pagination, setPagination] = useState({ page: 1, pageSize: 20 });
   const [selectedCall, setSelectedCall] = useState<ModelCallItem | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -94,6 +102,10 @@ export function ProjectCallHistory({
   useEffect(() => {
     setPagination((prev) => (prev.page === 1 ? prev : { ...prev, page: 1 }));
   }, [statusFilter]);
+
+  useEffect(() => {
+    setPagination((prev) => (prev.page === 1 ? prev : { ...prev, page: 1 }));
+  }, [typeFilter]);
 
   useEffect(() => {
     setPagination((prev) => (prev.page === 1 ? prev : { ...prev, page: 1 }));
@@ -119,12 +131,14 @@ export function ProjectCallHistory({
             ...(searchTerm ? { search: searchTerm } : {}),
             ...(searchTerm ? { searchFields } : {}),
             ...(statusFilter === 'errors' ? { status: 'failed' } : {}),
+            ...(statusFilter === 'success' ? { status: 'success' } : {}),
             ...(statusFilter === 'slow' ? { minDurationSeconds: slowThresholdSeconds } : {}),
+            ...(typeFilter !== 'all' ? { type: typeFilter } : {}),
           },
         })
         .then((res) => res.data),
     {
-      refreshDeps: [pagination, searchTerm, statusFilter, externalDateRange, appDid, allUsers],
+      refreshDeps: [pagination, searchTerm, statusFilter, typeFilter, externalDateRange, appDid, allUsers],
     }
   );
 
@@ -146,6 +160,48 @@ export function ProjectCallHistory({
     if (value.length <= 8) return value;
     return `${value.slice(0, 4)}...${value.slice(-4)}`;
   };
+
+  const getTypeLabel = (type?: string) => {
+    if (!type) return '-';
+    const typeKey = `modelTypes.${type}`;
+    try {
+      return t(typeKey);
+    } catch {
+      return type;
+    }
+  };
+
+  const formatUsageParts = (call: ModelCallItem) => {
+    if (!call.totalUsage) {
+      return null;
+    }
+
+    const normalizedType = call.type?.toLowerCase?.() || '';
+    let unit: string | undefined;
+    switch (normalizedType) {
+      case 'imagegeneration':
+        unit = call.totalUsage > 1 ? t('modelUnits.images') : t('modelUnits.image');
+        break;
+      case 'video':
+        unit = t('modelUnits.seconds');
+        break;
+      default:
+        unit = t('modelUnits.tokens');
+    }
+
+    const formatted = formatNumber(call.totalUsage, 0, true);
+    return { formatted, unit };
+  };
+
+  const typeOptions = [
+    { value: 'all', label: t('analytics.allTypes') },
+    { value: 'chatCompletion', label: t('modelTypes.chatCompletion') },
+    { value: 'imageGeneration', label: t('modelTypes.imageGeneration') },
+    { value: 'embedding', label: t('modelTypes.embedding') },
+    { value: 'video', label: t('modelTypes.video') },
+    { value: 'audioGeneration', label: t('modelTypes.audioGeneration') },
+    { value: 'custom', label: t('modelTypes.custom') },
+  ];
 
   const getStatusColor = (call: ModelCallItem) => {
     if (call.status === 'failed') return theme.palette.error.main;
@@ -194,27 +250,44 @@ export function ProjectCallHistory({
     },
     {
       name: 'traceId',
-      label: 'Trace ID',
+      label: 'ID',
       options: {
         customBodyRender: (_value: any, tableMeta: any) => {
           const call = modelCalls[tableMeta.rowIndex];
           if (!call) return null;
           const rawTraceId = call.traceId || call.id;
           const traceId = allUsers ? formatTraceId(rawTraceId) : rawTraceId;
+          const canOpenTrace = Boolean(observabilityBlocklet?.mountPoint && call.traceId && allUsers);
           const color = call.status === 'failed' ? theme.palette.error.main : 'primary.main';
+          const showTooltip = traceId !== rawTraceId;
           return (
-            <Typography
-              variant="body2"
-              sx={{
-                fontFamily: 'monospace',
-                color,
-                fontWeight: 500,
-                minHeight: '30px',
-                display: 'flex',
-                alignItems: 'center',
-              }}>
-              {traceId}
-            </Typography>
+            <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', minHeight: '30px' }}>
+              <Tooltip title={showTooltip ? rawTraceId : ''} placement="top">
+                <Typography
+                  variant="body2"
+                  onClick={() => {
+                    if (!canOpenTrace) return;
+                    window.open(
+                      withQuery(joinURL(window.location.origin, observabilityBlocklet!.mountPoint, '/traces'), {
+                        traceId: call.traceId,
+                      }),
+                      '_blank'
+                    );
+                  }}
+                  sx={{
+                    fontFamily: 'monospace',
+                    color,
+                    fontWeight: 500,
+                    display: 'flex',
+                    alignItems: 'center',
+                    cursor: canOpenTrace ? 'pointer' : 'default',
+                    textDecoration: 'none',
+                    '&:hover': canOpenTrace ? { textDecoration: 'underline' } : undefined,
+                  }}>
+                  {traceId}
+                </Typography>
+              </Tooltip>
+            </Stack>
           );
         },
       },
@@ -223,7 +296,7 @@ export function ProjectCallHistory({
       ? [
           {
             name: 'userDid',
-            label: t('analytics.userDid'),
+            label: t('user'),
             options: {
               customBodyRender: (_value: any, tableMeta: any) => {
                 const call = modelCalls[tableMeta.rowIndex];
@@ -233,7 +306,7 @@ export function ProjectCallHistory({
                 const avatarText = (userInfo?.fullName || call.userDid || '?').slice(0, 1);
 
                 return (
-                  <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-end' }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
                     <Stack direction="row" spacing={1} sx={{ alignItems: 'center', minWidth: 0 }}>
                       <Avatar
                         src={userInfo?.avatar}
@@ -268,7 +341,22 @@ export function ProjectCallHistory({
         customBodyRender: (_value: any, tableMeta: any) => {
           const call = modelCalls[tableMeta.rowIndex];
           if (!call) return null;
-          return <Typography variant="body2">{call.model}</Typography>;
+          const provider = providerMap.get(call.providerId || '') || call.provider;
+          const providerLabel = provider?.displayName || provider?.name;
+          return (
+            <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', minWidth: 0 }}>
+              {provider?.name && (
+                <Tooltip title={providerLabel || provider.name}>
+                  <Avatar
+                    src={joinURL(getPrefix(), `/logo/${provider.name}.png`)}
+                    sx={{ width: 20, height: 20 }}
+                    alt={providerLabel || provider.name}
+                  />
+                </Tooltip>
+              )}
+              <Typography variant="body2">{call.model}</Typography>
+            </Stack>
+          );
         },
       },
     },
@@ -279,26 +367,40 @@ export function ProjectCallHistory({
         customBodyRender: (_value: any, tableMeta: any) => {
           const call = modelCalls[tableMeta.rowIndex];
           if (!call) return null;
-          const typeKey = `modelTypes.${call.type}`;
-          let displayName = call.type;
-          try {
-            displayName = t(typeKey);
-          } catch {
-            displayName = call.type;
-          }
-          return <Typography variant="body2">{displayName}</Typography>;
+          return (
+            <Typography variant="body2" sx={{ whiteSpace: 'nowrap' }}>
+              {getTypeLabel(call.type)}
+            </Typography>
+          );
         },
       },
     },
     {
       name: 'tokens',
-      label: 'Tokens',
+      label: t('usage'),
       align: 'right',
       options: {
         customBodyRender: (_value: any, tableMeta: any) => {
           const call = modelCalls[tableMeta.rowIndex];
           if (!call) return null;
-          return <Typography variant="body2">{formatNumber(call.totalUsage, 0, true)}</Typography>;
+          const usage = formatUsageParts(call);
+          if (!usage) return '-';
+          return (
+            <Box
+              sx={{
+                display: 'inline-flex',
+                alignItems: 'baseline',
+                gap: 0.5,
+                whiteSpace: 'nowrap',
+              }}>
+              <Typography variant="body2" sx={{ fontVariantNumeric: 'tabular-nums' }}>
+                {usage.formatted}
+              </Typography>
+              <Typography variant="body2" sx={{ color: 'grey.400' }}>
+                {usage.unit}
+              </Typography>
+            </Box>
+          );
         },
       },
     },
@@ -369,6 +471,8 @@ export function ProjectCallHistory({
   } as const;
 
   const renderMetricCard = (label: string, value?: ReactNode) => {
+    const content = value ?? '-';
+    const isPrimitive = typeof content === 'string' || typeof content === 'number';
     return (
       <Box sx={cardSx}>
         <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
@@ -376,9 +480,13 @@ export function ProjectCallHistory({
             {label}
           </Typography>
         </Stack>
-        <Typography variant="h6" sx={{ mt: 0.5, fontWeight: 500, letterSpacing: 0.2 }}>
-          {value ?? '-'}
-        </Typography>
+        {isPrimitive ? (
+          <Typography variant="h6" sx={{ mt: 0.5, fontWeight: 500, letterSpacing: 0.2 }}>
+            {content}
+          </Typography>
+        ) : (
+          <Box sx={{ mt: 0.5 }}>{content}</Box>
+        )}
       </Box>
     );
   };
@@ -390,14 +498,24 @@ export function ProjectCallHistory({
         ? theme.palette.warning.main
         : theme.palette.success.main;
 
+  const resolvedProjectMeta = projectMeta ?? selectedCall?.appInfo ?? (appDid ? { appDid, appName: appDid } : null);
   const appLogoSrc =
-    selectedCall?.appInfo?.appUrl && selectedCall?.appInfo?.appLogo
-      ? joinURL(selectedCall.appInfo.appUrl, selectedCall.appInfo.appLogo)
-      : selectedCall?.appInfo?.appLogo;
+    resolvedProjectMeta?.appUrl && resolvedProjectMeta?.appLogo
+      ? joinURL(resolvedProjectMeta.appUrl, resolvedProjectMeta.appLogo)
+      : resolvedProjectMeta?.appLogo;
+  const projectName = resolvedProjectMeta?.appName || resolvedProjectMeta?.appDid || appDid || '-';
+  const projectDid = resolvedProjectMeta?.appDid || appDid || '-';
   const selectedUser = selectedCall?.userDid ? userInfoMap[selectedCall.userDid] : undefined;
   const selectedUserName = selectedUser?.fullName || '-';
   const selectedUserAvatarText = (selectedUser?.fullName || selectedCall?.userDid || '?').slice(0, 1);
   const showUserCard = Boolean(selectedUser && (selectedUser.fullName || selectedUser.avatar || selectedUser.email));
+  const selectedProvider = providerMap.get(selectedCall?.providerId || '') || selectedCall?.provider;
+  const selectedProviderLabel = selectedProvider?.displayName || selectedProvider?.name;
+  const canOpenSelectedTrace = Boolean(observabilityBlocklet?.mountPoint && selectedCall?.traceId && allUsers);
+  const selectedTraceId = selectedCall?.traceId || selectedCall?.id || '-';
+  const selectedUsageParts = selectedCall ? formatUsageParts(selectedCall) : null;
+  const selectedType = selectedCall?.type?.toLowerCase?.() || '';
+  const showMediaUsage = selectedType === 'imagegeneration' || selectedType === 'video';
 
   return (
     <Stack spacing={2}>
@@ -425,9 +543,16 @@ export function ProjectCallHistory({
         <Stack
           direction={{ xs: 'column', md: 'row' }}
           spacing={1}
-          sx={{ alignItems: { md: 'center' }, flexWrap: 'wrap', flexGrow: 1 }}>
+          useFlexGap
+          sx={{
+            alignItems: { md: 'center' },
+            flexWrap: 'wrap',
+            flexGrow: 1,
+            rowGap: 1,
+            width: { xs: '100%', md: 'auto' },
+          }}>
           <TextField
-            placeholder="Search by Trace ID, Model, ID, or User DID..."
+            placeholder="ID, Model, User..."
             value={searchValue}
             onChange={(e) => setSearchValue(e.target.value)}
             slotProps={{
@@ -437,63 +562,33 @@ export function ProjectCallHistory({
             }}
             size="small"
             sx={{
-              width: { xs: '100%', md: 400 },
+              width: { xs: '100%', md: 300 },
               '& .MuiInputBase-root': { height: '40px' },
             }}
           />
-          <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap' }}>
-            <Chip
-              label="All"
-              size="small"
-              variant="outlined"
-              onClick={() => setStatusFilter('all')}
-              sx={{
-                height: '40px',
-                borderRadius: 1,
-                borderColor: statusFilter === 'all' ? 'primary.main' : 'divider',
-                color: statusFilter === 'all' ? 'primary.main' : '',
-                bgcolor: 'transparent',
-                '&:hover': {
-                  bgcolor: 'action.hover',
-                },
-                '& .MuiChip-label': { px: 2 },
-              }}
-            />
-            <Chip
-              label="Errors"
-              size="small"
-              variant="outlined"
-              onClick={() => setStatusFilter('errors')}
-              sx={{
-                height: '40px',
-                borderRadius: 1,
-                borderColor: statusFilter === 'errors' ? 'error.main' : 'divider',
-                color: statusFilter === 'errors' ? 'error.main' : '',
-                bgcolor: 'transparent',
-                '&:hover': {
-                  bgcolor: 'action.hover',
-                },
-                '& .MuiChip-label': { px: 2 },
-              }}
-            />
-            <Chip
-              label={`Slow (>${slowThresholdSeconds}s)`}
-              size="small"
-              variant="outlined"
-              onClick={() => setStatusFilter('slow')}
-              sx={{
-                height: '40px',
-                borderRadius: 1,
-                borderColor: statusFilter === 'slow' ? 'warning.main' : 'divider',
-                color: statusFilter === 'slow' ? 'warning.main' : '',
-                bgcolor: 'transparent',
-                '&:hover': {
-                  bgcolor: 'action.hover',
-                },
-                '& .MuiChip-label': { px: 2 },
-              }}
-            />
-          </Stack>
+          <TextField
+            select
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+            size="small"
+            sx={{ minWidth: 120, width: { xs: '100%', md: 'auto' }, '& .MuiInputBase-root': { height: '40px' } }}>
+            {typeOptions.map((option) => (
+              <MenuItem key={option.value} value={option.value}>
+                {option.label}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as any)}
+            size="small"
+            sx={{ minWidth: 160, width: { xs: '100%', md: 'auto' }, '& .MuiInputBase-root': { height: '40px' } }}>
+            <MenuItem value="all">{t('analytics.allStatus')}</MenuItem>
+            <MenuItem value="success">{t('analytics.success')}</MenuItem>
+            <MenuItem value="errors">{t('analytics.errors')}</MenuItem>
+            <MenuItem value="slow">{t('analytics.slow', { seconds: slowThresholdSeconds })}</MenuItem>
+          </TextField>
         </Stack>
         <LocalizationProvider dateAdapter={AdapterDayjs}>
           <DateRangePicker
@@ -508,6 +603,7 @@ export function ProjectCallHistory({
             onQuickSelect={handleQuickDateSelect}
             sx={{
               alignSelf: { xs: 'flex-start', md: 'center' },
+              width: { xs: '100%', md: 'auto' },
             }}
           />
         </LocalizationProvider>
@@ -612,7 +708,7 @@ export function ProjectCallHistory({
                 <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
                   <Avatar
                     src={appLogoSrc}
-                    alt={selectedCall?.appInfo?.appName || selectedCall?.appDid || 'app'}
+                    alt={projectName || 'app'}
                     sx={{
                       width: 40,
                       height: 40,
@@ -621,14 +717,14 @@ export function ProjectCallHistory({
                       color: 'text.secondary',
                       fontSize: 16,
                     }}>
-                    {(selectedCall?.appInfo?.appName || selectedCall?.appDid || '?').slice(0, 1)}
+                    {(projectName || '?').slice(0, 1)}
                   </Avatar>
                   <Box sx={{ minWidth: 0 }}>
                     <Typography variant="h6" sx={{ fontWeight: 600, wordBreak: 'break-word' }}>
-                      {selectedCall?.appInfo?.appName || selectedCall?.appDid || '-'}
+                      {projectName}
                     </Typography>
                     <Typography variant="body2" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
-                      {selectedCall?.appDid || selectedCall?.appInfo?.appDid || '-'}
+                      {projectDid}
                     </Typography>
                   </Box>
                 </Stack>
@@ -661,7 +757,33 @@ export function ProjectCallHistory({
               </Box>
             )}
 
-            {renderMetricCard(t('analytics.traceId'), selectedCall?.traceId || selectedCall?.id || '-')}
+            {renderMetricCard(
+              'ID',
+              selectedTraceId ? (
+                <Typography
+                  variant="h6"
+                  onClick={() => {
+                    if (!canOpenSelectedTrace) return;
+                    window.open(
+                      withQuery(joinURL(window.location.origin, observabilityBlocklet!.mountPoint, '/traces'), {
+                        traceId: selectedCall?.traceId,
+                      }),
+                      '_blank'
+                    );
+                  }}
+                  sx={{
+                    fontFamily: 'monospace',
+                    fontWeight: 500,
+                    cursor: canOpenSelectedTrace ? 'pointer' : 'default',
+                    textDecoration: 'none',
+                    '&:hover': canOpenSelectedTrace ? { textDecoration: 'underline' } : undefined,
+                  }}>
+                  {selectedTraceId}
+                </Typography>
+              ) : (
+                '-'
+              )
+            )}
 
             <Stack spacing={1.5}>
               <Box
@@ -670,17 +792,29 @@ export function ProjectCallHistory({
                   gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
                   gap: 2,
                 }}>
-                {renderMetricCard(
-                  t('analytics.inputTokens'),
-                  selectedCall?.usageMetrics?.inputTokens !== undefined
-                    ? formatNumber(selectedCall.usageMetrics.inputTokens, 0, true)
-                    : '-'
+                {!showMediaUsage && (
+                  <>
+                    {renderMetricCard(
+                      t('analytics.inputTokens'),
+                      selectedCall?.usageMetrics?.inputTokens !== undefined
+                        ? formatNumber(selectedCall.usageMetrics.inputTokens, 0, true)
+                        : '-'
+                    )}
+                    {renderMetricCard(
+                      t('analytics.outputTokens'),
+                      selectedCall?.usageMetrics?.outputTokens !== undefined
+                        ? formatNumber(selectedCall.usageMetrics.outputTokens, 0, true)
+                        : '-'
+                    )}
+                  </>
                 )}
-                {renderMetricCard(
-                  t('analytics.outputTokens'),
-                  selectedCall?.usageMetrics?.outputTokens !== undefined
-                    ? formatNumber(selectedCall.usageMetrics.outputTokens, 0, true)
-                    : '-'
+                {showMediaUsage && (
+                  <Box sx={{ gridColumn: { xs: 'auto', sm: '1 / -1' } }}>
+                    {renderMetricCard(
+                      t('usage'),
+                      selectedUsageParts ? `${selectedUsageParts.formatted} ${selectedUsageParts.unit}` : '-'
+                    )}
+                  </Box>
                 )}
                 {renderMetricCard(
                   t('creditsValue'),
@@ -699,7 +833,20 @@ export function ProjectCallHistory({
                 }}>
                 {renderMetricCard(
                   t('provider'),
-                  selectedCall?.provider?.displayName || selectedCall?.providerId || '-'
+                  selectedProvider?.name ? (
+                    <Tooltip title={selectedProviderLabel || selectedProvider.name}>
+                      <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+                        <Avatar
+                          src={joinURL(getPrefix(), `/logo/${selectedProvider.name}.png`)}
+                          sx={{ width: 24, height: 24 }}
+                          alt={selectedProviderLabel || selectedProvider.name}
+                        />
+                        <Typography variant="body2">{selectedProviderLabel || selectedProvider.name}</Typography>
+                      </Stack>
+                    </Tooltip>
+                  ) : (
+                    '-'
+                  )
                 )}
                 {renderMetricCard(t('model'), selectedCall?.model || '-')}
               </Box>

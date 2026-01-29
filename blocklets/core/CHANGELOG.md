@@ -1,3 +1,8 @@
+## 0.8.1 (2026-1-29)
+
+- feat: enhance project usage charts with comparison trends and improve data handling
+- feat: add type filtering and enhance project call history component
+
 ## 0.8.0 (2026-1-26)
 
 - feat: add usage tracking and project analytics

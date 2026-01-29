@@ -75,9 +75,6 @@ function CreditBoard() {
   const chartGranularity = rangeDays <= 1 ? 'hour' : 'day';
   const rangeFrom = toUTCTimestamp(rangeStart);
   const rangeTo = toUTCTimestamp(rangeEnd, true);
-  const periodSeconds = rangeTo - rangeFrom;
-  const previousRangeTo = rangeFrom - 1;
-  const previousRangeFrom = previousRangeTo - periodSeconds;
   const timezoneOffset = new Date().getTimezoneOffset();
 
   // API hooks
@@ -101,12 +98,6 @@ function CreditBoard() {
   const { data: projectGroupedTrends, loading: projectTrendsLoading } = useProjectGroupedTrends({
     startTime: rangeFrom,
     endTime: rangeTo,
-    granularity: chartGranularity,
-    timezoneOffset,
-  });
-  const { data: previousProjectGroupedTrends } = useProjectGroupedTrends({
-    startTime: previousRangeFrom,
-    endTime: previousRangeTo,
     granularity: chartGranularity,
     timezoneOffset,
   });
@@ -240,7 +231,6 @@ function CreditBoard() {
                 dateRange={dateRange}
                 onDateRangeChange={handleDateRangeChange}
                 projectTrends={projectGroupedTrends}
-                previousProjectTrends={previousProjectGroupedTrends}
                 trendsLoading={projectTrendsLoading}
               />
             </Stack>

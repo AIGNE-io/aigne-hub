@@ -54,25 +54,19 @@ export default function ProjectPage({ appDid: appDidProp, emptyStateText, isAdmi
   const chartGranularity = rangeDays <= 1 ? 'hour' : 'day';
   const rangeFrom = toUTCTimestamp(rangeStart);
   const rangeTo = toUTCTimestamp(rangeEnd, true);
-  const previousRangeEnd = rangeStart.subtract(1, 'second');
-  const previousRangeStart = previousRangeEnd.subtract(rangeDays - 1, 'day').startOf('day');
-  const previousRangeFrom = toUTCTimestamp(previousRangeStart);
-  const previousRangeTo = toUTCTimestamp(previousRangeEnd, true);
   const timezoneOffset = new Date().getTimezoneOffset();
 
-  const { data: trendsData, loading: trendsLoading } = useProjectTrends(appDid || '', {
+  const {
+    data: trendsData,
+    comparisonData: previousTrendsData,
+    loading: trendsLoading,
+  } = useProjectTrends(appDid || '', {
     startTime: rangeFrom,
     endTime: rangeTo,
     granularity: chartGranularity,
     allUsers: isAdmin,
     timezoneOffset,
-  });
-  const { data: previousTrendsData } = useProjectTrends(appDid || '', {
-    startTime: previousRangeFrom,
-    endTime: previousRangeTo,
-    granularity: chartGranularity,
-    allUsers: isAdmin,
-    timezoneOffset,
+    includeComparison: true,
   });
 
   const projectMeta = trendsData?.project ?? null;
@@ -115,7 +109,13 @@ export default function ProjectPage({ appDid: appDidProp, emptyStateText, isAdmi
           projectMeta={projectMeta || undefined}
         />
 
-        <ProjectCallHistory appDid={appDid} dateRange={dateRange} onDateRangeChange={setDateRange} allUsers={isAdmin} />
+        <ProjectCallHistory
+          appDid={appDid}
+          dateRange={dateRange}
+          onDateRangeChange={setDateRange}
+          allUsers={isAdmin}
+          projectMeta={projectMeta || undefined}
+        />
       </Stack>
     </Box>
   );
