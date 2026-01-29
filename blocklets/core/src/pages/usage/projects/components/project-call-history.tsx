@@ -266,7 +266,7 @@ export function ProjectCallHistory({
                 onClick={() => {
                   if (!canOpenTrace) return;
                   window.open(
-                    withQuery(joinURL(window.location.origin, observabilityBlocklet!.mountPoint), {
+                    withQuery(joinURL(window.location.origin, observabilityBlocklet!.mountPoint, '/traces'), {
                       traceId: call.traceId,
                     }),
                     '_blank'
@@ -549,7 +549,7 @@ export function ProjectCallHistory({
             width: { xs: '100%', md: 'auto' },
           }}>
           <TextField
-            placeholder="Search by Trace ID, Model, ID, or User DID..."
+            placeholder="Trace ID, Model, ID, User DID..."
             value={searchValue}
             onChange={(e) => setSearchValue(e.target.value)}
             slotProps={{

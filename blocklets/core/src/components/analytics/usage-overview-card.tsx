@@ -13,7 +13,8 @@ import type { ProjectGroupedTrend, ProjectTrendSummary, UsageTrend } from '../..
 import { DateRangePicker } from './date-range-picker';
 import { ProjectUsageCharts } from './project-usage-charts';
 import { UsageOverviewSkeleton, useSmartLoading } from './skeleton';
-import { UsageChartMetric } from './usage-charts';
+import { UsageChartMetric, UsageCharts } from './usage-charts';
+import type { DailyStats } from './usage-charts';
 
 export interface UsageOverviewCardProps {
   title?: string;
@@ -88,6 +89,17 @@ const sumProjectGroupedTrends = (trends?: ProjectGroupedTrend[]) => {
   );
 };
 
+const toDailyStats = (trends?: UsageTrend[]): DailyStats[] => {
+  if (!trends?.length) return [];
+  return trends.map((trend) => ({
+    date: dayjs.unix(trend.timestamp).toISOString(),
+    totalCredits: trend.totalCredits || 0,
+    totalCalls: trend.calls || 0,
+    totalUsage: trend.totalUsage || 0,
+    avgDuration: trend.avgDuration || 0,
+  }));
+};
+
 export function UsageOverviewCard({
   title,
   allUsers = false,
@@ -132,6 +144,25 @@ export function UsageOverviewCard({
       granularity: chartGranularity,
     };
   }, [allUsers, chartGranularity, projectTrends, usageTrends]);
+
+  const chartComparisonTrends = useMemo(() => {
+    if (!allUsers) return previousProjectTrends?.trends;
+    if (!previousUsageTrends?.trends) return undefined;
+    const overallKey = '__all__';
+    const trends = previousUsageTrends.trends.map((trend) => ({
+      timestamp: trend.timestamp,
+      byProject: {
+        [overallKey]: {
+          totalUsage: trend.totalUsage || 0,
+          totalCredits: trend.totalCredits,
+          totalCalls: trend.calls,
+          avgDuration: trend.avgDuration || 0,
+          successCalls: trend.successCalls || 0,
+        },
+      },
+    }));
+    return trends;
+  }, [allUsers, previousProjectTrends, previousUsageTrends]);
 
   const showOverviewSkeleton = useSmartLoading(trendsLoading, currentTrends);
 
@@ -423,14 +454,26 @@ export function UsageOverviewCard({
         </Stack>
 
         <Box sx={{ mt: 4 }}>
-          <ProjectUsageCharts
-            projects={chartTrends?.projects}
-            trends={chartTrends?.trends}
-            metric={activeMetric.key}
-            granularity={chartTrends?.granularity as any}
-            variant="plain"
-            height={260}
-          />
+          {allUsers ? (
+            <UsageCharts
+              dailyStats={toDailyStats(usageTrends?.trends)}
+              comparisonDailyStats={toDailyStats(previousUsageTrends?.trends)}
+              metric={activeMetric.key}
+              variant="plain"
+              height={260}
+              xAxisGranularity={chartGranularity as any}
+            />
+          ) : (
+            <ProjectUsageCharts
+              projects={chartTrends?.projects}
+              trends={chartTrends?.trends}
+              comparisonTrends={chartComparisonTrends}
+              metric={activeMetric.key}
+              granularity={chartTrends?.granularity as any}
+              variant="plain"
+              height={260}
+            />
+          )}
         </Box>
       </Box>
     </Card>

@@ -223,6 +223,7 @@ export function useAIProviders(options: { enabled?: boolean } = {}) {
     },
   });
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const providers = Array.isArray(data) ? data : [];
   const providerMap = useMemo(() => new Map(providers.map((provider) => [provider.id, provider])), [providers]);
 
@@ -405,22 +406,38 @@ export function useUsageTrends(params: {
   granularity?: 'hour' | 'day';
   timezoneOffset?: number;
   enabled?: boolean;
+  includeComparison?: boolean;
 }) {
-  const { enabled, ...queryParams } = params;
+  const { enabled, includeComparison, ...queryParams } = params;
+
+  // Calculate extended range for comparison
+  const actualParams = useMemo(() => {
+    if (!includeComparison || !queryParams.startTime || !queryParams.endTime) {
+      return queryParams;
+    }
+    const periodSeconds = queryParams.endTime - queryParams.startTime;
+    return {
+      ...queryParams,
+      startTime: queryParams.startTime - periodSeconds,
+      endTime: queryParams.endTime,
+      timeRange: undefined, // Clear timeRange when using explicit timestamps
+    };
+  }, [includeComparison, queryParams]);
+
   const {
-    data,
+    data: rawData,
     loading,
     error,
     runAsync: refetch,
   } = useRequest<{ trends: UsageTrend[] }, []>(
-    () => api.get('/api/usage/trends', { params: queryParams }).then((res) => res.data),
+    () => api.get('/api/usage/trends', { params: actualParams }).then((res) => res.data),
     {
       refreshDeps: [
-        queryParams.timeRange,
-        queryParams.startTime,
-        queryParams.endTime,
-        queryParams.granularity,
-        queryParams.timezoneOffset,
+        actualParams.timeRange,
+        actualParams.startTime,
+        actualParams.endTime,
+        actualParams.granularity,
+        actualParams.timezoneOffset,
       ],
       ready: enabled ?? true,
       onError: (error) => {
@@ -429,7 +446,39 @@ export function useUsageTrends(params: {
     }
   );
 
-  return { data, loading, error, refetch };
+  // Split data if comparison is included
+  const data = useMemo(() => {
+    if (!includeComparison || !rawData || !queryParams.startTime) {
+      return {
+        current: rawData,
+        comparison: undefined,
+      };
+    }
+
+    const midTimestamp = queryParams.startTime;
+    const currentTrends = rawData.trends.filter((t) => t.timestamp >= midTimestamp);
+    const comparisonTrends = rawData.trends.filter((t) => t.timestamp < midTimestamp);
+
+    return {
+      current: {
+        trends: currentTrends,
+      },
+      comparison:
+        comparisonTrends.length > 0
+          ? {
+              trends: comparisonTrends,
+            }
+          : undefined,
+    };
+  }, [includeComparison, rawData, queryParams.startTime]);
+
+  return {
+    data: includeComparison ? data.current : rawData,
+    comparisonData: includeComparison ? data.comparison : undefined,
+    loading,
+    error,
+    refetch,
+  };
 }
 
 export function useProjectGroupedTrends(params: {
@@ -439,22 +488,37 @@ export function useProjectGroupedTrends(params: {
   allUsers?: boolean;
   timezoneOffset?: number;
   enabled?: boolean;
+  includeComparison?: boolean;
 }) {
-  const { enabled, ...queryParams } = params;
+  const { enabled, includeComparison, ...queryParams } = params;
+
+  // Calculate extended range for comparison
+  const actualParams = useMemo(() => {
+    if (!includeComparison || !queryParams.startTime || !queryParams.endTime) {
+      return queryParams;
+    }
+    const periodSeconds = queryParams.endTime - queryParams.startTime;
+    return {
+      ...queryParams,
+      startTime: queryParams.startTime - periodSeconds,
+      endTime: queryParams.endTime,
+    };
+  }, [includeComparison, queryParams]);
+
   const {
-    data,
+    data: rawData,
     loading,
     error,
     runAsync: refetch,
   } = useRequest<{ projects: ProjectTrendSummary[]; trends: ProjectGroupedTrend[]; granularity: 'hour' | 'day' }, []>(
-    () => api.get('/api/usage/projects/trends', { params: queryParams }).then((res) => res.data),
+    () => api.get('/api/usage/projects/trends', { params: actualParams }).then((res) => res.data),
     {
       refreshDeps: [
-        queryParams.startTime,
-        queryParams.endTime,
-        queryParams.granularity,
-        queryParams.allUsers,
-        queryParams.timezoneOffset,
+        actualParams.startTime,
+        actualParams.endTime,
+        actualParams.granularity,
+        actualParams.allUsers,
+        actualParams.timezoneOffset,
       ],
       ready: enabled ?? true,
       onError: (error) => {
@@ -463,7 +527,43 @@ export function useProjectGroupedTrends(params: {
     }
   );
 
-  return { data, loading, error, refetch };
+  // Split data if comparison is included
+  const data = useMemo(() => {
+    if (!includeComparison || !rawData || !queryParams.startTime) {
+      return {
+        current: rawData,
+        comparison: undefined,
+      };
+    }
+
+    const midTimestamp = queryParams.startTime;
+    const currentTrends = rawData.trends.filter((t) => t.timestamp >= midTimestamp);
+    const comparisonTrends = rawData.trends.filter((t) => t.timestamp < midTimestamp);
+
+    return {
+      current: {
+        projects: rawData.projects,
+        trends: currentTrends,
+        granularity: rawData.granularity,
+      },
+      comparison:
+        comparisonTrends.length > 0
+          ? {
+              projects: rawData.projects,
+              trends: comparisonTrends,
+              granularity: rawData.granularity,
+            }
+          : undefined,
+    };
+  }, [includeComparison, rawData, queryParams.startTime]);
+
+  return {
+    data: includeComparison ? data.current : rawData,
+    comparisonData: includeComparison ? data.comparison : undefined,
+    loading,
+    error,
+    refetch,
+  };
 }
 
 // Project page hooks
@@ -504,23 +604,42 @@ export function useProjectTrends(
     granularity?: 'hour' | 'day';
     allUsers?: boolean;
     timezoneOffset?: number;
+    includeComparison?: boolean;
   }
 ) {
+  const { includeComparison, ...queryParams } = params;
+
+  // Calculate extended range for comparison
+  const actualParams = useMemo(() => {
+    if (!includeComparison || !queryParams.startTime || !queryParams.endTime) {
+      return queryParams;
+    }
+    const periodSeconds = queryParams.endTime - queryParams.startTime;
+    return {
+      ...queryParams,
+      startTime: queryParams.startTime - periodSeconds,
+      endTime: queryParams.endTime,
+    };
+  }, [includeComparison, queryParams]);
+
   const {
-    data,
+    data: rawData,
     loading,
     error,
     runAsync: refetch,
   } = useRequest<{ project?: ProjectTrendSummary | null; trends: ProjectTrend[] }, []>(
-    () => api.get(`/api/usage/projects/${encodeURIComponent(appDid)}/trends`, { params }).then((res) => res.data),
+    () =>
+      api
+        .get(`/api/usage/projects/${encodeURIComponent(appDid)}/trends`, { params: actualParams })
+        .then((res) => res.data),
     {
       refreshDeps: [
         appDid,
-        params.startTime,
-        params.endTime,
-        params.granularity,
-        params.allUsers,
-        params.timezoneOffset,
+        actualParams.startTime,
+        actualParams.endTime,
+        actualParams.granularity,
+        actualParams.allUsers,
+        actualParams.timezoneOffset,
       ],
       ready: !!appDid,
       onError: (error) => {
@@ -529,7 +648,41 @@ export function useProjectTrends(
     }
   );
 
-  return { data, loading, error, refetch };
+  // Split data if comparison is included
+  const data = useMemo(() => {
+    if (!includeComparison || !rawData || !queryParams.startTime) {
+      return {
+        current: rawData,
+        comparison: undefined,
+      };
+    }
+
+    const midTimestamp = queryParams.startTime;
+    const currentTrends = rawData.trends.filter((t) => t.timestamp >= midTimestamp);
+    const comparisonTrends = rawData.trends.filter((t) => t.timestamp < midTimestamp);
+
+    return {
+      current: {
+        project: rawData.project,
+        trends: currentTrends,
+      },
+      comparison:
+        comparisonTrends.length > 0
+          ? {
+              project: rawData.project,
+              trends: comparisonTrends,
+            }
+          : undefined,
+    };
+  }, [includeComparison, rawData, queryParams.startTime]);
+
+  return {
+    data: includeComparison ? data.current : rawData,
+    comparisonData: includeComparison ? data.comparison : undefined,
+    loading,
+    error,
+    refetch,
+  };
 }
 
 export function useAdminUserInfo(params: { userDids: string[]; enabled?: boolean }) {

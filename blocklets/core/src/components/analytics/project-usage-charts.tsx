@@ -4,7 +4,7 @@ import { formatNumber } from '@blocklet/aigne-hub/utils/util';
 import { Card, CardContent, CardHeader, Typography, useTheme } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import dayjs from 'dayjs';
-import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Area, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 import type { ProjectGroupedTrend, ProjectTrendSummary } from '../../pages/customer/hooks';
 
@@ -13,6 +13,7 @@ type ProjectUsageMetric = 'credits' | 'usage' | 'requests' | 'avgDuration';
 interface ProjectUsageChartsProps {
   projects?: ProjectTrendSummary[];
   trends?: ProjectGroupedTrend[];
+  comparisonTrends?: ProjectGroupedTrend[];
   metric?: ProjectUsageMetric;
   granularity?: 'hour' | 'day';
   height?: number;
@@ -125,6 +126,7 @@ function CustomTooltip({ active = false, payload = [], label = 0, metric, granul
 export function ProjectUsageCharts({
   projects = [],
   trends = [],
+  comparisonTrends = [],
   metric = 'credits',
   granularity = 'day',
   height = 260,
@@ -160,11 +162,17 @@ export function ProjectUsageCharts({
     theme.palette.error.main,
   ].map((color) => color ?? fallbackColor);
 
-  const chartData = trends.map((entry) => {
+  const hasComparison = Array.isArray(comparisonTrends) && comparisonTrends.length > 0;
+
+  const chartData = trends.map((entry, index) => {
     const row: Record<string, number | string> = { timestamp: entry.timestamp };
+    const comparison = hasComparison ? comparisonTrends[index] : undefined;
+
     resolvedProjects.forEach((project) => {
       const projectKey = getProjectKey(project.appDid);
       const stats = entry.byProject?.[projectKey];
+      const comparisonStats = comparison?.byProject?.[projectKey];
+
       const value =
         metric === 'credits'
           ? stats?.totalCredits
@@ -173,7 +181,20 @@ export function ProjectUsageCharts({
             : metric === 'avgDuration'
               ? stats?.avgDuration
               : stats?.totalUsage;
+
+      const comparisonValue =
+        metric === 'credits'
+          ? comparisonStats?.totalCredits
+          : metric === 'requests'
+            ? comparisonStats?.totalCalls
+            : metric === 'avgDuration'
+              ? comparisonStats?.avgDuration
+              : comparisonStats?.totalUsage;
+
       row[projectKey] = value || 0;
+      if (hasComparison) {
+        row[`${projectKey}_comparison`] = comparisonValue || 0;
+      }
     });
     return row;
   });
@@ -188,7 +209,7 @@ export function ProjectUsageCharts({
 
   const chartContent = (
     <ResponsiveContainer width="100%" height="100%">
-      <AreaChart data={chartData} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
+      <ComposedChart data={chartData} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.divider} vertical={false} />
         <XAxis
           dataKey="timestamp"
@@ -203,6 +224,21 @@ export function ProjectUsageCharts({
           allowEscapeViewBox={{ x: false, y: true }}
           wrapperStyle={{ zIndex: 1000, pointerEvents: 'none' }}
         />
+        {hasComparison &&
+          resolvedProjects.map((project) => {
+            const projectKey = getProjectKey(project.appDid);
+            return (
+              <Line
+                key={`${projectKey}_comparison`}
+                type="monotone"
+                dataKey={`${projectKey}_comparison`}
+                stroke={theme.palette.grey[400]}
+                strokeWidth={1}
+                strokeDasharray="6 4"
+                dot={false}
+              />
+            );
+          })}
         {resolvedProjects.map((project, index) => {
           const color = colorPool[index % colorPool.length] ?? fallbackColor;
           const projectKey = getProjectKey(project.appDid);
@@ -219,7 +255,7 @@ export function ProjectUsageCharts({
             />
           );
         })}
-      </AreaChart>
+      </ComposedChart>
     </ResponsiveContainer>
   );
 

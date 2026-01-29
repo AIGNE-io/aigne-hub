@@ -101,7 +101,7 @@ const getMetricConfig = ({
     comparisonValueKey: 'comparisonTotalUsage',
     formatValue: (value?: number) => {
       if (value === undefined || value === null) return '-';
-      return formatNumber(value, 0, true);
+      return formatNumber(value, 0, true) || '-';
     },
   },
   requests: {
@@ -113,7 +113,7 @@ const getMetricConfig = ({
     comparisonValueKey: 'comparisonTotalCalls',
     formatValue: (value?: number) => {
       if (value === undefined || value === null) return '-';
-      return formatNumber(value, 0, true);
+      return formatNumber(value, 0, true) || '-';
     },
   },
   avgDuration: {
