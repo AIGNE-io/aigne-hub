@@ -250,7 +250,7 @@ export function ProjectCallHistory({
     },
     {
       name: 'traceId',
-      label: 'Trace ID',
+      label: 'ID',
       options: {
         customBodyRender: (_value: any, tableMeta: any) => {
           const call = modelCalls[tableMeta.rowIndex];
@@ -293,7 +293,7 @@ export function ProjectCallHistory({
       ? [
           {
             name: 'userDid',
-            label: t('analytics.userDid'),
+            label: t('user'),
             options: {
               customBodyRender: (_value: any, tableMeta: any) => {
                 const call = modelCalls[tableMeta.rowIndex];
@@ -549,7 +549,7 @@ export function ProjectCallHistory({
             width: { xs: '100%', md: 'auto' },
           }}>
           <TextField
-            placeholder="Trace ID, Model, ID, User DID..."
+            placeholder="ID, Model, User..."
             value={searchValue}
             onChange={(e) => setSearchValue(e.target.value)}
             slotProps={{
@@ -755,7 +755,7 @@ export function ProjectCallHistory({
             )}
 
             {renderMetricCard(
-              t('analytics.traceId'),
+              'ID',
               selectedTraceId ? (
                 <Typography
                   variant="h6"
