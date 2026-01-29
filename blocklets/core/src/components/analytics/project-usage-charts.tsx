@@ -231,8 +231,8 @@ export function ProjectUsageCharts({
           px: 0,
           py: 0,
           overflow: 'visible',
-          svg: {
-            outline: 'none',
+          '.recharts-wrapper *:focus:not(:focus-visible)': {
+            outline: 'none !important',
           },
         }}>
         {chartContent}
@@ -267,8 +267,8 @@ export function ProjectUsageCharts({
             px: 0,
             py: 0,
             overflow: 'visible',
-            svg: {
-              outline: 'none',
+            '.recharts-wrapper *:focus:not(:focus-visible)': {
+              outline: 'none !important',
             },
           }}>
           {chartContent}

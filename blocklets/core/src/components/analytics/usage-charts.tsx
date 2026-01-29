@@ -24,6 +24,16 @@ export interface LegacyDailyStats {
 
 export type UsageChartMetric = 'credits' | 'usage' | 'requests' | 'avgDuration';
 
+type MetricConfig = {
+  label: string;
+  dataKey: string;
+  comparisonKey: string;
+  color: string;
+  currentValueKey: string;
+  comparisonValueKey: string;
+  formatValue: (value?: number) => string;
+};
+
 export interface UsageChartsProps {
   dailyStats?: (DailyStats | LegacyDailyStats)[];
   comparisonDailyStats?: (DailyStats | LegacyDailyStats)[];
@@ -55,6 +65,67 @@ interface ComparisonStats {
   comparisonAvgDuration?: number;
   comparisonDate?: string;
 }
+
+const formatDuration = (seconds?: number) => {
+  if (seconds === undefined || seconds === null) return '-';
+  return `${Number(seconds).toFixed(1)}s`;
+};
+
+const getMetricConfig = ({
+  t,
+  theme,
+  creditPrefix,
+}: {
+  t: any;
+  theme: any;
+  creditPrefix: string;
+}): Record<UsageChartMetric, MetricConfig> => ({
+  credits: {
+    label: t('analytics.totalCreditsUsed'),
+    dataKey: 'totalCredits',
+    comparisonKey: 'comparisonTotalCredits',
+    color: theme.palette.primary.main,
+    currentValueKey: 'totalCredits',
+    comparisonValueKey: 'comparisonTotalCredits',
+    formatValue: (value?: number) => {
+      if (value === undefined || value === null) return '-';
+      return `${creditPrefix}${formatNumber(value)}`;
+    },
+  },
+  usage: {
+    label: t('analytics.totalUsage'),
+    dataKey: 'totalUsage',
+    comparisonKey: 'comparisonTotalUsage',
+    color: theme.palette.success.main,
+    currentValueKey: 'totalUsage',
+    comparisonValueKey: 'comparisonTotalUsage',
+    formatValue: (value?: number) => {
+      if (value === undefined || value === null) return '-';
+      return formatNumber(value, 0, true);
+    },
+  },
+  requests: {
+    label: t('analytics.totalRequests'),
+    dataKey: 'totalCalls',
+    comparisonKey: 'comparisonTotalCalls',
+    color: theme.palette.warning.main,
+    currentValueKey: 'totalCalls',
+    comparisonValueKey: 'comparisonTotalCalls',
+    formatValue: (value?: number) => {
+      if (value === undefined || value === null) return '-';
+      return formatNumber(value, 0, true);
+    },
+  },
+  avgDuration: {
+    label: t('analytics.avgDuration'),
+    dataKey: 'avgDuration',
+    comparisonKey: 'comparisonAvgDuration',
+    color: theme.palette.info.main,
+    currentValueKey: 'avgDuration',
+    comparisonValueKey: 'comparisonAvgDuration',
+    formatValue: (value?: number) => formatDuration(value),
+  },
+});
 
 function CustomTooltip({
   active = false,
@@ -91,53 +162,22 @@ function CustomTooltip({
   };
 
   const creditPrefix = (typeof window !== 'undefined' && window.blocklet?.preferences?.creditPrefix) || '';
-  const formatDuration = (seconds?: number) => {
-    if (seconds === undefined || seconds === null) return '-';
-    return `${Number(seconds).toFixed(1)}s`;
-  };
-  const metricLabel =
-    metric === 'credits'
-      ? t('analytics.totalCreditsUsed')
-      : metric === 'requests'
-        ? t('analytics.totalRequests')
-        : metric === 'avgDuration'
-          ? t('analytics.avgDuration')
-          : t('analytics.totalUsage');
-  const formatMetricValue = (value?: number) => {
-    if (value === undefined || value === null) return '-';
-    if (metric === 'credits') return `${creditPrefix}${formatNumber(value)}`;
-    if (metric === 'requests') return formatNumber(value, 0, true);
-    if (metric === 'avgDuration') return formatDuration(value);
-    return formatNumber(value, 0, true);
-  };
-  const currentDotColor =
-    metric === 'credits'
-      ? theme.palette.primary.main
-      : metric === 'requests'
-        ? theme.palette.warning.main
-        : metric === 'avgDuration'
-          ? theme.palette.info.main
-          : theme.palette.success.main;
+  const metricConfig = getMetricConfig({ t, theme, creditPrefix });
+  const currentMetric = metricConfig[metric];
+  const {
+    label: metricLabel,
+    formatValue: formatMetricValue,
+    color: currentDotColor,
+    currentValueKey,
+    comparisonValueKey,
+  } = currentMetric;
   const comparisonDotColor = theme.palette.grey[400];
-  const metricCurrentValue =
-    metric === 'credits'
-      ? data.totalCredits
-      : metric === 'requests'
-        ? data.totalCalls
-        : metric === 'avgDuration'
-          ? data.avgDuration
-          : data.totalUsage;
-  const metricPreviousValue =
-    metric === 'credits'
-      ? data.comparisonTotalCredits
-      : metric === 'requests'
-        ? data.comparisonTotalCalls
-        : metric === 'avgDuration'
-          ? data.comparisonAvgDuration
-          : data.comparisonTotalUsage;
+  const metricCurrentValue = (data as any)[currentValueKey] as number | undefined;
+  const metricPreviousValue = (data as any)[comparisonValueKey] as number | undefined;
   const metricValue = formatMetricValue(metricCurrentValue);
   const metricComparisonValue = formatMetricValue(metricPreviousValue);
-  const requestsPreviousValue = data.comparisonTotalCalls;
+  const { label: requestsLabel, comparisonValueKey: requestsComparisonKey } = metricConfig.requests;
+  const requestsPreviousValue = (data as any)[requestsComparisonKey] as number | undefined;
 
   return (
     <div style={tooltipStyle}>
@@ -241,7 +281,7 @@ function CustomTooltip({
                     color: theme.palette.text.primary,
                     fontWeight: 500,
                   }}>
-                  {t('analytics.totalRequests')}
+                  {requestsLabel}
                 </span>
               </div>
               <span
@@ -288,30 +328,9 @@ export function UsageCharts({
   };
 
   const resolvedMetric: UsageChartMetric = metric || (showCredits ? 'credits' : 'usage');
-  const dataKey =
-    resolvedMetric === 'credits'
-      ? 'totalCredits'
-      : resolvedMetric === 'requests'
-        ? 'totalCalls'
-        : resolvedMetric === 'avgDuration'
-          ? 'avgDuration'
-          : 'totalUsage';
-  const strokeColor =
-    resolvedMetric === 'credits'
-      ? theme.palette.primary.main
-      : resolvedMetric === 'requests'
-        ? theme.palette.warning.main
-        : resolvedMetric === 'avgDuration'
-          ? theme.palette.info.main
-          : theme.palette.success.main;
-  const comparisonKey =
-    resolvedMetric === 'credits'
-      ? 'comparisonTotalCredits'
-      : resolvedMetric === 'requests'
-        ? 'comparisonTotalCalls'
-        : resolvedMetric === 'avgDuration'
-          ? 'comparisonAvgDuration'
-          : 'comparisonTotalUsage';
+  const metricConfig = getMetricConfig({ t, theme, creditPrefix: '' });
+  const resolvedMetricConfig = metricConfig[resolvedMetric];
+  const { dataKey, color: strokeColor, comparisonKey } = resolvedMetricConfig;
   const getMetricValue = (stat: DailyStats | LegacyDailyStats | undefined, metricType: UsageChartMetric) => {
     if (!stat) return undefined;
     if (metricType === 'credits') {
@@ -350,13 +369,13 @@ export function UsageCharts({
     overflow: 'visible',
   };
 
-  const chartTitle =
-    title ||
-    (resolvedMetric === 'credits'
-      ? t('analytics.dailyCreditsUsage')
-      : resolvedMetric === 'avgDuration'
-        ? t('analytics.avgDuration')
-        : t('analytics.dailyUsage'));
+  const chartTitleMap: Record<UsageChartMetric, string> = {
+    credits: t('analytics.dailyCreditsUsage'),
+    avgDuration: t('analytics.avgDuration'),
+    usage: t('analytics.dailyUsage'),
+    requests: t('analytics.dailyUsage'),
+  };
+  const chartTitle = title || chartTitleMap[resolvedMetric];
 
   const chartContent = (
     <ResponsiveContainer width="100%" height="100%">
@@ -414,8 +433,8 @@ export function UsageCharts({
           height,
           p: 0,
           overflow: 'visible',
-          svg: {
-            outline: 'none',
+          '.recharts-wrapper *:focus:not(:focus-visible)': {
+            outline: 'none !important',
           },
         }}>
         {chartContent}
@@ -440,8 +459,8 @@ export function UsageCharts({
             height,
             p: 0,
             overflow: 'visible',
-            svg: {
-              outline: 'none',
+            '.recharts-wrapper *:focus:not(:focus-visible)': {
+              outline: 'none !important',
             },
           }}>
           {chartContent}

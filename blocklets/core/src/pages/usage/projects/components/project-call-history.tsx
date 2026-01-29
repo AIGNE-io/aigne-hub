@@ -762,7 +762,7 @@ export function ProjectCallHistory({
                   onClick={() => {
                     if (!canOpenSelectedTrace) return;
                     window.open(
-                      withQuery(joinURL(window.location.origin, observabilityBlocklet!.mountPoint), {
+                      withQuery(joinURL(window.location.origin, observabilityBlocklet!.mountPoint, '/traces'), {
                         traceId: selectedCall?.traceId,
                       }),
                       '_blank'
