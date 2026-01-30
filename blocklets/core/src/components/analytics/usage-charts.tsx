@@ -2,6 +2,7 @@ import Empty from '@arcblock/ux/lib/Empty';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import { formatNumber } from '@blocklet/aigne-hub/utils/util';
 import { Box, Card, CardContent, CardHeader, useTheme } from '@mui/material';
+import { alpha } from '@mui/material/styles';
 import dayjs from 'dayjs';
 import { Area, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
@@ -12,6 +13,8 @@ export interface DailyStats {
   totalCalls: number;
   totalUsage: number;
   avgDuration?: number;
+  grantedUsage?: number; // Grant credits consumed on this day
+  paidUsage?: number; // Paid credits consumed on this day
 }
 
 // Legacy data format for backward compatibility
@@ -179,6 +182,11 @@ function CustomTooltip({
   const { label: requestsLabel, comparisonValueKey: requestsComparisonKey } = metricConfig.requests;
   const requestsPreviousValue = (data as any)[requestsComparisonKey] as number | undefined;
 
+  // Check if this is a credits metric with stacked data
+  const hasStackedData = metric === 'credits' && data.grantedUsage !== undefined && data.paidUsage !== undefined;
+  const grantedUsage = data.grantedUsage || 0;
+  const paidUsage = data.paidUsage || 0;
+
   return (
     <div style={tooltipStyle}>
       {/* Header */}
@@ -202,35 +210,120 @@ function CustomTooltip({
       {/* Main Stats */}
       <div style={{ padding: '16px 20px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {/* Stacked Credits Breakdown */}
+          {hasStackedData ? (
+            <>
+              {/* Date with total value on same line */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span
+                    style={{
+                      width: '10px',
+                      height: '10px',
+                      borderRadius: '2px',
+                      backgroundColor: currentDotColor,
+                      display: 'inline-block',
+                    }}
+                  />
+                  <span
+                    style={{
+                      fontSize: '13px',
+                      color: theme.palette.text.primary,
+                      fontWeight: 500,
+                    }}>
+                    {t('analytics.dateLabel')}: {formatDateLabel(label!)}
+                  </span>
+                </div>
+                <span
+                  style={{
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    color: theme.palette.text.primary,
+                  }}>
+                  {metricValue}
+                </span>
+              </div>
+              {/* Paid credits sub-item */}
+              <div
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingLeft: '18px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span
+                    style={{
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '2px',
+                      backgroundColor: theme.palette.primary.main,
+                      display: 'inline-block',
+                    }}
+                  />
+                  <span
+                    style={{
+                      fontSize: '12px',
+                      color: theme.palette.text.secondary,
+                    }}>
+                    {t('analytics.paidCreditsUsed', {
+                      amount: `${creditPrefix}${formatNumber(paidUsage)}`,
+                    })}
+                  </span>
+                </div>
+              </div>
+              {/* Grant credits sub-item */}
+              <div
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingLeft: '18px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span
+                    style={{
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '2px',
+                      backgroundColor: theme.palette.success.main,
+                      display: 'inline-block',
+                    }}
+                  />
+                  <span
+                    style={{
+                      fontSize: '12px',
+                      color: theme.palette.text.secondary,
+                    }}>
+                    {t('analytics.grantCreditsUsed', {
+                      amount: `${creditPrefix}${formatNumber(grantedUsage)}`,
+                    })}
+                  </span>
+                </div>
+              </div>
+            </>
+          ) : (
+            /* Non-stacked: Date with value on same line */
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span
+                  style={{
+                    width: '10px',
+                    height: '10px',
+                    borderRadius: '2px',
+                    backgroundColor: currentDotColor,
+                    display: 'inline-block',
+                  }}
+                />
+                <span
+                  style={{
+                    fontSize: '13px',
+                    color: theme.palette.text.primary,
+                    fontWeight: 500,
+                  }}>
+                  {t('analytics.dateLabel')}: {formatDateLabel(label!)}
+                </span>
+              </div>
               <span
                 style={{
-                  width: '10px',
-                  height: '10px',
-                  borderRadius: '2px',
-                  backgroundColor: currentDotColor,
-                  display: 'inline-block',
-                }}
-              />
-              <span
-                style={{
-                  fontSize: '13px',
+                  fontSize: '14px',
+                  fontWeight: 600,
                   color: theme.palette.text.primary,
-                  fontWeight: 500,
                 }}>
-                {t('analytics.dateLabel')}: {formatDateLabel(label!)}
+                {metricValue}
               </span>
             </div>
-            <span
-              style={{
-                fontSize: '14px',
-                fontWeight: 600,
-                color: theme.palette.text.primary,
-              }}>
-              {metricValue}
-            </span>
-          </div>
+          )}
           {data.comparisonDate && (
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -413,15 +506,39 @@ export function UsageCharts({
             dot={false}
           />
         )}
-        <Area
-          type="monotone"
-          dataKey={dataKey}
-          stroke={strokeColor}
-          strokeWidth={2}
-          fill={strokeColor}
-          fillOpacity={0.18}
-          dot={false}
-        />
+        {/* Stacked Area Chart for Credits (grant + paid) */}
+        {resolvedMetric === 'credits' && mergedStats.some((s) => (s as DailyStats).grantedUsage !== undefined) ? (
+          <>
+            <Area
+              type="monotone"
+              dataKey="grantedUsage"
+              stackId="1"
+              stroke={theme.palette.success.main}
+              strokeWidth={1.5}
+              fill={alpha(theme.palette.success.main, 0.2)}
+              dot={false}
+            />
+            <Area
+              type="monotone"
+              dataKey="paidUsage"
+              stackId="1"
+              stroke={theme.palette.primary.main}
+              strokeWidth={1.5}
+              fill={alpha(theme.palette.primary.main, 0.2)}
+              dot={false}
+            />
+          </>
+        ) : (
+          <Area
+            type="monotone"
+            dataKey={dataKey}
+            stroke={strokeColor}
+            strokeWidth={2}
+            fill={strokeColor}
+            fillOpacity={0.18}
+            dot={false}
+          />
+        )}
       </ComposedChart>
     </ResponsiveContainer>
   );

@@ -10,6 +10,7 @@ import { Router } from 'express';
 
 import aiProviders from './ai-providers';
 import app from './app';
+import credit from './credit';
 import meilisearch from './meilisearch';
 import migration from './migration';
 import payment from './payment';
@@ -83,6 +84,7 @@ router.use('/v2', v2);
 
 router.use('/app', app);
 router.use('/payment', payment);
+router.use('/credit', credit);
 router.use('/meilisearch', meilisearch);
 router.use('/migration', migration);
 router.use('/user', user);
