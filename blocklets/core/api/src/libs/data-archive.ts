@@ -41,9 +41,9 @@ interface TableConfig {
  */
 export class DataArchiveService {
   // SQLite has a binding parameter limit of 999, keep batch size safely below it
-  private static readonly BATCH_SIZE = 500;
+  private static readonly BATCH_SIZE = 800;
 
-  private static readonly BATCH_DELAY_MS = 200;
+  private static readonly BATCH_DELAY_MS = 100;
 
   private static readonly TABLE_CONFIGS: Record<string, TableConfig> = {
     ModelCalls: {
@@ -59,7 +59,7 @@ export class DataArchiveService {
       fieldType: 'timestamp',
     },
     Usage: {
-      tableName: 'Usage',
+      tableName: 'Usages',
       timeField: 'createdAt',
       retentionMonths: RETENTION_USAGE_MONTHS,
       fieldType: 'date',
@@ -70,21 +70,21 @@ export class DataArchiveService {
    * Archive ModelCalls table
    */
   async archiveModelCalls(): Promise<ArchiveResult> {
-    return this.archiveTable(DataArchiveService.TABLE_CONFIGS.ModelCalls);
+    return this.archiveTable(DataArchiveService.TABLE_CONFIGS.ModelCalls!);
   }
 
   /**
    * Archive ModelCallStats table
    */
   async archiveModelCallStats(): Promise<ArchiveResult> {
-    return this.archiveTable(DataArchiveService.TABLE_CONFIGS.ModelCallStats);
+    return this.archiveTable(DataArchiveService.TABLE_CONFIGS.ModelCallStats!);
   }
 
   /**
    * Archive Usage table
    */
   async archiveUsage(): Promise<ArchiveResult> {
-    return this.archiveTable(DataArchiveService.TABLE_CONFIGS.Usage);
+    return this.archiveTable(DataArchiveService.TABLE_CONFIGS.Usage!);
   }
 
   /**
@@ -113,7 +113,7 @@ export class DataArchiveService {
       for (const range of ranges) {
         const archivePath = ArchiveDatabase.getArchivePath(range.key);
         // eslint-disable-next-line no-await-in-loop
-        await ArchiveDatabase.ensureArchiveDbAndTable(archivePath, tableName, sequelize);
+        await this.ensureArchiveTables(archivePath);
       }
 
       for (const range of ranges) {
@@ -405,6 +405,13 @@ export class DataArchiveService {
     return new Promise((resolve) => {
       setTimeout(resolve, ms);
     });
+  }
+
+  private async ensureArchiveTables(archivePath: string): Promise<void> {
+    for (const config of Object.values(DataArchiveService.TABLE_CONFIGS)) {
+      // eslint-disable-next-line no-await-in-loop
+      await ArchiveDatabase.ensureArchiveDbAndTable(archivePath, config.tableName, sequelize);
+    }
   }
 }
 

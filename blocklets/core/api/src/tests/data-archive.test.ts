@@ -111,7 +111,13 @@ describe('DataArchiveService integration', () => {
        )`
     );
     await testSequelize.query(
-      `CREATE TABLE "Usage" (
+      `CREATE TABLE "ModelCallStats" (
+         id TEXT PRIMARY KEY,
+         timestamp INTEGER NOT NULL
+       )`
+    );
+    await testSequelize.query(
+      `CREATE TABLE "Usages" (
          id TEXT PRIMARY KEY,
          createdAt TEXT NOT NULL
        )`
@@ -131,10 +137,10 @@ describe('DataArchiveService integration', () => {
     const oldDate = formatSqliteUtc(new Date(oldSec * 1000));
     const recentDate = formatSqliteUtc(new Date(recentSec * 1000));
 
-    await testSequelize.query('INSERT INTO "Usage" (id, createdAt) VALUES (:id, :createdAt)', {
+    await testSequelize.query('INSERT INTO "Usages" (id, createdAt) VALUES (:id, :createdAt)', {
       replacements: { id: 'old-usage', createdAt: oldDate },
     });
-    await testSequelize.query('INSERT INTO "Usage" (id, createdAt) VALUES (:id, :createdAt)', {
+    await testSequelize.query('INSERT INTO "Usages" (id, createdAt) VALUES (:id, :createdAt)', {
       replacements: { id: 'new-usage', createdAt: recentDate },
     });
 
@@ -150,7 +156,7 @@ describe('DataArchiveService integration', () => {
 
     expect(Number(modelCount[0]?.count ?? 0)).toBe(1);
 
-    const usageCount = (await testSequelize.query('SELECT COUNT(*) as count FROM "Usage"', {
+    const usageCount = (await testSequelize.query('SELECT COUNT(*) as count FROM "Usages"', {
       type: QueryTypes.SELECT,
     })) as Array<{ count: number | string }>;
 
@@ -173,12 +179,17 @@ describe('DataArchiveService integration', () => {
       type: QueryTypes.SELECT,
     })) as Array<{ count: number | string }>;
 
-    const archiveUsageCount = (await archiveSequelize.query('SELECT COUNT(*) as count FROM "Usage"', {
+    const archiveUsageCount = (await archiveSequelize.query('SELECT COUNT(*) as count FROM "Usages"', {
+      type: QueryTypes.SELECT,
+    })) as Array<{ count: number | string }>;
+
+    const archiveStatsCount = (await archiveSequelize.query('SELECT COUNT(*) as count FROM "ModelCallStats"', {
       type: QueryTypes.SELECT,
     })) as Array<{ count: number | string }>;
 
     expect(Number(archiveModelCount[0]?.count ?? 0)).toBe(1);
     expect(Number(archiveUsageCount[0]?.count ?? 0)).toBe(1);
+    expect(Number(archiveStatsCount[0]?.count ?? 0)).toBe(0);
 
     await archiveSequelize.close();
   });
