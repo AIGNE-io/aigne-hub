@@ -275,6 +275,9 @@ importers:
       p-retry:
         specifier: ^7.1.1
         version: 7.1.1
+      proper-lockfile:
+        specifier: ^4.1.2
+        version: 4.1.2
       raw-body:
         specifier: ^3.0.0
         version: 3.0.2
