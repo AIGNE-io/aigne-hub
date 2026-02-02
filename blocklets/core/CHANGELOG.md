@@ -1,3 +1,7 @@
+## 0.8.3 (2026-2-2)
+
+- feat: implement data retention
+
 ## 0.8.2 (2026-2-2)
 
 - fix: should return 400 if request body invalid
