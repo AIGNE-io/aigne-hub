@@ -43,8 +43,13 @@ export const CLEANUP_STALE_MODEL_CALLS_CRON_TIME = process.env.CLEANUP_STALE_MOD
 export const CHECK_MODEL_STATUS_CRON_TIME = process.env.CHECK_MODEL_STATUS_CRON_TIME || '0 0 0 * * *'; // every day at 00:00:00
 export const ARCHIVE_MODEL_DATA_CRON_TIME = process.env.ARCHIVE_MODEL_DATA_CRON_TIME || '0 0 2 * * *'; // every day at 02:00:00
 
-export const RETENTION_MODEL_CALL_MONTHS = +(process.env.RETENTION_MODEL_CALL_MONTHS || 6);
+// Data retention period (months)
+export const RETENTION_MODEL_CALL_MONTHS = +(process.env.RETENTION_MODEL_CALL_MONTHS || 3);
 export const RETENTION_MODEL_CALL_STATS_MONTHS = +(process.env.RETENTION_MODEL_CALL_STATS_MONTHS || 6);
+export const RETENTION_USAGE_MONTHS = +(process.env.RETENTION_USAGE_MONTHS || 3);
+
+// Archive configuration
+export const ARCHIVE_RETENTION_QUARTERS = +(process.env.ARCHIVE_RETENTION_QUARTERS || 6);
 
 export const BLOCKLET_APP_PID = blockletEnv.appPid;
 

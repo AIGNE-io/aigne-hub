@@ -99,6 +99,7 @@
     "openai": "^4.96.0",
     "p-all": "^5.0.0",
     "p-retry": "^7.1.1",
+    "proper-lockfile": "^4.1.2",
     "raw-body": "^3.0.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
