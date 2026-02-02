@@ -192,13 +192,21 @@ export class ArchiveDatabase {
 
     for (const col of missingColumns) {
       let def = `"${col.name}" ${col.type}`;
-      if (col.notnull) def += ' NOT NULL';
-      if (col.dflt_value !== null) {
+      const hasDefault = col.dflt_value !== null;
+      const relaxNotNull = col.notnull && !hasDefault;
+      if (col.notnull && !relaxNotNull) def += ' NOT NULL';
+      if (hasDefault) {
         def += ` DEFAULT ${col.dflt_value}`;
       }
 
       // eslint-disable-next-line no-await-in-loop
       await archiveSequelize.query(`ALTER TABLE "${tableName}" ADD COLUMN ${def}`);
+      if (relaxNotNull) {
+        logger.warn('Archive column NOT NULL relaxed due to missing default', {
+          table: tableName,
+          column: col.name,
+        });
+      }
       logger.info('Archive table column added', { table: tableName, column: col.name });
     }
   }
