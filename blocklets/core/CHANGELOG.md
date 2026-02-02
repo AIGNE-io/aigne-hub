@@ -1,3 +1,7 @@
+## 0.8.2 (2026-2-2)
+
+- fix: should return 400 if request body invalid
+
 ## 0.8.1 (2026-1-29)
 
 - feat: enhance project usage charts with comparison trends and improve data handling
