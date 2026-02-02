@@ -2,11 +2,14 @@ import fs from 'fs/promises';
 import os from 'os';
 import path from 'path';
 
+import * as archiveTask from '@api/crons/archive-task';
 import { ArchiveDatabase } from '@api/libs/archive-database';
-import { DataArchiveService } from '@api/libs/data-archive';
+import { DataArchiveService, dataArchiveService } from '@api/libs/data-archive';
 import dayjs from '@api/libs/dayjs';
+import { Config, MIN_ARCHIVE_FREE_GB } from '@api/libs/env';
 import { sequelize } from '@api/store/sequelize';
 import { afterEach, beforeEach, describe, expect, spyOn, test } from 'bun:test';
+import lockfile from 'proper-lockfile';
 import { QueryTypes, Sequelize } from 'sequelize';
 
 const formatSqliteUtc = (date: Date): string => {
@@ -277,4 +280,33 @@ describe('ArchiveDatabase', () => {
     dirSpy.mockRestore();
     await fs.rm(tempDir, { recursive: true, force: true });
   });
+});
+
+test('executeArchiveTask should skip when free disk below threshold', async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'archive-task-test-'));
+  const dataDirDescriptor = Object.getOwnPropertyDescriptor(Config, 'dataDir');
+  Object.defineProperty(Config, 'dataDir', { value: tempDir });
+  const lockSpy = spyOn(lockfile, 'lock').mockResolvedValue(async () => {});
+  const statfsSpy = spyOn(fs, 'statfs').mockResolvedValue({
+    bsize: 1024 ** 3,
+    bavail: Math.max(MIN_ARCHIVE_FREE_GB - 1, 0),
+  } as any);
+  const archiveSpy = spyOn(dataArchiveService, 'archiveModelCalls').mockResolvedValue({
+    success: true,
+    archivedCount: 0,
+    duration: 0,
+  } as any);
+
+  try {
+    await archiveTask.executeArchiveTask();
+    expect(archiveSpy).not.toHaveBeenCalled();
+  } finally {
+    if (dataDirDescriptor) {
+      Object.defineProperty(Config, 'dataDir', dataDirDescriptor);
+    }
+    lockSpy.mockRestore();
+    statfsSpy.mockRestore();
+    archiveSpy.mockRestore();
+    await fs.rm(tempDir, { recursive: true, force: true });
+  }
 });

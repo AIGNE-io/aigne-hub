@@ -1,12 +1,15 @@
+import fs from 'fs/promises';
 import path from 'path';
 
 import lockfile from 'proper-lockfile';
 
 import { ArchiveDatabase } from '../libs/archive-database';
 import { ArchiveResult, dataArchiveService } from '../libs/data-archive';
-import { Config } from '../libs/env';
+import { Config, MIN_ARCHIVE_FREE_GB } from '../libs/env';
 import logger from '../libs/logger';
 import ArchiveExecutionLog, { ArchiveTableName } from '../store/models/archive-execution-log';
+
+const BYTES_PER_GB = 1024 ** 3;
 
 /**
  * Get archive task lock file path
@@ -14,6 +17,12 @@ import ArchiveExecutionLog, { ArchiveTableName } from '../store/models/archive-e
 function getLockFilePath(): string {
   const dataDir = Config.dataDir || process.cwd();
   return path.join(dataDir, 'archive.lock');
+}
+
+async function getFreeDiskGb(targetPath: string): Promise<number> {
+  const stats = await fs.statfs(targetPath);
+  const freeBytes = stats.bavail * stats.bsize;
+  return freeBytes / BYTES_PER_GB;
 }
 
 /**
@@ -58,7 +67,6 @@ export async function executeArchiveTask(): Promise<void> {
     }
     // If the lock file doesn't exist, create it
     if (error.code === 'ENOENT') {
-      const fs = await import('fs/promises');
       await fs.writeFile(lockFilePath, '');
       try {
         releaseLock = await lockfile.lock(lockFilePath, {
@@ -73,6 +81,21 @@ export async function executeArchiveTask(): Promise<void> {
       logger.error('Failed to acquire archive lock', { error: err });
       return;
     }
+  }
+
+  const dataDir = Config.dataDir || process.cwd();
+  try {
+    const freeGb = await getFreeDiskGb(dataDir);
+    if (freeGb < MIN_ARCHIVE_FREE_GB) {
+      logger.warn('Archive task skipped due to low disk space', {
+        dataDir,
+        freeGb,
+        minFreeGb: MIN_ARCHIVE_FREE_GB,
+      });
+      return;
+    }
+  } catch (error) {
+    logger.warn('Failed to check free disk space for archive task', { dataDir, error });
   }
 
   const startTime = Date.now();

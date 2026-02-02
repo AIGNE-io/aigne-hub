@@ -242,11 +242,23 @@ export class DataArchiveService {
          SELECT * FROM main."${tableName}" WHERE id IN (:ids)`,
         { replacements: { ids }, transaction: txLike as any }
       );
+      const insertedCount = await this.getLastChangeCount(txLike);
+      if (insertedCount !== records.length) {
+        throw new Error(
+          `Archive batch insert count mismatch for ${tableName} ${range.key}: expected ${records.length}, inserted ${insertedCount}`
+        );
+      }
 
       await sequelize.query(`DELETE FROM main."${tableName}" WHERE id IN (:ids)`, {
         replacements: { ids },
         transaction: txLike as any,
       });
+      const deletedCount = await this.getLastChangeCount(txLike);
+      if (deletedCount !== records.length) {
+        throw new Error(
+          `Archive batch delete count mismatch for ${tableName} ${range.key}: expected ${records.length}, deleted ${deletedCount}`
+        );
+      }
 
       await sequelize.query('COMMIT', { transaction: txLike as any });
 
@@ -278,6 +290,15 @@ export class DataArchiveService {
       startValue: this.formatDateForSqliteUtc(range.start),
       endValue: this.formatDateForSqliteUtc(range.end),
     };
+  }
+
+  private async getLastChangeCount(txLike: { connection: unknown }): Promise<number> {
+    const result = (await sequelize.query('SELECT changes() as count', {
+      type: QueryTypes.SELECT,
+      transaction: txLike as any,
+    })) as Array<{ count: number | string }>;
+    const count = Number(result[0]?.count ?? 0);
+    return Number.isFinite(count) ? count : 0;
   }
 
   private async getQuarterRanges(

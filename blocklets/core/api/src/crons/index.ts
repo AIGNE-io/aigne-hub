@@ -4,6 +4,7 @@ import {
   ARCHIVE_MODEL_DATA_CRON_TIME,
   CHECK_MODEL_STATUS_CRON_TIME,
   CLEANUP_STALE_MODEL_CALLS_CRON_TIME,
+  ENABLE_ARCHIVE_MODEL_DATA_CRON,
   MODEL_CALL_STATS_CRON_TIME,
 } from '@api/libs/env';
 
@@ -62,7 +63,7 @@ function init() {
         name: 'archive.model.data',
         time: ARCHIVE_MODEL_DATA_CRON_TIME,
         fn: async () => {
-          if (shouldExecuteTask('archive.model.data cron')) {
+          if (ENABLE_ARCHIVE_MODEL_DATA_CRON && shouldExecuteTask('archive.model.data cron')) {
             logger.info('Executing archive task on cluster:', { instanceId: process.env.BLOCKLET_INSTANCE_ID });
             await executeArchiveTask();
           }
