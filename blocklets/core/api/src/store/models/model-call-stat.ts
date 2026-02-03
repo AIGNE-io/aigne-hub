@@ -36,7 +36,7 @@ export default class ModelCallStat extends Model<
 
   declare timestamp: number;
 
-  declare timeType: 'day' | 'hour';
+  declare timeType: 'day' | 'hour' | 'month';
 
   declare stats: DailyStats;
 
@@ -65,7 +65,7 @@ export default class ModelCallStat extends Model<
       allowNull: false,
     },
     timeType: {
-      type: DataTypes.ENUM('day', 'hour'),
+      type: DataTypes.ENUM('day', 'hour', 'month'),
       allowNull: false,
       defaultValue: 'hour',
     },
@@ -956,7 +956,7 @@ export default class ModelCallStat extends Model<
     };
   }
 
-  private static buildStatsFromAggregateRow(row: {
+  static buildStatsFromAggregateRow(row: {
     totalUsage?: string | number;
     totalCredits?: string | number;
     totalCalls?: string | number;

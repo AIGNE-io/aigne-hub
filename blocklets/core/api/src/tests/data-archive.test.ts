@@ -116,13 +116,15 @@ describe('DataArchiveService integration', () => {
     await testSequelize.query(
       `CREATE TABLE "ModelCallStats" (
          id TEXT PRIMARY KEY,
-         timestamp INTEGER NOT NULL
+         timestamp INTEGER NOT NULL,
+         timeType TEXT NOT NULL
        )`
     );
     await testSequelize.query(
       `CREATE TABLE "Usages" (
          id TEXT PRIMARY KEY,
-         createdAt TEXT NOT NULL
+         createdAt TEXT NOT NULL,
+         usageReportStatus TEXT
        )`
     );
 
@@ -140,12 +142,18 @@ describe('DataArchiveService integration', () => {
     const oldDate = formatSqliteUtc(new Date(oldSec * 1000));
     const recentDate = formatSqliteUtc(new Date(recentSec * 1000));
 
-    await testSequelize.query('INSERT INTO "Usages" (id, createdAt) VALUES (:id, :createdAt)', {
-      replacements: { id: 'old-usage', createdAt: oldDate },
-    });
-    await testSequelize.query('INSERT INTO "Usages" (id, createdAt) VALUES (:id, :createdAt)', {
-      replacements: { id: 'new-usage', createdAt: recentDate },
-    });
+    await testSequelize.query(
+      'INSERT INTO "Usages" (id, createdAt, usageReportStatus) VALUES (:id, :createdAt, :status)',
+      {
+        replacements: { id: 'old-usage', createdAt: oldDate, status: 'reported' },
+      }
+    );
+    await testSequelize.query(
+      'INSERT INTO "Usages" (id, createdAt, usageReportStatus) VALUES (:id, :createdAt, :status)',
+      {
+        replacements: { id: 'new-usage', createdAt: recentDate, status: null },
+      }
+    );
 
     const modelResult = await service.archiveModelCalls();
     const usageResult = await service.archiveUsage();

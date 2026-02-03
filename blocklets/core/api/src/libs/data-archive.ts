@@ -22,11 +22,18 @@ type FieldType = 'timestamp' | 'date';
 
 type QuarterRange = { key: string; start: Date; end: Date };
 
+type ArchiveQueryConfig = {
+  where?: string;
+  orderBy?: string;
+  replacements?: Record<string, any>;
+};
+
 interface TableConfig {
   tableName: string;
   timeField: string;
   retentionMonths: number;
   fieldType: FieldType;
+  query?: ArchiveQueryConfig;
 }
 
 /**
@@ -40,8 +47,8 @@ interface TableConfig {
  * ATTACH → (INSERT + DELETE in transaction) → DETACH
  */
 export class DataArchiveService {
-  // SQLite has a binding parameter limit of 999, keep batch size safely below it
-  private static readonly BATCH_SIZE = 800;
+  // SQLite has a binding parameter limit of 999, keep batch size below it
+  private static readonly BATCH_SIZE = 990;
 
   private static readonly BATCH_DELAY_MS = 100;
 
@@ -51,18 +58,31 @@ export class DataArchiveService {
       timeField: 'callTime',
       retentionMonths: RETENTION_MODEL_CALL_MONTHS,
       fieldType: 'timestamp',
+      query: {
+        orderBy: '"id" ASC',
+      },
     },
     ModelCallStats: {
       tableName: 'ModelCallStats',
       timeField: 'timestamp',
       retentionMonths: RETENTION_MODEL_CALL_STATS_MONTHS,
       fieldType: 'timestamp',
+      query: {
+        where: '"timeType" = :timeType',
+        replacements: { timeType: 'hour' },
+        orderBy: '"timestamp" ASC',
+      },
     },
     Usage: {
       tableName: 'Usages',
       timeField: 'createdAt',
       retentionMonths: RETENTION_USAGE_MONTHS,
       fieldType: 'date',
+      query: {
+        where: '"usageReportStatus" = :usageReportStatus',
+        replacements: { usageReportStatus: 'reported' },
+        orderBy: '"id" ASC',
+      },
     },
   };
 
@@ -91,7 +111,7 @@ export class DataArchiveService {
    * Generic archive method
    */
   private async archiveTable(config: TableConfig): Promise<ArchiveResult> {
-    const { tableName, timeField, retentionMonths, fieldType } = config;
+    const { tableName, retentionMonths } = config;
     const startTime = Date.now();
     const targetArchiveDbs: string[] = [];
 
@@ -102,13 +122,7 @@ export class DataArchiveService {
     try {
       let totalArchived = 0;
 
-      const { ranges, dataRangeStart, dataRangeEnd } = await this.getQuarterRanges(
-        tableName,
-        timeField,
-        fieldType,
-        cutoffTimestamp,
-        cutoffDate
-      );
+      const { ranges, dataRangeStart, dataRangeEnd } = await this.getQuarterRanges(config, cutoffTimestamp, cutoffDate);
 
       for (const range of ranges) {
         const archivePath = ArchiveDatabase.getArchivePath(range.key);
@@ -123,7 +137,7 @@ export class DataArchiveService {
         }
 
         // eslint-disable-next-line no-await-in-loop
-        const archivedCount = await this.archiveQuarter(tableName, timeField, fieldType, range);
+        const archivedCount = await this.archiveQuarter(config, range);
         totalArchived += archivedCount;
       }
 
@@ -147,12 +161,8 @@ export class DataArchiveService {
     }
   }
 
-  private async archiveQuarter(
-    tableName: string,
-    timeField: string,
-    fieldType: FieldType,
-    range: QuarterRange
-  ): Promise<number> {
+  private async archiveQuarter(config: TableConfig, range: QuarterRange): Promise<number> {
+    const { tableName } = config;
     const archivePath = ArchiveDatabase.getArchivePath(range.key);
     const dbName = ArchiveDatabase.getDbName(range.key);
     await fs.mkdir(ArchiveDatabase.getArchiveDir(), { recursive: true });
@@ -171,7 +181,7 @@ export class DataArchiveService {
       // eslint-disable-next-line no-constant-condition
       while (true) {
         // eslint-disable-next-line no-await-in-loop
-        const count = await this.migrateBatchWithAttach(tableName, timeField, fieldType, range, txLike);
+        const count = await this.migrateBatchWithAttach(config, range, txLike);
         if (count === 0) break;
 
         totalArchived += count;
@@ -204,13 +214,14 @@ export class DataArchiveService {
    * Batch migrate data (ATTACH cross-database transaction)
    */
   private async migrateBatchWithAttach(
-    tableName: string,
-    timeField: string,
-    fieldType: FieldType,
+    config: TableConfig,
     range: QuarterRange,
     txLike: { connection: unknown }
   ): Promise<number> {
+    const { tableName, timeField, fieldType } = config;
     const { startValue, endValue } = this.getRangeValues(fieldType, range);
+    const whereClause = config.query?.where ? ` AND ${config.query.where}` : '';
+    const orderClause = config.query?.orderBy ? ` ORDER BY ${config.query.orderBy}` : '';
 
     await sequelize.query('BEGIN IMMEDIATE', { transaction: txLike as any });
     try {
@@ -218,12 +229,15 @@ export class DataArchiveService {
         `SELECT id FROM main."${tableName}"
          WHERE "${timeField}" >= :start
            AND "${timeField}" < :end
+         ${whereClause}
+         ${orderClause}
          LIMIT :limit`,
         {
           replacements: {
             start: startValue,
             end: endValue,
             limit: DataArchiveService.BATCH_SIZE,
+            ...(config.query?.replacements || {}),
           },
           type: QueryTypes.SELECT,
           transaction: txLike as any,
@@ -302,19 +316,20 @@ export class DataArchiveService {
   }
 
   private async getQuarterRanges(
-    tableName: string,
-    timeField: string,
-    fieldType: FieldType,
+    config: TableConfig,
     cutoffTimestamp: number,
     cutoffDate: Date
   ): Promise<{ ranges: QuarterRange[]; dataRangeStart?: number; dataRangeEnd?: number }> {
+    const { tableName, timeField, fieldType } = config;
+    const whereClause = config.query?.where ? ` AND ${config.query.where}` : '';
     const rangeResult = (await sequelize.query(
       `SELECT MIN("${timeField}") as minValue, MAX("${timeField}") as maxValue
        FROM "${tableName}"
-       WHERE "${timeField}" < :cutoff`,
+       WHERE "${timeField}" < :cutoff${whereClause}`,
       {
         replacements: {
           cutoff: fieldType === 'timestamp' ? cutoffTimestamp : this.formatDateForSqliteUtc(cutoffDate),
+          ...(config.query?.replacements || {}),
         },
         type: QueryTypes.SELECT,
       }

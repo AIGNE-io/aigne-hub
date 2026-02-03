@@ -6,7 +6,7 @@ export const up: Migration = async ({ context: queryInterface }) => {
   console.log('[reset-model-call-stats] clearing ModelCallStats...');
   await queryInterface.sequelize.query('DELETE FROM "ModelCallStats"');
 
-  const { createModelCallStats } = await import('../../crons/model-call-stats');
+  const { createHourlyModelCallStats } = await import('../../crons/model-call-stats');
 
   const nowSeconds = Math.floor(Date.now() / 1000);
   const currentHour = Math.floor(nowSeconds / 3600) * 3600;
@@ -30,7 +30,7 @@ export const up: Migration = async ({ context: queryInterface }) => {
     const rangeStart = hour;
     const rangeEnd = Math.min(hour + 86400 - 1, endTime);
     // eslint-disable-next-line no-await-in-loop
-    await createModelCallStats(rangeStart, rangeEnd, undefined, true);
+    await createHourlyModelCallStats(rangeStart, rangeEnd, undefined, true);
   }
 
   const durationMs = Date.now() - startedAt;

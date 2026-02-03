@@ -16,7 +16,7 @@
     "bundle:blocklet": "blocklet bundle --compact --external 'sqlite3,@dqbd/tiktoken,@aigne/sqlite' --create-release",
     "deploy": "npm run bundle && blocklet deploy .blocklet/bundle",
     "upload": "npm run bundle && blocklet upload .blocklet/release/blocklet.json",
-    "test": "export BLOCKLET_LOG_DIR=/tmp && bun test",
+    "test": "export BLOCKLET_LOG_DIR=/tmp BLOCKLET_DATA_DIR=/tmp && bun test",
     "test:coverage": "export BLOCKLET_LOG_DIR=/tmp && bun test --coverage --coverage-reporter=lcov --coverage-reporter=text"
   },
   "browserslist": {

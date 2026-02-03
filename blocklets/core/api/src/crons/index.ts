@@ -5,6 +5,7 @@ import {
   CHECK_MODEL_STATUS_CRON_TIME,
   CLEANUP_STALE_MODEL_CALLS_CRON_TIME,
   ENABLE_ARCHIVE_MODEL_DATA_CRON,
+  MODEL_CALL_MONTHLY_STATS_CRON_TIME,
   MODEL_CALL_STATS_CRON_TIME,
 } from '@api/libs/env';
 
@@ -12,7 +13,7 @@ import logger from '../libs/logger';
 import shouldExecuteTask from '../libs/master-cluster';
 import { cleanupStaleProcessingCalls } from '../middlewares/model-call-tracker';
 import { executeArchiveTask } from './archive-task';
-import { createModelCallStats, getHoursToWarmup } from './model-call-stats';
+import { createHourlyModelCallStats, createMonthlyModelCallStats, getHoursToWarmup } from './model-call-stats';
 
 function init() {
   Cron.init({
@@ -32,7 +33,21 @@ function init() {
             const now = dayjs.utc().unix();
             const currentHour = Math.floor(now / 3600) * 3600;
             const isMidnight = currentHour % (24 * 3600) === 0;
-            await createModelCallStats(range.startTime, range.endTime, undefined, isMidnight);
+            await createHourlyModelCallStats(range.startTime, range.endTime, undefined, isMidnight);
+          }
+        },
+        options: { runOnInit: false },
+      },
+      {
+        name: 'model.call.monthly.stats',
+        time: MODEL_CALL_MONTHLY_STATS_CRON_TIME,
+        fn: async () => {
+          logger.info('cron model.call.monthly.stats');
+          if (shouldExecuteTask('model.call.monthly.stats cron')) {
+            const now = dayjs.utc();
+            const currentMonthStart = now.startOf('month');
+            const previousMonthStart = currentMonthStart.subtract(1, 'month');
+            await createMonthlyModelCallStats(previousMonthStart.unix());
           }
         },
         options: { runOnInit: false },
