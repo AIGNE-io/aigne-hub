@@ -19,7 +19,7 @@
 最终用户(间接受益,系统性能提升)和系统管理员(直接管理归档配置)。
 
 ### 项目范围
-- ModelCall 和 ModelCallStats 表和 Usage 表的自动归档
+- ModelCalls 和 ModelCallStats 表以及 Usages 表（模型名 Usage）的自动归档
 - 按季度创建归档库
 - 定时任务自动执行
 - 自动清理旧归档库
@@ -66,7 +66,7 @@
 - updatedAt: Date
 // (无需 archived 字段)
 
-// Usage 表 (现有)
+// Usages 表 (现有，模型名 Usage)
 - id: string (主键)
 - promptTokens: integer
 - completionTokens: integer
@@ -90,17 +90,17 @@
 #### 归档表结构
 ```typescript
 // 按季度分库，每季度一个独立的 SQLite 文件
-// archive_2025_Q1.db 中包含: ModelCalls, ModelCallStats, Usage
-// archive_2025_Q2.db 中包含: ModelCalls, ModelCallStats, Usage
+// archive_2025_Q1.db 中包含: ModelCalls, ModelCallStats, Usages
+// archive_2025_Q2.db 中包含: ModelCalls, ModelCallStats, Usages
 // 表结构与主库中的源表完全相同（表名大小写保持一致）
 ```
 
 #### 归档执行记录表
 ```typescript
-// ArchiveExecutionLog 表 (新增，存储在主库)
+// ArchiveExecutionLogs 表 (新增，存储在主库)
 // 记录每次归档任务的执行明细
 - id: string (主键, UUID)
-- tableName: string ('ModelCalls' | 'ModelCallStats' | 'Usage')
+- tableName: string ('ModelCalls' | 'ModelCallStats' | 'Usage'，其中 Usage 对应 Usages 表)
 - status: enum('success', 'failed')
 - archivedCount: integer (归档记录数)
 - dataRangeStart: integer (归档数据范围起始时间戳)
@@ -116,7 +116,7 @@
 - 主库: SQLite (存储当前活跃数据)
 - 归档库: 按季度分库，每季度一个独立的 SQLite 文件
   - 命名格式: `archive_YYYY_QN.db` (如 `archive_2025_Q1.db`)
-  - 表名与源表相同: `ModelCalls`, `ModelCallStats`, `Usage`
+- 表名与源表相同: `ModelCalls`, `ModelCallStats`, `Usages`（模型名 Usage）
 - 使用 SQLite ATTACH DATABASE 实现跨库事务
 - 归档库目录固定为: `{DATA_DIR}/archives/`
 - **自动清理**: 超过保留季度数的归档库自动删除
@@ -150,7 +150,7 @@ class ArchiveDatabase {
    */
   static async cleanupOldArchives(): Promise<string[]> {
     const archiveDir = path.join(Config.dataDir, 'archives');
-    const retentionQuarters = parseInt(process.env.ARCHIVE_RETENTION_QUARTERS || '6', 10);
+    const retentionQuarters = parseInt(process.env.ARCHIVE_RETENTION_QUARTERS || '8', 10);
 
     if (retentionQuarters === 0) {
       logger.info('Archive cleanup disabled (ARCHIVE_RETENTION_QUARTERS=0)');
@@ -202,19 +202,25 @@ RETENTION_MODEL_CALL_MONTHS=3
 # ModelCallStats 表保留期限(月)
 RETENTION_MODEL_CALL_STATS_MONTHS=6
 
-# Usage 表保留期限(月)
+# Usages 表保留期限(月)
 RETENTION_USAGE_MONTHS=3
 
 # 归档任务 Cron（默认每天 02:00:00，6 段 Cron）
 ARCHIVE_MODEL_DATA_CRON_TIME="0 0 2 * * *"
 
-# 归档库保留季度数(默认 6，即保留 1.5 年的归档数据)
-ARCHIVE_RETENTION_QUARTERS=6
+# 是否启用归档 Cron（默认 true，设为 false 可关闭）
+ENABLE_ARCHIVE_MODEL_DATA_CRON=true
+
+# 归档库保留季度数(默认 8，即保留 2 年的归档数据)
+ARCHIVE_RETENTION_QUARTERS=8
+
+# 归档前最低可用磁盘空间(GB)，不足则跳过归档
+MIN_ARCHIVE_FREE_GB=2
 ```
 
 **硬编码常量** (无需配置):
-- `BATCH_SIZE = 500` - 每批处理 500 条
-- `BATCH_DELAY_MS = 200` - 批间延迟 200ms
+- `BATCH_SIZE = 990` - 每批处理 990 条（SQLite 绑定参数上限 999）
+- `BATCH_DELAY_MS = 100` - 批间延迟 100ms
 - `ARCHIVE_DIR = {DATA_DIR}/archives/` - 归档库目录
 
 ### 执行层
@@ -226,7 +232,7 @@ ARCHIVE_RETENTION_QUARTERS=6
   name: 'archive.model.data',
   time: ARCHIVE_MODEL_DATA_CRON_TIME, // 默认 0 0 2 * * *（含秒）
   fn: async () => {
-    if (shouldExecuteTask('archive.model.data cron')) {
+    if (ENABLE_ARCHIVE_MODEL_DATA_CRON && shouldExecuteTask('archive.model.data cron')) {
       logger.info('Executing archive task on cluster:', { instanceId: process.env.BLOCKLET_INSTANCE_ID });
       await executeArchiveTask();
     }
@@ -280,16 +286,16 @@ interface ArchiveResult {
 
 class DataArchiveService {
   // 硬编码常量
-  private static readonly BATCH_SIZE = 500;
-  private static readonly BATCH_DELAY_MS = 200;
+  private static readonly BATCH_SIZE = 990;
+  private static readonly BATCH_DELAY_MS = 100;
 
   // 归档 ModelCall 表
   async archiveModelCalls(): Promise<ArchiveResult>
 
-  // 归档 ModelCallStats 表
+  // 归档 ModelCallStats 表（仅 timeType='hour'）
   async archiveModelCallStats(): Promise<ArchiveResult>
 
-  // 归档 Usage 表
+  // 归档 Usages 表（仅 usageReportStatus='reported'）
   async archiveUsage(): Promise<ArchiveResult>
 
   // 通用归档：按季度范围归档
@@ -333,7 +339,7 @@ class DataArchiveService {
 |------|------|------|
 | 1. ATTACH | 挂载归档库到主连接 | `ATTACH DATABASE 'archive_YYYY_QN.db' AS archive` |
 | 2. 事务 | INSERT + DELETE 在同一事务 | 要么都成功，要么都回滚 |
-| 3. LOG | 写入 ArchiveExecutionLog | 记录归档明细 |
+| 3. LOG | 写入 ArchiveExecutionLogs | 记录归档明细 |
 | 4. DETACH | 卸载归档库 | `DETACH DATABASE archive` |
 
 #### 核心 SQL
@@ -379,11 +385,12 @@ DETACH DATABASE archive;
 ```
 1. 定时任务触发(默认每天 02:00:00，可通过 ARCHIVE_MODEL_DATA_CRON_TIME 配置)
 2. 获取文件锁，防止并发执行
-3. 串行执行 ModelCall、ModelCallStats、Usage 的归档
-4. 自动清理超期的旧归档库
-5. 记录执行结果到 ArchiveExecutionLog
-6. 如果失败,记录错误日志,明天重新尝试
-7. 释放文件锁
+3. 检查可用磁盘空间（低于 MIN_ARCHIVE_FREE_GB 则跳过归档）
+4. 串行执行 ModelCalls、ModelCallStats、Usages 的归档
+5. 自动清理超期的旧归档库
+6. 记录执行结果到 ArchiveExecutionLogs
+7. 如果失败,记录错误日志,明天重新尝试
+8. 释放文件锁
 ```
 
 #### 单表归档流程
@@ -393,13 +400,16 @@ DETACH DATABASE archive;
 3. 确定目标季度的归档库文件路径
 4. ATTACH 归档库到主连接
 5. 确保归档表存在(如不存在则从主库复制结构)
-6. 按批次执行归档(每批500条):
+6. 按批次执行归档(每批 990 条，且带筛选条件):
+   - ModelCallStats: timeType = 'hour'
+   - Usages: usageReportStatus = 'reported'
    a. BEGIN TRANSACTION
    b. INSERT 到归档库
    c. DELETE 主库数据
    d. COMMIT
-   e. 写入 ArchiveExecutionLog
-   f. 批间延迟(200ms)
+   e. 使用 `SELECT changes()` 校验插入/删除数量一致
+   f. 写入 ArchiveExecutionLogs
+   g. 批间延迟(100ms)
 7. DETACH 归档库
 8. 返回归档结果(成功/失败、总数、耗时)
 ```
@@ -408,12 +418,12 @@ DETACH DATABASE archive;
 
 为避免归档任务占用过多资源影响用户请求，每批处理后添加延迟：
 
-- 固定延迟: 200ms (硬编码，无需配置)
+- 固定延迟: 100ms (硬编码，无需配置)
 - 延迟在每个批次的 INSERT + DELETE 完成后执行
 - 配合凌晨 2 点执行窗口，对用户影响极小
 
 ```typescript
-const BATCH_DELAY_MS = 200;
+const BATCH_DELAY_MS = 100;
 
 for (const batch of batches) {
   await archiveBatch(batch);
@@ -445,7 +455,7 @@ for (const batch of batches) {
 ```
 
 **配置项:**
-- `ARCHIVE_RETENTION_QUARTERS`: 保留的季度数，默认 6（即 1.5 年）
+- `ARCHIVE_RETENTION_QUARTERS`: 保留的季度数，默认 8（即 2 年）
 - 设为 0 表示不自动清理（满足特殊合规需求）
 
 **执行时机:**
@@ -461,7 +471,8 @@ for (const batch of batches) {
 - 表结构从主库复制
 - 跳过动态默认值（如 CURRENT_TIMESTAMP）
 - 已存在表只补齐新增列
-- 复制非 sqlite_autoindex 的索引
+- 对 NOT NULL 且无默认值的新增列会放宽约束并记录日志
+- 复制非 sqlite_autoindex 的索引（按 `idx_{table}_{columns}` 命名）
 - 每季度一个独立的 SQLite 文件（如 `archive_2025_Q1.db`）
 
 ### 失败处理
@@ -508,7 +519,7 @@ logger.info('Archiving table', {
   tableName: 'ModelCalls',
   cutoffTimestamp,
   cutoffDate: new Date(cutoffTimestamp * 1000).toISOString(),
-  batchSize: ARCHIVE_BATCH_SIZE
+  batchSize: BATCH_SIZE
 });
 
 // 批次完成
@@ -563,12 +574,14 @@ MVP 阶段通过环境变量配置:
 RETENTION_MODEL_CALL_MONTHS=3
 RETENTION_MODEL_CALL_STATS_MONTHS=6
 RETENTION_USAGE_MONTHS=3
-ARCHIVE_RETENTION_QUARTERS=6
+ENABLE_ARCHIVE_MODEL_DATA_CRON=true
+ARCHIVE_RETENTION_QUARTERS=8
+MIN_ARCHIVE_FREE_GB=2
 ```
 
 注意:
-- 批量大小固定为 500 条/批,在代码中硬编码
-- 批间延迟固定为 200ms,在代码中硬编码
+- 批量大小固定为 990 条/批,在代码中硬编码
+- 批间延迟固定为 100ms,在代码中硬编码
 - 归档库目录固定为 `{DATA_DIR}/archives/`
 - 失败不重试,依赖明天的定时任务自动重新尝试
 
@@ -597,7 +610,7 @@ blocklets/core/api/src/
     ├── models/
     │   └── archive-execution-log.ts
     └── migrations/
-        └── 20260130000000-add-archived-field-and-execution-log.ts
+        └── 20260130000000-add-archived-field-and-execution-log.ts # 实际仅创建 ArchiveExecutionLogs
 ```
 
 ### 核心代码示例
@@ -623,15 +636,22 @@ export const RETENTION_USAGE_MONTHS = parseInt(
 
 export const ARCHIVE_MODEL_DATA_CRON_TIME = process.env.ARCHIVE_MODEL_DATA_CRON_TIME || '0 0 2 * * *';
 
+export const ENABLE_ARCHIVE_MODEL_DATA_CRON = process.env.ENABLE_ARCHIVE_MODEL_DATA_CRON !== 'false';
+
 export const ARCHIVE_RETENTION_QUARTERS = parseInt(
-  process.env.ARCHIVE_RETENTION_QUARTERS || '6',
+  process.env.ARCHIVE_RETENTION_QUARTERS || '8',
+  10
+);
+
+export const MIN_ARCHIVE_FREE_GB = parseInt(
+  process.env.MIN_ARCHIVE_FREE_GB || '2',
   10
 );
 
 // 以下为硬编码常量，不通过环境变量配置
 // ARCHIVE_DIR: 固定为 {DATA_DIR}/archives/
-// BATCH_SIZE: 固定为 500
-// BATCH_DELAY_MS: 固定为 200
+// BATCH_SIZE: 固定为 990
+// BATCH_DELAY_MS: 固定为 100
 ```
 
 #### 归档服务接口
@@ -658,17 +678,24 @@ export interface ArchiveResult {
 
 type FieldType = 'timestamp' | 'date';
 
+type ArchiveQueryConfig = {
+  where?: string;
+  orderBy?: string;
+  replacements?: Record<string, any>;
+};
+
 interface TableConfig {
   tableName: string;
   timeField: string;
   retentionMonths: number;
   fieldType: FieldType;
+  query?: ArchiveQueryConfig;
 }
 
 export class DataArchiveService {
   // 硬编码常量
-  private static readonly BATCH_SIZE = 500;
-  private static readonly BATCH_DELAY_MS = 200;
+  private static readonly BATCH_SIZE = 990;
+  private static readonly BATCH_DELAY_MS = 100;
 
   private static readonly TABLE_CONFIGS: Record<string, TableConfig> = {
     ModelCalls: {
@@ -676,18 +703,31 @@ export class DataArchiveService {
       timeField: 'callTime',
       retentionMonths: RETENTION_MODEL_CALL_MONTHS,
       fieldType: 'timestamp',
+      query: {
+        orderBy: '"id" ASC',
+      },
     },
     ModelCallStats: {
       tableName: 'ModelCallStats',
       timeField: 'timestamp',
       retentionMonths: RETENTION_MODEL_CALL_STATS_MONTHS,
       fieldType: 'timestamp',
+      query: {
+        where: '"timeType" = :timeType',
+        replacements: { timeType: 'hour' },
+        orderBy: '"timestamp" ASC',
+      },
     },
     Usage: {
-      tableName: 'Usage',
+      tableName: 'Usages',
       timeField: 'createdAt',
       retentionMonths: RETENTION_USAGE_MONTHS,
       fieldType: 'date',
+      query: {
+        where: '"usageReportStatus" = :usageReportStatus',
+        replacements: { usageReportStatus: 'reported' },
+        orderBy: '"id" ASC',
+      },
     },
   };
 
@@ -742,7 +782,7 @@ export const dataArchiveService = new DataArchiveService();
 ```typescript
 // blocklets/core/api/src/crons/index.ts
 
-import { ARCHIVE_MODEL_DATA_CRON_TIME } from '@api/libs/env';
+import { ARCHIVE_MODEL_DATA_CRON_TIME, ENABLE_ARCHIVE_MODEL_DATA_CRON } from '@api/libs/env';
 import { executeArchiveTask } from './archive-task';
 
 // 在 jobs 数组中添加:
@@ -750,7 +790,7 @@ import { executeArchiveTask } from './archive-task';
   name: 'archive.model.data',
   time: ARCHIVE_MODEL_DATA_CRON_TIME, // 默认 0 0 2 * * *（含秒）
   fn: async () => {
-    if (shouldExecuteTask('archive.model.data cron')) {
+    if (ENABLE_ARCHIVE_MODEL_DATA_CRON && shouldExecuteTask('archive.model.data cron')) {
       logger.info('Executing archive task on cluster:', {
         instanceId: process.env.BLOCKLET_INSTANCE_ID
       });
@@ -768,7 +808,7 @@ import { executeArchiveTask } from './archive-task';
 import path from 'path';
 import lockfile from 'proper-lockfile';
 
-import { Config } from '../libs/env';
+import { Config, MIN_ARCHIVE_FREE_GB } from '../libs/env';
 import logger from '../libs/logger';
 import { ArchiveDatabase } from '../libs/archive-database';
 import { ArchiveResult, dataArchiveService } from '../libs/data-archive';
@@ -777,6 +817,11 @@ import ArchiveExecutionLog, { ArchiveTableName } from '../store/models/archive-e
 function getLockFilePath(): string {
   const dataDir = Config.dataDir || process.cwd();
   return path.join(dataDir, 'archive.lock');
+}
+
+async function getFreeDiskGb(targetPath: string): Promise<number> {
+  const stats = await fs.statfs(targetPath);
+  return (stats.bavail * stats.bsize) / (1024 ** 3);
 }
 
 async function logArchiveResult(tableName: ArchiveTableName, result: ArchiveResult): Promise<void> {
@@ -794,6 +839,7 @@ async function logArchiveResult(tableName: ArchiveTableName, result: ArchiveResu
 
 export async function executeArchiveTask(): Promise<void> {
   // 获取文件锁（stale=1h，retries=0），ENOENT 时先创建锁文件再重试
+  // 检查可用磁盘空间（低于 MIN_ARCHIVE_FREE_GB 则跳过归档）
   // 串行执行归档，记录 ArchiveExecutionLogs
   // 清理旧归档库，释放锁
 }
@@ -839,17 +885,17 @@ ORDER BY callTime DESC;
 | 执行方式 | 串行执行 | SQLite 单线程数据库,串行更安全可靠 |
 | 事务策略 | ATTACH 跨库事务 | INSERT + DELETE 在同一事务,原子操作 |
 | 并发控制 | 文件锁(proper-lockfile) | 防止多进程并发,简单可靠 |
-| 批间延迟 | 200ms (固定) | 避免影响用户请求,无需配置 |
-| 批量大小 | 500 条/批 (固定) | 减少单批处理量,降低锁定时间 |
-| 配置方式 | 环境变量 (共 5 个，含归档 Cron) | MVP 快速实现,无需 UI;后续可扩展 |
-| 保留期限 | ModelCall: 3个月<br>ModelCallStats: 6个月<br>Usage: 3个月 | ModelCall/Usage增长快保留3个月,Stats聚合数据保留6个月 |
-| 归档保留 | 默认 6 季度 (1.5年) | 自动清理超期归档库,空间可控 |
-| 失败处理 | 记录日志+ArchiveExecutionLog,明天重试 | 定时任务每天运行,无需即时重试 |
+| 批间延迟 | 100ms (固定) | 避免影响用户请求,无需配置 |
+| 批量大小 | 990 条/批 (固定) | 避免超过 SQLite 绑定参数上限 |
+| 配置方式 | 环境变量 (共 7 个，含归档 Cron/开关/磁盘阈值) | MVP 快速实现,无需 UI;后续可扩展 |
+| 保留期限 | ModelCall: 3个月<br>ModelCallStats: 6个月<br>Usages: 3个月 | ModelCall/Usage增长快保留3个月,Stats聚合数据保留6个月 |
+| 归档保留 | 默认 8 季度 (2年) | 自动清理超期归档库,空间可控 |
+| 失败处理 | 记录日志+ArchiveExecutionLogs,明天重试 | 定时任务每天运行,无需即时重试 |
 | 查询方式 | 手动 SQL 查询 | MVP 不提供 UI,降低复杂度 |
-| 监控方式 | 日志记录 + ArchiveExecutionLog | 记录关键指标,结构化历史记录 |
+| 监控方式 | 日志记录 + ArchiveExecutionLogs | 记录关键指标,结构化历史记录 |
 | 归档表结构 | 与主表完全相同 | 不添加额外字段,保持简单 |
-| 磁盘校验 | MVP 不校验 | SQLite 自动报错,监控预警更实用 |
-| 磁盘不足 | 通过自动清理预防 | 超期归档自动删除,空间可控 |
+| 磁盘校验 | 最小可用磁盘阈值检查 | 低于 MIN_ARCHIVE_FREE_GB 直接跳过归档 |
+| 磁盘不足 | 跳过归档 + 自动清理预防 | 超期归档自动删除,空间可控 |
 
 ### 冷存储库分库策略
 
@@ -866,7 +912,7 @@ ORDER BY callTime DESC;
 - 磁盘空间可控: 自动清理确保空间不会无限增长
 - 零运维: 超期数据自动删除，无需人工干预
 - 时间语义清晰: 季度比滚动槽位更易理解和审计
-- 文件数量适中: 保留 6 季度 = 6 个文件，不会过多
+- 文件数量适中: 保留 8 季度 = 8 个文件，不会过多
 
 ### 跨库操作方案
 
@@ -884,13 +930,12 @@ ORDER BY callTime DESC;
 
 ### 磁盘空间校验
 
-**决策**: MVP 阶段不主动校验磁盘空间
+**决策**: 归档前检查最小可用磁盘空间（MIN_ARCHIVE_FREE_GB）
 
 **理由**:
-- SQLite 磁盘不足时会自动报错并回滚事务
-- 预估"足够"空间困难，可能误判
+- 低于阈值直接跳过归档，避免写入失败导致频繁错误
+- 仍保留日志记录，方便排查
 - 通过监控磁盘使用率提前预警更实用
-- 错误信息记录到 ArchiveExecutionLog 便于排查
 
 **后续优化**:
 - 可在监控指标中加入归档库大小趋势
@@ -898,7 +943,7 @@ ORDER BY callTime DESC;
 
 ### 磁盘空间不足处理
 
-**决策**: 通过自动清理预防，超期归档自动删除
+**决策**: 低于阈值跳过归档 + 自动清理预防
 
 **考虑的方案**:
 1. 报错 + 人工清理 (原方案)
@@ -910,7 +955,7 @@ ORDER BY callTime DESC;
 - 仍可设为 0 禁用自动清理，满足特殊合规需求
 
 **运维建议**:
-- 默认保留 6 季度 (1.5 年)，可根据需要调整
+- 默认保留 8 季度 (2 年)，可根据需要调整
 - 设为 0 可禁用自动清理
 - 设置磁盘使用率监控告警（建议 80%）
 
@@ -921,11 +966,11 @@ ORDER BY callTime DESC;
 ### 包含功能
 ✅ ModelCall 表自动归档
 ✅ ModelCallStats 表自动归档
-✅ Usage 表自动归档
+✅ Usages 表自动归档
 ✅ 按季度创建归档库
 ✅ 定时任务每天凌晨执行
 ✅ 串行执行保证安全
-✅ 批量事务处理(500条/批)
+✅ 批量事务处理(990条/批)
 ✅ ATTACH 跨库事务保证原子性
 ✅ 自动清理超期归档库
 ✅ 基础日志记录
@@ -971,8 +1016,8 @@ ORDER BY callTime DESC;
 
 **缓解措施**:
 - 默认在 02:00:00 执行,通常为业务低峰期（可通过 ARCHIVE_MODEL_DATA_CRON_TIME 调整）
-- 批量处理,每批500条,避免长时间锁表
-- 批间延迟200ms,减少资源争用
+- 批量处理,每批990条,避免超过 SQLite 绑定参数上限
+- 批间延迟100ms,减少资源争用
 - SQLite 数据量不大(万级),影响可控
 
 **残余风险**: 如果默认 02:00:00 仍有高峰流量,可能需要调整执行时间
@@ -1077,7 +1122,7 @@ ORDER BY callTime DESC;
 
 ### 简化4: 硬编码批量大小
 - **原设计**: `ARCHIVE_BATCH_SIZE` 环境变量
-- **简化为**: 代码中 `const BATCH_SIZE = 500`
+- **简化为**: 代码中 `const BATCH_SIZE = 990`
 - **理由**: 没有具体场景需要调整,真需要时再改成可配置
 
 ### 简化5: 改为串行执行
@@ -1086,30 +1131,35 @@ ORDER BY callTime DESC;
 - **理由**: SQLite 单线程数据库,串行更安全,凌晨执行不需要争时间
 
 ### 简化效果
-- 环境变量保持少量（保留期限 3 个 + 归档 Cron + 保留季度）
+- 环境变量保持少量（保留期限 3 个 + 归档 Cron + 开关 + 保留季度 + 磁盘阈值）
 - 核心逻辑集中在 `DataArchiveService` 与 `ArchiveDatabase`
 - 归档流程保持串行与批处理，降低并发复杂度
 
 
 ## 13. Finalized Implementation Details
 
-> [!SYNCED] Last synced: 2026-02-02 from commit bb506eded61479071b229d5c32cd7b6725152495
+> [!SYNCED] Last synced: 2026-02-03 from 当前工作区（未指定提交）
 
 ### 归档执行与范围切分
 - 先查询 cutoff 之前的 `MIN/MAX`，按 UTC 季度边界拆分范围，可能跨多个归档库
-- `Usage.createdAt` 使用 UTC 字符串 `YYYY-MM-DD HH:mm:ss.SSS Z` 比较
+- `ModelCallStats` 仅归档 `timeType='hour'`
+- `Usages` 仅归档 `usageReportStatus='reported'`
+- `Usages.createdAt` 使用 UTC 字符串 `YYYY-MM-DD HH:mm:ss.SSS Z` 比较
 
 ### 事务与批处理
 - 每个季度执行 `ATTACH` + `BEGIN IMMEDIATE` + `INSERT/DELETE` + `COMMIT/ROLLBACK`，失败则回滚
-- 批大小 `BATCH_SIZE=500`（规避 SQLite 999 参数上限），批间延迟 `BATCH_DELAY_MS=200`
+- 批大小 `BATCH_SIZE=990`（避免超过 SQLite 999 绑定参数上限），批间延迟 `BATCH_DELAY_MS=100`
+- 每批使用 `SELECT changes()` 校验 INSERT/DELETE 数量一致
 
 ### 归档库管理
 - 归档目录：`{Config.dataDir}/archives`，文件名 `archive_YYYY_QN.db`（UTC 季度）
 - `ensureArchiveDbAndTable` 使用独立连接建表/补列，复制索引并跳过动态默认值
-- `cleanupOldArchives` 按 `ARCHIVE_RETENTION_QUARTERS` 保留最新 N 个季度
+- 对 `NOT NULL` 且无默认值的新增列会放宽约束并记录日志
+- `cleanupOldArchives` 按 `ARCHIVE_RETENTION_QUARTERS` 保留最新 N 个季度（默认 8）
 
 ### 任务调度与锁
-- Cron：`ARCHIVE_MODEL_DATA_CRON_TIME`，默认 `0 0 2 * * *`（6 段 Cron）
+- Cron：`ARCHIVE_MODEL_DATA_CRON_TIME`，默认 `0 0 2 * * *`（6 段 Cron），受 `ENABLE_ARCHIVE_MODEL_DATA_CRON` 控制
+- 低于 `MIN_ARCHIVE_FREE_GB` 时跳过归档
 - 锁文件：`{Config.dataDir}/archive.lock`，`proper-lockfile`，`stale=1h`，`retries=0`，`ENOENT` 时先创建锁文件再重试
 
 ### 归档执行日志
