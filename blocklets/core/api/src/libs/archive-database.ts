@@ -103,6 +103,10 @@ export class ArchiveDatabase {
     tableName: string,
     mainSequelize: Sequelize
   ): Promise<void> {
+    if (!['ModelCalls', 'ModelCallStats', 'Usages'].includes(tableName)) {
+      throw new Error(`Invalid archive table name: ${tableName}`);
+    }
+
     await fs.mkdir(path.dirname(archivePath), { recursive: true });
 
     const archiveSequelize = new Sequelize({
