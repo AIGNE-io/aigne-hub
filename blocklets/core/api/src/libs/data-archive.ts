@@ -79,7 +79,7 @@ export class DataArchiveService {
       retentionMonths: RETENTION_USAGE_MONTHS,
       fieldType: 'date',
       query: {
-        where: '"usageReportStatus" = :usageReportStatus',
+        where: '("usageReportStatus" = :usageReportStatus OR "userDid" IS NULL OR "appId" IS NULL)',
         replacements: { usageReportStatus: 'reported' },
         orderBy: '"id" ASC',
       },
@@ -114,21 +114,15 @@ export class DataArchiveService {
     const { tableName, retentionMonths } = config;
     const startTime = Date.now();
     const targetArchiveDbs: string[] = [];
+    const rangeErrors: Array<{ rangeKey: string; message: string }> = [];
+    let totalArchived = 0;
 
     // Use calculateCutoffDate to compute a precise calendar-month cutoff
     const cutoffDate = this.calculateCutoffDate(retentionMonths);
     const cutoffTimestamp = Math.floor(cutoffDate.getTime() / 1000);
 
     try {
-      let totalArchived = 0;
-
       const { ranges, dataRangeStart, dataRangeEnd } = await this.getQuarterRanges(config, cutoffTimestamp, cutoffDate);
-
-      for (const range of ranges) {
-        const archivePath = ArchiveDatabase.getArchivePath(range.key);
-        // eslint-disable-next-line no-await-in-loop
-        await this.ensureArchiveTables(archivePath);
-      }
 
       for (const range of ranges) {
         const dbName = ArchiveDatabase.getDbName(range.key);
@@ -136,24 +130,39 @@ export class DataArchiveService {
           targetArchiveDbs.push(dbName);
         }
 
-        // eslint-disable-next-line no-await-in-loop
-        const archivedCount = await this.archiveQuarter(config, range);
-        totalArchived += archivedCount;
+        const archivePath = ArchiveDatabase.getArchivePath(range.key);
+
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          await this.ensureArchiveTables(archivePath);
+          // eslint-disable-next-line no-await-in-loop
+          const archivedCount = await this.archiveQuarter(config, range);
+          totalArchived += archivedCount;
+        } catch (error) {
+          const message = (error as Error).message || 'Unknown error';
+          rangeErrors.push({ rangeKey: range.key, message });
+          logger.error(`Failed to archive ${tableName} for quarter ${range.key}`, { error });
+        }
       }
 
+      const duration = (Date.now() - startTime) / 1000;
+      const errorMessage =
+        rangeErrors.length > 0 ? rangeErrors.map((item) => `${item.rangeKey}: ${item.message}`).join('; ') : undefined;
+
       return {
-        success: true,
+        success: rangeErrors.length === 0,
         archivedCount: totalArchived,
-        duration: (Date.now() - startTime) / 1000,
+        duration,
         dataRangeStart,
         dataRangeEnd,
         targetArchiveDbs,
+        errorMessage,
       };
     } catch (error) {
       logger.error(`Failed to archive ${tableName}`, { error });
       return {
         success: false,
-        archivedCount: 0,
+        archivedCount: totalArchived,
         errorMessage: (error as Error).message,
         duration: (Date.now() - startTime) / 1000,
         targetArchiveDbs,

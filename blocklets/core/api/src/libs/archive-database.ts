@@ -143,8 +143,6 @@ export class ArchiveDatabase {
 
       await archiveSequelize.query(`CREATE TABLE "${tableName}" (${columnDefs})`);
 
-      await this.cloneIndexes(mainSequelize, archiveSequelize, tableName);
-
       logger.info('Archive table created', {
         table: tableName,
         database: path.basename(archivePath),
@@ -208,44 +206,6 @@ export class ArchiveDatabase {
         });
       }
       logger.info('Archive table column added', { table: tableName, column: col.name });
-    }
-  }
-
-  /**
-   * Clone indexes from source tables to the archive DB
-   */
-  private static async cloneIndexes(
-    mainSequelize: Sequelize,
-    targetSequelize: Sequelize,
-    tableName: string
-  ): Promise<void> {
-    const indexList = (await mainSequelize.query(`PRAGMA main.index_list("${tableName}")`, {
-      type: QueryTypes.SELECT,
-    })) as Array<{ name: string; unique: number }>;
-
-    for (const index of indexList) {
-      if (index.name.startsWith('sqlite_autoindex')) {
-        continue;
-      }
-
-      // eslint-disable-next-line no-await-in-loop
-      const indexInfo = (await mainSequelize.query(`PRAGMA main.index_info("${index.name}")`, {
-        type: QueryTypes.SELECT,
-      })) as Array<{ name: string }>;
-
-      const columns = indexInfo.map((row) => row.name).filter(Boolean);
-      if (columns.length === 0) {
-        continue;
-      }
-
-      const columnsStr = columns.map((c) => `"${c}"`).join(', ');
-      const uniqueStr = index.unique === 1 ? 'UNIQUE' : '';
-      const newIndexName = `idx_${tableName}_${columns.join('_')}`;
-
-      // eslint-disable-next-line no-await-in-loop
-      await targetSequelize.query(
-        `CREATE ${uniqueStr} INDEX IF NOT EXISTS "${newIndexName}" ON "${tableName}" (${columnsStr})`
-      );
     }
   }
 }

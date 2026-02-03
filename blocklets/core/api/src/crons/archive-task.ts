@@ -50,39 +50,6 @@ async function logArchiveResult(tableName: ArchiveTableName, result: ArchiveResu
  * Use a file lock to prevent concurrent execution across processes/instances
  */
 export async function executeArchiveTask(): Promise<void> {
-  const lockFilePath = getLockFilePath();
-  let releaseLock: (() => Promise<void>) | null = null;
-
-  try {
-    // Try to acquire the lock (1-hour stale timeout)
-    releaseLock = await lockfile.lock(lockFilePath, {
-      stale: 3600000, // Lock automatically expires after 1 hour
-      retries: 0, // No retries, fail fast
-    });
-  } catch (err) {
-    const error = err as NodeJS.ErrnoException;
-    if (error.code === 'ELOCKED') {
-      logger.info('Another archive process is running, skip this execution');
-      return;
-    }
-    // If the lock file doesn't exist, create it
-    if (error.code === 'ENOENT') {
-      await fs.writeFile(lockFilePath, '');
-      try {
-        releaseLock = await lockfile.lock(lockFilePath, {
-          stale: 3600000,
-          retries: 0,
-        });
-      } catch (retryErr) {
-        logger.error('Failed to acquire archive lock after creating lock file', { error: retryErr });
-        return;
-      }
-    } else {
-      logger.error('Failed to acquire archive lock', { error: err });
-      return;
-    }
-  }
-
   const dataDir = Config.dataDir || process.cwd();
   try {
     const freeGb = await getFreeDiskGb(dataDir);
@@ -98,10 +65,30 @@ export async function executeArchiveTask(): Promise<void> {
     logger.warn('Failed to check free disk space for archive task', { dataDir, error });
   }
 
-  const startTime = Date.now();
-  logger.info('Archive task started');
+  const lockFilePath = getLockFilePath();
+  let releaseLock: (() => Promise<void>) | null = null;
 
   try {
+    // Try to acquire the lock (1-hour stale timeout)
+    releaseLock = await lockfile.lock(lockFilePath, {
+      stale: 3600000, // Lock automatically expires after 1 hour
+      retries: 0, // No retries, fail fast
+      realpath: false, // Skip realpath resolution to allow locking non-existent target files
+    });
+  } catch (err) {
+    const error = err as NodeJS.ErrnoException;
+    if (error.code === 'ELOCKED') {
+      logger.info('Another archive process is running, skip this execution');
+      return;
+    }
+    logger.error('Failed to acquire archive lock', { error: err });
+    return;
+  }
+
+  try {
+    const startTime = Date.now();
+    logger.info('Archive task started');
+
     // Archive three tables sequentially (SQLite is single-threaded; serial is safer)
     const modelCallsResult = await dataArchiveService.archiveModelCalls();
     await logArchiveResult('ModelCalls', modelCallsResult);
