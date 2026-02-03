@@ -265,6 +265,8 @@ describe('ArchiveDatabase', () => {
     const dirSpy = spyOn(ArchiveDatabase, 'getArchiveDir').mockReturnValue(tempDir);
 
     const files = [
+      'archive_2022_Q3.db',
+      'archive_2022_Q4.db',
       'archive_2023_Q1.db',
       'archive_2023_Q2.db',
       'archive_2023_Q3.db',
@@ -280,10 +282,10 @@ describe('ArchiveDatabase', () => {
 
     const deleted = await ArchiveDatabase.cleanupOldArchives();
 
-    expect(deleted.length).toBe(files.length - 6);
+    expect(deleted.length).toBe(files.length - 8);
 
     const remaining = (await fs.readdir(tempDir)).filter((file) => /^archive_\d{4}_Q[1-4]\.db$/.test(file));
-    expect(remaining.length).toBe(6);
+    expect(remaining.length).toBe(8);
 
     dirSpy.mockRestore();
     await fs.rm(tempDir, { recursive: true, force: true });
