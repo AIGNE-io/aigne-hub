@@ -431,7 +431,7 @@ export class DataArchiveService {
    */
   private calculateCutoffDate(retentionMonths: number): Date {
     const months = Number.isFinite(retentionMonths) && retentionMonths >= 0 ? retentionMonths : 6;
-    return dayjs().subtract(months, 'month').toDate();
+    return dayjs.utc().subtract(months, 'month').toDate();
   }
 
   /**
