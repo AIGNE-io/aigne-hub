@@ -73,15 +73,6 @@ function isAdminRole(role?: string): boolean {
   return role === 'owner' || role === 'admin';
 }
 
-function decodeRouteParam(value?: string): string | undefined {
-  if (!value) return value;
-  try {
-    return decodeURIComponent(value);
-  } catch {
-    return value;
-  }
-}
-
 /**
  * GET /api/usage/quota
  * Get user's credit quota information
@@ -197,10 +188,10 @@ router.get('/projects', user, async (req, res) => {
 });
 
 /**
- * GET /api/usage/projects/trends
+ * GET /api/usage/projects/group-trends
  * Get project-grouped usage trends over time (current user)
  */
-router.get('/projects/trends', user, async (req, res) => {
+router.get('/projects/group-trends', user, async (req, res) => {
   try {
     const userDid = req.user?.did;
     if (!userDid) {
@@ -322,10 +313,10 @@ router.post('/stats/backfill', user, async (req, res) => {
 });
 
 /**
- * GET /api/usage/projects/:appDid/trends
+ * GET /api/usage/projects/trends
  * Get trends for a specific project
  */
-router.get('/projects/:appDid(.*)/trends', user, async (req, res) => {
+router.get('/projects/trends', user, async (req, res) => {
   try {
     const userDid = req.user?.did;
     if (!userDid) {
@@ -337,7 +328,7 @@ router.get('/projects/:appDid(.*)/trends', user, async (req, res) => {
     }
     const allUsers = allUsersFlag;
 
-    const appDidParam = decodeRouteParam(req.params.appDid);
+    const appDidParam = typeof req.query.appDid === 'string' ? req.query.appDid : undefined;
     const appDid = normalizeProjectAppDid(appDidParam);
     const startTime = parseInt(req.query.startTime as string, 10) || Math.floor(Date.now() / 1000) - 30 * 24 * 3600;
     const rawEndTime = parseInt(req.query.endTime as string, 10) || Math.floor(Date.now() / 1000);
@@ -392,10 +383,10 @@ router.get('/projects/:appDid(.*)/trends', user, async (req, res) => {
 });
 
 /**
- * GET /api/usage/projects/:appDid/calls
+ * GET /api/usage/projects/calls
  * Get call history for a specific project (real-time query with pagination)
  */
-router.get('/projects/:appDid(.*)/calls', user, async (req, res) => {
+router.get('/projects/calls', user, async (req, res) => {
   try {
     const userDid = req.user?.did;
     if (!userDid) {
@@ -407,7 +398,7 @@ router.get('/projects/:appDid(.*)/calls', user, async (req, res) => {
     }
     const allUsers = allUsersFlag;
 
-    const appDidParam = decodeRouteParam(req.params.appDid);
+    const appDidParam = typeof req.query.appDid === 'string' ? req.query.appDid : undefined;
     const appDid = normalizeProjectAppDid(appDidParam);
     const startTime = parseInt(req.query.startTime as string, 10) || Math.floor(Date.now() / 1000) - 30 * 24 * 3600;
     const endTime = parseInt(req.query.endTime as string, 10) || Math.floor(Date.now() / 1000);

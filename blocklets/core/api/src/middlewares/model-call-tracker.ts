@@ -1,5 +1,5 @@
 import { getReqModel } from '@api/libs/ai-provider';
-import { CREDIT_DECIMAL_PLACES, normalizeProjectAppDid } from '@api/libs/env';
+import { BLOCKLET_APP_PID, CREDIT_DECIMAL_PLACES } from '@api/libs/env';
 import logger from '@api/libs/logger';
 import { ensureModelWithProvider, getProvidersForModel, modelHasProvider } from '@api/libs/provider-rotation';
 import { getCurrentUnixTimestamp } from '@api/libs/timestamp';
@@ -122,9 +122,18 @@ export function createModelCallMiddleware(callType: CallType) {
     }
 
     const rawAppDid = req.headers['x-aigne-hub-client-did'];
-    const normalizedAppDid = normalizeProjectAppDid(typeof rawAppDid === 'string' ? rawAppDid : null);
+    const headerAppDid =
+      typeof rawAppDid === 'string' && rawAppDid.trim() !== '' && rawAppDid.trim() !== 'null'
+        ? decodeURIComponent(rawAppDid.trim())
+        : '';
+    const accessKeyName =
+      // @ts-ignore
+      req.user?.method === 'accessKey' && typeof req.user.fullName === 'string' ? req.user.fullName.trim() : '';
+    const accessKeyAppDid = accessKeyName ? `${userDid}-${accessKeyName}` : '';
+    const appDid = headerAppDid || accessKeyAppDid || BLOCKLET_APP_PID || '';
+    const appName = !headerAppDid && accessKeyName ? accessKeyName : undefined;
     req.appClient = {
-      appId: normalizedAppDid || '',
+      appId: appDid,
       userDid,
     };
 
@@ -133,8 +142,9 @@ export function createModelCallMiddleware(callType: CallType) {
         type: callType,
         model,
         userDid,
-        appDid: normalizedAppDid ?? undefined,
+        appDid: appDid || undefined,
         requestId: req.headers['x-request-id'] as string,
+        appName,
         usageMetrics,
         metadata: {
           endpoint: req.path,
@@ -186,6 +196,7 @@ async function createModelCallContext({
   userDid,
   appDid,
   requestId,
+  appName,
   metadata = {},
   usageMetrics = {},
 }: {
@@ -194,6 +205,7 @@ async function createModelCallContext({
   userDid: string;
   appDid?: string;
   requestId?: string;
+  appName?: string;
   metadata?: Record<string, any>;
   usageMetrics?: Record<string, any>;
 }): Promise<ModelCallContext | null> {
@@ -235,7 +247,7 @@ async function createModelCallContext({
 
     // Push project info fetch job to queue (non-blocking, with deduplication)
     if (appDid) {
-      pushProjectFetchJob(appDid);
+      pushProjectFetchJob(appDid, { appName });
     }
 
     logger.info('Created processing model call record', {
