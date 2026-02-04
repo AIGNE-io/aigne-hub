@@ -5,6 +5,7 @@ import { getQueue } from './queue';
 
 interface ProjectQueueJob {
   appDid: string;
+  appName?: string;
 }
 
 // Track pending appDids to avoid duplicate jobs
@@ -19,7 +20,7 @@ const projectsQueue = getQueue<ProjectQueueJob>({
     retryDelay: 5000,
   },
   onJob: async (data: ProjectQueueJob) => {
-    const { appDid } = data;
+    const { appDid, appName } = data;
 
     try {
       logger.info('Fetching project info', { appDid });
@@ -36,6 +37,13 @@ const projectsQueue = getQueue<ProjectQueueJob>({
           pendingAppDids.delete(appDid);
           return;
         }
+      }
+
+      if (appName?.trim()) {
+        const resolvedAppName = appName.trim();
+        await Project.upsertProject(appDid, resolvedAppName, '', '');
+        logger.info('Saved project info from job payload', { appDid, appName: resolvedAppName });
+        return;
       }
 
       // Fetch app info from external service
@@ -63,7 +71,7 @@ const projectsQueue = getQueue<ProjectQueueJob>({
  * @param appDid - The blocklet DID to fetch info for
  * @param delay - Optional delay in seconds before processing
  */
-export function pushProjectFetchJob(appDid: string, delay = 0): void {
+export function pushProjectFetchJob(appDid: string, options?: { appName?: string }, delay = 0): void {
   if (!appDid) return;
 
   // Deduplicate: skip if already in pending queue
@@ -77,11 +85,11 @@ export function pushProjectFetchJob(appDid: string, delay = 0): void {
 
   // Push to queue
   projectsQueue.push({
-    job: { appDid },
+    job: { appDid, appName: options?.appName },
     delay,
   });
 
-  logger.debug('Pushed project fetch job to queue', { appDid, delay });
+  logger.debug('Pushed project fetch job to queue', { appDid, delay, appName: options?.appName });
 }
 
 /**

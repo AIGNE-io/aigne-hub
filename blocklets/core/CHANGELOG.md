@@ -1,3 +1,7 @@
+## 0.8.4 (2026-2-4)
+
+- feat: update appDid handling and usage routes for improved clarity and functionality
+
 ## 0.8.3 (2026-2-2)
 
 - feat: implement data retention

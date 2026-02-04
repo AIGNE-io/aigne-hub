@@ -511,7 +511,7 @@ export function useProjectGroupedTrends(params: {
     error,
     runAsync: refetch,
   } = useRequest<{ projects: ProjectTrendSummary[]; trends: ProjectGroupedTrend[]; granularity: 'hour' | 'day' }, []>(
-    () => api.get('/api/usage/projects/trends', { params: actualParams }).then((res) => res.data),
+    () => api.get('/api/usage/projects/group-trends', { params: actualParams }).then((res) => res.data),
     {
       refreshDeps: [
         actualParams.startTime,
@@ -628,10 +628,7 @@ export function useProjectTrends(
     error,
     runAsync: refetch,
   } = useRequest<{ project?: ProjectTrendSummary | null; trends: ProjectTrend[] }, []>(
-    () =>
-      api
-        .get(`/api/usage/projects/${encodeURIComponent(appDid)}/trends`, { params: actualParams })
-        .then((res) => res.data),
+    () => api.get('/api/usage/projects/trends', { params: { ...actualParams, appDid } }).then((res) => res.data),
     {
       refreshDeps: [
         appDid,
