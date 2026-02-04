@@ -122,10 +122,16 @@ export function createModelCallMiddleware(callType: CallType) {
     }
 
     const rawAppDid = req.headers['x-aigne-hub-client-did'];
-    const headerAppDid =
-      typeof rawAppDid === 'string' && rawAppDid.trim() !== '' && rawAppDid.trim() !== 'null'
-        ? decodeURIComponent(rawAppDid.trim())
-        : '';
+    let headerAppDid = '';
+    if (typeof rawAppDid === 'string') {
+      const trimmed = rawAppDid.trim();
+      try {
+        headerAppDid = decodeURIComponent(trimmed);
+      } catch {
+        // Fallback to raw header value if decoding fails.
+        headerAppDid = trimmed;
+      }
+    }
     const accessKeyName =
       // @ts-ignore
       req.user?.method === 'accessKey' && typeof req.user.fullName === 'string' ? req.user.fullName.trim() : '';
