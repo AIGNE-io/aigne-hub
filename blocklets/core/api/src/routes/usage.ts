@@ -2,7 +2,7 @@ import { sessionMiddleware } from '@blocklet/sdk/lib/middlewares/session';
 import { fromUnitToToken } from '@ocap/util';
 import { Router } from 'express';
 
-import { createModelCallStats } from '../crons/model-call-stats';
+import { createHourlyModelCallStats } from '../crons/model-call-stats';
 import { normalizeProjectAppDid } from '../libs/env';
 import logger from '../libs/logger';
 import { getUserCredits } from '../libs/payment';
@@ -311,7 +311,7 @@ router.post('/stats/backfill', user, async (req, res) => {
       const rangeEnd = day + 86400 - 1;
       ranges.push({ startTime: rangeStart, endTime: rangeEnd });
       processed += 24;
-      await createModelCallStats(rangeStart, rangeEnd, normalizedUserDid, true);
+      await createHourlyModelCallStats(rangeStart, rangeEnd, normalizedUserDid, true);
     }
 
     return res.json({ processed, ranges });
