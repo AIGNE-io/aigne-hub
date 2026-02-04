@@ -3,7 +3,7 @@ import { fromUnitToToken } from '@ocap/util';
 import { Router } from 'express';
 import Joi from 'joi';
 
-import { createModelCallStats } from '../crons/model-call-stats';
+import { createHourlyModelCallStats } from '../crons/model-call-stats';
 import { normalizeProjectAppDid } from '../libs/env';
 import logger from '../libs/logger';
 import { getUserCredits } from '../libs/payment';
@@ -255,7 +255,8 @@ router.post('/stats/backfill', user, async (req, res) => {
 
     for (let day = startDay; day <= endDay; day += 86400) {
       ranges.push({ startTime: day, endTime: day + 86399 });
-      await createModelCallStats(day, day + 86399, normalizedUserDid, true);
+      // eslint-disable-next-line no-await-in-loop
+      await createHourlyModelCallStats(day, day + 86399, normalizedUserDid, true);
     }
 
     return res.json({ processed: ranges.length * 24, ranges });

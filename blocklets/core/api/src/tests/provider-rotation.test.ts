@@ -8,6 +8,7 @@ import { modelRegistry } from '@api/libs/model-registry';
 import { ensureModelWithProvider, getNextProviderForModel } from '@api/libs/provider-rotation';
 import AiModelRate from '@api/store/models/ai-model-rate';
 import AiProvider from '@api/store/models/ai-provider';
+import axios from 'axios';
 import { beforeAll, beforeEach, describe, expect, spyOn, test } from 'bun:test';
 import { Op } from 'sequelize';
 
@@ -251,6 +252,14 @@ describe('libs/ai-provider - Provider Rotation', () => {
   });
 
   describe('modelRegistry cache', () => {
+    const mockLiteLLMData = {
+      'openai/gpt-4o': {
+        litellm_provider: 'openai',
+        mode: 'chat',
+        max_tokens: 8192,
+      },
+    };
+
     test('should return cache status information', () => {
       const cacheStatus = modelRegistry.getCacheStatus();
 
@@ -268,11 +277,18 @@ describe('libs/ai-provider - Provider Rotation', () => {
     });
 
     test('should have valid cache after fetching model data', async () => {
-      await modelRegistry.getAllModels();
-      const cacheStatus = modelRegistry.getCacheStatus();
+      modelRegistry.clearCache();
+      const axiosSpy = spyOn(axios, 'get').mockResolvedValue({ data: mockLiteLLMData } as any);
 
-      expect(cacheStatus.cached).toBe(true);
-      expect(cacheStatus.totalModels).toBeGreaterThan(0);
+      try {
+        await modelRegistry.getAllModels();
+        const cacheStatus = modelRegistry.getCacheStatus();
+
+        expect(cacheStatus.cached).toBe(true);
+        expect(cacheStatus.totalModels).toBeGreaterThan(0);
+      } finally {
+        axiosSpy.mockRestore();
+      }
     });
   });
 

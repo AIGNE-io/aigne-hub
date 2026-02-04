@@ -1,6 +1,6 @@
-import { findImageModel, findVideoModel, parseModel } from '@aigne/aigne-hub';
+import { AIGNEHubChatModel, findImageModel, findVideoModel, parseModel } from '@aigne/aigne-hub';
 import { AIGNE, ChatModelOutput, Message, imageModelInputSchema, videoModelInputSchema } from '@aigne/core';
-import { checkArguments, pick } from '@aigne/core/utils/type-utils';
+import { checkArguments, pick, tryOrThrow } from '@aigne/core/utils/type-utils';
 import { AIGNEHTTPServer, invokePayloadSchema } from '@aigne/transport/http-server/index';
 import { getModelNameWithProvider, getOpenAIV2, getReqModel } from '@api/libs/ai-provider';
 import {
@@ -283,6 +283,11 @@ router.post(
       type: 'chatCompletion',
       handler: async (req, res) => {
         const value = aigneHubModelBodyValidate(req.body);
+
+        tryOrThrow(
+          () => checkArguments('chat', new AIGNEHubChatModel({}).inputSchema, value.input),
+          (error) => new CustomError(400, error.message)
+        );
 
         const userDid = req.user?.did;
 
