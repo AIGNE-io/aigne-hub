@@ -2,7 +2,7 @@ import express, { Express } from 'express';
 import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { paymentClient } from '../../../api/src/libs/payment';
+import { ensureMeter, paymentClient } from '../../../api/src/libs/payment';
 import creditRouter from '../../../api/src/routes/credit';
 
 // Mock dependencies
@@ -12,6 +12,7 @@ vi.mock('../../../api/src/libs/payment', () => ({
       create: vi.fn(),
     },
   },
+  ensureMeter: vi.fn(),
 }));
 
 vi.mock('@blocklet/sdk/lib/middlewares/session', () => ({
@@ -33,6 +34,7 @@ describe('POST /api/credit/grant', () => {
     app.use(express.json());
     app.use('/api/credit', creditRouter);
     vi.clearAllMocks();
+    vi.mocked(ensureMeter).mockResolvedValue({ currency_id: 'currency_abc' } as any);
   });
 
   afterEach(() => {
@@ -46,7 +48,7 @@ describe('POST /api/credit/grant', () => {
         id: 'grant_123',
         amount: '100',
         customer_id: 'z1user123',
-        grantor_did: 'z1grantor456',
+        grantor_by: 'z1grantor456',
       };
 
       vi.mocked(paymentClient.creditGrants.create).mockResolvedValue(mockResult as any);
@@ -69,10 +71,12 @@ describe('POST /api/credit/grant', () => {
 
       expect(paymentClient.creditGrants.create).toHaveBeenCalledWith({
         customer_id: 'z1user123',
+        currency_id: 'currency_abc',
         amount: '100',
-        reason: 'Credit grant from AIGNE Hub',
-        grantor_did: 'z1grantor456',
+        category: 'promotional',
+        granted_by: 'z1grantor456',
         metadata: {
+          reason: 'Credit grant from AIGNE Hub',
           grantedBy: 'z1test-user-did',
           grantedAt: expect.any(String),
         },
@@ -85,7 +89,7 @@ describe('POST /api/credit/grant', () => {
         id: 'grant_456',
         amount: '50',
         customer_id: 'z1user789',
-        grantor_did: 'z1grantor123',
+        grantor_by: 'z1grantor123',
       };
 
       vi.mocked(paymentClient.creditGrants.create).mockResolvedValue(mockResult as any);
@@ -104,7 +108,9 @@ describe('POST /api/credit/grant', () => {
       expect(response.body.success).toBe(true);
       expect(paymentClient.creditGrants.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          reason: 'Promotional credit for new user',
+          metadata: expect.objectContaining({
+            reason: 'Promotional credit for new user',
+          }),
         })
       );
     });
@@ -115,7 +121,7 @@ describe('POST /api/credit/grant', () => {
         id: 'grant_789',
         amount: '1000000',
         customer_id: 'z1user999',
-        grantor_did: 'z1grantor999',
+        grantor_by: 'z1grantor999',
       };
 
       vi.mocked(paymentClient.creditGrants.create).mockResolvedValue(mockResult as any);
@@ -143,7 +149,7 @@ describe('POST /api/credit/grant', () => {
         id: 'grant_empty',
         amount: '25',
         customer_id: 'z1user111',
-        grantor_did: 'z1grantor111',
+        grantor_by: 'z1grantor111',
       };
 
       vi.mocked(paymentClient.creditGrants.create).mockResolvedValue(mockResult as any);
@@ -162,7 +168,9 @@ describe('POST /api/credit/grant', () => {
       expect(response.body.success).toBe(true);
       expect(paymentClient.creditGrants.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          reason: 'Credit grant from AIGNE Hub',
+          metadata: expect.objectContaining({
+            reason: 'Credit grant from AIGNE Hub',
+          }),
         })
       );
     });
@@ -319,7 +327,7 @@ describe('POST /api/credit/grant', () => {
         id: 'grant_middleware',
         amount: '10',
         customer_id: 'z1user_mw',
-        grantor_did: 'z1grantor_mw',
+        grantor_by: 'z1grantor_mw',
       };
 
       vi.mocked(paymentClient.creditGrants.create).mockResolvedValue(mockResult as any);
@@ -343,7 +351,7 @@ describe('POST /api/credit/grant', () => {
         id: 'grant_session',
         amount: '15',
         customer_id: 'z1user_sess',
-        grantor_did: 'z1grantor_sess',
+        grantor_by: 'z1grantor_sess',
       };
 
       vi.mocked(paymentClient.creditGrants.create).mockResolvedValue(mockResult as any);

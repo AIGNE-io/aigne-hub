@@ -121,8 +121,24 @@ export function createModelCallMiddleware(callType: CallType) {
       };
     }
 
+    // Determine appDid: prioritize header, then accessKey fullName, then fallback to project DID
     const rawAppDid = req.headers['x-aigne-hub-client-did'];
-    const normalizedAppDid = normalizeProjectAppDid(typeof rawAppDid === 'string' ? rawAppDid : null);
+    const headerAppDid = typeof rawAppDid === 'string' ? rawAppDid.trim() : '';
+    let normalizedAppDid: string | null = null;
+
+    if (headerAppDid && headerAppDid !== 'null') {
+      normalizedAppDid = headerAppDid;
+    } else {
+      // @ts-ignore - req.user may have method and fullName from accessKey auth
+      const userMethod = req.user?.method;
+      const userFullName = req.user?.fullName;
+      if (userMethod === 'accessKey' && userFullName) {
+        normalizedAppDid = userFullName;
+        logger.info('[ModelCallMiddleware] using accessKey fullName as appDid', { userFullName });
+      } else {
+        normalizedAppDid = normalizeProjectAppDid();
+      }
+    }
     req.appClient = {
       appId: normalizedAppDid || '',
       userDid,

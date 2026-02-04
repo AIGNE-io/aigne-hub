@@ -3,15 +3,29 @@ import axios from 'axios';
 
 interface DailyGrantStat {
   date: string; // YYYY-MM-DD
-  granted_amount: string;
-  used_amount: string; // Grant credits consumed on this day
-  remaining_amount: string;
+  currency_id: string;
+  category: string;
+  grant_count: number;
+  total_granted: number;
+  total_remaining: number;
+  total_consumed: string;
+}
+
+interface GrantUsageCurrency {
+  id: string;
+  name: string;
+  symbol: string;
+  decimal: number;
 }
 
 interface GrantUsageSummary {
-  total_granted_amount: string;
-  total_used_amount: string;
-  total_remaining_amount: string;
+  currency_id: string;
+  currency: GrantUsageCurrency;
+  category: string;
+  grant_count: number;
+  total_granted: string;
+  total_remaining: string;
+  total_consumed: string;
 }
 
 interface GrantUsageStats {
@@ -23,57 +37,43 @@ interface UseGrantUsageParams {
   startTime?: number;
   endTime?: number;
   grantorDid?: string; // Project DID (appDid)
+  timezoneOffset?: number;
+  enabled?: boolean;
 }
 
-export function useGrantUsage({ startTime, endTime, grantorDid }: UseGrantUsageParams) {
+export function useGrantUsage({ startTime, endTime, grantorDid, timezoneOffset, enabled = true }: UseGrantUsageParams) {
   return useRequest(
     async () => {
-      if (!startTime || !endTime || !grantorDid) {
-        return {
-          summary: {
-            total_granted_amount: '0',
-            total_used_amount: '0',
-            total_remaining_amount: '0',
-          },
-          daily_stats: [],
-        };
+      if (!enabled || !startTime || !endTime) {
+        return null;
       }
 
       try {
         const response = await axios.get<GrantUsageStats>('/api/credit/grant-usage', {
-          params: { startTime, endTime, grantorDid },
+          params: {
+            startTime,
+            endTime,
+            ...(grantorDid && { grantorDid }),
+            ...(timezoneOffset !== undefined && { timezoneOffset }),
+          },
         });
 
         // Silent degradation on failure
         if ('success' in response.data && (response.data as any).success === false) {
           console.warn('Grant usage query failed:', (response.data as any).error);
-          return {
-            summary: {
-              total_granted_amount: '0',
-              total_used_amount: '0',
-              total_remaining_amount: '0',
-            },
-            daily_stats: [],
-          };
+          return null;
         }
 
         return response.data;
       } catch (err: any) {
         console.error('Failed to fetch grant usage:', err);
-        // Silent degradation - return empty data
-        return {
-          summary: {
-            total_granted_amount: '0',
-            total_used_amount: '0',
-            total_remaining_amount: '0',
-          },
-          daily_stats: [],
-        };
+        // Silent degradation - return null
+        return null;
       }
     },
     {
-      refreshDeps: [startTime, endTime, grantorDid],
-      ready: !!startTime && !!endTime && !!grantorDid,
+      refreshDeps: [startTime, endTime, grantorDid, timezoneOffset, enabled],
+      ready: enabled,
     }
   );
 }

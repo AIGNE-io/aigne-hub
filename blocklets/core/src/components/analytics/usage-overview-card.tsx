@@ -4,21 +4,22 @@ import { AttachMoney, InfoOutlined, QueryStats } from '@mui/icons-material';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import { Box, ButtonBase, Card, Stack, Tooltip, Typography } from '@mui/material';
 import { alpha, useTheme } from '@mui/material/styles';
+import { fromUnitToToken } from '@ocap/util';
 import BigNumber from 'bignumber.js';
 import type { Dispatch, SetStateAction } from 'react';
 import { useMemo, useState } from 'react';
 
+import { useGrantUsage } from '../../hooks/use-grant-usage';
 import dayjs from '../../libs/dayjs';
 import type { ProjectGroupedTrend, ProjectTrendSummary, UsageTrend } from '../../pages/customer/hooks';
 import { DateRangePicker } from './date-range-picker';
 import { ProjectUsageCharts } from './project-usage-charts';
-import { UsageOverviewSkeleton, useSmartLoading } from './skeleton';
+import { UsageOverviewSkeleton, toUTCTimestamp, useSmartLoading } from './skeleton';
 import { UsageChartMetric, UsageCharts } from './usage-charts';
-import type { DailyStats } from './usage-charts';
 
 export interface UsageOverviewCardProps {
   title?: string;
-  allUsers?: boolean;
+  isAdmin?: boolean;
   dateRange: {
     start: dayjs.Dayjs;
     end: dayjs.Dayjs;
@@ -89,20 +90,9 @@ const sumProjectGroupedTrends = (trends?: ProjectGroupedTrend[]) => {
   );
 };
 
-const toDailyStats = (trends?: UsageTrend[]): DailyStats[] => {
-  if (!trends?.length) return [];
-  return trends.map((trend) => ({
-    date: dayjs.unix(trend.timestamp).toISOString(),
-    totalCredits: trend.totalCredits || 0,
-    totalCalls: trend.calls || 0,
-    totalUsage: trend.totalUsage || 0,
-    avgDuration: trend.avgDuration || 0,
-  }));
-};
-
 export function UsageOverviewCard({
   title,
-  allUsers = false,
+  isAdmin = false,
   dateRange,
   projectTrends,
   previousProjectTrends,
@@ -114,16 +104,26 @@ export function UsageOverviewCard({
   const { t } = useLocaleContext();
   const theme = useTheme();
   const creditPrefix = window.blocklet?.preferences?.creditPrefix || '';
+  const timezoneOffset = new Date().getTimezoneOffset();
 
   const [selectedMetric, setSelectedMetric] = useState<UsageChartMetric>('credits');
+
+  // Fetch grant usage data from API (global, no grantorDid filter)
+  const { data: grantUsageData } = useGrantUsage({
+    startTime: toUTCTimestamp(dateRange.start),
+    endTime: toUTCTimestamp(dateRange.end, true),
+    timezoneOffset,
+    enabled: isAdmin,
+  });
   const rangeStart = dateRange.start.startOf('day');
   const rangeEnd = dateRange.end.endOf('day');
   const rangeDays = Math.max(1, rangeEnd.diff(rangeStart, 'day') + 1);
   const chartGranularity = rangeDays <= 1 ? 'hour' : 'day';
-  const currentTrends = allUsers ? usageTrends : projectTrends;
+  const currentTrends = isAdmin ? usageTrends : projectTrends;
+  const canShowGrantBreakdown = isAdmin && chartGranularity === 'day';
 
   const chartTrends = useMemo(() => {
-    if (!allUsers) return projectTrends;
+    if (!isAdmin) return projectTrends;
     if (!usageTrends?.trends) return undefined;
     const overallKey = '__all__';
     const trends = usageTrends.trends.map((trend) => ({
@@ -143,10 +143,10 @@ export function UsageOverviewCard({
       trends,
       granularity: chartGranularity,
     };
-  }, [allUsers, chartGranularity, projectTrends, usageTrends]);
+  }, [isAdmin, chartGranularity, projectTrends, usageTrends]);
 
   const chartComparisonTrends = useMemo(() => {
-    if (!allUsers) return previousProjectTrends?.trends;
+    if (!isAdmin) return previousProjectTrends?.trends;
     if (!previousUsageTrends?.trends) return undefined;
     const overallKey = '__all__';
     const trends = previousUsageTrends.trends.map((trend) => ({
@@ -162,20 +162,49 @@ export function UsageOverviewCard({
       },
     }));
     return trends;
-  }, [allUsers, previousProjectTrends, previousUsageTrends]);
+  }, [isAdmin, previousProjectTrends, previousUsageTrends]);
 
   const showOverviewSkeleton = useSmartLoading(trendsLoading, currentTrends);
 
   const currentTotals = useMemo(
-    () => (allUsers ? sumUsageTrends(usageTrends?.trends) : sumProjectGroupedTrends(projectTrends?.trends)),
-    [allUsers, projectTrends, usageTrends]
+    () => (isAdmin ? sumUsageTrends(usageTrends?.trends) : sumProjectGroupedTrends(projectTrends?.trends)),
+    [isAdmin, projectTrends, usageTrends]
   );
   const previousTotals = useMemo(
     () =>
-      allUsers ? sumUsageTrends(previousUsageTrends?.trends) : sumProjectGroupedTrends(previousProjectTrends?.trends),
-    [allUsers, previousProjectTrends, previousUsageTrends]
+      isAdmin ? sumUsageTrends(previousUsageTrends?.trends) : sumProjectGroupedTrends(previousProjectTrends?.trends),
+    [isAdmin, previousProjectTrends, previousUsageTrends]
   );
-  const hasComparison = allUsers ? !!previousUsageTrends : !!previousProjectTrends;
+  const hasComparison = isAdmin ? !!previousUsageTrends : !!previousProjectTrends;
+
+  // Extract grant usage from API data and convert using decimal
+  const grantDecimal = grantUsageData?.summary?.currency?.decimal || 0;
+  const grantUsedAmount = parseFloat(fromUnitToToken(grantUsageData?.summary?.total_consumed || '0', grantDecimal));
+  const grantTotalAmount = parseFloat(fromUnitToToken(grantUsageData?.summary?.total_granted || '0', grantDecimal));
+
+  // Merge trends with grant usage daily stats to add grantedUsage and paidUsage (only for isAdmin mode)
+  const mergedDailyStats = useMemo(() => {
+    if (!canShowGrantBreakdown) return [];
+    const trends = usageTrends?.trends || [];
+    if (!trends.length) return [];
+
+    const dailyGrantMap = new Map<string, number>();
+    (grantUsageData?.daily_stats || []).forEach((stat) => {
+      const consumed = parseFloat(fromUnitToToken(stat.total_consumed || '0', grantDecimal));
+      dailyGrantMap.set(stat.date, consumed);
+    });
+
+    return trends.map((trend) => {
+      const dateStr = dayjs.unix(trend.timestamp).format('YYYY-MM-DD');
+      const grantedUsage = dailyGrantMap.get(dateStr) || 0;
+      const paidUsage = Math.max(0, trend.totalCredits - grantedUsage);
+      return {
+        ...trend,
+        grantedUsage,
+        paidUsage,
+      };
+    });
+  }, [canShowGrantBreakdown, usageTrends?.trends, grantUsageData?.daily_stats, grantDecimal]);
 
   const periodDays = rangeDays;
   const currentTotalCalls = currentTotals.totalCalls;
@@ -211,8 +240,12 @@ export function UsageOverviewCard({
         value: `${creditPrefix}${formatNumber(new BigNumber(currentTotalCredits).toString())}`,
         trend: creditsGrowth !== undefined ? formatTrend(creditsGrowth) : undefined,
         trendTooltip: hasComparison ? getTrendDescription(periodDays) : undefined,
-        subLabel:
-          currentTotalCalls > 0
+        subLabel: isAdmin
+          ? t('analytics.includesGrantCredits', {
+              used: `${creditPrefix}${formatNumber(grantUsedAmount)}`,
+              total: `${creditPrefix}${formatNumber(grantTotalAmount)}`,
+            })
+          : currentTotalCalls > 0
             ? t('analytics.creditsPer1kRequests', { credits: `${creditPrefix}${formatNumber(creditsPer1k, 2)}` })
             : '-',
         tooltip: null,
@@ -266,6 +299,9 @@ export function UsageOverviewCard({
     avgUsagePerHour,
     callsGrowth,
     avgRequestsPerHour,
+    isAdmin,
+    grantUsedAmount,
+    grantTotalAmount,
   ]);
 
   const activeMetric = metrics.find((metric) => metric.key === selectedMetric) ?? metrics[0]!;
@@ -454,10 +490,12 @@ export function UsageOverviewCard({
         </Stack>
 
         <Box sx={{ mt: 4 }}>
-          {allUsers ? (
+          {isAdmin ? (
             <UsageCharts
-              dailyStats={toDailyStats(usageTrends?.trends)}
-              comparisonDailyStats={toDailyStats(previousUsageTrends?.trends)}
+              dailyStats={
+                canShowGrantBreakdown && mergedDailyStats.length > 0 ? mergedDailyStats : usageTrends?.trends || []
+              }
+              comparisonDailyStats={previousUsageTrends?.trends || []}
               metric={activeMetric.key}
               variant="plain"
               height={260}

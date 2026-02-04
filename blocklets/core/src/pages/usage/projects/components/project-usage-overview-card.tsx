@@ -1,5 +1,5 @@
 import { DateRangePicker, UsageCharts } from '@app/components/analytics';
-import type { DailyStats, UsageChartMetric } from '@app/components/analytics';
+import type { UsageChartMetric } from '@app/components/analytics';
 import { UsageOverviewSkeleton, toUTCTimestamp, useSmartLoading } from '@app/components/analytics/skeleton';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import { formatNumber } from '@blocklet/aigne-hub/utils/util';
@@ -9,14 +9,17 @@ import { Avatar, Box, ButtonBase, Card, Stack, Tooltip, Typography } from '@mui/
 import { alpha, useTheme } from '@mui/material/styles';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { fromUnitToToken } from '@ocap/util';
 import BigNumber from 'bignumber.js';
 import { useMemo, useState } from 'react';
 
+import { useGrantUsage } from '../../../../hooks/use-grant-usage';
 import dayjs from '../../../../libs/dayjs';
 import type { ProjectTrend, ProjectTrendSummary } from '../../../customer/hooks';
 
 export interface ProjectUsageOverviewCardProps {
   appDid: string;
+  isAdmin?: boolean;
   dateRange?: { from: number; to: number };
   onDateRangeChange?: (dateRange: { from: number; to: number }) => void;
   trendsData?: { project?: ProjectTrendSummary | null; trends: ProjectTrend[] };
@@ -59,19 +62,9 @@ const getTrendDescription = (days: number, t: (key: string) => string): string =
   return t('analytics.fromPreviousPeriod');
 };
 
-const toDailyStats = (trends?: ProjectTrend[]): DailyStats[] => {
-  if (!trends?.length) return [];
-  return trends.map((trend) => ({
-    date: dayjs.unix(trend.timestamp).toISOString(),
-    totalCredits: trend.totalCredits || 0,
-    totalCalls: trend.calls || 0,
-    totalUsage: trend.totalUsage || 0,
-    avgDuration: trend.avgDuration || 0,
-  }));
-};
-
 export function ProjectUsageOverviewCard({
   appDid,
+  isAdmin = false,
   dateRange: externalDateRange,
   onDateRangeChange,
   trendsData,
@@ -82,6 +75,7 @@ export function ProjectUsageOverviewCard({
   const { t } = useLocaleContext();
   const theme = useTheme();
   const creditPrefix = window.blocklet?.preferences?.creditPrefix || '';
+  const timezoneOffset = new Date().getTimezoneOffset();
 
   const [selectedMetric, setSelectedMetric] = useState<UsageChartMetric>('credits');
   const [internalDateRange, setInternalDateRange] = useState(() => ({
@@ -119,14 +113,16 @@ export function ProjectUsageOverviewCard({
       periodDays: rangeDays,
     };
   }, [dateRange.end, dateRange.start]);
+  const canShowGrantBreakdown = isAdmin && chartGranularity === 'day';
 
-  // TODO: In the future, fetch real grant usage data from Payment Kit
-  // For now, we generate mock data in the frontend based on total usage
-  // const { data: grantUsageData, loading: grantUsageLoading } = useGrantUsage({
-  //   startTime: toUTCTimestamp(dateRange.start),
-  //   endTime: toUTCTimestamp(dateRange.end, true),
-  //   grantorDid: appDid,
-  // });
+  // Fetch grant usage data from API
+  const { data: grantUsageData } = useGrantUsage({
+    startTime: toUTCTimestamp(dateRange.start),
+    endTime: toUTCTimestamp(dateRange.end, true),
+    grantorDid: appDid,
+    timezoneOffset,
+    enabled: isAdmin,
+  });
 
   const showOverviewSkeleton = useSmartLoading(trendsLoading, trendsData);
 
@@ -214,72 +210,34 @@ export function ProjectUsageOverviewCard({
     };
   }, [avgDuration, previousAvgDuration, previousTotals, previousTrendsData, totalCalls, totalCredits, totalUsage]);
 
-  // Merge grant usage data with total usage data for stacked area chart
-  // For now, always generate mock data (5%-20% of total credits per day)
-  const dailyStatsWithGrants = useMemo(() => {
-    const stats = toDailyStats(trendsData?.trends);
+  // Extract grant usage from API data and convert using decimal
+  const grantDecimal = grantUsageData?.summary?.currency?.decimal || 0;
+  const grantUsedAmount = parseFloat(fromUnitToToken(grantUsageData?.summary?.total_consumed || '0', grantDecimal));
+  const grantTotalAmount = parseFloat(fromUnitToToken(grantUsageData?.summary?.total_granted || '0', grantDecimal));
 
-    if (!stats.length) return stats;
+  // Merge trends with grant usage daily stats to add grantedUsage and paidUsage
+  const mergedDailyStats = useMemo(() => {
+    if (!canShowGrantBreakdown) return [];
+    const trends = trendsData?.trends || [];
+    if (!trends.length) return [];
 
-    // Helper: Generate seeded random based on date string for consistency
-    const dateToSeed = (dateStr: string) => {
-      let hash = 0;
-      for (let i = 0; i < dateStr.length; i++) {
-        // eslint-disable-next-line no-bitwise
-        hash = (hash << 5) - hash + dateStr.charCodeAt(i);
-        // eslint-disable-next-line no-bitwise
-        hash |= 0; // Convert to 32-bit integer
-      }
-      return Math.abs(hash);
-    };
+    const dailyGrantMap = new Map<string, number>();
+    (grantUsageData?.daily_stats || []).forEach((stat) => {
+      const consumed = parseFloat(fromUnitToToken(stat.total_consumed || '0', grantDecimal));
+      dailyGrantMap.set(stat.date, consumed);
+    });
 
-    const seededRandom = (seed: number) => {
-      const x = Math.sin(seed) * 10000;
-      return x - Math.floor(x);
-    };
-
-    // Generate mock grant usage data for each day
-    const result = stats.map((stat) => {
-      if (stat.totalCredits === 0) {
-        return {
-          ...stat,
-          grantedUsage: 0,
-          paidUsage: 0,
-        };
-      }
-
-      const dateKey = dayjs(stat.date).format('YYYY-MM-DD');
-      const seed = dateToSeed(dateKey);
-
-      // Generate grant percentage between 5% and 20%
-      const grantPercentage = 0.05 + seededRandom(seed) * 0.15; // 0.05 to 0.20
-      const grantedUsage = stat.totalCredits * grantPercentage;
-      const paidUsage = stat.totalCredits - grantedUsage;
-
+    return trends.map((trend) => {
+      const dateStr = dayjs.unix(trend.timestamp).format('YYYY-MM-DD');
+      const grantedUsage = dailyGrantMap.get(dateStr) || 0;
+      const paidUsage = Math.max(0, trend.totalCredits - grantedUsage);
       return {
-        ...stat,
+        ...trend,
         grantedUsage,
         paidUsage,
       };
     });
-
-    return result;
-  }, [trendsData?.trends]);
-
-  // Calculate grant credit consumption for subLabel from mock data
-  const { grantUsedAmount, grantTotalAmount } = useMemo(() => {
-    // Calculate total grant usage from dailyStatsWithGrants
-    const totalGrantUsed = dailyStatsWithGrants.reduce((sum, stat) => sum + ((stat as any).grantedUsage || 0), 0);
-
-    // Estimate total grant amount based on average percentage
-    // Since we generate 5%-20% grants, assume average of 12.5%
-    const estimatedTotalGrant = totalGrantUsed > 0 ? totalGrantUsed / 0.125 : 0;
-
-    return {
-      grantUsedAmount: totalGrantUsed,
-      grantTotalAmount: estimatedTotalGrant,
-    };
-  }, [dailyStatsWithGrants]);
+  }, [canShowGrantBreakdown, trendsData?.trends, grantUsageData?.daily_stats, grantDecimal]);
 
   const metrics = useMemo(() => {
     return [
@@ -290,26 +248,14 @@ export function ProjectUsageOverviewCard({
         value: `${creditPrefix}${formatNumber(new BigNumber(totalCredits).toString())}`,
         trend: trendComparison ? formatTrend(trendComparison.growth.creditsGrowth) : undefined,
         trendTooltip: trendComparison ? getTrendDescription(periodDays, t) : undefined,
-        subLabel:
-          grantTotalAmount > 0 ? (
-            <>
-              {t('analytics.grantUsedLabel')}{' '}
-              <strong>
-                {creditPrefix}
-                {formatNumber(grantUsedAmount)}
-              </strong>
-              {' / '}
-              {t('analytics.grantTotalLabel')}{' '}
-              <strong>
-                {creditPrefix}
-                {formatNumber(grantTotalAmount)}
-              </strong>
-            </>
-          ) : totalCalls > 0 ? (
-            t('analytics.creditsPer1kRequests', { credits: `${creditPrefix}${formatNumber(creditsPer1k, 2)}` })
-          ) : (
-            '-'
-          ),
+        subLabel: isAdmin
+          ? t('analytics.includesGrantCredits', {
+              used: `${creditPrefix}${formatNumber(grantUsedAmount)}`,
+              total: `${creditPrefix}${formatNumber(grantTotalAmount)}`,
+            })
+          : totalCalls > 0
+            ? t('analytics.creditsPer1kRequests', { credits: `${creditPrefix}${formatNumber(creditsPer1k, 2)}` })
+            : '-',
         accent: theme.palette.primary.main,
       },
       {
@@ -352,6 +298,7 @@ export function ProjectUsageOverviewCard({
     avgDuration,
     creditPrefix,
     creditsPer1k,
+    isAdmin,
     grantUsedAmount,
     grantTotalAmount,
     periodDays,
@@ -368,12 +315,6 @@ export function ProjectUsageOverviewCard({
   ]);
 
   const activeMetric = metrics.find((metric) => metric.key === selectedMetric) ?? metrics[0]!;
-
-  const comparisonDailyStatsWithGrants = useMemo(() => {
-    const stats = toDailyStats(previousTrendsData?.trends);
-    // For comparison period, don't split into grant/paid (just show total)
-    return stats;
-  }, [previousTrendsData?.trends]);
 
   if (showOverviewSkeleton) {
     return <UsageOverviewSkeleton />;
@@ -540,8 +481,8 @@ export function ProjectUsageOverviewCard({
 
           <Box>
             <UsageCharts
-              dailyStats={dailyStatsWithGrants}
-              comparisonDailyStats={comparisonDailyStatsWithGrants}
+              dailyStats={canShowGrantBreakdown ? mergedDailyStats : trendsData?.trends || []}
+              comparisonDailyStats={previousTrendsData?.trends || []}
               metric={activeMetric.key}
               variant="plain"
               height={260}

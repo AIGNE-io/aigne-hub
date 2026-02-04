@@ -121,8 +121,9 @@ export function ProjectCallHistory({
   const { data = { list: [], count: 0 }, loading } = useRequest<ModelCallResponse, any>(
     () =>
       api
-        .get(`/api/usage/projects/${encodeURIComponent(appDid)}/calls`, {
+        .get('/api/usage/projects/calls', {
           params: {
+            appDid,
             page: pagination.page,
             pageSize: pagination.pageSize,
             startTime: externalDateRange.from,

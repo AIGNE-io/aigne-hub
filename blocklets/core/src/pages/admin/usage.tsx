@@ -128,7 +128,7 @@ export default function UsageStatsBoard() {
             <Stack spacing={3}>
               <UsageOverviewCard
                 title={t('analytics.creditOverview')}
-                allUsers
+                isAdmin
                 dateRange={dateRange}
                 onDateRangeChange={handleDateRangeChange}
                 usageTrends={usageTrends}

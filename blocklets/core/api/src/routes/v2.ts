@@ -9,7 +9,7 @@ import {
   processEmbeddings,
   processImageGeneration,
 } from '@api/libs/ai-routes';
-import { Config, buildUsageWithCredits, normalizeProjectAppDid } from '@api/libs/env';
+import { Config, buildUsageWithCredits } from '@api/libs/env';
 import logger from '@api/libs/logger';
 import { checkUserCreditBalance, isPaymentRunning } from '@api/libs/payment';
 import { ensureModelWithProvider } from '@api/libs/provider-rotation';
@@ -77,20 +77,6 @@ const aigneHubModelBodyValidate = (body: Request['body']) => {
   }
 
   return value;
-};
-
-const getAppIdFromReq = (req: Request): string => {
-  const rawHeaderAppId = req.headers['x-aigne-hub-client-did'];
-  const headerAppId = typeof rawHeaderAppId === 'string' ? rawHeaderAppId.trim() : '';
-
-  if (headerAppId && headerAppId !== 'null') return headerAppId;
-
-  // @ts-ignore
-  if (req.user?.method === 'accessKey' && req.user?.fullName) {
-    return req.user.fullName;
-  }
-
-  return normalizeProjectAppDid() || '';
 };
 
 const user = sessionMiddleware({ accessKey: true });
@@ -241,7 +227,7 @@ router.post(
                 cacheReadInputTokens: usageData.usage?.cacheReadInputTokens || 0,
                 model: getReqModel(req),
                 modelParams: req.body?.options?.modelOptions,
-                appId: getAppIdFromReq(req),
+                appId: req.appClient?.appId,
                 userDid: userDid!,
                 creditBasedBillingEnabled: Config.creditBasedBillingEnabled,
                 additionalMetrics: {
@@ -335,7 +321,7 @@ router.post(
                     model: getReqModel(req),
                     modelParams: modelOptions,
                     userDid: userDid!,
-                    appId: getAppIdFromReq(req),
+                    appId: req.appClient?.appId,
                     creditBasedBillingEnabled: Config.creditBasedBillingEnabled,
                     additionalMetrics: {
                       totalTokens: getTotalTokens({
@@ -471,7 +457,7 @@ router.post(
             numberOfImageGeneration: response.images.length,
             cacheCreationInputTokens: response.usage?.cacheCreationInputTokens || 0,
             cacheReadInputTokens: response.usage?.cacheReadInputTokens || 0,
-            appId: getAppIdFromReq(req),
+            appId: req.appClient?.appId,
             userDid: userDid!,
             creditBasedBillingEnabled: Config.creditBasedBillingEnabled,
             additionalMetrics: {
@@ -595,7 +581,7 @@ router.post(
             cacheCreationInputTokens: response.usage?.cacheCreationInputTokens || 0,
             cacheReadInputTokens: response.usage?.cacheReadInputTokens || 0,
             mediaDuration: response.seconds,
-            appId: getAppIdFromReq(req),
+            appId: req.appClient?.appId,
             userDid: userDid!,
             creditBasedBillingEnabled: Config.creditBasedBillingEnabled,
             additionalMetrics: {
@@ -670,7 +656,7 @@ router.post(
             completionTokens: 0,
             model: usageData.model,
             userDid: userDid!,
-            appId: getAppIdFromReq(req),
+            appId: req.appClient?.appId,
             creditBasedBillingEnabled: Config.creditBasedBillingEnabled,
             additionalMetrics: {
               totalTokens: usageData.promptTokens,
@@ -727,7 +713,7 @@ router.post(
             model: usageData.model,
             modelParams: usageData.modelParams,
             numberOfImageGeneration: usageData.numberOfImageGeneration,
-            appId: getAppIdFromReq(req),
+            appId: req.appClient?.appId,
             userDid: userDid!,
             creditBasedBillingEnabled: Config.creditBasedBillingEnabled,
             additionalMetrics: {

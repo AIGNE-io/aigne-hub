@@ -554,6 +554,7 @@ export default flatten({
     // Project page
     projectStats: 'Project Statistics',
     selectProjectToView: 'Select a project to view details',
+    invalidProjectId: 'Invalid project ID',
     avgDuration: 'Avg Duration',
     p95Duration: 'P95 Duration',
     callsTrend: 'Calls',

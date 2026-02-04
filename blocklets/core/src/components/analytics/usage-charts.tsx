@@ -6,11 +6,15 @@ import { alpha } from '@mui/material/styles';
 import dayjs from 'dayjs';
 import { Area, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
-// New data format
+// Unified data format - supports both frontend and backend field names
 export interface DailyStats {
-  date: string;
+  // Date field: prefer 'date', fallback to 'timestamp'
+  date?: string;
+  timestamp?: number;
+  // Metrics
   totalCredits: number;
-  totalCalls: number;
+  totalCalls?: number;
+  calls?: number; // Backend uses 'calls' instead of 'totalCalls'
   totalUsage: number;
   avgDuration?: number;
   grantedUsage?: number; // Grant credits consumed on this day
@@ -424,13 +428,30 @@ export function UsageCharts({
   const metricConfig = getMetricConfig({ t, theme, creditPrefix: '' });
   const resolvedMetricConfig = metricConfig[resolvedMetric];
   const { dataKey, color: strokeColor, comparisonKey } = resolvedMetricConfig;
-  const getMetricValue = (stat: DailyStats | LegacyDailyStats | undefined, metricType: UsageChartMetric) => {
+
+  // Normalize data to handle both frontend and backend field names
+  const normalizeStats = (stats: (DailyStats | LegacyDailyStats)[]) =>
+    stats.map((item) => {
+      const stat = item as DailyStats & LegacyDailyStats;
+      return {
+        ...item,
+        // Normalize date: prefer 'date', fallback to 'timestamp'
+        date: stat.date || (stat.timestamp ? dayjs.unix(stat.timestamp).toISOString() : ''),
+        // Normalize totalCalls: prefer 'totalCalls', fallback to 'calls' or 'requests'
+        totalCalls: stat.totalCalls ?? stat.calls ?? stat.requests ?? 0,
+      };
+    });
+
+  const normalizedStats = normalizeStats(dailyStats);
+  const normalizedComparisonStats = normalizeStats(comparisonDailyStats);
+
+  const getMetricValue = (stat: (typeof normalizedStats)[0] | undefined, metricType: UsageChartMetric) => {
     if (!stat) return undefined;
     if (metricType === 'credits') {
       return (stat as DailyStats).totalCredits ?? (stat as LegacyDailyStats).credits ?? 0;
     }
     if (metricType === 'requests') {
-      return (stat as DailyStats).totalCalls ?? (stat as LegacyDailyStats).requests ?? 0;
+      return stat.totalCalls ?? 0;
     }
     if (metricType === 'avgDuration') {
       return (stat as DailyStats).avgDuration ?? 0;
@@ -438,10 +459,10 @@ export function UsageCharts({
     return (stat as DailyStats).totalUsage ?? (stat as LegacyDailyStats).tokens ?? 0;
   };
 
-  const hasComparison = Array.isArray(comparisonDailyStats) && comparisonDailyStats.length > 0;
+  const hasComparison = normalizedComparisonStats.length > 0;
   const mergedStats = hasComparison
-    ? dailyStats.map((item, index) => {
-        const comparison = comparisonDailyStats[index];
+    ? normalizedStats.map((item, index) => {
+        const comparison = normalizedComparisonStats[index];
         return {
           ...item,
           comparisonTotalCredits: getMetricValue(comparison, 'credits'),
@@ -451,7 +472,7 @@ export function UsageCharts({
           comparisonDate: comparison?.date,
         };
       })
-    : dailyStats;
+    : normalizedStats;
 
   const cardStyles = {
     boxShadow: 1,
@@ -544,7 +565,7 @@ export function UsageCharts({
   );
 
   if (variant === 'plain') {
-    return dailyStats && dailyStats.length > 0 ? (
+    return normalizedStats.length > 0 ? (
       <Box
         sx={{
           height,
@@ -570,7 +591,7 @@ export function UsageCharts({
   return (
     <Card sx={cardStyles}>
       <CardHeader title={chartTitle} />
-      {dailyStats && dailyStats.length > 0 ? (
+      {normalizedStats.length > 0 ? (
         <CardContent
           sx={{
             height,

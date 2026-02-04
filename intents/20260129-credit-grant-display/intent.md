@@ -98,7 +98,7 @@ GET /api/credit/grant-usage?startTime=xxx&endTime=xxx&grantorDid=xxx
 │    currency_id: CURRENCY_ID,
 │    start_date: startTime,
 │    end_date: endTime,
-│    grantor_did: grantorDid,  // 由前端传入
+│    grantor_by: grantorDid,  // 由前端传入
 │    group_by_date: true
 │  })
 └─ Response: {
@@ -152,7 +152,7 @@ GET /api/credit/grant-usage?startTime=xxx&endTime=xxx&grantorDid=xxx
   currency_id: meter.currency_id,
   start_date: startTime,
   end_date: endTime,
-  grantor_did: grantorDid,  // 由前端传入
+  grantor_by: grantorDid,  // 由前端传入
   group_by_date: true
 })
     ↓
@@ -392,7 +392,7 @@ router.post('/grant', user, verifySiteGroup, async (req, res) => {
       customer_id: userId,
       amount: String(amount),
       reason: reason || 'Credit grant from AIGNE Hub',
-      grantor_did: grantorDid, // 使用前端传入的赠送方 DID
+      grantor_by: grantorDid, // 使用前端传入的赠送方 DID
       metadata: {
         grantedBy: req.user?.did,
         grantedAt: new Date().toISOString(),
@@ -461,12 +461,12 @@ router.get('/grant-usage', user, async (req, res) => {
     }
 
     // 调用 payment-kit SDK 查询赠送额度消耗统计
-    // grantor_did 由前端传入
+    // grantor_by 由前端传入
     const stats = await paymentClient.creditGrants.stats({
       currency_id: meter.currency_id,
       start_date: startTime,
       end_date: endTime,
-      grantor_did: grantorDid, // 使用前端传入的赠送方 DID
+      grantor_by: grantorDid, // 使用前端传入的赠送方 DID
       group_by_date: true,
     });
 

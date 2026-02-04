@@ -22,16 +22,16 @@ describe('useGrantUsage', () => {
       // Given: Valid grant usage data
       const mockData = {
         summary: {
-          total_granted_amount: '1000',
-          total_used_amount: '250',
-          total_remaining_amount: '750',
+          total_granted: '1000',
+          total_consumed: '250',
+          total_remaining: '750',
         },
         daily_stats: [
           {
             date: '2024-01-01',
-            granted_amount: '0',
-            used_amount: '100',
-            remaining_amount: '0',
+            total_granted: '0',
+            total_consumed: '100',
+            total_remaining: '0',
           },
         ],
       };
@@ -62,9 +62,9 @@ describe('useGrantUsage', () => {
       // Given: No grants
       const mockData = {
         summary: {
-          total_granted_amount: '0',
-          total_used_amount: '0',
-          total_remaining_amount: '0',
+          total_granted: '0',
+          total_consumed: '0',
+          total_remaining: '0',
         },
         daily_stats: [],
       };
@@ -100,19 +100,12 @@ describe('useGrantUsage', () => {
         })
       );
 
-      // Then: Should return empty data immediately
+      // Then: Should return null immediately
       await waitFor(() => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect(result.current.data).toEqual({
-        summary: {
-          total_granted_amount: '0',
-          total_used_amount: '0',
-          total_remaining_amount: '0',
-        },
-        daily_stats: [],
-      });
+      expect(result.current.data).toBeNull();
       expect(mockedAxios.get).not.toHaveBeenCalled();
     });
 
@@ -129,19 +122,12 @@ describe('useGrantUsage', () => {
         })
       );
 
-      // Then: Should return empty data
+      // Then: Should return null
       await waitFor(() => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect(result.current.data).toEqual({
-        summary: {
-          total_granted_amount: '0',
-          total_used_amount: '0',
-          total_remaining_amount: '0',
-        },
-        daily_stats: [],
-      });
+      expect(result.current.data).toBeNull();
     });
 
     it('should handle API failure response with silent degradation', async () => {
@@ -150,9 +136,9 @@ describe('useGrantUsage', () => {
         success: false,
         error: 'Currency not configured',
         summary: {
-          total_granted_amount: '0',
-          total_used_amount: '0',
-          total_remaining_amount: '0',
+          total_granted: '0',
+          total_consumed: '0',
+          total_remaining: '0',
         },
         daily_stats: [],
       };
@@ -168,19 +154,12 @@ describe('useGrantUsage', () => {
         })
       );
 
-      // Then: Should return empty data
+      // Then: Should return null
       await waitFor(() => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect(result.current.data).toEqual({
-        summary: {
-          total_granted_amount: '0',
-          total_used_amount: '0',
-          total_remaining_amount: '0',
-        },
-        daily_stats: [],
-      });
+      expect(result.current.data).toBeNull();
     });
   });
 });

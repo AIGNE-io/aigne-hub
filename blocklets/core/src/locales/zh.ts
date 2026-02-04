@@ -545,6 +545,7 @@ export default flatten({
     // 项目页面
     projectStats: '项目统计',
     selectProjectToView: '请选择一个项目查看详情',
+    invalidProjectId: '无效的项目 ID',
     avgDuration: '平均时长',
     p95Duration: 'P95 调用时长',
     callsTrend: '调用量',

@@ -1,7 +1,7 @@
 import { toUTCTimestamp } from '@app/components/analytics/skeleton';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import { ArrowBack } from '@mui/icons-material';
-import { Alert, Box, Link, Stack, Typography } from '@mui/material';
+import { Alert, Box, Link, Stack } from '@mui/material';
 import { useState } from 'react';
 import { Link as RouterLink, useParams } from 'react-router-dom';
 
@@ -27,17 +27,13 @@ const readUsageDateRangeFromSession = (isAdmin: boolean) => {
 };
 
 interface ProjectPageProps {
-  appDid?: string;
-  emptyStateText?: string;
   isAdmin?: boolean;
 }
 
-export default function ProjectPage({ appDid: appDidProp, emptyStateText, isAdmin = false }: ProjectPageProps) {
-  const { appDid: appDidParam, page } = useParams<{ appDid?: string; page?: string }>();
-  const appDid = appDidProp || appDidParam || page;
+export default function ProjectPage({ isAdmin = false }: ProjectPageProps) {
+  const { appDid } = useParams<{ appDid: string }>();
   const { t } = useLocaleContext();
   const usagePath = isAdmin ? '/config/usage' : '/credit-usage';
-  const resolvedEmptyStateText = emptyStateText ?? (isAdmin ? t('analytics.selectProjectToView') : undefined);
   const [dateRange, setDateRange] = useState(() => {
     const fallbackRange = {
       from: toUTCTimestamp(dayjs().subtract(29, 'day')),
@@ -74,13 +70,7 @@ export default function ProjectPage({ appDid: appDidProp, emptyStateText, isAdmi
   if (!appDid) {
     return (
       <Box sx={{ py: 6 }}>
-        {resolvedEmptyStateText ? (
-          <Typography variant="body2" color="text.secondary">
-            {resolvedEmptyStateText}
-          </Typography>
-        ) : (
-          <Alert severity="error">Invalid project ID</Alert>
-        )}
+        <Alert severity="error">{t('analytics.invalidProjectId')}</Alert>
       </Box>
     );
   }
@@ -101,6 +91,7 @@ export default function ProjectPage({ appDid: appDidProp, emptyStateText, isAdmi
 
         <ProjectUsageOverviewCard
           appDid={appDid}
+          isAdmin={isAdmin}
           dateRange={dateRange}
           onDateRangeChange={setDateRange}
           trendsData={trendsData}

@@ -1,6 +1,7 @@
 import { sessionMiddleware } from '@blocklet/sdk/lib/middlewares/session';
 import { fromUnitToToken } from '@ocap/util';
 import { Router } from 'express';
+import Joi from 'joi';
 
 import { createModelCallStats } from '../crons/model-call-stats';
 import { normalizeProjectAppDid } from '../libs/env';
@@ -12,59 +13,84 @@ import ModelCallStat from '../store/models/model-call-stat';
 import Project from '../store/models/project';
 
 const router = Router();
-
-// Session middleware for authenticated routes
 const user = sessionMiddleware({ accessKey: true });
 
-/**
- * Helper to get time range from query params
- */
-function getTimeRange(query: any, defaultDays = 30) {
+// Common schema components
+const timestampSchema = Joi.number().integer().positive();
+const paginationSchema = {
+  page: Joi.number().integer().min(1).default(1),
+  pageSize: Joi.number().integer().min(1).max(100).default(20),
+};
+
+// Time range schema with defaults
+const timeRangeSchema = {
+  startTime: timestampSchema,
+  endTime: timestampSchema,
+  timeRange: Joi.number().integer().min(1).default(30),
+  timezoneOffset: Joi.number().integer().allow(null),
+};
+
+// Common query schemas
+const baseQuerySchema = Joi.object({
+  ...timeRangeSchema,
+  allUsers: Joi.boolean().default(false),
+});
+
+const projectTrendsSchema = baseQuerySchema.keys({
+  appDid: Joi.string().required(),
+  granularity: Joi.string().valid('hour', 'day'),
+});
+
+const projectCallsSchema = baseQuerySchema.keys({
+  appDid: Joi.string().required(),
+  ...paginationSchema,
+  model: Joi.string(),
+  type: Joi.string(),
+  status: Joi.string().valid('success', 'failed', 'processing'),
+  search: Joi.string().trim(),
+  searchFields: Joi.string(),
+  minDurationSeconds: Joi.number().min(0),
+});
+
+const projectsListSchema = baseQuerySchema.keys({
+  ...paginationSchema,
+  sortBy: Joi.string().valid('totalCalls', 'totalCredits').default('totalCalls'),
+  sortOrder: Joi.string().valid('asc', 'desc').default('desc'),
+});
+
+const backfillSchema = Joi.object({
+  startDate: Joi.date().required(),
+  endDate: Joi.date().required(),
+  userDid: Joi.string().allow(null, ''),
+});
+
+// Helper to process time range
+function processTimeRange(params: any) {
   const now = Math.floor(Date.now() / 1000);
-  const parsedStart = parseInt(query.startTime as string, 10);
-  const parsedEnd = parseInt(query.endTime as string, 10);
-  const hasStart = Number.isFinite(parsedStart) && parsedStart > 0;
-  const hasEnd = Number.isFinite(parsedEnd) && parsedEnd > 0;
-  const rawEndTime = hasEnd ? parsedEnd : now;
-  const endTime = Math.min(rawEndTime, now);
+  let { startTime, endTime } = params;
+  const { timeRange = 30 } = params;
 
-  if (hasStart) {
-    const startTime = Math.min(parsedStart, endTime);
-    const timeRange = Math.max(1, Math.ceil((endTime - startTime) / (24 * 3600)));
-    return { startTime, endTime, timeRange };
-  }
+  endTime = endTime ? Math.min(endTime, now) : now;
+  startTime = startTime || endTime - timeRange * 86400;
 
-  const timeRange = parseInt(query.timeRange as string, 10) || defaultDays;
-  const startTime = endTime - timeRange * 24 * 3600;
-  return { startTime, endTime, timeRange };
+  const rangeDays = Math.max(1, Math.ceil((endTime - startTime) / 86400));
+  const granularity = rangeDays <= 1 ? 'hour' : 'day';
+
+  return { startTime, endTime, rangeDays, granularity };
 }
 
-function getRangeDays(startTime: number, endTime: number): number {
-  const rangeSeconds = Math.max(0, endTime - startTime);
-  return Math.max(1, Math.ceil(rangeSeconds / 86400));
+// Helper to get scoped user DID based on allUsers flag
+function getScopedUserDid(req: any, allUsers: boolean): string | null {
+  return allUsers ? null : req.user?.did;
 }
 
-function parseBooleanFlag(value: any): boolean {
-  if (value === true) return true;
-  if (typeof value === 'string') return value === 'true' || value === '1';
-  if (typeof value === 'number') return value === 1;
-  return false;
-}
-
-function parseTimezoneOffset(query: any): number | undefined {
-  const raw = query?.timezoneOffset;
-  if (raw === undefined || raw === null || raw === '') return undefined;
-  const parsed = Number.parseInt(String(raw), 10);
-  return Number.isFinite(parsed) ? parsed : undefined;
-}
-
-function getAllUsersFlag(req: any, res: any): boolean | null {
-  const allUsers = parseBooleanFlag(req.query?.allUsers ?? req.query?.allUser);
-  if (!allUsers) return false;
+// Middleware to check admin permission for allUsers flag
+function checkAllUsersPermission(req: any, res: any, allUsers: boolean): boolean {
+  if (!allUsers) return true;
   const role = req.user?.role;
-  if (!role || !['owner', 'admin'].includes(role)) {
+  if (role !== 'owner' && role !== 'admin') {
     res.status(403).json({ error: 'Insufficient permissions. Admin or owner role required.' });
-    return null;
+    return false;
   }
   return true;
 }
@@ -73,56 +99,27 @@ function isAdminRole(role?: string): boolean {
   return role === 'owner' || role === 'admin';
 }
 
-function decodeRouteParam(value?: string): string | undefined {
-  if (!value) return value;
-  try {
-    return decodeURIComponent(value);
-  } catch {
-    return value;
-  }
-}
-
-/**
- * GET /api/usage/quota
- * Get user's credit quota information
- */
+// GET /api/usage/quota
 router.get('/quota', user, async (req, res) => {
   try {
     const userDid = req.user?.did;
-    if (!userDid) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
+    if (!userDid) return res.status(401).json({ error: 'Unauthorized' });
 
+    const { startTime, endTime } = processTimeRange(req.query);
     const credits = await getUserCredits({ userDid });
-    const { startTime, endTime, timeRange } = getTimeRange(req.query, 30);
-
-    // Calculate estimated days remaining based on recent usage
     const stats = await ModelCallStat.getStatsByCalls(userDid, undefined, startTime, endTime);
-    const daysInRange = 30;
-    const dailyAvgCredits = stats.totalCredits / daysInRange;
 
     const decimal = credits.currency?.decimal || 0;
     const remaining = parseFloat(fromUnitToToken(credits.balance || '0', decimal));
     const total = parseFloat(fromUnitToToken(credits.total || '0', decimal));
     const pendingCredit = parseFloat(fromUnitToToken(credits.pendingCredit || '0', decimal));
-    let estimatedDaysRemaining = 0;
-    if (dailyAvgCredits > 0 && remaining > 0) {
-      estimatedDaysRemaining = Math.max(1, Math.floor(remaining / dailyAvgCredits));
-    } else if (remaining > 0) {
-      estimatedDaysRemaining = 999;
-    }
-
-    logger.info('Usage quota calc', {
-      userDid,
-      startTime,
-      endTime,
-      timeRange,
-      daysInRange,
-      currencyDecimal: decimal,
-      totalCredits: stats.totalCredits,
-      remaining,
-      dailyAvgCredits,
-    });
+    const dailyAvgCredits = stats.totalCredits / 30;
+    const estimatedDaysRemaining =
+      dailyAvgCredits > 0 && remaining > 0
+        ? Math.max(1, Math.floor(remaining / dailyAvgCredits))
+        : remaining > 0
+          ? 999
+          : 0;
 
     return res.json({
       total,
@@ -139,39 +136,24 @@ router.get('/quota', user, async (req, res) => {
   }
 });
 
-/**
- * GET /api/usage/projects
- * Get list of user's projects with statistics
- */
+// GET /api/usage/projects
 router.get('/projects', user, async (req, res) => {
   try {
     const userDid = req.user?.did;
-    if (!userDid) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-    const allUsersFlag = getAllUsersFlag(req, res);
-    if (allUsersFlag === null) {
-      return;
-    }
-    const allUsers = allUsersFlag;
+    if (!userDid) return res.status(401).json({ error: 'Unauthorized' });
 
-    const { startTime, endTime, timeRange } = getTimeRange(req.query);
-    const timezoneOffset = parseTimezoneOffset(req.query);
-    const rangeDays = timeRange;
-    const page = parseInt(req.query.page as string, 10) || 1;
-    const pageSize = Math.min(parseInt(req.query.pageSize as string, 10) || 20, 100);
-    const rawSortBy = req.query.sortBy as string | undefined;
-    const sortBy = rawSortBy === 'totalCredits' ? 'totalCredits' : 'totalCalls';
-    const rawSortOrder = String(req.query.sortOrder || '').toLowerCase();
-    const sortOrder = rawSortOrder === 'asc' ? 'asc' : 'desc';
+    const params = await projectsListSchema.validateAsync(req.query);
+    if (!checkAllUsersPermission(req, res, params.allUsers)) return;
 
-    const result = await ModelCallStat.getProjects(allUsers ? null : userDid, startTime, endTime, {
-      page,
-      pageSize,
-      sortBy,
-      sortOrder,
+    const { startTime, endTime, rangeDays } = processTimeRange(params);
+
+    const result = await ModelCallStat.getProjects(getScopedUserDid(req, params.allUsers), startTime, endTime, {
+      page: params.page,
+      pageSize: params.pageSize,
+      sortBy: params.sortBy,
+      sortOrder: params.sortOrder,
       rangeDays,
-      timezoneOffset,
+      timezoneOffset: params.timezoneOffset,
     });
 
     return res.json({
@@ -196,33 +178,23 @@ router.get('/projects', user, async (req, res) => {
   }
 });
 
-/**
- * GET /api/usage/projects/trends
- * Get project-grouped usage trends over time (current user)
- */
-router.get('/projects/trends', user, async (req, res) => {
+// GET /api/usage/projects/group-trends
+router.get('/projects/group-trends', user, async (req, res) => {
   try {
     const userDid = req.user?.did;
-    if (!userDid) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-    const allUsersFlag = getAllUsersFlag(req, res);
-    if (allUsersFlag === null) {
-      return;
-    }
-    const allUsers = allUsersFlag;
+    if (!userDid) return res.status(401).json({ error: 'Unauthorized' });
 
-    const { startTime, endTime, timeRange } = getTimeRange(req.query);
-    const timezoneOffset = parseTimezoneOffset(req.query);
-    const granularity = timeRange <= 1 ? 'hour' : 'day';
-    const scopedUserDid = allUsers ? null : userDid;
+    const params = await baseQuerySchema.validateAsync(req.query);
+    if (!checkAllUsersPermission(req, res, params.allUsers)) return;
+
+    const { startTime, endTime, granularity } = processTimeRange(params);
 
     const result = await ModelCallStat.getTrendGroupByProjects({
-      userDid: scopedUserDid,
+      userDid: getScopedUserDid(req, params.allUsers),
       startTime,
       endTime,
       granularity,
-      timezoneOffset,
+      timezoneOffset: params.timezoneOffset,
     });
 
     return res.json(result);
@@ -232,28 +204,19 @@ router.get('/projects/trends', user, async (req, res) => {
   }
 });
 
-/**
- * GET /api/usage/trends
- * Get platform usage trends over time (admin only)
- */
+// GET /api/usage/trends (admin only)
 router.get('/trends', user, async (req, res) => {
   try {
     const userDid = req.user?.did;
-    if (!userDid) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
+    if (!userDid) return res.status(401).json({ error: 'Unauthorized' });
     if (!isAdminRole(req.user?.role)) {
       return res.status(403).json({ error: 'Insufficient permissions. Admin or owner role required.' });
     }
 
-    const { startTime, endTime, timeRange } = getTimeRange(req.query);
-    const rangeDays = timeRange;
-    const granularity = rangeDays <= 1 ? 'hour' : 'day';
-    const timezoneOffset = parseTimezoneOffset(req.query);
+    const params = await baseQuerySchema.validateAsync(req.query);
+    const { startTime, endTime, granularity } = processTimeRange(params);
 
-    // Query directly from pre-aggregated ModelCallStat table instead of scanning ModelCalls
-    // This is much faster as we aggregate from already-aggregated data
-    const trends = await ModelCallStat.getGlobalTrends(startTime, endTime, granularity, timezoneOffset);
+    const trends = await ModelCallStat.getGlobalTrends(startTime, endTime, granularity, params.timezoneOffset);
 
     return res.json({
       trends: trends.map((t) => ({
@@ -272,99 +235,65 @@ router.get('/trends', user, async (req, res) => {
   }
 });
 
-/**
- * POST /api/usage/stats/backfill
- * Manually trigger stats backfill (admin/owner only)
- */
+// POST /api/usage/stats/backfill (admin only)
 router.post('/stats/backfill', user, async (req, res) => {
   try {
     const userDid = req.user?.did;
-    if (!userDid) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
+    if (!userDid) return res.status(401).json({ error: 'Unauthorized' });
     if (!isAdminRole(req.user?.role)) {
       return res.status(403).json({ error: 'Insufficient permissions. Admin or owner role required.' });
     }
 
-    const startDate = new Date((req.body?.startDate ?? req.query?.startDate) as string);
-    const endDate = new Date((req.body?.endDate ?? req.query?.endDate) as string);
-    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
-      return res.status(400).json({
-        error: 'startDate and endDate are required and must be valid Date strings.',
-      });
-    }
-
-    const safeStart = Math.min(startDate.getTime(), endDate.getTime());
-    const safeEnd = Math.max(startDate.getTime(), endDate.getTime());
-    const userDidParam = (req.body?.userDid ?? req.query?.userDid) as string | undefined;
-
-    const normalizedUserDid =
-      userDidParam && userDidParam !== 'null' && userDidParam.trim() !== '' ? userDidParam.trim() : null;
+    const params = await backfillSchema.validateAsync({ ...req.body, ...req.query });
+    const safeStart = Math.min(params.startDate.getTime(), params.endDate.getTime());
+    const safeEnd = Math.max(params.startDate.getTime(), params.endDate.getTime());
+    const normalizedUserDid = params.userDid?.trim() || null;
 
     const startDay = Math.floor(safeStart / 1000 / 86400) * 86400;
     const endDay = Math.floor(safeEnd / 1000 / 86400) * 86400;
     const ranges: Array<{ startTime: number; endTime: number }> = [];
-    let processed = 0;
 
     for (let day = startDay; day <= endDay; day += 86400) {
-      const rangeStart = day;
-      const rangeEnd = day + 86400 - 1;
-      ranges.push({ startTime: rangeStart, endTime: rangeEnd });
-      processed += 24;
-      await createModelCallStats(rangeStart, rangeEnd, normalizedUserDid, true);
+      ranges.push({ startTime: day, endTime: day + 86399 });
+      await createModelCallStats(day, day + 86399, normalizedUserDid, true);
     }
 
-    return res.json({ processed, ranges });
+    return res.json({ processed: ranges.length * 24, ranges });
   } catch (error: any) {
     logger.error('Failed to backfill stats', { error, userDid: req.user?.did });
     return res.status(500).json({ message: error.message });
   }
 });
 
-/**
- * GET /api/usage/projects/:appDid/trends
- * Get trends for a specific project
- */
-router.get('/projects/:appDid(.*)/trends', user, async (req, res) => {
+// GET /api/usage/projects/trends
+router.get('/projects/trends', user, async (req, res) => {
   try {
     const userDid = req.user?.did;
-    if (!userDid) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-    const allUsersFlag = getAllUsersFlag(req, res);
-    if (allUsersFlag === null) {
-      return;
-    }
-    const allUsers = allUsersFlag;
+    if (!userDid) return res.status(401).json({ error: 'Unauthorized' });
 
-    const appDidParam = decodeRouteParam(req.params.appDid);
-    const appDid = normalizeProjectAppDid(appDidParam);
-    const startTime = parseInt(req.query.startTime as string, 10) || Math.floor(Date.now() / 1000) - 30 * 24 * 3600;
-    const rawEndTime = parseInt(req.query.endTime as string, 10) || Math.floor(Date.now() / 1000);
-    const endTime = Math.min(rawEndTime, Math.floor(Date.now() / 1000));
-    const rangeDays = getRangeDays(startTime, endTime);
-    const granularity = rangeDays <= 1 ? 'hour' : 'day';
-    const timezoneOffset = parseTimezoneOffset(req.query);
+    const params = await projectTrendsSchema.validateAsync(req.query);
+    if (!checkAllUsersPermission(req, res, params.allUsers)) return;
+
+    const appDid = normalizeProjectAppDid(params.appDid);
+    const { startTime, endTime, granularity } = processTimeRange(params);
 
     const trendBuckets = await ModelCallStat.getProjectTrends(
-      allUsers ? null : userDid,
+      getScopedUserDid(req, params.allUsers),
       [appDid],
       startTime,
       endTime,
       granularity,
-      timezoneOffset
+      params.timezoneOffset
     );
-    const appDidKey = appDid as string;
+
     const emptyStats = ModelCallStat.getEmptyStats();
     const trends = trendBuckets.map((bucket) => ({
       timestamp: bucket.timestamp,
-      stats: bucket.byProject[appDidKey] || emptyStats,
+      stats: bucket.byProject[appDid as string] || emptyStats,
     }));
 
     const project = appDid ? await Project.getByAppDid(appDid) : null;
-    if (!project && appDid) {
-      pushProjectFetchJob(appDid);
-    }
+    if (!project && appDid) pushProjectFetchJob(appDid);
 
     return res.json({
       project: {
@@ -383,75 +312,37 @@ router.get('/projects/:appDid(.*)/trends', user, async (req, res) => {
       })),
     });
   } catch (error: any) {
-    if (error.status === 403) {
-      return res.status(403).json({ error: 'Access denied' });
-    }
+    if (error.status === 403) return res.status(403).json({ error: 'Access denied' });
     logger.error('Failed to get project trends', { error, userDid: req.user?.did });
     return res.status(500).json({ message: error.message });
   }
 });
 
-/**
- * GET /api/usage/projects/:appDid/calls
- * Get call history for a specific project (real-time query with pagination)
- */
-router.get('/projects/:appDid(.*)/calls', user, async (req, res) => {
+// GET /api/usage/projects/calls
+router.get('/projects/calls', user, async (req, res) => {
   try {
     const userDid = req.user?.did;
-    if (!userDid) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-    const allUsersFlag = getAllUsersFlag(req, res);
-    if (allUsersFlag === null) {
-      return;
-    }
-    const allUsers = allUsersFlag;
+    if (!userDid) return res.status(401).json({ error: 'Unauthorized' });
 
-    const appDidParam = decodeRouteParam(req.params.appDid);
-    const appDid = normalizeProjectAppDid(appDidParam);
-    const startTime = parseInt(req.query.startTime as string, 10) || Math.floor(Date.now() / 1000) - 30 * 24 * 3600;
-    const endTime = parseInt(req.query.endTime as string, 10) || Math.floor(Date.now() / 1000);
-    const page = parseInt(req.query.page as string, 10) || 1;
-    const pageSize = Math.min(parseInt(req.query.pageSize as string, 10) || 20, 100);
-    const model = req.query.model as string | undefined;
-    const status = req.query.status as string | undefined;
-    const type = req.query.type as string | undefined;
-    const search = typeof req.query.search === 'string' ? req.query.search.trim() : undefined;
-    const searchFields = typeof req.query.searchFields === 'string' ? req.query.searchFields : undefined;
-    const minDurationSeconds =
-      req.query.minDurationSeconds !== undefined ? Number(req.query.minDurationSeconds) : undefined;
+    const params = await projectCallsSchema.validateAsync(req.query);
+    if (!checkAllUsersPermission(req, res, params.allUsers)) return;
 
-    // Build query params
-    const queryParams: any = {
-      userDid: allUsers ? null : userDid,
+    const appDid = normalizeProjectAppDid(params.appDid);
+    const { startTime, endTime } = processTimeRange(params);
+
+    const calls = await ModelCall.getCallsByDateRange({
+      userDid: getScopedUserDid(req, params.allUsers),
       appDid,
       startTime,
       endTime,
-      limit: pageSize,
-      offset: (page - 1) * pageSize,
-    };
-
-    if (model) {
-      queryParams.model = model;
-    }
-    if (type) {
-      queryParams.type = type;
-    }
-    if (status && ['success', 'failed', 'processing'].includes(status)) {
-      queryParams.status = status;
-    }
-    if (search) {
-      queryParams.search = search;
-      if (searchFields) {
-        queryParams.searchFields = searchFields;
-      }
-    }
-    if (Number.isFinite(minDurationSeconds)) {
-      queryParams.minDurationSeconds = minDurationSeconds;
-    }
-
-    const calls = await ModelCall.getCallsByDateRange({
-      ...queryParams,
+      limit: params.pageSize,
+      offset: (params.page - 1) * params.pageSize,
+      model: params.model,
+      type: params.type,
+      status: params.status,
+      search: params.search,
+      searchFields: params.searchFields,
+      minDurationSeconds: params.minDurationSeconds,
       includeProvider: false,
       attributes: [
         'id',
@@ -482,7 +373,7 @@ router.get('/projects/:appDid(.*)/calls', user, async (req, res) => {
         providerId: call.providerId,
         type: call.type,
         status: call.status,
-        duration: call.duration !== undefined && call.duration !== null ? Number(call.duration) : call.duration,
+        duration: call.duration != null ? Number(call.duration) : call.duration,
         totalUsage: call.totalUsage,
         usageMetrics: call.usageMetrics,
         credits: parseFloat(call.credits || '0'),
@@ -491,13 +382,11 @@ router.get('/projects/:appDid(.*)/calls', user, async (req, res) => {
         userDid: call.userDid,
       })),
       count: calls.count,
-      page,
-      pageSize,
+      page: params.page,
+      pageSize: params.pageSize,
     });
   } catch (error: any) {
-    if (error.status === 403) {
-      return res.status(403).json({ error: 'Access denied' });
-    }
+    if (error.status === 403) return res.status(403).json({ error: 'Access denied' });
     logger.error('Failed to get call history', { error, userDid: req.user?.did });
     return res.status(500).json({ message: error.message });
   }

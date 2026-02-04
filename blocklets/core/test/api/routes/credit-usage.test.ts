@@ -50,23 +50,32 @@ describe('GET /api/credit/grant-usage', () => {
       const mockStats = {
         stats: [
           {
-            total_granted_amount: '1000',
-            total_grant_count: 10,
-            unique_customers: 5,
+            total_granted: '1000',
+            total_consumed: '200',
+            total_remaining: '800',
+            grant_count: 10,
+            currency_id: 'currency_abc',
+            category: 'promotional',
           },
         ],
         daily_stats: [
           {
             date: '2024-01-01',
-            granted_amount: '500',
+            total_granted: '500',
+            total_consumed: '100',
+            total_remaining: '400',
             grant_count: 5,
-            unique_customers: 3,
+            currency_id: 'currency_abc',
+            category: 'promotional',
           },
           {
             date: '2024-01-02',
-            granted_amount: '500',
+            total_granted: '500',
+            total_consumed: '100',
+            total_remaining: '400',
             grant_count: 5,
-            unique_customers: 2,
+            currency_id: 'currency_abc',
+            category: 'promotional',
           },
         ],
       };
@@ -76,6 +85,7 @@ describe('GET /api/credit/grant-usage', () => {
 
       const startTime = Math.floor(new Date('2024-01-01').getTime() / 1000);
       const endTime = Math.floor(new Date('2024-01-02').getTime() / 1000);
+      const timezoneOffset = 480;
 
       // When: GET to /grant-usage endpoint
       const response = await request(app)
@@ -84,38 +94,22 @@ describe('GET /api/credit/grant-usage', () => {
           startTime: String(startTime),
           endTime: String(endTime),
           grantorDid: 'z1grantor123',
+          timezoneOffset: String(timezoneOffset),
         })
         .expect(200);
 
       // Then: Should return stats with summary and daily_stats
       expect(response.body).toEqual({
-        summary: {
-          total_granted_amount: '1000',
-          total_grant_count: 10,
-          unique_customers: 5,
-        },
-        daily_stats: [
-          {
-            date: '2024-01-01',
-            granted_amount: '500',
-            grant_count: 5,
-            unique_customers: 3,
-          },
-          {
-            date: '2024-01-02',
-            granted_amount: '500',
-            grant_count: 5,
-            unique_customers: 2,
-          },
-        ],
+        summary: mockStats.stats[0],
+        daily_stats: mockStats.daily_stats,
       });
 
       expect(paymentClient.creditGrants.stats).toHaveBeenCalledWith({
         currency_id: 'currency_abc',
         start_date: startTime,
         end_date: endTime,
-        grantor_did: 'z1grantor123',
-        group_by_date: true,
+        granted_by: 'z1grantor123',
+        timezoneOffset,
       });
     });
 
@@ -168,15 +162,19 @@ describe('GET /api/credit/grant-usage', () => {
       const mockStats = {
         stats: [
           {
-            total_granted_amount: '250',
-            total_grant_count: 3,
+            total_granted: '250',
+            total_consumed: '50',
+            total_remaining: '200',
+            grant_count: 3,
             unique_customers: 2,
           },
         ],
         daily_stats: [
           {
             date: '2024-01-01',
-            granted_amount: '250',
+            total_granted: '250',
+            total_consumed: '50',
+            total_remaining: '200',
             grant_count: 3,
             unique_customers: 2,
           },
@@ -202,7 +200,7 @@ describe('GET /api/credit/grant-usage', () => {
       // Then: Should call SDK with correct grantorDid filter
       expect(paymentClient.creditGrants.stats).toHaveBeenCalledWith(
         expect.objectContaining({
-          grantor_did: 'z1specific-grantor',
+          granted_by: 'z1specific-grantor',
         })
       );
     });
@@ -219,8 +217,10 @@ describe('GET /api/credit/grant-usage', () => {
       const mockStats = {
         stats: [
           {
-            total_granted_amount: '1500',
-            total_grant_count: 15,
+            total_granted: '1500',
+            total_consumed: '300',
+            total_remaining: '1200',
+            grant_count: 15,
             unique_customers: 8,
             average_grant_amount: '100',
           },
@@ -228,13 +228,17 @@ describe('GET /api/credit/grant-usage', () => {
         daily_stats: [
           {
             date: '2024-01-01',
-            granted_amount: '500',
+            total_granted: '500',
+            total_consumed: '100',
+            total_remaining: '400',
             grant_count: 5,
             unique_customers: 3,
           },
           {
             date: '2024-01-02',
-            granted_amount: '1000',
+            total_granted: '1000',
+            total_consumed: '200',
+            total_remaining: '800',
             grant_count: 10,
             unique_customers: 5,
           },
@@ -315,10 +319,24 @@ describe('GET /api/credit/grant-usage', () => {
       expect(paymentClient.creditGrants.stats).not.toHaveBeenCalled();
     });
 
-    it('should require grantorDid parameter', async () => {
+    it('should allow missing grantorDid parameter', async () => {
       // Given: Request without grantorDid
       const startTime = Math.floor(new Date('2024-01-01').getTime() / 1000);
       const endTime = Math.floor(new Date('2024-01-02').getTime() / 1000);
+
+      const mockStats = {
+        stats: [
+          {
+            total_granted: '100',
+            total_consumed: '20',
+            total_remaining: '80',
+            grant_count: 1,
+          },
+        ],
+        daily_stats: [],
+      };
+
+      vi.mocked(paymentClient.creditGrants.stats).mockResolvedValue(mockStats as any);
 
       // When: GET to /grant-usage endpoint
       const response = await request(app)
@@ -329,11 +347,14 @@ describe('GET /api/credit/grant-usage', () => {
         })
         .expect(200);
 
-      // Then: Should return validation error
-      expect(response.body.success).toBe(false);
-      expect(response.body.error).toContain('grantorDid');
-      expect(response.body.daily_stats).toEqual([]);
-      expect(paymentClient.creditGrants.stats).not.toHaveBeenCalled();
+      // Then: Should return stats without granted_by filter
+      expect(response.body.summary).toEqual(mockStats.stats[0]);
+      expect(paymentClient.creditGrants.stats).toHaveBeenCalledWith(
+        expect.objectContaining({
+          start_date: startTime,
+          end_date: endTime,
+        })
+      );
     });
 
     it('should validate time formats', async () => {
@@ -375,7 +396,7 @@ describe('GET /api/credit/grant-usage', () => {
       };
 
       const mockStats = {
-        stats: [{ total_granted_amount: '100' }],
+        stats: [{ total_granted: '100', total_consumed: '10', total_remaining: '90' }],
         daily_stats: [],
       };
 
@@ -418,7 +439,7 @@ describe('GET /api/credit/grant-usage', () => {
       };
 
       const mockStats = {
-        stats: [{ total_granted_amount: '100' }],
+        stats: [{ total_granted: '100', total_consumed: '10', total_remaining: '90' }],
         daily_stats: [],
       };
 
@@ -539,10 +560,13 @@ describe('GET /api/credit/grant-usage', () => {
         })
         .expect(200);
 
-      // Then: Should return error with empty data (silent degradation)
+      // Then: Should return empty data (silent degradation)
       expect(response.body).toEqual({
-        success: false,
-        error: 'Payment service unavailable',
+        summary: {
+          total_granted: '0',
+          total_consumed: '0',
+          total_remaining: '0',
+        },
         daily_stats: [],
       });
     });
@@ -564,10 +588,13 @@ describe('GET /api/credit/grant-usage', () => {
         })
         .expect(200);
 
-      // Then: Should return error with empty data
+      // Then: Should return empty data
       expect(response.body).toEqual({
-        success: false,
-        error: 'Currency configuration not found',
+        summary: {
+          total_granted: '0',
+          total_consumed: '0',
+          total_remaining: '0',
+        },
         daily_stats: [],
       });
       expect(paymentClient.creditGrants.stats).not.toHaveBeenCalled();
@@ -595,10 +622,13 @@ describe('GET /api/credit/grant-usage', () => {
         })
         .expect(200);
 
-      // Then: Should return error with empty data
+      // Then: Should return empty data
       expect(response.body).toEqual({
-        success: false,
-        error: 'Currency configuration not found',
+        summary: {
+          total_granted: '0',
+          total_consumed: '0',
+          total_remaining: '0',
+        },
         daily_stats: [],
       });
       expect(paymentClient.creditGrants.stats).not.toHaveBeenCalled();
@@ -627,8 +657,10 @@ describe('GET /api/credit/grant-usage', () => {
       const mockStats = {
         stats: [
           {
-            total_granted_amount: '5000',
-            total_grant_count: 50,
+            total_granted: '5000',
+            total_consumed: '1200',
+            total_remaining: '3800',
+            grant_count: 50,
             unique_customers: 20,
             average_grant_amount: '100',
             min_grant_amount: '10',
@@ -656,8 +688,8 @@ describe('GET /api/credit/grant-usage', () => {
 
       // Then: Summary should include all fields
       expect(response.body.summary).toEqual(mockStats.stats[0]);
-      expect(response.body.summary).toHaveProperty('total_granted_amount');
-      expect(response.body.summary).toHaveProperty('total_grant_count');
+      expect(response.body.summary).toHaveProperty('total_granted');
+      expect(response.body.summary).toHaveProperty('grant_count');
       expect(response.body.summary).toHaveProperty('unique_customers');
     });
 
@@ -673,14 +705,18 @@ describe('GET /api/credit/grant-usage', () => {
         daily_stats: [
           {
             date: '2024-01-01',
-            granted_amount: '1000',
+            total_granted: '1000',
+            total_consumed: '200',
+            total_remaining: '800',
             grant_count: 10,
             unique_customers: 5,
             average_grant_amount: '100',
           },
           {
             date: '2024-01-02',
-            granted_amount: '2000',
+            total_granted: '2000',
+            total_consumed: '500',
+            total_remaining: '1500',
             grant_count: 15,
             unique_customers: 8,
             average_grant_amount: '133.33',
@@ -708,7 +744,7 @@ describe('GET /api/credit/grant-usage', () => {
       expect(response.body.daily_stats).toEqual(mockStats.daily_stats);
       response.body.daily_stats.forEach((stat: any) => {
         expect(stat).toHaveProperty('date');
-        expect(stat).toHaveProperty('granted_amount');
+        expect(stat).toHaveProperty('total_granted');
         expect(stat).toHaveProperty('grant_count');
         expect(stat).toHaveProperty('unique_customers');
       });
@@ -726,13 +762,17 @@ describe('GET /api/credit/grant-usage', () => {
         daily_stats: [
           {
             date: '2024-01-01',
-            granted_amount: '100',
+            total_granted: '100',
+            total_consumed: '20',
+            total_remaining: '80',
             grant_count: 1,
             unique_customers: 1,
           },
           {
             date: '2024-01-02',
-            granted_amount: '200',
+            total_granted: '200',
+            total_consumed: '40',
+            total_remaining: '160',
             grant_count: 2,
             unique_customers: 1,
           },

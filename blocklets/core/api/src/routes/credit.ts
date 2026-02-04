@@ -13,6 +13,38 @@ function isAdminRole(role?: string): boolean {
   return role === 'owner' || role === 'admin';
 }
 
+function parseTimezoneOffset(value: any): number | undefined {
+  if (value === undefined || value === null || value === '') return undefined;
+  const parsed = Number.parseInt(String(value), 10);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+const emptyGrantSummary = {
+  total_granted: '0',
+  total_consumed: '0',
+  total_remaining: '0',
+};
+
+const normalizeGrantSummary = (summary?: any) => {
+  if (!summary) return {};
+  return {
+    ...summary,
+    total_granted: summary.total_granted ?? summary.total_granted_amount ?? '0',
+    total_consumed: summary.total_consumed ?? summary.total_used ?? summary.total_used_amount ?? '0',
+    total_remaining: summary.total_remaining ?? summary.total_remaining_amount ?? '0',
+  };
+};
+
+const normalizeGrantDailyStats = (stats?: any[]) => {
+  if (!Array.isArray(stats)) return [];
+  return stats.map((stat) => ({
+    ...stat,
+    total_granted: stat.total_granted ?? stat.granted_amount ?? '0',
+    total_consumed: stat.total_consumed ?? stat.used_amount ?? stat.total_used ?? '0',
+    total_remaining: stat.total_remaining ?? stat.remaining_amount ?? '0',
+  }));
+};
+
 // Validation schema
 const grantCreditSchema = Joi.object({
   userId: Joi.string().required(),
@@ -26,10 +58,21 @@ router.post('/grant', user, verifySiteGroup, async (req, res) => {
   try {
     const { userId, amount, reason, grantorDid } = await grantCreditSchema.validateAsync(req.body);
 
+    // Get meter for currency_id
+    const meter = await ensureMeter();
+    if (!meter || !meter.currency_id) {
+      return res.json({
+        success: false,
+        error: 'Payment kit is not configured',
+      });
+    }
+
     const result = await paymentClient.creditGrants.create({
       customer_id: userId,
+      currency_id: meter.currency_id,
       amount: String(amount),
-      grantor_did: grantorDid,
+      category: 'promotional',
+      granted_by: grantorDid,
       metadata: {
         reason: reason || 'Credit grant from AIGNE Hub',
         grantedBy: req.user?.did,
@@ -67,27 +110,15 @@ router.get('/grant-usage', user, async (req, res) => {
 
     const startTime = parseInt(req.query.startTime as string, 10);
     const endTime = parseInt(req.query.endTime as string, 10);
-    const grantorDid = req.query.grantorDid as string; // This is the project DID (appDid)
-    const useMock = req.query.mock === 'true';
+    const grantorDid = req.query.grantorDid as string | undefined; // Optional: project DID (appDid)
+    const timezoneOffset = parseTimezoneOffset(req.query.timezoneOffset);
 
     // Validate parameters
-    if (!Number.isFinite(startTime) || !Number.isFinite(endTime) || !grantorDid) {
+    if (!Number.isFinite(startTime) || !Number.isFinite(endTime)) {
       return res.json({
         success: false,
-        error: 'Invalid parameters: startTime, endTime and grantorDid are required',
-        daily_stats: [],
-      });
-    }
-
-    // TODO: Remove mock data after testing
-    // Return empty data for mock mode - let frontend generate mock
-    if (useMock) {
-      return res.json({
-        summary: {
-          total_granted_amount: '0',
-          total_used_amount: '0',
-          total_remaining_amount: '0',
-        },
+        error: 'Invalid parameters: startTime and endTime are required',
+        summary: emptyGrantSummary,
         daily_stats: [],
       });
     }
@@ -95,13 +126,9 @@ router.get('/grant-usage', user, async (req, res) => {
     // Get meter for currency_id
     const meter = await ensureMeter();
     if (!meter || !meter.currency_id) {
-      // Return empty data if payment kit is not configured - let frontend handle mock
+      // Return empty data if payment kit is not configured
       return res.json({
-        summary: {
-          total_granted_amount: '0',
-          total_used_amount: '0',
-          total_remaining_amount: '0',
-        },
+        summary: emptyGrantSummary,
         daily_stats: [],
       });
     }
@@ -111,22 +138,18 @@ router.get('/grant-usage', user, async (req, res) => {
       currency_id: meter.currency_id,
       start_date: startTime,
       end_date: endTime,
-      grantor_did: grantorDid,
-      group_by_date: true,
+      ...(grantorDid && { granted_by: grantorDid }),
+      ...(timezoneOffset !== undefined && { timezoneOffset }),
     });
 
     return res.json({
-      summary: stats.stats?.[0] || {},
-      daily_stats: stats.daily_stats || [],
+      summary: normalizeGrantSummary(stats.stats?.[0]),
+      daily_stats: normalizeGrantDailyStats(stats.daily_stats),
     });
   } catch (error: any) {
     // Silent degradation - return empty data (frontend will generate mock)
     return res.json({
-      summary: {
-        total_granted_amount: '0',
-        total_used_amount: '0',
-        total_remaining_amount: '0',
-      },
+      summary: emptyGrantSummary,
       daily_stats: [],
     });
   }
@@ -136,7 +159,6 @@ router.get('/grant-usage', user, async (req, res) => {
 router.get('/grant-balance', user, async (req, res) => {
   try {
     const appDid = req.query.appDid as string;
-    const useMock = req.query.mock === 'true'; // Add ?mock=true to use mock data
 
     if (!appDid) {
       return res.status(400).json({
@@ -148,58 +170,14 @@ router.get('/grant-balance', user, async (req, res) => {
       });
     }
 
-    // TODO: Remove mock data after testing
-    // Mock data for UI testing - simulate multiple grants with consumption history
-    if (useMock) {
-      const mockGrants = [
-        {
-          id: 'grant_1',
-          amount: '30000',
-          consumed_amount: '12500',
-          remaining_amount: '17500',
-          created_at: Date.now() - 30 * 24 * 60 * 60 * 1000, // 30 days ago
-        },
-        {
-          id: 'grant_2',
-          amount: '20000',
-          consumed_amount: '4750',
-          remaining_amount: '15250',
-          created_at: Date.now() - 15 * 24 * 60 * 60 * 1000, // 15 days ago
-        },
-      ];
-
-      return res.json({
-        total: '50000',
-        remaining: '32750',
-        grants: mockGrants,
-      });
-    }
-
     // Get meter for currency_id
     const meter = await ensureMeter();
     if (!meter || !meter.currency_id) {
-      // Return mock data if payment kit is not configured
-      const mockGrants = [
-        {
-          id: 'grant_1',
-          amount: '30000',
-          consumed_amount: '12500',
-          remaining_amount: '17500',
-          created_at: Date.now() - 30 * 24 * 60 * 60 * 1000,
-        },
-        {
-          id: 'grant_2',
-          amount: '20000',
-          consumed_amount: '4750',
-          remaining_amount: '15250',
-          created_at: Date.now() - 15 * 24 * 60 * 60 * 1000,
-        },
-      ];
-
+      // Return empty data if payment kit is not configured
       return res.json({
-        total: '50000',
-        remaining: '32750',
-        grants: mockGrants,
+        total: '0',
+        remaining: '0',
+        grants: [],
       });
     }
 
@@ -240,29 +218,12 @@ router.get('/grant-balance', user, async (req, res) => {
       grants: grantsList,
     });
   } catch (error: any) {
-    // Silent degradation - return mock data on error
+    // Silent degradation - return empty data on error
     console.warn('Grant balance query error:', error);
-    const mockGrants = [
-      {
-        id: 'grant_1',
-        amount: '30000',
-        consumed_amount: '12500',
-        remaining_amount: '17500',
-        created_at: Date.now() - 30 * 24 * 60 * 60 * 1000,
-      },
-      {
-        id: 'grant_2',
-        amount: '20000',
-        consumed_amount: '4750',
-        remaining_amount: '15250',
-        created_at: Date.now() - 15 * 24 * 60 * 60 * 1000,
-      },
-    ];
-
     return res.json({
-      total: '50000',
-      remaining: '32750',
-      grants: mockGrants,
+      total: '0',
+      remaining: '0',
+      grants: [],
     });
   }
 });
