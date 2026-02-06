@@ -135,8 +135,8 @@ export function createModelCallMiddleware(callType: CallType) {
     const accessKeyName =
       // @ts-ignore
       req.user?.method === 'accessKey' && typeof req.user.fullName === 'string' ? req.user.fullName.trim() : '';
-    const accessKeyAppDid = accessKeyName ? `${userDid}-${accessKeyName}` : '';
-    const appDid = headerAppDid || accessKeyAppDid || BLOCKLET_APP_PID || '';
+    // @ts-ignore
+    const appDid = headerAppDid || req.user?.accessKeyId || BLOCKLET_APP_PID || '';
     const appName = !headerAppDid && accessKeyName ? accessKeyName : undefined;
     req.appClient = {
       appId: appDid,

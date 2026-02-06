@@ -1,3 +1,8 @@
+## 0.8.5 (2026-2-6)
+
+- feat: use accessKeyId as appDid and enhance call detail metrics
+- chore: upgrade arcblock and blocklet dependencies
+
 ## 0.8.4 (2026-2-4)
 
 - feat: update appDid handling and usage routes for improved clarity and functionality
