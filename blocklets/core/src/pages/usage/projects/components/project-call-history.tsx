@@ -834,122 +834,154 @@ export function ProjectCallHistory({
               )
             )}
 
-            <Stack spacing={1.5}>
-              <Box
-                sx={{
-                  display: 'grid',
-                  gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
-                  gap: 2,
-                }}>
-                {!showMediaUsage
-                  ? renderMetricCard(
-                      t('analytics.totalTokens'),
-                      selectedCall?.usageMetrics?.totalTokens !== undefined
-                        ? formatNumber(selectedCall.usageMetrics.totalTokens, 0, true)
-                        : selectedCall?.totalUsage
-                          ? formatNumber(selectedCall.totalUsage, 0, true)
-                          : '-'
-                    )
-                  : renderMetricCard(
-                      t('usage'),
-                      selectedUsageParts ? `${selectedUsageParts.formatted} ${selectedUsageParts.unit}` : '-'
-                    )}
-                {renderMetricCard(
-                  t('creditsValue'),
-                  selectedCall ? `${creditPrefix}${formatNumber(selectedCall.credits)}` : '-'
-                )}
-              </Box>
-            </Stack>
+            <Box sx={cardSx}>
+              {(() => {
+                const rows: { label: string; value: string | ReactNode; isChild?: boolean }[] = [];
 
-            <Stack spacing={1.5}>
-              <Box
-                sx={{
-                  display: 'grid',
-                  gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
-                  gap: 2,
-                }}>
-                {!showMediaUsage && (
-                  <>
-                    {renderMetricCard(
-                      t('analytics.inputTokens'),
-                      selectedCall?.usageMetrics?.inputTokens !== undefined
-                        ? formatNumber(selectedCall.usageMetrics.inputTokens, 0, true)
-                        : '-'
-                    )}
-                    {renderMetricCard(
-                      t('analytics.outputTokens'),
-                      selectedCall?.usageMetrics?.outputTokens !== undefined
-                        ? formatNumber(selectedCall.usageMetrics.outputTokens, 0, true)
-                        : '-'
-                    )}
-                    {selectedCall?.usageMetrics?.cacheCreationInputTokens
-                      ? renderMetricCard(
-                          t('analytics.cacheCreationTokens'),
-                          formatNumber(selectedCall.usageMetrics.cacheCreationInputTokens, 0, true)
-                        )
-                      : null}
-                    {selectedCall?.usageMetrics?.cacheReadInputTokens
-                      ? renderMetricCard(
-                          t('analytics.cacheReadTokens'),
-                          formatNumber(selectedCall.usageMetrics.cacheReadInputTokens, 0, true)
-                        )
-                      : null}
-                  </>
-                )}
-                {showMediaUsage && (
-                  <>
-                    {selectedCall?.usageMetrics?.imageSize
-                      ? renderMetricCard(t('analytics.imageSize'), selectedCall.usageMetrics.imageSize)
-                      : null}
-                    {selectedCall?.usageMetrics?.imageQuality
-                      ? renderMetricCard(t('analytics.imageQuality'), selectedCall.usageMetrics.imageQuality)
-                      : null}
-                    {selectedCall?.usageMetrics?.imageStyle
-                      ? renderMetricCard(t('analytics.imageStyle'), selectedCall.usageMetrics.imageStyle)
-                      : null}
-                  </>
-                )}
-              </Box>
-            </Stack>
+                if (showMediaUsage) {
+                  rows.push({
+                    label: t('usage'),
+                    value: selectedUsageParts ? `${selectedUsageParts.formatted} ${selectedUsageParts.unit}` : '-',
+                  });
+                  if (selectedCall?.usageMetrics?.imageSize) {
+                    rows.push({
+                      label: t('analytics.imageSize'),
+                      value: selectedCall.usageMetrics.imageSize,
+                      isChild: true,
+                    });
+                  }
+                  if (selectedCall?.usageMetrics?.imageQuality) {
+                    rows.push({
+                      label: t('analytics.imageQuality'),
+                      value: selectedCall.usageMetrics.imageQuality,
+                      isChild: true,
+                    });
+                  }
+                  if (selectedCall?.usageMetrics?.imageStyle) {
+                    rows.push({
+                      label: t('analytics.imageStyle'),
+                      value: selectedCall.usageMetrics.imageStyle,
+                      isChild: true,
+                    });
+                  }
+                }
 
-            <Stack spacing={1.5}>
-              <Box
-                sx={{
-                  display: 'grid',
-                  gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
-                  gap: 2,
-                }}>
-                {renderMetricCard(t('duration'), formatLatency(selectedCall?.duration))}
-              </Box>
-            </Stack>
+                const hasTokenData =
+                  selectedCall?.usageMetrics?.totalTokens !== undefined ||
+                  selectedCall?.usageMetrics?.inputTokens !== undefined ||
+                  selectedCall?.usageMetrics?.outputTokens !== undefined ||
+                  selectedCall?.totalUsage;
 
-            <Stack spacing={1.5}>
-              <Box
-                sx={{
-                  display: 'grid',
-                  gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
-                  gap: 2,
-                }}>
-                {renderMetricCard(
-                  t('provider'),
-                  selectedProvider?.name ? (
-                    <Tooltip title={selectedProviderLabel || selectedProvider.name}>
-                      <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-                        <Avatar
-                          src={joinURL(getPrefix(), `/logo/${selectedProvider.name}.png`)}
-                          sx={{ width: 24, height: 24 }}
-                          alt={selectedProviderLabel || selectedProvider.name}
-                        />
-                        <Typography variant="body2">{selectedProviderLabel || selectedProvider.name}</Typography>
-                      </Stack>
-                    </Tooltip>
-                  ) : (
-                    '-'
-                  )
-                )}
-                {renderMetricCard(t('model'), selectedCall?.model || '-')}
-              </Box>
-            </Stack>
+                if (hasTokenData) {
+                  const totalTokensValue =
+                    selectedCall?.usageMetrics?.totalTokens !== undefined
+                      ? formatNumber(selectedCall.usageMetrics.totalTokens, 0, true)
+                      : selectedCall?.totalUsage
+                        ? formatNumber(selectedCall.totalUsage, 0, true)
+                        : '-';
+                  rows.push({ label: t('analytics.totalTokens'), value: totalTokensValue });
+
+                  if (selectedCall?.usageMetrics?.inputTokens !== undefined) {
+                    rows.push({
+                      label: t('analytics.inputTokens'),
+                      value: formatNumber(selectedCall.usageMetrics.inputTokens, 0, true),
+                      isChild: true,
+                    });
+                  }
+                  if (selectedCall?.usageMetrics?.outputTokens !== undefined) {
+                    rows.push({
+                      label: t('analytics.outputTokens'),
+                      value: formatNumber(selectedCall.usageMetrics.outputTokens, 0, true),
+                      isChild: true,
+                    });
+                  }
+                  if (selectedCall?.usageMetrics?.cacheCreationInputTokens) {
+                    rows.push({
+                      label: t('analytics.cacheCreationTokens'),
+                      value: formatNumber(selectedCall.usageMetrics.cacheCreationInputTokens, 0, true),
+                      isChild: true,
+                    });
+                  }
+                  if (selectedCall?.usageMetrics?.cacheReadInputTokens) {
+                    rows.push({
+                      label: t('analytics.cacheReadTokens'),
+                      value: formatNumber(selectedCall.usageMetrics.cacheReadInputTokens, 0, true),
+                      isChild: true,
+                    });
+                  }
+                }
+
+                return rows.map((row, idx) => (
+                  <Stack
+                    key={row.label}
+                    direction="row"
+                    sx={{
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      py: 1.25,
+                      ...(idx < rows.length - 1 ? { borderBottom: '1px solid', borderColor: 'divider' } : {}),
+                    }}>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={
+                        row.isChild
+                          ? { '&::before': { content: '"–"', mr: 0.5 } }
+                          : { fontWeight: 500, color: 'text.primary' }
+                      }>
+                      {row.label}
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        fontVariantNumeric: 'tabular-nums',
+                        fontWeight: row.isChild ? 400 : 600,
+                      }}>
+                      {row.value}
+                    </Typography>
+                  </Stack>
+                ));
+              })()}
+            </Box>
+
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                gap: 2,
+              }}>
+              {renderMetricCard(
+                t('creditsValue'),
+                selectedCall ? `${creditPrefix}${formatNumber(selectedCall.credits)}` : '-'
+              )}
+              {renderMetricCard(t('duration'), formatLatency(selectedCall?.duration))}
+            </Box>
+
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                gap: 2,
+              }}>
+              {renderMetricCard(
+                t('provider'),
+                selectedProvider?.name ? (
+                  <Tooltip title={selectedProviderLabel || selectedProvider.name}>
+                    <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+                      <Avatar
+                        src={joinURL(getPrefix(), `/logo/${selectedProvider.name}.png`)}
+                        sx={{ width: 24, height: 24 }}
+                        alt={selectedProviderLabel || selectedProvider.name}
+                      />
+                      <Typography variant="body2">{selectedProviderLabel || selectedProvider.name}</Typography>
+                    </Stack>
+                  </Tooltip>
+                ) : (
+                  '-'
+                )
+              )}
+              {renderMetricCard(t('model'), selectedCall?.model || '-')}
+            </Box>
           </Stack>
         </Stack>
       </Drawer>
