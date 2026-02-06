@@ -29,7 +29,7 @@ const projectsQueue = getQueue<ProjectQueueJob>({
       const existingProject = await Project.getByAppDid(appDid);
       if (existingProject) {
         const updatedAt = existingProject.updatedAt ? existingProject.updatedAt.getTime() : 0;
-        const isComplete = !!existingProject.appLogo?.trim();
+        const isComplete = !!existingProject.appName?.trim();
         const refreshAfterMs = isComplete ? 7 * 24 * 60 * 60 * 1000 : 2 * 24 * 60 * 60 * 1000;
         const isStale = !updatedAt || Date.now() - updatedAt >= refreshAfterMs;
 

@@ -49,7 +49,17 @@ interface ModelCallItem {
   type: string;
   status: 'success' | 'failed' | 'processing';
   totalUsage: number;
-  usageMetrics?: { inputTokens?: number; outputTokens?: number };
+  usageMetrics?: {
+    inputTokens?: number;
+    outputTokens?: number;
+    totalTokens?: number;
+    cacheCreationInputTokens?: number;
+    cacheReadInputTokens?: number;
+    numberOfImageGeneration?: number;
+    imageSize?: string;
+    imageQuality?: string;
+    imageStyle?: string;
+  };
   credits: number;
   duration?: number;
   errorReason?: string;
@@ -386,21 +396,59 @@ export function ProjectCallHistory({
           if (!call) return null;
           const usage = formatUsageParts(call);
           if (!usage) return '-';
+          const metrics = call.usageMetrics;
+          const tooltipLines: string[] = [];
+          if (metrics?.inputTokens !== undefined) {
+            tooltipLines.push(`${t('analytics.inputTokens')}: ${formatNumber(metrics.inputTokens, 0, true)}`);
+          }
+          if (metrics?.outputTokens !== undefined) {
+            tooltipLines.push(`${t('analytics.outputTokens')}: ${formatNumber(metrics.outputTokens, 0, true)}`);
+          }
+          if (metrics?.cacheCreationInputTokens) {
+            tooltipLines.push(
+              `${t('analytics.cacheCreationTokens')}: ${formatNumber(metrics.cacheCreationInputTokens, 0, true)}`
+            );
+          }
+          if (metrics?.cacheReadInputTokens) {
+            tooltipLines.push(
+              `${t('analytics.cacheReadTokens')}: ${formatNumber(metrics.cacheReadInputTokens, 0, true)}`
+            );
+          }
+          if (metrics?.imageSize) {
+            tooltipLines.push(`${t('analytics.imageSize')}: ${metrics.imageSize}`);
+          }
+          if (metrics?.imageQuality) {
+            tooltipLines.push(`${t('analytics.imageQuality')}: ${metrics.imageQuality}`);
+          }
+          if (metrics?.imageStyle) {
+            tooltipLines.push(`${t('analytics.imageStyle')}: ${metrics.imageStyle}`);
+          }
           return (
-            <Box
-              sx={{
-                display: 'inline-flex',
-                alignItems: 'baseline',
-                gap: 0.5,
-                whiteSpace: 'nowrap',
-              }}>
-              <Typography variant="body2" sx={{ fontVariantNumeric: 'tabular-nums' }}>
-                {usage.formatted}
-              </Typography>
-              <Typography variant="body2" sx={{ color: 'grey.400' }}>
-                {usage.unit}
-              </Typography>
-            </Box>
+            <Tooltip
+              title={
+                tooltipLines.length > 0 ? (
+                  <Box sx={{ whiteSpace: 'pre-line', fontSize: 12 }}>{tooltipLines.join('\n')}</Box>
+                ) : (
+                  ''
+                )
+              }
+              placement="top">
+              <Box
+                sx={{
+                  display: 'inline-flex',
+                  alignItems: 'baseline',
+                  gap: 0.5,
+                  whiteSpace: 'nowrap',
+                  cursor: tooltipLines.length > 0 ? 'default' : undefined,
+                }}>
+                <Typography variant="body2" sx={{ fontVariantNumeric: 'tabular-nums' }}>
+                  {usage.formatted}
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'grey.400' }}>
+                  {usage.unit}
+                </Typography>
+              </Box>
+            </Tooltip>
           );
         },
       },
@@ -793,6 +841,33 @@ export function ProjectCallHistory({
                   gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
                   gap: 2,
                 }}>
+                {!showMediaUsage
+                  ? renderMetricCard(
+                      t('analytics.totalTokens'),
+                      selectedCall?.usageMetrics?.totalTokens !== undefined
+                        ? formatNumber(selectedCall.usageMetrics.totalTokens, 0, true)
+                        : selectedCall?.totalUsage
+                          ? formatNumber(selectedCall.totalUsage, 0, true)
+                          : '-'
+                    )
+                  : renderMetricCard(
+                      t('usage'),
+                      selectedUsageParts ? `${selectedUsageParts.formatted} ${selectedUsageParts.unit}` : '-'
+                    )}
+                {renderMetricCard(
+                  t('creditsValue'),
+                  selectedCall ? `${creditPrefix}${formatNumber(selectedCall.credits)}` : '-'
+                )}
+              </Box>
+            </Stack>
+
+            <Stack spacing={1.5}>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                  gap: 2,
+                }}>
                 {!showMediaUsage && (
                   <>
                     {renderMetricCard(
@@ -807,20 +882,43 @@ export function ProjectCallHistory({
                         ? formatNumber(selectedCall.usageMetrics.outputTokens, 0, true)
                         : '-'
                     )}
+                    {selectedCall?.usageMetrics?.cacheCreationInputTokens
+                      ? renderMetricCard(
+                          t('analytics.cacheCreationTokens'),
+                          formatNumber(selectedCall.usageMetrics.cacheCreationInputTokens, 0, true)
+                        )
+                      : null}
+                    {selectedCall?.usageMetrics?.cacheReadInputTokens
+                      ? renderMetricCard(
+                          t('analytics.cacheReadTokens'),
+                          formatNumber(selectedCall.usageMetrics.cacheReadInputTokens, 0, true)
+                        )
+                      : null}
                   </>
                 )}
                 {showMediaUsage && (
-                  <Box sx={{ gridColumn: { xs: 'auto', sm: '1 / -1' } }}>
-                    {renderMetricCard(
-                      t('usage'),
-                      selectedUsageParts ? `${selectedUsageParts.formatted} ${selectedUsageParts.unit}` : '-'
-                    )}
-                  </Box>
+                  <>
+                    {selectedCall?.usageMetrics?.imageSize
+                      ? renderMetricCard(t('analytics.imageSize'), selectedCall.usageMetrics.imageSize)
+                      : null}
+                    {selectedCall?.usageMetrics?.imageQuality
+                      ? renderMetricCard(t('analytics.imageQuality'), selectedCall.usageMetrics.imageQuality)
+                      : null}
+                    {selectedCall?.usageMetrics?.imageStyle
+                      ? renderMetricCard(t('analytics.imageStyle'), selectedCall.usageMetrics.imageStyle)
+                      : null}
+                  </>
                 )}
-                {renderMetricCard(
-                  t('creditsValue'),
-                  selectedCall ? `${creditPrefix}${formatNumber(selectedCall.credits)}` : '-'
-                )}
+              </Box>
+            </Stack>
+
+            <Stack spacing={1.5}>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                  gap: 2,
+                }}>
                 {renderMetricCard(t('duration'), formatLatency(selectedCall?.duration))}
               </Box>
             </Stack>
