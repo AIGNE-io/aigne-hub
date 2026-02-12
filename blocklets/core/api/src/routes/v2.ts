@@ -31,10 +31,14 @@ import Joi from 'joi';
 
 import { DEFAULT_IMAGE_MODEL, DEFAULT_MODEL, DEFAULT_VIDEO_MODEL } from '../libs/constants';
 import onError from '../libs/on-error';
+import { requestTimingMiddleware } from '../libs/request-timing';
 import convertMediaToOnlineUrl from '../libs/upload-to-media-kit';
 import { getModel, getProviderCredentials } from '../providers/models';
 
 const router = Router();
+
+// Attach timing tracker to every v2 request
+router.use(requestTimingMiddleware());
 
 const aigneHubModelCallSchema = Joi.object({
   input: Joi.object({
@@ -79,7 +83,15 @@ const aigneHubModelBodyValidate = (body: Request['body']) => {
   return value;
 };
 
-const user = sessionMiddleware({ accessKey: true });
+// eslint-disable-next-line @typescript-eslint/naming-convention
+const sessionHandler = sessionMiddleware({ accessKey: true });
+const user = (req: Request, res: Response, next: NextFunction) => {
+  req.timings?.start('session');
+  sessionHandler(req, res, (...args: any[]) => {
+    req.timings?.end('session');
+    next(...args);
+  });
+};
 
 const maxProviderRetriesMiddleware = getMaxProviderRetriesMiddleware();
 const chatCallTracker = createModelCallMiddleware('chatCompletion');
@@ -207,14 +219,17 @@ router.post(
       handler: async (req, res) => {
         const userDid = req.user?.did;
 
+        req.timings?.start('preChecks');
         if (userDid && Config.creditBasedBillingEnabled) {
           await checkUserCreditBalance({ userDid });
         }
 
         await checkModelRateAvailable(getReqModel(req));
+        req.timings?.end('preChecks');
 
         await processChatCompletion(req, res, 'v2', {
           onEnd: async (data) => {
+            req.timings?.start('usage');
             if (data?.output) {
               const usageData = data.output;
 
@@ -261,6 +276,7 @@ router.post(
                 data.output.modelWithProvider = getReqModel(req) || DEFAULT_MODEL;
               }
             }
+            req.timings?.end('usage');
             return data;
           },
           onError: async (data) => {
@@ -291,6 +307,7 @@ router.post(
 
         const userDid = req.user?.did;
 
+        req.timings?.start('preChecks');
         if (userDid && Config.creditBasedBillingEnabled) {
           await checkUserCreditBalance({ userDid });
         }
@@ -298,8 +315,11 @@ router.post(
         const { modelOptions } = value.input;
 
         await checkModelRateAvailable(modelOptions.model);
+        req.timings?.end('preChecks');
 
+        req.timings?.start('getCredentials');
         const { modelInstance: model } = await getModel(modelOptions, { modelOptions, req });
+        req.timings?.end('getCredentials');
 
         if (modelOptions && req.body.input?.modelOptions?.model) {
           delete req.body.input.modelOptions.model;
@@ -309,11 +329,14 @@ router.post(
 
         const aigneServer = new AIGNEHTTPServer(engine);
 
+        req.timings?.start('aiCall');
         await new Promise((resolve, reject) => {
           aigneServer.invoke(req, res, {
             userContext: { userId: req.user?.did, ...value.options?.userContext },
             hooks: {
               onEnd: async (data) => {
+                req.timings?.end('aiCall');
+                req.timings?.start('usage');
                 const usageData: ChatModelOutput = data.output;
                 if (usageData) {
                   const usage = await createUsageAndCompleteModelCall({
@@ -375,11 +398,13 @@ router.post(
                   usageData.files = list;
                 }
 
+                req.timings?.end('usage');
                 resolve(data);
 
                 return data;
               },
               onError: async (data) => {
+                req.timings?.end('aiCall');
                 onError(data, req);
                 reject(data.error);
               },
@@ -406,6 +431,7 @@ router.post(
 
         const userDid = req.user?.did;
 
+        req.timings?.start('preChecks');
         if (userDid && Config.creditBasedBillingEnabled) {
           await checkUserCreditBalance({ userDid });
         }
@@ -416,10 +442,13 @@ router.post(
         if (!provider || !model) throw new CustomError(400, `Invalid model format: ${m}, should be {provider}/{model}`);
 
         await checkModelRateAvailable(m);
+        req.timings?.end('preChecks');
 
         const { match: M } = findImageModel(provider);
         if (!M) throw new CustomError(400, `Image model provider ${provider} not found`);
+        req.timings?.start('getCredentials');
         const credential = await getProviderCredentials(provider, { modelCallContext: req.modelCallContext, model });
+        req.timings?.end('getCredentials');
         req.credentialId = credential.id;
         const modelInstance = M.create(credential);
 
@@ -428,6 +457,7 @@ router.post(
         const aigne = new AIGNE();
         logger.info('image completions model with provider', getReqModel(req));
 
+        req.timings?.start('aiCall');
         const response = await aigne.invoke(
           modelInstance,
           {
@@ -449,6 +479,9 @@ router.post(
           }
         );
 
+        req.timings?.end('aiCall');
+
+        req.timings?.start('usage');
         let aigneHubCredits: number | undefined;
 
         if (response.usage && userDid) {
@@ -503,6 +536,8 @@ router.post(
           response.images = list;
         }
 
+        req.timings?.end('usage');
+
         res.json({
           ...response,
           usage: { ...response.usage, ...buildUsageWithCredits(aigneHubCredits) },
@@ -529,6 +564,7 @@ router.post(
 
         const userDid = req.user?.did;
 
+        req.timings?.start('preChecks');
         if (userDid && Config.creditBasedBillingEnabled) {
           await checkUserCreditBalance({ userDid });
         }
@@ -539,10 +575,13 @@ router.post(
         if (!provider || !model) throw new CustomError(400, `Invalid model format: ${m}, should be {provider}/{model}`);
 
         await checkModelRateAvailable(m);
+        req.timings?.end('preChecks');
 
         const { match: M } = findVideoModel(provider);
         if (!M) throw new CustomError(400, `Video model provider ${provider} not found`);
+        req.timings?.start('getCredentials');
         const credential = await getProviderCredentials(provider, { modelCallContext: req.modelCallContext, model });
+        req.timings?.end('getCredentials');
         const modelInstance = M.create(credential);
 
         let traceId;
@@ -550,6 +589,7 @@ router.post(
         const aigne = new AIGNE();
         logger.info('video completions model with provider', getReqModel(req));
 
+        req.timings?.start('aiCall');
         const response = await aigne.invoke(
           modelInstance,
           {
@@ -571,7 +611,9 @@ router.post(
             },
           }
         );
+        req.timings?.end('aiCall');
 
+        req.timings?.start('usage');
         let aigneHubCredits: number | undefined;
 
         if (response.usage && userDid) {
@@ -623,6 +665,7 @@ router.post(
 
           response.videos = list;
         }
+        req.timings?.end('usage');
 
         res.json({
           ...response,
@@ -646,13 +689,18 @@ router.post(
       handler: async (req, res) => {
         const userDid = req.user?.did;
 
+        req.timings?.start('preChecks');
         if (userDid && Config.creditBasedBillingEnabled) {
           await checkUserCreditBalance({ userDid });
         }
         await checkModelRateAvailable(getReqModel(req));
+        req.timings?.end('preChecks');
 
+        req.timings?.start('aiCall');
         const usageData = await processEmbeddings(req);
+        req.timings?.end('aiCall');
 
+        req.timings?.start('usage');
         if (usageData && userDid) {
           await createUsageAndCompleteModelCall({
             req,
@@ -675,6 +723,7 @@ router.post(
             return undefined;
           });
         }
+        req.timings?.end('usage');
 
         res.json({ data: usageData?.data });
       },
@@ -694,12 +743,15 @@ router.post(
       handler: async (req, res) => {
         const userDid = req.user?.did;
 
+        req.timings?.start('preChecks');
         if (userDid && Config.creditBasedBillingEnabled) {
           await checkUserCreditBalance({ userDid });
         }
 
         await checkModelRateAvailable(getReqModel(req));
+        req.timings?.end('preChecks');
 
+        req.timings?.start('aiCall');
         const usageData = await processImageGeneration({
           req,
           res,
@@ -709,7 +761,9 @@ router.post(
             responseFormat: req.body.response_format || req.body.responseFormat,
           },
         });
+        req.timings?.end('aiCall');
 
+        req.timings?.start('usage');
         let aigneHubCredits;
         if (usageData && userDid) {
           aigneHubCredits = await createUsageAndCompleteModelCall({
@@ -732,6 +786,8 @@ router.post(
             },
           });
         }
+
+        req.timings?.end('usage');
 
         res.json({
           images: usageData?.images,

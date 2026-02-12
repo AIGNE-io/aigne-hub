@@ -358,6 +358,7 @@ export function withModelStatus({
     try {
       await handler(req, res);
 
+      req.timings?.start('modelStatus');
       await updateModelStatus({
         model: req.body.model,
         success: true,
@@ -377,6 +378,7 @@ export function withModelStatus({
           }
         }
       }
+      req.timings?.end('modelStatus');
     } catch (error) {
       logger.error('Failed to call with model status', error.message);
 

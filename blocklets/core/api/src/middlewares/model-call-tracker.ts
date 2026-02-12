@@ -60,16 +60,19 @@ declare global {
 
 export function getMaxProviderRetriesMiddleware() {
   return async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
+    req.timings?.start('maxProviderRetries');
     try {
       const model = getReqModel(req);
 
       if (!model) {
+        req.timings?.end('maxProviderRetries');
         next();
         return;
       }
 
       const hasProvider = modelHasProvider(model);
       if (hasProvider) {
+        req.timings?.end('maxProviderRetries');
         next();
         return;
       }
@@ -94,6 +97,7 @@ export function getMaxProviderRetriesMiddleware() {
       logger.warn('Failed to get providers info for retry', { error, model: req.originalModel });
     }
 
+    req.timings?.end('maxProviderRetries');
     next();
   };
 }
@@ -102,7 +106,9 @@ export function createModelCallMiddleware(callType: CallType) {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const userDid = req.user?.did;
 
+    req.timings?.start('ensureProvider');
     await ensureModelWithProvider(req);
+    req.timings?.end('ensureProvider');
 
     const model = getReqModel(req);
 
@@ -144,6 +150,7 @@ export function createModelCallMiddleware(callType: CallType) {
     };
 
     try {
+      req.timings?.start('modelCallCreate');
       const context = await createModelCallContext({
         type: callType,
         model,
@@ -157,6 +164,7 @@ export function createModelCallMiddleware(callType: CallType) {
           modelParams: req.body?.options?.modelOptions,
         },
       });
+      req.timings?.end('modelCallCreate');
 
       if (context) {
         req.modelCallContext = context;

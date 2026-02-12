@@ -275,10 +275,13 @@ export async function processChatCompletion(
 
   const isEventStream = req.accepts().some((i) => i.startsWith('text/event-stream'));
 
+  req.timings?.start('getCredentials');
   const result = await chatCompletionByFrameworkModel(input, req.user?.did, { ...options, req });
+  req.timings?.end('getCredentials');
 
   let content = '';
   const toolCalls: NonNullable<ChatCompletionChunk['delta']['toolCalls']> = [];
+  let firstChunkReceived = false;
 
   const emitEventStreamChunk = (chunk: ChatCompletionResponse) => {
     if (!res.headersSent) {
@@ -292,8 +295,14 @@ export async function processChatCompletion(
 
   let usage: ChatCompletionUsage['usage'] | undefined;
 
+  req.timings?.start('providerTtfb');
+  req.timings?.start('streaming');
   try {
     for await (const chunk of result) {
+      if (!firstChunkReceived) {
+        firstChunkReceived = true;
+        req.timings?.end('providerTtfb');
+      }
       if (isChatCompletionUsage(chunk)) {
         usage = chunk.usage;
       }
@@ -313,7 +322,10 @@ export async function processChatCompletion(
         }
       }
     }
+    req.timings?.end('streaming');
   } catch (error) {
+    if (!firstChunkReceived) req.timings?.end('providerTtfb');
+    req.timings?.end('streaming');
     logger.error('Run AI error', { error });
     if (req.modelCallContext) {
       req.modelCallContext.fail(error.message).catch((err) => {
@@ -337,6 +349,16 @@ export async function processChatCompletion(
       content,
       toolCalls: toolCalls.length ? toolCalls : undefined,
     });
+  }
+
+  // Emit Server-Timing as a final SSE event for streaming responses,
+  // since the HTTP header was flushed before streaming/usage phases completed.
+  if (isEventStream && req.timings) {
+    const all = req.timings.getAll();
+    const total = req.timings.elapsed();
+    const parts = Object.entries(all).map(([phase, dur]) => `${phase};dur=${dur}`);
+    parts.push(`total;dur=${total}`);
+    res.write(`event: server-timing\ndata: ${parts.join(', ')}\n\n`);
   }
 
   res.end();

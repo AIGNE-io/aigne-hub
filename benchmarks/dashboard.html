@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AIGNE Hub 基准测试仪表盘</title>
+<script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prop-types@15/prop-types.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/recharts@2/umd/Recharts.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7/babel.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Segoe UI', sans-serif; background: #f5f6f8; color: #1f2937; }
+  .header { padding: 16px 32px; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; gap: 16px; background: #fff; }
+  .header h1 { font-size: 18px; font-weight: 600; }
+  .header .meta { color: #6b7280; font-size: 13px; margin-left: auto; }
+  .sidebar { position: fixed; top: 53px; left: 0; bottom: 0; width: 280px; border-right: 1px solid #e5e7eb; overflow-y: auto; padding: 12px 0; background: #fff; }
+  .sidebar h3 { padding: 8px 16px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #9ca3af; }
+  .file-item { padding: 8px 16px; cursor: pointer; font-size: 13px; color: #374151; display: flex; align-items: center; gap: 8px; transition: background 0.15s; }
+  .file-item:hover { background: #f9fafb; }
+  .file-item.active { background: #eff6ff; color: #2563eb; }
+  .badge { font-size: 10px; padding: 2px 6px; border-radius: 10px; font-weight: 600; flex-shrink: 0; }
+  .badge-comparison { background: #dbeafe; color: #2563eb; }
+  .badge-stress { background: #fef3c7; color: #d97706; }
+  .badge-isolation { background: #d1fae5; color: #059669; }
+  .main { margin-left: 280px; padding: 24px 32px; }
+  .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 60vh; color: #9ca3af; }
+  .empty-state p { margin-top: 12px; font-size: 15px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 14px; }
+  .card-label { font-size: 11px; color: #9ca3af; margin-bottom: 4px; }
+  .card-value { font-size: 20px; font-weight: 600; color: #111827; }
+  .card-sub { font-size: 12px; color: #9ca3af; margin-top: 2px; }
+  .section { margin-bottom: 28px; }
+  .section-title { font-size: 15px; font-weight: 600; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #e5e7eb; }
+  .chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .chart-box { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; }
+  .chart-box h3 { font-size: 13px; color: #6b7280; margin-bottom: 8px; }
+  .config-bar { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; font-size: 13px; display: flex; gap: 24px; flex-wrap: wrap; }
+  .config-bar span { color: #9ca3af; }
+  .config-bar strong { color: #374151; }
+  .tab-bar { display: flex; gap: 4px; margin-bottom: 16px; }
+  .tab { padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; background: #e5e7eb; color: #6b7280; border: none; transition: all 0.15s; }
+  .tab:hover { background: #d1d5db; color: #374151; }
+  .tab.active { background: #2563eb; color: #fff; }
+  .drop-zone { border: 2px dashed #d1d5db; border-radius: 12px; padding: 20px; text-align: center; margin: 8px 16px 8px; transition: border-color 0.2s; }
+  .drop-zone.drag-over { border-color: #2563eb; background: rgba(37,99,235,0.05); }
+  .drop-zone p { color: #9ca3af; font-size: 13px; }
+  .drop-zone input { display: none; }
+  .drop-zone label { color: #2563eb; cursor: pointer; text-decoration: underline; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 7px 10px; text-align: right; border-bottom: 1px solid #e5e7eb; }
+  th { color: #9ca3af; font-weight: 500; font-size: 11px; }
+  th:first-child, td:first-child { text-align: left; }
+  tr:hover td { background: #f9fafb; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useCallback } = React;
+const {
+  BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  ResponsiveContainer, ComposedChart, Area
+} = Recharts;
+
+const COLORS = { 'openai-direct': '#2563eb', 'openrouter': '#d97706', 'hub-openai': '#059669',
+  primary: '#2563eb', secondary: '#d97706', tertiary: '#059669', error: '#dc2626', purple: '#7c3aed' };
+const TARGET_COLORS = ['#2563eb','#d97706','#059669','#dc2626','#7c3aed','#0891b2'];
+const TYPE_LABELS = { comparison: '对比测试', stress: '压力测试', isolation: '隔离测试' };
+const PAYLOAD_LABELS = { minimal: '最小负载', realistic: '常规负载', large: '大负载' };
+
+const fmt = ms => typeof ms === 'number' ? Math.round(ms) + 'ms' : '-';
+const fmtN = n => typeof n === 'number' ? n.toFixed(1) : '-';
+
+function App() {
+  const [files, setFiles] = useState(new Map());
+  const [activeFile, setActiveFile] = useState(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const resp = await fetch('results/');
+        if (!resp.ok) return;
+        const html = await resp.text();
+        const links = [...html.matchAll(/href="([^"]+\.json)"/g)].map(m => m[1]);
+        const loaded = new Map();
+        for (const link of links) {
+          const r = await fetch('results/' + link);
+          if (r.ok) loaded.set(link, await r.json());
+        }
+        if (loaded.size > 0) setFiles(loaded);
+      } catch {}
+    })();
+  }, []);
+
+  const handleFiles = useCallback(fileList => {
+    for (const file of fileList) {
+      const reader = new FileReader();
+      reader.onload = e => {
+        try {
+          const data = JSON.parse(e.target.result);
+          setFiles(prev => new Map(prev).set(file.name, data));
+        } catch { alert('JSON 格式无效: ' + file.name); }
+      };
+      reader.readAsText(file);
+    }
+  }, []);
+
+  const data = activeFile ? files.get(activeFile) : null;
+
+  return <>
+    <div className="header">
+      <h1>AIGNE Hub 基准测试仪表盘</h1>
+      <div className="meta">已加载 {files.size} 个文件</div>
+    </div>
+    <Sidebar files={files} activeFile={activeFile} onSelect={setActiveFile} onFiles={handleFiles} />
+    <div className="main">
+      {!data ? (
+        <div className="empty-state"><p>从侧边栏选择结果文件，或拖拽 JSON 文件开始</p></div>
+      ) : data.type === 'comparison' ? (
+        <ComparisonView data={data} />
+      ) : data.type === 'stress' ? (
+        <StressView data={data} />
+      ) : data.type === 'isolation' ? (
+        <IsolationView data={data} />
+      ) : null}
+    </div>
+  </>;
+}
+
+function Sidebar({ files, activeFile, onSelect, onFiles }) {
+  const grouped = { comparison: [], stress: [], isolation: [] };
+  for (const [name, data] of files) {
+    const t = data.type || 'unknown';
+    if (grouped[t]) grouped[t].push(name);
+  }
+  const onDrop = e => { e.preventDefault(); e.currentTarget.classList.remove('drag-over'); onFiles(e.dataTransfer.files); };
+  const onDragOver = e => { e.preventDefault(); e.currentTarget.classList.add('drag-over'); };
+  const badgeMap = { comparison: '比', stress: '压', isolation: '隔' };
+
+  return <div className="sidebar">
+    <div className="drop-zone" onDrop={onDrop} onDragOver={onDragOver} onDragLeave={e => e.currentTarget.classList.remove('drag-over')}>
+      <p>拖拽 JSON 文件到此处<br/>或 <label htmlFor="fi">浏览文件</label></p>
+      <input id="fi" type="file" accept=".json" multiple onChange={e => onFiles(e.target.files)} />
+    </div>
+    {Object.entries(grouped).map(([type, names]) => names.length > 0 && <div key={type}>
+      <h3>{TYPE_LABELS[type]} ({names.length})</h3>
+      {names.sort().reverse().map(name => {
+        const d = files.get(name);
+        const ts = d.timestamp ? new Date(d.timestamp).toLocaleString('zh-CN') : '';
+        return <div key={name} className={`file-item ${activeFile === name ? 'active' : ''}`} onClick={() => onSelect(name)}>
+          <span className={`badge badge-${type}`}>{badgeMap[type]}</span>
+          <div><div style={{fontSize:13}}>{name.replace(/\.json$/, '')}</div><div style={{fontSize:11,color:'#9ca3af'}}>{ts}</div></div>
+        </div>;
+      })}
+    </div>)}
+  </div>;
+}
+
+function ConfigBar({ config: c }) {
+  return <div className="config-bar">
+    <div><span>地址:</span> <strong>{c.hubBaseUrl || '-'}</strong></div>
+    <div><span>持续时间:</span> <strong>{c.duration ? (c.duration/1000)+'s' : '-'}</strong></div>
+    <div><span>并发级别:</span> <strong>{(c.levels||[]).join(', ')}</strong></div>
+    <div><span>预热:</span> <strong>{c.warmupCount}</strong></div>
+  </div>;
+}
+
+function ChartBox({ title, children }) {
+  return <div className="chart-box"><h3>{title}</h3>{children}</div>;
+}
+
+const tooltipStyle = { contentStyle: { background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, fontSize: 12 } };
+
+// ── Comparison ──
+function ComparisonView({ data }) {
+  const [model, setModel] = useState(data.results[0]?.model);
+  const models = data.results.map(r => r.model);
+  const modelData = data.results.find(r => r.model === model);
+  if (!modelData) return null;
+
+  const levels = modelData.levels;
+  const targets = [...new Set(levels.flatMap(l => Object.keys(l.targets)))];
+
+  // Build chart data: grouped bars for each concurrency
+  const barData = levels.map(l => {
+    const row = { concurrency: 'c=' + l.concurrency };
+    targets.forEach(t => {
+      const d = l.targets[t];
+      if (!d) return;
+      row[t + '_ttfb_p50'] = Math.round(d.ttfb?.p50 || 0);
+      row[t + '_ttfb_p90'] = Math.round(d.ttfb?.p90 || 0);
+      row[t + '_total_p50'] = Math.round(d.total?.p50 || 0);
+      row[t + '_total_p90'] = Math.round(d.total?.p90 || 0);
+      row[t + '_rps'] = +(d.rps || 0).toFixed(1);
+      row[t + '_errors'] = +(d.errorRate || 0).toFixed(1);
+    });
+    return row;
+  });
+
+  // Overhead data: difference from openai-direct
+  const baseTarget = targets.find(t => t.includes('direct')) || targets[0];
+  const overheadData = levels.map(l => {
+    const base = l.targets[baseTarget];
+    const row = { concurrency: 'c=' + l.concurrency };
+    targets.filter(t => t !== baseTarget).forEach(t => {
+      const d = l.targets[t];
+      if (!d || !base || !base.ttfb?.p50) return;
+      row[t + '_ttfb_overhead'] = Math.round((d.ttfb?.p50 || 0) - (base.ttfb?.p50 || 0));
+      row[t + '_total_overhead'] = Math.round((d.total?.p50 || 0) - (base.total?.p50 || 0));
+    });
+    return row;
+  });
+
+  const colorFor = (t, i) => COLORS[t] || TARGET_COLORS[i % TARGET_COLORS.length];
+
+  return <>
+    <ConfigBar config={data.config} />
+    {models.length > 1 && <div className="tab-bar">
+      {models.map(m => <button key={m} className={`tab ${m === model ? 'active' : ''}`} onClick={() => setModel(m)}>{m}</button>)}
+    </div>}
+
+    <div className="section">
+      <div className="section-title">首字节延迟 (TTFB) 对比</div>
+      <div className="chart-grid">
+        <ChartBox title="TTFB p50 — 中位数">
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={barData} barGap={2} barCategoryGap="20%">
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey="concurrency" />
+              <YAxis unit="ms" />
+              <Tooltip {...tooltipStyle} formatter={(v) => v + 'ms'} />
+              <Legend />
+              {targets.map((t, i) => <Bar key={t} dataKey={t+'_ttfb_p50'} name={t} fill={colorFor(t,i)} radius={[3,3,0,0]} />)}
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartBox>
+        <ChartBox title="TTFB p90 — 尾部延迟">
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={barData} barGap={2} barCategoryGap="20%">
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey="concurrency" />
+              <YAxis unit="ms" />
+              <Tooltip {...tooltipStyle} formatter={(v) => v + 'ms'} />
+              <Legend />
+              {targets.map((t, i) => <Bar key={t} dataKey={t+'_ttfb_p90'} name={t} fill={colorFor(t,i)} radius={[3,3,0,0]} />)}
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartBox>
+      </div>
+    </div>
+
+    <div className="section">
+      <div className="section-title">总耗时对比</div>
+      <div className="chart-grid">
+        <ChartBox title="总耗时 p50">
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={barData} barGap={2} barCategoryGap="20%">
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey="concurrency" />
+              <YAxis unit="ms" />
+              <Tooltip {...tooltipStyle} formatter={(v) => v + 'ms'} />
+              <Legend />
+              {targets.map((t, i) => <Bar key={t} dataKey={t+'_total_p50'} name={t} fill={colorFor(t,i)} radius={[3,3,0,0]} />)}
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartBox>
+        <ChartBox title="额外开销 (相对 {baseTarget})">
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={overheadData} barGap={2} barCategoryGap="20%">
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey="concurrency" />
+              <YAxis unit="ms" />
+              <Tooltip {...tooltipStyle} formatter={(v) => (v > 0 ? '+' : '') + v + 'ms'} />
+              <Legend />
+              {targets.filter(t => t !== baseTarget).map((t, i) => <Bar key={t} dataKey={t+'_ttfb_overhead'} name={t + ' TTFB 开销'} fill={colorFor(t,i+1)} radius={[3,3,0,0]} />)}
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartBox>
+      </div>
+    </div>
+
+    <div className="section">
+      <div className="section-title">吞吐量与错误</div>
+      <div className="chart-grid">
+        <ChartBox title="每秒请求数 (RPS)">
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={barData} barGap={2} barCategoryGap="20%">
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey="concurrency" />
+              <YAxis unit="/s" />
+              <Tooltip {...tooltipStyle} formatter={(v) => v + ' req/s'} />
+              <Legend />
+              {targets.map((t, i) => <Bar key={t} dataKey={t+'_rps'} name={t} fill={colorFor(t,i)} radius={[3,3,0,0]} />)}
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartBox>
+        <ChartBox title="错误率">
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={barData} barGap={2} barCategoryGap="20%">
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey="concurrency" />
+              <YAxis unit="%" />
+              <Tooltip {...tooltipStyle} formatter={(v) => v + '%'} />
+              <Legend />
+              {targets.map((t, i) => <Bar key={t} dataKey={t+'_errors'} name={t} fill={colorFor(t,i)} radius={[3,3,0,0]} />)}
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartBox>
+      </div>
+    </div>
+
+    <ServerTimingSection levels={levels} targets={targets} />
+
+    <RawComparisonTable levels={levels} targets={targets} />
+  </>;
+}
+
+function ServerTimingSection({ levels, targets }) {
+  const hasServerTiming = levels.some(l => Object.values(l.targets).some(t => t.serverTiming && Object.keys(t.serverTiming).length > 0));
+  if (!hasServerTiming) return null;
+
+  // Find target with server timing
+  const stTarget = targets.find(t => levels.some(l => l.targets[t]?.serverTiming && Object.keys(l.targets[t].serverTiming).length > 0));
+  if (!stTarget) return null;
+
+  const phases = [...new Set(levels.flatMap(l => Object.keys(l.targets[stTarget]?.serverTiming || {})))].filter(p => p !== 'total' && p !== 'ttfb' && p !== 'streaming');
+  const stData = levels.map(l => {
+    const st = l.targets[stTarget]?.serverTiming || {};
+    const row = { concurrency: 'c=' + l.concurrency };
+    phases.forEach(p => { row[p] = Math.round(st[p]?.p50 || 0); });
+    return row;
+  });
+
+  const phaseColors = ['#2563eb','#d97706','#059669','#dc2626','#7c3aed','#0891b2','#ea580c','#4f46e5'];
+
+  return <div className="section">
+    <div className="section-title">服务端耗时分解 ({stTarget})</div>
+    <ChartBox title="各阶段耗时 p50 (堆叠)">
+      <ResponsiveContainer width="100%" height={300}>
+        <BarChart data={stData}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+          <XAxis dataKey="concurrency" />
+          <YAxis unit="ms" />
+          <Tooltip {...tooltipStyle} formatter={(v) => v + 'ms'} />
+          <Legend />
+          {phases.map((p, i) => <Bar key={p} dataKey={p} stackId="a" fill={phaseColors[i % phaseColors.length]} />)}
+        </BarChart>
+      </ResponsiveContainer>
+    </ChartBox>
+  </div>;
+}
+
+function RawComparisonTable({ levels, targets }) {
+  return <div className="section">
+    <div className="section-title">原始数据</div>
+    <div style={{overflowX:'auto'}}>
+    <table><thead><tr>
+      <th>并发</th><th>目标</th><th>样本</th><th>RPS</th>
+      <th>TTFB p50</th><th>TTFB p90</th><th>总耗时 p50</th><th>总耗时 p90</th><th>错误</th>
+    </tr></thead><tbody>
+      {levels.flatMap(l => Object.entries(l.targets).map(([name, t]) =>
+        <tr key={l.concurrency+name}>
+          <td>{l.concurrency}</td><td>{name}</td><td>{t.samples}</td><td>{fmtN(t.rps)}</td>
+          <td>{fmt(t.ttfb?.p50)}</td><td>{fmt(t.ttfb?.p90)}</td>
+          <td>{fmt(t.total?.p50)}</td><td>{fmt(t.total?.p90)}</td>
+          <td>{t.errors}{t.errorRate > 0 ? ` (${fmtN(t.errorRate)}%)` : ''}</td>
+        </tr>
+      ))}
+    </tbody></table>
+    </div>
+  </div>;
+}
+
+// ── Stress ──
+function StressView({ data }) {
+  const results = data.results;
+  const chartData = results.map(r => ({
+    concurrency: 'c=' + r.concurrency,
+    ttfb_p50: Math.round(r.ttfb.p50),
+    ttfb_p90: Math.round(r.ttfb.p90),
+    total_p50: Math.round(r.total.p50),
+    total_p90: Math.round(r.total.p90),
+    rps: +(r.rps).toFixed(1),
+    requests: r.totalRequests,
+    errors: r.errors,
+  }));
+
+  const hasServerTiming = results.some(r => r.serverTiming && Object.keys(r.serverTiming).length > 0);
+  const phases = hasServerTiming ? [...new Set(results.flatMap(r => Object.keys(r.serverTiming || {})))].filter(p => p !== 'total' && p !== 'ttfb' && p !== 'streaming') : [];
+  const stData = results.map(r => {
+    const row = { concurrency: 'c=' + r.concurrency };
+    phases.forEach(p => { row[p] = Math.round(r.serverTiming?.[p]?.p50 || 0); });
+    return row;
+  });
+  const phaseColors = ['#2563eb','#d97706','#059669','#dc2626','#7c3aed','#0891b2','#ea580c'];
+
+  return <>
+    <ConfigBar config={data.config} />
+    <div className="cards">
+      <div className="card"><div className="card-label">最低负载 TTFB</div><div className="card-value">{fmt(results[0].ttfb.p50)}</div><div className="card-sub">c={results[0].concurrency}</div></div>
+      <div className="card"><div className="card-label">最高负载 TTFB</div><div className="card-value">{fmt(results.at(-1).ttfb.p50)}</div><div className="card-sub">c={results.at(-1).concurrency}</div></div>
+      <div className="card"><div className="card-label">最大 RPS</div><div className="card-value">{fmtN(Math.max(...results.map(r=>r.rps)))}</div></div>
+      <div className="card"><div className="card-label">总请求</div><div className="card-value">{results.reduce((s,r)=>s+r.totalRequests,0)}</div></div>
+      <div className="card"><div className="card-label">总错误</div><div className="card-value">{results.reduce((s,r)=>s+r.errors,0)}</div></div>
+    </div>
+
+    <div className="section">
+      <div className="section-title">延迟随并发变化</div>
+      <div className="chart-grid">
+        <ChartBox title="首字节延迟 (TTFB)">
+          <ResponsiveContainer width="100%" height={280}>
+            <ComposedChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey="concurrency" />
+              <YAxis unit="ms" />
+              <Tooltip {...tooltipStyle} formatter={(v) => v + 'ms'} />
+              <Legend />
+              <Area dataKey="ttfb_p90" name="p90 范围" fill="#2563eb" fillOpacity={0.1} stroke="none" />
+              <Line dataKey="ttfb_p50" name="p50" stroke="#2563eb" strokeWidth={2} dot={{r:4}} />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </ChartBox>
+        <ChartBox title="总耗时">
+          <ResponsiveContainer width="100%" height={280}>
+            <ComposedChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey="concurrency" />
+              <YAxis unit="ms" />
+              <Tooltip {...tooltipStyle} formatter={(v) => v + 'ms'} />
+              <Legend />
+              <Area dataKey="total_p90" name="p90 范围" fill="#d97706" fillOpacity={0.1} stroke="none" />
+              <Line dataKey="total_p50" name="p50" stroke="#d97706" strokeWidth={2} dot={{r:4}} />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </ChartBox>
+      </div>
+    </div>
+
+    <div className="section">
+      <div className="section-title">吞吐量</div>
+      <ChartBox title="RPS vs 并发">
+        <ResponsiveContainer width="100%" height={280}>
+          <BarChart data={chartData}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+            <XAxis dataKey="concurrency" />
+            <YAxis unit="/s" />
+            <Tooltip {...tooltipStyle} formatter={(v) => v + ' req/s'} />
+            <Bar dataKey="rps" name="RPS" fill="#059669" radius={[3,3,0,0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </ChartBox>
+    </div>
+
+    {hasServerTiming && <div className="section">
+      <div className="section-title">服务端耗时分解</div>
+      <ChartBox title="各阶段耗时 p50 (堆叠)">
+        <ResponsiveContainer width="100%" height={300}>
+          <BarChart data={stData}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+            <XAxis dataKey="concurrency" />
+            <YAxis unit="ms" />
+            <Tooltip {...tooltipStyle} formatter={(v) => v + 'ms'} />
+            <Legend />
+            {phases.map((p, i) => <Bar key={p} dataKey={p} stackId="a" fill={phaseColors[i % phaseColors.length]} />)}
+          </BarChart>
+        </ResponsiveContainer>
+      </ChartBox>
+    </div>}
+
+    <div className="section">
+      <div className="section-title">原始数据</div>
+      <table><thead><tr>
+        <th>并发</th><th>请求数</th><th>RPS</th><th>TTFB p50</th><th>TTFB p90</th><th>总耗时 p50</th><th>总耗时 p90</th><th>错误</th><th>限流</th>
+      </tr></thead><tbody>
+        {results.map(r => <tr key={r.concurrency}>
+          <td>{r.concurrency}</td><td>{r.totalRequests}</td><td>{fmtN(r.rps)}</td>
+          <td>{fmt(r.ttfb.p50)}</td><td>{fmt(r.ttfb.p90)}</td>
+          <td>{fmt(r.total.p50)}</td><td>{fmt(r.total.p90)}</td>
+          <td>{r.errors}{r.errorRate > 0 ? ` (${fmtN(r.errorRate)}%)` : ''}</td>
+          <td>{r.rateLimited || 0}</td>
+        </tr>)}
+      </tbody></table>
+    </div>
+  </>;
+}
+
+// ── Isolation ──
+function IsolationView({ data }) {
+  const payloads = data.results.payloads;
+  const payloadNames = Object.keys(payloads);
+  const [activePayload, setActivePayload] = useState(payloadNames[0]);
+  const results = payloads[activePayload] || [];
+
+  const chartData = results.map(r => ({
+    concurrency: 'c=' + r.concurrency,
+    rt_p50: Math.round(r.responseTime.p50),
+    rt_p90: Math.round(r.responseTime.p90),
+    rps: +(r.rps).toFixed(1),
+    cv: +(r.responseTime.cv).toFixed(2),
+  }));
+
+  const hasServerTiming = results.some(r => r.serverTiming && Object.keys(r.serverTiming).length > 0);
+  const phases = hasServerTiming ? [...new Set(results.flatMap(r => Object.keys(r.serverTiming || {})))].filter(p => p !== 'total' && p !== 'ttfb' && p !== 'streaming') : [];
+  const stData = results.map(r => {
+    const row = { concurrency: 'c=' + r.concurrency };
+    phases.forEach(p => { row[p] = Math.round(r.serverTiming?.[p]?.p50 || 0); });
+    return row;
+  });
+  const phaseColors = ['#2563eb','#d97706','#059669','#dc2626','#7c3aed','#0891b2','#ea580c'];
+
+  const totalErrors = results.reduce((s,r) => s + r.errors, 0);
+
+  return <>
+    <ConfigBar config={data.config} />
+    {payloadNames.length > 1 && <div className="tab-bar">
+      {payloadNames.map(p => <button key={p} className={`tab ${p === activePayload ? 'active' : ''}`} onClick={() => setActivePayload(p)}>{PAYLOAD_LABELS[p]||p}</button>)}
+    </div>}
+
+    <div className="cards">
+      <div className="card"><div className="card-label">响应时间 (c={results[0]?.concurrency})</div><div className="card-value">{fmt(results[0]?.responseTime.p50)}</div></div>
+      <div className="card"><div className="card-label">响应时间 (c={results.at(-1)?.concurrency})</div><div className="card-value">{fmt(results.at(-1)?.responseTime.p50)}</div></div>
+      <div className="card"><div className="card-label">最大 RPS</div><div className="card-value">{fmtN(Math.max(...results.map(r=>r.rps)))}</div></div>
+      <div className="card"><div className="card-label">总请求</div><div className="card-value">{results.reduce((s,r)=>s+r.totalRequests,0)}</div></div>
+      <div className="card"><div className="card-label">总错误</div><div className="card-value" style={{color: totalErrors > 0 ? '#dc2626' : '#059669'}}>{totalErrors}</div></div>
+    </div>
+
+    <div className="section">
+      <div className="section-title">{PAYLOAD_LABELS[activePayload]||activePayload} - 延迟与吞吐量</div>
+      <div className="chart-grid">
+        <ChartBox title="响应时间">
+          <ResponsiveContainer width="100%" height={280}>
+            <ComposedChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey="concurrency" />
+              <YAxis unit="ms" />
+              <Tooltip {...tooltipStyle} formatter={(v) => v + 'ms'} />
+              <Legend />
+              <Area dataKey="rt_p90" name="p90 范围" fill="#2563eb" fillOpacity={0.1} stroke="none" />
+              <Line dataKey="rt_p50" name="p50" stroke="#2563eb" strokeWidth={2} dot={{r:4}} />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </ChartBox>
+        <ChartBox title="吞吐量 (RPS)">
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey="concurrency" />
+              <YAxis unit="/s" />
+              <Tooltip {...tooltipStyle} formatter={(v) => v + ' req/s'} />
+              <Bar dataKey="rps" name="RPS" fill="#059669" radius={[3,3,0,0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartBox>
+      </div>
+    </div>
+
+    {hasServerTiming && <div className="section">
+      <div className="section-title">服务端耗时分解</div>
+      <ChartBox title="各阶段耗时 p50 (堆叠)">
+        <ResponsiveContainer width="100%" height={300}>
+          <BarChart data={stData}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+            <XAxis dataKey="concurrency" />
+            <YAxis unit="ms" />
+            <Tooltip {...tooltipStyle} formatter={(v) => v + 'ms'} />
+            <Legend />
+            {phases.map((p, i) => <Bar key={p} dataKey={p} stackId="a" fill={phaseColors[i % phaseColors.length]} />)}
+          </BarChart>
+        </ResponsiveContainer>
+      </ChartBox>
+    </div>}
+
+    <div className="section">
+      <div className="section-title">原始数据</div>
+      <table><thead><tr>
+        <th>并发</th><th>请求数</th><th>RPS</th><th>RT p50</th><th>RT p90</th><th>最小</th><th>最大</th><th>CV</th><th>错误</th>
+      </tr></thead><tbody>
+        {results.map(r => <tr key={r.concurrency}>
+          <td>{r.concurrency}</td><td>{r.totalRequests}</td><td>{fmtN(r.rps)}</td>
+          <td>{fmt(r.responseTime.p50)}</td><td>{fmt(r.responseTime.p90)}</td>
+          <td>{fmt(r.responseTime.min)}</td><td>{fmt(r.responseTime.max)}</td>
+          <td>{fmtN(r.responseTime.cv)}</td>
+          <td>{r.errors}{r.errorRate > 0 ? ` (${fmtN(r.errorRate)}%)` : ''}</td>
+        </tr>)}
+      </tbody></table>
+    </div>
+  </>;
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
