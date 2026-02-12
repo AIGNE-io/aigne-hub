@@ -3,248 +3,300 @@
 ## 1. Overview
 
 - **Product positioning**: AIGNE Hub 是 AI 模型统一代理网关，V2 API 是核心入口
-- **Core concept**: 通过“单点校验、并行 preChecks、谨慎缓存、队列化写入”降低 Hub 自身开销和尾延迟
+- **Core concept**: 先消除冗余查询，再并行化 preChecks，再异步化写操作，最后对剩余热路径加缓存
 - **Priority**: P0 — 直接影响所有 AI 调用的首字节体验与吞吐
 - **Target user**: 所有通过 AIGNE Hub 调用 AI 模型的应用和开发者
-- **Project scope**: 仅优化请求前置处理与调用记录写入（preChecks / getCredentials / modelCallCreate），不改变 AI 调用行为和响应格式
+- **Project scope**: 仅优化 V2 路由的请求前置处理与调用记录写入（preChecks / getCredentials / modelCallCreate），不改变 AI 调用行为和响应格式。V1 路由不在优化范围内（中间件链简单，无 modelCallTracker / withModelStatus / creditBalance check）。**V1 间接影响**：§3.1.1 删除 process* 内的 `checkModelRateAvailable` 会同时影响 V1 调用路径（V1 也调用 process*），V1 将失去该校验。V1 实际已废弃，此影响可接受
+- **不包含**: Session 验证链路改造（依赖外部 SDK）；DB 连接池/部署拓扑大改；API 响应格式变更
 
 ## 2. Architecture
 
-### 2.1 当前请求流水线
+### 2.1 当前请求流水线（含排查结果）
+
+以 `POST /v2/chat/completions` 为例，标注每步的所有 I/O 操作：
 
 ```
 客户端请求
   │
-  ├─ requestTimingMiddleware    ≈0ms
-  ├─ compression()              ≈0ms
-  ├─ session (auth)             [session]     ~20-54ms
-  ├─ checkCreditBasedBilling    ≈0ms
-  ├─ maxProviderRetries         [maxProviderRetries] ~0.01ms
+  ├─ requestTimingMiddleware              纯内存，无 I/O
+  ├─ compression()                        纯内存，无 I/O
+  ├─ session (auth)                       [session] ~20-54ms（外部 SDK，不可优化）
+  ├─ checkCreditBasedBilling              纯内存检查，无 I/O
   │
-  ├─ chatCallTracker middleware:
-  │   ├─ ensureModelWithProvider [ensureProvider]  ~0.08ms
-  │   └─ ModelCall.create()      [modelCallCreate] ~3-21ms  ← 阻塞 DB INSERT
+  ├─ maxProviderRetries:                   ⚠️ [架构问题：与 chatCallTracker 内的 ensureModelWithProvider 职责重叠]
+  │   └─ getProvidersForModel             已有 5 分钟缓存（ProviderRotationManager），大部分命中
+  │
+  ├─ chatCallTracker middleware:           ⚠️ [架构问题：混入了 provider 解析职责]
+  │   ├─ ensureModelWithProvider           ⚠️ [不属于 tracker：provider 解析应在上游完成]
+  │   ├─ getModelAndProviderId             ⚠️ AiProvider.findOne [冗余：ensureModelWithProvider 已知 providerId，这里反查]
+  │   └─ ModelCall.create()               ⚠️ DB INSERT 阻塞 ~3-21ms [可延迟：此时只写空壳记录]
   │
   └─ withModelStatus handler:
-      ├─ checkUserCreditBalance  ┐
-      │  (3-5 次支付 API 调用)    ├─ [preChecks] ~78-2473ms
-      ├─ checkModelRateAvailable ┘
-      │  (2 次 DB 查询，且下游流程有重复校验)
-      ├─ getProviderCredentials  [getCredentials] ~13-153ms
-      │  (3 次 DB 查询 + 2 次 DB 写)
-      ├─ AI Provider 调用         [providerTtfb]  ~450-502ms (稳定)
-      ├─ 流式转发                  [streaming]     ~2000ms (稳定)
-      └─ 计费记录                  [usage]         ~4-432ms
+      ├─ checkUserCreditBalance:
+      │   ├─ ensureMeter()                24h 缓存，几乎总命中
+      │   ├─ ensureCustomer(userDid)      ⚠️ 支付 API [可缓存：用户存在性几乎不变]
+      │   ├─ creditGrants.summary()       支付 API [必要，可 singleflight + 短 TTL]
+      │   └─ meterEvents.pendingAmount()  支付 API [必要，同上]
+      │
+      ├─ checkModelRateAvailable:
+      │   ├─ AiProvider.findOne           ⚠️ [冗余：第 2 次查同一个 provider]
+      │   └─ AiModelRate.findAll          必要 [可缓存]
+      │
+      ├─ processChatCompletion:
+      │   ├─ checkModelRateAvailable      ❌ [完全重复！preChecks 刚查过]
+      │   ├─ getModelAndProviderId        ⚠️ AiProvider.findOne [冗余：第 3 次]
+      │   ├─ getProviderCredentials:
+      │   │   ├─ AiProvider.findOne       ⚠️ [冗余：第 4 次查同一个 provider]
+      │   │   ├─ AiCredential.findAll     必要 [可缓存]
+      │   │   ├─ getNextAvailableCredential 必要
+      │   │   ├─ credential.updateUsage() ⚠️ DB WRITE [可异步：只更新计数器]
+      │   │   └─ modelCall.updateCredentials() ⚠️ DB WRITE [可延迟到请求结束]
+      │   │
+      │   ├─ AI Provider 调用              [providerTtfb] ~450-502ms（不可优化）
+      │   └─ 流式转发                      [streaming] ~2000ms（不可优化）
+      │
+      ├─ usage (onEnd):                     createUsageAndCompleteModelCall()
+      │   ├─ getPrice():
+      │   │   ├─ getModelRates()
+      │   │   │   ├─ AiProvider.findOne   ⚠️ [冗余：第 7 次！]
+      │   │   │   └─ AiModelRate.findAll  [与 checkModelRateAvailable 同表重复查]
+      │   ├─ Usage.create()               DB WRITE [可异步]
+      │   ├─ reportUsageV2()              支付 API（throttled，非每次触发）
+      │   └─ modelCall.complete()         DB WRITE [可异步]
+      │
+      └─ withModelStatus 后处理:
+          ├─ updateModelStatus:
+          │   ├─ getModelAndProviderId    ⚠️ AiProvider.findOne [冗余：第 5 次]
+          │   ├─ AiProvider.findOne       ⚠️ [冗余：第 6 次！和上一行查的一样]
+          │   ├─ AiModelStatus.findOne    DB 查询 [可异步]
+          │   └─ AiModelStatus.upsert     DB WRITE [可异步]
+          ├─ AiCredential.findOne         ⚠️ [冗余：已在 getProviderCredentials 拿过]
+          └─ credential.update            DB WRITE 条件 [可异步]
 ```
+
+**冗余 I/O 统计**: 单次请求 `AiProvider.findOne` 同一 provider **7 次**、`checkModelRateAvailable` 重复 **2 次**、`AiModelRate.findAll` 重复 **2 次**、`getModelAndProviderId` 重复 **3-4 次**、阻塞主路径写操作 **5 次**、可异步后处理 **5+ 次 I/O**。合计主路径 I/O：DB 读 15 + DB 写 7-9 + Payment API 3 = **25-27 次**。
 
 ### 2.2 目标优化流水线
 
 ```
 客户端请求
   │
-  ├─ requestTimingMiddleware    ≈0ms
-  ├─ compression()              ≈0ms
-  ├─ session (auth)             [session]  (保持现状)
-  ├─ checkCreditBasedBilling    ≈0ms
-  ├─ maxProviderRetries         ≈0ms
+  ├─ requestTimingMiddleware              ≈0ms
+  ├─ compression()                        ≈0ms
+  ├─ session (auth)                       [session]（保持现状）
+  ├─ checkCreditBasedBilling              ≈0ms
+  ├─ resolveProvider middleware:            合并 maxProviderRetries + ensureModelWithProvider
+  │   ├─ getProvidersForModel              ≈0ms（已有 5 分钟缓存）
+  │   ├─ 选择首选 provider + 改写 req.body.model
+  │   └─ req.resolvedProvider = { providerId, providerName, modelName, availableProviders, maxRetries }
   │
-  ├─ chatCallTracker middleware:
-  │   ├─ ensureModelWithProvider               ≈0ms
-  │   └─ nextId() + enqueue(ModelCallCreate)   ≈0ms (非阻塞队列)
+  ├─ chatCallTracker middleware:            纯 tracker，不再做 provider 解析
+  │   └─ 纯内存初始化 modelCallContext     ≈0ms（不写 DB，不生成记录，只准备内存容器积累调用信息）
   │
   └─ withModelStatus handler:
       ├─ Promise.all([
-      │   checkUserCreditBalance (命中短 TTL + singleflight)
-      │   checkModelRateAvailable (L1 缓存 + 多实例失效信号)
+      │   checkUserCreditBalance            (TTL 缓存，拒绝前回源)
+      │   checkModelRateAvailable           (TTL 缓存，provider 从 req 获取)
+      │   getProviderCredentials            (TTL 缓存，provider 从 req 获取)
       │ ])
-      ├─ getProviderCredentials  (Provider/Credential 缓存)
-      ├─ AI Provider 调用         [providerTtfb] (不变)
-      ├─ 流式转发                  [streaming]    (不变)
-      └─ enqueue(ModelCallUpdate) [usage]        (仅写路径变更)
+      ├─ AI Provider 调用                    [providerTtfb]（不变）
+      ├─ 流式转发                            [streaming]（不变）
+      └─ 后处理（response 已发送完毕，不影响用户延迟）:
+          [两条路径共用] fire-and-forget credential usageCount+1, lastUsedAt（credential 已被使用，与当前行为一致）
+          [仅成功路径] fire-and-forget credential recovery: active=true, weight=DEFAULT（与 usageCount 合并为一条 UPDATE）
+          [仅失败路径] sendCredentialInvalidNotification（已在 catch 中同步执行）+ 清除对应 providerId 的 Credential 缓存
+          [两条路径共用] fire-and-forget updateModelStatus() + wsServer.broadcast（自愈：下一次请求会刷新）
+          [两条路径共用] 同步 await:
+          ├─ Usage.create()                   同步写入（保证 ID 落库顺序，兼容现有按 ID 水位推进的上报算法）
+          └─ reportUsageV2()                  fire-and-forget（已有 throttle）
+          [两条路径共用] fire-and-forget:
+          └─ ModelCall.create()               一次性 INSERT 完整记录
 ```
+
+**优化后主路径 I/O**: 缓存未命中 **5 次**（DB 读 2 + Payment API 3），缓存命中 **0 次**。后处理: DB 写 1（Usage 同步） + fire-and-forget DB 写 2 + DB 读写 2。
 
 ### 2.3 多实例约束
 
 - 线上是多实例部署，**不能把进程内缓存当作强一致来源**
-- 缓存策略采用 `L1 本地缓存 + 失效信号 + TTL 兜底`，保证最终一致
-- ModelCall 写入改为队列，按“请求主流程不阻塞，写入最终一致可追踪”设计
+- 缓存策略采用 `本地 TTL 缓存`，纯 TTL 过期，保证最终一致
+- 后处理写操作分两类：Usage.create 同步 await（保证 ID 落库顺序，兼容上报算法）；其余全部 fire-and-forget（ModelCall.create、credential 更新、updateModelStatus + wsServer.broadcast）。主流程不阻塞
 
 ## 3. Detailed Behavior
 
-### 3.1 P0-A: preChecks 并行化 + 单点费率校验
+### 3.1 消除冗余查询（纯删代码 / 传递已有数据）
+
+**P0 优先级 — 零成本，改动最小，收益最大**
+
+#### 3.1.1 去掉 process* 内部重复的 checkModelRateAvailable
+
+**现状**: 见 §2.1，process* 内部重复调用 checkModelRateAvailable（preChecks 已调用）。
+
+**改法**: 删除 `libs/ai-routes.ts` 中 `processChatCompletion`(269)、`processEmbeddings`(396)、`processImageGeneration`(445) 内的 `checkModelRateAvailable` 调用。校验由调用方 preChecks 负责。
+
+#### 3.1.2 合并 resolveProvider middleware + pipeline 传递 provider 信息
+
+**现状**: 见 §2.1，provider 解析分散在两个 middleware，信息丢失后下游反查 AiProvider.findOne 5-6 次。
+
+**改法**:
+
+1. **合并 middleware**: 将 `getMaxProviderRetriesMiddleware` 和 `ensureModelWithProvider` 合并为一个 `resolveProvider` middleware。职责：解析 model → 查可用 providers → 选首选 → 改写 `req.body.model` → 挂完整信息到 `req`。
+
+2. **`req.resolvedProvider`**: 存放 `{ providerId, providerName, modelName, availableProviders, maxRetries }`，下游直接使用。retry 时 `createRetryHandler` 从 `availableProviders` 列表取下一个，直接更新 `req.resolvedProvider` 和 `req.body.model`，不需要重新查询（当前 `req.availableModelsWithProvider` 已是这个模式，合并后更清晰）。
+
+3. **chatCallTracker 瘦身**: 删除 `ensureModelWithProvider` 和 `getModelAndProviderId` 调用，从 `req.resolvedProvider` 获取 provider 信息。
+
+4. **下游函数签名变更**:
+   - `checkModelRateAvailable(model)` → 接收 `providerId` 可选参数，有则跳过 AiProvider 查询
+   - `getProviderCredentials(provider)` → 接收 `providerId` 可选参数
+   - `updateModelStatus` → 从 `req` 获取 provider 信息，不再调用 `getModelAndProviderId`
+
+#### 3.1.3 withModelStatus 后处理中的冗余 credential 查询
+
+**现状**: 见 §2.1，`libs/status.ts:371` 重复查询已获取的 credential。
+
+**改法**: 将 credential 对象挂到 `req` 上，后处理直接使用。
+
+### 3.2 preChecks + getCredentials 并行化
+
+**P0 优先级**
 
 **位置**:
-- `routes/v2.ts` 的 6 个 handler preChecks 段
+- `routes/v2.ts` 的 6 个 handler preChecks 段（含 `/chat` 路由，其 `getModel` 内部也有 `getModelAndProviderId` + `getProviderCredentials` 同样受益）
 - `libs/ai-routes.ts` 的 `processChatCompletion/processEmbeddings/processImageGeneration`
 
 **行为变更**:
-- 将 `checkUserCreditBalance` 和 `checkModelRateAvailable` 从串行改为 `Promise.all` 并行
-- 消除重复费率校验：V2 在 preChecks 完成后，下游流程不再重复执行同一校验
-- 保持错误语义：并行校验失败时，仍返回原始错误类型
+- 将 `checkUserCreditBalance`、`checkModelRateAvailable`、`getProviderCredentials` 三者从串行改为 `Promise.all` 并行
+- 三者都只依赖 `req.resolvedProvider`，互相无数据依赖
+- `/chat` 路由走 `getModel` 的特殊路径需要一并改造，让 `getModel` 也从 `req.resolvedProvider` 获取 provider 信息
+- 错误语义：`Promise.all` 并行后哪个先失败就返回哪个错误，对用户体验无影响（credential 白拿的成本可忽略：缓存命中 + 写操作已移至后处理）
+- **并行化安全前提 — CreditError 与上游 402 区分**：并行执行时，`getProviderCredentials` 可能在 `checkUserCreditBalance` 抛出 `CreditError` 之前已设置 `req.credentialId`。当 `CreditError` 冒泡到 `withModelStatus` 的 catch 中，`sendCredentialInvalidNotification` 会误判为上游 provider 余额不足（因为 `status===402 && message.includes(NOT_ENOUGH)` 同时匹配），错误地禁用 credential。**修复**：在 `sendCredentialInvalidNotification` 入口加 `if (error instanceof CreditError) return` 守卫。已确认 Hub 侧用户余额不足只有一个 throw 点（`payment.ts:507`），且全部通过 `CreditError` 类型抛出。
 
-**兼容策略**:
-- 为 `process*` 系列函数增加可选参数（如 `skipModelRateCheck`）
-- V2 传 `true`，V1 和其他调用方维持原行为，避免回归
+### 3.3 后处理异步化
 
-### 3.2 P0-B: ModelRate/Provider 缓存（多实例可用）
+**P0 优先级 — 将所有非必要的阻塞写操作移出主路径**
 
-**位置**: `providers/index.ts`、`providers/models.ts`、`providers/util.ts`
+**位置**: `middlewares/model-call-tracker.ts` + `libs/usage.ts` + `libs/status.ts` + `providers/models.ts`
 
-**读路径**:
-- `getProviderByName(name)`：Provider L1 缓存（默认 5 分钟）
-- `getCachedModelRates(model, providerId)`：ModelRate L1 缓存（默认 5 分钟）
+**改法**:
 
-**多实例一致性**:
-- 每次命中前先检查“失效版本号”（轻量轮询，不走每请求强制 DB 查询）
-- 版本变化时清本地 key；未变化走本地缓存
-- TTL 作为兜底，避免失效消息丢失导致长期陈旧
+#### 3.3.1 拆分 `createUsageAndCompleteModelCall`
 
-**避免无意义频繁失效（重点）**:
-- 仅“影响路由/计费结果”的字段变更触发失效
-- 对高频但不影响选择结果的字段（如统计计数）不触发失效
-- 失效发送做合并（debounce），短时间多次变更只广播一次
+`createUsageAndCompleteModelCall`（`libs/usage.ts:485`）耦合了 Usage 计费（`getPrice()` + `Usage.create()` + `reportUsageV2()`）和 ModelCall 完成（`modelCallContext.complete()`），且 Usage 失败会连带将 ModelCall 标记为 failed。
 
-### 3.3 P0-C: 用户余额缓存 + singleflight（补完整治理）
+**改法**: 拆分为独立操作：
+- `getPrice()` 的 DB 读通过 `req.resolvedProvider`（§3.1.2）和 ModelRate 缓存（§3.4.1）消除，credits 在内存计算
+- Usage.create 和 ModelCall.create 解耦，各自独立执行（见 §3.3.3）
 
-**位置**: `libs/payment.ts` — `checkUserCreditBalance`
+#### 3.3.2 ModelCall 从两阶段改为单阶段
 
-**设计**:
-- `userCreditCache[userDid] = { balance, pendingCredit, expiresAt }`
-- 仅缓存 `balance > 0` 的结果，避免负余额误放行
-- 同一 `userDid` 并发请求使用 inflight promise 合并（singleflight）
+现有 ModelCall 经历 3 次 DB 操作：`create(processing)` → `updateCredentials()` → `complete/fail`。
 
-**容量与清理**:
-- 增加 `maxEntries` 上限，超限时淘汰最旧项
-- inflight promise 在 `finally` 中必定清理
-- 异常请求不写入缓存，防止错误结果污染
+**改法**: 内存中初始化 `modelCallContext`，全程积累信息，请求结束后一次性 `ModelCall.create()` 写入完整记录（直接 `success` 或 `failed`）。
 
-**窗口说明（你问的“窗口”）**:
-- “5 秒窗口”指：余额刚从正变零后，最多可能有 5 秒仍使用旧缓存结果
-- 该窗口是性能与严格实时性的折中，不是额外扣费窗口
-- 调用完成后的真实扣费与账单流程不变
+- `cleanupStaleProcessingCalls` 不再需要（无 `processing` 中间态）
+- ModelCall 用 `nextId()` 预分配 Snowflake ID，在响应中返回（维持 API 契约），请求结束后 fire-and-forget 写入
+- 进程 crash 时会丢失 ModelCall 记录（内存 context 丢失），可接受
 
-**多实例说明**:
-- 用户余额缓存保持本地短 TTL，不做跨实例共享
-- 原因：余额查询频繁、变化快，跨实例强一致成本高且收益有限
+#### 3.3.3 后处理分工
 
-### 3.4 P1-A: 消除重复 Provider 查询
+**credential 更新拆分为 usageCount 和 recovery 两部分**：
+- `usageCount += 1, lastUsedAt`：**成功和失败路径都执行**（credential 已被使用，与当前 `getProviderCredentials` 中调用前递增的行为一致）
+- `active = true, weight = DEFAULT`（recovery）：**仅成功路径执行**，与 usageCount 合并为一条 UPDATE
+- 失败路径的 credential 状态由 `sendCredentialInvalidNotification` 独立处理（可能设置 `active=false, weight=0`），不做 recovery
 
-**位置**:
-- `providers/models.ts`（`getProviderCredentials`）
-- `providers/util.ts`（`getModelAndProviderId`）
-- `providers/index.ts`（`checkModelRateAvailable`）
+请求结束后（response 已发送完毕），后处理按成功/失败分支：
 
-**行为变更**:
-- 引入统一 `resolveProviderContext(model)`，返回 `{ providerId, providerName, modelName }`
-- 上述 3 条路径复用同一解析与缓存结果，避免每条路径重复 `AiProvider.findOne`
+```typescript
+// === 成功路径 ===
+credentialUpdate({ id, usageCount: +1, lastUsedAt, active: true, weight: DEFAULT })
+  .catch(log);
 
-### 3.5 P1-B: Credential 列表缓存（谨慎失效）
+// === 失败路径 ===
+credentialUpdate({ id, usageCount: +1, lastUsedAt }).catch(log);
+// sendCredentialInvalidNotification 已在 withModelStatus catch 中执行
 
-**位置**: `providers/models.ts`、`store/models/ai-credential.ts`
+// === 共用 ===
+updateModelStatus({ model, providerId, ok }).catch(log);
 
-**当前问题**:
-- 每请求至少两次 `AiCredential.findAll`
-- `updateUsage` 带来热写，若直接全量清缓存会造成抖动
+// Usage 同步写入，保证 ID 落库顺序（兼容 reportUsageV2 按 ID 水位推进的上报算法）
+await Usage.create(usageParams);
+reportUsageV2({ appId, userDid });  // fire-and-forget（已有 throttle）
 
-**优化后**:
-- `getActiveCredentials(providerId)`：短 TTL 缓存（建议 30-60 秒）
-- 新增 `AiCredential.selectFromCached(providerId, credentials)` 在内存数组做轮询
-- `usageCount/lastUsedAt` 继续异步更新，但**不触发 credential 列表失效**
+ModelCall.create(modelCallParams).catch(log);  // fire-and-forget
+```
 
-**触发失效的字段（仅关键字段）**:
-- `active`、`weight`、`credentialValue`、`providerId`
-- 对 provider 侧 `enabled`、`baseUrl`、`region` 的变更也触发相关失效
+- 效果：主路径（AI 调用前）零 DB 写操作；后处理仅 Usage.create 一次同步写入
 
-### 3.6 P2-A: ModelCall 写入改为队列（替代后台 Promise）
+### 3.4 缓存热路径查询
 
-**位置**: `middlewares/model-call-tracker.ts` + 新增 `queue/model-call.ts`
+**P1 优先级 — 对消除冗余后仍然需要的查询加缓存**
 
-**为何替代后台 Promise**:
-- 后台 Promise 的核心风险：快速失败路径可能在 INSERT 完成前触发 UPDATE
-- 队列方案更容易做持久化重试、积压观测和故障恢复
+新增缓存统一使用 `lru-cache` v11（`@blocklet/sdk` 已用 v11.2.4）。有界 key 空间纯 TTL 驱动，无界 key 空间（用户维度）加 LRU max 上限防内存泄漏。
 
-**写入流程**:
-1. 请求线程同步生成 `modelCallId = nextId()`
-2. 立即 enqueue `CREATE(modelCallId, initialPayload)`，主流程不阻塞
-3. `updateCredentials/complete/fail` 不直接写 DB，改 enqueue `UPDATE` 事件
-4. Worker 消费队列执行 DB 写入，失败自动重试，超限进入死信记录
+#### 3.4.1 AiModelRate 查询缓存
 
-**顺序与一致性**:
-- 默认按同一队列顺序处理；若出现 `UPDATE` 先于 `CREATE`，worker 延迟重试
-- 所有写事件都带 `modelCallId` 和 `eventType`，保证幂等可追踪
+**改法**: `providers/index.ts` — `checkModelRateAvailable` 中的 `AiModelRate.findAll` 加 `lru-cache`（max: 200, ttl: 10 分钟）。变更频率约每周一次。
 
-**多实例说明**:
-- 每实例可有本地持久化队列 worker；最终写入同一 DB
-- 即使单实例重启，落盘队列可恢复未完成任务
+#### 3.4.2 Credential 列表缓存
 
-### 3.7 第 3 条详细说明：ModelCall 更优优化方案比较
+**改法**: `providers/models.ts` — `getProviderCredentials` 中的 `AiCredential.findAll` 加 `lru-cache`（max: 50, ttl: 10 分钟）。在内存缓存数组中做 credential 轮询。`credential.updateUsage()` 的 DB 写入改为 fire-and-forget，但轮询所需的 `usageCount` 在内存中同步递增，保证本进程内轮询均匀。多实例间的 `usageCount` 在 TTL 刷新时从 DB 重新同步，短时间内可能轮询不完全均匀，但 credential 通常只有 1-3 个，偏差可接受。credential 被禁用时（`sendCredentialInvalidNotification` 设置 `active: false`），同步清除对应 `providerId` 的 Credential 缓存条目（`credentialCache.delete(providerId)`），保证下一次请求立即从 DB 获取最新状态。
 
-**方案 A: 后台 Promise INSERT（原方案）**
-- 优点：改动小，最快实现
-- 缺点：快失败场景有时序风险；错误恢复与监控能力弱
+#### 3.4.3 用户余额缓存
 
-**方案 B: 队列化写入（本次选择）**
-- 优点：非阻塞、可重试、可观测、便于多实例治理
-- 缺点：实现复杂度高于 A，需要处理积压和死信
+**现状**: 见 §2.1，每请求 3 次支付 API。余额只在 `reportUsageV2` 上报后变化（默认 10 分钟间隔），因此有效缓存窗口 = 上报间隔。
 
-**方案 C: 同步写 + DB 批量优化**
-- 优点：一致性最强，实现语义简单
-- 缺点：仍在主链路阻塞，难解决高并发尾延迟
+**改法**:
+- `ensureCustomer(userDid)` 加 `lru-cache`（max: 10000, ttl: 30 分钟），用户存在性几乎不变，LRU 驱逐冷用户防内存泄漏
+- `getUserCredits(userDid)` 加 `lru-cache`（max: 10000, ttl: `USAGE_REPORT_THROTTLE_TIME / 2`，默认 5 分钟），取一半留安全余量
+- TTL 从同一个环境变量 `USAGE_REPORT_THROTTLE_TIME` 派生，保证与上报周期联动
+- **充值即时生效**：缓存命中但余额不足时，绕过缓存回源重查一次再决定拒绝。逻辑：
+  1. 缓存命中且余额 > 0 → 直接放行（大多数请求走这里）
+  2. 缓存命中但余额 ≤ 0 → 回源重查（用户可能刚充值），更新缓存，余额仍不足才拒绝
+  3. 缓存未命中 → 正常查询，写入缓存
 
-**结论**:
-- 在“多实例 + 高并发 + 需可追踪”的约束下，B 是更平衡方案
-
-## 4. Decisions Summary
-
-| 决策 | 选择 | 理由 |
-|------|------|------|
-| preChecks 策略 | Promise.all 并行 + 单点校验 | 降低串行等待并去掉重复校验 |
-| Provider/ModelRate 缓存 | L1 本地缓存 + 失效版本 + TTL | 多实例下兼顾性能与最终一致 |
-| Credential 缓存 TTL | 30-60 秒短 TTL | active/weight 会变化，TTL 过长风险高 |
-| Credential 失效策略 | 字段级失效 + debounce | 避免“高频变更导致缓存无意义” |
-| 用户余额缓存 TTL | 5 秒（仅正余额） | 降低支付 API 压力，风险窗口可控 |
-| 用户余额并发控制 | singleflight + finally 清理 | 防止并发风暴和 inflight 泄漏 |
-| ModelCall 写入 | 队列化 CREATE/UPDATE | 非阻塞 + 可重试 + 可观测 |
-| 缓存一致性原则 | 最终一致，不做强一致 | 多实例现实约束下成本可控 |
-
-## 5. MVP Scope
-
-### 包含
-- P0: preChecks 并行化 + 去重复费率校验 + 用户余额缓存与合并
-- P1: Provider/ModelRate/Credential 缓存优化与谨慎失效
-- P2: ModelCall 队列化写入（CREATE + UPDATE）
-
-### 不包含
-- Session 验证链路改造（依赖外部 SDK）
-- DB 连接池/部署拓扑大改（如 cluster 改造）
-- API 响应格式变更
-
-## 6. Risks
+## 4. Risks & Gaps
 
 | 风险 | 影响 | 缓解措施 |
 |------|------|---------|
-| 缓存失效信号延迟 | 短时间命中旧数据 | 失效版本 + TTL 双兜底 |
-| 失效过于频繁 | 缓存命中率下降，优化失效 | 字段级触发 + debounce 合并 |
-| 用户余额 5 秒窗口 | 极短时间内使用旧余额 | 仅缓存正余额，过期即回源；扣费逻辑不变 |
-| 队列积压 | ModelCall 写入延迟 | 监控队列长度/滞留时长，超阈值告警 |
-| 队列任务失败 | 调用记录不完整 | 自动重试 + 死信记录 + 人工回补脚本 |
-| UPDATE 先于 CREATE | 更新失败或丢失 | worker 检测不存在时延迟重试 |
+| TTL 窗口内命中旧数据 | 最多 10 分钟使用过期 ModelRate 配置 | ModelRate 变更频率约每周一次，影响可忽略；Credential 禁用时同步清除缓存（见 §3.4.2），不依赖 TTL 过期 |
+| 用户余额 TTL 缓存窗口 | 最多 5 分钟使用旧余额（默认配置） | 余额只在上报后变化（默认 10 分钟），TTL 取一半留余量；充值场景靠拒绝前回源兜底 |
+| 多实例 credential 轮询偏差 | TTL 窗口内各实例独立计数 usageCount，负载不完全均匀 | credential 通常只有 1-3 个，偏差可接受；TTL 刷新时从 DB 重新同步 |
+| fire-and-forget 写入失败 | ModelCall 记录丢失、credential 计数偏差、Dashboard 模型状态过时 | ModelCall 为审计辅助记录，偶尔丢失可接受；credential 计数为软指标；modelStatus 自愈（下次请求刷新） |
+| 进程 crash 丢失内存 context | ModelCall 永久丢失（fire-and-forget 尚未执行） | 极罕见场景；Usage 已同步落库不受影响；无 `processing` 中间态残留，数据干净 |
+| 并行化引入 CreditError 误判 | 用户余额不足时错误禁用 provider credential | `sendCredentialInvalidNotification` 入口加 `instanceof CreditError` 守卫；已确认只有一个 throw 点（`payment.ts:507`） |
+| ModelCall ID 异步化后丢失 | 响应中 `modelCallId` 字段为空，破坏 API 契约 | 内存预分配 Snowflake ID（`nextId()`），响应返回 + fire-and-forget create 使用同一 ID |
+| V1 路由丢失 checkModelRateAvailable 校验 | V1 调用 process* 时不再做 rate 校验 | V1 实际已废弃，无活跃用户；且 V1 之前也无 preChecks 保护，该校验本身覆盖不完整 |
 
-## 7. Verification Plan
+## 5. Verification Plan
 
-### 7.1 单元测试
-- preChecks 并行执行与错误透传
-- `skipModelRateCheck` 生效，确保 V2 不重复校验
-- Provider/ModelRate/Credential 缓存命中、过期、失效、debounce
-- userCreditCache 的 `maxEntries`、singleflight、异常清理
-- ModelCall 队列任务的重试与死信路径
+### 5.1 单元测试
 
-### 7.2 集成测试
-- 多实例场景下缓存失效最终一致（实例 A 改配置，实例 B 在 TTL 内外行为）
-- 高频 credential 状态变更下缓存命中率不塌陷
-- 队列 worker 重启后可恢复未完成 ModelCall 写入
+**正向用例**:
+- 冗余查询消除：resolveProvider 正确传递 provider 信息，下游不再重复查 DB
+- retry 切换：createRetryHandler 从 resolvedProvider.availableProviders 取下一个 provider，正确更新 req
+- 并行化：preChecks + getProviderCredentials 并行执行，错误正确透传（含 `/chat` 路由的 `getModel` 路径）
+- ModelCall 单阶段写入：请求结束后一次性 fire-and-forget INSERT 完整记录（直接 success/failed），无中间态 processing 记录
+- ModelCall ID 预分配：Snowflake ID（`nextId()`）在内存中生成，响应返回 + fire-and-forget create 使用同一 ID
+- Usage 同步写入后触发 reportUsageV2 fire-and-forget
+- fire-and-forget：credential 更新 + updateModelStatus + ModelCall.create 在请求结束回调中执行
+- 缓存：TTL 命中与过期回源，余额拒绝前回源重查
+- credential 轮询：内存 usageCount 递增后轮询结果符合预期
+- credential 合并更新：成功路径 updateUsage + recovery 合并为一条 UPDATE
 
-### 7.3 基准回归
+**负向用例（防回归）**:
+- CreditError 不误触 credential 禁用：并行场景下 `checkUserCreditBalance` 抛 `CreditError(402, NOT_ENOUGH)` 时，`sendCredentialInvalidNotification` 不执行（`instanceof CreditError` 守卫生效）
+- fire-and-forget 之间互不影响：credential 更新失败后，ModelCall.create 和 updateModelStatus 仍正常执行
+- Usage↔ModelCall 错误解耦：AI 调用成功但 Usage.create 失败时，ModelCall 仍记录为 success（不再因 Usage 失败而标记为 failed）
+
+### 5.2 集成测试
+- 整条 V2 请求链路的 DB 查询次数符合预期（对比优化前后）
+- 缓存 TTL 过期后正确回源
+- 后处理正常执行：Usage 同步写入 + reportUsageV2 fire-and-forget + credential 更新 + updateModelStatus + ModelCall.create 全部 fire-and-forget
+- cleanupStaleProcessingCalls 不再需要（无 processing 中间态），验证移除后无副作用
+- 并行化 + CreditError 场景：用户余额不足时返回 402，credential 未被禁用
+- Usage↔ModelCall 解耦：模拟 Usage.create 失败，验证 ModelCall 仍为 success
+
+### 5.3 基准回归
 - 继续使用 `benchmarks/` 三类测试（comparison/stress/isolation）
 - 本轮不设硬 KPI，只做前后对比与趋势判断
 - 重点观察 `preChecks/getCredentials/modelCallCreate(total)` 的 p50/p90 变化方向
