@@ -516,8 +516,15 @@ export async function checkUserCreditBalance({ userDid }: { userDid: string }) {
   }
 
   // Cache miss → fetch from payment service
-  if (!cached) {
-    const { balance, pendingCredit } = await getUserCredits({ userDid });
+  let balance: string;
+  let pendingCredit: string;
+  if (cached) {
+    balance = cached.balance;
+    pendingCredit = cached.pendingCredit;
+  } else {
+    const credits = await getUserCredits({ userDid });
+    balance = credits.balance;
+    pendingCredit = credits.pendingCredit;
     creditCache.set(userDid, { balance, pendingCredit });
 
     if (balance && toBN(balance).gt(toBN(0))) {
@@ -526,8 +533,6 @@ export async function checkUserCreditBalance({ userDid }: { userDid: string }) {
   }
 
   // Balance <= 0 — check if user can continue (auto-purchase, etc.)
-  const balance = cached?.balance ?? '0';
-  const pendingCredit = cached?.pendingCredit ?? '0';
 
   try {
     const meter = await ensureMeter();

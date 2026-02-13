@@ -261,11 +261,9 @@ const sendCredentialInvalidNotification = async ({
         error,
       });
 
-      // Try cache first, fall back to direct DB query for notification display data
-      const credential = providerId
-        ? (await getCredentialWithCache(providerId, credentialId)) ||
-          (await AiCredential.findOne({ where: { id: credentialId } }))
-        : await AiCredential.findOne({ where: { id: credentialId } });
+      // Always query DB here — PlainCredential from cache lacks instance methods (getDisplayText).
+      // This is the error path (401/403), so the extra query is acceptable.
+      const credential = await AiCredential.findOne({ where: { id: credentialId } });
 
       const template = new CredentialInvalidNotificationTemplate({
         credential: {
