@@ -390,7 +390,6 @@ export function withModelStatus({
     try {
       await handler(req, res);
 
-      req.timings?.start('postProcess');
       // Fire-and-forget: model status update on success
       updateModelStatus({
         model: getReqModel(req),
@@ -414,7 +413,6 @@ export function withModelStatus({
           logger.error('Failed to update credential', { error: err, credentialId });
         });
       }
-      req.timings?.end('postProcess');
     } catch (error) {
       logger.error('Failed to call with model status', error.message);
 

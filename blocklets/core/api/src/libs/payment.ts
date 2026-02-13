@@ -15,8 +15,12 @@ import { AIGNE_HUB_DID, CREDIT_PAYMENT_LINK_KEY, CREDIT_PRICE_KEY, Config, METER
 import logger from './logger';
 import { formatToShortUrl } from './url';
 
-// Cache customer objects to avoid repeated payment.customers.retrieve calls
-const customerCache = new LRUCache<string, Awaited<ReturnType<typeof payment.customers.retrieve>>>({
+// Cache only essential customer fields to avoid repeated payment.customers.retrieve calls
+interface CachedCustomer {
+  id: string;
+  did: string;
+}
+const customerCache = new LRUCache<string, CachedCustomer>({
   max: 10000,
   ttl: 30 * 60 * 1000,
 });
@@ -178,7 +182,9 @@ export async function ensureCustomer(userDid: string) {
     create: true,
   });
   if (customer) {
-    customerCache.set(userDid, customer);
+    const entry: CachedCustomer = { id: customer.id, did: customer.did };
+    customerCache.set(userDid, entry);
+    return entry;
   }
   return customer;
 }
@@ -494,52 +500,66 @@ export async function getCreditPaymentLink() {
   return link;
 }
 
+export function invalidateCreditCache(userDid: string) {
+  creditCache.delete(userDid);
+}
+
 export async function checkUserCreditBalance({ userDid }: { userDid: string }) {
   // Check cache first — positive balance means user is good to go
   const cached = creditCache.get(userDid);
-  if (cached && toBN(cached.balance).gt(toBN(0))) {
-    return;
+  if (cached) {
+    if (toBN(cached.balance).gt(toBN(0))) {
+      return;
+    }
+    // Cached balance <= 0 — honour the cache TTL to prevent re-fetch storms.
+    // Fresh balance is fetched only after TTL expires (or after a top-up triggers cache invalidation).
   }
 
-  // Cache miss or cached balance <= 0 → re-fetch (instant top-up support)
-  const { balance, pendingCredit } = await getUserCredits({ userDid });
+  // Cache miss → fetch from payment service
+  if (!cached) {
+    const { balance, pendingCredit } = await getUserCredits({ userDid });
+    creditCache.set(userDid, { balance, pendingCredit });
 
-  // Update cache with fresh data
-  creditCache.set(userDid, { balance, pendingCredit });
-
-  if (balance && toBN(balance).lte(toBN(0))) {
-    try {
-      const meter = await ensureMeter();
-      if (!meter) {
-        throw new CustomError(404, 'Meter not found');
-      }
-      const verifyResult = await payment.creditGrants.verifyAvailability({
-        customer_id: userDid,
-        currency_id: meter.currency_id as string,
-        pending_amount: pendingCredit,
-      });
-      logger.info('credit grant verify result', { verifyResult });
-      if (verifyResult.can_continue) {
-        logger.info('user can continue using AI services with auto purchase credits');
-        return;
-      }
-    } catch (err) {
-      logger.error('failed to verify credit grant availability', { err });
+    if (balance && toBN(balance).gt(toBN(0))) {
+      return;
     }
-
-    let link: string | null = null;
-    try {
-      link = await getCreditPaymentLink();
-      link = withQuery(link || '', {
-        ...getConnectQueryParam({ userDid }),
-      });
-      link = await formatToShortUrl(link);
-    } catch (err) {
-      logger.error('failed to get credit payment link', { err });
-    }
-
-    throw new CreditError(402, CreditErrorType.NOT_ENOUGH, link ?? '');
   }
+
+  // Balance <= 0 — check if user can continue (auto-purchase, etc.)
+  const balance = cached?.balance ?? '0';
+  const pendingCredit = cached?.pendingCredit ?? '0';
+
+  try {
+    const meter = await ensureMeter();
+    if (!meter) {
+      throw new CustomError(404, 'Meter not found');
+    }
+    const verifyResult = await payment.creditGrants.verifyAvailability({
+      customer_id: userDid,
+      currency_id: meter.currency_id as string,
+      pending_amount: pendingCredit,
+    });
+    logger.info('credit grant verify result', { verifyResult, balance });
+    if (verifyResult.can_continue) {
+      logger.info('user can continue using AI services with auto purchase credits');
+      return;
+    }
+  } catch (err) {
+    logger.error('failed to verify credit grant availability', { err });
+  }
+
+  let link: string | null = null;
+  try {
+    link = await getCreditPaymentLink();
+    link = withQuery(link || '', {
+      ...getConnectQueryParam({ userDid }),
+    });
+    link = await formatToShortUrl(link);
+  } catch (err) {
+    logger.error('failed to get credit payment link', { err });
+  }
+
+  throw new CreditError(402, CreditErrorType.NOT_ENOUGH, link ?? '');
 }
 
 export async function getCreditGrants(params: {

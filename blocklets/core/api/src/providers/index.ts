@@ -48,8 +48,19 @@ export async function getCachedModelRates(modelName: string, providerId?: string
 }
 
 export async function checkModelRateAvailable(modelName: string, providerId: string) {
+  // Env-only providers may have no DB record (providerId = '').
+  // Fall through to static pricing config check instead of throwing.
   if (!providerId) {
-    throw new CustomError(400, 'Provider ID is required for rate check');
+    if (!Config.creditBasedBillingEnabled && !Config.pricing?.onlyEnableModelsInPricing) {
+      return;
+    }
+    if (Config.pricing?.onlyEnableModelsInPricing) {
+      if (!Config.pricing.list.some((i) => i.model === modelName)) {
+        throw new CustomError(400, `Unsupported model ${modelName}`);
+      }
+      return;
+    }
+    throw new CustomError(400, `Unsupported model ${modelName}`);
   }
 
   const modelRates = await getCachedModelRates(modelName, providerId);
@@ -58,7 +69,6 @@ export async function checkModelRateAvailable(modelName: string, providerId: str
     if (!Config.creditBasedBillingEnabled && !Config.pricing?.onlyEnableModelsInPricing) {
       return;
     }
-    // Fallback: check static pricing config
     if (Config.pricing?.onlyEnableModelsInPricing) {
       if (!Config.pricing.list.some((i) => i.model === modelName)) {
         throw new CustomError(400, `Unsupported model ${modelName}`);

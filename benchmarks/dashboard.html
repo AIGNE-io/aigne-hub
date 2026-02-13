@@ -491,13 +491,23 @@ function IsolationView({ data }) {
   // Support both old format { payloads: { realistic: [...] } } and new format [...]
   const results = Array.isArray(data.results) ? data.results : (data.results.payloads?.realistic || []);
 
-  const chartData = results.map(r => ({
-    concurrency: 'c=' + r.concurrency,
-    rt_p50: Math.round(r.responseTime.p50),
-    rt_p90: Math.round(r.responseTime.p90),
-    rps: +(r.rps).toFixed(1),
-    cv: +(r.responseTime.cv).toFixed(2),
-  }));
+  // Detect data format: new format has ttfb/totalTime, old format has responseTime
+  const hasNewFormat = results.length > 0 && results[0].ttfb && !results[0].responseTime;
+
+  const chartData = results.map(r => {
+    const timing = hasNewFormat ? r.totalTime : r.responseTime;
+    return {
+      concurrency: 'c=' + r.concurrency,
+      ttfb_p50: hasNewFormat ? Math.round(r.ttfb.p50) : undefined,
+      ttfb_p90: hasNewFormat ? Math.round(r.ttfb.p90) : undefined,
+      streaming_p50: hasNewFormat && r.streamingTime ? Math.round(r.streamingTime.p50) : undefined,
+      streaming_p90: hasNewFormat && r.streamingTime ? Math.round(r.streamingTime.p90) : undefined,
+      total_p50: Math.round(timing.p50),
+      total_p90: Math.round(timing.p90),
+      rps: +(r.rps).toFixed(1),
+      cv: +(timing.cv).toFixed(2),
+    };
+  });
 
   const hasServerTiming = results.some(r => r.serverTiming && Object.keys(r.serverTiming).length > 0);
   const phases = hasServerTiming ? [...new Set(results.flatMap(r => Object.keys(r.serverTiming || {})))].filter(p => p !== 'total' && p !== 'ttfb' && p !== 'streaming') : [];
@@ -509,13 +519,19 @@ function IsolationView({ data }) {
   const phaseColors = ['#2563eb','#d97706','#059669','#dc2626','#7c3aed','#0891b2','#ea580c'];
 
   const totalErrors = results.reduce((s,r) => s + r.errors, 0);
+  const timingOf = r => hasNewFormat ? r.totalTime : r.responseTime;
 
   return <>
     <ConfigBar config={data.config} />
 
     <div className="cards">
-      <div className="card"><div className="card-label">响应时间 (c={results[0]?.concurrency})</div><div className="card-value">{fmt(results[0]?.responseTime.p50)}</div></div>
-      <div className="card"><div className="card-label">响应时间 (c={results.at(-1)?.concurrency})</div><div className="card-value">{fmt(results.at(-1)?.responseTime.p50)}</div></div>
+      {hasNewFormat ? <>
+        <div className="card"><div className="card-label">TTFB (c={results[0]?.concurrency})</div><div className="card-value">{fmt(results[0]?.ttfb.p50)}</div></div>
+        <div className="card"><div className="card-label">TTFB (c={results.at(-1)?.concurrency})</div><div className="card-value">{fmt(results.at(-1)?.ttfb.p50)}</div></div>
+      </> : <>
+        <div className="card"><div className="card-label">响应时间 (c={results[0]?.concurrency})</div><div className="card-value">{fmt(timingOf(results[0])?.p50)}</div></div>
+        <div className="card"><div className="card-label">响应时间 (c={results.at(-1)?.concurrency})</div><div className="card-value">{fmt(timingOf(results.at(-1))?.p50)}</div></div>
+      </>}
       <div className="card"><div className="card-label">最大 RPS</div><div className="card-value">{fmtN(Math.max(...results.map(r=>r.rps)))}</div></div>
       <div className="card"><div className="card-label">总请求</div><div className="card-value">{results.reduce((s,r)=>s+r.totalRequests,0)}</div></div>
       <div className="card"><div className="card-label">总错误</div><div className="card-value" style={{color: totalErrors > 0 ? '#dc2626' : '#059669'}}>{totalErrors}</div></div>
@@ -524,19 +540,48 @@ function IsolationView({ data }) {
     <div className="section">
       <div className="section-title">延迟与吞吐量</div>
       <div className="chart-grid">
-        <ChartBox title="响应时间">
-          <ResponsiveContainer width="100%" height={280}>
-            <ComposedChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="concurrency" />
-              <YAxis unit="ms" />
-              <Tooltip {...tooltipStyle} formatter={(v) => v + 'ms'} />
-              <Legend />
-              <Area dataKey="rt_p90" name="p90 范围" fill="#2563eb" fillOpacity={0.1} stroke="none" />
-              <Line dataKey="rt_p50" name="p50" stroke="#2563eb" strokeWidth={2} dot={{r:4}} />
-            </ComposedChart>
-          </ResponsiveContainer>
-        </ChartBox>
+        {hasNewFormat ? <>
+          <ChartBox title="首字节延迟 (TTFB)">
+            <ResponsiveContainer width="100%" height={280}>
+              <ComposedChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="concurrency" />
+                <YAxis unit="ms" />
+                <Tooltip {...tooltipStyle} formatter={(v) => v + 'ms'} />
+                <Legend />
+                <Area dataKey="ttfb_p90" name="TTFB p90" fill="#2563eb" fillOpacity={0.1} stroke="none" />
+                <Line dataKey="ttfb_p50" name="TTFB p50" stroke="#2563eb" strokeWidth={2} dot={{r:4}} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </ChartBox>
+          <ChartBox title="总耗时">
+            <ResponsiveContainer width="100%" height={280}>
+              <ComposedChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="concurrency" />
+                <YAxis unit="ms" />
+                <Tooltip {...tooltipStyle} formatter={(v) => v + 'ms'} />
+                <Legend />
+                <Area dataKey="total_p90" name="总耗时 p90" fill="#d97706" fillOpacity={0.1} stroke="none" />
+                <Line dataKey="total_p50" name="总耗时 p50" stroke="#d97706" strokeWidth={2} dot={{r:4}} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </ChartBox>
+        </> : <>
+          <ChartBox title="响应时间">
+            <ResponsiveContainer width="100%" height={280}>
+              <ComposedChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="concurrency" />
+                <YAxis unit="ms" />
+                <Tooltip {...tooltipStyle} formatter={(v) => v + 'ms'} />
+                <Legend />
+                <Area dataKey="total_p90" name="p90 范围" fill="#2563eb" fillOpacity={0.1} stroke="none" />
+                <Line dataKey="total_p50" name="p50" stroke="#2563eb" strokeWidth={2} dot={{r:4}} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </ChartBox>
+        </>}
         <ChartBox title="吞吐量 (RPS)">
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={chartData}>
@@ -570,15 +615,30 @@ function IsolationView({ data }) {
     <div className="section">
       <div className="section-title">原始数据</div>
       <table><thead><tr>
-        <th>并发</th><th>请求数</th><th>RPS</th><th>RT p50</th><th>RT p90</th><th>最小</th><th>最大</th><th>CV</th><th>错误</th>
+        <th>并发</th><th>请求数</th><th>RPS</th>
+        {hasNewFormat ? <>
+          <th>TTFB p50</th><th>TTFB p90</th><th>流式 p50</th><th>总耗时 p50</th><th>总耗时 p90</th>
+        </> : <>
+          <th>RT p50</th><th>RT p90</th><th>最小</th><th>最大</th><th>CV</th>
+        </>}
+        <th>错误</th>
       </tr></thead><tbody>
-        {results.map(r => <tr key={r.concurrency}>
-          <td>{r.concurrency}</td><td>{r.totalRequests}</td><td>{fmtN(r.rps)}</td>
-          <td>{fmt(r.responseTime.p50)}</td><td>{fmt(r.responseTime.p90)}</td>
-          <td>{fmt(r.responseTime.min)}</td><td>{fmt(r.responseTime.max)}</td>
-          <td>{fmtN(r.responseTime.cv)}</td>
-          <td>{r.errors}{r.errorRate > 0 ? ` (${fmtN(r.errorRate)}%)` : ''}</td>
-        </tr>)}
+        {results.map(r => {
+          const t = hasNewFormat ? r.totalTime : r.responseTime;
+          return <tr key={r.concurrency}>
+            <td>{r.concurrency}</td><td>{r.totalRequests}</td><td>{fmtN(r.rps)}</td>
+            {hasNewFormat ? <>
+              <td>{fmt(r.ttfb.p50)}</td><td>{fmt(r.ttfb.p90)}</td>
+              <td>{fmt(r.streamingTime?.p50)}</td>
+              <td>{fmt(t.p50)}</td><td>{fmt(t.p90)}</td>
+            </> : <>
+              <td>{fmt(t.p50)}</td><td>{fmt(t.p90)}</td>
+              <td>{fmt(t.min)}</td><td>{fmt(t.max)}</td>
+              <td>{fmtN(t.cv)}</td>
+            </>}
+            <td>{r.errors}{r.errorRate > 0 ? ` (${fmtN(r.errorRate)}%)` : ''}</td>
+          </tr>;
+        })}
       </tbody></table>
     </div>
   </>;

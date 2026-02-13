@@ -9,7 +9,19 @@ import { sequelize } from '../sequelize';
 
 export type CredentialType = 'api_key' | 'access_key_pair' | 'custom';
 const credentialWeightCache: Record<string, Record<string, { current: number; weight: number }>> = {};
-const credentialListCache = new LRUCache<string, AiCredential[]>({ max: 50, ttl: 10 * 60 * 1000 });
+interface PlainCredential {
+  id: string;
+  providerId: string;
+  name: string;
+  credentialValue: CredentialValue;
+  credentialType: CredentialType;
+  active: boolean;
+  lastUsedAt?: Date;
+  usageCount: number;
+  error?: string | null;
+  weight?: number;
+}
+const credentialListCache = new LRUCache<string, PlainCredential[]>({ max: 50, ttl: 10 * 60 * 1000 });
 
 export function clearCredentialListCache(providerId?: string) {
   if (providerId) {
@@ -19,19 +31,35 @@ export function clearCredentialListCache(providerId?: string) {
   }
 }
 
+function toPlainCredentials(credentials: AiCredential[]): PlainCredential[] {
+  return credentials.map((c) => ({
+    id: c.id,
+    providerId: c.providerId,
+    name: c.name,
+    credentialValue: c.credentialValue,
+    credentialType: c.credentialType,
+    active: c.active,
+    lastUsedAt: c.lastUsedAt,
+    usageCount: c.usageCount,
+    error: c.error,
+    weight: c.weight,
+  }));
+}
+
 export async function getCredentialWithCache(
   providerId: string,
   credentialId: string
-): Promise<AiCredential | undefined> {
+): Promise<PlainCredential | undefined> {
   let credentials = credentialListCache.get(providerId);
   if (!credentials) {
-    credentials = await AiCredential.findAll({
+    const rows = await AiCredential.findAll({
       where: { providerId, active: true },
       order: [
         ['usageCount', 'ASC'],
         ['lastUsedAt', 'ASC'],
       ],
     });
+    credentials = toPlainCredentials(rows);
     credentialListCache.set(providerId, credentials);
   }
   return credentials.find((c) => c.id === credentialId);
@@ -141,16 +169,17 @@ export default class AiCredential extends Model<InferAttributes<AiCredential>, I
   }
 
   // 获取下一个可用的凭证（负载均衡）
-  static async getNextAvailableCredential(providerId: string): Promise<AiCredential | null> {
+  static async getNextAvailableCredential(providerId: string): Promise<PlainCredential | null> {
     let credentials = credentialListCache.get(providerId);
     if (!credentials) {
-      credentials = await AiCredential.findAll({
+      const rows = await AiCredential.findAll({
         where: { providerId, active: true },
         order: [
           ['usageCount', 'ASC'],
           ['lastUsedAt', 'ASC'],
         ],
       });
+      credentials = toPlainCredentials(rows);
       credentialListCache.set(providerId, credentials);
     }
 
@@ -181,7 +210,7 @@ export default class AiCredential extends Model<InferAttributes<AiCredential>, I
     });
 
     // 平滑加权轮询
-    let selected: AiCredential | null = null;
+    let selected: PlainCredential | null = null;
     for (const c of credentials) {
       const w = weights[c.id];
       if (w) {
@@ -192,6 +221,8 @@ export default class AiCredential extends Model<InferAttributes<AiCredential>, I
 
     if (selected) {
       weights[selected.id]!.current -= totalWeight;
+      // In-memory bump for within-process round-robin evenness.
+      // DB is updated asynchronously via updateCredentialAfterUse; multi-instance drift is acceptable.
       selected.usageCount += 1;
       selected.lastUsedAt = new Date();
     }
