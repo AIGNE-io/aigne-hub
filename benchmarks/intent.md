@@ -181,18 +181,12 @@ CV（变异系数）说明：
 - CV 0.1~0.3 → 正常波动
 - CV > 0.3 → 不稳定，需关注
 
-### 3.4 Payload 变体
+### 3.4 Payload
 
-定义多种 payload 大小，用于不同测试场景：
+统一使用 `realistic` payload，模拟真实对话场景（~2k tokens input）：
 
 ```typescript
 const PAYLOADS = {
-  // 最小 payload，聚焦系统开销
-  minimal: {
-    messages: [{ role: 'user', content: 'Say hello' }],
-    maxTokens: 50,
-  },
-  // 模拟真实对话（~2k tokens input）
   realistic: {
     messages: [
       { role: 'system', content: SYSTEM_PROMPT_1K },              // ~1k tokens 的 system prompt
@@ -202,44 +196,33 @@ const PAYLOADS = {
     ],
     maxTokens: 200,
   },
-  // 大 payload（~8k tokens input），包含 tool definitions
-  large: {
-    messages: [
-      { role: 'system', content: SYSTEM_PROMPT_1K },
-      ...CONVERSATION_HISTORY_6K,                                  // ~6k tokens 的多轮对话
-      { role: 'user', content: 'Summarize our conversation' },
-    ],
-    maxTokens: 500,
-    tools: TOOL_DEFINITIONS,                                       // 4-5 个 tool 定义
-  },
 } as const;
 ```
 
-- Part 1 (Comparison): 使用 `minimal`（最小化变量，聚焦 overhead 对比）
-- Part 2 (Stress): 使用 `minimal`（避免 token 费用过高）
-- Part 3 (Isolation): 使用 `minimal` + `realistic` + `large` 三种（Mock 无费用，测试 Hub 对不同 payload 的处理开销）
+- 所有三部分统一使用 `realistic` payload，更贴近真实使用场景
+- 多 payload 变体（minimal/large）留作后续扩展（Phase 2）
 
 ### 3.5 Server-Timing 解析
 
 ```
-Server-Timing: session;dur=12.3, maxProviderRetries;dur=2.1, ensureProvider;dur=5.0, modelCallCreate;dur=8.5, preChecks;dur=3.2, getCredentials;dur=28.1, ttfb;dur=0.5, streaming;dur=0.0, usage;dur=15.3, modelStatus;dur=6.2, total;dur=82.5
+Server-Timing: session;dur=12.3, resolveProvider;dur=5.0, modelCallCreate;dur=8.5, preChecks;dur=3.2, getCredentials;dur=28.1, providerTtfb;dur=450.0, ttfb;dur=0.5, streaming;dur=2000.0, usage;dur=15.3, modelStatus;dur=6.2, total;dur=2530.5
 ```
 
 Hub 代码中实际记录的全部阶段（来自 `request-timing.ts` + 各 middleware）：
 
 | Phase | 来源 | 说明 |
 |-------|------|------|
-| `session` | v2.ts:89 | Session / AccessKey 验证 |
-| `maxProviderRetries` | model-call-tracker.ts:63 | 查询可用 provider 列表 |
-| `ensureProvider` | model-call-tracker.ts:109 | 确保 model 有对应 provider |
-| `modelCallCreate` | model-call-tracker.ts:153 | DB 写入 ModelCall 记录 |
-| `preChecks` | v2.ts:222 | Credit 余额检查 + ModelRate 检查 |
-| `getCredentials` | v2.ts:278 / ai-routes.ts:278 | 获取实际 AI 凭证并初始化 client |
-| `ttfb` | ai-routes.ts:298 | 等待 provider 首 chunk（Mock 下 ≈0） |
-| `streaming` | ai-routes.ts:304 | 流式传输阶段（Mock 下 ≈0） |
-| `usage` | v2.ts:232 | 创建 usage 记录 + ModelCall.update |
-| `modelStatus` | status.ts:361 | 更新模型状态 + credential 恢复 |
-| `total` | request-timing.ts:84 | 请求总耗时 |
+| `session` | v2.ts | Session / AccessKey 验证 |
+| `resolveProvider` | model-call-tracker.ts | 合并的 provider 解析（ensureModelWithProvider + retry info） |
+| `modelCallCreate` | model-call-tracker.ts | 内存初始化 ModelCall context（无 DB 写入） |
+| `preChecks` | v2.ts | Credit 余额检查 + ModelRate 检查（并行） |
+| `getCredentials` | v2.ts / ai-routes.ts | 获取实际 AI 凭证并初始化 client |
+| `providerTtfb` | ai-routes.ts | 等待 provider 首 chunk |
+| `ttfb` | request-timing.ts (auto) | 客户端首字节时间（从请求到达到 res.write） |
+| `streaming` | ai-routes.ts | 流式传输阶段 |
+| `usage` | v2.ts | 创建 usage 记录 |
+| `modelStatus` | status.ts | 更新模型状态 + credential 恢复（fire-and-forget） |
+| `total` | request-timing.ts | 请求总耗时 |
 
 解析函数（~10 行正则），放在 `index.ts` 里。
 
@@ -271,8 +254,8 @@ const targets = [
 **执行流程**:
 1. Warmup 所有 targets（每个 3 次）
 2. 按模型分组（如 gpt-4o-mini 组 = openai-direct + openrouter + hub-openai）
-3. 每组内交替执行请求 N 次（默认 10 次）
-4. 使用 `minimal` payload，streaming 模式
+3. 对每个并发档位（默认 `1,5,20`），每个 target 持续运行指定时长（默认 15s），收集统计
+4. 使用 `realistic` payload，streaming 模式
 
 **输出**:
 ```
@@ -315,7 +298,7 @@ Warmup: 3 requests per target (not counted)...
    - 启动 N 个 worker 并发循环请求
    - 持续 STRESS_DURATION 毫秒
    - 收集所有结果
-3. 使用 `minimal` payload，streaming 模式
+3. 使用 `realistic` payload，streaming 模式
 
 **执行逻辑**:
 ```typescript
@@ -411,21 +394,18 @@ export function stopMockProvider(): Promise<void> { /* close server */ }
 
 Mock 响应接近即时，所以 Server-Timing 中的 `ttfb`、`streaming` 阶段 ≈0ms，其余阶段的值就是 Hub 自身开销。
 
-**三种 payload 都测**（Mock 无费用）：
+**使用 `realistic` payload**：
 
 ```typescript
-for (const [payloadName, payload] of Object.entries(PAYLOADS)) {
-  console.log(`\n--- Payload: ${payloadName} ---`);
+const payload = PAYLOADS.realistic;
+await warmup(mockHubTarget, 3);
 
-  await warmup(mockHubTarget, 3);
-
-  for (const concurrency of levels) {
-    const results = await runConcurrent(mockHubTarget, concurrency, ISOLATION_DURATION, {
-      stream: false,  // 非 streaming 以获取 Server-Timing
-      ...payload,
-    });
-    printIsolationRow(concurrency, results);
-  }
+for (const concurrency of levels) {
+  const results = await runConcurrent(mockHubTarget, concurrency, ISOLATION_DURATION, {
+    stream: false,  // 非 streaming 以获取 Server-Timing
+    ...payload,
+  });
+  printIsolationRow(concurrency, results);
 }
 ```
 
@@ -437,7 +417,6 @@ for (const [payloadName, payload] of Object.entries(PAYLOADS)) {
 
 **每档输出**:
 ```
---- Payload: minimal ---
 ┌─────────────┬───────┬──────────┬──────────┬──────────┬────────┬──────┐
 │ Concurrency │  RPS  │ Resp p50 │ Resp p90 │ Resp p99 │ stddev │ Err% │
 ├─────────────┼───────┼──────────┼──────────┼──────────┼────────┼──────┤
@@ -453,13 +432,12 @@ for (const [payloadName, payload] of Object.entries(PAYLOADS)) {
 
 **Server-Timing 阶段细分（p50）**:
 ```
-┌─ Server-Timing Breakdown (concurrency=1, payload=minimal) ──────────────────────┐
+┌─ Server-Timing Breakdown (concurrency=1) ───────────────────────────────────────┐
 │ Phase              │  p50   │  p90   │  p99   │  % of total │                    │
 ├────────────────────┼────────┼────────┼────────┼─────────────┤                    │
 │ session            │  3.2ms │  4.1ms │  5.8ms │   14.5%     │ ████▍              │
-│ maxProviderRetries │  1.5ms │  2.0ms │  3.1ms │    6.8%     │ ██                 │
-│ ensureProvider     │  1.8ms │  2.5ms │  4.0ms │    8.2%     │ ██▍                │
-│ modelCallCreate    │  5.2ms │  7.8ms │ 12.0ms │   23.6%     │ ███████            │
+│ resolveProvider    │  3.3ms │  4.5ms │  7.1ms │   15.0%     │ ████▌              │
+│ modelCallCreate    │  0.1ms │  0.1ms │  0.2ms │    0.5%     │                    │
 │ preChecks          │  2.1ms │  3.0ms │  5.5ms │    9.5%     │ ██▊                │
 │ getCredentials     │  4.5ms │  6.2ms │  9.8ms │   20.5%     │ ██████             │
 │ ttfb               │  0.1ms │  0.2ms │  0.3ms │    0.5%     │                    │
@@ -468,22 +446,11 @@ for (const [payloadName, payload] of Object.entries(PAYLOADS)) {
 │ modelStatus        │  0.8ms │  1.2ms │  2.5ms │    3.6%     │ █                  │
 │ total              │ 22.0ms │ 28.0ms │ 35.0ms │  100.0%     │                    │
 └────────────────────┴────────┴────────┴────────┴─────────────┴────────────────────┘
-  → Top 3 bottlenecks: modelCallCreate (23.6%), getCredentials (20.5%), session (14.5%)
-```
-
-**不同 payload 大小对比**:
-```
-┌─ Payload Size Impact (concurrency=10) ──────────────────────────────┐
-│ Payload   │  Resp p50 │  Resp p90 │ RPS  │ vs minimal              │
-├───────────┼───────────┼───────────┼──────┼─────────────────────────┤
-│ minimal   │    31ms   │    45ms   │  320 │  baseline               │
-│ realistic │    38ms   │    55ms   │  260 │  +22.6%                 │
-│ large     │    52ms   │    78ms   │  190 │  +67.7%                 │
-└───────────┴───────────┴───────────┴──────┴─────────────────────────┘
+  → Top 3 bottlenecks: getCredentials (20.5%), resolveProvider (15.0%), session (14.5%)
 ```
 
 压测后用 asciichart 绘制：
-1. TTFB p50 vs 并发数 趋势图（每种 payload 一条线）
+1. Response Time p50 vs 并发数 趋势图
 2. RPS vs 并发数 趋势图
 
 ---
@@ -509,7 +476,8 @@ MOCK_HUB_MODEL=mock/gpt-4o-mini           # Hub 中配置的 mock provider 对�
 
 # 测试参数（可选，有默认值）
 WARMUP_COUNT=3                              # warmup 请求次数
-COMPARISON_ITERATIONS=10                    # Part 1 每组迭代次数
+COMPARISON_DURATION=15000                   # Part 1 每档持续时间（ms）
+COMPARISON_CONCURRENCY_LEVELS=1,5,20        # Part 1 并发档位
 STRESS_DURATION=15000                       # Part 2 每档持续时间（ms）
 STRESS_CONCURRENCY_LEVELS=1,5,10,25,50      # Part 2 并发档位
 ISOLATION_DURATION=10000                    # Part 3 每档持续时间（ms）
@@ -559,10 +527,10 @@ interface BenchmarkReport {
 | Mock Provider | 本地 HTTP 服务，OpenAI 兼容 | 排除 provider 延迟，隔离 Hub 开销 |
 | Warmup | 所有测试前 3 次 warmup | 避免冷启动偏差（DB 连接池、缓存） |
 | 统计指标 | p50/p75/p90/p99 + stddev + CV | CV 衡量稳定性，比单纯百分位更有信息量 |
-| Payload 变体 | minimal / realistic / large | Part 3 覆盖不同大小，发现 body parsing/validation 瓶颈 |
+| Payload | 统一 realistic | 贴近真实场景；多变体留 Phase 2 |
 | OpenRouter 对比 | 纳入 Part 1 | 作为"另一个代理层"的参照，判断 Hub overhead 是否合理 |
 | Part 3 并发上限 | 200 | Mock 无 rate limit，可推到更高 |
-| Comparison 迭代 | 10 次 | 5 次 p99 无意义，10 次可提供更可靠的统计 |
+| Comparison 模式 | 时长+并发档位 | 比固定迭代次数更能反映不同负载下的表现 |
 | Client | Node.js 原生 fetch | 与 Hub 调用方式一致 |
 | 配置 | 纯 .env | 无 CLI 参数解析 |
 | 图表 | asciichart | ~3kb 零依赖 |
@@ -574,12 +542,13 @@ interface BenchmarkReport {
 ### Included
 - Part 1: Hub vs Direct vs OpenRouter TTFB 对比（streaming）
 - Part 2: 阶梯式真实并发压测（streaming）
-- Part 3: 隔离压测 + Server-Timing 全阶段分析 + 多 payload 大小（非 streaming）
+- Part 3: 隔离压测 + Server-Timing 全阶段分析（非 streaming，realistic payload）
 - Warmup 机制
 - p50/p90/p99 + stddev + CV 统计
 - 对比表格 + 压测表格 + Server-Timing breakdown + asciichart 趋势图 + JSON
 
 ### Excluded (Phase 2)
+- 多 payload 变体（minimal / large）对比
 - Embedding / Image / Audio 接口
 - HTML 报告
 - 历史趋势对比

@@ -1,5 +1,6 @@
 import security from '@blocklet/sdk/lib/security';
-import { CreationOptional, DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequelize';
+import { LRUCache } from 'lru-cache';
+import { CreationOptional, DataTypes, InferAttributes, InferCreationAttributes, Model, literal } from 'sequelize';
 
 import { AIGNE_HUB_DEFAULT_WEIGHT } from '../../libs/constants';
 import nextId from '../../libs/next-id';
@@ -8,6 +9,33 @@ import { sequelize } from '../sequelize';
 
 export type CredentialType = 'api_key' | 'access_key_pair' | 'custom';
 const credentialWeightCache: Record<string, Record<string, { current: number; weight: number }>> = {};
+const credentialListCache = new LRUCache<string, AiCredential[]>({ max: 50, ttl: 10 * 60 * 1000 });
+
+export function clearCredentialListCache(providerId?: string) {
+  if (providerId) {
+    credentialListCache.delete(providerId);
+  } else {
+    credentialListCache.clear();
+  }
+}
+
+export async function getCredentialWithCache(
+  providerId: string,
+  credentialId: string
+): Promise<AiCredential | undefined> {
+  let credentials = credentialListCache.get(providerId);
+  if (!credentials) {
+    credentials = await AiCredential.findAll({
+      where: { providerId, active: true },
+      order: [
+        ['usageCount', 'ASC'],
+        ['lastUsedAt', 'ASC'],
+      ],
+    });
+    credentialListCache.set(providerId, credentials);
+  }
+  return credentials.find((c) => c.id === credentialId);
+}
 
 export interface CredentialValue {
   access_key_id?: string;
@@ -114,13 +142,17 @@ export default class AiCredential extends Model<InferAttributes<AiCredential>, I
 
   // 获取下一个可用的凭证（负载均衡）
   static async getNextAvailableCredential(providerId: string): Promise<AiCredential | null> {
-    const credentials = await AiCredential.findAll({
-      where: { providerId, active: true },
-      order: [
-        ['usageCount', 'ASC'],
-        ['lastUsedAt', 'ASC'],
-      ],
-    });
+    let credentials = credentialListCache.get(providerId);
+    if (!credentials) {
+      credentials = await AiCredential.findAll({
+        where: { providerId, active: true },
+        order: [
+          ['usageCount', 'ASC'],
+          ['lastUsedAt', 'ASC'],
+        ],
+      });
+      credentialListCache.set(providerId, credentials);
+    }
 
     if (credentials.length === 0) {
       return null;
@@ -158,10 +190,49 @@ export default class AiCredential extends Model<InferAttributes<AiCredential>, I
       }
     }
 
-    if (selected) weights[selected.id]!.current -= totalWeight;
+    if (selected) {
+      weights[selected.id]!.current -= totalWeight;
+      selected.usageCount += 1;
+      selected.lastUsedAt = new Date();
+    }
 
     credentialWeightCache[providerId] = weights;
     return selected;
+  }
+
+  /**
+   * Update credential after use: bump usageCount + lastUsedAt, optionally recover (active + weight).
+   * Controls cache invalidation internally — only clears the specific provider's cache when
+   * status-affecting fields change, avoiding the overly aggressive afterBulkUpdate hook.
+   */
+  static async updateCredentialAfterUse(
+    credentialId: string,
+    providerId: string,
+    options?: { recover?: boolean }
+  ): Promise<void> {
+    const values: any = {
+      usageCount: literal('"usageCount" + 1'),
+      lastUsedAt: new Date(),
+    };
+    const updateOptions: any = {
+      where: { id: credentialId },
+      silent: true,
+    };
+
+    if (options?.recover) {
+      values.active = true;
+      values.weight = AIGNE_HUB_DEFAULT_WEIGHT;
+    } else {
+      // Restrict fields so afterBulkUpdate hook skips cache invalidation
+      updateOptions.fields = ['usageCount', 'lastUsedAt'];
+    }
+
+    await AiCredential.update(values, updateOptions);
+
+    // Recovery changes active/weight — clear only this provider's credential cache
+    if (options?.recover && providerId) {
+      clearCredentialListCache(providerId);
+    }
   }
 
   // 批量更新凭证状态
@@ -279,12 +350,18 @@ AiCredential.init(AiCredential.GENESIS_ATTRIBUTES, {
   sequelize,
   hooks: {
     afterCreate: (credential: AiCredential) => {
+      clearCredentialListCache(credential.providerId);
       clearAllRotationCache();
       if (credential.active) {
         clearFailedProvider(credential.providerId);
       }
     },
     afterUpdate: (credential: AiCredential) => {
+      const changed = credential.changed();
+      const cacheInvalidatingFields = ['active', 'weight', 'providerId'];
+      if (!changed || changed.some((f) => cacheInvalidatingFields.includes(f))) {
+        clearCredentialListCache(credential.providerId);
+      }
       const previousActive = credential.previous('active');
       if (previousActive !== credential.active) {
         clearAllRotationCache();
@@ -293,6 +370,16 @@ AiCredential.init(AiCredential.GENESIS_ATTRIBUTES, {
         }
       }
     },
-    afterDestroy: () => clearAllRotationCache(),
+    afterBulkUpdate: (options: any) => {
+      const fields: string[] = options?.fields || [];
+      const cacheInvalidatingFields = ['active', 'weight', 'providerId'];
+      if (fields.length === 0 || fields.some((f) => cacheInvalidatingFields.includes(f))) {
+        clearCredentialListCache();
+      }
+    },
+    afterDestroy: (credential: AiCredential) => {
+      clearCredentialListCache(credential.providerId);
+      clearAllRotationCache();
+    },
   },
 });

@@ -1,4 +1,3 @@
-import { ModelCallContext } from '@api/middlewares/model-call-tracker';
 import { getProviderCredentials } from '@api/providers/models';
 import { SubscriptionError, SubscriptionErrorType } from '@blocklet/aigne-hub/api';
 import { CustomError } from '@blocklet/error';
@@ -25,17 +24,20 @@ export function getOpenAI() {
 }
 
 export async function getOpenAIV2(req: {
-  body: { model: string };
-  modelCallContext?: ModelCallContext;
-  credentialId?: string;
+  body: { model?: string };
+  resolvedProvider?: { providerName: string; modelName: string; credentialId: string; providerId: string };
 }) {
-  const { modelName } = getModelNameWithProvider(req?.body?.model || DEFAULT_MODEL);
-  const params = await getProviderCredentials('openai', {
-    modelCallContext: req?.modelCallContext,
-    model: modelName,
-  });
+  const rp = req.resolvedProvider;
+  const providerName =
+    rp?.providerName || getModelNameWithProvider(req?.body?.model || DEFAULT_MODEL).providerName || 'openai';
+  const modelName = rp?.modelName || getModelNameWithProvider(req?.body?.model || DEFAULT_MODEL).modelName;
 
-  req.credentialId = params.id;
+  const params = await getProviderCredentials(providerName, { model: modelName });
+
+  if (rp) {
+    rp.credentialId = params.id || '';
+    if (params.providerId) rp.providerId = params.providerId;
+  }
 
   return new OpenAI({
     baseURL: params.baseURL || null,
@@ -96,6 +98,11 @@ export function getModelNameWithProvider(model: string, defaultProviderName: str
 
 export function getReqModel(req: {
   body: { model?: string; input?: { model?: string; modelOptions?: { model?: string } } };
+  resolvedProvider?: { providerName: string; modelName: string };
 }): string {
+  const rp = req.resolvedProvider;
+  if (rp?.providerName && rp?.modelName) {
+    return `${rp.providerName}/${rp.modelName}`;
+  }
   return req.body?.model || req.body?.input?.model || req.body?.input?.modelOptions?.model || '';
 }

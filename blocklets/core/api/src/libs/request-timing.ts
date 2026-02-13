@@ -73,7 +73,7 @@ export function requestTimingMiddleware() {
     req.timings = timings;
 
     // Auto-measure client-facing TTFB: from request arrival to first byte written to client.
-    // This captures the full Hub processing time (session, preChecks, getCredentials,
+    // This captures the full Hub processing time (session, preChecks, modelSetup/getCredentials,
     // provider call, etc.) before the client sees any data.
     timings.start('ttfb');
     let firstByteWritten = false;

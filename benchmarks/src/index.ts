@@ -104,49 +104,7 @@ From a scientific viewpoint, the meaning of life could be understood through evo
 
 From a humanistic perspective, the meaning of life might be found in pursuing happiness, building meaningful relationships, contributing to society, and personal growth. Psychologist Abraham Maslow's hierarchy of needs suggests that self-actualization - reaching one's full potential - is the highest human motivation.`;
 
-function generateConversationHistory(): Message[] {
-  const turns: Message[] = [];
-  const topics = [
-    {
-      user: 'Can you explain quantum computing in simple terms?',
-      assistant:
-        'Quantum computing uses quantum mechanics principles like superposition and entanglement to process information differently from classical computers. While classical bits are either 0 or 1, quantum bits (qubits) can be in multiple states simultaneously, allowing quantum computers to explore many solutions at once for certain types of problems.',
-    },
-    {
-      user: 'How does that differ from classical computing?',
-      assistant:
-        'Classical computers process information sequentially using bits that are definitively 0 or 1. Quantum computers leverage three key quantum properties: superposition (qubits can be 0 and 1 simultaneously), entanglement (qubits can be correlated regardless of distance), and interference (probability amplitudes can be manipulated to increase correct answers and decrease wrong ones). This means for specific problems like factoring large numbers, simulating molecules, or optimization, quantum computers can be exponentially faster.',
-    },
-    {
-      user: 'What are some practical applications today?',
-      assistant:
-        'Current practical applications of quantum computing include: drug discovery and molecular simulation (modeling complex molecular interactions), financial modeling (portfolio optimization and risk analysis), cryptography (both breaking existing encryption and creating quantum-safe alternatives), supply chain optimization (solving complex logistics problems), machine learning (quantum-enhanced ML algorithms), and materials science (designing new materials with specific properties). Companies like IBM, Google, and Microsoft are actively developing quantum hardware and software platforms.',
-    },
-    {
-      user: 'Are there any limitations I should know about?',
-      assistant:
-        'Yes, there are significant limitations. Quantum decoherence is a major challenge - qubits are extremely sensitive to environmental disturbance and lose their quantum properties quickly. Error rates are much higher than classical computers, requiring error correction that uses many physical qubits per logical qubit. Current quantum computers have limited qubit counts (hundreds to low thousands). They also require extreme cooling (near absolute zero for most implementations). Quantum advantage has only been demonstrated for specific, narrow problems. Most experts believe practical, large-scale quantum computing is still years to decades away for most real-world applications.',
-    },
-    {
-      user: 'What about quantum supremacy? Has it been achieved?',
-      assistant:
-        'Google claimed quantum supremacy in 2019 with their Sycamore processor, completing a specific calculation in 200 seconds that they estimated would take a classical supercomputer 10,000 years. However, IBM disputed this claim, suggesting classical methods could solve it in 2.5 days. In 2023 and 2024, several groups demonstrated quantum advantages on more practical problems. The consensus is that quantum supremacy for narrow, specially-designed problems has been achieved, but quantum advantage for practical, real-world problems remains an active area of research.',
-    },
-  ];
-  for (const turn of topics) {
-    turns.push({ role: 'user', content: turn.user });
-    turns.push({ role: 'assistant', content: turn.assistant });
-  }
-  return turns;
-}
-
 export const PAYLOADS = {
-  minimal: {
-    messages: [
-      { role: 'user' as const, content: 'Explain what a proxy server is and how it works in about 100 words.' },
-    ],
-    maxTokens: 150,
-  },
   realistic: {
     messages: [
       { role: 'system' as const, content: SYSTEM_PROMPT_1K },
@@ -155,14 +113,6 @@ export const PAYLOADS = {
       { role: 'user' as const, content: 'Can you elaborate on that point?' },
     ],
     maxTokens: 200,
-  },
-  large: {
-    messages: [
-      { role: 'system' as const, content: SYSTEM_PROMPT_1K },
-      ...generateConversationHistory(),
-      { role: 'user' as const, content: 'Summarize our conversation' },
-    ],
-    maxTokens: 500,
   },
 } as const;
 
@@ -322,10 +272,10 @@ export function parseServerTiming(header: string | null): Record<string, number>
 
 export const TIMING_PHASES = [
   'session',
-  'maxProviderRetries',
-  'ensureProvider',
+  'resolveProvider',
   'modelCallCreate',
   'preChecks',
+  'modelSetup',
   'getCredentials',
   'providerTtfb',
   'ttfb',

@@ -91,6 +91,7 @@
     "joi": "^17.13.3",
     "langchain": "^0.2.16",
     "lodash": "^4.17.21",
+    "lru-cache": "^11.2.4",
     "material-ui-popup-state": "^5.1.2",
     "mime": "^4.1.0",
     "morgan": "^1.10.0",

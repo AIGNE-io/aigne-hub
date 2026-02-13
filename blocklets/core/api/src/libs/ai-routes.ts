@@ -1,8 +1,6 @@
 import { AIGNE } from '@aigne/core';
 import { camelize } from '@aigne/core/utils/camelize';
-import { checkModelRateAvailable } from '@api/providers';
-import { chatCompletionByFrameworkModel, getImageModel } from '@api/providers/models';
-import { getModelAndProviderId } from '@api/providers/util';
+import { chatCompletionByFrameworkModel, getImageModel, getProviderWithCache } from '@api/providers/models';
 import { CreditError, CreditErrorType } from '@blocklet/aigne-hub/api';
 import {
   ChatCompletionChunk,
@@ -213,17 +211,34 @@ export const createRetryHandler = (
       });
     } catch (error) {
       const currentModel = getReqModel(req);
-      const maxRetries = req.maxProviderRetries !== undefined ? req.maxProviderRetries : defaultOptions.maxRetries;
+      const rp = req.resolvedProvider;
+      const maxRetries = rp?.maxRetries ?? defaultOptions.maxRetries;
       const errorStatus = error.response?.status || error.status || error.statusCode || 500;
       const nextCount = count + 1;
 
       if (canRetry(nextCount, maxRetries, error)) {
-        const filteredModels = (req.availableModelsWithProvider || []).filter((m) => m !== currentModel);
-        req.availableModelsWithProvider = filteredModels || [];
+        // Filter out the current failing model from available providers
+        const availableProviders = (rp?.availableProviders || []).filter(
+          (p) => `${p.providerName}/${p.modelName}` !== currentModel
+        );
+        if (rp) {
+          rp.availableProviders = availableProviders;
+        }
 
-        const nextModel = filteredModels[0] || req.originalModel;
+        const nextProvider = availableProviders[0];
+        const nextModel = nextProvider ? `${nextProvider.providerName}/${nextProvider.modelName}` : rp?.originalModel;
         if (nextModel) {
+          // body.model is kept in sync for schema validation (aigneHubModelBodyValidate).
+          // resolvedProvider (updated below) is the authoritative source for all downstream consumers.
           req.body.model = nextModel;
+          // Re-sync resolvedProvider with the new model
+          const { providerName: newProviderName, modelName: newModelName } = getModelNameWithProvider(nextModel);
+          if (rp) {
+            rp.providerName = newProviderName;
+            rp.modelName = newModelName;
+            rp.providerId = nextProvider?.providerId || (await getProviderWithCache(newProviderName))?.id || '';
+            rp.credentialId = '';
+          }
         }
 
         logger.info('ai route retry', {
@@ -232,7 +247,7 @@ export const createRetryHandler = (
           errorStatus,
           currentModel,
           nextModel,
-          originalModel: req.originalModel,
+          originalModel: rp?.originalModel,
         });
 
         await fn(req, res, next, nextCount);
@@ -266,8 +281,6 @@ export async function processChatCompletion(
     messages: typeof body.prompt === 'string' ? [{ role: 'user' as const, content: body.prompt }] : body.messages,
   };
 
-  await checkModelRateAvailable(input.model);
-
   if (Config.verbose) logger.info(`AIGNE Hub ${version} completions input:`, body);
 
   res.setHeader('X-Accel-Buffering', 'no');
@@ -275,9 +288,9 @@ export async function processChatCompletion(
 
   const isEventStream = req.accepts().some((i) => i.startsWith('text/event-stream'));
 
-  req.timings?.start('getCredentials');
+  req.timings?.start('modelSetup');
   const result = await chatCompletionByFrameworkModel(input, req.user?.did, { ...options, req });
-  req.timings?.end('getCredentials');
+  req.timings?.end('modelSetup');
 
   let content = '';
   const toolCalls: NonNullable<ChatCompletionChunk['delta']['toolCalls']> = [];
@@ -393,8 +406,6 @@ export async function processEmbeddings(
     throw new CustomError(400, error.message);
   }
 
-  await checkModelRateAvailable(input.model);
-
   const openai = await getOpenAIV2(req);
   const { modelName } = getModelNameWithProvider(input.model || DEFAULT_MODEL);
 
@@ -442,12 +453,10 @@ export async function processImageGeneration(
 
   logger.info('process image generation input', { input });
 
-  await checkModelRateAvailable(input.model);
-
   if (Config.verbose) logger.info(`AIGNE Hub ${version} image generations input:`, input);
 
   let response: ImagesResponse;
-  const { modelName } = await getModelAndProviderId(input.model);
+  const modelName = req.resolvedProvider?.modelName || getModelNameWithProvider(input.model).modelName;
 
   const isImageValid = (image: string | string[] | undefined): image is string[] => {
     if (typeof image === 'string' && image) return true;

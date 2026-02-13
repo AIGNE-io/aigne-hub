@@ -1,7 +1,6 @@
 import asciichart from 'asciichart';
 
 import {
-  BenchmarkResult,
   PAYLOADS,
   Target,
   aggregateServerTimings,
@@ -12,8 +11,6 @@ import {
   printTable,
   runConcurrent,
   saveReport,
-  type,
-  type,
   warmup,
 } from './index.js';
 import { startMockProvider, stopMockProvider } from './mock-provider.js';
@@ -48,103 +45,65 @@ async function main() {
   console.log('Starting mock provider...');
   await startMockProvider(config.mockProviderPort);
 
-  const reportData: any = { payloads: {} };
+  const reportData: any[] = [];
 
   try {
-    const payloadEntries = Object.entries(PAYLOADS) as unknown as [string, { messages: any[]; maxTokens: number }][];
-    const allTtfbSeries = new Map<string, number[]>();
-    const allRpsSeries = new Map<string, number[]>();
+    const payload = PAYLOADS.realistic;
 
-    for (const [payloadName, payload] of payloadEntries) {
-      console.log(`\n${'─'.repeat(60)}`);
-      console.log(`  Payload: ${payloadName}`);
-      console.log('─'.repeat(60));
+    // Warmup
+    await warmup(mockTarget, config.warmupCount, {
+      stream: false,
+      messages: [...payload.messages],
+      maxTokens: payload.maxTokens,
+    });
 
-      // Warmup
-      await warmup(mockTarget, config.warmupCount, {
+    const headers = ['Concurrency', 'RPS', 'Resp p50', 'Resp p90', 'Resp p99', 'stddev', 'Err%'];
+    const rows: string[][] = [];
+    const ttfbP50Series: number[] = [];
+    const rpsSeries: number[] = [];
+
+    for (const concurrency of levels) {
+      console.log(`\n  Running concurrency=${concurrency} for ${duration / 1000}s...`);
+      const results = await runConcurrent(mockTarget, concurrency, duration, {
         stream: false,
         messages: [...payload.messages],
         maxTokens: payload.maxTokens,
       });
 
-      const headers = ['Concurrency', 'RPS', 'Resp p50', 'Resp p90', 'Resp p99', 'stddev', 'Err%'];
-      const rows: string[][] = [];
-      const payloadReport: any[] = [];
-      const ttfbP50Series: number[] = [];
-      const rpsSeries: number[] = [];
+      const successful = results.filter((r) => !r.error);
+      const errors = results.filter((r) => r.error);
+      const respStats = computeStats(successful.map((r) => r.totalTime));
+      const rps = results.length / (duration / 1000);
+      const errPct = results.length > 0 ? (errors.length / results.length) * 100 : 0;
 
-      for (const concurrency of levels) {
-        console.log(`\n  Running concurrency=${concurrency} for ${duration / 1000}s...`);
-        const results = await runConcurrent(mockTarget, concurrency, duration, {
-          stream: false,
-          messages: [...payload.messages],
-          maxTokens: payload.maxTokens,
-        });
+      ttfbP50Series.push(Math.round(respStats.p50));
+      rpsSeries.push(Math.round(rps));
 
-        const successful = results.filter((r) => !r.error);
-        const errors = results.filter((r) => r.error);
-        const respStats = computeStats(successful.map((r) => r.totalTime));
-        const rps = results.length / (duration / 1000);
-        const errPct = results.length > 0 ? (errors.length / results.length) * 100 : 0;
+      rows.push([
+        String(concurrency),
+        rps.toFixed(0),
+        fmt(respStats.p50),
+        fmt(respStats.p90),
+        fmt(respStats.p99),
+        fmt(respStats.stddev),
+        `${errPct.toFixed(0)}%`,
+      ]);
 
-        ttfbP50Series.push(Math.round(respStats.p50));
-        rpsSeries.push(Math.round(rps));
+      printServerTimingBreakdown(`concurrency=${concurrency}`, successful);
 
-        rows.push([
-          String(concurrency),
-          rps.toFixed(0),
-          fmt(respStats.p50),
-          fmt(respStats.p90),
-          fmt(respStats.p99),
-          fmt(respStats.stddev),
-          `${errPct.toFixed(0)}%`,
-        ]);
-
-        printServerTimingBreakdown(`concurrency=${concurrency}, payload=${payloadName}`, successful);
-
-        payloadReport.push({
-          concurrency,
-          totalRequests: results.length,
-          rps,
-          responseTime: respStats,
-          errors: errors.length,
-          errorRate: errPct,
-          serverTiming: Object.fromEntries(aggregateServerTimings(successful)),
-        });
-      }
-
-      console.log(`\n  Summary for payload=${payloadName}:`);
-      printTable(headers, rows);
-
-      allTtfbSeries.set(payloadName, ttfbP50Series);
-      allRpsSeries.set(payloadName, rpsSeries);
-      reportData.payloads[payloadName] = payloadReport;
+      reportData.push({
+        concurrency,
+        totalRequests: results.length,
+        rps,
+        responseTime: respStats,
+        errors: errors.length,
+        errorRate: errPct,
+        serverTiming: Object.fromEntries(aggregateServerTimings(successful)),
+      });
     }
 
-    // Payload size comparison at concurrency=10
-    const c10Index = levels.indexOf(10);
-    if (c10Index >= 0) {
-      console.log('\n┌─ Payload Size Impact (concurrency=10) ──────────────────────────────┐');
-      const compHeaders = ['Payload', 'Resp p50', 'Resp p90', 'RPS', 'vs minimal'];
-      const compRows: string[][] = [];
-      const minimalP50 = allTtfbSeries.get('minimal')?.[c10Index] ?? 0;
-
-      for (const [name, series] of allTtfbSeries) {
-        const p50 = series[c10Index];
-        const rps = allRpsSeries.get(name)?.[c10Index] ?? 0;
-        const rpsSeries = allRpsSeries.get(name);
-        const overhead = minimalP50 > 0 ? `+${(((p50 - minimalP50) / minimalP50) * 100).toFixed(1)}%` : 'baseline';
-        compRows.push([
-          name,
-          fmt(p50),
-          fmt(allTtfbSeries.get(name)?.[c10Index] ?? 0), // This is p50, for p90 we'd need to store it separately
-          String(rps),
-          name === 'minimal' ? 'baseline' : overhead,
-        ]);
-      }
-
-      printTable(compHeaders, compRows);
-    }
+    console.log('\n  Summary:');
+    printTable(headers, rows);
 
     // ASCII charts
     if (levels.length > 1) {
@@ -178,38 +137,23 @@ async function main() {
         return `${chartPadding}${line.join('')}\n${chartPadding}${'Concurrency →'}`;
       };
 
-      const colorNames = ['blue', 'green', 'red'];
-      const colors = [asciichart.blue, asciichart.green, asciichart.red];
+      console.log('\nResponse Time p50 vs Concurrency:');
+      console.log(
+        asciichart.plot(interpolate(ttfbP50Series), {
+          height: 15,
+          padding: chartPadding,
+        })
+      );
+      console.log(xAxisLabels());
 
-      console.log('\nResponse Time p50 vs Concurrency (by payload):');
-      const series = [...allTtfbSeries.values()];
-      if (series.length > 0) {
-        console.log(
-          asciichart.plot(series.map(interpolate), {
-            height: 15,
-            padding: chartPadding,
-            colors: colors.slice(0, series.length),
-          })
-        );
-        console.log(xAxisLabels());
-        const legend = [...allTtfbSeries.keys()].map((name, i) => `${colorNames[i]}: ${name}`).join('  ');
-        console.log(`${chartPadding}Legend: ${legend}`);
-      }
-
-      console.log('\nRPS vs Concurrency (by payload):');
-      const rpsSeries = [...allRpsSeries.values()];
-      if (rpsSeries.length > 0) {
-        console.log(
-          asciichart.plot(rpsSeries.map(interpolate), {
-            height: 15,
-            padding: chartPadding,
-            colors: colors.slice(0, rpsSeries.length),
-          })
-        );
-        console.log(xAxisLabels());
-        const legend = [...allRpsSeries.keys()].map((name, i) => `${colorNames[i]}: ${name}`).join('  ');
-        console.log(`${chartPadding}Legend: ${legend}`);
-      }
+      console.log('\nRPS vs Concurrency:');
+      console.log(
+        asciichart.plot(interpolate(rpsSeries), {
+          height: 15,
+          padding: chartPadding,
+        })
+      );
+      console.log(xAxisLabels());
     }
 
     saveReport('isolation', reportData);

@@ -1,6 +1,4 @@
 import { AgentResponseStream, ChatModelOutput, Message, isAgentResponseDelta } from '@aigne/core';
-import { getModelNameWithProvider } from '@api/libs/ai-provider';
-import AiProvider from '@api/store/models/ai-provider';
 import { ChatCompletionChunk, ChatCompletionInput, ChatCompletionResponse } from '@blocklet/aigne-hub/api/types';
 import { CustomError } from '@blocklet/error';
 
@@ -112,32 +110,4 @@ export async function* adaptStreamToOldFormat(
       }
     }
   }
-}
-
-export async function getModelAndProviderId(model: string) {
-  let { providerName, modelName } = getModelNameWithProvider(model);
-
-  const getDefaultProvider = () => {
-    if (model.toLowerCase().startsWith('gemini')) return 'google';
-    if (model.toLowerCase().startsWith('gpt')) return 'openai';
-    if (model.toLowerCase().startsWith('openrouter')) return 'openrouter';
-    if (model.toLowerCase().startsWith('dall-e')) return 'openai';
-
-    if (!providerName || !modelName) {
-      throw new CustomError(
-        400,
-        'The model format is incorrect. Please use {provider}/{model}, for example: openai/gpt-4o or anthropic/claude-3-5-sonnet'
-      );
-    }
-
-    return '';
-  };
-
-  if (!providerName) {
-    providerName = getDefaultProvider();
-    modelName = model;
-  }
-
-  const provider = await AiProvider.findOne({ where: { name: providerName } });
-  return { providerId: provider?.id || '', modelName, providerName };
 }

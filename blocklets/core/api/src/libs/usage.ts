@@ -1,5 +1,6 @@
+import { getCachedModelRates } from '@api/providers';
+import { getProviderWithCache } from '@api/providers/models';
 import AiModelRate from '@api/store/models/ai-model-rate';
-import AiProvider from '@api/store/models/ai-provider';
 import { CallType } from '@api/store/models/types';
 import Usage from '@api/store/models/usage';
 import { sequelize } from '@api/store/sequelize';
@@ -69,7 +70,7 @@ export async function createAndReportUsage({
   }
 }
 
-async function getModelRates(model: string): Promise<AiModelRate[]> {
+async function getModelRates(model: string, providerId?: string): Promise<AiModelRate[]> {
   if (!model) {
     throw new CustomError(400, 'Model is required');
   }
@@ -80,24 +81,17 @@ async function getModelRates(model: string): Promise<AiModelRate[]> {
     throw err;
   };
   const { providerName, modelName } = getModelNameWithProvider(model);
-  const where: { model?: string; providerId?: string } = {};
-  if (modelName) {
-    where.model = modelName;
-  }
-  if (providerName) {
-    const provider = await AiProvider.findOne({
-      where: {
-        name: providerName,
-      },
-    });
-    if (!provider) {
+
+  let resolvedProviderId = providerId;
+  if (!resolvedProviderId && providerName) {
+    const cachedProvider = await getProviderWithCache(providerName);
+    if (!cachedProvider) {
       return callback(new CustomError(404, `Provider ${providerName} not found`));
     }
-    where.providerId = provider!.id;
+    resolvedProviderId = cachedProvider.id;
   }
-  const modelRates = await AiModelRate.findAll({
-    where,
-  });
+
+  const modelRates = await getCachedModelRates(modelName, resolvedProviderId);
   if (modelRates.length === 0) {
     return callback(
       new CustomError(400, `Unsupported model ${modelName}${providerName ? ` for provider ${providerName}` : ''}`)
@@ -106,11 +100,11 @@ async function getModelRates(model: string): Promise<AiModelRate[]> {
   return modelRates;
 }
 
-async function getPrice(type: Usage['type'], model: string): Promise<AiModelRate | undefined> {
+async function getPrice(type: Usage['type'], model: string, providerId?: string): Promise<AiModelRate | undefined> {
   if (!model) {
     throw new CustomError(400, 'Model is required');
   }
-  const modelRates = await getModelRates(model);
+  const modelRates = await getModelRates(model, providerId);
   const { modelName } = getModelNameWithProvider(model);
   const price = modelRates.find((i) => i.type === type && i.model === modelName);
   return price;
@@ -145,6 +139,7 @@ export async function createAndReportUsageV2({
   appId = wallet.address,
   userDid,
   mediaDuration,
+  providerId,
 }: Required<Pick<Usage, 'type' | 'model'>> &
   Partial<
     Pick<
@@ -155,11 +150,12 @@ export async function createAndReportUsageV2({
     userDid: string;
     cacheCreationInputTokens?: number;
     cacheReadInputTokens?: number;
+    providerId?: string;
   }): Promise<number | undefined> {
   try {
     let usedCredits: number | undefined;
 
-    const price = await getPrice(type, model);
+    const price = await getPrice(type, model, providerId);
     if (price) {
       let creditsTotalBN = new BigNumber(0);
       if (type === 'imageGeneration') {
@@ -499,6 +495,7 @@ export async function createUsageAndCompleteModelCall({
   creditBasedBillingEnabled = true,
   traceId,
   mediaDuration,
+  providerId,
 }: {
   req: Request;
   type: CallType;
@@ -516,12 +513,13 @@ export async function createUsageAndCompleteModelCall({
   creditBasedBillingEnabled?: boolean;
   traceId?: string;
   mediaDuration?: number;
+  providerId?: string;
 }): Promise<number | undefined> {
-  try {
-    let credits: number | undefined = 0;
+  let credits: number | undefined = 0;
 
-    // Only create usage record if credit-based billing is enabled
-    if (creditBasedBillingEnabled) {
+  // Usage.create stays synchronous — need the ID ordering to be stable
+  if (creditBasedBillingEnabled) {
+    try {
       credits = await createAndReportUsageV2({
         // @ts-ignore
         type,
@@ -535,18 +533,23 @@ export async function createUsageAndCompleteModelCall({
         appId,
         userDid,
         mediaDuration,
+        providerId,
       });
+    } catch (err) {
+      logger.error('Usage creation failed, ModelCall will still complete', { error: err });
     }
+  }
 
-    // Always complete ModelCall record regardless of billing mode
-    if (req.modelCallContext) {
-      const totalTokens = getTotalTokens({
-        inputTokens: promptTokens,
-        outputTokens: completionTokens,
-        cacheCreationInputTokens,
-        cacheReadInputTokens,
-      });
-      await req.modelCallContext.complete({
+  // ModelCall completion is fire-and-forget (already writes via ModelCall.create)
+  if (req.modelCallContext) {
+    const totalTokens = getTotalTokens({
+      inputTokens: promptTokens,
+      outputTokens: completionTokens,
+      cacheCreationInputTokens,
+      cacheReadInputTokens,
+    });
+    req.modelCallContext
+      .complete({
         promptTokens,
         completionTokens,
         numberOfImageGeneration,
@@ -565,33 +568,13 @@ export async function createUsageAndCompleteModelCall({
         },
         metadata,
         traceId,
+      })
+      .catch((err) => {
+        logger.error('Failed to complete model call record', { error: err });
       });
-    }
-
-    return credits;
-  } catch (error) {
-    logger.error('Error in createUsageAndCompleteModelCall', { error });
-
-    // Always mark ModelCall as failed regardless of billing mode
-    if (req.modelCallContext) {
-      await req.modelCallContext.fail(error.message || 'Failed to create usage record', {
-        promptTokens,
-        completionTokens,
-        numberOfImageGeneration,
-        usageMetrics: {
-          inputTokens: promptTokens,
-          outputTokens: completionTokens,
-          cacheCreationInputTokens,
-          cacheReadInputTokens,
-          numberOfImageGeneration,
-          ...additionalMetrics,
-        },
-        metadata,
-      });
-    }
-
-    throw error;
   }
+
+  return credits;
 }
 
 export function handleModelCallError(req: Request, error: Error): void {

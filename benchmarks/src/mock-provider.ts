@@ -1,4 +1,4 @@
-import { IncomingMessage, Server, ServerResponse, createServer, type, type, type } from 'http';
+import { IncomingMessage, Server, ServerResponse, createServer } from 'http';
 
 let server: Server | null = null;
 

@@ -12,8 +12,6 @@ import {
   printTable,
   runConcurrent,
   saveReport,
-  type,
-  type,
   warmup,
 } from './index.js';
 
@@ -38,9 +36,9 @@ async function main() {
 
   const levels = config.stressConcurrencyLevels;
   const duration = config.stressDuration;
-  const payload = PAYLOADS.minimal;
+  const payload = PAYLOADS.realistic;
 
-  console.log(`Config: levels=[${levels.join(',')}], ${duration / 1000}s per level, minimal payload, streaming`);
+  console.log(`Config: levels=[${levels.join(',')}], ${duration / 1000}s per level, realistic payload, streaming`);
   console.log(`Target: ${hubTarget.url} (model: ${hubTarget.model})\n`);
 
   // Warmup

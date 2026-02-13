@@ -3,26 +3,61 @@ import { AIGNE, ChatModelOptions, ImageModelOptions } from '@aigne/core';
 import type { OpenAIChatModelOptions, OpenAIImageModelOptions } from '@aigne/openai';
 import logger from '@api/libs/logger';
 import { InvokeOptions } from '@api/libs/on-error';
-import { ModelCallContext } from '@api/middlewares/model-call-tracker';
 import AiCredential from '@api/store/models/ai-credential';
 import AiProvider from '@api/store/models/ai-provider';
 import { ChatCompletionInput, ChatCompletionResponse } from '@blocklet/aigne-hub/api/types';
 import { CustomError } from '@blocklet/error';
 import { Request } from 'express';
 import { omit, omitBy, pick } from 'lodash';
+import { LRUCache } from 'lru-cache';
 
+import { getModelNameWithProvider } from '../libs/ai-provider';
 import { AIProviderType as AIProvider } from '../libs/constants';
 import { BASE_URL_CONFIG_MAP, aigneHubConfigProviderUrl, getAIApiKey, getBedrockConfig } from './keys';
-import { adaptStreamToOldFormat, convertToFrameworkMessages, getModelAndProviderId } from './util';
+import { adaptStreamToOldFormat, convertToFrameworkMessages } from './util';
+
+// Cache provider records to avoid repeated AiProvider.findOne per request
+interface CachedProvider {
+  id: string;
+  name: string;
+  displayName?: string;
+  baseUrl?: string;
+  region?: string;
+}
+const providerCache = new LRUCache<string, CachedProvider>({ max: 50, ttl: 10 * 60 * 1000 });
+
+export function clearProviderCache(providerName?: string) {
+  if (providerName) {
+    providerCache.delete(providerName);
+  } else {
+    providerCache.clear();
+  }
+}
+
+export async function getProviderWithCache(providerName: string): Promise<CachedProvider | undefined> {
+  const cached = providerCache.get(providerName);
+  if (cached) return cached;
+
+  const providerRecord = await AiProvider.findOne({ where: { name: providerName, enabled: true } });
+  if (!providerRecord) return undefined;
+
+  const entry: CachedProvider = {
+    id: providerRecord.id,
+    name: providerRecord.name,
+    displayName: providerRecord.displayName,
+    baseUrl: providerRecord.baseUrl,
+    region: providerRecord.region,
+  };
+  providerCache.set(providerName, entry);
+  return entry;
+}
 
 export async function getProviderCredentials(
   provider: string,
-  options?: {
-    modelCallContext?: ModelCallContext;
-    model?: string;
-  }
+  _options?: { model?: string } // eslint-disable-line @typescript-eslint/no-unused-vars
 ): Promise<{
   id?: string;
+  providerId?: string;
   apiKey?: string;
   baseURL?: string;
   accessKeyId?: string;
@@ -58,45 +93,39 @@ export async function getProviderCredentials(
 
   const errorMessage = await aigneHubConfigProviderUrl();
 
-  const providerRecord = await AiProvider.findOne({ where: { name: provider, enabled: true } });
-  if (!providerRecord) {
-    return callback(new CustomError(404, `Provider ${provider} not found, ${errorMessage}`));
+  // Try cached provider first
+  let cached = providerCache.get(provider);
+  if (!cached) {
+    const providerRecord = await AiProvider.findOne({ where: { name: provider, enabled: true } });
+    if (!providerRecord) {
+      return callback(new CustomError(404, `Provider ${provider} not found, ${errorMessage}`));
+    }
+    cached = {
+      id: providerRecord.id,
+      name: providerRecord.name,
+      displayName: providerRecord.displayName,
+      baseUrl: providerRecord.baseUrl,
+      region: providerRecord.region,
+    };
+    providerCache.set(provider, cached);
   }
 
-  const credentials = await AiCredential.findAll({
-    where: { providerId: providerRecord.id, active: true },
-  });
-
-  if (credentials.length === 0) {
-    return callback(new CustomError(404, `No credentials found for provider ${provider}, ${errorMessage}`));
-  }
-
-  const credential = await AiCredential.getNextAvailableCredential(providerRecord!.id);
+  const credential = await AiCredential.getNextAvailableCredential(cached.id);
 
   if (!credential) {
     return callback(new CustomError(404, `No active credentials found for provider ${provider}, ${errorMessage}`));
   }
 
-  await credential.updateUsage();
   const value = AiCredential.decryptCredentialValue(credential!.credentialValue);
-
-  // Update ModelCall context if provided
-  if (options?.modelCallContext) {
-    try {
-      await options.modelCallContext.updateCredentials(providerRecord.id, credential.id, options.model);
-    } catch (error) {
-      // Log but don't fail the credential retrieval
-      logger.error('Failed to update ModelCall context in getProviderCredentials', { error });
-    }
-  }
 
   return {
     id: credential.id,
+    providerId: cached.id,
     apiKey: value.api_key,
-    baseURL: providerRecord?.baseUrl,
+    baseURL: cached.baseUrl,
     accessKeyId: value.access_key_id,
     secretAccessKey: value.secret_access_key,
-    region: providerRecord?.region,
+    region: cached.region,
   };
 }
 
@@ -131,7 +160,6 @@ async function loadModel(
     provider,
     modelOptions,
     clientOptions,
-    req,
   }: {
     provider?: string;
     modelOptions?: ChatModelOptions;
@@ -157,10 +185,7 @@ async function loadModel(
     region?: string;
     modelOptions?: ChatModelOptions;
     clientOptions?: OpenAIChatModelOptions['clientOptions'];
-  } = await getProviderCredentials(providerName, {
-    modelCallContext: req?.modelCallContext,
-    model,
-  });
+  } = await getProviderCredentials(providerName, { model });
 
   if (modelOptions) {
     params.modelOptions = modelOptions;
@@ -189,7 +214,18 @@ export const getModel = async (
     req?: Request;
   }
 ) => {
-  const { modelName: model, providerName: provider } = await getModelAndProviderId(input.model);
+  let model: string;
+  let provider: string;
+  const rp = options?.req?.resolvedProvider;
+  if (rp) {
+    model = rp.modelName;
+    provider = rp.providerName;
+  } else {
+    // Non-V2 fallback: pure string parsing (no DB query)
+    const parsed = getModelNameWithProvider(input.model);
+    model = parsed.modelName;
+    provider = parsed.providerName;
+  }
 
   if (options?.modelOptions) {
     options.modelOptions.model = model;
@@ -197,10 +233,8 @@ export const getModel = async (
 
   const result = await loadModel(model, { provider, ...options });
 
-  if (options?.req) {
-    options.req.provider = provider;
-    options.req.model = model;
-    options.req.credentialId = result.credentialId;
+  if (options?.req?.resolvedProvider) {
+    options.req.resolvedProvider.credentialId = result.credentialId || '';
   }
 
   return result;
@@ -212,7 +246,6 @@ const loadImageModel = async (
     provider,
     modelOptions,
     clientOptions,
-    req,
   }: {
     provider?: string;
     modelOptions?: ImageModelOptions;
@@ -239,10 +272,7 @@ const loadImageModel = async (
     region?: string;
     modelOptions?: ImageModelOptions;
     clientOptions?: OpenAIImageModelOptions['clientOptions'];
-  } = await getProviderCredentials(provider!, {
-    modelCallContext: req?.modelCallContext,
-    model,
-  });
+  } = await getProviderCredentials(provider!, { model });
 
   if (modelOptions) {
     params.modelOptions = modelOptions;
@@ -271,13 +301,22 @@ export const getImageModel = async (
     req?: Request;
   }
 ) => {
-  const { modelName: model, providerName: provider } = await getModelAndProviderId(input.model);
+  let model: string;
+  let provider: string;
+  const rp = options?.req?.resolvedProvider;
+  if (rp) {
+    model = rp.modelName;
+    provider = rp.providerName;
+  } else {
+    const parsed = getModelNameWithProvider(input.model);
+    model = parsed.modelName;
+    provider = parsed.providerName;
+  }
+
   const result = await loadImageModel(model, { provider, ...options });
 
-  if (options?.req) {
-    options.req.provider = provider;
-    options.req.model = model;
-    options.req.credentialId = result.credentialId;
+  if (options?.req?.resolvedProvider) {
+    options.req.resolvedProvider.credentialId = result.credentialId || '';
   }
 
   return result;

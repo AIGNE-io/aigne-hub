@@ -13,8 +13,6 @@ import {
   printTable,
   runConcurrent,
   saveReport,
-  type,
-  type,
   warmup,
 } from './index.js';
 
@@ -119,9 +117,11 @@ async function main() {
 
   const levels = config.comparisonConcurrencyLevels;
   const duration = config.comparisonDuration;
-  const payload = PAYLOADS.minimal;
+  const payload = PAYLOADS.realistic;
 
-  console.log(`Config: concurrency=[${levels.join(',')}], ${duration / 1000}s per level, minimal payload, streaming\n`);
+  console.log(
+    `Config: concurrency=[${levels.join(',')}], ${duration / 1000}s per level, realistic payload, streaming\n`
+  );
 
   // Warmup all targets
   console.log('Warmup phase:');
@@ -247,11 +247,13 @@ async function main() {
           const totalSt = hubResults.serverTiming.get('total');
           if (totalSt) {
             const preChecks = hubResults.serverTiming.get('preChecks');
+            const modelSetup = hubResults.serverTiming.get('modelSetup');
             const getCreds = hubResults.serverTiming.get('getCredentials');
             const session = hubResults.serverTiming.get('session');
             const provTtfb = hubResults.serverTiming.get('providerTtfb');
             const parts = [
               preChecks && `preChecks=${fmt(preChecks.p50)}`,
+              modelSetup && `modelSetup=${fmt(modelSetup.p50)}`,
               getCreds && `getCreds=${fmt(getCreds.p50)}`,
               session && `session=${fmt(session.p50)}`,
               provTtfb && `providerTtfb=${fmt(provTtfb.p50)}`,

@@ -7,12 +7,29 @@ import { getComponentMountPoint, getUrl } from '@blocklet/sdk';
 import config from '@blocklet/sdk/lib/config';
 import { toBN } from '@ocap/util';
 import difference from 'lodash/difference';
+import { LRUCache } from 'lru-cache';
 import { joinURL, parseURL, withQuery } from 'ufo';
 
 import { getConnectQueryParam } from './auth';
 import { AIGNE_HUB_DID, CREDIT_PAYMENT_LINK_KEY, CREDIT_PRICE_KEY, Config, METER_NAME, METER_UNIT } from './env';
 import logger from './logger';
 import { formatToShortUrl } from './url';
+
+// Cache customer objects to avoid repeated payment.customers.retrieve calls
+const customerCache = new LRUCache<string, Awaited<ReturnType<typeof payment.customers.retrieve>>>({
+  max: 10000,
+  ttl: 30 * 60 * 1000,
+});
+
+// Cache credit balance info (short TTL — half of usage report throttle)
+interface CreditInfo {
+  balance: string;
+  pendingCredit: string;
+}
+const creditCache = new LRUCache<string, CreditInfo>({
+  max: 10000,
+  ttl: (Config.usageReportThrottleTime || 600e3) / 2,
+});
 
 const PAYMENT_DID = 'z2qaCNvKMv5GjouKdcDWexv6WqtHbpNPQDnAk';
 
@@ -153,10 +170,16 @@ export async function updateMeterCurrency(currencyId: string) {
 }
 
 export async function ensureCustomer(userDid: string) {
+  const cached = customerCache.get(userDid);
+  if (cached) return cached;
+
   // @ts-ignore
   const customer = await payment.customers.retrieve(userDid, {
     create: true,
   });
+  if (customer) {
+    customerCache.set(userDid, customer);
+  }
   return customer;
 }
 
@@ -472,7 +495,18 @@ export async function getCreditPaymentLink() {
 }
 
 export async function checkUserCreditBalance({ userDid }: { userDid: string }) {
+  // Check cache first — positive balance means user is good to go
+  const cached = creditCache.get(userDid);
+  if (cached && toBN(cached.balance).gt(toBN(0))) {
+    return;
+  }
+
+  // Cache miss or cached balance <= 0 → re-fetch (instant top-up support)
   const { balance, pendingCredit } = await getUserCredits({ userDid });
+
+  // Update cache with fresh data
+  creditCache.set(userDid, { balance, pendingCredit });
+
   if (balance && toBN(balance).lte(toBN(0))) {
     try {
       const meter = await ensureMeter();

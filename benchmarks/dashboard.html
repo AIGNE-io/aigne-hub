@@ -69,7 +69,6 @@ const COLORS = { 'openai-direct': '#2563eb', 'openrouter': '#d97706', 'hub-opena
   primary: '#2563eb', secondary: '#d97706', tertiary: '#059669', error: '#dc2626', purple: '#7c3aed' };
 const TARGET_COLORS = ['#2563eb','#d97706','#059669','#dc2626','#7c3aed','#0891b2'];
 const TYPE_LABELS = { comparison: '对比测试', stress: '压力测试', isolation: '隔离测试' };
-const PAYLOAD_LABELS = { minimal: '最小负载', realistic: '常规负载', large: '大负载' };
 
 const fmt = ms => typeof ms === 'number' ? Math.round(ms) + 'ms' : '-';
 const fmtN = n => typeof n === 'number' ? n.toFixed(1) : '-';
@@ -489,10 +488,8 @@ function StressView({ data }) {
 
 // ── Isolation ──
 function IsolationView({ data }) {
-  const payloads = data.results.payloads;
-  const payloadNames = Object.keys(payloads);
-  const [activePayload, setActivePayload] = useState(payloadNames[0]);
-  const results = payloads[activePayload] || [];
+  // Support both old format { payloads: { realistic: [...] } } and new format [...]
+  const results = Array.isArray(data.results) ? data.results : (data.results.payloads?.realistic || []);
 
   const chartData = results.map(r => ({
     concurrency: 'c=' + r.concurrency,
@@ -515,9 +512,6 @@ function IsolationView({ data }) {
 
   return <>
     <ConfigBar config={data.config} />
-    {payloadNames.length > 1 && <div className="tab-bar">
-      {payloadNames.map(p => <button key={p} className={`tab ${p === activePayload ? 'active' : ''}`} onClick={() => setActivePayload(p)}>{PAYLOAD_LABELS[p]||p}</button>)}
-    </div>}
 
     <div className="cards">
       <div className="card"><div className="card-label">响应时间 (c={results[0]?.concurrency})</div><div className="card-value">{fmt(results[0]?.responseTime.p50)}</div></div>
@@ -528,7 +522,7 @@ function IsolationView({ data }) {
     </div>
 
     <div className="section">
-      <div className="section-title">{PAYLOAD_LABELS[activePayload]||activePayload} - 延迟与吞吐量</div>
+      <div className="section-title">延迟与吞吐量</div>
       <div className="chart-grid">
         <ChartBox title="响应时间">
           <ResponsiveContainer width="100%" height={280}>
