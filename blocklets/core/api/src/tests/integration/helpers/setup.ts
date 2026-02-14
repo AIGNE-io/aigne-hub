@@ -191,7 +191,7 @@ export function clearAllCaches() {
 
 // ─── fire-and-forget wait ────────────────────────────────────────────────────
 
-export async function waitForFireAndForget(ms = 300) {
+export async function waitForFireAndForget(ms = 800) {
   await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
