@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "cross-env COMPONENT_STORE_URL=https://test.store.blocklet.dev blocklet dev",
     "eject": "vite eject",
-    "lint": "tsc --noEmit && eslint src api/src --ext .mjs,.js,.jsx,.ts,.tsx",
+    "lint": "tsc --noEmit && eslint src api/src --ext .mjs,.js,.jsx,.ts,.tsx --ignore-pattern 'api/src/tests/integration/**'",
     "lint:fix": "npm run lint -- --fix",
     "start": "tsx watch api/dev.ts",
     "clean": "node scripts/build-clean.js",
@@ -16,8 +16,9 @@
     "bundle:blocklet": "blocklet bundle --compact --external 'sqlite3,@dqbd/tiktoken,@aigne/sqlite' --create-release",
     "deploy": "npm run bundle && blocklet deploy .blocklet/bundle",
     "upload": "npm run bundle && blocklet upload .blocklet/release/blocklet.json",
-    "test": "export BLOCKLET_LOG_DIR=/tmp BLOCKLET_DATA_DIR=/tmp && bun test",
-    "test:coverage": "export BLOCKLET_LOG_DIR=/tmp BLOCKLET_DATA_DIR=/tmp && bun test --coverage --coverage-reporter=lcov --coverage-reporter=text"
+    "test": "export BLOCKLET_LOG_DIR=/tmp BLOCKLET_DATA_DIR=/tmp && bun test api/src/tests/*.test.ts",
+    "test:integration": "export BLOCKLET_LOG_DIR=/tmp BLOCKLET_DATA_DIR=/tmp && bun test --preload api/src/tests/integration/helpers/preload.ts api/src/tests/integration/",
+    "test:coverage": "export BLOCKLET_LOG_DIR=/tmp BLOCKLET_DATA_DIR=/tmp && bun test --coverage --coverage-reporter=lcov --coverage-reporter=text api/src/tests/*.test.ts"
   },
   "browserslist": {
     "production": [

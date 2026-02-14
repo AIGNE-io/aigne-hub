@@ -35,6 +35,14 @@ const creditCache = new LRUCache<string, CreditInfo>({
   ttl: (Config.usageReportThrottleTime || 600e3) / 2,
 });
 
+export function clearCustomerCache() {
+  customerCache.clear();
+}
+
+export function clearCreditCache() {
+  creditCache.clear();
+}
+
 const PAYMENT_DID = 'z2qaCNvKMv5GjouKdcDWexv6WqtHbpNPQDnAk';
 
 export const isPaymentRunning = () => {

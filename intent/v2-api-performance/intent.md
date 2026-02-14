@@ -180,6 +180,7 @@
 - `cleanupStaleProcessingCalls` 不再需要（无 `processing` 中间态）
 - ModelCall 用 `nextId()` 预分配 Snowflake ID，在响应中返回（维持 API 契约），请求结束后 fire-and-forget 写入
 - 进程 crash 时会丢失 ModelCall 记录（内存 context 丢失），可接受
+- **重试场景**：每次 provider 尝试独立记录一条 ModelCall。`createRetryHandler` 重试时会重新执行 `chatCallTracker`，创建新的 `modelCallContext`（新 Snowflake ID）。首次失败的尝试立即写入 `failed` 记录，重试成功后写入 `success` 记录。同一用户请求的多条记录通过 `requestId`（`x-request-id` header）关联。这使用户和运维能看到完整的 provider 尝试链路，也为 provider 质量度量提供准确的逐次失败率数据
 
 #### 3.2.3 后处理分工
 
@@ -255,30 +256,135 @@ ModelCall.create(modelCallParams).catch(log);  // fire-and-forget
 
 ### 5.1 单元测试
 
-**正向用例**:
-- 冗余查询消除：resolveProvider 正确传递 provider 信息，下游不再重复查 DB
-- retry 切换：createRetryHandler 从 resolvedProvider.availableProviders 取下一个 provider，正确更新 req
-- preChecks 串行 + 缓存：creditBalance → modelRate 串行调用，缓存命中时 ≈0ms，未命中时回源查询一次
-- ModelCall 单阶段写入：请求结束后一次性 fire-and-forget INSERT 完整记录（直接 success/failed），无中间态 processing 记录
-- ModelCall ID 预分配：Snowflake ID（`nextId()`）在内存中生成，响应返回 + fire-and-forget create 使用同一 ID
-- Usage 同步写入后触发 reportUsageV2 fire-and-forget
-- fire-and-forget：credential 更新 + updateModelStatus + ModelCall.create 在请求结束回调中执行
-- 缓存：TTL 命中与过期回源，余额拒绝前回源重查
-- credential 轮询：内存 usageCount 递增后轮询结果符合预期
-- credential 合并更新：成功路径 updateUsage + recovery 合并为一条 UPDATE
+仅覆盖**纯逻辑、无外部依赖**的函数，不 mock DB/缓存交互。
 
-**负向用例（防回归）**:
-- CreditError 不误触 credential 禁用：`checkUserCreditBalance` 抛 `CreditError(402, NOT_ENOUGH)` 时，`sendCredentialInvalidNotification` 不执行（`instanceof CreditError` 守卫生效）
-- fire-and-forget 之间互不影响：credential 更新失败后，ModelCall.create 和 updateModelStatus 仍正常执行
-- Usage↔ModelCall 错误解耦：AI 调用成功但 Usage.create 失败时，ModelCall 仍记录为 success（不再因 Usage 失败而标记为 failed）
+- credential 加权轮询算法：`getNextAvailableCredential` 的 smooth weighted round-robin，连续调用应按权重分配，内存 usageCount 递增后轮询结果符合预期
+- 余额缓存三分支判断：`checkUserCreditBalance` 的缓存命中余额 >0 放行、缓存命中余额 ≤0 回源重查、缓存未命中正常查询
+- 403 错误分类：`classifyNonCredential403` 正确区分 content_violation / region_restriction / temporary_block / 真实 credential 错误
+- 重试条件判断：`canRetry` 在达到 maxRetries 时返回 false，CreditError 不重试
+- credential 合并更新：`updateCredentialAfterUse(id, providerId, { recover: true })` 生成包含 usageCount+1、lastUsedAt、active=true、weight=DEFAULT 的单条 UPDATE；不带 recover 时只更新 usageCount 和 lastUsedAt
 
 ### 5.2 集成测试
-- 整条 V2 请求链路的 DB 查询次数符合预期（对比优化前后）
-- 缓存 TTL 过期后正确回源
-- 后处理正常执行：Usage 同步写入 + reportUsageV2 fire-and-forget + credential 更新 + updateModelStatus + ModelCall.create 全部 fire-and-forget
-- cleanupStaleProcessingCalls 不再需要（无 processing 中间态），验证移除后无副作用
-- CreditError 场景：用户余额不足时返回 402，credential 未被禁用（CreditError 守卫生效）
-- Usage↔ModelCall 解耦：模拟 Usage.create 失败，验证 ModelCall 仍记录为 success
+
+**位置**: `api/src/tests/integration/`（首次引入集成测试）
+
+**基础设施**:
+- 启动本地 mock provider HTTP 服务器（参考 `benchmarks/src/mock-provider.ts`），支持 JSON 和 SSE streaming 两种响应模式
+- mock provider 支持通过配置控制行为：正常响应、返回指定错误码（401/403/429/500）、响应延迟
+- **测试数据库**：使用独立的 SQLite 文件（如 `:memory:` 或 tmpdir 下的 `test-integration.db`）。项目本身基于 SQLite + Sequelize（`store/sequelize.ts`），测试前替换 sequelize 实例指向测试库，调用 `sequelize.sync({ force: true })` 建表，无需 mock DB 层。测试后可直接查询 ModelCall、Usage、AiCredential 等表验证写入结果
+- **测试数据 seed**：每个测试前插入必要的种子数据 — AiProvider（指向 mock provider 的 baseUrl）、AiCredential（加密的 mock API key）、AiModelRate（模型费率配置）
+- mock session 中间件：模拟已认证用户（userDid、appId）
+- mock payment API：模拟 ensureCustomer、creditGrants.summary、meterEvents.pendingAmount
+- 每个测试用例前清除所有 LRU 缓存（modelRateCache、credentialListCache、providerCache、customerCache、creditCache）
+
+**测试用例**:
+
+#### 5.2.1 成功路径 — 完整请求链路
+
+- **非流式 chat completion**: POST `/api/v2/chat/completions`（stream: false），验证：
+  - 响应状态 200，响应体包含 `choices`、`usage`、`modelCallId`
+  - `modelCallId` 为有效 Snowflake ID
+  - 等待 fire-and-forget 完成后查 DB：ModelCall 表有 1 条记录，status=success，providerId/credentialId/model 与 seed 数据一致
+  - Usage 表有 1 条记录，type=chatCompletion，promptTokens/completionTokens 与 mock provider 返回的 usage 一致
+  - AiCredential 表对应记录的 usageCount 比初始值 +1
+
+- **流式 chat completion**: POST `/api/v2/chat/completions`（stream: true），验证：
+  - 响应 Content-Type 为 text/event-stream
+  - SSE 数据包含 `data: [DONE]` 结尾
+  - DB 验证与非流式一致（ModelCall 1 条 success、Usage 1 条、credential usageCount +1）
+
+- **Embeddings**: POST `/api/v2/embeddings`，验证响应 200 + DB 中 ModelCall type=embedding + Usage 写入正确
+
+- **Image generation**: POST `/api/v2/images/generations`，验证响应 200 + DB 中 ModelCall type=imageGeneration
+
+#### 5.2.2 失败路径 — provider 错误处理
+
+- **provider 返回 401**: mock provider 返回 401，验证：
+  - 响应状态 401
+  - DB 中 ModelCall 1 条，status=failed，errorReason 非空
+  - AiCredential 表对应记录 active=false（被禁用）
+  - credential usageCount 比初始值 +1（失败也计数）
+
+- **provider 返回 403（真实 credential 错误）**: 验证与 401 一致
+
+- **provider 返回 403（content_violation）**: mock provider 返回 403 + "content policy violation" 消息，验证：
+  - DB 中 AiCredential 仍然 active=true（未被禁用）
+
+- **provider 返回 429**: 验证响应 429 + DB 中 ModelCall status=failed
+
+- **provider 返回 500**: 验证响应体消息包含 "temporarily unavailable"
+
+#### 5.2.3 重试路径 — provider 切换
+
+- **首次失败 + 重试成功**: seed 2 个 provider（provider-A baseUrl 指向返回 500 的 mock，provider-B 指向正常 mock），验证：
+  - 最终响应 200（来自 provider-B）
+  - DB 中 ModelCall 2 条：1 条 status=failed（provider-A 的 providerId/credentialId），1 条 status=success（provider-B 的 providerId/credentialId）
+  - Usage 表只有 1 条（仅成功路径写入）
+  - 两条 ModelCall 的 requestId 相同（同一用户请求）
+
+- **所有 provider 失败**: seed 2 个 provider 都指向返回 500 的 mock，验证：
+  - 响应状态 500
+  - DB 中 ModelCall 2 条，均为 failed，分别关联不同的 providerId
+
+- **CreditError 不重试**: mock payment API 返回余额 0（触发 CreditError），验证：
+  - 响应状态 402
+  - DB 中 ModelCall 0 条（CreditError 在 preChecks 阶段，provider 从未被调用）
+  - AiCredential usageCount 不变（未消耗 credential）
+
+#### 5.2.4 缓存行为
+
+- **缓存命中减少 DB 查询**: 连续发送 2 次相同请求，用 spy 包装 `AiModelRate.findAll` / `AiCredential.findAll` / `AiProvider.findOne`，验证第 2 次请求这些方法不被调用
+
+- **credential 禁用后缓存清除**: 首次请求成功，然后调用 `AiCredential.disableCredential(credentialId, providerId, 'test')`，再次请求（仅 1 个 credential 时应失败），验证第二次请求因无可用 credential 而报错
+
+- **余额缓存 — 充值即时生效**: mock payment 先返回余额 0，首次请求返回 402，调用 `invalidateCreditCache(userDid)` 后 mock payment 改为返回余额 >0，第二次请求返回 200
+
+#### 5.2.5 后处理解耦
+
+- **Usage 写入失败不影响 ModelCall**: spy `Usage.create` 使其抛出异常，发请求后验证：
+  - 响应正常 200
+  - DB 中 ModelCall 仍有 1 条 status=success
+  - DB 中 Usage 表为空（写入被阻止）
+
+- **ModelCall 写入失败静默处理**: spy `ModelCall.create` 使其抛出异常，发请求后验证：
+  - 响应正常 200
+  - DB 中 ModelCall 表为空（写入被阻止）
+  - Usage 正常写入
+
+- **credential 更新失败不影响其他**: spy `AiCredential.update` 使其抛出异常，发请求后验证：
+  - 响应正常 200
+  - DB 中 ModelCall 和 Usage 均正常写入
+
+#### 5.2.6 Credit 计费路径
+
+启用 `creditBasedBillingEnabled`，mock payment 组件为 running 状态，覆盖 payment SDK 的 meters/customers/creditGrants/meterEvents 等方法。
+
+- **正余额请求成功**: mock 余额 100，POST chat/completions，验证：
+  - 响应状态 200
+  - `creditGrants.summary` 被调用（余额检查触发）
+
+- **Usage 记录包含 credit 计算**: mock 余额 100，请求后验证：
+  - Usage 表 1 条，`usedCredits > 0`（基于 inputRate=0.001, outputRate=0.002 和 mock token 数）
+  - ModelCall 表 1 条，status=success
+
+- **余额缓存命中（正余额不重查）**: 连续 2 次请求，验证第 2 次不再调用 `creditGrants.summary`（正余额使用 TTL 缓存）
+
+- **invalidateCreditCache 强制重查**: 首次请求填充缓存，调用 `invalidateCreditCache(userDid)` 后再次请求，验证 `creditGrants.summary` 被重新调用
+
+- **零余额 + 无自动购买返回 402**: mock 余额 0 + `can_continue=false`，验证：
+  - 响应状态 402
+  - `verifyAvailability` 被调用（检查自动购买）
+  - mock provider 未收到请求（请求在 preChecks 阶段被拒绝）
+
+- **零余额 + 自动购买允许放行**: mock 余额 0 + `can_continue=true`，验证：
+  - 响应状态 200
+  - mock provider 收到 1 次请求
+
+- **零余额不缓存（每次重查）**: mock 余额 0 + `can_continue=true`，连续 2 次请求，验证每次都调用 `creditGrants.summary`（零余额绕过缓存，确保充值即时生效）
+
+- **Usage 写入失败不阻塞计费响应**: mock 余额 100 + `Usage.create` 抛异常，验证：
+  - 响应状态 200
+  - ModelCall 表 1 条 status=success（独立于 Usage 写入）
 
 ### 5.3 基准回归
 - 继续使用 `benchmarks/` 三类测试（comparison/stress/isolation）

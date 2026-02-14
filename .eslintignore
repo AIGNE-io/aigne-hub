@@ -2,3 +2,4 @@ scripts/*
 packages/*/vite.config.js
 packages/*/stories/*
 benchmarks/*
+**/tests/integration/**

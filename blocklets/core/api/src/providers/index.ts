@@ -12,6 +12,10 @@ import { openaiChatCompletion } from './openai';
 // Cache model rates to avoid repeated DB queries per request
 const modelRateCache = new LRUCache<string, AiModelRate[]>({ max: 200, ttl: 10 * 60 * 1000 });
 
+export function clearModelRateCache() {
+  modelRateCache.clear();
+}
+
 export function chatCompletion(
   input: ChatCompletionInput & Required<Pick<ChatCompletionInput, 'model'>>
 ): AsyncGenerator<ChatCompletionResponse> {
