@@ -7,12 +7,41 @@ import { getComponentMountPoint, getUrl } from '@blocklet/sdk';
 import config from '@blocklet/sdk/lib/config';
 import { toBN } from '@ocap/util';
 import difference from 'lodash/difference';
+import { LRUCache } from 'lru-cache';
 import { joinURL, parseURL, withQuery } from 'ufo';
 
 import { getConnectQueryParam } from './auth';
 import { AIGNE_HUB_DID, CREDIT_PAYMENT_LINK_KEY, CREDIT_PRICE_KEY, Config, METER_NAME, METER_UNIT } from './env';
 import logger from './logger';
 import { formatToShortUrl } from './url';
+
+// Cache only essential customer fields to avoid repeated payment.customers.retrieve calls
+interface CachedCustomer {
+  id: string;
+  did: string;
+}
+const customerCache = new LRUCache<string, CachedCustomer>({
+  max: 10000,
+  ttl: 30 * 60 * 1000,
+});
+
+// Cache credit balance info (short TTL — half of usage report throttle)
+interface CreditInfo {
+  balance: string;
+  pendingCredit: string;
+}
+const creditCache = new LRUCache<string, CreditInfo>({
+  max: 10000,
+  ttl: (Config.usageReportThrottleTime || 600e3) / 2,
+});
+
+export function clearCustomerCache() {
+  customerCache.clear();
+}
+
+export function clearCreditCache() {
+  creditCache.clear();
+}
 
 const PAYMENT_DID = 'z2qaCNvKMv5GjouKdcDWexv6WqtHbpNPQDnAk';
 
@@ -153,10 +182,18 @@ export async function updateMeterCurrency(currencyId: string) {
 }
 
 export async function ensureCustomer(userDid: string) {
+  const cached = customerCache.get(userDid);
+  if (cached) return cached;
+
   // @ts-ignore
   const customer = await payment.customers.retrieve(userDid, {
     create: true,
   });
+  if (customer) {
+    const entry: CachedCustomer = { id: customer.id, did: customer.did };
+    customerCache.set(userDid, entry);
+    return entry;
+  }
   return customer;
 }
 
@@ -471,41 +508,64 @@ export async function getCreditPaymentLink() {
   return link;
 }
 
+export function invalidateCreditCache(userDid: string) {
+  creditCache.delete(userDid);
+}
+
 export async function checkUserCreditBalance({ userDid }: { userDid: string }) {
-  const { balance, pendingCredit } = await getUserCredits({ userDid });
-  if (balance && toBN(balance).lte(toBN(0))) {
-    try {
-      const meter = await ensureMeter();
-      if (!meter) {
-        throw new CustomError(404, 'Meter not found');
-      }
-      const verifyResult = await payment.creditGrants.verifyAvailability({
-        customer_id: userDid,
-        currency_id: meter.currency_id as string,
-        pending_amount: pendingCredit,
-      });
-      logger.info('credit grant verify result', { verifyResult });
-      if (verifyResult.can_continue) {
-        logger.info('user can continue using AI services with auto purchase credits');
-        return;
-      }
-    } catch (err) {
-      logger.error('failed to verify credit grant availability', { err });
-    }
-
-    let link: string | null = null;
-    try {
-      link = await getCreditPaymentLink();
-      link = withQuery(link || '', {
-        ...getConnectQueryParam({ userDid }),
-      });
-      link = await formatToShortUrl(link);
-    } catch (err) {
-      logger.error('failed to get credit payment link', { err });
-    }
-
-    throw new CreditError(402, CreditErrorType.NOT_ENOUGH, link ?? '');
+  // Check cache first — positive balance means user is good to go
+  const cached = creditCache.get(userDid);
+  if (cached && toBN(cached.balance).gt(toBN(0))) {
+    return;
   }
+
+  // Cache miss OR cached balance <= 0 — always re-fetch from source.
+  // This ensures top-ups take effect immediately without waiting for TTL expiry.
+  if (cached) {
+    creditCache.delete(userDid);
+  }
+
+  const credits = await getUserCredits({ userDid });
+  const { balance, pendingCredit } = credits;
+  creditCache.set(userDid, { balance, pendingCredit });
+
+  if (balance && toBN(balance).gt(toBN(0))) {
+    return;
+  }
+
+  // Balance <= 0 — check if user can continue (auto-purchase, etc.)
+
+  try {
+    const meter = await ensureMeter();
+    if (!meter) {
+      throw new CustomError(404, 'Meter not found');
+    }
+    const verifyResult = await payment.creditGrants.verifyAvailability({
+      customer_id: userDid,
+      currency_id: meter.currency_id as string,
+      pending_amount: pendingCredit,
+    });
+    logger.info('credit grant verify result', { verifyResult, balance });
+    if (verifyResult.can_continue) {
+      logger.info('user can continue using AI services with auto purchase credits');
+      return;
+    }
+  } catch (err) {
+    logger.error('failed to verify credit grant availability', { err });
+  }
+
+  let link: string | null = null;
+  try {
+    link = await getCreditPaymentLink();
+    link = withQuery(link || '', {
+      ...getConnectQueryParam({ userDid }),
+    });
+    link = await formatToShortUrl(link);
+  } catch (err) {
+    logger.error('failed to get credit payment link', { err });
+  }
+
+  throw new CreditError(402, CreditErrorType.NOT_ENOUGH, link ?? '');
 }
 
 export async function getCreditGrants(params: {

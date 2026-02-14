@@ -1,0 +1,19 @@
+{
+  "name": "aigne-hub-benchmarks",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "comparison": "tsx src/comparison.ts",
+    "stress": "tsx src/stress.ts",
+    "isolation": "tsx src/isolation.ts"
+  },
+  "dependencies": {
+    "asciichart": "^1.5.25",
+    "dotenv": "^16.4.7",
+    "tsx": "^4.19.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0"
+  }
+}

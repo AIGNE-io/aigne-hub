@@ -1,13 +1,20 @@
-import { getAIApiKey, getModelNameWithProvider, getOpenAI } from '@api/libs/ai-provider';
+import { getAIApiKey, getOpenAI } from '@api/libs/ai-provider';
 import { Config } from '@api/libs/env';
 import AiModelRate from '@api/store/models/ai-model-rate';
-import AiProvider from '@api/store/models/ai-provider';
 import { ChatCompletionInput, ChatCompletionResponse } from '@blocklet/aigne-hub/api/types';
 import { CustomError } from '@blocklet/error';
+import { LRUCache } from 'lru-cache';
 import OpenAI from 'openai';
 
 import { geminiChatCompletion } from './gemini';
 import { openaiChatCompletion } from './openai';
+
+// Cache model rates to avoid repeated DB queries per request
+const modelRateCache = new LRUCache<string, AiModelRate[]>({ max: 200, ttl: 10 * 60 * 1000 });
+
+export function clearModelRateCache() {
+  modelRateCache.clear();
+}
 
 export function chatCompletion(
   input: ChatCompletionInput & Required<Pick<ChatCompletionInput, 'model'>>
@@ -28,58 +35,50 @@ export function chatCompletion(
   return result;
 }
 
-export function checkModelAvailable(model: string, error?: Error) {
-  if (!model) {
-    throw new CustomError(400, 'Model is required');
-  }
-  if (Config.pricing?.onlyEnableModelsInPricing) {
-    const { modelName } = getModelNameWithProvider(model);
-    if (!Config.pricing.list.some((i) => i.model === modelName)) {
-      throw new CustomError(400, `Unsupported model ${model}`);
+export async function getCachedModelRates(modelName: string, providerId?: string): Promise<AiModelRate[]> {
+  const cacheKey = `${modelName}:${providerId || ''}`;
+  let cached = modelRateCache.get(cacheKey);
+  if (!cached) {
+    const where: any = { model: modelName };
+    if (providerId) {
+      where.providerId = providerId;
     }
-  } else {
-    throw error || new CustomError(400, `Unsupported model ${model}`);
+    cached = await AiModelRate.findAll({ where });
+    if (cached.length > 0) {
+      modelRateCache.set(cacheKey, cached);
+    }
   }
+  return cached;
 }
 
-export async function checkModelRateAvailable(model: string, providerName?: string) {
-  const { providerName: provider, modelName } = getModelNameWithProvider(model);
-  const callback = (err: Error) => {
-    try {
-      checkModelAvailable(model, err);
-    } catch {
-      throw err;
-    }
-  };
-  let providerId;
-  if (provider) {
-    const providerRecord = await AiProvider.findOne({
-      where: {
-        name: provider,
-        enabled: true,
-      },
-    });
-    if (!providerRecord) {
-      callback(new CustomError(404, `Provider ${providerName} not found`));
+export async function checkModelRateAvailable(modelName: string, providerId: string) {
+  // Env-only providers may have no DB record (providerId = '').
+  // Fall through to static pricing config check instead of throwing.
+  if (!providerId) {
+    if (!Config.creditBasedBillingEnabled && !Config.pricing?.onlyEnableModelsInPricing) {
       return;
     }
-    providerId = providerRecord?.id;
+    if (Config.pricing?.onlyEnableModelsInPricing) {
+      if (!Config.pricing.list.some((i) => i.model === modelName)) {
+        throw new CustomError(400, `Unsupported model ${modelName}`);
+      }
+      return;
+    }
+    throw new CustomError(400, `Unsupported model ${modelName}`);
   }
-  const modelRateWhere: any = {
-    model: modelName,
-  };
-  if (providerId) {
-    modelRateWhere.providerId = providerId;
-  }
-  const modelRates = await AiModelRate.findAll({
-    where: modelRateWhere,
-  });
+
+  const modelRates = await getCachedModelRates(modelName, providerId);
+
   if (modelRates.length === 0) {
     if (!Config.creditBasedBillingEnabled && !Config.pricing?.onlyEnableModelsInPricing) {
       return;
     }
-    callback(
-      new CustomError(400, `Unsupported model ${modelName}${providerName ? ` for provider ${providerName}` : ''}`)
-    );
+    if (Config.pricing?.onlyEnableModelsInPricing) {
+      if (!Config.pricing.list.some((i) => i.model === modelName)) {
+        throw new CustomError(400, `Unsupported model ${modelName}`);
+      }
+    } else {
+      throw new CustomError(400, `Unsupported model ${modelName}`);
+    }
   }
 }

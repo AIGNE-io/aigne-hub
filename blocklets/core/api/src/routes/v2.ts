@@ -15,7 +15,7 @@ import { checkUserCreditBalance, isPaymentRunning } from '@api/libs/payment';
 import { ensureModelWithProvider } from '@api/libs/provider-rotation';
 import { withModelStatus } from '@api/libs/status';
 import { createUsageAndCompleteModelCall, getTotalTokens } from '@api/libs/usage';
-import { createModelCallMiddleware, getMaxProviderRetriesMiddleware } from '@api/middlewares/model-call-tracker';
+import { createModelCallMiddleware, resolveProviderMiddleware } from '@api/middlewares/model-call-tracker';
 import { checkModelRateAvailable } from '@api/providers';
 import AiCredential from '@api/store/models/ai-credential';
 import AiModelRate from '@api/store/models/ai-model-rate';
@@ -31,10 +31,25 @@ import Joi from 'joi';
 
 import { DEFAULT_IMAGE_MODEL, DEFAULT_MODEL, DEFAULT_VIDEO_MODEL } from '../libs/constants';
 import onError from '../libs/on-error';
+import { requestTimingMiddleware } from '../libs/request-timing';
 import convertMediaToOnlineUrl from '../libs/upload-to-media-kit';
 import { getModel, getProviderCredentials } from '../providers/models';
 
 const router = Router();
+
+function getResolvedProvider(req: Request) {
+  const rp = req.resolvedProvider;
+  if (!rp) {
+    throw new CustomError(503, 'Provider is not available or not configured');
+  }
+  if (!rp.modelName) {
+    throw new CustomError(400, 'Model name could not be resolved');
+  }
+  return rp;
+}
+
+// Attach timing tracker to every v2 request
+router.use(requestTimingMiddleware());
 
 const aigneHubModelCallSchema = Joi.object({
   input: Joi.object({
@@ -79,9 +94,20 @@ const aigneHubModelBodyValidate = (body: Request['body']) => {
   return value;
 };
 
-const user = sessionMiddleware({ accessKey: true });
+// eslint-disable-next-line @typescript-eslint/naming-convention
+const sessionHandler = sessionMiddleware({ accessKey: true });
+const user = (req: Request, res: Response, next: NextFunction) => {
+  req.timings?.start('session');
+  sessionHandler(req, res, (...args: any[]) => {
+    req.timings?.end('session');
+    next(...args);
+  });
+};
 
-const maxProviderRetriesMiddleware = getMaxProviderRetriesMiddleware();
+const resolveChatProvider = resolveProviderMiddleware(DEFAULT_MODEL);
+const resolveImageProvider = resolveProviderMiddleware(DEFAULT_IMAGE_MODEL);
+const resolveVideoProvider = resolveProviderMiddleware(DEFAULT_VIDEO_MODEL);
+const resolveEmbeddingProvider = resolveProviderMiddleware();
 const chatCallTracker = createModelCallMiddleware('chatCompletion');
 const embeddingCallTracker = createModelCallMiddleware('embedding');
 const imageCallTracker = createModelCallMiddleware('imageGeneration');
@@ -199,7 +225,7 @@ router.post(
   compression(),
   user,
   checkCreditBasedBillingMiddleware,
-  maxProviderRetriesMiddleware,
+  resolveChatProvider,
   createRetryHandler([
     chatCallTracker,
     withModelStatus({
@@ -207,14 +233,15 @@ router.post(
       handler: async (req, res) => {
         const userDid = req.user?.did;
 
-        if (userDid && Config.creditBasedBillingEnabled) {
-          await checkUserCreditBalance({ userDid });
-        }
-
-        await checkModelRateAvailable(getReqModel(req));
+        req.timings?.start('preChecks');
+        if (Config.creditBasedBillingEnabled && userDid) await checkUserCreditBalance({ userDid });
+        const rp = getResolvedProvider(req);
+        await checkModelRateAvailable(rp.modelName, rp.providerId);
+        req.timings?.end('preChecks');
 
         await processChatCompletion(req, res, 'v2', {
           onEnd: async (data) => {
+            req.timings?.start('usage');
             if (data?.output) {
               const usageData = data.output;
 
@@ -244,6 +271,7 @@ router.post(
                   model: data.output.model,
                 },
                 traceId: data.context?.id,
+                providerId: req.resolvedProvider?.providerId,
               }).catch((err) => {
                 logger.error('Create usage and complete model call error', { error: err });
                 return undefined;
@@ -261,6 +289,7 @@ router.post(
                 data.output.modelWithProvider = getReqModel(req) || DEFAULT_MODEL;
               }
             }
+            req.timings?.end('usage');
             return data;
           },
           onError: async (data) => {
@@ -276,7 +305,7 @@ router.post(
   '/chat',
   user,
   checkCreditBasedBillingMiddleware,
-  maxProviderRetriesMiddleware,
+  resolveChatProvider,
   createRetryHandler([
     chatCallTracker,
     withModelStatus({
@@ -290,14 +319,13 @@ router.post(
         );
 
         const userDid = req.user?.did;
-
-        if (userDid && Config.creditBasedBillingEnabled) {
-          await checkUserCreditBalance({ userDid });
-        }
-
         const { modelOptions } = value.input;
 
-        await checkModelRateAvailable(modelOptions.model);
+        req.timings?.start('preChecks');
+        if (Config.creditBasedBillingEnabled && userDid) await checkUserCreditBalance({ userDid });
+        const rp = getResolvedProvider(req);
+        await checkModelRateAvailable(rp.modelName, rp.providerId);
+        req.timings?.end('preChecks');
 
         const { modelInstance: model } = await getModel(modelOptions, { modelOptions, req });
 
@@ -309,11 +337,14 @@ router.post(
 
         const aigneServer = new AIGNEHTTPServer(engine);
 
+        req.timings?.start('aiCall');
         await new Promise((resolve, reject) => {
           aigneServer.invoke(req, res, {
             userContext: { userId: req.user?.did, ...value.options?.userContext },
             hooks: {
               onEnd: async (data) => {
+                req.timings?.end('aiCall');
+                req.timings?.start('usage');
                 const usageData: ChatModelOutput = data.output;
                 if (usageData) {
                   const usage = await createUsageAndCompleteModelCall({
@@ -338,6 +369,7 @@ router.post(
                       endpoint: req.path,
                     },
                     traceId: data.context?.id,
+                    providerId: req.resolvedProvider?.providerId,
                   }).catch((err) => {
                     logger.error('Create usage and complete model call error', { error: err });
                     return undefined;
@@ -375,11 +407,13 @@ router.post(
                   usageData.files = list;
                 }
 
+                req.timings?.end('usage');
                 resolve(data);
 
                 return data;
               },
               onError: async (data) => {
+                req.timings?.end('aiCall');
                 onError(data, req);
                 reject(data.error);
               },
@@ -395,7 +429,7 @@ router.post(
   '/image',
   user,
   checkCreditBasedBillingMiddleware,
-  maxProviderRetriesMiddleware,
+  resolveImageProvider,
   createRetryHandler([
     imageCallTracker,
     withModelStatus({
@@ -405,22 +439,30 @@ router.post(
         const input = checkArguments('Check image model input', imageModelInputSchema.passthrough(), body.input);
 
         const userDid = req.user?.did;
-
-        if (userDid && Config.creditBasedBillingEnabled) {
-          await checkUserCreditBalance({ userDid });
-        }
-
         const m = getReqModel(req) || DEFAULT_IMAGE_MODEL;
-
         const { provider, model } = parseModel(m);
         if (!provider || !model) throw new CustomError(400, `Invalid model format: ${m}, should be {provider}/{model}`);
 
-        await checkModelRateAvailable(m);
-
         const { match: M } = findImageModel(provider);
         if (!M) throw new CustomError(400, `Image model provider ${provider} not found`);
-        const credential = await getProviderCredentials(provider, { modelCallContext: req.modelCallContext, model });
-        req.credentialId = credential.id;
+
+        const rp = getResolvedProvider(req);
+
+        req.timings?.start('preChecks');
+        if (Config.creditBasedBillingEnabled && userDid) await checkUserCreditBalance({ userDid });
+        await checkModelRateAvailable(rp.modelName, rp.providerId);
+        req.timings?.end('preChecks');
+
+        req.timings?.start('getCredentials');
+        const credential = await getProviderCredentials(provider);
+        req.timings?.end('getCredentials');
+
+        if (req.resolvedProvider) {
+          req.resolvedProvider.credentialId = credential.id || '';
+          if (credential.providerId) {
+            req.resolvedProvider.providerId = credential.providerId;
+          }
+        }
         const modelInstance = M.create(credential);
 
         let traceId;
@@ -428,6 +470,7 @@ router.post(
         const aigne = new AIGNE();
         logger.info('image completions model with provider', getReqModel(req));
 
+        req.timings?.start('aiCall');
         const response = await aigne.invoke(
           modelInstance,
           {
@@ -449,6 +492,9 @@ router.post(
           }
         );
 
+        req.timings?.end('aiCall');
+
+        req.timings?.start('usage');
         let aigneHubCredits: number | undefined;
 
         if (response.usage && userDid) {
@@ -481,7 +527,20 @@ router.post(
               numberOfImages: response.images.length,
             },
             traceId,
+            providerId: req.resolvedProvider?.providerId,
           });
+        } else if (req.modelCallContext) {
+          req.modelCallContext
+            .complete({
+              numberOfImageGeneration: response.images.length,
+              credits: 0,
+              usageMetrics: { numberOfImages: response.images.length },
+              metadata: { endpoint: req.path, noUsageData: true },
+              traceId,
+            })
+            .catch((err) => {
+              logger.error('Failed to complete model call without usage', { error: err });
+            });
         }
 
         if (input?.outputFileType === 'url' && response.images.length > 0) {
@@ -503,6 +562,8 @@ router.post(
           response.images = list;
         }
 
+        req.timings?.end('usage');
+
         res.json({
           ...response,
           usage: { ...response.usage, ...buildUsageWithCredits(aigneHubCredits) },
@@ -517,7 +578,7 @@ router.post(
   '/video',
   user,
   checkCreditBasedBillingMiddleware,
-  maxProviderRetriesMiddleware,
+  resolveVideoProvider,
   createRetryHandler([
     videoCallTracker,
     withModelStatus({
@@ -528,21 +589,30 @@ router.post(
         const modelOptions = input.modelOptions as { model?: string };
 
         const userDid = req.user?.did;
-
-        if (userDid && Config.creditBasedBillingEnabled) {
-          await checkUserCreditBalance({ userDid });
-        }
-
         const m = getReqModel(req) || DEFAULT_VIDEO_MODEL;
-
         const { provider, model } = parseModel(m);
         if (!provider || !model) throw new CustomError(400, `Invalid model format: ${m}, should be {provider}/{model}`);
 
-        await checkModelRateAvailable(m);
-
         const { match: M } = findVideoModel(provider);
         if (!M) throw new CustomError(400, `Video model provider ${provider} not found`);
-        const credential = await getProviderCredentials(provider, { modelCallContext: req.modelCallContext, model });
+
+        const rp = getResolvedProvider(req);
+
+        req.timings?.start('preChecks');
+        if (Config.creditBasedBillingEnabled && userDid) await checkUserCreditBalance({ userDid });
+        await checkModelRateAvailable(rp.modelName, rp.providerId);
+        req.timings?.end('preChecks');
+
+        req.timings?.start('getCredentials');
+        const credential = await getProviderCredentials(provider);
+        req.timings?.end('getCredentials');
+
+        if (req.resolvedProvider) {
+          req.resolvedProvider.credentialId = credential.id || '';
+          if (credential.providerId) {
+            req.resolvedProvider.providerId = credential.providerId;
+          }
+        }
         const modelInstance = M.create(credential);
 
         let traceId;
@@ -550,6 +620,7 @@ router.post(
         const aigne = new AIGNE();
         logger.info('video completions model with provider', getReqModel(req));
 
+        req.timings?.start('aiCall');
         const response = await aigne.invoke(
           modelInstance,
           {
@@ -571,7 +642,9 @@ router.post(
             },
           }
         );
+        req.timings?.end('aiCall');
 
+        req.timings?.start('usage');
         let aigneHubCredits: number | undefined;
 
         if (response.usage && userDid) {
@@ -602,7 +675,20 @@ router.post(
               numberOfVideos: response.videos.length,
             },
             traceId,
+            providerId: req.resolvedProvider?.providerId,
           });
+        } else if (req.modelCallContext) {
+          req.modelCallContext
+            .complete({
+              mediaDuration: response.seconds,
+              credits: 0,
+              usageMetrics: { numberOfVideos: response.videos.length },
+              metadata: { endpoint: req.path, noUsageData: true },
+              traceId,
+            })
+            .catch((err) => {
+              logger.error('Failed to complete model call without usage', { error: err });
+            });
         }
 
         if (input?.outputFileType === 'url' && response.videos.length > 0) {
@@ -623,6 +709,7 @@ router.post(
 
           response.videos = list;
         }
+        req.timings?.end('usage');
 
         res.json({
           ...response,
@@ -638,7 +725,7 @@ router.post(
   '/embeddings',
   user,
   checkCreditBasedBillingMiddleware,
-  maxProviderRetriesMiddleware,
+  resolveEmbeddingProvider,
   createRetryHandler([
     embeddingCallTracker,
     withModelStatus({
@@ -646,13 +733,18 @@ router.post(
       handler: async (req, res) => {
         const userDid = req.user?.did;
 
-        if (userDid && Config.creditBasedBillingEnabled) {
-          await checkUserCreditBalance({ userDid });
-        }
-        await checkModelRateAvailable(getReqModel(req));
+        const rp = getResolvedProvider(req);
 
+        req.timings?.start('preChecks');
+        if (Config.creditBasedBillingEnabled && userDid) await checkUserCreditBalance({ userDid });
+        await checkModelRateAvailable(rp.modelName, rp.providerId);
+        req.timings?.end('preChecks');
+
+        req.timings?.start('aiCall');
         const usageData = await processEmbeddings(req);
+        req.timings?.end('aiCall');
 
+        req.timings?.start('usage');
         if (usageData && userDid) {
           await createUsageAndCompleteModelCall({
             req,
@@ -670,11 +762,25 @@ router.post(
               endpoint: req.path,
               inputText: Array.isArray(req.body?.input) ? req.body.input.length : 1,
             },
+            providerId: req.resolvedProvider?.providerId,
           }).catch((err) => {
             logger.error('Create usage and complete model call error', { error: err });
             return undefined;
           });
+        } else if (req.modelCallContext) {
+          req.modelCallContext
+            .complete({
+              promptTokens: 0,
+              completionTokens: 0,
+              credits: 0,
+              usageMetrics: {},
+              metadata: { endpoint: req.path, noUsageData: true },
+            })
+            .catch((err) => {
+              logger.error('Failed to complete model call without usage', { error: err });
+            });
         }
+        req.timings?.end('usage');
 
         res.json({ data: usageData?.data });
       },
@@ -686,20 +792,21 @@ router.post(
   '/image/generations',
   user,
   checkCreditBasedBillingMiddleware,
-  maxProviderRetriesMiddleware,
+  resolveImageProvider,
   createRetryHandler([
     imageCallTracker,
     withModelStatus({
       type: 'imageGeneration',
       handler: async (req, res) => {
         const userDid = req.user?.did;
+        const rp = getResolvedProvider(req);
 
-        if (userDid && Config.creditBasedBillingEnabled) {
-          await checkUserCreditBalance({ userDid });
-        }
+        req.timings?.start('preChecks');
+        if (Config.creditBasedBillingEnabled && userDid) await checkUserCreditBalance({ userDid });
+        await checkModelRateAvailable(rp.modelName, rp.providerId);
+        req.timings?.end('preChecks');
 
-        await checkModelRateAvailable(getReqModel(req));
-
+        req.timings?.start('aiCall');
         const usageData = await processImageGeneration({
           req,
           res,
@@ -709,7 +816,9 @@ router.post(
             responseFormat: req.body.response_format || req.body.responseFormat,
           },
         });
+        req.timings?.end('aiCall');
 
+        req.timings?.start('usage');
         let aigneHubCredits;
         if (usageData && userDid) {
           aigneHubCredits = await createUsageAndCompleteModelCall({
@@ -730,8 +839,22 @@ router.post(
               endpoint: req.path,
               numberOfImages: usageData.numberOfImageGeneration,
             },
+            providerId: req.resolvedProvider?.providerId,
           });
+        } else if (req.modelCallContext) {
+          req.modelCallContext
+            .complete({
+              numberOfImageGeneration: 0,
+              credits: 0,
+              usageMetrics: {},
+              metadata: { endpoint: req.path, noUsageData: true },
+            })
+            .catch((err) => {
+              logger.error('Failed to complete model call without usage', { error: err });
+            });
         }
+
+        req.timings?.end('usage');
 
         res.json({
           images: usageData?.images,

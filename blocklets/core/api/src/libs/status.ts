@@ -1,20 +1,19 @@
 import { Config } from '@api/libs/env';
 import { handleModelCallError } from '@api/libs/usage';
-import AiCredential from '@api/store/models/ai-credential';
+import AiCredential, { getCredentialWithCache } from '@api/store/models/ai-credential';
 import AiModelRate from '@api/store/models/ai-model-rate';
 import AiModelStatus, { ModelError, ModelErrorType } from '@api/store/models/ai-model-status';
 import AiProvider from '@api/store/models/ai-provider';
 import { CallType } from '@api/store/models/types';
-import { CreditErrorType } from '@blocklet/aigne-hub/api';
+import { CreditError, CreditErrorType } from '@blocklet/aigne-hub/api';
 import { CustomError, formatError } from '@blocklet/error';
 import type { Request, Response } from 'express';
 
-import { getImageModel, getModel } from '../providers/models';
-import { getModelAndProviderId } from '../providers/util';
+import { getImageModel, getModel, getProviderWithCache } from '../providers/models';
 import credentialsQueue from '../queue/credentials';
 import { getQueue } from '../queue/queue';
 import wsServer from '../ws';
-import { getOpenAIV2 } from './ai-provider';
+import { getModelNameWithProvider, getOpenAIV2, getReqModel } from './ai-provider';
 import { AIGNE_HUB_DEFAULT_WEIGHT } from './constants';
 import logger from './logger';
 import { NotificationManager } from './notifications/manager';
@@ -234,13 +233,18 @@ const sendCredentialInvalidNotification = async ({
   model,
   provider,
   credentialId,
+  providerId,
   error,
 }: {
   model?: string;
   provider?: string;
   credentialId?: string;
+  providerId?: string;
   error: Error & { status: number };
 }) => {
+  // CreditError (402) should never invalidate a credential
+  if (error instanceof CreditError) return;
+
   try {
     const errorMessage = formatError(error);
     const isProvider402 =
@@ -257,6 +261,8 @@ const sendCredentialInvalidNotification = async ({
         error,
       });
 
+      // Always query DB here — PlainCredential from cache lacks instance methods (getDisplayText).
+      // This is the error path (401/403), so the extra query is acceptable.
       const credential = await AiCredential.findOne({ where: { id: credentialId } });
 
       const template = new CredentialInvalidNotificationTemplate({
@@ -275,23 +281,25 @@ const sendCredentialInvalidNotification = async ({
         }
       );
 
-      await AiCredential.update({ active: false, error: error.message }, { where: { id: credentialId } });
+      const resolvedProviderId = providerId || credential?.providerId || '';
+      await AiCredential.disableCredential(credentialId, resolvedProviderId, error.message);
 
-      if (credential) {
-        credentialsQueue.push({ job: { credentialId, providerId: credential.providerId }, delay: 5 });
+      if (resolvedProviderId) {
+        credentialsQueue.push({ job: { credentialId, providerId: resolvedProviderId }, delay: 5 });
       }
     }
 
     if (credentialId && [429].includes(Number(error.status))) {
-      await AiCredential.update({ weight: 10 }, { where: { id: credentialId } });
+      const resolvedProviderId =
+        providerId || (await AiCredential.findOne({ where: { id: credentialId } }))?.providerId || '';
+      await AiCredential.reduceCredentialWeight(credentialId, resolvedProviderId, 10);
       logger.info('Credential weight reduced due to 429, will auto-recover in 3 minutes', {
         credentialId,
       });
 
-      const credential = await AiCredential.findOne({ where: { id: credentialId } });
-      if (credential) {
+      if (resolvedProviderId) {
         credentialsQueue.push({
-          job: { credentialId, providerId: credential.providerId, isWeightRecovery: true },
+          job: { credentialId, providerId: resolvedProviderId, isWeightRecovery: true },
           delay: 3 * 60,
         });
       }
@@ -307,22 +315,38 @@ export async function updateModelStatus({
   duration,
   error,
   type,
+  providerId: knownProviderId,
 }: {
   model: string;
   success: boolean;
   duration: number;
   error?: Error;
   type?: Omit<CallType, 'custom' | 'audioGeneration'>;
+  providerId?: string;
 }) {
-  const { modelName, providerName } = await getModelAndProviderId(model);
-  const provider = await AiProvider.findOne({ where: { name: providerName } });
+  let modelName: string;
+  let providerName: string;
+  let resolvedProviderId = knownProviderId;
 
-  if (provider) {
-    const current = await AiModelStatus.findOne({ where: { model: modelName, providerId: provider.id, type } });
+  if (resolvedProviderId) {
+    // Skip DB query when providerId is already known
+    const parsed = getModelNameWithProvider(model);
+    modelName = parsed.modelName;
+    providerName = parsed.providerName;
+  } else {
+    const parsed = getModelNameWithProvider(model);
+    modelName = parsed.modelName;
+    providerName = parsed.providerName;
+    const cachedProvider = await getProviderWithCache(providerName);
+    resolvedProviderId = cachedProvider?.id;
+  }
+
+  if (resolvedProviderId) {
+    const current = await AiModelStatus.findOne({ where: { model: modelName, providerId: resolvedProviderId, type } });
 
     if (current?.available !== available) {
       await AiModelStatus.upsertModelStatus({
-        providerId: provider.id,
+        providerId: resolvedProviderId,
         model: modelName,
         available,
         responseTime: duration,
@@ -351,54 +375,81 @@ export function withModelStatus({
   return async (req: Request, res: Response) => {
     const start = Date.now();
 
-    if (!req.body.model && (req.body.input?.modelOptions?.model || req.body.input?.model)) {
-      req.body.model = req.body.input.modelOptions?.model || req.body.input.model;
-    }
-
     try {
       await handler(req, res);
 
-      await updateModelStatus({
-        model: req.body.model,
+      // Fire-and-forget: model status update on success
+      updateModelStatus({
+        model: getReqModel(req),
         success: true,
         duration: Date.now() - start,
         type,
+        providerId: req.resolvedProvider?.providerId,
+      }).catch((err) => {
+        logger.error('Failed to update model status (success)', err);
       });
 
-      const { credentialId } = req;
+      // Fire-and-forget: credential recovery + usage tracking (fully non-blocking)
+      const credentialId = req.resolvedProvider?.credentialId;
       if (credentialId) {
-        const credential = await AiCredential.findOne({ where: { id: credentialId } });
-        if (credential) {
-          if (credential.active === false) {
-            await credential.update({ active: true });
-          }
-          if (credential.weight !== AIGNE_HUB_DEFAULT_WEIGHT) {
-            await credential.update({ weight: AIGNE_HUB_DEFAULT_WEIGHT });
-          }
-        }
+        const providerId = req.resolvedProvider?.providerId || '';
+        (async () => {
+          const cred = providerId ? await getCredentialWithCache(providerId, credentialId) : undefined;
+          const needsRecovery = !cred || !cred.active || (cred.weight || 0) < AIGNE_HUB_DEFAULT_WEIGHT;
+          await AiCredential.updateCredentialAfterUse(credentialId, providerId, { recover: needsRecovery });
+        })().catch((err) => {
+          logger.error('Failed to update credential', { error: err, credentialId });
+        });
       }
     } catch (error) {
       logger.error('Failed to call with model status', error.message);
 
-      const { model, provider, credentialId } = req;
-      await sendCredentialInvalidNotification({ model, provider, credentialId, error });
+      const model = req.resolvedProvider?.modelName;
+      const provider = req.resolvedProvider?.providerName;
+      const credentialId = req.resolvedProvider?.credentialId;
+
+      // Fire-and-forget: track usage even on failure (skip if provider was never called)
+      if (credentialId && !(error instanceof CreditError)) {
+        const providerId = req.resolvedProvider?.providerId || '';
+        AiCredential.updateCredentialAfterUse(credentialId, providerId).catch((err) => {
+          logger.error('Failed to update credential usage on failure', { error: err, credentialId });
+        });
+      }
+
+      sendCredentialInvalidNotification({
+        model,
+        provider,
+        credentialId,
+        providerId: req.resolvedProvider?.providerId,
+        error,
+      }).catch((err) => {
+        logger.error('Failed to send credential invalid notification', err);
+      });
 
       if (error.status && [401, 403, 404, 500, 501, 503].includes(Number(error.status))) {
-        await updateModelStatus({
-          model: req.body.model,
+        // Fire-and-forget: model status update on failure
+        updateModelStatus({
+          model: getReqModel(req),
           success: false,
           duration: Date.now() - start,
           error,
           type,
-        }).catch((error) => {
-          logger.error('Failed to update model status', error);
+          providerId: req.resolvedProvider?.providerId,
+        }).catch((err) => {
+          logger.error('Failed to update model status', err);
         });
       }
 
       if (error.status && [429].includes(Number(error.status))) {
-        const providerRecord = await AiProvider.findOne({ where: { name: provider } }).catch(() => null);
-        if (providerRecord) {
-          markProviderAsFailed(providerRecord.id, providerRecord.name);
+        const provId = req.resolvedProvider?.providerId;
+        const provName = req.resolvedProvider?.providerName || '';
+        if (provId) {
+          markProviderAsFailed(provId, provName);
+        } else {
+          const cachedProvider = await getProviderWithCache(provider || '').catch(() => undefined);
+          if (cachedProvider) {
+            markProviderAsFailed(cachedProvider.id, cachedProvider.name);
+          }
         }
       }
 
@@ -438,7 +489,9 @@ export async function callWithModelStatus(
   } catch (error) {
     logger.error('Failed to call with model status', error.message);
 
-    await sendCredentialInvalidNotification({ model, provider, credentialId, error });
+    sendCredentialInvalidNotification({ model, provider, credentialId, error }).catch((err) => {
+      logger.error('Failed to send credential invalid notification', err);
+    });
 
     await updateModelStatus({
       model: `${provider}/${model}`,

@@ -1,5 +1,6 @@
 import security from '@blocklet/sdk/lib/security';
-import { CreationOptional, DataTypes, InferAttributes, InferCreationAttributes, Model } from 'sequelize';
+import { LRUCache } from 'lru-cache';
+import { CreationOptional, DataTypes, InferAttributes, InferCreationAttributes, Model, literal } from 'sequelize';
 
 import { AIGNE_HUB_DEFAULT_WEIGHT } from '../../libs/constants';
 import nextId from '../../libs/next-id';
@@ -8,6 +9,61 @@ import { sequelize } from '../sequelize';
 
 export type CredentialType = 'api_key' | 'access_key_pair' | 'custom';
 const credentialWeightCache: Record<string, Record<string, { current: number; weight: number }>> = {};
+interface PlainCredential {
+  id: string;
+  providerId: string;
+  name: string;
+  credentialValue: CredentialValue;
+  credentialType: CredentialType;
+  active: boolean;
+  lastUsedAt?: Date;
+  usageCount: number;
+  error?: string | null;
+  weight?: number;
+}
+const credentialListCache = new LRUCache<string, PlainCredential[]>({ max: 50, ttl: 10 * 60 * 1000 });
+
+export function clearCredentialListCache(providerId?: string) {
+  if (providerId) {
+    credentialListCache.delete(providerId);
+  } else {
+    credentialListCache.clear();
+  }
+}
+
+function toPlainCredentials(credentials: AiCredential[]): PlainCredential[] {
+  return credentials.map((c) => ({
+    id: c.id,
+    providerId: c.providerId,
+    name: c.name,
+    credentialValue: c.credentialValue,
+    credentialType: c.credentialType,
+    active: c.active,
+    lastUsedAt: c.lastUsedAt,
+    usageCount: c.usageCount,
+    error: c.error,
+    weight: c.weight,
+  }));
+}
+
+export async function getCredentialWithCache(
+  providerId: string,
+  credentialId: string
+): Promise<PlainCredential | undefined> {
+  let credentials = credentialListCache.get(providerId);
+  if (!credentials) {
+    const rows = await AiCredential.findAll({
+      where: { providerId, active: true },
+      order: [
+        ['usageCount', 'ASC'],
+        ['lastUsedAt', 'ASC'],
+      ],
+    });
+    credentials = toPlainCredentials(rows);
+    credentialListCache.set(providerId, credentials);
+  }
+  return credentials.find((c) => c.id === credentialId);
+}
 
 export interface CredentialValue {
   access_key_id?: string;
@@ -113,14 +169,19 @@ export default class AiCredential extends Model<InferAttributes<AiCredential>, I
   }
 
   // 获取下一个可用的凭证（负载均衡）
-  static async getNextAvailableCredential(providerId: string): Promise<AiCredential | null> {
-    const credentials = await AiCredential.findAll({
-      where: { providerId, active: true },
-      order: [
-        ['usageCount', 'ASC'],
-        ['lastUsedAt', 'ASC'],
-      ],
-    });
+  static async getNextAvailableCredential(providerId: string): Promise<PlainCredential | null> {
+    let credentials = credentialListCache.get(providerId);
+    if (!credentials) {
+      const rows = await AiCredential.findAll({
+        where: { providerId, active: true },
+        order: [
+          ['usageCount', 'ASC'],
+          ['lastUsedAt', 'ASC'],
+        ],
+      });
+      credentials = toPlainCredentials(rows);
+      credentialListCache.set(providerId, credentials);
+    }
 
     if (credentials.length === 0) {
       return null;
@@ -149,7 +210,7 @@ export default class AiCredential extends Model<InferAttributes<AiCredential>, I
     });
 
     // 平滑加权轮询
-    let selected: AiCredential | null = null;
+    let selected: PlainCredential | null = null;
     for (const c of credentials) {
       const w = weights[c.id];
       if (w) {
@@ -158,15 +219,74 @@ export default class AiCredential extends Model<InferAttributes<AiCredential>, I
       }
     }
 
-    if (selected) weights[selected.id]!.current -= totalWeight;
+    if (selected) {
+      weights[selected.id]!.current -= totalWeight;
+      // Clone before mutation to avoid unexpected side-effects from shared cache references.
+      // Node's single-threaded model ensures no concurrent access, but cloning keeps intent clear.
+      const cloned = { ...selected, usageCount: selected.usageCount + 1, lastUsedAt: new Date() };
+      // Update the cache array entry in-place so subsequent calls within this TTL see the bumped count.
+      const idx = credentials.indexOf(selected);
+      if (idx !== -1) {
+        credentials[idx] = cloned;
+      }
+      selected = cloned;
+    }
 
     credentialWeightCache[providerId] = weights;
     return selected;
   }
 
+  /**
+   * Update credential after use: bump usageCount + lastUsedAt, optionally recover (active + weight).
+   * Cache invalidation is handled explicitly — no reliance on Sequelize hooks.
+   */
+  static async updateCredentialAfterUse(
+    credentialId: string,
+    providerId: string,
+    options?: { recover?: boolean }
+  ): Promise<void> {
+    const values: any = {
+      usageCount: literal('"usageCount" + 1'),
+      lastUsedAt: new Date(),
+    };
+
+    if (options?.recover) {
+      values.active = true;
+      values.weight = AIGNE_HUB_DEFAULT_WEIGHT;
+    }
+
+    await AiCredential.update(values, { where: { id: credentialId }, silent: true });
+
+    if (options?.recover && providerId) {
+      clearCredentialListCache(providerId);
+      clearAllRotationCache();
+      clearFailedProvider(providerId);
+    }
+  }
+
+  /**
+   * Disable a credential (e.g. invalid API key). Clears caches so next request re-fetches from DB.
+   */
+  static async disableCredential(credentialId: string, providerId: string, error: string): Promise<void> {
+    await AiCredential.update({ active: false, error }, { where: { id: credentialId }, silent: true });
+    clearCredentialListCache(providerId);
+    clearAllRotationCache();
+  }
+
+  /**
+   * Reduce credential weight (e.g. on 429 rate-limit). Clears caches so rotation picks up new weight.
+   */
+  static async reduceCredentialWeight(credentialId: string, providerId: string, weight: number): Promise<void> {
+    await AiCredential.update({ weight }, { where: { id: credentialId }, silent: true });
+    clearCredentialListCache(providerId);
+    clearAllRotationCache();
+  }
+
   // 批量更新凭证状态
   static async updateCredentialStatus(ids: string[], active: boolean): Promise<number> {
-    const [affectedCount] = await AiCredential.update({ active }, { where: { id: ids } });
+    const [affectedCount] = await AiCredential.update({ active }, { where: { id: ids }, silent: true });
+    clearCredentialListCache();
+    clearAllRotationCache();
     return affectedCount;
   }
 
@@ -279,12 +399,18 @@ AiCredential.init(AiCredential.GENESIS_ATTRIBUTES, {
   sequelize,
   hooks: {
     afterCreate: (credential: AiCredential) => {
+      clearCredentialListCache(credential.providerId);
       clearAllRotationCache();
       if (credential.active) {
         clearFailedProvider(credential.providerId);
       }
     },
     afterUpdate: (credential: AiCredential) => {
+      const changed = credential.changed();
+      const cacheInvalidatingFields = ['active', 'weight', 'providerId'];
+      if (!changed || changed.some((f) => cacheInvalidatingFields.includes(f))) {
+        clearCredentialListCache(credential.providerId);
+      }
       const previousActive = credential.previous('active');
       if (previousActive !== credential.active) {
         clearAllRotationCache();
@@ -293,6 +419,9 @@ AiCredential.init(AiCredential.GENESIS_ATTRIBUTES, {
         }
       }
     },
-    afterDestroy: () => clearAllRotationCache(),
+    afterDestroy: (credential: AiCredential) => {
+      clearCredentialListCache(credential.providerId);
+      clearAllRotationCache();
+    },
   },
 });

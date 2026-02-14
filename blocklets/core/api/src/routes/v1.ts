@@ -8,17 +8,24 @@ import {
 import logger from '@api/libs/logger';
 import { checkSubscription } from '@api/libs/payment';
 import { createAndReportUsage } from '@api/libs/usage';
+import { resolveProviderMiddleware } from '@api/middlewares/model-call-tracker';
+import AiCredential from '@api/store/models/ai-credential';
 import App from '@api/store/models/app';
 import { ensureRemoteComponentCall } from '@blocklet/aigne-hub/api/utils/auth';
 import compression from 'compression';
 import { Router } from 'express';
 import proxy from 'express-http-proxy';
 
+import { DEFAULT_IMAGE_MODEL, DEFAULT_MODEL } from '../libs/constants';
 import { Config, buildUsageWithCredits } from '../libs/env';
 import onError from '../libs/on-error';
 import { ensureAdmin, ensureComponentCall } from '../libs/security';
 
 const router = Router();
+
+const resolveV1ChatProvider = resolveProviderMiddleware(DEFAULT_MODEL);
+const resolveV1EmbeddingProvider = resolveProviderMiddleware();
+const resolveV1ImageProvider = resolveProviderMiddleware(DEFAULT_IMAGE_MODEL);
 
 router.get('/status', ensureRemoteComponentCall(App.findPublicKeyById, ensureComponentCall(ensureAdmin)), (_, res) => {
   const { openaiApiKey } = Config;
@@ -31,6 +38,7 @@ router.post(
   '/:type(chat)?/completions',
   compression(),
   ensureRemoteComponentCall(App.findPublicKeyById, ensureComponentCall(ensureAdmin)),
+  resolveV1ChatProvider,
   createRetryHandler(async (req, res) => {
     // v1 specific checks
     if (req.appClient?.appId) {
@@ -57,6 +65,14 @@ router.post(
           }
         }
 
+        // Fire-and-forget: track credential usage for V1
+        const credentialId = req.resolvedProvider?.credentialId;
+        if (credentialId) {
+          AiCredential.updateCredentialAfterUse(credentialId, req.resolvedProvider?.providerId || '').catch((err) => {
+            logger.error('Failed to update credential usage (v1 chat)', { error: err, credentialId });
+          });
+        }
+
         return data;
       },
       onError: (data) => {
@@ -70,6 +86,7 @@ router.post(
 router.post(
   '/embeddings',
   ensureRemoteComponentCall(App.findPublicKeyById, ensureComponentCall(ensureAdmin)),
+  resolveV1EmbeddingProvider,
   createRetryHandler(async (req, res) => {
     // v1 specific checks
     if (req.appClient?.appId) {
@@ -89,6 +106,14 @@ router.post(
       });
     }
 
+    // Fire-and-forget: track credential usage for V1
+    const credentialId = req.resolvedProvider?.credentialId;
+    if (credentialId) {
+      AiCredential.updateCredentialAfterUse(credentialId, req.resolvedProvider?.providerId || '').catch((err) => {
+        logger.error('Failed to update credential usage (v1 embedding)', { error: err, credentialId });
+      });
+    }
+
     res.json({ data: usageData?.data });
   })
 );
@@ -97,6 +122,7 @@ router.post(
 router.post(
   '/image/generations',
   ensureRemoteComponentCall(App.findPublicKeyById, ensureComponentCall(ensureAdmin)),
+  resolveV1ImageProvider,
   createRetryHandler(async (req, res) => {
     // v1 specific checks
     if (req.appClient?.appId) {
@@ -123,6 +149,14 @@ router.post(
         modelParams: usageData.modelParams,
         numberOfImageGeneration: usageData.numberOfImageGeneration,
         appId: req.appClient?.appId,
+      });
+    }
+
+    // Fire-and-forget: track credential usage for V1
+    const credentialId = req.resolvedProvider?.credentialId;
+    if (credentialId) {
+      AiCredential.updateCredentialAfterUse(credentialId, req.resolvedProvider?.providerId || '').catch((err) => {
+        logger.error('Failed to update credential usage (v1 image)', { error: err, credentialId });
       });
     }
 
