@@ -52,10 +52,7 @@ export async function getProviderWithCache(providerName: string): Promise<Cached
   return entry;
 }
 
-export async function getProviderCredentials(
-  provider: string,
-  _options?: { model?: string } // eslint-disable-line @typescript-eslint/no-unused-vars
-): Promise<{
+export async function getProviderCredentials(provider: string): Promise<{
   id?: string;
   providerId?: string;
   apiKey?: string;
@@ -185,7 +182,7 @@ async function loadModel(
     region?: string;
     modelOptions?: ChatModelOptions;
     clientOptions?: OpenAIChatModelOptions['clientOptions'];
-  } = await getProviderCredentials(providerName, { model });
+  } = await getProviderCredentials(providerName);
 
   if (modelOptions) {
     params.modelOptions = modelOptions;
@@ -272,7 +269,7 @@ const loadImageModel = async (
     region?: string;
     modelOptions?: ImageModelOptions;
     clientOptions?: OpenAIImageModelOptions['clientOptions'];
-  } = await getProviderCredentials(provider!, { model });
+  } = await getProviderCredentials(provider!);
 
   if (modelOptions) {
     params.modelOptions = modelOptions;

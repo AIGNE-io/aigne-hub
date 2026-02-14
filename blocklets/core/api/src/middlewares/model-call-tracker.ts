@@ -1,3 +1,4 @@
+import { getDefaultProviderForModel } from '@aigne/aigne-hub';
 import { getModelNameWithProvider, getReqModel } from '@api/libs/ai-provider';
 import { BLOCKLET_APP_PID, CREDIT_DECIMAL_PLACES } from '@api/libs/env';
 import logger from '@api/libs/logger';
@@ -87,8 +88,32 @@ export function resolveProviderMiddleware(defaultModel?: string) {
       return;
     }
 
-    // CRITICAL: must propagate errors (e.g., no provider available)
-    await ensureModelWithProvider(req);
+    // Resolve model to provider — may throw if no provider is available at all.
+    // Wrap in try/catch so env-only providers (no DB record) can still proceed.
+    try {
+      await ensureModelWithProvider(req);
+    } catch (err) {
+      // If env credentials exist for the raw model's provider, allow fallback.
+      // For unprefixed models (e.g. "gpt-4"), getModelNameWithProvider returns empty provider,
+      // so we infer the default provider from the model name pattern.
+      const rawModel = getReqModel(req);
+      let { providerName: rawProvider } = getModelNameWithProvider(rawModel);
+      if (!rawProvider) {
+        rawProvider = getDefaultProviderForModel(rawModel) || '';
+      }
+      if (rawProvider && hasEnvCredentials(rawProvider)) {
+        logger.info('ensureModelWithProvider failed, falling back to env credentials', {
+          model: rawModel,
+          provider: rawProvider,
+        });
+        // Rewrite model to include provider prefix so downstream can resolve it
+        req.body.model = `${rawProvider}/${rawModel}`;
+      } else {
+        req.timings?.end('resolveProvider');
+        next(err);
+        return;
+      }
+    }
 
     const resolvedModel = getReqModel(req);
     const { providerName, modelName } = getModelNameWithProvider(resolvedModel);
@@ -243,6 +268,18 @@ export function createModelCallMiddleware(callType: CallType) {
         context.providerId = req.resolvedProvider?.providerId || '';
         await originalFail(error, partialUsage);
       };
+
+      // Safety net: warn if response finishes without complete() or fail() being called.
+      // No DB write — just a log entry for observability.
+      _res.on('finish', () => {
+        if (!completed) {
+          logger.warn('Response finished without model call completion', {
+            id: context.id,
+            model,
+            callType,
+          });
+        }
+      });
     } catch (error) {
       logger.error('Model call middleware error', { error, originalModel: model, userDid });
     }

@@ -30,9 +30,8 @@ export async function getOpenAIV2(req: {
   const rp = req.resolvedProvider;
   const providerName =
     rp?.providerName || getModelNameWithProvider(req?.body?.model || DEFAULT_MODEL).providerName || 'openai';
-  const modelName = rp?.modelName || getModelNameWithProvider(req?.body?.model || DEFAULT_MODEL).modelName;
 
-  const params = await getProviderCredentials(providerName, { model: modelName });
+  const params = await getProviderCredentials(providerName);
 
   if (rp) {
     rp.credentialId = params.id || '';

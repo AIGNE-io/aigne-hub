@@ -507,29 +507,22 @@ export function invalidateCreditCache(userDid: string) {
 export async function checkUserCreditBalance({ userDid }: { userDid: string }) {
   // Check cache first — positive balance means user is good to go
   const cached = creditCache.get(userDid);
-  if (cached) {
-    if (toBN(cached.balance).gt(toBN(0))) {
-      return;
-    }
-    // Cached balance <= 0 — honour the cache TTL to prevent re-fetch storms.
-    // Fresh balance is fetched only after TTL expires (or after a top-up triggers cache invalidation).
+  if (cached && toBN(cached.balance).gt(toBN(0))) {
+    return;
   }
 
-  // Cache miss → fetch from payment service
-  let balance: string;
-  let pendingCredit: string;
+  // Cache miss OR cached balance <= 0 — always re-fetch from source.
+  // This ensures top-ups take effect immediately without waiting for TTL expiry.
   if (cached) {
-    balance = cached.balance;
-    pendingCredit = cached.pendingCredit;
-  } else {
-    const credits = await getUserCredits({ userDid });
-    balance = credits.balance;
-    pendingCredit = credits.pendingCredit;
-    creditCache.set(userDid, { balance, pendingCredit });
+    creditCache.delete(userDid);
+  }
 
-    if (balance && toBN(balance).gt(toBN(0))) {
-      return;
-    }
+  const credits = await getUserCredits({ userDid });
+  const { balance, pendingCredit } = credits;
+  creditCache.set(userDid, { balance, pendingCredit });
+
+  if (balance && toBN(balance).gt(toBN(0))) {
+    return;
   }
 
   // Balance <= 0 — check if user can continue (auto-purchase, etc.)

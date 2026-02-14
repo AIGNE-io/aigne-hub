@@ -9,6 +9,7 @@ import logger from '@api/libs/logger';
 import { checkSubscription } from '@api/libs/payment';
 import { createAndReportUsage } from '@api/libs/usage';
 import { resolveProviderMiddleware } from '@api/middlewares/model-call-tracker';
+import AiCredential from '@api/store/models/ai-credential';
 import App from '@api/store/models/app';
 import { ensureRemoteComponentCall } from '@blocklet/aigne-hub/api/utils/auth';
 import compression from 'compression';
@@ -64,6 +65,14 @@ router.post(
           }
         }
 
+        // Fire-and-forget: track credential usage for V1
+        const credentialId = req.resolvedProvider?.credentialId;
+        if (credentialId) {
+          AiCredential.updateCredentialAfterUse(credentialId, req.resolvedProvider?.providerId || '').catch((err) => {
+            logger.error('Failed to update credential usage (v1 chat)', { error: err, credentialId });
+          });
+        }
+
         return data;
       },
       onError: (data) => {
@@ -94,6 +103,14 @@ router.post(
         promptTokens: usageData.promptTokens,
         model: usageData.model,
         appId: req.appClient?.appId,
+      });
+    }
+
+    // Fire-and-forget: track credential usage for V1
+    const credentialId = req.resolvedProvider?.credentialId;
+    if (credentialId) {
+      AiCredential.updateCredentialAfterUse(credentialId, req.resolvedProvider?.providerId || '').catch((err) => {
+        logger.error('Failed to update credential usage (v1 embedding)', { error: err, credentialId });
       });
     }
 
@@ -132,6 +149,14 @@ router.post(
         modelParams: usageData.modelParams,
         numberOfImageGeneration: usageData.numberOfImageGeneration,
         appId: req.appClient?.appId,
+      });
+    }
+
+    // Fire-and-forget: track credential usage for V1
+    const credentialId = req.resolvedProvider?.credentialId;
+    if (credentialId) {
+      AiCredential.updateCredentialAfterUse(credentialId, req.resolvedProvider?.providerId || '').catch((err) => {
+        logger.error('Failed to update credential usage (v1 image)', { error: err, credentialId });
       });
     }
 

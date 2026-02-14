@@ -454,7 +454,7 @@ router.post(
         req.timings?.end('preChecks');
 
         req.timings?.start('getCredentials');
-        const credential = await getProviderCredentials(provider, { model });
+        const credential = await getProviderCredentials(provider);
         req.timings?.end('getCredentials');
 
         if (req.resolvedProvider) {
@@ -604,7 +604,7 @@ router.post(
         req.timings?.end('preChecks');
 
         req.timings?.start('getCredentials');
-        const credential = await getProviderCredentials(provider, { model });
+        const credential = await getProviderCredentials(provider);
         req.timings?.end('getCredentials');
 
         if (req.resolvedProvider) {

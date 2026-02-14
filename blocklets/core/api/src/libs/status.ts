@@ -1,6 +1,6 @@
 import { Config } from '@api/libs/env';
 import { handleModelCallError } from '@api/libs/usage';
-import AiCredential, { clearCredentialListCache, getCredentialWithCache } from '@api/store/models/ai-credential';
+import AiCredential, { getCredentialWithCache } from '@api/store/models/ai-credential';
 import AiModelRate from '@api/store/models/ai-model-rate';
 import AiModelStatus, { ModelError, ModelErrorType } from '@api/store/models/ai-model-status';
 import AiProvider from '@api/store/models/ai-provider';
@@ -281,32 +281,22 @@ const sendCredentialInvalidNotification = async ({
         }
       );
 
-      await AiCredential.update({ active: false, error: error.message }, { where: { id: credentialId } });
+      const resolvedProviderId = providerId || credential?.providerId || '';
+      await AiCredential.disableCredential(credentialId, resolvedProviderId, error.message);
 
-      // Sync clear credential cache for this provider so next request re-fetches from DB
-      if (providerId) {
-        clearCredentialListCache(providerId);
-      }
-
-      const resolvedProviderId = providerId || credential?.providerId;
       if (resolvedProviderId) {
         credentialsQueue.push({ job: { credentialId, providerId: resolvedProviderId }, delay: 5 });
       }
     }
 
     if (credentialId && [429].includes(Number(error.status))) {
-      await AiCredential.update({ weight: 10 }, { where: { id: credentialId } });
+      const resolvedProviderId =
+        providerId || (await AiCredential.findOne({ where: { id: credentialId } }))?.providerId || '';
+      await AiCredential.reduceCredentialWeight(credentialId, resolvedProviderId, 10);
       logger.info('Credential weight reduced due to 429, will auto-recover in 3 minutes', {
         credentialId,
       });
 
-      // Sync clear credential cache for this provider
-      if (providerId) {
-        clearCredentialListCache(providerId);
-      }
-
-      const resolvedProviderId =
-        providerId || (await AiCredential.findOne({ where: { id: credentialId } }))?.providerId;
       if (resolvedProviderId) {
         credentialsQueue.push({
           job: { credentialId, providerId: resolvedProviderId, isWeightRecovery: true },
@@ -426,12 +416,14 @@ export function withModelStatus({
         });
       }
 
-      await sendCredentialInvalidNotification({
+      sendCredentialInvalidNotification({
         model,
         provider,
         credentialId,
         providerId: req.resolvedProvider?.providerId,
         error,
+      }).catch((err) => {
+        logger.error('Failed to send credential invalid notification', err);
       });
 
       if (error.status && [401, 403, 404, 500, 501, 503].includes(Number(error.status))) {
@@ -497,7 +489,9 @@ export async function callWithModelStatus(
   } catch (error) {
     logger.error('Failed to call with model status', error.message);
 
-    await sendCredentialInvalidNotification({ model, provider, credentialId, error });
+    sendCredentialInvalidNotification({ model, provider, credentialId, error }).catch((err) => {
+      logger.error('Failed to send credential invalid notification', err);
+    });
 
     await updateModelStatus({
       model: `${provider}/${model}`,

@@ -16,7 +16,7 @@ import { getModelNameWithProvider } from './ai-provider';
 import { wallet } from './auth';
 import { CREDIT_DECIMAL_PLACES, Config } from './env';
 import logger from './logger';
-import { createMeterEvent, getActiveSubscriptionOfApp, isPaymentRunning } from './payment';
+import { createMeterEvent, getActiveSubscriptionOfApp, invalidateCreditCache, isPaymentRunning } from './payment';
 
 export async function createAndReportUsage({
   type,
@@ -449,6 +449,9 @@ async function executeOriginalReportLogicWithProtection({ appId, userDid }: { ap
           },
         }
       );
+
+      // Balance changed after meter event — invalidate cache so next request sees fresh balance
+      invalidateCreditCache(userDid);
     } catch (apiError) {
       // Reset entire range to null if API call fails, allowing retry
       await Usage.update(

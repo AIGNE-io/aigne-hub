@@ -221,10 +221,15 @@ export default class AiCredential extends Model<InferAttributes<AiCredential>, I
 
     if (selected) {
       weights[selected.id]!.current -= totalWeight;
-      // In-memory bump for within-process round-robin evenness.
-      // DB is updated asynchronously via updateCredentialAfterUse; multi-instance drift is acceptable.
-      selected.usageCount += 1;
-      selected.lastUsedAt = new Date();
+      // Clone before mutation to avoid unexpected side-effects from shared cache references.
+      // Node's single-threaded model ensures no concurrent access, but cloning keeps intent clear.
+      const cloned = { ...selected, usageCount: selected.usageCount + 1, lastUsedAt: new Date() };
+      // Update the cache array entry in-place so subsequent calls within this TTL see the bumped count.
+      const idx = credentials.indexOf(selected);
+      if (idx !== -1) {
+        credentials[idx] = cloned;
+      }
+      selected = cloned;
     }
 
     credentialWeightCache[providerId] = weights;
@@ -233,8 +238,7 @@ export default class AiCredential extends Model<InferAttributes<AiCredential>, I
 
   /**
    * Update credential after use: bump usageCount + lastUsedAt, optionally recover (active + weight).
-   * Controls cache invalidation internally — only clears the specific provider's cache when
-   * status-affecting fields change, avoiding the overly aggressive afterBulkUpdate hook.
+   * Cache invalidation is handled explicitly — no reliance on Sequelize hooks.
    */
   static async updateCredentialAfterUse(
     credentialId: string,
@@ -245,30 +249,44 @@ export default class AiCredential extends Model<InferAttributes<AiCredential>, I
       usageCount: literal('"usageCount" + 1'),
       lastUsedAt: new Date(),
     };
-    const updateOptions: any = {
-      where: { id: credentialId },
-      silent: true,
-    };
 
     if (options?.recover) {
       values.active = true;
       values.weight = AIGNE_HUB_DEFAULT_WEIGHT;
-    } else {
-      // Restrict fields so afterBulkUpdate hook skips cache invalidation
-      updateOptions.fields = ['usageCount', 'lastUsedAt'];
     }
 
-    await AiCredential.update(values, updateOptions);
+    await AiCredential.update(values, { where: { id: credentialId }, silent: true });
 
-    // Recovery changes active/weight — clear only this provider's credential cache
     if (options?.recover && providerId) {
       clearCredentialListCache(providerId);
+      clearAllRotationCache();
+      clearFailedProvider(providerId);
     }
+  }
+
+  /**
+   * Disable a credential (e.g. invalid API key). Clears caches so next request re-fetches from DB.
+   */
+  static async disableCredential(credentialId: string, providerId: string, error: string): Promise<void> {
+    await AiCredential.update({ active: false, error }, { where: { id: credentialId }, silent: true });
+    clearCredentialListCache(providerId);
+    clearAllRotationCache();
+  }
+
+  /**
+   * Reduce credential weight (e.g. on 429 rate-limit). Clears caches so rotation picks up new weight.
+   */
+  static async reduceCredentialWeight(credentialId: string, providerId: string, weight: number): Promise<void> {
+    await AiCredential.update({ weight }, { where: { id: credentialId }, silent: true });
+    clearCredentialListCache(providerId);
+    clearAllRotationCache();
   }
 
   // 批量更新凭证状态
   static async updateCredentialStatus(ids: string[], active: boolean): Promise<number> {
-    const [affectedCount] = await AiCredential.update({ active }, { where: { id: ids } });
+    const [affectedCount] = await AiCredential.update({ active }, { where: { id: ids }, silent: true });
+    clearCredentialListCache();
+    clearAllRotationCache();
     return affectedCount;
   }
 
@@ -399,13 +417,6 @@ AiCredential.init(AiCredential.GENESIS_ATTRIBUTES, {
         if (credential.active) {
           clearFailedProvider(credential.providerId);
         }
-      }
-    },
-    afterBulkUpdate: (options: any) => {
-      const fields: string[] = options?.fields || [];
-      const cacheInvalidatingFields = ['active', 'weight', 'providerId'];
-      if (fields.length === 0 || fields.some((f) => cacheInvalidatingFields.includes(f))) {
-        clearCredentialListCache();
       }
     },
     afterDestroy: (credential: AiCredential) => {
