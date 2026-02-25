@@ -92,7 +92,7 @@ function pct(v: number): string {
 function diffClass(hubVal: number, baseVal: number): string {
   const diff = hubVal - baseVal;
   if (Math.abs(diff) < 1) return 'text-slate-400';
-  return diff > 0 ? 'text-red-500' : 'text-green-500';
+  return diff > 0 ? 'text-red-600' : 'text-emerald-600';
 }
 
 function diffStr(hubVal: number, baseVal: number): string {
@@ -104,7 +104,7 @@ function diffStr(hubVal: number, baseVal: number): string {
 
 function barHtml(value: number, max: number, color: string): string {
   const widthPct = max > 0 ? Math.min((value / max) * 100, 100) : 0;
-  return `<div class="h-5 rounded ${color}" style="width: ${widthPct.toFixed(1)}%"></div>`;
+  return `<div class="h-5 rounded-sm ${color}" style="width: ${widthPct.toFixed(1)}%"></div>`;
 }
 
 function phaseBarHtml(phases: { name: string; value: number; color: string }[], total: number): string {
@@ -116,12 +116,16 @@ function phaseBarHtml(phases: { name: string; value: number; color: string }[], 
       return `<div class="${p.color} h-full" style="width: ${w}%" title="${p.name}: ${ms(p.value)} (${pct((p.value / total) * 100)})"></div>`;
     })
     .join('');
-  return `<div class="flex h-5 rounded overflow-hidden bg-slate-700">${segments}</div>`;
+  return `<div class="flex h-5 rounded-sm overflow-hidden bg-slate-100">${segments}</div>`;
 }
 
 // ── Chart helpers ───────────────────────────────────────────────────────
 
 let chartCounter = 0;
+
+/** Chart.js color constants for light theme */
+const CHART_GRID = 'rgba(0,0,0,0.06)';
+const CHART_TICK = '#64748b';
 
 /** Get hub overhead: prefer hubOverhead.p50, fall back to serverTiming total - providerTtfb */
 function getOverhead(target: ComparisonTarget): number | null {
@@ -163,78 +167,78 @@ function renderComparisonCharts(group: ComparisonGroup): string {
 
   const directDatasets = directName
     ? `
-      { label: '${directName} TTFB p50', data: ${directTtfb}, borderColor: '#3b82f6', backgroundColor: '#3b82f680', borderWidth: 2, tension: 0.3, pointRadius: 4 },
-      { label: '${directName} TTFB p90', data: ${directTtfb90}, borderColor: '#3b82f6', borderDash: [5,3], borderWidth: 1.5, tension: 0.3, pointRadius: 3 },
+      { label: '${directName} TTFB p50', data: ${directTtfb}, borderColor: '#3b82f6', backgroundColor: '#3b82f620', borderWidth: 2, tension: 0.3, pointRadius: 4 },
+      { label: '${directName} TTFB p90', data: ${directTtfb90}, borderColor: '#93bbfd', borderDash: [5,3], borderWidth: 1.5, tension: 0.3, pointRadius: 3 },
     `
     : '';
 
   const directTotalDs = directName
-    ? `{ label: '${directName} Total p50', data: ${directTotal}, borderColor: '#3b82f6', backgroundColor: '#3b82f680', borderWidth: 2, tension: 0.3, pointRadius: 4 },`
+    ? `{ label: '${directName} Total p50', data: ${directTotal}, borderColor: '#3b82f6', backgroundColor: '#3b82f620', borderWidth: 2, tension: 0.3, pointRadius: 4 },`
     : '';
 
   const directRpsDs = directName
-    ? `{ label: '${directName}', data: ${directRps}, borderColor: '#3b82f6', backgroundColor: '#3b82f680', borderWidth: 2, tension: 0.3, pointRadius: 4 },`
+    ? `{ label: '${directName}', data: ${directRps}, borderColor: '#3b82f6', backgroundColor: '#3b82f620', borderWidth: 2, tension: 0.3, pointRadius: 4 },`
     : '';
 
   return `
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-      <div class="bg-slate-800 rounded-lg p-5">
-        <h4 class="text-sm font-medium text-slate-300 mb-3">TTFB vs Concurrency</h4>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-8">
+      <div class="card">
+        <h4 class="chart-title">TTFB vs Concurrency</h4>
         <canvas id="${chartId}-ttfb" height="220"></canvas>
       </div>
-      <div class="bg-slate-800 rounded-lg p-5">
-        <h4 class="text-sm font-medium text-slate-300 mb-3">Total Latency vs Concurrency</h4>
+      <div class="card">
+        <h4 class="chart-title">Total Latency vs Concurrency</h4>
         <canvas id="${chartId}-total" height="220"></canvas>
       </div>
-      <div class="bg-slate-800 rounded-lg p-5">
-        <h4 class="text-sm font-medium text-slate-300 mb-3">RPS vs Concurrency</h4>
+      <div class="card">
+        <h4 class="chart-title">RPS vs Concurrency</h4>
         <canvas id="${chartId}-rps" height="220"></canvas>
       </div>
-      <div class="bg-slate-800 rounded-lg p-5">
-        <h4 class="text-sm font-medium text-slate-300 mb-3">Hub Overhead vs Concurrency</h4>
+      <div class="card">
+        <h4 class="chart-title">Hub Overhead vs Concurrency</h4>
         <canvas id="${chartId}-overhead" height="220"></canvas>
       </div>
     </div>
     <script>
     (function() {
       const labels = ${labels};
-      const gridColor = 'rgba(148,163,184,0.1)';
-      const tickColor = '#94a3b8';
+      const gridColor = '${CHART_GRID}';
+      const tickColor = '${CHART_TICK}';
       const commonOpts = (yTitle) => ({
         responsive: true,
         interaction: { mode: 'index', intersect: false },
-        plugins: { legend: { labels: { color: tickColor, boxWidth: 12, padding: 10 } } },
+        plugins: { legend: { labels: { color: tickColor, boxWidth: 12, padding: 10, font: { size: 12 } } } },
         scales: {
-          x: { title: { display: true, text: 'Concurrency', color: tickColor }, ticks: { color: tickColor }, grid: { color: gridColor } },
-          y: { title: { display: true, text: yTitle, color: tickColor }, ticks: { color: tickColor }, grid: { color: gridColor }, beginAtZero: true }
+          x: { title: { display: true, text: 'Concurrency', color: tickColor, font: { size: 12 } }, ticks: { color: tickColor }, grid: { color: gridColor } },
+          y: { title: { display: true, text: yTitle, color: tickColor, font: { size: 12 } }, ticks: { color: tickColor }, grid: { color: gridColor }, beginAtZero: true }
         }
       });
 
       new Chart(document.getElementById('${chartId}-ttfb'), {
         type: 'line', data: { labels, datasets: [
-          { label: '${hubName} TTFB p50', data: ${hubTtfb}, borderColor: '#34d399', backgroundColor: '#34d39980', borderWidth: 2, tension: 0.3, pointRadius: 4 },
-          { label: '${hubName} TTFB p90', data: ${hubTtfb90}, borderColor: '#34d399', borderDash: [5,3], borderWidth: 1.5, tension: 0.3, pointRadius: 3 },
+          { label: '${hubName} TTFB p50', data: ${hubTtfb}, borderColor: '#10b981', backgroundColor: '#10b98120', borderWidth: 2, tension: 0.3, pointRadius: 4 },
+          { label: '${hubName} TTFB p90', data: ${hubTtfb90}, borderColor: '#6ee7b7', borderDash: [5,3], borderWidth: 1.5, tension: 0.3, pointRadius: 3 },
           ${directDatasets}
         ]}, options: commonOpts('ms')
       });
 
       new Chart(document.getElementById('${chartId}-total'), {
         type: 'line', data: { labels, datasets: [
-          { label: '${hubName} Total p50', data: ${hubTotal}, borderColor: '#34d399', backgroundColor: '#34d39980', borderWidth: 2, tension: 0.3, pointRadius: 4 },
+          { label: '${hubName} Total p50', data: ${hubTotal}, borderColor: '#10b981', backgroundColor: '#10b98120', borderWidth: 2, tension: 0.3, pointRadius: 4 },
           ${directTotalDs}
         ]}, options: commonOpts('ms')
       });
 
       new Chart(document.getElementById('${chartId}-rps'), {
         type: 'line', data: { labels, datasets: [
-          { label: '${hubName}', data: ${hubRps}, borderColor: '#34d399', backgroundColor: '#34d39980', borderWidth: 2, tension: 0.3, pointRadius: 4 },
+          { label: '${hubName}', data: ${hubRps}, borderColor: '#10b981', backgroundColor: '#10b98120', borderWidth: 2, tension: 0.3, pointRadius: 4 },
           ${directRpsDs}
         ]}, options: commonOpts('req/s')
       });
 
       new Chart(document.getElementById('${chartId}-overhead'), {
         type: 'bar', data: { labels, datasets: [
-          { label: 'Hub Overhead p50', data: ${hubOverhead}, backgroundColor: '#fbbf2480', borderColor: '#fbbf24', borderWidth: 1, borderRadius: 4 },
+          { label: 'Hub Overhead p50', data: ${hubOverhead}, backgroundColor: '#f59e0b30', borderColor: '#f59e0b', borderWidth: 1, borderRadius: 4 },
         ]}, options: commonOpts('ms')
       });
     })();
@@ -255,7 +259,6 @@ function renderComparison(data: ComparisonReport): string {
     const hubName = targetNames.find((n) => n.startsWith('hub-'));
 
     // Pick a representative concurrency level for summary cards
-    // Prefer ~40, fall back to middle level, then first
     const PREFERRED_CONC = 40;
     const repLevel =
       group.levels.find((l) => l.concurrency === PREFERRED_CONC) ||
@@ -273,36 +276,35 @@ function renderComparison(data: ComparisonReport): string {
 
       summaryCards = `
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <div class="bg-slate-800 rounded-lg p-5">
-            <div class="text-sm text-slate-400 mb-1">TTFB p50 Overhead (c=${repLevel.concurrency})</div>
-            <div class="text-2xl font-bold ${ttfbDiff > 50 ? 'text-red-400' : 'text-green-400'}">${diffStr(hubRep.ttfb.p50, directRep.ttfb.p50)}</div>
+          <div class="metric-card">
+            <div class="metric-label">TTFB p50 Overhead (c=${repLevel.concurrency})</div>
+            <div class="text-2xl font-semibold tracking-tight ${ttfbDiff > 50 ? 'text-red-600' : 'text-emerald-600'}">${diffStr(hubRep.ttfb.p50, directRep.ttfb.p50)}</div>
           </div>
-          <div class="bg-slate-800 rounded-lg p-5">
-            <div class="text-sm text-slate-400 mb-1">Total p50 Overhead (c=${repLevel.concurrency})</div>
-            <div class="text-2xl font-bold ${totalDiff > 100 ? 'text-red-400' : 'text-green-400'}">${diffStr(hubRep.total.p50, directRep.total.p50)}</div>
+          <div class="metric-card">
+            <div class="metric-label">Total p50 Overhead (c=${repLevel.concurrency})</div>
+            <div class="text-2xl font-semibold tracking-tight ${totalDiff > 100 ? 'text-red-600' : 'text-emerald-600'}">${diffStr(hubRep.total.p50, directRep.total.p50)}</div>
           </div>
-          <div class="bg-slate-800 rounded-lg p-5">
-            <div class="text-sm text-slate-400 mb-1">Hub Server Overhead p50 (c=${repLevel.concurrency})</div>
-            <div class="text-2xl font-bold text-emerald-400">${overhead !== null ? ms(overhead) : 'N/A'}</div>
+          <div class="metric-card">
+            <div class="metric-label">Hub Server Overhead p50 (c=${repLevel.concurrency})</div>
+            <div class="text-2xl font-semibold tracking-tight text-emerald-600">${overhead !== null ? ms(overhead) : 'N/A'}</div>
           </div>
         </div>`;
     } else if (hubName) {
-      // No direct baseline — show Hub-only summary
       const hubRep = repLevel.targets[hubName];
       const overhead = getOverhead(hubRep);
       summaryCards = `
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <div class="bg-slate-800 rounded-lg p-5">
-            <div class="text-sm text-slate-400 mb-1">Hub TTFB p50 (c=${repLevel.concurrency})</div>
-            <div class="text-2xl font-bold text-emerald-400">${ms(hubRep.ttfb.p50)}</div>
+          <div class="metric-card">
+            <div class="metric-label">Hub TTFB p50 (c=${repLevel.concurrency})</div>
+            <div class="text-2xl font-semibold tracking-tight text-emerald-600">${ms(hubRep.ttfb.p50)}</div>
           </div>
-          <div class="bg-slate-800 rounded-lg p-5">
-            <div class="text-sm text-slate-400 mb-1">Hub RPS (c=${repLevel.concurrency})</div>
-            <div class="text-2xl font-bold text-emerald-400">${hubRep.rps.toFixed(1)}</div>
+          <div class="metric-card">
+            <div class="metric-label">Hub RPS (c=${repLevel.concurrency})</div>
+            <div class="text-2xl font-semibold tracking-tight text-emerald-600">${hubRep.rps.toFixed(1)}</div>
           </div>
-          <div class="bg-slate-800 rounded-lg p-5">
-            <div class="text-sm text-slate-400 mb-1">Hub Server Overhead p50 (c=${repLevel.concurrency})</div>
-            <div class="text-2xl font-bold text-emerald-400">${overhead !== null ? ms(overhead) : 'N/A'}</div>
+          <div class="metric-card">
+            <div class="metric-label">Hub Server Overhead p50 (c=${repLevel.concurrency})</div>
+            <div class="text-2xl font-semibold tracking-tight text-emerald-600">${overhead !== null ? ms(overhead) : 'N/A'}</div>
           </div>
         </div>`;
     }
@@ -316,20 +318,20 @@ function renderComparison(data: ComparisonReport): string {
 
     let tableRows = '';
     for (const level of group.levels) {
-      const rowCells: string[] = [`<td class="px-4 py-3 font-medium">${level.concurrency}</td>`];
+      const rowCells: string[] = [`<td class="px-4 py-3 font-medium text-slate-900">${level.concurrency}</td>`];
 
       for (const name of targetNames) {
         const t = level.targets[name];
         if (!t) {
-          rowCells.push('<td colspan="5" class="px-4 py-3 text-slate-500">—</td>');
+          rowCells.push('<td colspan="5" class="px-4 py-3 text-slate-300">—</td>');
           continue;
         }
         rowCells.push(`
           <td class="px-4 py-3">${ms(t.ttfb.p50)}</td>
-          <td class="px-4 py-3">${ms(t.ttfb.p90)}</td>
+          <td class="px-4 py-3 text-slate-500">${ms(t.ttfb.p90)}</td>
           <td class="px-4 py-3">${ms(t.total.p50)}</td>
           <td class="px-4 py-3">${t.rps.toFixed(1)}</td>
-          <td class="px-4 py-3 ${t.errorRate > 0 ? 'text-red-400' : 'text-green-400'}">${pct(t.errorRate)}</td>
+          <td class="px-4 py-3 ${t.errorRate > 0 ? 'text-red-600' : 'text-emerald-600'}">${pct(t.errorRate)}</td>
         `);
       }
 
@@ -339,7 +341,7 @@ function renderComparison(data: ComparisonReport): string {
         if (hubT && directT) {
           rowCells.push(`
             <td class="px-4 py-3 ${diffClass(hubT.ttfb.p50, directT.ttfb.p50)} font-medium">${diffStr(hubT.ttfb.p50, directT.ttfb.p50)}</td>
-            <td class="px-4 py-3 text-slate-300">${(hubT.ttfb.p50 / directT.ttfb.p50).toFixed(2)}x</td>
+            <td class="px-4 py-3 text-slate-500">${(hubT.ttfb.p50 / directT.ttfb.p50).toFixed(2)}x</td>
           `);
         } else {
           rowCells.push('<td class="px-4 py-3">—</td><td class="px-4 py-3">—</td>');
@@ -357,50 +359,209 @@ function renderComparison(data: ComparisonReport): string {
         .join('');
       rowCells.push(`<td class="px-4 py-3 w-40"><div class="space-y-1">${barCells}</div></td>`);
 
-      tableRows += `<tr class="border-b border-slate-700 hover:bg-slate-800/50">${rowCells.join('')}</tr>`;
+      tableRows += `<tr class="border-b border-slate-100 hover:bg-slate-50/80 transition-colors">${rowCells.join('')}</tr>`;
     }
 
     // Build header columns per target
     const targetHeaders = targetNames
       .map((name) => {
-        const color = name.startsWith('hub-') ? 'text-emerald-400' : 'text-blue-400';
-        return `<th colspan="5" class="px-4 py-3 ${color} text-center border-b border-slate-600">${name}</th>`;
+        const color = name.startsWith('hub-') ? 'text-emerald-700' : 'text-blue-700';
+        return `<th colspan="5" class="px-4 py-3 ${color} text-center font-semibold border-b border-slate-200">${name}</th>`;
       })
       .join('');
     const subHeaders = targetNames
       .map(
         () => `
-        <th class="px-4 py-2 text-xs text-slate-400">TTFB p50</th>
-        <th class="px-4 py-2 text-xs text-slate-400">TTFB p90</th>
-        <th class="px-4 py-2 text-xs text-slate-400">Total p50</th>
-        <th class="px-4 py-2 text-xs text-slate-400">RPS</th>
-        <th class="px-4 py-2 text-xs text-slate-400">Err%</th>
+        <th class="px-4 py-2 text-xs font-medium text-slate-500 uppercase tracking-wider">TTFB p50</th>
+        <th class="px-4 py-2 text-xs font-medium text-slate-500 uppercase tracking-wider">TTFB p90</th>
+        <th class="px-4 py-2 text-xs font-medium text-slate-500 uppercase tracking-wider">Total p50</th>
+        <th class="px-4 py-2 text-xs font-medium text-slate-500 uppercase tracking-wider">RPS</th>
+        <th class="px-4 py-2 text-xs font-medium text-slate-500 uppercase tracking-wider">Err%</th>
       `
       )
       .join('');
 
     const deltaHeaders = hasVsDirect
-      ? '<th colspan="2" class="px-4 py-3 text-slate-300 text-center border-b border-slate-600">Delta</th>'
+      ? '<th colspan="2" class="px-4 py-3 text-slate-700 text-center font-semibold border-b border-slate-200">Delta</th>'
       : '';
     const deltaSubHeaders = hasVsDirect
-      ? '<th class="px-4 py-2 text-xs text-slate-400">TTFB Diff</th><th class="px-4 py-2 text-xs text-slate-400">Ratio</th>'
+      ? '<th class="px-4 py-2 text-xs font-medium text-slate-500 uppercase tracking-wider">TTFB Diff</th><th class="px-4 py-2 text-xs font-medium text-slate-500 uppercase tracking-wider">Ratio</th>'
       : '';
+
+    // Server-Timing breakdown table for hub targets
+    let timingSection = '';
+    if (hubName) {
+      const displayPhases = [
+        'session',
+        'resolveProvider',
+        'modelCallCreate',
+        'preChecks',
+        'modelSetup',
+        'getCredentials',
+        'providerTtfb',
+      ];
+
+      let timingRows = '';
+      for (const level of group.levels) {
+        const hubT = level.targets[hubName];
+        if (!hubT?.serverTiming) continue;
+
+        const totalP50 = hubT.serverTiming.total?.p50 ?? 0;
+        const phases = displayPhases
+          .filter((p) => hubT.serverTiming[p])
+          .map((p) => ({
+            name: p,
+            value: hubT.serverTiming[p].p50,
+            color: PHASE_COLORS[p] || 'bg-slate-400',
+          }));
+
+        const overheadMs = OVERHEAD_PHASES.reduce((sum, p) => sum + (hubT.serverTiming[p]?.p50 ?? 0), 0);
+
+        const phaseCells = displayPhases
+          .map((p) => {
+            const s = hubT.serverTiming[p];
+            if (!s) return '<td class="px-3 py-2.5 text-slate-300">—</td>';
+            const pctOfTotal = totalP50 > 0 ? (s.p50 / totalP50) * 100 : 0;
+            return `<td class="px-3 py-2.5"><span class="text-slate-800 font-medium">${ms(s.p50)}</span> <span class="text-slate-400 text-xs">${pct(pctOfTotal)}</span></td>`;
+          })
+          .join('');
+
+        timingRows += `
+          <tr class="border-b border-slate-100 hover:bg-slate-50/80 transition-colors">
+            <td class="px-3 py-2.5 font-medium text-slate-900">${level.concurrency}</td>
+            ${phaseCells}
+            <td class="px-3 py-2.5 font-semibold text-emerald-700">${ms(totalP50)}</td>
+            <td class="px-3 py-2.5 font-semibold text-amber-600">${ms(overheadMs)}</td>
+            <td class="px-3 py-2.5 w-48">${phaseBarHtml(phases, totalP50)}</td>
+          </tr>`;
+      }
+
+      const phaseHeaders = displayPhases
+        .map((p) => {
+          const dotColor = PHASE_DOT_COLORS[p] || 'text-slate-400';
+          return `<th class="px-3 py-2 text-xs font-medium text-slate-500 uppercase tracking-wider"><span class="${dotColor} text-sm">●</span> ${p}</th>`;
+        })
+        .join('');
+
+      // Stacked bar chart for server timing phases
+      const timingChartId = `comp-timing-${++chartCounter}`;
+      const timingLabels = JSON.stringify(group.levels.map((l) => l.concurrency));
+      const phaseDatasets = displayPhases
+        .map((p) => {
+          const data = JSON.stringify(
+            group.levels.map((l) => {
+              const hubT = l.targets[hubName!];
+              return hubT?.serverTiming?.[p]?.p50 != null ? Math.round(hubT.serverTiming[p].p50) : null;
+            })
+          );
+          const color =
+            {
+              session: '#8b5cf6',
+              resolveProvider: '#0ea5e9',
+              modelCallCreate: '#06b6d4',
+              preChecks: '#14b8a6',
+              modelSetup: '#f59e0b',
+              getCredentials: '#f97316',
+              providerTtfb: '#3b82f6',
+            }[p] || '#94a3b8';
+          return `{ label: '${p}', data: ${data}, backgroundColor: '${color}cc', borderRadius: 2 }`;
+        })
+        .join(',\n          ');
+
+      timingSection = `
+        <h3 class="section-title mt-12">Server-Timing Breakdown — ${hubName} (p50)</h3>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-8">
+          <div class="card">
+            <h4 class="chart-title">Phase Breakdown vs Concurrency (stacked)</h4>
+            <canvas id="${timingChartId}-stacked" height="260"></canvas>
+          </div>
+          <div class="card">
+            <h4 class="chart-title">Hub Overhead vs Provider TTFB</h4>
+            <canvas id="${timingChartId}-split" height="260"></canvas>
+          </div>
+        </div>
+        <script>
+        (function() {
+          const labels = ${timingLabels};
+          const gridColor = '${CHART_GRID}';
+          const tickColor = '${CHART_TICK}';
+
+          new Chart(document.getElementById('${timingChartId}-stacked'), {
+            type: 'bar', data: { labels, datasets: [
+              ${phaseDatasets}
+            ]}, options: {
+              responsive: true,
+              plugins: { legend: { labels: { color: tickColor, boxWidth: 12, padding: 8, font: { size: 11 } } } },
+              scales: {
+                x: { stacked: true, title: { display: true, text: 'Concurrency', color: tickColor }, ticks: { color: tickColor }, grid: { color: gridColor } },
+                y: { stacked: true, title: { display: true, text: 'ms', color: tickColor }, ticks: { color: tickColor }, grid: { color: gridColor }, beginAtZero: true }
+              }
+            }
+          });
+
+          const overheadData = ${JSON.stringify(
+            group.levels.map((l) => {
+              const hubT = l.targets[hubName!];
+              if (!hubT?.serverTiming) return null;
+              return Math.round(OVERHEAD_PHASES.reduce((sum, p) => sum + (hubT.serverTiming[p]?.p50 ?? 0), 0));
+            })
+          )};
+          const providerData = ${JSON.stringify(
+            group.levels.map((l) => {
+              const hubT = l.targets[hubName!];
+              return hubT?.serverTiming?.providerTtfb?.p50 != null
+                ? Math.round(hubT.serverTiming.providerTtfb.p50)
+                : null;
+            })
+          )};
+
+          new Chart(document.getElementById('${timingChartId}-split'), {
+            type: 'bar', data: { labels, datasets: [
+              { label: 'Hub Overhead', data: overheadData, backgroundColor: '#f59e0b50', borderColor: '#f59e0b', borderWidth: 1, borderRadius: 4 },
+              { label: 'Provider TTFB', data: providerData, backgroundColor: '#3b82f650', borderColor: '#3b82f6', borderWidth: 1, borderRadius: 4 },
+            ]}, options: {
+              responsive: true,
+              plugins: { legend: { labels: { color: tickColor, boxWidth: 12, padding: 8, font: { size: 11 } } } },
+              scales: {
+                x: { stacked: true, title: { display: true, text: 'Concurrency', color: tickColor }, ticks: { color: tickColor }, grid: { color: gridColor } },
+                y: { stacked: true, title: { display: true, text: 'ms', color: tickColor }, ticks: { color: tickColor }, grid: { color: gridColor }, beginAtZero: true }
+              }
+            }
+          });
+        })();
+        </script>
+
+        <div class="overflow-x-auto">
+          <table class="data-table">
+            <thead>
+              <tr class="border-b border-slate-200">
+                <th class="px-3 py-2.5 text-slate-700 font-semibold text-left">Conc.</th>
+                ${phaseHeaders}
+                <th class="px-3 py-2.5 text-slate-700 font-semibold text-left">Total</th>
+                <th class="px-3 py-2.5 text-slate-700 font-semibold text-left">Overhead</th>
+                <th class="px-3 py-2.5 text-slate-700 font-semibold text-left">Phase Distribution</th>
+              </tr>
+            </thead>
+            <tbody>${timingRows}</tbody>
+          </table>
+        </div>`;
+    }
 
     sections.push(`
       <div class="mb-12">
-        <h3 class="text-lg font-semibold text-slate-200 mb-4">Model: ${group.model}</h3>
+        <h3 class="section-title">Model: ${group.model}</h3>
         ${summaryCards}
         ${trendCharts}
         <div class="overflow-x-auto">
-          <table class="w-full text-sm text-left">
+          <table class="data-table">
             <thead>
-              <tr class="border-b border-slate-600">
-                <th rowspan="2" class="px-4 py-3 text-slate-300">Conc.</th>
+              <tr class="border-b border-slate-200">
+                <th rowspan="2" class="px-4 py-3 text-slate-700 font-semibold text-left">Conc.</th>
                 ${targetHeaders}
                 ${deltaHeaders}
-                <th rowspan="2" class="px-4 py-3 text-slate-300">TTFB Visual</th>
+                <th rowspan="2" class="px-4 py-3 text-slate-700 font-semibold text-left">TTFB Visual</th>
               </tr>
-              <tr class="border-b border-slate-700">
+              <tr class="border-b border-slate-200 bg-slate-50/50">
                 ${subHeaders}
                 ${deltaSubHeaders}
               </tr>
@@ -408,14 +569,15 @@ function renderComparison(data: ComparisonReport): string {
             <tbody>${tableRows}</tbody>
           </table>
         </div>
+        ${timingSection}
       </div>
     `);
   }
 
   return `
     <section class="mb-16">
-      <h2 class="text-2xl font-bold text-white mb-2">Hub vs OpenAI Direct</h2>
-      <p class="text-slate-400 mb-6">Comparison of AIGNE Hub proxy against direct provider APIs under varying concurrency.</p>
+      <h2 class="text-2xl font-bold text-slate-900 tracking-tight mb-1">Hub vs OpenAI Direct</h2>
+      <p class="text-slate-500 mb-8">Comparison of AIGNE Hub proxy against direct provider APIs under varying concurrency.</p>
       ${sections.join('')}
     </section>
   `;
@@ -435,7 +597,22 @@ const PHASE_COLORS: Record<string, string> = {
   streaming: 'bg-pink-500',
   usage: 'bg-rose-500',
   modelStatus: 'bg-fuchsia-500',
-  total: 'bg-slate-500',
+  total: 'bg-slate-400',
+};
+
+const PHASE_DOT_COLORS: Record<string, string> = {
+  session: 'text-violet-500',
+  resolveProvider: 'text-sky-500',
+  modelCallCreate: 'text-cyan-500',
+  preChecks: 'text-teal-500',
+  modelSetup: 'text-amber-500',
+  getCredentials: 'text-orange-500',
+  providerTtfb: 'text-blue-500',
+  ttfb: 'text-indigo-500',
+  streaming: 'text-pink-500',
+  usage: 'text-rose-500',
+  modelStatus: 'text-fuchsia-500',
+  total: 'text-slate-400',
 };
 
 const OVERHEAD_PHASES = ['session', 'resolveProvider', 'modelCallCreate', 'preChecks', 'modelSetup', 'getCredentials'];
@@ -457,62 +634,62 @@ function renderIsolationCharts(levels: IsolationLevel[]): string {
   );
 
   return `
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-      <div class="bg-slate-800 rounded-lg p-5">
-        <h4 class="text-sm font-medium text-slate-300 mb-3">TTFB & Total Latency vs Concurrency</h4>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-8">
+      <div class="card">
+        <h4 class="chart-title">TTFB & Total Latency vs Concurrency</h4>
         <canvas id="${chartId}-latency" height="220"></canvas>
       </div>
-      <div class="bg-slate-800 rounded-lg p-5">
-        <h4 class="text-sm font-medium text-slate-300 mb-3">RPS vs Concurrency</h4>
+      <div class="card">
+        <h4 class="chart-title">RPS vs Concurrency</h4>
         <canvas id="${chartId}-rps" height="220"></canvas>
       </div>
-      <div class="bg-slate-800 rounded-lg p-5">
-        <h4 class="text-sm font-medium text-slate-300 mb-3">Hub Overhead vs Concurrency</h4>
+      <div class="card">
+        <h4 class="chart-title">Hub Overhead vs Concurrency</h4>
         <canvas id="${chartId}-overhead" height="220"></canvas>
       </div>
-      <div class="bg-slate-800 rounded-lg p-5">
-        <h4 class="text-sm font-medium text-slate-300 mb-3">Error Rate vs Concurrency</h4>
+      <div class="card">
+        <h4 class="chart-title">Error Rate vs Concurrency</h4>
         <canvas id="${chartId}-errors" height="220"></canvas>
       </div>
     </div>
     <script>
     (function() {
       const labels = ${labels};
-      const gridColor = 'rgba(148,163,184,0.1)';
-      const tickColor = '#94a3b8';
+      const gridColor = '${CHART_GRID}';
+      const tickColor = '${CHART_TICK}';
       const commonOpts = (yTitle) => ({
         responsive: true,
         interaction: { mode: 'index', intersect: false },
-        plugins: { legend: { labels: { color: tickColor, boxWidth: 12, padding: 10 } } },
+        plugins: { legend: { labels: { color: tickColor, boxWidth: 12, padding: 10, font: { size: 12 } } } },
         scales: {
-          x: { title: { display: true, text: 'Concurrency', color: tickColor }, ticks: { color: tickColor }, grid: { color: gridColor } },
-          y: { title: { display: true, text: yTitle, color: tickColor }, ticks: { color: tickColor }, grid: { color: gridColor }, beginAtZero: true }
+          x: { title: { display: true, text: 'Concurrency', color: tickColor, font: { size: 12 } }, ticks: { color: tickColor }, grid: { color: gridColor } },
+          y: { title: { display: true, text: yTitle, color: tickColor, font: { size: 12 } }, ticks: { color: tickColor }, grid: { color: gridColor }, beginAtZero: true }
         }
       });
 
       new Chart(document.getElementById('${chartId}-latency'), {
         type: 'line', data: { labels, datasets: [
-          { label: 'TTFB p50', data: ${ttfbP50}, borderColor: '#34d399', borderWidth: 2, tension: 0.3, pointRadius: 4 },
-          { label: 'TTFB p90', data: ${ttfbP90}, borderColor: '#34d399', borderDash: [5,3], borderWidth: 1.5, tension: 0.3, pointRadius: 3 },
-          { label: 'Total p50', data: ${totalP50}, borderColor: '#a78bfa', borderWidth: 2, tension: 0.3, pointRadius: 4 },
+          { label: 'TTFB p50', data: ${ttfbP50}, borderColor: '#10b981', borderWidth: 2, tension: 0.3, pointRadius: 4 },
+          { label: 'TTFB p90', data: ${ttfbP90}, borderColor: '#6ee7b7', borderDash: [5,3], borderWidth: 1.5, tension: 0.3, pointRadius: 3 },
+          { label: 'Total p50', data: ${totalP50}, borderColor: '#8b5cf6', borderWidth: 2, tension: 0.3, pointRadius: 4 },
         ]}, options: commonOpts('ms')
       });
 
       new Chart(document.getElementById('${chartId}-rps'), {
         type: 'line', data: { labels, datasets: [
-          { label: 'RPS', data: ${rpsData}, borderColor: '#34d399', borderWidth: 2, tension: 0.3, pointRadius: 4 },
+          { label: 'RPS', data: ${rpsData}, borderColor: '#10b981', borderWidth: 2, tension: 0.3, pointRadius: 4 },
         ]}, options: commonOpts('req/s')
       });
 
       new Chart(document.getElementById('${chartId}-overhead'), {
         type: 'bar', data: { labels, datasets: [
-          { label: 'Hub Overhead p50', data: ${overheadData}, backgroundColor: '#fbbf2480', borderColor: '#fbbf24', borderWidth: 1, borderRadius: 4 },
+          { label: 'Hub Overhead p50', data: ${overheadData}, backgroundColor: '#f59e0b30', borderColor: '#f59e0b', borderWidth: 1, borderRadius: 4 },
         ]}, options: commonOpts('ms')
       });
 
       new Chart(document.getElementById('${chartId}-errors'), {
         type: 'line', data: { labels, datasets: [
-          { label: 'Error Rate', data: ${JSON.stringify(levels.map((l) => l.errorRate))}, borderColor: '#f87171', borderWidth: 2, tension: 0.3, pointRadius: 4 },
+          { label: 'Error Rate', data: ${JSON.stringify(levels.map((l) => l.errorRate))}, borderColor: '#ef4444', borderWidth: 2, tension: 0.3, pointRadius: 4 },
         ]}, options: commonOpts('%')
       });
     })();
@@ -540,19 +717,19 @@ function renderIsolation(data: IsolationReport): string {
   let metricsRows = '';
   for (const level of levels) {
     metricsRows += `
-      <tr class="border-b border-slate-700 hover:bg-slate-800/50">
-        <td class="px-4 py-3 font-medium">${level.concurrency}</td>
+      <tr class="border-b border-slate-100 hover:bg-slate-50/80 transition-colors">
+        <td class="px-4 py-3 font-medium text-slate-900">${level.concurrency}</td>
         <td class="px-4 py-3">
           <div class="flex items-center gap-2">
-            <span>${level.rps.toFixed(1)}</span>
+            <span class="font-medium">${level.rps.toFixed(1)}</span>
             <div class="flex-1 max-w-[80px]">${barHtml(level.rps, maxRps, 'bg-emerald-500')}</div>
           </div>
         </td>
         <td class="px-4 py-3">${ms(level.ttfb.p50)}</td>
-        <td class="px-4 py-3">${ms(level.ttfb.p90)}</td>
+        <td class="px-4 py-3 text-slate-500">${ms(level.ttfb.p90)}</td>
         <td class="px-4 py-3">${ms(level.totalTime.p50)}</td>
-        <td class="px-4 py-3 ${level.errorRate > 0 ? 'text-red-400' : 'text-green-400'}">${pct(level.errorRate)}</td>
-        <td class="px-4 py-3 text-slate-400">${level.totalRequests ?? level.ttfb.samples}</td>
+        <td class="px-4 py-3 ${level.errorRate > 0 ? 'text-red-600' : 'text-emerald-600'}">${pct(level.errorRate)}</td>
+        <td class="px-4 py-3 text-slate-500">${level.totalRequests ?? level.ttfb.samples}</td>
       </tr>`;
   }
 
@@ -574,7 +751,7 @@ function renderIsolation(data: IsolationReport): string {
       .map((p) => ({
         name: p,
         value: level.serverTiming[p].p50,
-        color: PHASE_COLORS[p] || 'bg-slate-500',
+        color: PHASE_COLORS[p] || 'bg-slate-400',
       }));
 
     const overheadMs = OVERHEAD_PHASES.reduce((sum, p) => sum + (level.serverTiming[p]?.p50 ?? 0), 0);
@@ -582,79 +759,79 @@ function renderIsolation(data: IsolationReport): string {
     const phaseCells = displayPhases
       .map((p) => {
         const s = level.serverTiming[p];
-        if (!s) return '<td class="px-3 py-2 text-slate-600">—</td>';
+        if (!s) return '<td class="px-3 py-2.5 text-slate-300">—</td>';
         const pctOfTotal = totalP50 > 0 ? (s.p50 / totalP50) * 100 : 0;
-        return `<td class="px-3 py-2"><span class="text-slate-200">${ms(s.p50)}</span> <span class="text-slate-500 text-xs">${pct(pctOfTotal)}</span></td>`;
+        return `<td class="px-3 py-2.5"><span class="text-slate-800 font-medium">${ms(s.p50)}</span> <span class="text-slate-400 text-xs">${pct(pctOfTotal)}</span></td>`;
       })
       .join('');
 
     timingRows += `
-      <tr class="border-b border-slate-700 hover:bg-slate-800/50">
-        <td class="px-3 py-2 font-medium">${level.concurrency}</td>
+      <tr class="border-b border-slate-100 hover:bg-slate-50/80 transition-colors">
+        <td class="px-3 py-2.5 font-medium text-slate-900">${level.concurrency}</td>
         ${phaseCells}
-        <td class="px-3 py-2 font-medium text-emerald-400">${ms(totalP50)}</td>
-        <td class="px-3 py-2 text-amber-400">${ms(overheadMs)}</td>
-        <td class="px-3 py-2 w-48">${phaseBarHtml(phases, totalP50)}</td>
+        <td class="px-3 py-2.5 font-semibold text-emerald-700">${ms(totalP50)}</td>
+        <td class="px-3 py-2.5 font-semibold text-amber-600">${ms(overheadMs)}</td>
+        <td class="px-3 py-2.5 w-48">${phaseBarHtml(phases, totalP50)}</td>
       </tr>`;
   }
 
   const phaseHeaders = displayPhases
     .map((p) => {
-      const dotColor = PHASE_COLORS[p]?.replace('bg-', 'text-') || 'text-slate-500';
-      return `<th class="px-3 py-2 text-xs text-slate-400"><span class="${dotColor}">●</span> ${p}</th>`;
+      const dotColor = PHASE_DOT_COLORS[p] || 'text-slate-400';
+      return `<th class="px-3 py-2 text-xs font-medium text-slate-500 uppercase tracking-wider"><span class="${dotColor} text-sm">●</span> ${p}</th>`;
     })
     .join('');
 
   return `
     <section class="mb-16">
-      <h2 class="text-2xl font-bold text-white mb-2">Hub Internal Performance</h2>
-      <p class="text-slate-400 mb-6">Isolation test using a mock provider to measure pure Hub overhead across concurrency levels.</p>
+      <h2 class="text-2xl font-bold text-slate-900 tracking-tight mb-1">Hub Internal Performance</h2>
+      <p class="text-slate-500 mb-8">Isolation test using a mock provider to measure pure Hub overhead across concurrency levels.</p>
 
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        <div class="bg-slate-800 rounded-lg p-5">
-          <div class="text-sm text-slate-400 mb-1">Peak RPS (c=${peakRpsLevel.concurrency})</div>
-          <div class="text-2xl font-bold text-emerald-400">${peakRps.toFixed(1)}</div>
+        <div class="metric-card">
+          <div class="metric-label">Peak RPS (c=${peakRpsLevel.concurrency})</div>
+          <div class="text-2xl font-semibold tracking-tight text-emerald-600">${peakRps.toFixed(1)}</div>
         </div>
-        <div class="bg-slate-800 rounded-lg p-5">
-          <div class="text-sm text-slate-400 mb-1">Min Hub Overhead (p50)</div>
-          <div class="text-2xl font-bold text-emerald-400">${minOverhead === Infinity ? 'N/A' : ms(minOverhead)}</div>
+        <div class="metric-card">
+          <div class="metric-label">Min Hub Overhead (p50)</div>
+          <div class="text-2xl font-semibold tracking-tight text-emerald-600">${minOverhead === Infinity ? 'N/A' : ms(minOverhead)}</div>
         </div>
-        <div class="bg-slate-800 rounded-lg p-5">
-          <div class="text-sm text-slate-400 mb-1">Max Concurrency (0% errors)</div>
-          <div class="text-2xl font-bold text-emerald-400">${maxZeroErrorConc || 'N/A'}</div>
+        <div class="metric-card">
+          <div class="metric-label">Max Concurrency (0% errors)</div>
+          <div class="text-2xl font-semibold tracking-tight text-emerald-600">${maxZeroErrorConc || 'N/A'}</div>
         </div>
       </div>
 
       ${renderIsolationCharts(levels)}
 
-      <h3 class="text-lg font-semibold text-slate-200 mb-4">Throughput & Latency</h3>
+      <h3 class="section-title">Throughput & Latency</h3>
       <div class="overflow-x-auto mb-10">
-        <table class="w-full text-sm text-left">
+        <table class="data-table">
           <thead>
-            <tr class="border-b border-slate-600">
-              <th class="px-4 py-3 text-slate-300">Conc.</th>
-              <th class="px-4 py-3 text-slate-300">RPS</th>
-              <th class="px-4 py-3 text-slate-300">TTFB p50</th>
-              <th class="px-4 py-3 text-slate-300">TTFB p90</th>
-              <th class="px-4 py-3 text-slate-300">Total p50</th>
-              <th class="px-4 py-3 text-slate-300">Err%</th>
-              <th class="px-4 py-3 text-slate-300">Samples</th>
+            <tr class="border-b border-slate-200">
+              <th class="px-4 py-3 text-slate-700 font-semibold text-left">Conc.</th>
+              <th class="px-4 py-3 text-slate-700 font-semibold text-left">RPS</th>
+              <th class="px-4 py-3 text-slate-700 font-semibold text-left">TTFB p50</th>
+              <th class="px-4 py-3 text-slate-700 font-semibold text-left">TTFB p90</th>
+              <th class="px-4 py-3 text-slate-700 font-semibold text-left">Total p50</th>
+              <th class="px-4 py-3 text-slate-700 font-semibold text-left">Err%</th>
+              <th class="px-4 py-3 text-slate-700 font-semibold text-left">Samples</th>
             </tr>
           </thead>
           <tbody>${metricsRows}</tbody>
         </table>
       </div>
 
-      <h3 class="text-lg font-semibold text-slate-200 mb-4">Server-Timing Breakdown (p50)</h3>
+      <h3 class="section-title">Server-Timing Breakdown (p50)</h3>
       <div class="overflow-x-auto">
-        <table class="w-full text-sm text-left">
+        <table class="data-table">
           <thead>
-            <tr class="border-b border-slate-600">
-              <th class="px-3 py-2 text-slate-300">Conc.</th>
+            <tr class="border-b border-slate-200">
+              <th class="px-3 py-2.5 text-slate-700 font-semibold text-left">Conc.</th>
               ${phaseHeaders}
-              <th class="px-3 py-2 text-slate-300">Total</th>
-              <th class="px-3 py-2 text-slate-300">Overhead</th>
-              <th class="px-3 py-2 text-slate-300">Phase Distribution</th>
+              <th class="px-3 py-2.5 text-slate-700 font-semibold text-left">Total</th>
+              <th class="px-3 py-2.5 text-slate-700 font-semibold text-left">Overhead</th>
+              <th class="px-3 py-2.5 text-slate-700 font-semibold text-left">Phase Distribution</th>
             </tr>
           </thead>
           <tbody>${timingRows}</tbody>
@@ -667,12 +844,32 @@ function renderIsolation(data: IsolationReport): string {
 // ── Main ───────────────────────────────────────────────────────────────
 
 function main() {
-  const compFile = findLatest('comparison-');
-  const isoFile = findLatest('isolation-');
+  const args = process.argv.slice(2);
+
+  // Support: tsx src/report.ts [compFile] [isoFile]
+  // Files can be basenames (looked up in results/) or full/relative paths.
+  let compFile: string | null = null;
+  let isoFile: string | null = null;
+
+  if (args.length >= 1) {
+    for (const arg of args) {
+      const basename = arg.includes('/') ? arg.split('/').pop()! : arg;
+      if (basename.startsWith('comparison-')) compFile = basename;
+      else if (basename.startsWith('isolation-')) isoFile = basename;
+      else {
+        console.error(`Unknown file type: ${arg} (expected filename starting with "comparison-" or "isolation-")`);
+        process.exit(1);
+      }
+    }
+  } else {
+    compFile = findLatest('comparison-');
+    isoFile = findLatest('isolation-');
+  }
 
   if (!compFile && !isoFile) {
     console.error('No benchmark results found in benchmarks/results/');
     console.error('Run `npm run comparison` and/or `npm run isolation` first.');
+    console.error('Or specify files: tsx src/report.ts <comparison-xxx.json> <isolation-xxx.json>');
     process.exit(1);
   }
 
@@ -701,40 +898,88 @@ function main() {
     : 'Unknown';
 
   const html = `<!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AIGNE Hub — Benchmark Report</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <style>
     body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
-    @media print { body { background: white; color: black; } }
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      border: 1px solid rgba(0,0,0,0.06);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .metric-card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px 24px;
+      border: 1px solid rgba(0,0,0,0.06);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .metric-label {
+      font-size: 0.8125rem;
+      color: #64748b;
+      margin-bottom: 4px;
+      letter-spacing: 0.01em;
+    }
+    .chart-title {
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: #475569;
+      margin-bottom: 12px;
+    }
+    .section-title {
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: #1e293b;
+      margin-bottom: 16px;
+    }
+    .data-table {
+      width: 100%;
+      font-size: 0.8125rem;
+      text-align: left;
+      border-collapse: collapse;
+    }
+    .data-table td {
+      color: #334155;
+    }
+    @media print {
+      body { background: white; }
+      .card, .metric-card { box-shadow: none; border: 1px solid #e2e8f0; }
+    }
   </style>
 </head>
-<body class="bg-slate-900 text-slate-300 min-h-screen">
+<body class="bg-[#f8f9fb] text-slate-700 min-h-screen antialiased">
   <div class="max-w-7xl mx-auto px-6 py-10">
     <header class="mb-12">
-      <h1 class="text-3xl font-bold text-white mb-2">AIGNE Hub Benchmark Report</h1>
-      <p class="text-slate-400">Generated ${dateStr}</p>
+      <h1 class="text-3xl font-bold text-slate-900 tracking-tight mb-1">AIGNE Hub Benchmark Report</h1>
+      <p class="text-slate-500">${dateStr}</p>
     </header>
 
     ${compSection}
     ${isoSection}
 
-    <footer class="border-t border-slate-700 pt-6 mt-12 text-sm text-slate-500">
-      <p>Report generated by <code>benchmarks/src/report.ts</code></p>
-      ${compFile ? `<p>Comparison: <code>${compFile}</code></p>` : ''}
-      ${isoFile ? `<p>Isolation: <code>${isoFile}</code></p>` : ''}
+    <footer class="border-t border-slate-200 pt-6 mt-12 text-sm text-slate-400">
+      <p>Generated by <code class="text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded text-xs">benchmarks/src/report.ts</code></p>
+      ${compFile ? `<p class="mt-1">Comparison: <code class="text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded text-xs">${compFile}</code></p>` : ''}
+      ${isoFile ? `<p class="mt-1">Isolation: <code class="text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded text-xs">${isoFile}</code></p>` : ''}
     </footer>
   </div>
 </body>
 </html>`;
 
-  const outPath = join(resultsDir, 'report.html');
+  const ts = (timestamp || new Date().toISOString()).replace(/[:.]/g, '-');
+  const outPath = join(resultsDir, `report-${ts}.html`);
   writeFileSync(outPath, html);
-  console.log(`\nReport written to: results/report.html`);
+  console.log(`\nReport written to: results/report-${ts}.html`);
 }
 
 main();

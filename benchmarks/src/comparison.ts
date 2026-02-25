@@ -123,6 +123,8 @@ async function main() {
 
     // Store results across concurrency levels for scaling summary
     const allLevelResults = new Map<number, Map<string, TargetResult>>();
+    // Store raw successful results for per-request distribution analysis
+    const allLevelRaw = new Map<number, Map<string, BenchmarkResult[]>>();
 
     for (let li = 0; li < levels.length; li++) {
       const concurrency = levels[li];
@@ -143,6 +145,7 @@ async function main() {
       }
 
       const levelResults = new Map<string, TargetResult>();
+      const levelRaw = new Map<string, BenchmarkResult[]>();
 
       for (const target of group.targets) {
         process.stdout.write(`  Running ${target.name} (c=${concurrency}, ${duration / 1000}s)...`);
@@ -166,12 +169,14 @@ async function main() {
         };
 
         levelResults.set(target.name, stats);
+        levelRaw.set(target.name, successful);
         const overheadInfo = stats.hubOverhead ? `, overhead=${fmt(stats.hubOverhead.p50)}` : '';
         console.log(` ${successful.length} ok, ${errors.length} err, ${stats.rps.toFixed(1)} rps${overheadInfo}`);
         logErrors(results);
       }
 
       allLevelResults.set(concurrency, levelResults);
+      allLevelRaw.set(concurrency, levelRaw);
 
       // Print comparison table for this concurrency level
       const hasVsDirect = !!(directName && hubName);
@@ -371,8 +376,10 @@ async function main() {
       model: group.model,
       levels: levels.map((level) => {
         const lr = allLevelResults.get(level)!;
+        const raw = allLevelRaw.get(level)!;
         const targets: any = {};
         for (const [name, stats] of lr) {
+          const rawResults = raw.get(name) ?? [];
           targets[name] = {
             ttfb: stats.ttfb,
             total: stats.total,
@@ -382,6 +389,13 @@ async function main() {
             samples: stats.samples,
             serverTiming: Object.fromEntries(stats.serverTiming),
             hubOverhead: stats.hubOverhead,
+            raw: {
+              ttfb: rawResults.map((r) => Math.round(r.ttfb)),
+              totalTime: rawResults.map((r) => Math.round(r.totalTime)),
+              providerTtfb: rawResults
+                .filter((r) => r.serverTiming?.providerTtfb != null)
+                .map((r) => Math.round(r.serverTiming!.providerTtfb)),
+            },
           };
         }
         return { concurrency: level, targets };
