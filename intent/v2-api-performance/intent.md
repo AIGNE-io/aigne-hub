@@ -7,7 +7,7 @@
 - **Priority**: P0 — 直接影响所有 AI 调用的首字节体验与吞吐
 - **Target user**: 所有通过 AIGNE Hub 调用 AI 模型的应用和开发者
 - **Project scope**: 仅优化 V2 路由的请求前置处理与调用记录写入（preChecks / getCredentials / modelCallCreate），不改变 AI 调用行为和响应格式。V1 路由不在优化范围内（中间件链简单，无 modelCallTracker / withModelStatus / creditBalance check）。**V1 间接影响**：①§3.1.1 删除 process* 内的 `checkModelRateAvailable` 会同时影响 V1 调用路径（V1 也调用 process*），V1 将失去该校验；②§3.1.2 `createRetryHandler` 重试逻辑依赖 `req.resolvedProvider`，V1 路由需加入 `resolveProviderMiddleware`（不改变 V1 业务逻辑，仅提供 retry 所需数据）。V1 实际已废弃，此影响可接受
-- **不包含**: Session 验证链路改造（依赖外部 SDK）；DB 连接池/部署拓扑大改；API 响应格式变更
+- **不包含**: DB 连接池/部署拓扑大改；API 响应格式变更
 
 ## 2. Architecture
 
@@ -20,7 +20,7 @@
   │
   ├─ requestTimingMiddleware              纯内存，无 I/O
   ├─ compression()                        纯内存，无 I/O
-  ├─ session (auth)                       [session] ~20-54ms（外部 SDK，不可优化）
+  ├─ session (auth)                       [session] ~20-54ms（外部 SDK RPC，应用层可缓存 §3.3.4）
   ├─ checkCreditBasedBilling              纯内存检查，无 I/O
   │
   ├─ maxProviderRetries:                   ⚠️ [架构问题：与 chatCallTracker 内的 ensureModelWithProvider 职责重叠]
@@ -83,7 +83,7 @@
   │
   ├─ requestTimingMiddleware              ≈0ms
   ├─ compression()                        ≈0ms
-  ├─ session (auth)                       [session]（保持现状）
+  ├─ session (auth)                       [session] ≈0ms 缓存命中 / ~20ms 未命中（§3.3.4）
   ├─ checkCreditBasedBilling              ≈0ms
   ├─ resolveProvider middleware:            合并 maxProviderRetries + ensureModelWithProvider
   │   ├─ getProvidersForModel              ≈0ms（已有 5 分钟缓存）
@@ -239,6 +239,55 @@ ModelCall.create(modelCallParams).catch(log);  // fire-and-forget
   2. 缓存命中但余额 ≤ 0 → 回源重查（用户可能刚充值），更新缓存，余额仍不足才拒绝
   3. 缓存未命中 → 正常查询，写入缓存
 
+#### 3.3.4 Session 验证结果缓存
+
+**现状**: `sessionMiddleware({ accessKey: true })` 内部调用 `verifyAccessKey()`，每次请求发起一次 GraphQL RPC 到 blocklet-service（`BlockletClient.verifyAccessKey({ accessKeyId: token })`）。RPC 前还有一次请求签名（SHA256 + wallet key）。低并发时 ~7ms，高并发时排队导致延迟飙升至 548ms（c=100）。SDK 中间件不可修改。
+
+**改法**: 在应用层包装 `user` middleware，不修改 `@blocklet/sdk`：
+
+1. **提取 token**：从 `Authorization: Bearer <token>` header 或 `login_token` cookie 中提取（与 SDK 内部 `getTokenFromReq` 逻辑一致）
+2. **查缓存**：以 token 为 key 查 `sessionCache`，命中则直接赋值 `req.user` 并跳过 SDK 中间件
+3. **未命中走原始中间件**：调用 `sessionHandler(req, res, next)`，完成后将 `req.user` 回填缓存
+
+```typescript
+import { LRUCache } from 'lru-cache';
+
+const sessionCache = new LRUCache<string, SessionUser>({ max: 1000, ttl: 60_000 });
+
+const sessionHandler = sessionMiddleware({ accessKey: true });
+const user = (req: Request, res: Response, next: NextFunction) => {
+  req.timings?.start('session');
+
+  const auth = req.headers.authorization;
+  const token = auth?.startsWith('Bearer ') ? auth.slice(7) : req.cookies?.login_token;
+
+  if (token) {
+    const cached = sessionCache.get(token);
+    if (cached) {
+      req.user = cached;
+      req.timings?.end('session');
+      return next();
+    }
+  }
+
+  sessionHandler(req, res, (...args: any[]) => {
+    if (token && req.user) {
+      sessionCache.set(token, req.user);
+    }
+    req.timings?.end('session');
+    next(...args);
+  });
+};
+```
+
+**缓存参数**:
+- `max: 1000` — access key 数量有限，1000 足够覆盖所有活跃 key
+- `ttl: 60_000`（60 秒）— 与 auth middleware 的权限缓存 TTL 一致
+
+**缓存内容**: `req.user` 对象，包含 `{ did, accessKeyId, role, fullName, provider, walletOS, method }`。均为 access key 创建时确定的静态属性。
+
+**loginToken 路径不受影响**: `verifyLoginToken` 是纯本地 JWT 验证（`jsonwebtoken.verify()`），不走 RPC，本身 <1ms，不需要缓存。缓存仅对 accessKey 路径有效（accessKey token 格式与 loginToken 不同，由 SDK 内部 `isAccessKey()` 区分）。
+
 ## 4. Risks & Gaps
 
 | 风险 | 影响 | 缓解措施 |
@@ -250,6 +299,8 @@ ModelCall.create(modelCallParams).catch(log);  // fire-and-forget
 | 进程 crash 丢失内存 context | ModelCall 永久丢失（fire-and-forget 尚未执行） | 极罕见场景；Usage 已同步落库不受影响；无 `processing` 中间态残留，数据干净 |
 | CreditError 误判 credential 失效 | 用户余额不足时错误禁用 provider credential | `sendCredentialInvalidNotification` 入口加 `instanceof CreditError` 守卫；已确认只有一个 throw 点（`payment.ts:507`） |
 | ModelCall ID 异步化后丢失 | 响应中 `modelCallId` 字段为空，破坏 API 契约 | 内存预分配 Snowflake ID（`nextId()`），响应返回 + fire-and-forget create 使用同一 ID |
+| Session 缓存窗口内 access key 被吊销 | 最多 60 秒内已吊销的 key 仍能通过认证 | TTL 60 秒窗口极短；access key 吊销是低频管理操作（非实时安全事件）；与 CDN/API Gateway 的 token 缓存实践一致 |
+| Session 缓存窗口内 access key 权限变更 | 最多 60 秒使用旧 role | access key 的 passport(role) 极少变更；60 秒后自动刷新 |
 | V1 路由丢失 checkModelRateAvailable 校验 | V1 调用 process* 时不再做 rate 校验 | V1 实际已废弃，无活跃用户；且 V1 之前也无 preChecks 保护，该校验本身覆盖不完整 |
 
 ## 5. Verification Plan
@@ -339,6 +390,10 @@ ModelCall.create(modelCallParams).catch(log);  // fire-and-forget
 
 - **余额缓存 — 充值即时生效**: mock payment 先返回余额 0，首次请求返回 402，调用 `invalidateCreditCache(userDid)` 后 mock payment 改为返回余额 >0，第二次请求返回 200
 
+- **Session 缓存命中跳过 RPC**: 连续发送 2 次相同 access key 请求，用 spy 包装 `BlockletClient.verifyAccessKey`（或 session middleware 本身），验证第 2 次请求不触发 RPC 调用
+
+- **Session 缓存 TTL 过期后重新验证**: 发送请求填充缓存，手动清除缓存条目（`sessionCache.delete(token)`），再次请求，验证 RPC 被重新调用
+
 #### 5.2.5 后处理解耦
 
 - **Usage 写入失败不影响 ModelCall**: spy `Usage.create` 使其抛出异常，发请求后验证：
@@ -389,4 +444,4 @@ ModelCall.create(modelCallParams).catch(log);  // fire-and-forget
 ### 5.3 基准回归
 - 继续使用 `benchmarks/` 三类测试（comparison/stress/isolation）
 - 本轮不设硬 KPI，只做前后对比与趋势判断
-- 重点观察 `resolveProvider/preChecks/getCredentials/modelCallCreate(total)` 的 p50/p90 变化方向
+- 重点观察 `session/resolveProvider/preChecks/getCredentials/modelCallCreate(total)` 的 p50/p90 变化方向

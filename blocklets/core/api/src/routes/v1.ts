@@ -36,7 +36,13 @@ router.get('/status', ensureRemoteComponentCall(App.findPublicKeyById, ensureCom
 // v1 Chat Completions endpoint
 router.post(
   '/:type(chat)?/completions',
-  compression(),
+  compression({
+    filter: (req, res) => {
+      if (req.headers.accept?.includes('text/event-stream')) return false;
+      if (req.body?.stream) return false;
+      return compression.filter(req, res);
+    },
+  }),
   ensureRemoteComponentCall(App.findPublicKeyById, ensureComponentCall(ensureAdmin)),
   resolveV1ChatProvider,
   createRetryHandler(async (req, res) => {

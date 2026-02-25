@@ -27,6 +27,19 @@ declare global {
   }
 }
 
+const noopTimings: RequestTimings = {
+  start() {},
+  end() {
+    return 0;
+  },
+  getAll() {
+    return {};
+  },
+  elapsed() {
+    return 0;
+  },
+};
+
 export function createRequestTimings(): RequestTimings {
   const entries = new Map<string, TimingEntry>();
   const requestStart = performance.now();
@@ -63,12 +76,24 @@ export function createRequestTimings(): RequestTimings {
 /**
  * Middleware: attach timings to req and output Server-Timing header on finish
  *
+ * Controlled by ENABLE_SERVER_TIMING env var (default: false).
+ * When disabled, req.timings is set to a no-op implementation so that
+ * all `req.timings?.start()` / `req.timings?.end()` calls still work
+ * without errors — they just don't record or output anything.
+ *
  * Server-Timing is a standard HTTP header visible in Chrome DevTools Network tab.
  * Example output:
  *   Server-Timing: session;dur=12.3, provider;dur=28.1, aiCall;dur=1820.5
  */
 export function requestTimingMiddleware() {
+  const enabled = process.env.ENABLE_SERVER_TIMING === 'true' || process.env.ENABLE_SERVER_TIMING === '1';
+
   return (req: Request, res: Response, next: NextFunction) => {
+    if (!enabled) {
+      req.timings = noopTimings;
+      return next();
+    }
+
     const timings = createRequestTimings();
     req.timings = timings;
 

@@ -16,6 +16,7 @@ import { ensureModelWithProvider } from '@api/libs/provider-rotation';
 import { withModelStatus } from '@api/libs/status';
 import { createUsageAndCompleteModelCall, getTotalTokens } from '@api/libs/usage';
 import { createModelCallMiddleware, resolveProviderMiddleware } from '@api/middlewares/model-call-tracker';
+import { userWithCache } from '@api/middlewares/user-with-cache';
 import { checkModelRateAvailable } from '@api/providers';
 import AiCredential from '@api/store/models/ai-credential';
 import AiModelRate from '@api/store/models/ai-model-rate';
@@ -23,7 +24,6 @@ import AiModelStatus from '@api/store/models/ai-model-status';
 import AiProvider from '@api/store/models/ai-provider';
 import { CreditError } from '@blocklet/aigne-hub/api';
 import { CustomError, formatError, getStatusFromError } from '@blocklet/error';
-import { sessionMiddleware } from '@blocklet/sdk/lib/middlewares/session';
 import compression from 'compression';
 import { NextFunction, Request, Response, Router } from 'express';
 import proxy from 'express-http-proxy';
@@ -94,15 +94,7 @@ const aigneHubModelBodyValidate = (body: Request['body']) => {
   return value;
 };
 
-// eslint-disable-next-line @typescript-eslint/naming-convention
-const sessionHandler = sessionMiddleware({ accessKey: true });
-const user = (req: Request, res: Response, next: NextFunction) => {
-  req.timings?.start('session');
-  sessionHandler(req, res, (...args: any[]) => {
-    req.timings?.end('session');
-    next(...args);
-  });
-};
+const user = userWithCache;
 
 const resolveChatProvider = resolveProviderMiddleware(DEFAULT_MODEL);
 const resolveImageProvider = resolveProviderMiddleware(DEFAULT_IMAGE_MODEL);
@@ -222,7 +214,14 @@ const checkCreditBasedBillingMiddleware = (req: Request, _res: Response, next: N
 
 router.post(
   '/:type(chat)?/completions',
-  compression(),
+  compression({
+    filter: (req, res) => {
+      // Skip compression for SSE streaming — small chunks + sync zlib = high CPU cost per flush
+      if (req.headers.accept?.includes('text/event-stream')) return false;
+      if (req.body?.stream) return false;
+      return compression.filter(req, res);
+    },
+  }),
   user,
   checkCreditBasedBillingMiddleware,
   resolveChatProvider,

@@ -368,10 +368,12 @@ export async function processChatCompletion(
   // since the HTTP header was flushed before streaming/usage phases completed.
   if (isEventStream && req.timings) {
     const all = req.timings.getAll();
-    const total = req.timings.elapsed();
-    const parts = Object.entries(all).map(([phase, dur]) => `${phase};dur=${dur}`);
-    parts.push(`total;dur=${total}`);
-    res.write(`event: server-timing\ndata: ${parts.join(', ')}\n\n`);
+    if (Object.keys(all).length > 0) {
+      const total = req.timings.elapsed();
+      const parts = Object.entries(all).map(([phase, dur]) => `${phase};dur=${dur}`);
+      parts.push(`total;dur=${total}`);
+      res.write(`event: server-timing\ndata: ${parts.join(', ')}\n\n`);
+    }
   }
 
   res.end();
