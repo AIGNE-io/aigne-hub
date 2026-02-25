@@ -3,6 +3,12 @@ import 'dotenv/config';
 import { mkdirSync, writeFileSync } from 'fs';
 import { join } from 'path';
 
+import { ProxyAgent } from 'undici';
+
+const proxyUrl = process.env.https_proxy || process.env.HTTPS_PROXY || process.env.http_proxy || process.env.HTTP_PROXY;
+const proxyDispatcher = proxyUrl ? new ProxyAgent(proxyUrl) : undefined;
+if (proxyDispatcher) console.log(`Using proxy: ${proxyUrl}`);
+
 // ── Types ──────────────────────────────────────────────────────────────
 
 export interface Target {
@@ -52,29 +58,25 @@ const defaultHubBaseUrl = process.env.HUB_BASE_URL || 'http://localhost:3030';
 
 export const config = {
   hubBaseUrl: defaultHubBaseUrl,
-  stressHubBaseUrl: process.env.STRESS_HUB_BASE_URL || defaultHubBaseUrl,
   isolationHubBaseUrl: process.env.ISOLATION_HUB_BASE_URL || defaultHubBaseUrl,
   comparisonHubBaseUrl: process.env.COMPARISON_HUB_BASE_URL || defaultHubBaseUrl,
   hubAccessKey: process.env.HUB_ACCESS_KEY || '',
-  stressHubAccessKey: process.env.STRESS_HUB_ACCESS_KEY || process.env.HUB_ACCESS_KEY || '',
   isolationHubAccessKey: process.env.ISOLATION_HUB_ACCESS_KEY || process.env.HUB_ACCESS_KEY || '',
   comparisonHubAccessKey: process.env.COMPARISON_HUB_ACCESS_KEY || '',
   openaiApiKey: process.env.OPENAI_API_KEY || '',
-  geminiApiKey: process.env.GEMINI_API_KEY || '',
   openrouterApiKey: process.env.OPENROUTER_API_KEY || '',
   mockProviderPort: parseInt(process.env.MOCK_PROVIDER_PORT || '9876', 10),
   mockHubModel: process.env.MOCK_HUB_MODEL || 'mock/gpt-4o-mini',
   warmupCount: parseInt(process.env.WARMUP_COUNT || '3', 10),
-  comparisonIterations: parseInt(process.env.COMPARISON_ITERATIONS || '10', 10),
-  comparisonDuration: parseInt(process.env.COMPARISON_DURATION || '15000', 10),
-  comparisonConcurrencyLevels: (process.env.COMPARISON_CONCURRENCY_LEVELS || '1,5,20').split(',').map(Number),
-  stressDuration: parseInt(process.env.STRESS_DURATION || '15000', 10),
-  stressConcurrencyLevels: (process.env.STRESS_CONCURRENCY_LEVELS || '1,5,10,25,50').split(',').map(Number),
+  comparisonDuration: parseInt(process.env.COMPARISON_DURATION || '30000', 10),
+  comparisonConcurrencyLevels: (process.env.COMPARISON_CONCURRENCY_LEVELS || '5,20,40').split(',').map(Number),
   isolationDuration: parseInt(process.env.ISOLATION_DURATION || '10000', 10),
   isolationConcurrencyLevels: (process.env.ISOLATION_CONCURRENCY_LEVELS || '1,5,10,25,50,100,200')
     .split(',')
     .map(Number),
   requestTimeout: parseInt(process.env.REQUEST_TIMEOUT || '60000', 10),
+  /** Cooldown between targets (ms) to avoid provider rate limits */
+  targetCooldown: parseInt(process.env.TARGET_COOLDOWN || '30000', 10),
 };
 
 // ── Payloads ───────────────────────────────────────────────────────────
@@ -112,7 +114,7 @@ export const PAYLOADS = {
       { role: 'assistant' as const, content: ASSISTANT_REPLY_500 },
       { role: 'user' as const, content: 'Can you elaborate on that point?' },
     ],
-    maxTokens: 200,
+    maxTokens: 800,
   },
 } as const;
 
@@ -134,9 +136,24 @@ export async function benchmarkRequest(target: Target, options?: RequestOptions)
         model: target.model,
         stream,
         max_tokens: options?.maxTokens ?? 50,
+        ...(target.name.startsWith('hub-') ? { maxTokens: options?.maxTokens ?? 50 } : {}),
       }),
       signal: AbortSignal.timeout(config.requestTimeout),
-    });
+      ...(proxyDispatcher ? { dispatcher: proxyDispatcher } : {}),
+    } as any);
+
+    if (!response.ok) {
+      const errorBody = await response.text().catch(() => '');
+      const totalTime = performance.now() - start;
+      return {
+        status: response.status,
+        ttfb: totalTime,
+        totalTime,
+        streamingTime: 0,
+        rateLimited: response.status === 429,
+        error: `HTTP ${response.status}: ${errorBody.slice(0, 500)}`,
+      };
+    }
 
     if (!stream) {
       const serverTiming = parseServerTiming(response.headers.get('Server-Timing'));
@@ -149,7 +166,6 @@ export async function benchmarkRequest(target: Target, options?: RequestOptions)
         streamingTime: 0,
         serverTiming,
         rateLimited: response.status === 429,
-        error: response.ok ? undefined : `HTTP ${response.status}`,
       };
     }
 
@@ -178,7 +194,6 @@ export async function benchmarkRequest(target: Target, options?: RequestOptions)
       streamingTime: totalTime - (ttfb ?? totalTime),
       serverTiming,
       rateLimited: response.status === 429,
-      error: response.ok ? undefined : `HTTP ${response.status}`,
     };
   } catch (err: any) {
     const totalTime = performance.now() - start;
@@ -199,18 +214,28 @@ export async function warmup(target: Target, count?: number, options?: RequestOp
   const n = count ?? config.warmupCount;
   console.log(`  Warming up ${target.name} (${n} requests)...`);
   for (let i = 0; i < n; i++) {
-    await benchmarkRequest(target, options).catch(() => {});
+    const result = await benchmarkRequest(target, options);
+    if (result.error) {
+      console.error(`  ✗ Warmup failed for ${target.name}: ${result.error}`);
+      process.exit(1);
+    }
   }
 }
 
 // ── Run concurrent workers ─────────────────────────────────────────────
+
+export interface ConcurrentResult {
+  results: BenchmarkResult[];
+  /** Actual wall-clock elapsed time in ms (may exceed configured duration) */
+  elapsed: number;
+}
 
 export async function runConcurrent(
   target: Target,
   concurrency: number,
   duration: number,
   options?: RequestOptions
-): Promise<BenchmarkResult[]> {
+): Promise<ConcurrentResult> {
   const results: BenchmarkResult[] = [];
   const startTime = Date.now();
 
@@ -221,7 +246,7 @@ export async function runConcurrent(
   });
 
   await Promise.all(workers);
-  return results;
+  return { results, elapsed: Date.now() - startTime };
 }
 
 // ── Statistics ─────────────────────────────────────────────────────────
@@ -391,9 +416,27 @@ export function bar(value: number, total: number, maxWidth: number = 20): string
   return '█'.repeat(full) + (remainder > 0 ? fractions[remainder] : '');
 }
 
+// ── Error logging ──────────────────────────────────────────────────────
+
+export function logErrors(results: BenchmarkResult[]): void {
+  const errors = results.filter((r) => r.error);
+  if (errors.length === 0) return;
+
+  const grouped = new Map<string, number>();
+  for (const r of errors) {
+    const key = r.error!;
+    grouped.set(key, (grouped.get(key) ?? 0) + 1);
+  }
+
+  console.log(`  ⚠ ${errors.length} errors:`);
+  for (const [msg, count] of [...grouped.entries()].sort((a, b) => b[1] - a[1])) {
+    console.log(`    ${count}x ${msg}`);
+  }
+}
+
 // ── JSON report ────────────────────────────────────────────────────────
 
-export function saveReport(type: 'comparison' | 'stress' | 'isolation', results: any): void {
+export function saveReport(type: 'comparison' | 'isolation', results: any): void {
   const dir = join(import.meta.dirname, '..', 'results');
   mkdirSync(dir, { recursive: true });
 
@@ -403,16 +446,10 @@ export function saveReport(type: 'comparison' | 'stress' | 'isolation', results:
     timestamp: new Date().toISOString(),
     type,
     config: {
-      hubBaseUrl:
-        type === 'stress'
-          ? config.stressHubBaseUrl
-          : type === 'isolation'
-            ? config.isolationHubBaseUrl
-            : config.comparisonHubBaseUrl,
+      hubBaseUrl: type === 'isolation' ? config.isolationHubBaseUrl : config.comparisonHubBaseUrl,
       warmupCount: config.warmupCount,
       requestTimeout: config.requestTimeout,
       ...(type === 'comparison' && { duration: config.comparisonDuration, levels: config.comparisonConcurrencyLevels }),
-      ...(type === 'stress' && { duration: config.stressDuration, levels: config.stressConcurrencyLevels }),
       ...(type === 'isolation' && { duration: config.isolationDuration, levels: config.isolationConcurrencyLevels }),
     },
     results,

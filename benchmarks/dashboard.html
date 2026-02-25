@@ -22,7 +22,6 @@
   .file-item.active { background: #eff6ff; color: #2563eb; }
   .badge { font-size: 10px; padding: 2px 6px; border-radius: 10px; font-weight: 600; flex-shrink: 0; }
   .badge-comparison { background: #dbeafe; color: #2563eb; }
-  .badge-stress { background: #fef3c7; color: #d97706; }
   .badge-isolation { background: #d1fae5; color: #059669; }
   .main { margin-left: 280px; padding: 24px 32px; }
   .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 60vh; color: #9ca3af; }
@@ -84,7 +83,7 @@ const {
 const COLORS = { 'openai-direct': '#2563eb', 'openrouter': '#d97706', 'hub-openai': '#059669',
   primary: '#2563eb', secondary: '#d97706', tertiary: '#059669', error: '#dc2626', purple: '#7c3aed' };
 const TARGET_COLORS = ['#2563eb','#d97706','#059669','#dc2626','#7c3aed','#0891b2'];
-const TYPE_LABELS = { comparison: '对比测试', stress: '压力测试', isolation: '隔离测试' };
+const TYPE_LABELS = { comparison: '对比测试', isolation: '隔离测试' };
 
 const fmt = ms => typeof ms === 'number' ? Math.round(ms) + 'ms' : '-';
 const fmtN = n => typeof n === 'number' ? n.toFixed(1) : '-';
@@ -181,8 +180,6 @@ function App() {
         <div className="empty-state"><p>从侧边栏选择结果文件，或拖拽 JSON 文件开始</p><p style={{fontSize:12,marginTop:8,color:'#d1d5db'}}>勾选两个同类型文件可进行对比</p></div>
       ) : data.type === 'comparison' ? (
         <ComparisonView data={data} />
-      ) : data.type === 'stress' ? (
-        <StressView data={data} />
       ) : data.type === 'isolation' ? (
         <IsolationView data={data} />
       ) : null}
@@ -191,14 +188,14 @@ function App() {
 }
 
 function Sidebar({ files, activeFile, onSelect, onFiles, selected, onToggleSelect, canCompare, onCompare, compareMode }) {
-  const grouped = { comparison: [], stress: [], isolation: [] };
+  const grouped = { comparison: [], isolation: [] };
   for (const [name, data] of files) {
     const t = data.type || 'unknown';
     if (grouped[t]) grouped[t].push(name);
   }
   const onDrop = e => { e.preventDefault(); e.currentTarget.classList.remove('drag-over'); onFiles(e.dataTransfer.files); };
   const onDragOver = e => { e.preventDefault(); e.currentTarget.classList.add('drag-over'); };
-  const badgeMap = { comparison: '比', stress: '压', isolation: '隔' };
+  const badgeMap = { comparison: '比', isolation: '隔' };
 
   return <div className="sidebar">
     <div className="drop-zone" onDrop={onDrop} onDragOver={onDragOver} onDragLeave={e => e.currentTarget.classList.remove('drag-over')}>
@@ -273,16 +270,19 @@ function ComparisonView({ data }) {
     return row;
   });
 
-  // Overhead data: difference from openai-direct
-  const baseTarget = targets.find(t => t.includes('direct')) || targets[0];
+  // Hub overhead data from report: serverTiming.total - serverTiming.providerTtfb
+  const hubTargets = targets.filter(t => t.startsWith('hub-'));
   const overheadData = levels.map(l => {
-    const base = l.targets[baseTarget];
     const row = { concurrency: 'c=' + l.concurrency };
-    targets.filter(t => t !== baseTarget).forEach(t => {
+    hubTargets.forEach(t => {
       const d = l.targets[t];
-      if (!d || !base || !base.ttfb?.p50) return;
-      row[t + '_ttfb_overhead'] = Math.round((d.ttfb?.p50 || 0) - (base.ttfb?.p50 || 0));
-      row[t + '_total_overhead'] = Math.round((d.total?.p50 || 0) - (base.total?.p50 || 0));
+      if (!d) return;
+      const fallback =
+        d.serverTiming?.total?.p50 !== undefined && d.serverTiming?.providerTtfb?.p50 !== undefined
+          ? d.serverTiming.total.p50 - d.serverTiming.providerTtfb.p50
+          : 0;
+      const overheadP50 = d.hubOverhead?.p50 ?? fallback;
+      row[t + '_hub_overhead_p50'] = Math.max(0, Math.round(overheadP50 || 0));
     });
     return row;
   });
@@ -340,7 +340,7 @@ function ComparisonView({ data }) {
             </BarChart>
           </ResponsiveContainer>
         </ChartBox>
-        <ChartBox title="额外开销 (相对 {baseTarget})">
+        <ChartBox title="Hub Overhead p50 (total - providerTtfb)">
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={overheadData} barGap={2} barCategoryGap="20%">
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -348,7 +348,7 @@ function ComparisonView({ data }) {
               <YAxis unit="ms" />
               <Tooltip {...tooltipStyle} formatter={(v) => (v > 0 ? '+' : '') + v + 'ms'} />
               <Legend />
-              {targets.filter(t => t !== baseTarget).map((t, i) => <Bar key={t} dataKey={t+'_ttfb_overhead'} name={t + ' TTFB 开销'} fill={colorFor(t,i+1)} radius={[3,3,0,0]} />)}
+              {hubTargets.map((t, i) => <Bar key={t} dataKey={t+'_hub_overhead_p50'} name={t + ' Hub Overhead'} fill={colorFor(t,i)} radius={[3,3,0,0]} />)}
             </BarChart>
           </ResponsiveContainer>
         </ChartBox>
@@ -358,7 +358,7 @@ function ComparisonView({ data }) {
     <div className="section">
       <div className="section-title">吞吐量与错误</div>
       <div className="chart-grid">
-        <ChartBox title="每秒请求数 (RPS)">
+        <ChartBox title="成功完成 RPS">
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={barData} barGap={2} barCategoryGap="20%">
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -400,138 +400,23 @@ function ServerTimingSection({ levels, targets }) {
   if (!stTarget) return null;
 
   const phases = [...new Set(levels.flatMap(l => Object.keys(l.targets[stTarget]?.serverTiming || {})))].filter(p => p !== 'total' && p !== 'ttfb' && p !== 'streaming');
-  const stData = levels.map(l => {
+  const buildStData = (pct) => levels.map(l => {
     const st = l.targets[stTarget]?.serverTiming || {};
     const row = { concurrency: 'c=' + l.concurrency };
-    phases.forEach(p => { row[p] = Math.round(st[p]?.p50 || 0); });
+    phases.forEach(p => { row[p] = Math.round(st[p]?.[pct] || 0); });
     return row;
   });
+  const stDataP50 = buildStData('p50');
+  const stDataP90 = buildStData('p90');
 
   const phaseColors = ['#2563eb','#d97706','#059669','#dc2626','#7c3aed','#0891b2','#ea580c','#4f46e5'];
 
   return <div className="section">
     <div className="section-title">服务端耗时分解 ({stTarget})</div>
-    <ChartBox title="各阶段耗时 p50 (堆叠)">
-      <ResponsiveContainer width="100%" height={300}>
-        <BarChart data={stData}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-          <XAxis dataKey="concurrency" />
-          <YAxis unit="ms" />
-          <Tooltip {...tooltipStyle} formatter={(v) => v + 'ms'} />
-          <Legend />
-          {phases.map((p, i) => <Bar key={p} dataKey={p} stackId="a" fill={phaseColors[i % phaseColors.length]} />)}
-        </BarChart>
-      </ResponsiveContainer>
-    </ChartBox>
-  </div>;
-}
-
-function RawComparisonTable({ levels, targets }) {
-  return <div className="section">
-    <div className="section-title">原始数据</div>
-    <div style={{overflowX:'auto'}}>
-    <table><thead><tr>
-      <th>并发</th><th>目标</th><th>样本</th><th>RPS</th>
-      <th>TTFB p50</th><th>TTFB p90</th><th>总耗时 p50</th><th>总耗时 p90</th><th>错误</th>
-    </tr></thead><tbody>
-      {levels.flatMap(l => Object.entries(l.targets).map(([name, t]) =>
-        <tr key={l.concurrency+name}>
-          <td>{l.concurrency}</td><td>{name}</td><td>{t.samples}</td><td>{fmtN(t.rps)}</td>
-          <td>{fmt(t.ttfb?.p50)}</td><td>{fmt(t.ttfb?.p90)}</td>
-          <td>{fmt(t.total?.p50)}</td><td>{fmt(t.total?.p90)}</td>
-          <td>{t.errors}{t.errorRate > 0 ? ` (${fmtN(t.errorRate)}%)` : ''}</td>
-        </tr>
-      ))}
-    </tbody></table>
-    </div>
-  </div>;
-}
-
-// ── Stress ──
-function StressView({ data }) {
-  const results = data.results;
-  const chartData = results.map(r => ({
-    concurrency: 'c=' + r.concurrency,
-    ttfb_p50: Math.round(r.ttfb.p50),
-    ttfb_p90: Math.round(r.ttfb.p90),
-    total_p50: Math.round(r.total.p50),
-    total_p90: Math.round(r.total.p90),
-    rps: +(r.rps).toFixed(1),
-    requests: r.totalRequests,
-    errors: r.errors,
-  }));
-
-  const hasServerTiming = results.some(r => r.serverTiming && Object.keys(r.serverTiming).length > 0);
-  const phases = hasServerTiming ? [...new Set(results.flatMap(r => Object.keys(r.serverTiming || {})))].filter(p => p !== 'total' && p !== 'ttfb' && p !== 'streaming') : [];
-  const stData = results.map(r => {
-    const row = { concurrency: 'c=' + r.concurrency };
-    phases.forEach(p => { row[p] = Math.round(r.serverTiming?.[p]?.p50 || 0); });
-    return row;
-  });
-  const phaseColors = ['#2563eb','#d97706','#059669','#dc2626','#7c3aed','#0891b2','#ea580c'];
-
-  return <>
-    <ConfigBar config={data.config} />
-    <div className="cards">
-      <div className="card"><div className="card-label">最低负载 TTFB</div><div className="card-value">{fmt(results[0].ttfb.p50)}</div><div className="card-sub">c={results[0].concurrency}</div></div>
-      <div className="card"><div className="card-label">最高负载 TTFB</div><div className="card-value">{fmt(results.at(-1).ttfb.p50)}</div><div className="card-sub">c={results.at(-1).concurrency}</div></div>
-      <div className="card"><div className="card-label">最大 RPS</div><div className="card-value">{fmtN(Math.max(...results.map(r=>r.rps)))}</div></div>
-      <div className="card"><div className="card-label">总请求</div><div className="card-value">{results.reduce((s,r)=>s+r.totalRequests,0)}</div></div>
-      <div className="card"><div className="card-label">总错误</div><div className="card-value">{results.reduce((s,r)=>s+r.errors,0)}</div></div>
-    </div>
-
-    <div className="section">
-      <div className="section-title">延迟随并发变化</div>
-      <div className="chart-grid">
-        <ChartBox title="首字节延迟 (TTFB)">
-          <ResponsiveContainer width="100%" height={280}>
-            <ComposedChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="concurrency" />
-              <YAxis unit="ms" />
-              <Tooltip {...tooltipStyle} formatter={(v) => v + 'ms'} />
-              <Legend />
-              <Area dataKey="ttfb_p90" name="p90 范围" fill="#2563eb" fillOpacity={0.1} stroke="none" />
-              <Line dataKey="ttfb_p50" name="p50" stroke="#2563eb" strokeWidth={2} dot={{r:4}} />
-            </ComposedChart>
-          </ResponsiveContainer>
-        </ChartBox>
-        <ChartBox title="总耗时">
-          <ResponsiveContainer width="100%" height={280}>
-            <ComposedChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="concurrency" />
-              <YAxis unit="ms" />
-              <Tooltip {...tooltipStyle} formatter={(v) => v + 'ms'} />
-              <Legend />
-              <Area dataKey="total_p90" name="p90 范围" fill="#d97706" fillOpacity={0.1} stroke="none" />
-              <Line dataKey="total_p50" name="p50" stroke="#d97706" strokeWidth={2} dot={{r:4}} />
-            </ComposedChart>
-          </ResponsiveContainer>
-        </ChartBox>
-      </div>
-    </div>
-
-    <div className="section">
-      <div className="section-title">吞吐量</div>
-      <ChartBox title="RPS vs 并发">
-        <ResponsiveContainer width="100%" height={280}>
-          <BarChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-            <XAxis dataKey="concurrency" />
-            <YAxis unit="/s" />
-            <Tooltip {...tooltipStyle} formatter={(v) => v + ' req/s'} />
-            <Bar dataKey="rps" name="RPS" fill="#059669" radius={[3,3,0,0]} />
-          </BarChart>
-        </ResponsiveContainer>
-      </ChartBox>
-    </div>
-
-    {hasServerTiming && <div className="section">
-      <div className="section-title">服务端耗时分解</div>
+    <div className="chart-grid">
       <ChartBox title="各阶段耗时 p50 (堆叠)">
         <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={stData}>
+          <BarChart data={stDataP50}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
             <XAxis dataKey="concurrency" />
             <YAxis unit="ms" />
@@ -541,23 +426,42 @@ function StressView({ data }) {
           </BarChart>
         </ResponsiveContainer>
       </ChartBox>
-    </div>}
-
-    <div className="section">
-      <div className="section-title">原始数据</div>
-      <table><thead><tr>
-        <th>并发</th><th>请求数</th><th>RPS</th><th>TTFB p50</th><th>TTFB p90</th><th>总耗时 p50</th><th>总耗时 p90</th><th>错误</th><th>限流</th>
-      </tr></thead><tbody>
-        {results.map(r => <tr key={r.concurrency}>
-          <td>{r.concurrency}</td><td>{r.totalRequests}</td><td>{fmtN(r.rps)}</td>
-          <td>{fmt(r.ttfb.p50)}</td><td>{fmt(r.ttfb.p90)}</td>
-          <td>{fmt(r.total.p50)}</td><td>{fmt(r.total.p90)}</td>
-          <td>{r.errors}{r.errorRate > 0 ? ` (${fmtN(r.errorRate)}%)` : ''}</td>
-          <td>{r.rateLimited || 0}</td>
-        </tr>)}
-      </tbody></table>
+      <ChartBox title="各阶段耗时 p90 (堆叠)">
+        <ResponsiveContainer width="100%" height={300}>
+          <BarChart data={stDataP90}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+            <XAxis dataKey="concurrency" />
+            <YAxis unit="ms" />
+            <Tooltip {...tooltipStyle} formatter={(v) => v + 'ms'} />
+            <Legend />
+            {phases.map((p, i) => <Bar key={p} dataKey={p} stackId="a" fill={phaseColors[i % phaseColors.length]} />)}
+          </BarChart>
+        </ResponsiveContainer>
+      </ChartBox>
     </div>
-  </>;
+  </div>;
+}
+
+function RawComparisonTable({ levels, targets }) {
+  return <div className="section">
+    <div className="section-title">原始数据</div>
+    <div style={{overflowX:'auto'}}>
+    <table><thead><tr>
+      <th>并发</th><th>目标</th><th>样本</th><th>RPS(success)</th>
+      <th>TTFB p50</th><th>TTFB p90</th><th>总耗时 p50</th><th>总耗时 p90</th><th>Hub Overhead p50</th><th>错误</th>
+    </tr></thead><tbody>
+      {levels.flatMap(l => Object.entries(l.targets).map(([name, t]) =>
+        <tr key={l.concurrency+name}>
+          <td>{l.concurrency}</td><td>{name}</td><td>{t.samples}</td><td>{fmtN(t.rps)}</td>
+          <td>{fmt(t.ttfb?.p50)}</td><td>{fmt(t.ttfb?.p90)}</td>
+          <td>{fmt(t.total?.p50)}</td><td>{fmt(t.total?.p90)}</td>
+          <td>{t.hubOverhead?.p50 !== undefined ? fmt(t.hubOverhead.p50) : '-'}</td>
+          <td>{t.errors}{t.errorRate > 0 ? ` (${fmtN(t.errorRate)}%)` : ''}</td>
+        </tr>
+      ))}
+    </tbody></table>
+    </div>
+  </div>;
 }
 
 // ── Isolation ──
@@ -574,8 +478,6 @@ function IsolationView({ data }) {
       concurrency: 'c=' + r.concurrency,
       ttfb_p50: hasNewFormat ? Math.round(r.ttfb.p50) : undefined,
       ttfb_p90: hasNewFormat ? Math.round(r.ttfb.p90) : undefined,
-      streaming_p50: hasNewFormat && r.streamingTime ? Math.round(r.streamingTime.p50) : undefined,
-      streaming_p90: hasNewFormat && r.streamingTime ? Math.round(r.streamingTime.p90) : undefined,
       total_p50: Math.round(timing.p50),
       total_p90: Math.round(timing.p90),
       rps: +(r.rps).toFixed(1),
@@ -585,12 +487,14 @@ function IsolationView({ data }) {
 
   const hasServerTiming = results.some(r => r.serverTiming && Object.keys(r.serverTiming).length > 0);
   const phases = hasServerTiming ? [...new Set(results.flatMap(r => Object.keys(r.serverTiming || {})))].filter(p => p !== 'total' && p !== 'ttfb' && p !== 'streaming') : [];
-  const stData = results.map(r => {
+  const buildStData = (pct) => results.map(r => {
     const row = { concurrency: 'c=' + r.concurrency };
-    phases.forEach(p => { row[p] = Math.round(r.serverTiming?.[p]?.p50 || 0); });
+    phases.forEach(p => { row[p] = Math.round(r.serverTiming?.[p]?.[pct] || 0); });
     return row;
   });
-  const phaseColors = ['#2563eb','#d97706','#059669','#dc2626','#7c3aed','#0891b2','#ea580c'];
+  const stDataP50 = buildStData('p50');
+  const stDataP90 = buildStData('p90');
+  const phaseColors = ['#2563eb','#d97706','#059669','#dc2626','#7c3aed','#0891b2','#ea580c','#be185d'];
 
   const totalErrors = results.reduce((s,r) => s + r.errors, 0);
   const timingOf = r => hasNewFormat ? r.totalTime : r.responseTime;
@@ -606,7 +510,7 @@ function IsolationView({ data }) {
         <div className="card"><div className="card-label">响应时间 (c={results[0]?.concurrency})</div><div className="card-value">{fmt(timingOf(results[0])?.p50)}</div></div>
         <div className="card"><div className="card-label">响应时间 (c={results.at(-1)?.concurrency})</div><div className="card-value">{fmt(timingOf(results.at(-1))?.p50)}</div></div>
       </>}
-      <div className="card"><div className="card-label">最大 RPS</div><div className="card-value">{fmtN(Math.max(...results.map(r=>r.rps)))}</div></div>
+      <div className="card"><div className="card-label">最大成功 RPS</div><div className="card-value">{fmtN(Math.max(...results.map(r=>r.rps)))}</div></div>
       <div className="card"><div className="card-label">总请求</div><div className="card-value">{results.reduce((s,r)=>s+r.totalRequests,0)}</div></div>
       <div className="card"><div className="card-label">总错误</div><div className="card-value" style={{color: totalErrors > 0 ? '#dc2626' : '#059669'}}>{totalErrors}</div></div>
     </div>
@@ -656,14 +560,15 @@ function IsolationView({ data }) {
             </ResponsiveContainer>
           </ChartBox>
         </>}
-        <ChartBox title="吞吐量 (RPS)">
+        <ChartBox title="吞吐量 (成功 RPS)">
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis dataKey="concurrency" />
               <YAxis unit="/s" />
               <Tooltip {...tooltipStyle} formatter={(v) => v + ' req/s'} />
-              <Bar dataKey="rps" name="RPS" fill="#059669" radius={[3,3,0,0]} />
+              <Legend />
+              <Bar dataKey="rps" name="成功 RPS" fill="#059669" radius={[3,3,0,0]} />
             </BarChart>
           </ResponsiveContainer>
         </ChartBox>
@@ -671,27 +576,41 @@ function IsolationView({ data }) {
     </div>
 
     {hasServerTiming && <div className="section">
-      <div className="section-title">服务端耗时分解</div>
-      <ChartBox title="各阶段耗时 p50 (堆叠)">
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={stData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-            <XAxis dataKey="concurrency" />
-            <YAxis unit="ms" />
-            <Tooltip {...tooltipStyle} formatter={(v) => v + 'ms'} />
-            <Legend />
-            {phases.map((p, i) => <Bar key={p} dataKey={p} stackId="a" fill={phaseColors[i % phaseColors.length]} />)}
-          </BarChart>
-        </ResponsiveContainer>
-      </ChartBox>
+      <div className="section-title">各环节耗时分解</div>
+      <div className="chart-grid">
+        <ChartBox title="各阶段耗时 p50 (堆叠)">
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={stDataP50}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey="concurrency" />
+              <YAxis unit="ms" />
+              <Tooltip {...tooltipStyle} formatter={(v) => v + 'ms'} />
+              <Legend />
+              {phases.map((p, i) => <Bar key={p} dataKey={p} stackId="a" fill={phaseColors[i % phaseColors.length]} />)}
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartBox>
+        <ChartBox title="各阶段耗时 p90 (堆叠)">
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={stDataP90}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey="concurrency" />
+              <YAxis unit="ms" />
+              <Tooltip {...tooltipStyle} formatter={(v) => v + 'ms'} />
+              <Legend />
+              {phases.map((p, i) => <Bar key={p} dataKey={p} stackId="a" fill={phaseColors[i % phaseColors.length]} />)}
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartBox>
+      </div>
     </div>}
 
     <div className="section">
       <div className="section-title">原始数据</div>
       <table><thead><tr>
-        <th>并发</th><th>请求数</th><th>RPS</th>
+        <th>并发</th><th>请求数(总)</th><th>RPS(success)</th>
         {hasNewFormat ? <>
-          <th>TTFB p50</th><th>TTFB p90</th><th>流式 p50</th><th>总耗时 p50</th><th>总耗时 p90</th>
+          <th>TTFB p50</th><th>TTFB p90</th><th>总耗时 p50</th><th>总耗时 p90</th>
         </> : <>
           <th>RT p50</th><th>RT p90</th><th>最小</th><th>最大</th><th>CV</th>
         </>}
@@ -703,7 +622,6 @@ function IsolationView({ data }) {
             <td>{r.concurrency}</td><td>{r.totalRequests}</td><td>{fmtN(r.rps)}</td>
             {hasNewFormat ? <>
               <td>{fmt(r.ttfb.p50)}</td><td>{fmt(r.ttfb.p90)}</td>
-              <td>{fmt(r.streamingTime?.p50)}</td>
               <td>{fmt(t.p50)}</td><td>{fmt(t.p90)}</td>
             </> : <>
               <td>{fmt(t.p50)}</td><td>{fmt(t.p90)}</td>
@@ -721,7 +639,6 @@ function IsolationView({ data }) {
 // ── Diff / Compare View ──
 function DiffView({ a, b, type }) {
   if (type === 'isolation') return <DiffIsolationView a={a} b={b} />;
-  if (type === 'stress') return <DiffStressView a={a} b={b} />;
   return <div className="empty-state"><p>暂不支持该类型的对比视图</p></div>;
 }
 
@@ -791,15 +708,17 @@ function DiffIsolationView({ a, b }) {
   const phasesB = hasStB ? [...new Set(resultsB.flatMap(r => Object.keys(r.serverTiming || {})))].filter(p => p !== 'total' && p !== 'ttfb' && p !== 'streaming') : [];
   const allPhases = [...new Set([...phasesA, ...phasesB])];
 
-  const stData = allConc.map(c => {
+  const buildStData = (pct) => allConc.map(c => {
     const ra = mapA[c], rb = mapB[c];
     const row = { concurrency: 'c=' + c };
     allPhases.forEach(p => {
-      row['a_' + p] = ra?.serverTiming?.[p]?.p50 ? Math.round(ra.serverTiming[p].p50) : 0;
-      row['b_' + p] = rb?.serverTiming?.[p]?.p50 ? Math.round(rb.serverTiming[p].p50) : 0;
+      row['a_' + p] = ra?.serverTiming?.[p]?.[pct] ? Math.round(ra.serverTiming[p][pct]) : 0;
+      row['b_' + p] = rb?.serverTiming?.[p]?.[pct] ? Math.round(rb.serverTiming[p][pct]) : 0;
     });
     return row;
   });
+  const stDataP50 = buildStData('p50');
+  const stDataP90 = buildStData('p90');
 
   const phaseColors = ['#2563eb','#d97706','#059669','#dc2626','#7c3aed','#0891b2','#ea580c','#4f46e5'];
 
@@ -913,28 +832,30 @@ function DiffIsolationView({ a, b }) {
     {/* RPS comparison */}
     <div className="section">
       <div className="section-title">吞吐量对比</div>
-      <ChartBox title="RPS vs 并发">
-        <ResponsiveContainer width="100%" height={280}>
-          <BarChart data={chartData} barGap={2} barCategoryGap="20%">
-            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-            <XAxis dataKey="concurrency" />
-            <YAxis unit="/s" />
-            <Tooltip {...tooltipStyle} formatter={(v) => v + ' req/s'} />
-            <Legend />
-            <Bar dataKey="a_rps" name={labelA} fill={DIFF_COLORS[0].bar} radius={[3,3,0,0]} />
-            <Bar dataKey="b_rps" name={labelB} fill={DIFF_COLORS[1].bar} radius={[3,3,0,0]} />
-          </BarChart>
-        </ResponsiveContainer>
-      </ChartBox>
+      <div className="chart-grid">
+        <ChartBox title="成功完成 RPS vs 并发">
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={chartData} barGap={2} barCategoryGap="20%">
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey="concurrency" />
+              <YAxis unit="/s" />
+              <Tooltip {...tooltipStyle} formatter={(v) => v + ' req/s'} />
+              <Legend />
+              <Bar dataKey="a_rps" name={labelA} fill={DIFF_COLORS[0].bar} radius={[3,3,0,0]} />
+              <Bar dataKey="b_rps" name={labelB} fill={DIFF_COLORS[1].bar} radius={[3,3,0,0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartBox>
+      </div>
     </div>
 
     {/* Server-Timing comparison */}
-    {(hasStA || hasStB) && allPhases.length > 0 && <div className="section">
+    {allPhases.length > 0 && <div className="section">
       <div className="section-title">服务端耗时分解对比</div>
       <div className="chart-grid">
         <ChartBox title={labelA + ' 各阶段 p50 (堆叠)'}>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={stData}>
+            <BarChart data={stDataP50}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis dataKey="concurrency" />
               <YAxis unit="ms" />
@@ -946,7 +867,33 @@ function DiffIsolationView({ a, b }) {
         </ChartBox>
         <ChartBox title={labelB + ' 各阶段 p50 (堆叠)'}>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={stData}>
+            <BarChart data={stDataP50}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey="concurrency" />
+              <YAxis unit="ms" />
+              <Tooltip {...tooltipStyle} formatter={(v) => v + 'ms'} />
+              <Legend />
+              {allPhases.map((p, i) => <Bar key={p} dataKey={'b_' + p} name={p} stackId="b" fill={phaseColors[i % phaseColors.length]} />)}
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartBox>
+      </div>
+      <div className="chart-grid">
+        <ChartBox title={labelA + ' 各阶段 p90 (堆叠)'}>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={stDataP90}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey="concurrency" />
+              <YAxis unit="ms" />
+              <Tooltip {...tooltipStyle} formatter={(v) => v + 'ms'} />
+              <Legend />
+              {allPhases.map((p, i) => <Bar key={p} dataKey={'a_' + p} name={p} stackId="a" fill={phaseColors[i % phaseColors.length]} />)}
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartBox>
+        <ChartBox title={labelB + ' 各阶段 p90 (堆叠)'}>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={stDataP90}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis dataKey="concurrency" />
               <YAxis unit="ms" />
@@ -964,7 +911,7 @@ function DiffIsolationView({ a, b }) {
       <div className="section-title">原始数据对比</div>
       <div style={{overflowX:'auto'}}>
       <table><thead><tr>
-        <th>并发</th><th>来源</th><th>请求数</th><th>RPS</th>
+        <th>并发</th><th>来源</th><th>请求数(总)</th><th>RPS(success)</th>
         {bothHaveTtfb && <><th>TTFB p50</th><th>TTFB p90</th></>}
         <th>{bothHaveTtfb ? '总耗时' : '响应时间'} p50</th><th>{bothHaveTtfb ? '总耗时' : '响应时间'} p90</th><th>错误</th>
       </tr></thead><tbody>
@@ -991,143 +938,6 @@ function DiffIsolationView({ a, b }) {
             <td><DiffDelta valA={getTiming(ra)?.p50} valB={getTiming(rb)?.p50} unit="ms" lowerBetter/></td>
             <td><DiffDelta valA={getTiming(ra)?.p90} valB={getTiming(rb)?.p90} unit="ms" lowerBetter/></td>
             <td></td>
-          </tr>);
-          return rows;
-        })}
-      </tbody></table>
-      </div>
-    </div>
-  </>;
-}
-
-function DiffStressView({ a, b }) {
-  const resultsA = a.data.results;
-  const resultsB = b.data.results;
-
-  const allConc = [...new Set([...resultsA.map(r=>r.concurrency), ...resultsB.map(r=>r.concurrency)])].sort((x,y)=>x-y);
-  const mapA = Object.fromEntries(resultsA.map(r=>[r.concurrency, r]));
-  const mapB = Object.fromEntries(resultsB.map(r=>[r.concurrency, r]));
-
-  const chartData = allConc.map(c => {
-    const ra = mapA[c], rb = mapB[c];
-    return {
-      concurrency: 'c=' + c,
-      a_ttfb_p50: ra ? Math.round(ra.ttfb.p50) : undefined,
-      a_ttfb_p90: ra ? Math.round(ra.ttfb.p90) : undefined,
-      b_ttfb_p50: rb ? Math.round(rb.ttfb.p50) : undefined,
-      b_ttfb_p90: rb ? Math.round(rb.ttfb.p90) : undefined,
-      a_total_p50: ra ? Math.round(ra.total.p50) : undefined,
-      a_total_p90: ra ? Math.round(ra.total.p90) : undefined,
-      b_total_p50: rb ? Math.round(rb.total.p50) : undefined,
-      b_total_p90: rb ? Math.round(rb.total.p90) : undefined,
-      a_rps: ra ? +(ra.rps).toFixed(1) : undefined,
-      b_rps: rb ? +(rb.rps).toFixed(1) : undefined,
-    };
-  });
-
-  const labelA = shortName(a.name);
-  const labelB = shortName(b.name);
-
-  return <>
-    <div className="compare-bar">
-      <span className="compare-label"><span className="compare-dot" style={{background:DIFF_COLORS[0].line}} />{a.name.replace(/\.json$/,'')}</span>
-      <span className="vs">VS</span>
-      <span className="compare-label"><span className="compare-dot" style={{background:DIFF_COLORS[1].line}} />{b.name.replace(/\.json$/,'')}</span>
-    </div>
-    <DiffLegend a={a} b={b} />
-
-    <div className="cards">
-      <div className="card"><div className="card-label">最大 RPS</div>
-        <div className="card-value">{fmtN(Math.max(...resultsA.map(r=>r.rps)))} / {fmtN(Math.max(...resultsB.map(r=>r.rps)))}</div>
-        <div className="card-sub"><DiffDelta valA={Math.max(...resultsA.map(r=>r.rps))} valB={Math.max(...resultsB.map(r=>r.rps))} unit="/s" lowerBetter={false} /></div>
-      </div>
-      <div className="card"><div className="card-label">最低 TTFB</div>
-        <div className="card-value">{fmt(resultsA[0]?.ttfb.p50)} / {fmt(resultsB[0]?.ttfb.p50)}</div>
-        <div className="card-sub"><DiffDelta valA={resultsA[0]?.ttfb.p50} valB={resultsB[0]?.ttfb.p50} unit="ms" lowerBetter /></div>
-      </div>
-      <div className="card"><div className="card-label">最高 TTFB</div>
-        <div className="card-value">{fmt(resultsA.at(-1)?.ttfb.p50)} / {fmt(resultsB.at(-1)?.ttfb.p50)}</div>
-        <div className="card-sub"><DiffDelta valA={resultsA.at(-1)?.ttfb.p50} valB={resultsB.at(-1)?.ttfb.p50} unit="ms" lowerBetter /></div>
-      </div>
-    </div>
-
-    <div className="section">
-      <div className="section-title">TTFB 对比</div>
-      <div className="chart-grid">
-        <ChartBox title="TTFB p50">
-          <ResponsiveContainer width="100%" height={280}>
-            <ComposedChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="concurrency" />
-              <YAxis unit="ms" />
-              <Tooltip {...tooltipStyle} formatter={(v,name) => [v + 'ms', name]} />
-              <Legend />
-              <Line dataKey="a_ttfb_p50" name={labelA} stroke={DIFF_COLORS[0].line} strokeWidth={2} dot={{r:4}} />
-              <Line dataKey="b_ttfb_p50" name={labelB} stroke={DIFF_COLORS[1].line} strokeWidth={2} dot={{r:4}} />
-            </ComposedChart>
-          </ResponsiveContainer>
-        </ChartBox>
-        <ChartBox title="总耗时 p50">
-          <ResponsiveContainer width="100%" height={280}>
-            <ComposedChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="concurrency" />
-              <YAxis unit="ms" />
-              <Tooltip {...tooltipStyle} formatter={(v,name) => [v + 'ms', name]} />
-              <Legend />
-              <Line dataKey="a_total_p50" name={labelA} stroke={DIFF_COLORS[0].line} strokeWidth={2} dot={{r:4}} />
-              <Line dataKey="b_total_p50" name={labelB} stroke={DIFF_COLORS[1].line} strokeWidth={2} dot={{r:4}} />
-            </ComposedChart>
-          </ResponsiveContainer>
-        </ChartBox>
-      </div>
-    </div>
-
-    <div className="section">
-      <div className="section-title">吞吐量对比</div>
-      <ChartBox title="RPS vs 并发">
-        <ResponsiveContainer width="100%" height={280}>
-          <BarChart data={chartData} barGap={2} barCategoryGap="20%">
-            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-            <XAxis dataKey="concurrency" />
-            <YAxis unit="/s" />
-            <Tooltip {...tooltipStyle} formatter={(v) => v + ' req/s'} />
-            <Legend />
-            <Bar dataKey="a_rps" name={labelA} fill={DIFF_COLORS[0].bar} radius={[3,3,0,0]} />
-            <Bar dataKey="b_rps" name={labelB} fill={DIFF_COLORS[1].bar} radius={[3,3,0,0]} />
-          </BarChart>
-        </ResponsiveContainer>
-      </ChartBox>
-    </div>
-
-    <div className="section">
-      <div className="section-title">原始数据对比</div>
-      <div style={{overflowX:'auto'}}>
-      <table><thead><tr>
-        <th>并发</th><th>来源</th><th>请求数</th><th>RPS</th>
-        <th>TTFB p50</th><th>TTFB p90</th><th>总耗时 p50</th><th>总耗时 p90</th><th>错误</th><th>限流</th>
-      </tr></thead><tbody>
-        {allConc.flatMap(c => {
-          const ra = mapA[c], rb = mapB[c];
-          const rows = [];
-          if (ra) rows.push(<tr key={c+'A'} style={{background:'rgba(37,99,235,0.03)'}}>
-            <td>{c}</td><td style={{color:DIFF_COLORS[0].line,fontWeight:600}}>A</td><td>{ra.totalRequests}</td><td>{fmtN(ra.rps)}</td>
-            <td>{fmt(ra.ttfb.p50)}</td><td>{fmt(ra.ttfb.p90)}</td><td>{fmt(ra.total.p50)}</td><td>{fmt(ra.total.p90)}</td>
-            <td>{ra.errors}</td><td>{ra.rateLimited||0}</td>
-          </tr>);
-          if (rb) rows.push(<tr key={c+'B'} style={{background:'rgba(217,119,6,0.03)'}}>
-            <td>{c}</td><td style={{color:DIFF_COLORS[1].line,fontWeight:600}}>B</td><td>{rb.totalRequests}</td><td>{fmtN(rb.rps)}</td>
-            <td>{fmt(rb.ttfb.p50)}</td><td>{fmt(rb.ttfb.p90)}</td><td>{fmt(rb.total.p50)}</td><td>{fmt(rb.total.p90)}</td>
-            <td>{rb.errors}</td><td>{rb.rateLimited||0}</td>
-          </tr>);
-          if (ra && rb) rows.push(<tr key={c+'D'} style={{fontSize:11,color:'#6b7280'}}>
-            <td>{c}</td><td>\u0394</td><td></td>
-            <td><DiffDelta valA={ra.rps} valB={rb.rps} unit="/s" lowerBetter={false}/></td>
-            <td><DiffDelta valA={ra.ttfb.p50} valB={rb.ttfb.p50} unit="ms" lowerBetter/></td>
-            <td><DiffDelta valA={ra.ttfb.p90} valB={rb.ttfb.p90} unit="ms" lowerBetter/></td>
-            <td><DiffDelta valA={ra.total.p50} valB={rb.total.p50} unit="ms" lowerBetter/></td>
-            <td><DiffDelta valA={ra.total.p90} valB={rb.total.p90} unit="ms" lowerBetter/></td>
-            <td></td><td></td>
           </tr>);
           return rows;
         })}

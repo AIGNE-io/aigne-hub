@@ -8,8 +8,7 @@ import {
   computeStats,
   config,
   fmt,
-  padLeft,
-  printServerTimingBreakdown,
+  logErrors,
   printTable,
   runConcurrent,
   saveReport,
@@ -56,28 +55,6 @@ function buildGroups(): ComparisonGroup[] {
     groups.push({ model: 'gpt-4o-mini', targets: gptTargets });
   }
 
-  // Gemini group
-  const geminiTargets: Target[] = [];
-  if (config.geminiApiKey) {
-    geminiTargets.push({
-      name: 'gemini-direct',
-      url: 'https://generativelanguage.googleapis.com/v1beta/chat/completions',
-      key: config.geminiApiKey,
-      model: 'gemini-2.0-flash',
-    });
-  }
-  if (config.comparisonHubAccessKey) {
-    geminiTargets.push({
-      name: 'hub-gemini',
-      url: `${config.comparisonHubBaseUrl}/api/v2/chat/completions`,
-      key: config.comparisonHubAccessKey,
-      model: 'google/gemini-2.0-flash',
-    });
-  }
-  if (geminiTargets.length > 0) {
-    groups.push({ model: 'gemini-2.0-flash', targets: geminiTargets });
-  }
-
   return groups;
 }
 
@@ -86,7 +63,8 @@ function buildGroups(): ComparisonGroup[] {
 interface TargetResult {
   ttfb: ReturnType<typeof computeStats>;
   total: ReturnType<typeof computeStats>;
-  streaming: ReturnType<typeof computeStats>;
+  /** Hub processing overhead per request: serverTiming.total - serverTiming.providerTtfb */
+  hubOverhead?: ReturnType<typeof computeStats>;
   rps: number;
   errors: number;
   errorRate: number;
@@ -94,7 +72,15 @@ interface TargetResult {
   serverTiming: Map<string, ReturnType<typeof computeStats>>;
 }
 
-function overheadStr(hubVal: number, baseVal: number): string {
+/** Compute per-request Hub overhead from raw results, then aggregate */
+function computeHubOverhead(results: BenchmarkResult[]): ReturnType<typeof computeStats> | undefined {
+  const values = results
+    .filter((r) => r.serverTiming?.total !== undefined && r.serverTiming?.providerTtfb !== undefined)
+    .map((r) => Math.max(0, r.serverTiming!.total - r.serverTiming!.providerTtfb));
+  return values.length > 0 ? computeStats(values) : undefined;
+}
+
+function diffStr(hubVal: number, baseVal: number): string {
   const diff = hubVal - baseVal;
   const pct = baseVal > 0 ? (diff / baseVal) * 100 : 0;
   const sign = diff >= 0 ? '+' : '';
@@ -123,15 +109,6 @@ async function main() {
     `Config: concurrency=[${levels.join(',')}], ${duration / 1000}s per level, realistic payload, streaming\n`
   );
 
-  // Warmup all targets
-  console.log('Warmup phase:');
-  for (const group of groups) {
-    for (const target of group.targets) {
-      await warmup(target);
-    }
-  }
-  console.log();
-
   const reportData: any[] = [];
 
   for (const group of groups) {
@@ -147,27 +124,41 @@ async function main() {
     // Store results across concurrency levels for scaling summary
     const allLevelResults = new Map<number, Map<string, TargetResult>>();
 
-    for (const concurrency of levels) {
+    for (let li = 0; li < levels.length; li++) {
+      const concurrency = levels[li];
+
+      // Cooldown between concurrency levels
+      if (li > 0 && config.targetCooldown > 0) {
+        process.stdout.write(`\n  Cooling down ${config.targetCooldown / 1000}s between levels...`);
+        await new Promise((r) => setTimeout(r, config.targetCooldown));
+        console.log(' done');
+      }
+
       console.log(`\n┌─ Concurrency: ${concurrency} ${'─'.repeat(Math.max(0, 52 - String(concurrency).length))}┐`);
+
+      // Warmup each target before every level to prime caches
+      console.log('  Warmup:');
+      for (const target of group.targets) {
+        await warmup(target, undefined, { messages: [...payload.messages], maxTokens: payload.maxTokens });
+      }
 
       const levelResults = new Map<string, TargetResult>();
 
       for (const target of group.targets) {
         process.stdout.write(`  Running ${target.name} (c=${concurrency}, ${duration / 1000}s)...`);
 
-        const results = await runConcurrent(target, concurrency, duration, {
+        const { results, elapsed } = await runConcurrent(target, concurrency, duration, {
           messages: [...payload.messages],
           maxTokens: payload.maxTokens,
         });
-
         const successful = results.filter((r) => !r.error);
         const errors = results.filter((r) => r.error);
 
         const stats: TargetResult = {
           ttfb: computeStats(successful.map((r) => r.ttfb)),
           total: computeStats(successful.map((r) => r.totalTime)),
-          streaming: computeStats(successful.map((r) => r.streamingTime)),
-          rps: results.length / (duration / 1000),
+          hubOverhead: target.name.startsWith('hub-') ? computeHubOverhead(successful) : undefined,
+          rps: successful.length / (elapsed / 1000),
           errors: errors.length,
           errorRate: results.length > 0 ? (errors.length / results.length) * 100 : 0,
           samples: successful.length,
@@ -175,53 +166,68 @@ async function main() {
         };
 
         levelResults.set(target.name, stats);
-        console.log(` ${successful.length} ok, ${errors.length} err, ${stats.rps.toFixed(1)} rps`);
+        const overheadInfo = stats.hubOverhead ? `, overhead=${fmt(stats.hubOverhead.p50)}` : '';
+        console.log(` ${successful.length} ok, ${errors.length} err, ${stats.rps.toFixed(1)} rps${overheadInfo}`);
+        logErrors(results);
       }
 
       allLevelResults.set(concurrency, levelResults);
 
       // Print comparison table for this concurrency level
-      const hasOverhead = !!(directName && hubName);
-      const headers = ['Metric', ...targetNames, ...(hasOverhead ? ['Hub Overhead'] : [])];
+      const hasVsDirect = !!(directName && hubName);
+      const headers = ['Metric', ...targetNames, ...(hasVsDirect ? ['vs Direct'] : [])];
       const rows: string[][] = [];
 
       const directStats = directName ? levelResults.get(directName) : undefined;
       const hubStats = hubName ? levelResults.get(hubName) : undefined;
 
-      rows.push(['RPS', ...targetNames.map((n) => levelResults.get(n)!.rps.toFixed(1)), ...(hasOverhead ? [''] : [])]);
+      // TTFB first — the most important metric for a proxy
       rows.push([
         'TTFB p50',
         ...targetNames.map((n) => fmt(levelResults.get(n)!.ttfb.p50)),
-        ...(directStats && hubStats ? [overheadStr(hubStats.ttfb.p50, directStats.ttfb.p50)] : hasOverhead ? [''] : []),
+        ...(directStats && hubStats ? [diffStr(hubStats.ttfb.p50, directStats.ttfb.p50)] : hasVsDirect ? [''] : []),
       ]);
       rows.push([
         'TTFB p90',
         ...targetNames.map((n) => fmt(levelResults.get(n)!.ttfb.p90)),
-        ...(directStats && hubStats ? [overheadStr(hubStats.ttfb.p90, directStats.ttfb.p90)] : hasOverhead ? [''] : []),
+        ...(directStats && hubStats ? [diffStr(hubStats.ttfb.p90, directStats.ttfb.p90)] : hasVsDirect ? [''] : []),
       ]);
       rows.push([
         'TTFB p99',
         ...targetNames.map((n) => fmt(levelResults.get(n)!.ttfb.p99)),
-        ...(directStats && hubStats ? [overheadStr(hubStats.ttfb.p99, directStats.ttfb.p99)] : hasOverhead ? [''] : []),
+        ...(directStats && hubStats ? [diffStr(hubStats.ttfb.p99, directStats.ttfb.p99)] : hasVsDirect ? [''] : []),
       ]);
+      // Hub Overhead — per-request server-side overhead (only hub targets have values)
+      if (hubName && hubStats?.hubOverhead) {
+        rows.push([
+          'Hub Overhead p50',
+          ...targetNames.map((n) => {
+            const oh = levelResults.get(n)!.hubOverhead;
+            return oh ? fmt(oh.p50) : '-';
+          }),
+          ...(hasVsDirect ? [''] : []),
+        ]);
+      }
       rows.push([
         'Total p50',
         ...targetNames.map((n) => fmt(levelResults.get(n)!.total.p50)),
-        ...(directStats && hubStats
-          ? [overheadStr(hubStats.total.p50, directStats.total.p50)]
-          : hasOverhead
-            ? ['']
-            : []),
+        ...(directStats && hubStats ? [diffStr(hubStats.total.p50, directStats.total.p50)] : hasVsDirect ? [''] : []),
+      ]);
+      // Success completion throughput
+      rows.push([
+        'RPS(success)',
+        ...targetNames.map((n) => levelResults.get(n)!.rps.toFixed(1)),
+        ...(hasVsDirect ? [''] : []),
       ]);
       rows.push([
         'Errors',
         ...targetNames.map((n) => String(levelResults.get(n)!.errors)),
-        ...(hasOverhead ? [''] : []),
+        ...(hasVsDirect ? [''] : []),
       ]);
       rows.push([
         'Samples',
         ...targetNames.map((n) => String(levelResults.get(n)!.samples)),
-        ...(hasOverhead ? [''] : []),
+        ...(hasVsDirect ? [''] : []),
       ]);
 
       printTable(headers, rows);
@@ -259,24 +265,34 @@ async function main() {
               provTtfb && `providerTtfb=${fmt(provTtfb.p50)}`,
             ].filter(Boolean);
             console.log(`  → Hub breakdown (p50): ${parts.join(', ')}`);
+
+            // Hub overhead from per-request computation (already in TargetResult)
+            if (hubResults.hubOverhead) {
+              const overheadParts = [
+                session && `session=${fmt(session.p50)}`,
+                modelSetup && `modelSetup=${fmt(modelSetup.p50)}`,
+                preChecks && `preChecks=${fmt(preChecks.p50)}`,
+              ].filter(Boolean);
+              console.log(`  → Hub overhead (p50): ${fmt(hubResults.hubOverhead.p50)} (${overheadParts.join(', ')})`);
+            }
           }
         }
       }
     }
 
-    // ── Overhead Scaling Summary ──────────────────────────────────────
+    // ── TTFB Scaling Summary ─────────────────────────────────────────
     const baselineName = directName || targetNames.find((n) => n !== hubName);
     if (hubName && baselineName && levels.length > 1) {
       console.log(
-        `\n┌─ Overhead Scaling: ${hubName} vs ${baselineName} ${'─'.repeat(Math.max(0, 35 - hubName.length - baselineName.length))}┐`
+        `\n┌─ TTFB Scaling: ${hubName} vs ${baselineName} ${'─'.repeat(Math.max(0, 39 - hubName.length - baselineName.length))}┐`
       );
 
       const scaleHeaders = [
         'Concurrency',
         `${baselineName} TTFB p50`,
         `${hubName} TTFB p50`,
-        'Overhead',
-        'Hub/Base Ratio',
+        'TTFB Diff',
+        'TTFB Ratio',
       ];
       const scaleRows: string[][] = [];
       const hubTtfbSeries: number[] = [];
@@ -294,7 +310,7 @@ async function main() {
           String(level),
           fmt(baseS.ttfb.p50),
           fmt(hubS.ttfb.p50),
-          overheadStr(hubS.ttfb.p50, baseS.ttfb.p50),
+          diffStr(hubS.ttfb.p50, baseS.ttfb.p50),
           `${(hubS.ttfb.p50 / baseS.ttfb.p50).toFixed(2)}x`,
         ]);
       }
@@ -360,12 +376,12 @@ async function main() {
           targets[name] = {
             ttfb: stats.ttfb,
             total: stats.total,
-            streaming: stats.streaming,
             rps: stats.rps,
             errors: stats.errors,
             errorRate: stats.errorRate,
             samples: stats.samples,
             serverTiming: Object.fromEntries(stats.serverTiming),
+            hubOverhead: stats.hubOverhead,
           };
         }
         return { concurrency: level, targets };

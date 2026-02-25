@@ -4,13 +4,14 @@
   "type": "module",
   "scripts": {
     "comparison": "tsx src/comparison.ts",
-    "stress": "tsx src/stress.ts",
-    "isolation": "tsx src/isolation.ts"
+    "isolation": "tsx src/isolation.ts",
+    "report": "tsx src/report.ts"
   },
   "dependencies": {
     "asciichart": "^1.5.25",
     "dotenv": "^16.4.7",
-    "tsx": "^4.19.2"
+    "tsx": "^4.19.2",
+    "undici": "^7.22.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

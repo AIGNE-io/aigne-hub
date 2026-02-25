@@ -7,6 +7,7 @@ import {
   computeStats,
   config,
   fmt,
+  logErrors,
   printServerTimingBreakdown,
   printTable,
   runConcurrent,
@@ -19,7 +20,7 @@ import { startMockProvider, stopMockProvider } from './mock-provider.js';
 
 async function main() {
   console.log('═══════════════════════════════════════════════════════════');
-  console.log('  Part 3: Isolation — Mock Provider + Server-Timing');
+  console.log('  Part 2: Isolation — Mock Provider + Hub Throughput');
   console.log('═══════════════════════════════════════════════════════════\n');
 
   if (!config.isolationHubAccessKey) {
@@ -52,20 +53,18 @@ async function main() {
 
     // Warmup
     await warmup(mockTarget, config.warmupCount, {
-      stream: true,
       messages: [...payload.messages],
       maxTokens: payload.maxTokens,
     });
 
-    const headers = ['Concurrency', 'RPS', 'TTFB p50', 'TTFB p90', 'Stream p50', 'Total p50', 'Total p90', 'Err%'];
+    const headers = ['Concurrency', 'RPS(success)', 'TTFB p50', 'Total p50', 'Err%'];
     const rows: string[][] = [];
     const ttfbP50Series: number[] = [];
     const rpsSeries: number[] = [];
 
     for (const concurrency of levels) {
       console.log(`\n  Running concurrency=${concurrency} for ${duration / 1000}s...`);
-      const results = await runConcurrent(mockTarget, concurrency, duration, {
-        stream: true,
+      const { results, elapsed } = await runConcurrent(mockTarget, concurrency, duration, {
         messages: [...payload.messages],
         maxTokens: payload.maxTokens,
       });
@@ -73,9 +72,8 @@ async function main() {
       const successful = results.filter((r) => !r.error);
       const errors = results.filter((r) => r.error);
       const ttfbStats = computeStats(successful.map((r) => r.ttfb));
-      const streamStats = computeStats(successful.map((r) => r.streamingTime));
       const totalStats = computeStats(successful.map((r) => r.totalTime));
-      const rps = results.length / (duration / 1000);
+      const rps = successful.length / (elapsed / 1000);
       const errPct = results.length > 0 ? (errors.length / results.length) * 100 : 0;
 
       ttfbP50Series.push(Math.round(ttfbStats.p50));
@@ -85,21 +83,19 @@ async function main() {
         String(concurrency),
         rps.toFixed(0),
         fmt(ttfbStats.p50),
-        fmt(ttfbStats.p90),
-        fmt(streamStats.p50),
         fmt(totalStats.p50),
-        fmt(totalStats.p90),
         `${errPct.toFixed(0)}%`,
       ]);
 
+      logErrors(results);
       printServerTimingBreakdown(`concurrency=${concurrency}`, successful);
 
       reportData.push({
         concurrency,
         totalRequests: results.length,
+        successfulRequests: successful.length,
         rps,
         ttfb: ttfbStats,
-        streamingTime: streamStats,
         totalTime: totalStats,
         errors: errors.length,
         errorRate: errPct,
