@@ -3,7 +3,6 @@ import dayjs from '@api/libs/dayjs';
 import {
   ARCHIVE_MODEL_DATA_CRON_TIME,
   CHECK_MODEL_STATUS_CRON_TIME,
-  CLEANUP_STALE_MODEL_CALLS_CRON_TIME,
   ENABLE_ARCHIVE_MODEL_DATA_CRON,
   MODEL_CALL_MONTHLY_STATS_CRON_TIME,
   MODEL_CALL_STATS_CRON_TIME,
@@ -11,7 +10,6 @@ import {
 
 import logger from '../libs/logger';
 import shouldExecuteTask from '../libs/master-cluster';
-import { cleanupStaleProcessingCalls } from '../middlewares/model-call-tracker';
 import { executeArchiveTask } from './archive-task';
 import { createHourlyModelCallStats, createMonthlyModelCallStats, getHoursToWarmup } from './model-call-stats';
 
@@ -48,19 +46,6 @@ function init() {
             const currentMonthStart = now.startOf('month');
             const previousMonthStart = currentMonthStart.subtract(1, 'month');
             await createMonthlyModelCallStats(previousMonthStart.unix());
-          }
-        },
-        options: { runOnInit: false },
-      },
-      {
-        name: 'cleanup.stale.model.calls',
-        time: CLEANUP_STALE_MODEL_CALLS_CRON_TIME,
-        fn: async () => {
-          if (shouldExecuteTask('cleanup.stale.model.calls cron')) {
-            const cleanedCount = await cleanupStaleProcessingCalls(30);
-            if (cleanedCount > 0) {
-              logger.info(`Model call cleanup completed, cleaned ${cleanedCount} stale calls`);
-            }
           }
         },
         options: { runOnInit: false },

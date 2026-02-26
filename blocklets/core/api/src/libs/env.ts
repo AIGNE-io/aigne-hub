@@ -40,7 +40,6 @@ export const CREDIT_DECIMAL_PLACES = 10;
 
 export const MODEL_CALL_STATS_CRON_TIME = process.env.MODEL_CALL_STATS_CRON_TIME || '0 1 * * * *'; // every hour at minute 01
 export const MODEL_CALL_MONTHLY_STATS_CRON_TIME = process.env.MODEL_CALL_MONTHLY_STATS_CRON_TIME || '0 10 1 1 * *'; // every month on day 1 at 01:10:00
-export const CLEANUP_STALE_MODEL_CALLS_CRON_TIME = process.env.CLEANUP_STALE_MODEL_CALLS_CRON_TIME || '*/10 * * * *'; // every 10 minutes
 export const CHECK_MODEL_STATUS_CRON_TIME = process.env.CHECK_MODEL_STATUS_CRON_TIME || '0 0 0 * * *'; // every day at 00:00:00
 export const ARCHIVE_MODEL_DATA_CRON_TIME = process.env.ARCHIVE_MODEL_DATA_CRON_TIME || '0 0 2 * * *'; // every day at 02:00:00
 export const ENABLE_ARCHIVE_MODEL_DATA_CRON = process.env.ENABLE_ARCHIVE_MODEL_DATA_CRON !== 'false';

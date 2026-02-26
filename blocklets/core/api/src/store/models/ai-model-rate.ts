@@ -146,6 +146,8 @@ export default class AiModelRate extends Model<InferAttributes<AiModelRate>, Inf
 
 AiModelRate.init(AiModelRate.GENESIS_ATTRIBUTES, {
   sequelize,
+  // Cache invalidation hooks are registered by providers/model-rate-cache.ts
+  // to avoid circular dependency (model ↔ cache).
   // Use getterMethods to avoid scientific notation (e.g., 8e-8) in JSON response
   getterMethods: {
     inputRate() {

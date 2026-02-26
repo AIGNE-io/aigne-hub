@@ -1,3 +1,4 @@
+import { getProviderWithCache } from '@api/providers/models';
 import AiProvider from '@api/store/models/ai-provider';
 import { getUrl } from '@blocklet/sdk';
 
@@ -67,13 +68,13 @@ export class CredentialInvalidNotificationTemplate extends BaseNotificationTempl
   async getContext(): Promise<CredentialInvalidNotificationTemplateContext> {
     const { credential } = this.options;
 
-    const provider = await AiProvider.findOne({ where: { name: credential.provider } }).catch(() => null);
+    const cachedProvider = await getProviderWithCache(credential.provider).catch(() => undefined);
 
     return {
       locale: 'en',
       userDid: '',
       credential,
-      provider,
+      provider: cachedProvider ? ({ name: cachedProvider.name } as AiProvider) : null,
     };
   }
 
