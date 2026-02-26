@@ -445,3 +445,161 @@ const user = (req: Request, res: Response, next: NextFunction) => {
 - 继续使用 `benchmarks/` 三类测试（comparison/stress/isolation）
 - 本轮不设硬 KPI，只做前后对比与趋势判断
 - 重点观察 `session/resolveProvider/preChecks/getCredentials/modelCallCreate(total)` 的 p50/p90 变化方向
+
+## 6. Implementation Sync
+
+> Synced: 2026-02-25 from commit `e6d0b64` (branch `feat-performance`)
+
+### 6.1 实现状态总览
+
+| 章节 | 特性 | 状态 | 备注 |
+|------|------|------|------|
+| §3.1.1 | 去掉 process* 内重复 checkModelRateAvailable | ✅ 完成 | — |
+| §3.1.2 | 合并 resolveProvider middleware | ✅ 完成 | — |
+| §3.1.2 | Provider 缓存 (providerCache) | ✅ 完成 | — |
+| §3.1.2 | V1 路由连带改动 | ✅ 完成 | — |
+| §3.1.3 | credential 通过 req 传递 | ✅ 完成 | — |
+| §3.2.1 | 拆分 createUsageAndCompleteModelCall | ✅ 完成 | 见 §6.2.1 实现差异 |
+| §3.2.2 | ModelCall 单阶段 | ✅ 完成 | — |
+| §3.2.3 | 后处理分工 | ✅ 完成 | — |
+| §3.3.1 | AiModelRate 缓存 | ✅ 完成 | max:200, ttl:10min |
+| §3.3.2 | Credential 列表缓存 | ✅ 完成 | max:50, ttl:10min |
+| §3.3.3 | 用户余额缓存 | ✅ 完成 | customer max:10000 ttl:30min; credit max:10000 ttl:5min |
+| §3.3.4 | Session 验证缓存 | ✅ 完成 | max:1000, ttl:60s |
+| §5.2.1 | 成功路径集成测试 | ✅ 完成 | — |
+| §5.2.2 | 失败路径集成测试 | ✅ 完成 | — |
+| §5.2.3 | 重试路径集成测试 | ✅ 完成 | — |
+| §5.2.4 | 缓存行为集成测试 | ✅ 完成 | — |
+| §5.2.5 | 后处理解耦集成测试 | ✅ 完成 | — |
+| §5.2.6 | Credit 计费路径集成测试 | ✅ 完成 | — |
+| §5.3 | 基准回归 | ✅ 完成 | — |
+
+### 6.2 实现差异
+
+#### 6.2.1 createUsageAndCompleteModelCall 拆分方式
+
+Intent 建议拆分为独立函数，实际实现保留为一个编排函数，内部将 Usage.create（同步 await）和 ModelCall.create（fire-and-forget）作为独立操作执行。两者互不影响（Usage 失败不连带 ModelCall），效果等价。
+
+#### 6.2.2 Credential 429 降权（Intent 未涉及）
+
+实现增加了 `reduceCredentialWeight(credentialId, providerId, weight)` — 429 rate-limit 时临时降低 credential 权重，自动调度恢复。超出 intent 范围但增强了 credential 轮询质量。
+
+#### 6.2.3 403 错误精细分类（Intent 未涉及）
+
+实现增加了非 credential 403 错误分类逻辑，区分 `content_violation` / `region_restriction` / `temporary_block` / 真实 credential 错误，防止误禁用 credential。位于 `libs/status.ts`。
+
+### 6.3 Intent 未涉及的额外实现
+
+#### 6.3.1 Request Timing 埋点（`libs/request-timing.ts`）
+
+新增请求阶段计时中间件，通过 `ENABLE_SERVER_TIMING` 环境变量控制。输出 `Server-Timing` HTTP header（Chrome DevTools 可见）及结构化日志，用于验证各阶段优化效果。
+
+接口：
+
+```typescript
+interface RequestTimings {
+  start(phase: string): void;
+  end(phase: string): number;
+  getAll(): Record<string, number>;
+  elapsed(): number;
+}
+```
+
+追踪阶段：`session` / `resolveProvider` / `preChecks` / `getCredentials` / `aiCall` / `usage` / `ttfb`。
+
+#### 6.3.2 Benchmark 套件（`benchmarks/`）
+
+新增性能基准测试：
+- `comparison.ts` — 对比测试（含 stress 模式）
+- `isolation.ts` — 单阶段隔离测试
+- `report.ts` — HTML 报告生成器（light theme + raw data export）
+- `mock-provider.ts` — 本地 mock provider 服务器
+
+### 6.4 关键接口确认
+
+#### ResolvedProvider
+
+```typescript
+// middlewares/model-call-tracker.ts
+interface ResolvedProvider {
+  providerId: string;
+  providerName: string;
+  modelName: string;
+  credentialId: string;
+  originalModel?: string;
+  availableProviders: Array<{ providerId: string; providerName: string; modelName: string }>;
+  maxRetries: number;
+}
+```
+
+#### ModelCallContext
+
+```typescript
+// middlewares/model-call-tracker.ts
+interface ModelCallContext {
+  id: string;              // 预分配 Snowflake ID
+  startTime: number;
+  credentialId: string;
+  providerId: string;
+  traceId?: string;
+  complete: (result: ModelCallResult) => Promise<void>;  // fire-and-forget INSERT
+  fail: (error: string, partialUsage?: Partial<UsageData>) => Promise<void>;
+  update: (updateData: Partial<ModelCall>) => Promise<void>;
+}
+```
+
+#### AiCredential 新增静态方法
+
+```typescript
+// store/models/ai-credential.ts
+static async updateCredentialAfterUse(
+  credentialId: string,
+  providerId: string,
+  options?: { recover?: boolean }
+): Promise<void>;
+
+static async disableCredential(
+  credentialId: string,
+  providerId: string,
+  error: string
+): Promise<void>;
+
+static async reduceCredentialWeight(
+  credentialId: string,
+  providerId: string,
+  weight: number
+): Promise<void>;
+```
+
+#### 缓存清除函数
+
+```typescript
+clearModelRateCache()              // providers/index.ts
+clearCredentialListCache(providerId?) // store/models/ai-credential.ts
+clearProviderCache(providerName?)    // providers/models.ts
+clearCustomerCache()                 // libs/payment.ts
+invalidateCreditCache(userDid)       // libs/payment.ts（导出供外部调用）
+```
+
+### 6.5 文件清单
+
+| 文件 | 变更类型 | 说明 |
+|------|---------|------|
+| `middlewares/model-call-tracker.ts` | 重构 | resolveProviderMiddleware + 纯内存 ModelCallContext |
+| `middlewares/user-with-cache.ts` | 新增 | Session LRU 缓存中间件 |
+| `libs/request-timing.ts` | 新增 | 请求阶段计时 + Server-Timing header |
+| `libs/ai-routes.ts` | 修改 | 删除 process* 内重复的 checkModelRateAvailable |
+| `libs/payment.ts` | 修改 | 新增 customerCache + creditCache，三分支余额判断 |
+| `libs/usage.ts` | 修改 | Usage/ModelCall 解耦，getPrice 使用缓存 |
+| `libs/status.ts` | 修改 | 后处理异步化，403 精细分类，credential 复用 req 信息 |
+| `libs/provider-rotation.ts` | 修改 | 适配新 resolveProvider 流程 |
+| `providers/index.ts` | 修改 | modelRateCache + checkModelRateAvailable 签名变更 |
+| `providers/models.ts` | 修改 | providerCache + getProviderWithCache |
+| `store/models/ai-credential.ts` | 修改 | credentialListCache + updateCredentialAfterUse/disableCredential/reduceCredentialWeight |
+| `store/models/ai-provider.ts` | 修改 | 适配 provider 缓存 |
+| `routes/v2.ts` | 修改 | 新 middleware 链编排 |
+| `routes/v1.ts` | 修改 | 添加 resolveProviderMiddleware |
+| `crons/index.ts` | 修改 | 删除 cleanupStaleProcessingCalls |
+| `tests/integration/*.test.ts` | 新增 | 6 个集成测试文件 |
+| `tests/integration/helpers/*` | 新增 | mock-provider + setup + preload |
+| `benchmarks/*` | 新增 | 性能基准套件 |

@@ -72,6 +72,10 @@ declare global {
  * Combined middleware: resolves provider via rotation + gathers retry info.
  * Replaces the old getMaxProviderRetriesMiddleware + ensureModelWithProvider call
  * inside createModelCallMiddleware.
+ *
+ * INVARIANT: req.body.model and req.resolvedProvider must always stay in sync.
+ * getReqModel() prioritizes resolvedProvider when present; createRetryHandler
+ * updates both body.model and resolvedProvider on retry to maintain this invariant.
  */
 export function resolveProviderMiddleware(defaultModel?: string) {
   return async (req: Request, _res: Response, next: NextFunction): Promise<void> => {

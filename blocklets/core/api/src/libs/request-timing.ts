@@ -125,31 +125,23 @@ export function requestTimingMiddleware() {
     // Intercept writeHead to inject Server-Timing before headers are flushed.
     // This is needed because compression() middleware sends headers before
     // our res.end wrapper runs, making res.headersSent already true.
-    const originalWriteHead = res.writeHead;
-    // @ts-ignore
-    res.writeHead = function writeHeadWithTiming(...args: any[]) {
+    const originalWriteHead = res.writeHead as (...args: unknown[]) => Response;
+    (res as any).writeHead = function writeHeadWithTiming(this: Response, ...args: unknown[]) {
       writeTimingHeader();
-      // @ts-ignore
       return originalWriteHead.apply(this, args);
     };
 
-    const originalWrite = res.write;
-    // @ts-ignore
-    res.write = function resWriteWithTiming(...args: any[]) {
+    const originalWrite = res.write as (...args: unknown[]) => boolean;
+    (res as any).write = function resWriteWithTiming(this: Response, ...args: unknown[]) {
       markFirstByte();
-      // @ts-ignore
       return originalWrite.apply(this, args);
     };
 
-    const originalEnd = res.end;
-    // @ts-ignore
-    res.end = function resEndWithTiming(...args: any[]) {
-      // Mark first byte for non-streaming responses (body sent via res.end directly)
+    const originalEnd = res.end as (...args: unknown[]) => Response;
+    (res as any).end = function resEndWithTiming(this: Response, ...args: unknown[]) {
       markFirstByte();
-      // Fallback for routes without compression
       writeTimingHeader();
 
-      // Structured log for aggregation/alerting
       const route = req.route?.path || req.path;
       logger.info('request-timing', {
         method: req.method,
@@ -161,7 +153,6 @@ export function requestTimingMiddleware() {
         phases: timings.getAll(),
       });
 
-      // @ts-ignore
       return originalEnd.apply(this, args);
     };
 

@@ -90,21 +90,9 @@ export async function getProviderCredentials(provider: string): Promise<{
 
   const errorMessage = await aigneHubConfigProviderUrl();
 
-  // Try cached provider first
-  let cached = providerCache.get(provider);
+  const cached = await getProviderWithCache(provider);
   if (!cached) {
-    const providerRecord = await AiProvider.findOne({ where: { name: provider, enabled: true } });
-    if (!providerRecord) {
-      return callback(new CustomError(404, `Provider ${provider} not found, ${errorMessage}`));
-    }
-    cached = {
-      id: providerRecord.id,
-      name: providerRecord.name,
-      displayName: providerRecord.displayName,
-      baseUrl: providerRecord.baseUrl,
-      region: providerRecord.region,
-    };
-    providerCache.set(provider, cached);
+    return callback(new CustomError(404, `Provider ${provider} not found, ${errorMessage}`));
   }
 
   const credential = await AiCredential.getNextAvailableCredential(cached.id);

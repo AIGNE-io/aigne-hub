@@ -31,7 +31,7 @@ export const userWithCache = (req: Request, res: Response, next: NextFunction) =
   if (token && isAccessKey(token)) {
     const cached = sessionCache.get(token);
     if (cached) {
-      req.user = { ...cached };
+      req.user = structuredClone(cached);
       req.timings?.end('session');
       return next();
     }
@@ -39,7 +39,7 @@ export const userWithCache = (req: Request, res: Response, next: NextFunction) =
 
   sessionHandler(req, res, (...args: any[]) => {
     if (token && isAccessKey(token) && req.user) {
-      sessionCache.set(token, req.user);
+      sessionCache.set(token, structuredClone(req.user));
     }
     req.timings?.end('session');
     next(...args);

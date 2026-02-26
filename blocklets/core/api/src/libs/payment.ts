@@ -527,9 +527,9 @@ export async function checkUserCreditBalance({ userDid }: { userDid: string }) {
 
   const credits = await getUserCredits({ userDid });
   const { balance, pendingCredit } = credits;
-  creditCache.set(userDid, { balance, pendingCredit });
 
   if (balance && toBN(balance).gt(toBN(0))) {
+    creditCache.set(userDid, { balance, pendingCredit });
     return;
   }
 

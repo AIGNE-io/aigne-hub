@@ -77,6 +77,8 @@ router.post(
           AiCredential.updateCredentialAfterUse(credentialId, req.resolvedProvider?.providerId || '').catch((err) => {
             logger.error('Failed to update credential usage (v1 chat)', { error: err, credentialId });
           });
+        } else {
+          logger.warn('V1 chat: credentialId not populated on resolvedProvider, skipping usage tracking');
         }
 
         return data;
@@ -118,6 +120,8 @@ router.post(
       AiCredential.updateCredentialAfterUse(credentialId, req.resolvedProvider?.providerId || '').catch((err) => {
         logger.error('Failed to update credential usage (v1 embedding)', { error: err, credentialId });
       });
+    } else {
+      logger.warn('V1 embedding: credentialId not populated on resolvedProvider, skipping usage tracking');
     }
 
     res.json({ data: usageData?.data });
@@ -164,6 +168,8 @@ router.post(
       AiCredential.updateCredentialAfterUse(credentialId, req.resolvedProvider?.providerId || '').catch((err) => {
         logger.error('Failed to update credential usage (v1 image)', { error: err, credentialId });
       });
+    } else {
+      logger.warn('V1 image: credentialId not populated on resolvedProvider, skipping usage tracking');
     }
 
     res.json({

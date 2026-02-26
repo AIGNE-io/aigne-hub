@@ -26,8 +26,10 @@ const credentialListCache = new LRUCache<string, PlainCredential[]>({ max: 50, t
 export function clearCredentialListCache(providerId?: string) {
   if (providerId) {
     credentialListCache.delete(providerId);
+    delete credentialWeightCache[providerId];
   } else {
     credentialListCache.clear();
+    for (const k of Object.keys(credentialWeightCache)) delete credentialWeightCache[k];
   }
 }
 
@@ -255,7 +257,7 @@ export default class AiCredential extends Model<InferAttributes<AiCredential>, I
       values.weight = AIGNE_HUB_DEFAULT_WEIGHT;
     }
 
-    await AiCredential.update(values, { where: { id: credentialId }, silent: true });
+    await AiCredential.update(values, { where: { id: credentialId }, silent: true, hooks: false });
 
     if (options?.recover && providerId) {
       clearCredentialListCache(providerId);
@@ -268,7 +270,7 @@ export default class AiCredential extends Model<InferAttributes<AiCredential>, I
    * Disable a credential (e.g. invalid API key). Clears caches so next request re-fetches from DB.
    */
   static async disableCredential(credentialId: string, providerId: string, error: string): Promise<void> {
-    await AiCredential.update({ active: false, error }, { where: { id: credentialId }, silent: true });
+    await AiCredential.update({ active: false, error }, { where: { id: credentialId }, silent: true, hooks: false });
     clearCredentialListCache(providerId);
     clearAllRotationCache();
   }
@@ -277,7 +279,7 @@ export default class AiCredential extends Model<InferAttributes<AiCredential>, I
    * Reduce credential weight (e.g. on 429 rate-limit). Clears caches so rotation picks up new weight.
    */
   static async reduceCredentialWeight(credentialId: string, providerId: string, weight: number): Promise<void> {
-    await AiCredential.update({ weight }, { where: { id: credentialId }, silent: true });
+    await AiCredential.update({ weight }, { where: { id: credentialId }, silent: true, hooks: false });
     clearCredentialListCache(providerId);
     clearAllRotationCache();
   }

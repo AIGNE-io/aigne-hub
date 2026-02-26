@@ -416,7 +416,8 @@ export function withModelStatus({
         });
       }
 
-      sendCredentialInvalidNotification({
+      // Await credential invalidation so disableCredential + cache clear complete before retry
+      await sendCredentialInvalidNotification({
         model,
         provider,
         credentialId,
