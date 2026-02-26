@@ -1,20 +1,14 @@
 import { getAIApiKey, getOpenAI } from '@api/libs/ai-provider';
 import { Config } from '@api/libs/env';
-import AiModelRate from '@api/store/models/ai-model-rate';
 import { ChatCompletionInput, ChatCompletionResponse } from '@blocklet/aigne-hub/api/types';
 import { CustomError } from '@blocklet/error';
-import { LRUCache } from 'lru-cache';
 import OpenAI from 'openai';
 
 import { geminiChatCompletion } from './gemini';
+import { getCachedModelRates } from './model-rate-cache';
 import { openaiChatCompletion } from './openai';
 
-// Cache model rates to avoid repeated DB queries per request
-const modelRateCache = new LRUCache<string, AiModelRate[]>({ max: 200, ttl: 10 * 60 * 1000 });
-
-export function clearModelRateCache() {
-  modelRateCache.clear();
-}
+export { clearModelRateCache, getCachedModelRates } from './model-rate-cache';
 
 export function chatCompletion(
   input: ChatCompletionInput & Required<Pick<ChatCompletionInput, 'model'>>
@@ -33,22 +27,6 @@ export function chatCompletion(
           })();
 
   return result;
-}
-
-export async function getCachedModelRates(modelName: string, providerId?: string): Promise<AiModelRate[]> {
-  const cacheKey = `${modelName}:${providerId || ''}`;
-  let cached = modelRateCache.get(cacheKey);
-  if (!cached) {
-    const where: any = { model: modelName };
-    if (providerId) {
-      where.providerId = providerId;
-    }
-    cached = await AiModelRate.findAll({ where });
-    if (cached.length > 0) {
-      modelRateCache.set(cacheKey, cached);
-    }
-  }
-  return cached;
 }
 
 export async function checkModelRateAvailable(modelName: string, providerId: string) {
