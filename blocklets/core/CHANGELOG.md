@@ -1,3 +1,9 @@
+## 0.9.0 (2026-2-26)
+
+- test: add v2 API integration tests and CI pipeline
+- feat: optimize v2 API request pipeline with fire-and-forget writes and LRU caching
+- feat: add benchmarks tools for performance tests
+
 ## 0.8.5 (2026-2-6)
 
 - feat: use accessKeyId as appDid and enhance call detail metrics
