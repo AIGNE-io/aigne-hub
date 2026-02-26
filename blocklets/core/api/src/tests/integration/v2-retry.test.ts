@@ -17,6 +17,7 @@ import type { Express } from 'express';
 import { MockProvider, createMockProvider, type } from './helpers/mock-provider';
 import {
   AiCredential,
+  AiProvider,
   ModelCall,
   Usage,
   clearAllCaches,
@@ -145,5 +146,76 @@ describe('V2 Chat Completions — retry path', () => {
     // Server still healthy
     const statusRes = await fetch(`${baseUrl}/api/v2/status`);
     expect(statusRes.status).toBe(200);
+  });
+
+  test('request with provider prefix keeps single-provider path (no cross-provider retry)', async () => {
+    const openAIProvider = await AiProvider.findOne({ where: { name: 'openai' } });
+    const openRouterProvider = await AiProvider.findOne({ where: { name: 'openrouter' } });
+
+    mockProvider.setResponseSequence([
+      { status: 500, error: 'Provider temporarily unavailable' },
+      // If cross-provider retry happens, the second request would use this success fallback.
+    ]);
+
+    const res = await fetch(`${baseUrl}/api/v2/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'openai/gpt-5-mini',
+        messages: [{ role: 'user', content: 'Hello' }],
+        stream: false,
+      }),
+    });
+
+    // Response may be transformed by framework.
+    expect(typeof res.status).toBe('number');
+    await waitForFireAndForget(500);
+
+    // SDK/framework may retry within the same provider, so don't assert request count.
+    // We only assert that provider did not switch to other providers.
+    const calls = await ModelCall.findAll();
+    expect(calls.length).toBeGreaterThanOrEqual(1);
+    expect(calls.every((c) => c.providerId === openAIProvider?.id)).toBe(true);
+    expect(calls.some((c) => c.providerId === openRouterProvider?.id)).toBe(false);
+  });
+
+  test('429 on specified provider puts it into cool-down; next unprefixed request switches provider', async () => {
+    const openRouterProvider = await AiProvider.findOne({ where: { name: 'openrouter' } });
+
+    // Step 1: Hit specified provider and trigger 429 cooldown marking.
+    mockProvider.setResponse({ status: 429, error: 'Rate limit exceeded' });
+    const firstRes = await fetch(`${baseUrl}/api/v2/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'openai/gpt-5-mini',
+        messages: [{ role: 'user', content: 'Hello' }],
+        stream: false,
+      }),
+    });
+    expect(typeof firstRes.status).toBe('number');
+    await waitForFireAndForget(500);
+
+    // Keep only records from the second request to make assertions stable.
+    await ModelCall.destroy({ where: {} });
+    mockProvider.clearRequests();
+
+    // Step 2: Unprefixed model should avoid the cooled-down provider and use another one.
+    mockProvider.reset();
+    const secondRes = await fetch(`${baseUrl}/api/v2/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'gpt-5-mini',
+        messages: [{ role: 'user', content: 'Hello again' }],
+        stream: false,
+      }),
+    });
+    expect(secondRes.status).toBe(200);
+    await waitForFireAndForget(500);
+
+    const successCalls = (await ModelCall.findAll()).filter((c) => c.status === 'success');
+    expect(successCalls.length).toBe(1);
+    expect(successCalls[0]?.providerId).toBe(openRouterProvider?.id);
   });
 });

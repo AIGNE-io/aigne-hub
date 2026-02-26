@@ -185,4 +185,95 @@ describe('V2 Cache behavior', () => {
 
     findAllSpy.mockRestore();
   });
+
+  test('create model rate invalidates model rate cache', async () => {
+    const findAllSpy = spyOn(AiModelRate, 'findAll');
+
+    // Warm up model rate cache
+    await makeRequest(baseUrl);
+    const callsAfterWarmup = findAllSpy.mock.calls.length;
+    await makeRequest(baseUrl);
+    const callsAfterCacheHit = findAllSpy.mock.calls.length;
+    expect(callsAfterCacheHit).toBe(callsAfterWarmup);
+
+    const provider = await AiProvider.findOne({ where: { name: 'openai' } });
+    const uniqueModel = `cache-create-${Date.now()}`;
+    await AiModelRate.create({
+      providerId: provider!.id,
+      model: uniqueModel,
+      modelDisplay: uniqueModel,
+      type: 'embedding' as any,
+      inputRate: 0.001,
+      outputRate: 0.002,
+    });
+
+    // After create hook clears cache, next request should query DB again
+    await makeRequest(baseUrl);
+    const callsAfterCreate = findAllSpy.mock.calls.length;
+    expect(callsAfterCreate).toBeGreaterThan(callsAfterCacheHit);
+
+    findAllSpy.mockRestore();
+  });
+
+  test('update model rate invalidates model rate cache', async () => {
+    const provider = await AiProvider.findOne({ where: { name: 'openai' } });
+    const uniqueModel = `cache-update-${Date.now()}`;
+    const tempRate = await AiModelRate.create({
+      providerId: provider!.id,
+      model: uniqueModel,
+      modelDisplay: uniqueModel,
+      type: 'embedding' as any,
+      inputRate: 0.001,
+      outputRate: 0.002,
+    });
+
+    const findAllSpy = spyOn(AiModelRate, 'findAll');
+
+    // Warm up model rate cache
+    await makeRequest(baseUrl);
+    const callsAfterWarmup = findAllSpy.mock.calls.length;
+    await makeRequest(baseUrl);
+    const callsAfterCacheHit = findAllSpy.mock.calls.length;
+    expect(callsAfterCacheHit).toBe(callsAfterWarmup);
+
+    await tempRate.update({ outputRate: 0.003 });
+
+    // After update hook clears cache, next request should query DB again
+    await makeRequest(baseUrl);
+    const callsAfterUpdate = findAllSpy.mock.calls.length;
+    expect(callsAfterUpdate).toBeGreaterThan(callsAfterCacheHit);
+
+    findAllSpy.mockRestore();
+  });
+
+  test('destroy model rate invalidates model rate cache', async () => {
+    const provider = await AiProvider.findOne({ where: { name: 'openai' } });
+    const uniqueModel = `cache-destroy-${Date.now()}`;
+    const tempRate = await AiModelRate.create({
+      providerId: provider!.id,
+      model: uniqueModel,
+      modelDisplay: uniqueModel,
+      type: 'embedding' as any,
+      inputRate: 0.001,
+      outputRate: 0.002,
+    });
+
+    const findAllSpy = spyOn(AiModelRate, 'findAll');
+
+    // Warm up model rate cache
+    await makeRequest(baseUrl);
+    const callsAfterWarmup = findAllSpy.mock.calls.length;
+    await makeRequest(baseUrl);
+    const callsAfterCacheHit = findAllSpy.mock.calls.length;
+    expect(callsAfterCacheHit).toBe(callsAfterWarmup);
+
+    await tempRate.destroy();
+
+    // After destroy hook clears cache, next request should query DB again
+    await makeRequest(baseUrl);
+    const callsAfterDestroy = findAllSpy.mock.calls.length;
+    expect(callsAfterDestroy).toBeGreaterThan(callsAfterCacheHit);
+
+    findAllSpy.mockRestore();
+  });
 });

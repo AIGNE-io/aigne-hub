@@ -1,5 +1,6 @@
 import type { Server } from 'http';
 
+import AiModelStatus from '@api/store/models/ai-model-status';
 /**
  * §5.2.2 — V2 API Failure Path Integration Tests
  *
@@ -16,6 +17,7 @@ import type { Express } from 'express';
 import { MockProvider, createMockProvider, type } from './helpers/mock-provider';
 import {
   AiCredential,
+  AiProvider,
   ModelCall,
   Usage,
   clearAllCaches,
@@ -55,6 +57,7 @@ beforeEach(async () => {
   clearAllCaches();
   // Re-enable all credentials and clean up records between tests
   await AiCredential.update({ active: true, error: null, weight: 100 }, { where: {} });
+  await AiModelStatus.destroy({ where: {} });
   await ModelCall.destroy({ where: {} });
   await Usage.destroy({ where: {} });
   clearAllCaches();
@@ -120,6 +123,48 @@ describe('V2 Chat Completions — failure path', () => {
 
     // Server still up after provider failure
     await assertServerStillUp(baseUrl);
+  });
+
+  test('model status switches to unavailable on 500 and recovers on next success', async () => {
+    const provider = await AiProvider.findOne({ where: { name: 'openai' } });
+
+    mockProvider.setResponse({ status: 500, error: 'Internal server error' });
+    const failRes = await fetch(`${baseUrl}/api/v2/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(chatPayload),
+    });
+    expect(typeof failRes.status).toBe('number');
+    await waitForFireAndForget();
+
+    let status = await AiModelStatus.findOne({
+      where: {
+        providerId: provider!.id,
+        model: 'gpt-5-mini',
+        type: 'chatCompletion',
+      },
+    });
+    expect(status).toBeTruthy();
+    expect(status?.available).toBe(false);
+
+    mockProvider.reset();
+    const successRes = await fetch(`${baseUrl}/api/v2/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(chatPayload),
+    });
+    expect(successRes.status).toBe(200);
+    await waitForFireAndForget();
+
+    status = await AiModelStatus.findOne({
+      where: {
+        providerId: provider!.id,
+        model: 'gpt-5-mini',
+        type: 'chatCompletion',
+      },
+    });
+    expect(status).toBeTruthy();
+    expect(status?.available).toBe(true);
   });
 
   test('provider 429 is handled without crash', async () => {
