@@ -1,3 +1,7 @@
+## 0.9.1 (2026-2-27)
+
+- fix: use maintained test models for credential validation
+
 ## 0.9.0 (2026-2-26)
 
 - test: add v2 API integration tests and CI pipeline
