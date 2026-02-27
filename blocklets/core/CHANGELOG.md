@@ -1,3 +1,7 @@
+## 0.9.3 (2026-2-27)
+
+- fix: pass provider region to credential validation for Bedrock
+
 ## 0.9.2 (2026-2-27)
 
 - feat: add credential test connection in form and fix doubao test model
