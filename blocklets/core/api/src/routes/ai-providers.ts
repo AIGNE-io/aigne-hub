@@ -352,6 +352,7 @@ router.post('/:providerId/credentials', ensureAdmin, async (req, res) => {
       apiKey: rawValue.credentialType === 'api_key' ? rawValue.value : undefined,
       accessKeyId: rawValue.credentialType === 'access_key_pair' ? rawValue.value.access_key_id : undefined,
       secretAccessKey: rawValue.credentialType === 'access_key_pair' ? rawValue.value.secret_access_key : undefined,
+      region: provider.region || undefined,
     });
 
     // 处理凭证值
@@ -421,6 +422,7 @@ router.put('/:providerId/credentials/:credentialId', ensureAdmin, async (req, re
       apiKey: value.credentialType === 'api_key' ? value.value : undefined,
       accessKeyId: value.credentialType === 'access_key_pair' ? value.value.access_key_id : undefined,
       secretAccessKey: value.credentialType === 'access_key_pair' ? value.value.secret_access_key : undefined,
+      region: provider.region || undefined,
     });
 
     // 处理凭证值
