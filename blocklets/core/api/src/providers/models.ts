@@ -333,8 +333,16 @@ const CREDENTIAL_TEST_MODELS: Record<string, string> = {
   ollama: 'llama3.2',
   openrouter: 'openai/gpt-4o-mini',
   xai: 'grok-3-mini-fast',
-  doubao: 'doubao-seed-2.0-mini',
+  doubao: 'doubao-seed-1-8-251228',
   poe: 'gpt-5-mini',
+};
+
+export const getDefaultTestModel = (providerName: string): string | undefined => {
+  return CREDENTIAL_TEST_MODELS[providerName];
+};
+
+export const getDefaultTestModels = (): Record<string, string> => {
+  return { ...CREDENTIAL_TEST_MODELS };
 };
 
 export const checkModelIsValid = async (
@@ -345,12 +353,13 @@ export const checkModelIsValid = async (
     accessKeyId?: string;
     secretAccessKey?: string;
     region?: string;
-  }
+  },
+  customTestModel?: string
 ) => {
   const m = await getModelByProviderName(providerName);
 
   if (m) {
-    const testModel = CREDENTIAL_TEST_MODELS[providerName];
+    const testModel = customTestModel || CREDENTIAL_TEST_MODELS[providerName];
     const model = m.create(testModel ? { ...params, model: testModel } : params);
     logger.info('check chat model is valid model:', model.name);
     const res = await model.invoke({ messages: [{ role: 'user', content: 'Hello, world!' }] });
