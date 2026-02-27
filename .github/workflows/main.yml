@@ -44,3 +44,21 @@ jobs:
           VERSION=$(cat version | awk '{$1=$1;print}')
           echo "publish version ${VERSION}"
           pnpm publish --filter "@blocklet/*" --access public --no-git-checks
+
+      - name: Blocklet workflow
+        if: "! contains(toJSON(github.event.commits.*.message), '[skip blocklet]')"
+        uses: blocklet/action-workflow@v1
+        with:
+          deps-server-version: beta
+          skip-deps: false
+          skip-upload: false
+          skip-deploy: true
+          skip-release: true
+          working-directory: blocklets/core
+          bundle-command: pnpm bundle
+          store-endpoint: ${{ secrets.STORE_ENDPOINT_TEST }}
+          store-access-token: ${{ secrets.STORE_ACCESS_TOKEN_TEST }}
+          slack-webhook: ${{ secrets.SLACK_WEBHOOK }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deploy-app-did: zNKti3S7gEFuvJVbxjtQTQAzUm1fNKPfNzTq
+          deploy-mount-point: /
