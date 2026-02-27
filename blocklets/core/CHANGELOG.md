@@ -1,3 +1,7 @@
+## 0.9.2 (2026-2-27)
+
+- feat: add credential test connection in form and fix doubao test model
+
 ## 0.9.1 (2026-2-27)
 
 - fix: use maintained test models for credential validation
