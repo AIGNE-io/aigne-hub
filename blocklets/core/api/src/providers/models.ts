@@ -321,6 +321,22 @@ const getModelByProviderName = async (provider: string) => {
   return m;
 };
 
+// Maintain test models for credential validation, independent of @aigne package defaults
+// Use the latest and cheapest model for each provider to minimize test cost
+const CREDENTIAL_TEST_MODELS: Record<string, string> = {
+  openai: 'gpt-4.1-nano',
+  anthropic: 'claude-haiku-4-5',
+  bedrock: 'us.amazon.nova-lite-v1:0',
+  deepseek: 'deepseek-chat',
+  gemini: 'gemini-2.5-flash',
+  google: 'gemini-2.5-flash',
+  ollama: 'llama3.2',
+  openrouter: 'openai/gpt-4o-mini',
+  xai: 'grok-3-mini-fast',
+  doubao: 'doubao-seed-2.0-mini',
+  poe: 'gpt-5-mini',
+};
+
 export const checkModelIsValid = async (
   providerName: string,
   params: {
@@ -334,7 +350,8 @@ export const checkModelIsValid = async (
   const m = await getModelByProviderName(providerName);
 
   if (m) {
-    const model = m.create(params);
+    const testModel = CREDENTIAL_TEST_MODELS[providerName];
+    const model = m.create(testModel ? { ...params, model: testModel } : params);
     logger.info('check chat model is valid model:', model.name);
     const res = await model.invoke({ messages: [{ role: 'user', content: 'Hello, world!' }] });
     logger.info('check chat model is valid result:', res);
