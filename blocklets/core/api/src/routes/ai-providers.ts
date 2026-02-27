@@ -108,6 +108,7 @@ const createCredentialSchema = Joi.object({
     )
     .required(),
   credentialType: Joi.string().valid('api_key', 'access_key_pair', 'custom').default('api_key'),
+  testModel: Joi.string().max(100).optional(),
 });
 
 const createModelRateSchema = Joi.object({
@@ -348,12 +349,16 @@ router.post('/:providerId/credentials', ensureAdmin, async (req, res) => {
       return res.status(404).json({ error: 'Provider not found' });
     }
 
-    await checkModelIsValid(provider.name, {
-      apiKey: rawValue.credentialType === 'api_key' ? rawValue.value : undefined,
-      accessKeyId: rawValue.credentialType === 'access_key_pair' ? rawValue.value.access_key_id : undefined,
-      secretAccessKey: rawValue.credentialType === 'access_key_pair' ? rawValue.value.secret_access_key : undefined,
-      region: provider.region || undefined,
-    });
+    await checkModelIsValid(
+      provider.name,
+      {
+        apiKey: rawValue.credentialType === 'api_key' ? rawValue.value : undefined,
+        accessKeyId: rawValue.credentialType === 'access_key_pair' ? rawValue.value.access_key_id : undefined,
+        secretAccessKey: rawValue.credentialType === 'access_key_pair' ? rawValue.value.secret_access_key : undefined,
+        region: provider.region || undefined,
+      },
+      rawValue.testModel
+    );
 
     // 处理凭证值
     let credentialValue: CredentialValue;
@@ -418,12 +423,16 @@ router.put('/:providerId/credentials/:credentialId', ensureAdmin, async (req, re
       return res.status(404).json({ error: 'Provider not found' });
     }
 
-    await checkModelIsValid(provider.name, {
-      apiKey: value.credentialType === 'api_key' ? value.value : undefined,
-      accessKeyId: value.credentialType === 'access_key_pair' ? value.value.access_key_id : undefined,
-      secretAccessKey: value.credentialType === 'access_key_pair' ? value.value.secret_access_key : undefined,
-      region: provider.region || undefined,
-    });
+    await checkModelIsValid(
+      provider.name,
+      {
+        apiKey: value.credentialType === 'api_key' ? value.value : undefined,
+        accessKeyId: value.credentialType === 'access_key_pair' ? value.value.access_key_id : undefined,
+        secretAccessKey: value.credentialType === 'access_key_pair' ? value.value.secret_access_key : undefined,
+        region: provider.region || undefined,
+      },
+      value.testModel
+    );
 
     // 处理凭证值
     let credentialValue: CredentialValue;
