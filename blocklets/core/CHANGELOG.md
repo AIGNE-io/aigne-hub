@@ -1,3 +1,7 @@
+## 0.9.4 (2026-2-27)
+
+- fix: pass testModel through credential create/update flow
+
 ## 0.9.3 (2026-2-27)
 
 - fix: pass provider region to credential validation for Bedrock
