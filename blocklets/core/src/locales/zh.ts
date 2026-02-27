@@ -368,6 +368,11 @@ export default flatten({
   lastUsed: '最后使用',
   created: '创建时间',
   deleteCredentialConfirm: '确定要删除凭证',
+  testModel: '测试模型',
+  testModelHelp: '用于连接测试的模型，如果默认模型不可用可以修改',
+  testConnection: '测试连接',
+  testConnectionSuccess: '连接测试通过',
+  testConnectionFailed: '连接测试失败',
 
   // Messages
   providerCreated: '提供商创建成功',

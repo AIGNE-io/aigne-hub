@@ -382,6 +382,11 @@ export default flatten({
   lastUsed: 'Last Used',
   created: 'Created',
   deleteCredentialConfirm: 'Are you sure you want to delete credential',
+  testModel: 'Test Model',
+  testModelHelp: 'Model used for connection testing. Change it if the default model is unavailable.',
+  testConnection: 'Test Connection',
+  testConnectionSuccess: 'Connection test passed',
+  testConnectionFailed: 'Connection test failed',
 
   // Messages
   providerCreated: 'Provider created successfully',
