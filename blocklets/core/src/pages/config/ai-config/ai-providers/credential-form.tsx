@@ -32,6 +32,7 @@ export interface CredentialFormData {
   name: string;
   value: string | CredentialValue;
   credentialType: 'api_key' | 'access_key_pair' | 'custom';
+  testModel?: string;
 }
 
 const CREDENTIAL_TYPE_OPTIONS = [
@@ -101,7 +102,7 @@ export default function CredentialForm({
   const handleFormSubmit = async (data: CredentialFormData) => {
     setLoading(true);
     try {
-      await onSubmit(data);
+      await onSubmit({ ...data, testModel: testModel || undefined });
     } catch (error: any) {
       Toast.error(error.message || t('submitFailed'));
     } finally {
