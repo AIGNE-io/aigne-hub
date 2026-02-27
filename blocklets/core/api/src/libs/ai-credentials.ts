@@ -27,10 +27,10 @@ const checkCredentials = async (credentialId: string, providerId: string, testMo
   } = {};
 
   if (credential.credentialType === 'api_key') {
-    params.apiKey = value.value;
+    params.apiKey = value.api_key;
   } else if (credential.credentialType === 'access_key_pair') {
-    params.accessKeyId = value.value.access_key_id;
-    params.secretAccessKey = value.value.secret_access_key;
+    params.accessKeyId = value.access_key_id;
+    params.secretAccessKey = value.secret_access_key;
     if (provider.region) {
       params.region = provider.region;
     }
