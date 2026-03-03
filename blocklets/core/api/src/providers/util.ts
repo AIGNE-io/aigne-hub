@@ -1,12 +1,19 @@
-import { AgentResponseStream, ChatModelOutput, Message, isAgentResponseDelta } from '@aigne/core';
+import type {
+  ChatModelInputMessage,
+  ChatModelOutput,
+  ChatModelOutputToolCall,
+  Message,
+  ModelResponseStream,
+} from '@aigne/model-base';
+import { isModelResponseDelta } from '@aigne/model-base';
 import { ChatCompletionChunk, ChatCompletionInput, ChatCompletionResponse } from '@blocklet/aigne-hub/api/types';
 import { CustomError } from '@blocklet/error';
 
 export async function convertToFrameworkMessages(
   messages: ChatCompletionInput['messages']
-): Promise<import('@aigne/core').ChatModelInputMessage[]> {
+): Promise<ChatModelInputMessage[]> {
   return Promise.all(
-    messages.map(async (message): Promise<import('@aigne/core').ChatModelInputMessage> => {
+    messages.map(async (message): Promise<ChatModelInputMessage> => {
       switch (message.role) {
         case 'system':
           return {
@@ -50,13 +57,13 @@ export async function convertToFrameworkMessages(
 }
 
 export async function* adaptStreamToOldFormat(
-  stream: AgentResponseStream<ChatModelOutput>
+  stream: ModelResponseStream<ChatModelOutput>
 ): AsyncGenerator<ChatCompletionResponse> {
-  const toolCalls: ChatCompletionChunk['delta']['toolCalls'] = [];
+  const toolCalls: ChatModelOutputToolCall[] = [];
   const role: ChatCompletionChunk['delta']['role'] = 'assistant';
 
   for await (const chunk of stream) {
-    if (isAgentResponseDelta(chunk)) {
+    if (isModelResponseDelta(chunk)) {
       const { delta } = chunk;
 
       if (delta.json?.toolCalls && Array.isArray(delta.json.toolCalls)) {
@@ -88,7 +95,7 @@ export async function* adaptStreamToOldFormat(
                       arguments:
                         call.function?.arguments && typeof call.function.arguments === 'object'
                           ? JSON.stringify(call.function.arguments)
-                          : call.function?.arguments,
+                          : (call.function?.arguments as unknown as string | undefined),
                     },
                   }))
                 : [],

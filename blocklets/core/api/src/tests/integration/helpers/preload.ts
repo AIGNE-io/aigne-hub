@@ -8,12 +8,6 @@
  */
 import { mock } from 'bun:test';
 
-// ─── Fix @aigne subpath exports (bun can't resolve without .js) ─────────────
-
-mock.module('@aigne/core/utils/type-utils', () => require('@aigne/core/utils/type-utils.js'));
-mock.module('@aigne/core/utils/camelize', () => require('@aigne/core/utils/camelize.js'));
-mock.module('@aigne/transport/http-server/index', () => require('@aigne/transport/http-server/index.js'));
-
 // ─── Mock external @blocklet SDKs ───────────────────────────────────────────
 
 mock.module('@blocklet/sdk/lib/middlewares/session', () => ({

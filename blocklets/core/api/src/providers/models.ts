@@ -1,5 +1,6 @@
 import { availableModels as availableChatModels, findImageModel } from '@aigne/aigne-hub';
-import { AIGNE, ChatModelOptions, ImageModelOptions } from '@aigne/core';
+import type { ChatModelOptions, ImageModelOptions } from '@aigne/model-base';
+import { onModelResponseStreamEnd } from '@aigne/model-base';
 import type { OpenAIChatModelOptions, OpenAIImageModelOptions } from '@aigne/openai';
 import logger from '@api/libs/logger';
 import { InvokeOptions } from '@api/libs/on-error';
@@ -116,16 +117,14 @@ export async function getProviderCredentials(provider: string): Promise<{
 
 export async function chatCompletionByFrameworkModel(
   input: ChatCompletionInput & Required<Pick<ChatCompletionInput, 'model'>>,
-  userDid?: string,
+  _userDid?: string,
   options?: InvokeOptions & { req: Request }
 ): Promise<AsyncGenerator<ChatCompletionResponse>> {
   const { modelInstance } = await getModel(input, { req: options?.req });
-  const engine = new AIGNE();
 
   const convertedMessages = await convertToFrameworkMessages(input.messages);
 
-  const response = await engine.invoke(
-    modelInstance,
+  let stream = await modelInstance.invoke(
     {
       messages: convertedMessages,
       responseFormat: input.responseFormat?.type === 'json_schema' ? input.responseFormat : { type: 'text' },
@@ -133,10 +132,25 @@ export async function chatCompletionByFrameworkModel(
       tools: input.tools,
       modelOptions: pick(input, ['temperature', 'topP', 'presencePenalty', 'frequencyPenalty', 'maxTokens']),
     },
-    { streaming: true, userContext: { userId: userDid }, hooks: { onEnd: options?.onEnd, onError: options?.onError } }
+    { streaming: true }
   );
 
-  return adaptStreamToOldFormat(response);
+  if (options?.onEnd || options?.onError) {
+    stream = onModelResponseStreamEnd(stream, {
+      onResult: async (result) => {
+        if (options?.onEnd) {
+          const r = await options.onEnd({ output: result as any });
+          if (r?.output) return r.output as any;
+        }
+      },
+      onError: async (error) => {
+        if (options?.onError) options.onError({ context: {}, error });
+        return error;
+      },
+    });
+  }
+
+  return adaptStreamToOldFormat(stream);
 }
 
 async function loadModel(
