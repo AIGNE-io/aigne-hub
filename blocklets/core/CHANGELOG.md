@@ -1,3 +1,7 @@
+## 0.9.6 (2026-3-3)
+
+- fix: externalize all @aigne/* packages from compact bundle
+
 ## 0.9.5 (2026-3-3)
 
 - fix: migrate from @aigne/core to @aigne/model-base
