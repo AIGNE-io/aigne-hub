@@ -1,5 +1,3 @@
-import { AIGNE } from '@aigne/core';
-import { camelize } from '@aigne/core/utils/camelize';
 import { chatCompletionByFrameworkModel, getImageModel, getProviderWithCache } from '@api/providers/models';
 import { CreditError, CreditErrorType } from '@blocklet/aigne-hub/api';
 import {
@@ -434,7 +432,8 @@ export async function processImageGeneration(
     res: Response;
     version: 'v1' | 'v2';
   },
-  options?: {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _options?: {
     userContext?: Record<string, any>;
     hooks?: InvokeOptions;
   }
@@ -494,16 +493,11 @@ export async function processImageGeneration(
       model: modelName,
       modelOptions: { model: modelName },
     });
-    const aigne = new AIGNE();
-    const result = await aigne.invoke(
-      modelInstance,
-      {
-        ...params,
-        responseFormat: params.responseFormat === 'b64_json' ? 'base64' : params.responseFormat || 'base64',
-        outputFileType: input?.outputFileType || 'file',
-      },
-      options
-    );
+    const result = await modelInstance.invoke({
+      ...params,
+      responseFormat: params.responseFormat === 'b64_json' ? 'base64' : params.responseFormat || 'base64',
+      outputFileType: input?.outputFileType || 'file',
+    });
 
     response = {
       data: result.images.map((i) => ({
@@ -523,4 +517,23 @@ export async function processImageGeneration(
       response.data?.map((i) => ({ base64: i.b64_json, b64_json: i.b64_json, b64Json: i.b64_json, url: i.url })) || [],
     modelName,
   };
+}
+
+// Inline camelize — replaces @aigne/model-base/utils/camelize (sub-path not resolvable with moduleResolution: "Node")
+function camelCaseKey(str: string): string {
+  const result = str.replace(/[_.-](\w|$)/g, (_, char: string) => char.toUpperCase());
+  return result.charAt(0).toLowerCase() + result.slice(1);
+}
+
+function camelize<T>(obj: T): any {
+  if (!obj || typeof obj !== 'object') return obj;
+  if (obj instanceof Date || obj instanceof RegExp) return obj;
+  if (Array.isArray(obj)) return obj.map((v) => (typeof v === 'object' ? camelize(v) : v));
+  return Object.keys(obj).reduce(
+    (res, key) => {
+      res[camelCaseKey(key)] = camelize((obj as any)[key]);
+      return res;
+    },
+    {} as Record<string, any>
+  );
 }

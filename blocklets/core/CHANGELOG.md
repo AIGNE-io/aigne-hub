@@ -1,3 +1,7 @@
+## 0.9.5 (2026-3-3)
+
+- fix: migrate from @aigne/core to @aigne/model-base
+
 ## 0.9.4 (2026-2-27)
 
 - fix: pass testModel through credential create/update flow
