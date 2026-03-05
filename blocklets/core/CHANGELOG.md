@@ -1,3 +1,7 @@
+## 0.9.7 (2026-3-5)
+
+- chore: update aigne deps
+
 ## 0.9.6 (2026-3-3)
 
 - fix: externalize all @aigne/* packages from compact bundle
