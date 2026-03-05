@@ -1,6 +1,6 @@
 {
   "name": "ai-kit",
-  "version": "0.9.6",
+  "version": "0.9.7",
   "author": "Arcblock <blocklet@arcblock.io> https://github.com/blocklet",
   "scripts": {
     "dev": "cross-env COMPONENT_STORE_URL=https://test.store.blocklet.dev blocklet dev",
@@ -37,10 +37,10 @@
     "@abtnode/cron": "^1.17.8",
     "@abtnode/queue": "^1.17.8",
     "@abtnode/util": "^1.17.8",
-    "@aigne/aigne-hub": "^1.74.0-beta.4",
-    "@aigne/model-base": "^1.74.0-beta.4",
+    "@aigne/aigne-hub": "^1.74.0-beta.6",
+    "@aigne/model-base": "^1.74.0-beta.6",
     "@aigne/observability-api": "^1.21.0-beta.8",
-    "@aigne/openai": "^1.74.0-beta.4",
+    "@aigne/openai": "^1.74.0-beta.6",
     "@arcblock/did": "^1.29.5",
     "@arcblock/did-connect-js": "^1.29.5",
     "@arcblock/did-connect-react": "^3.5.0",
