@@ -1,3 +1,7 @@
+## 0.9.8 (2026-3-9)
+
+- chore: update aigne deps
+
 ## 0.9.7 (2026-3-5)
 
 - chore: update aigne deps

@@ -1,7 +1,7 @@
 {
   "name": "ai-kit",
   "private": true,
-  "version": "0.9.7",
+  "version": "0.9.8",
   "workspaces": [
     "blocklets/*",
     "packages/*"
@@ -64,9 +64,9 @@
     "zx": "^8.1.4"
   },
   "resolutions": {
-    "@aigne/aigne-hub": "^1.74.0-beta.6",
+    "@aigne/aigne-hub": "^1.74.0-beta.8",
     "@aigne/observability-api": "^1.21.0-beta.8",
-    "@aigne/openai": "^1.74.0-beta.6",
+    "@aigne/openai": "^1.74.0-beta.8",
     "@arcblock/did": "1.27.16",
     "@arcblock/did-connect-js": "1.27.16",
     "@arcblock/did-ext": "1.27.16",
