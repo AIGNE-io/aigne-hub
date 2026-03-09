@@ -1,3 +1,7 @@
+## 0.9.9 (2026-3-9)
+
+- fix: forward upstream API error status instead of always returning 500
+
 ## 0.9.8 (2026-3-9)
 
 - chore: update aigne deps
