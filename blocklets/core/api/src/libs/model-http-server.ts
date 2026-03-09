@@ -141,7 +141,7 @@ export class HubModelHTTPServer {
     } catch (error: any) {
       if (this.hooks?.onError) await this.hooks.onError({ error });
       return new Response(JSON.stringify({ error: { message: error.message } }), {
-        status: error instanceof ServerError ? error.status : 500,
+        status: error.status || 500,
         headers: { 'Content-Type': 'application/json' },
       });
     }
