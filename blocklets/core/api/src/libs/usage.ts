@@ -582,6 +582,8 @@ export async function createUsageAndCompleteModelCall({
         },
         metadata,
         traceId,
+        ttfb: req.timings?.getAll()?.ttfb,
+        providerTtfb: req.timings?.getAll()?.providerTtfb,
       })
       .catch((err) => {
         logger.error('Failed to complete model call record', { error: err });

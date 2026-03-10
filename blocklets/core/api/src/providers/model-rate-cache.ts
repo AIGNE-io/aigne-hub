@@ -33,8 +33,48 @@ AiModelRate.afterCreate(() => {
   clearAllRotationCache();
 });
 
-AiModelRate.afterUpdate(() => {
+AiModelRate.afterUpdate((instance) => {
   clearModelRateCache();
+
+  // Record manual rate change in history
+  try {
+    const changed = instance.changed();
+    if (changed && (changed.includes('inputRate') || changed.includes('outputRate') || changed.includes('unitCosts'))) {
+      // eslint-disable-next-line global-require
+      const AiModelRateHistory = require('@api/store/models/ai-model-rate-history').default;
+      const previousInputRate = instance.previous('inputRate');
+      const previousOutputRate = instance.previous('outputRate');
+      const previousUnitCosts = instance.previous('unitCosts');
+
+      AiModelRateHistory.create({
+        providerId: instance.providerId,
+        model: instance.model,
+        type: instance.type as string,
+        changeType: 'manual_update',
+        source: 'admin',
+        previousUnitCosts: previousUnitCosts || null,
+        currentUnitCosts: instance.unitCosts || null,
+        previousRates: {
+          inputRate: Number(previousInputRate ?? 0),
+          outputRate: Number(previousOutputRate ?? 0),
+        },
+        currentRates: {
+          inputRate: Number(instance.inputRate),
+          outputRate: Number(instance.outputRate),
+        },
+        driftPercent: null,
+        detectedAt: Math.floor(Date.now() / 1000),
+        metadata: null,
+      }).catch((err: Error) => {
+        // Lazy import logger to avoid circular deps
+        // eslint-disable-next-line global-require
+        const loggerMod = require('@api/libs/logger').default;
+        loggerMod.error('Failed to record rate change history', { error: err });
+      });
+    }
+  } catch {
+    // Silently ignore errors in history recording — it's non-critical
+  }
 });
 
 AiModelRate.afterDestroy(() => {

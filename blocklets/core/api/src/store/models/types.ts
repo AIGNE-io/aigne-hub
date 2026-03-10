@@ -30,6 +30,11 @@ export interface DailyStats {
   // Duration metrics for latency statistics
   totalDuration?: number; // Sum of all durations (for calculating averages)
   avgDuration?: number; // Average duration in seconds
+  // TTFB metrics
+  totalTtfb?: number;
+  avgTtfb?: number;
+  totalProviderTtfb?: number;
+  avgProviderTtfb?: number;
 
   byType: Partial<Record<CallType, TypeStats>>;
 }

@@ -185,6 +185,8 @@ export async function createMonthlyModelCallStats(monthTime: number): Promise<nu
     'SUM(COALESCE(CAST(json_extract(stats."stats",\'$.totalCalls\') AS INTEGER), 0)) as "totalCalls"',
     'SUM(COALESCE(CAST(json_extract(stats."stats",\'$.successCalls\') AS INTEGER), 0)) as "successCalls"',
     'SUM(COALESCE(CAST(json_extract(stats."stats",\'$.totalDuration\') AS REAL), 0)) as "totalDuration"',
+    'SUM(COALESCE(CAST(json_extract(stats."stats",\'$.totalTtfb\') AS REAL), 0)) as "totalTtfb"',
+    'SUM(COALESCE(CAST(json_extract(stats."stats",\'$.totalProviderTtfb\') AS REAL), 0)) as "totalProviderTtfb"',
   ];
 
   const recordsCount = await sequelize.transaction(async (transaction) => {

@@ -47,6 +47,8 @@ export interface ModelCallResult {
   metadata?: Record<string, any>;
   traceId?: string;
   mediaDuration?: number;
+  ttfb?: number;
+  providerTtfb?: number;
 }
 
 export interface ResolvedProvider {
@@ -379,6 +381,8 @@ function createModelCallContext({
         },
         callTime: startTime,
         traceId: result.traceId || context.traceId,
+        ttfb: result.ttfb,
+        providerTtfb: result.providerTtfb,
       }).catch((error) => {
         logger.error('Failed to write completed model call record', { error, id });
       });
