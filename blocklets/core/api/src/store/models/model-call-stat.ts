@@ -356,6 +356,28 @@ export default class ModelCallStat extends Model<
         [fn('SUM', literal('CASE WHEN "status" = \'success\' THEN 1 ELSE 0 END')), 'successCalls'],
         [fn('SUM', literal('CASE WHEN "status" = \'success\' THEN "duration" ELSE 0 END')), 'totalDuration'],
         [fn('AVG', literal('CASE WHEN "status" = \'success\' THEN "duration" ELSE NULL END')), 'avgDuration'],
+        [
+          fn('SUM', literal('CASE WHEN "status" = \'success\' AND "ttfb" IS NOT NULL THEN "ttfb" ELSE 0 END')),
+          'totalTtfb',
+        ],
+        [
+          fn('AVG', literal('CASE WHEN "status" = \'success\' AND "ttfb" IS NOT NULL THEN "ttfb" ELSE NULL END')),
+          'avgTtfb',
+        ],
+        [
+          fn(
+            'SUM',
+            literal('CASE WHEN "status" = \'success\' AND "providerTtfb" IS NOT NULL THEN "providerTtfb" ELSE 0 END')
+          ),
+          'totalProviderTtfb',
+        ],
+        [
+          fn(
+            'AVG',
+            literal('CASE WHEN "status" = \'success\' AND "providerTtfb" IS NOT NULL THEN "providerTtfb" ELSE NULL END')
+          ),
+          'avgProviderTtfb',
+        ],
       ],
       where: {
         callTime: { [Op.between]: [startTime, endTime] },
@@ -371,6 +393,10 @@ export default class ModelCallStat extends Model<
       successCalls: string | number;
       totalDuration: string | number;
       avgDuration: string | number;
+      totalTtfb: string | number;
+      avgTtfb: string | number;
+      totalProviderTtfb: string | number;
+      avgProviderTtfb: string | number;
     }>;
 
     const statsMap = new Map<number, DailyStats>();
@@ -403,6 +429,10 @@ export default class ModelCallStat extends Model<
       successCalls: stats.successCalls || 0,
       totalDuration: stats.totalDuration || 0,
       avgDuration: stats.avgDuration || 0,
+      totalTtfb: stats.totalTtfb || 0,
+      avgTtfb: stats.avgTtfb || 0,
+      totalProviderTtfb: stats.totalProviderTtfb || 0,
+      avgProviderTtfb: stats.avgProviderTtfb || 0,
       byType: {},
     };
   }
@@ -415,11 +445,21 @@ export default class ModelCallStat extends Model<
       successCalls: target.successCalls + source.successCalls,
       totalDuration: (target.totalDuration || 0) + (source.totalDuration || 0),
       avgDuration: 0,
+      totalTtfb: (target.totalTtfb || 0) + (source.totalTtfb || 0),
+      totalProviderTtfb: (target.totalProviderTtfb || 0) + (source.totalProviderTtfb || 0),
       byType: {},
     };
 
     if (merged.successCalls > 0 && merged.totalDuration) {
       merged.avgDuration = Math.round((merged.totalDuration / merged.successCalls) * 10) / 10;
+    }
+
+    if (merged.successCalls > 0 && merged.totalTtfb) {
+      merged.avgTtfb = Math.round((merged.totalTtfb / merged.successCalls) * 10) / 10;
+    }
+
+    if (merged.successCalls > 0 && merged.totalProviderTtfb) {
+      merged.avgProviderTtfb = Math.round((merged.totalProviderTtfb / merged.successCalls) * 10) / 10;
     }
 
     return merged;
@@ -467,6 +507,28 @@ export default class ModelCallStat extends Model<
         [fn('SUM', literal('CASE WHEN "status" = \'success\' THEN 1 ELSE 0 END')), 'successCalls'],
         [fn('SUM', literal('CASE WHEN "status" = \'success\' THEN "duration" ELSE 0 END')), 'totalDuration'],
         [fn('AVG', literal('CASE WHEN "status" = \'success\' THEN "duration" ELSE NULL END')), 'avgDuration'],
+        [
+          fn('SUM', literal('CASE WHEN "status" = \'success\' AND "ttfb" IS NOT NULL THEN "ttfb" ELSE 0 END')),
+          'totalTtfb',
+        ],
+        [
+          fn('AVG', literal('CASE WHEN "status" = \'success\' AND "ttfb" IS NOT NULL THEN "ttfb" ELSE NULL END')),
+          'avgTtfb',
+        ],
+        [
+          fn(
+            'SUM',
+            literal('CASE WHEN "status" = \'success\' AND "providerTtfb" IS NOT NULL THEN "providerTtfb" ELSE 0 END')
+          ),
+          'totalProviderTtfb',
+        ],
+        [
+          fn(
+            'AVG',
+            literal('CASE WHEN "status" = \'success\' AND "providerTtfb" IS NOT NULL THEN "providerTtfb" ELSE NULL END')
+          ),
+          'avgProviderTtfb',
+        ],
       ],
       where: whereClause,
       group: [bucketExpr as any, 'appDid'],
@@ -481,6 +543,10 @@ export default class ModelCallStat extends Model<
       successCalls: string | number;
       totalDuration: string | number;
       avgDuration: string | number;
+      totalTtfb: string | number;
+      avgTtfb: string | number;
+      totalProviderTtfb: string | number;
+      avgProviderTtfb: string | number;
     }>;
 
     const result = new Map<number, Record<string, DailyStats>>();
@@ -887,6 +953,10 @@ export default class ModelCallStat extends Model<
       successCalls: 0,
       totalDuration: 0,
       avgDuration: 0,
+      totalTtfb: 0,
+      avgTtfb: 0,
+      totalProviderTtfb: 0,
+      avgProviderTtfb: 0,
       byType: {},
     };
   }
@@ -917,6 +987,28 @@ export default class ModelCallStat extends Model<
         [fn('SUM', literal('CASE WHEN "status" = \'success\' THEN 1 ELSE 0 END')), 'successCalls'],
         [fn('SUM', literal('CASE WHEN "status" = \'success\' THEN "duration" ELSE 0 END')), 'totalDuration'],
         [fn('AVG', literal('CASE WHEN "status" = \'success\' THEN "duration" ELSE NULL END')), 'avgDuration'],
+        [
+          fn('SUM', literal('CASE WHEN "status" = \'success\' AND "ttfb" IS NOT NULL THEN "ttfb" ELSE 0 END')),
+          'totalTtfb',
+        ],
+        [
+          fn('AVG', literal('CASE WHEN "status" = \'success\' AND "ttfb" IS NOT NULL THEN "ttfb" ELSE NULL END')),
+          'avgTtfb',
+        ],
+        [
+          fn(
+            'SUM',
+            literal('CASE WHEN "status" = \'success\' AND "providerTtfb" IS NOT NULL THEN "providerTtfb" ELSE 0 END')
+          ),
+          'totalProviderTtfb',
+        ],
+        [
+          fn(
+            'AVG',
+            literal('CASE WHEN "status" = \'success\' AND "providerTtfb" IS NOT NULL THEN "providerTtfb" ELSE NULL END')
+          ),
+          'avgProviderTtfb',
+        ],
       ],
       where: whereClause,
       raw: true,
@@ -963,6 +1055,10 @@ export default class ModelCallStat extends Model<
     successCalls?: string | number;
     totalDuration?: string | number;
     avgDuration?: string | number;
+    totalTtfb?: string | number;
+    avgTtfb?: string | number;
+    totalProviderTtfb?: string | number;
+    avgProviderTtfb?: string | number;
   }): DailyStats {
     const totalUsage = parseInt(String(row.totalUsage ?? '0'), 10);
     const totalCredits = new BigNumber(row.totalCredits || '0').toNumber();
@@ -977,6 +1073,19 @@ export default class ModelCallStat extends Model<
       avgDuration = Math.round((totalDuration / successCalls) * 10) / 10;
     }
 
+    const totalTtfb = row.totalTtfb === undefined ? undefined : parseFloat(String(row.totalTtfb ?? '0'));
+    let avgTtfb: number | undefined;
+    if (row.avgTtfb !== undefined && row.avgTtfb !== null) {
+      avgTtfb = Math.round(parseFloat(String(row.avgTtfb ?? '0')) * 10) / 10;
+    }
+
+    const totalProviderTtfb =
+      row.totalProviderTtfb === undefined ? undefined : parseFloat(String(row.totalProviderTtfb ?? '0'));
+    let avgProviderTtfb: number | undefined;
+    if (row.avgProviderTtfb !== undefined && row.avgProviderTtfb !== null) {
+      avgProviderTtfb = Math.round(parseFloat(String(row.avgProviderTtfb ?? '0')) * 10) / 10;
+    }
+
     return {
       totalUsage,
       totalCredits,
@@ -984,6 +1093,10 @@ export default class ModelCallStat extends Model<
       successCalls,
       totalDuration,
       avgDuration,
+      totalTtfb,
+      avgTtfb,
+      totalProviderTtfb,
+      avgProviderTtfb,
       byType: {},
     };
   }

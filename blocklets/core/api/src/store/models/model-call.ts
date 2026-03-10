@@ -53,6 +53,10 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
 
   declare traceId?: string;
 
+  declare ttfb?: number;
+
+  declare providerTtfb?: number;
+
   public static readonly GENESIS_ATTRIBUTES = {
     id: {
       type: DataTypes.STRING,
@@ -135,6 +139,14 @@ export default class ModelCall extends Model<InferAttributes<ModelCall>, InferCr
     },
     traceId: {
       type: DataTypes.STRING,
+      allowNull: true,
+    },
+    ttfb: {
+      type: DataTypes.DECIMAL(10, 1),
+      allowNull: true,
+    },
+    providerTtfb: {
+      type: DataTypes.DECIMAL(10, 1),
       allowNull: true,
     },
   };
