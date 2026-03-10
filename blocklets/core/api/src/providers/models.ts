@@ -322,14 +322,16 @@ export const getImageModel = async (
 };
 
 const getModelByProviderName = async (provider: string) => {
+  // Normalize provider name to lowercase for matching
+  const normalizedProvider = provider.toLowerCase().replace(/-/g, '');
   const models = availableChatModels();
 
   const m = models.find((m) => {
     if (typeof m.name === 'string') {
-      return m.name.toLowerCase().includes(provider);
+      return m.name.toLowerCase().includes(normalizedProvider);
     }
 
-    return m.name.some((n) => n.toLowerCase().includes(provider));
+    return m.name.some((n) => n.toLowerCase().includes(normalizedProvider));
   });
 
   return m;
@@ -370,14 +372,60 @@ export const checkModelIsValid = async (
   },
   customTestModel?: string
 ) => {
+  // Mask API key for logging (show first 8 and last 4 characters)
+  const maskedApiKey = params.apiKey
+    ? `${params.apiKey.substring(0, 8)}...${params.apiKey.substring(params.apiKey.length - 4)}`
+    : undefined;
+
+  logger.debug('=== checkModelIsValid START ===');
+  logger.debug('Provider name:', providerName);
+  logger.debug('API Key:', maskedApiKey);
+  logger.debug('Base URL:', params.baseURL || '(not set)');
+  logger.debug('Custom test model:', customTestModel || '(using default)');
+  logger.debug('Has access key pair:', !!(params.accessKeyId && params.secretAccessKey));
+  logger.debug('Region:', params.region || '(not set)');
+
   const m = await getModelByProviderName(providerName);
 
   if (m) {
     const testModel = customTestModel || CREDENTIAL_TEST_MODELS[providerName];
-    const model = m.create(testModel ? { ...params, model: testModel } : params);
+    logger.debug('Matched model factory:', typeof m.name === 'string' ? m.name : m.name.join(', '));
+    logger.debug('Test model to use:', testModel);
+
+    const createParams = testModel ? { ...params, model: testModel } : params;
+    logger.debug('Creating model with params:', {
+      hasApiKey: !!createParams.apiKey,
+      apiKey: createParams.apiKey
+        ? `${createParams.apiKey.substring(0, 8)}...${createParams.apiKey.substring(createParams.apiKey.length - 4)}`
+        : '(not set)',
+      baseURL: createParams.baseURL || '(not set)',
+      model: createParams.model || '(not set)',
+    });
+
+    const model = m.create(createParams);
+    logger.debug('Created model instance:', model.name);
+
+    // Try to access the credential to see what the model will actually use
+    try {
+      // eslint-disable-next-line prefer-destructuring
+      const credential = (model as any).credential;
+      if (credential) {
+        logger.debug('Model credential config:', {
+          url: credential.url || '(not set)',
+          apiKey: credential.apiKey
+            ? `${credential.apiKey.substring(0, 8)}...${credential.apiKey.substring(credential.apiKey.length - 4)}`
+            : '(not set)',
+          model: credential.model || '(not set)',
+        });
+      }
+    } catch (e) {
+      logger.debug('Could not access model credential:', e);
+    }
+
+    logger.debug('Invoking model with test message...');
+    await model.invoke({ messages: [{ role: 'user', content: 'Hello, world!' }] });
     logger.info('check chat model is valid model:', model.name);
-    const res = await model.invoke({ messages: [{ role: 'user', content: 'Hello, world!' }] });
-    logger.info('check chat model is valid result:', res);
+    logger.debug('=== checkModelIsValid END ===');
 
     return;
   }
