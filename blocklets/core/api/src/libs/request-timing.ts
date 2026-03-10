@@ -27,19 +27,6 @@ declare global {
   }
 }
 
-const noopTimings: RequestTimings = {
-  start() {},
-  end() {
-    return 0;
-  },
-  getAll() {
-    return {};
-  },
-  elapsed() {
-    return 0;
-  },
-};
-
 export function createRequestTimings(): RequestTimings {
   const entries = new Map<string, TimingEntry>();
   const requestStart = performance.now();
@@ -89,23 +76,17 @@ export function requestTimingMiddleware() {
   const enabled = process.env.ENABLE_SERVER_TIMING === 'true' || process.env.ENABLE_SERVER_TIMING === '1';
 
   return (req: Request, res: Response, next: NextFunction) => {
-    if (!enabled) {
-      req.timings = noopTimings;
-      return next();
-    }
-
     const timings = createRequestTimings();
     req.timings = timings;
 
     // Auto-measure client-facing TTFB: from request arrival to first byte written to client.
-    // This captures the full Hub processing time (session, preChecks, modelSetup/getCredentials,
-    // provider call, etc.) before the client sees any data.
     timings.start('ttfb');
     let firstByteWritten = false;
 
     let timingHeaderWritten = false;
 
     const writeTimingHeader = () => {
+      if (!enabled) return;
       if (timingHeaderWritten || res.headersSent) return;
       timingHeaderWritten = true;
       const all = timings.getAll();
@@ -123,8 +104,6 @@ export function requestTimingMiddleware() {
     };
 
     // Intercept writeHead to inject Server-Timing before headers are flushed.
-    // This is needed because compression() middleware sends headers before
-    // our res.end wrapper runs, making res.headersSent already true.
     const originalWriteHead = res.writeHead as (...args: unknown[]) => Response;
     (res as any).writeHead = function writeHeadWithTiming(this: Response, ...args: unknown[]) {
       writeTimingHeader();
@@ -142,16 +121,18 @@ export function requestTimingMiddleware() {
       markFirstByte();
       writeTimingHeader();
 
-      const route = req.route?.path || req.path;
-      logger.info('request-timing', {
-        method: req.method,
-        route,
-        path: req.path,
-        status: res.statusCode,
-        model: req.body?.model,
-        total: timings.elapsed(),
-        phases: timings.getAll(),
-      });
+      if (enabled) {
+        const route = req.route?.path || req.path;
+        logger.info('request-timing', {
+          method: req.method,
+          route,
+          path: req.path,
+          status: res.statusCode,
+          model: req.body?.model,
+          total: timings.elapsed(),
+          phases: timings.getAll(),
+        });
+      }
 
       return originalEnd.apply(this, args);
     };
