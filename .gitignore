@@ -48,6 +48,6 @@ BREAKING_CHANGE.MD
 pricing-analysis-*.html
 tes.json
 
-# Temporary script dependencies
-scripts/package.json
-scripts/package-lock.json
+# Keep script dependencies for auth and pricing tools
+# scripts/package.json
+# scripts/package-lock.json

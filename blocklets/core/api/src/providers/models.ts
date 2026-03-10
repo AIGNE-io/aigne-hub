@@ -399,7 +399,7 @@ export const checkModelIsValid = async (
         ? `${createParams.apiKey.substring(0, 8)}...${createParams.apiKey.substring(createParams.apiKey.length - 4)}`
         : '(not set)',
       baseURL: createParams.baseURL || '(not set)',
-      model: createParams.model || '(not set)',
+      model: (createParams as any).model || '(not set)',
     });
 
     const model = m.create(createParams);

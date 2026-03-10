@@ -27,6 +27,8 @@ import path from 'path';
 
 import axios from 'axios';
 
+import { buildApiUrl } from './detect-mount-point.mjs';
+
 const LITELLM_API_URL = 'https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json';
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/models';
 
@@ -40,8 +42,8 @@ interface CliOptions {
 
 const ENV_URLS: Record<string, string> = {
   local: '', // Must be provided via --hub-url (dynamic DID address)
-  staging: 'https://staging-hub.aigne.io/app',
-  production: 'https://hub.aigne.io/app',
+  staging: 'https://staging-hub.aigne.io',
+  production: 'https://hub.aigne.io',
 };
 
 async function loadStoredToken(env: string, hubUrl: string): Promise<string | null> {
@@ -123,9 +125,8 @@ async function parseArgs(): Promise<CliOptions> {
 }
 
 function calcDrift(dbValue: number, sourceValue: number): number {
-  const maxVal = Math.max(Math.abs(dbValue), Math.abs(sourceValue));
-  if (maxVal === 0) return 0;
-  return Math.abs(dbValue - sourceValue) / maxVal;
+  if (sourceValue === 0) return dbValue === 0 ? 0 : 1;
+  return Math.abs(dbValue - sourceValue) / Math.abs(sourceValue);
 }
 
 async function fetchDbRates(hubUrl: string, token?: string): Promise<DbRate[]> {
@@ -133,7 +134,9 @@ async function fetchDbRates(hubUrl: string, token?: string): Promise<DbRate[]> {
   if (token) headers.Authorization = `Bearer ${token}`;
 
   try {
-    const res = await axios.get(`${hubUrl}/api/ai-providers/model-rates`, {
+    // Use dynamic mount point detection to build correct API URL
+    const apiUrl = await buildApiUrl(hubUrl, '/api/ai-providers/model-rates');
+    const res = await axios.get(apiUrl, {
       headers,
       timeout: 15000,
       params: { pageSize: 1000 },
@@ -217,6 +220,7 @@ interface ComparisonResult {
   openrouterDrift?: number;
   maxDrift: number;
   exceedsThreshold: boolean;
+  missingUnitCosts: boolean;
   // Pricing sanity check: inputRate/outputRate vs unitCosts
   inputRate?: number;
   outputRate?: number;
@@ -238,8 +242,10 @@ function compare(
     // For OpenRouter provider, the model name already contains provider prefix (e.g., "anthropic/claude-opus-4")
     // For other providers, use "provider/model" format
     const lookupKey = providerName === 'openrouter' ? rate.model : `${providerName}/${rate.model}`;
-    const dbInput = Number(rate.unitCosts?.input ?? rate.inputRate ?? 0);
-    const dbOutput = Number(rate.unitCosts?.output ?? rate.outputRate ?? 0);
+    const hasUnitCosts =
+      rate.unitCosts != null && (Number(rate.unitCosts.input) > 0 || Number(rate.unitCosts.output) > 0);
+    const dbInput = hasUnitCosts ? Number(rate.unitCosts!.input ?? 0) : 0;
+    const dbOutput = hasUnitCosts ? Number(rate.unitCosts!.output ?? 0) : 0;
 
     const ll = litellm.get(lookupKey);
     const or = openrouter.get(lookupKey);
@@ -254,32 +260,37 @@ function compare(
       dbOutput,
       maxDrift: 0,
       exceedsThreshold: false,
+      missingUnitCosts: !hasUnitCosts,
       hasPricingIssue: false,
     };
 
     if (ll) {
-      const inputDrift = calcDrift(dbInput, ll.inputCostPerToken);
-      const outputDrift = calcDrift(dbOutput, ll.outputCostPerToken);
       result.litellmInput = ll.inputCostPerToken;
       result.litellmOutput = ll.outputCostPerToken;
-      result.litellmDrift = Math.max(inputDrift, outputDrift);
-      maxDrift = Math.max(maxDrift, result.litellmDrift);
+      if (!result.missingUnitCosts) {
+        const inputDrift = calcDrift(dbInput, ll.inputCostPerToken);
+        const outputDrift = calcDrift(dbOutput, ll.outputCostPerToken);
+        result.litellmDrift = Math.max(inputDrift, outputDrift);
+        maxDrift = Math.max(maxDrift, result.litellmDrift);
+      }
     }
 
     if (or) {
-      const inputDrift = calcDrift(dbInput, or.inputCostPerToken);
-      const outputDrift = calcDrift(dbOutput, or.outputCostPerToken);
       result.openrouterInput = or.inputCostPerToken;
       result.openrouterOutput = or.outputCostPerToken;
-      result.openrouterDrift = Math.max(inputDrift, outputDrift);
-      maxDrift = Math.max(maxDrift, result.openrouterDrift);
+      if (!result.missingUnitCosts) {
+        const inputDrift = calcDrift(dbInput, or.inputCostPerToken);
+        const outputDrift = calcDrift(dbOutput, or.outputCostPerToken);
+        result.openrouterDrift = Math.max(inputDrift, outputDrift);
+        maxDrift = Math.max(maxDrift, result.openrouterDrift);
+      }
     }
 
     result.maxDrift = maxDrift;
-    result.exceedsThreshold = maxDrift > threshold;
+    result.exceedsThreshold = !result.missingUnitCosts && maxDrift > threshold;
 
-    // Check pricing sanity: inputRate/outputRate vs unitCosts
-    if (rate.unitCosts && (rate.inputRate || rate.outputRate)) {
+    // Check pricing sanity: inputRate/outputRate vs unitCosts (skip if unitCosts missing)
+    if (hasUnitCosts && (rate.inputRate || rate.outputRate)) {
       const unitInputCost = Number(rate.unitCosts.input);
       const unitOutputCost = Number(rate.unitCosts.output);
       const inputRate = Number(rate.inputRate ?? 0);
@@ -365,7 +376,15 @@ function printTable(results: ComparisonResult[], threshold: number): void {
     }
   }
 
-  console.log(`\n✓ ${ok.length} model(s) within threshold`);
+  const missingCosts = results.filter((r) => r.missingUnitCosts);
+  if (missingCosts.length > 0) {
+    console.log(`\n⚠ ${missingCosts.length} model(s) missing unitCosts (drift check skipped):`);
+    for (const r of missingCosts) {
+      console.log(`  ${r.provider}/${r.model}`);
+    }
+  }
+
+  console.log(`\n✓ ${ok.length - missingCosts.length} model(s) within threshold`);
   console.log(`Total: ${results.length} model(s) checked\n`);
 
   // Check for pricing issues (rate < cost)
