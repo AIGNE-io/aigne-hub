@@ -39,3 +39,15 @@ node-compile-cache
 
 # Breaking change documentation
 BREAKING_CHANGE.MD
+
+# Claude Code temporary files (keep .claude/skills/ for project-specific skills)
+.claude/*
+!.claude/skills/
+
+# Generated analysis reports
+pricing-analysis-*.html
+tes.json
+
+# Temporary script dependencies
+scripts/package.json
+scripts/package-lock.json
