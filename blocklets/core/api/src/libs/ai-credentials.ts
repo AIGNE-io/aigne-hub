@@ -21,6 +21,7 @@ const checkCredentials = async (credentialId: string, providerId: string, testMo
 
   const params: {
     apiKey?: string;
+    baseURL?: string;
     accessKeyId?: string;
     secretAccessKey?: string;
     region?: string;
@@ -31,9 +32,15 @@ const checkCredentials = async (credentialId: string, providerId: string, testMo
   } else if (credential.credentialType === 'access_key_pair') {
     params.accessKeyId = value.access_key_id;
     params.secretAccessKey = value.secret_access_key;
-    if (provider.region) {
-      params.region = provider.region;
-    }
+  }
+
+  // Add provider baseURL and region
+  if (provider.baseUrl) {
+    params.baseURL = provider.baseUrl;
+  }
+
+  if (provider.region) {
+    params.region = provider.region;
   }
 
   await checkModelIsValid(provider.name, params, testModel);
