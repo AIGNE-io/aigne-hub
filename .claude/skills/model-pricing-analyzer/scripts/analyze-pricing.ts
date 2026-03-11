@@ -74,10 +74,22 @@ interface DbRate {
 }
 
 interface ExternalRate {
-  inputCostPerToken: number;
-  outputCostPerToken: number;
+  // Token (chatCompletion / embedding)
+  inputCostPerToken?: number;
+  outputCostPerToken?: number;
   cacheWriteCostPerToken?: number;
   cacheReadCostPerToken?: number;
+  // Image (imageGeneration)
+  outputCostPerImage?: number;
+  inputCostPerImage?: number;
+  inputCostPerImageToken?: number;
+  outputCostPerImageToken?: number;
+  // Video
+  outputCostPerVideoPerSecond?: number;
+  // Tiered pricing (above N k tokens)
+  tieredPricing?: { threshold: string; input?: number; output?: number }[];
+  // Resolution variant tiers (e.g. dall-e quality/size combos)
+  resolutionTiers?: { quality: string; size: string; costPerImage: number }[];
 }
 
 async function parseArgs(): Promise<CliOptions> {
@@ -247,43 +259,141 @@ function normalizeLiteLLMProvider(litellmProvider: string): string | undefined {
 
 async function fetchLiteLLM(): Promise<Map<string, ExternalRate>> {
   const map = new Map<string, ExternalRate>();
+  // Collect resolution variant entries to merge into base models later
+  const resolutionVariants = new Map<string, { quality: string; size: string; costPerImage: number }[]>();
+
   try {
     const res = await axios.get(LITELLM_API_URL, { timeout: 30000 });
     const data = res.data || {};
     for (const [key, val] of Object.entries(data) as [string, any][]) {
       if (key === 'sample_spec') continue;
-      if (val.input_cost_per_token !== undefined && val.output_cost_per_token !== undefined) {
-        const rate: ExternalRate = {
-          inputCostPerToken: val.input_cost_per_token,
-          outputCostPerToken: val.output_cost_per_token,
-          cacheWriteCostPerToken: val.cache_creation_input_token_cost ?? undefined,
-          cacheReadCostPerToken: val.cache_read_input_token_cost ?? undefined,
-        };
 
-        // Extract provider prefix and model name
-        const litellmProvider = val.litellm_provider || '';
-        const parts = key.split('/');
-        const modelName = parts.length > 1 ? parts.slice(1).join('/') : key;
-
-        // Store under original litellm_provider key
-        map.set(`${litellmProvider}/${modelName}`, rate);
-
-        // Also store under normalized DB provider name (e.g., gemini → google)
-        const normalizedProvider = normalizeLiteLLMProvider(litellmProvider);
-        if (normalizedProvider && normalizedProvider !== litellmProvider) {
-          const normalizedKey = `${normalizedProvider}/${modelName}`;
-          // Don't overwrite if already exists (prefer direct provider match)
-          if (!map.has(normalizedKey)) {
-            map.set(normalizedKey, rate);
-          }
+      // 1. Resolution variant keys (e.g., "high/1024-x-1024/gpt-image-1", "hd/1024-x-1792/dall-e-3")
+      const resMatch = key.match(/^(?:azure\/)?(\w+)\/([\dx-]+)\/(.+)$/);
+      if (resMatch && val.mode === 'image_generation') {
+        const [, quality, sizeRaw, baseModel] = resMatch;
+        const size = sizeRaw.replace(/-/g, '');
+        const cost =
+          (val.input_cost_per_image ?? val.output_cost_per_image ?? val.input_cost_per_pixel)
+            ? (val.input_cost_per_pixel || 0) *
+              sizeRaw.split('-x-').reduce((a: number, b: string) => a * parseInt(b), 1)
+            : undefined;
+        if (cost !== undefined) {
+          const litellmProvider = val.litellm_provider || '';
+          const normalizedProvider = normalizeLiteLLMProvider(litellmProvider) || litellmProvider;
+          const baseKey = `${normalizedProvider}/${baseModel}`;
+          if (!resolutionVariants.has(baseKey)) resolutionVariants.set(baseKey, []);
+          resolutionVariants.get(baseKey)!.push({ quality, size, costPerImage: cost });
         }
+        continue;
+      }
 
-        // For openrouter entries, also store the full key (openrouter/provider/model)
-        if (litellmProvider === 'openrouter' && key.startsWith('openrouter/')) {
-          map.set(key, rate);
+      // Build rate from all available pricing fields
+      let hasAnyPricing = false;
+      const rate: ExternalRate = {};
+
+      // 2. Token pricing (chatCompletion / embedding)
+      if (val.input_cost_per_token !== undefined) {
+        rate.inputCostPerToken = val.input_cost_per_token;
+        hasAnyPricing = true;
+      }
+      if (val.output_cost_per_token !== undefined) {
+        rate.outputCostPerToken = val.output_cost_per_token;
+        hasAnyPricing = true;
+      }
+      if (val.cache_creation_input_token_cost !== undefined) {
+        rate.cacheWriteCostPerToken = val.cache_creation_input_token_cost;
+      }
+      if (val.cache_read_input_token_cost !== undefined) {
+        rate.cacheReadCostPerToken = val.cache_read_input_token_cost;
+      }
+
+      // 3. Image pricing
+      if (val.output_cost_per_image !== undefined) {
+        rate.outputCostPerImage = val.output_cost_per_image;
+        hasAnyPricing = true;
+      }
+      if (val.input_cost_per_image !== undefined) {
+        rate.inputCostPerImage = val.input_cost_per_image;
+        hasAnyPricing = true;
+      }
+      if (val.input_cost_per_image_token !== undefined) {
+        rate.inputCostPerImageToken = val.input_cost_per_image_token;
+        hasAnyPricing = true;
+      }
+      if (val.output_cost_per_image_token !== undefined) {
+        rate.outputCostPerImageToken = val.output_cost_per_image_token;
+        hasAnyPricing = true;
+      }
+
+      // 4. Video pricing
+      if (val.output_cost_per_video_per_second !== undefined) {
+        rate.outputCostPerVideoPerSecond = val.output_cost_per_video_per_second;
+        hasAnyPricing = true;
+      } else if (val.output_cost_per_second !== undefined && val.mode === 'video_generation') {
+        rate.outputCostPerVideoPerSecond = val.output_cost_per_second;
+        hasAnyPricing = true;
+      }
+
+      // 5. Tiered pricing (above N k tokens thresholds)
+      const tiers: { threshold: string; input?: number; output?: number }[] = [];
+      for (const tierKey of Object.keys(val)) {
+        const tierMatch = tierKey.match(/^(input|output)_cost_per_token_above_(\d+k)_tokens$/);
+        if (tierMatch) {
+          const [, direction, threshold] = tierMatch;
+          let existing = tiers.find((t) => t.threshold === threshold);
+          if (!existing) {
+            existing = { threshold };
+            tiers.push(existing);
+          }
+          if (direction === 'input') existing.input = val[tierKey];
+          else existing.output = val[tierKey];
+        }
+      }
+      if (tiers.length > 0) {
+        rate.tieredPricing = tiers;
+      }
+
+      if (!hasAnyPricing) continue;
+
+      // Extract provider prefix and model name
+      const litellmProvider = val.litellm_provider || '';
+      const parts = key.split('/');
+      const modelName = parts.length > 1 ? parts.slice(1).join('/') : key;
+
+      // Store under original litellm_provider key
+      map.set(`${litellmProvider}/${modelName}`, rate);
+
+      // Also store under normalized DB provider name (e.g., gemini → google)
+      const normalizedProvider = normalizeLiteLLMProvider(litellmProvider);
+      if (normalizedProvider && normalizedProvider !== litellmProvider) {
+        const normalizedKey = `${normalizedProvider}/${modelName}`;
+        // Don't overwrite if already exists (prefer direct provider match)
+        if (!map.has(normalizedKey)) {
+          map.set(normalizedKey, rate);
+        }
+      }
+
+      // For openrouter entries, also store the full key (openrouter/provider/model)
+      if (litellmProvider === 'openrouter' && key.startsWith('openrouter/')) {
+        map.set(key, rate);
+      }
+    }
+
+    // Merge resolution variants into base model entries
+    for (const [baseKey, variants] of resolutionVariants) {
+      const existing = map.get(baseKey);
+      if (existing) {
+        existing.resolutionTiers = variants;
+      }
+      // Also try without provider prefix normalization
+      for (const [k, v] of map) {
+        if (k.endsWith(`/${baseKey.split('/').pop()}`) && !v.resolutionTiers) {
+          v.resolutionTiers = variants;
         }
       }
     }
+
     console.error(`Fetched ${map.size} models from LiteLLM`);
   } catch (err: any) {
     console.error(`Failed to fetch LiteLLM data: ${err.message}`);
@@ -623,6 +733,64 @@ interface ComparisonResult {
   inputRateIssue?: number; // Negative = loss (rate < cost)
   outputRateIssue?: number; // Negative = loss (rate < cost)
   hasPricingIssue: boolean;
+  // Image/video pricing from LiteLLM (same-unit as DB)
+  litellmOutputPerImage?: number;
+  litellmOutputPerSecond?: number;
+  // Tiered / resolution variant details
+  resolutionTiers?: { quality: string; size: string; costPerImage: number }[];
+  tieredPricing?: { threshold: string; input?: number; output?: number }[];
+  // Best cost source (for simplified report)
+  bestCostInput?: number;
+  bestCostOutput?: number;
+  bestCostSource?: 'provider-page' | 'openrouter' | 'litellm';
+  bestCostSourceLabel?: string; // "官方" / "OpenRouter" / "LiteLLM"
+  bestCostUrl?: string;
+  inputMargin?: number; // (售价 - 成本) / 成本 × 100
+  outputMargin?: number;
+}
+
+function pickBestCost(result: ComparisonResult): void {
+  // Priority: provider-page > openrouter > litellm
+  if (result.providerPageInput !== undefined && result.providerPageOutput !== undefined) {
+    result.bestCostInput = result.providerPageInput;
+    result.bestCostOutput = result.providerPageOutput;
+    result.bestCostSource = 'provider-page';
+    result.bestCostSourceLabel = '官方';
+    result.bestCostUrl = result.providerPageUrl;
+  } else if (result.openrouterInput !== undefined && result.openrouterOutput !== undefined) {
+    result.bestCostInput = result.openrouterInput;
+    result.bestCostOutput = result.openrouterOutput;
+    result.bestCostSource = 'openrouter';
+    result.bestCostSourceLabel = 'OpenRouter';
+  } else if (
+    result.pricingUnit === 'per-token' &&
+    result.litellmInput !== undefined &&
+    result.litellmOutput !== undefined
+  ) {
+    result.bestCostInput = result.litellmInput;
+    result.bestCostOutput = result.litellmOutput;
+    result.bestCostSource = 'litellm';
+    result.bestCostSourceLabel = 'LiteLLM';
+  } else if (result.pricingUnit === 'per-image' && result.litellmOutputPerImage !== undefined) {
+    // Image models: use per-image cost from LiteLLM
+    result.bestCostOutput = result.litellmOutputPerImage;
+    if (result.litellmInput !== undefined) result.bestCostInput = result.litellmInput;
+    result.bestCostSource = 'litellm';
+    result.bestCostSourceLabel = 'LiteLLM';
+  } else if (result.pricingUnit === 'per-second' && result.litellmOutputPerSecond !== undefined) {
+    // Video models: use per-second cost from LiteLLM
+    result.bestCostOutput = result.litellmOutputPerSecond;
+    result.bestCostSource = 'litellm';
+    result.bestCostSourceLabel = 'LiteLLM';
+  }
+
+  // Calculate margin: (售价 - 成本) / 成本 × 100
+  if (result.bestCostInput !== undefined && result.inputRate !== undefined && result.bestCostInput > 0) {
+    result.inputMargin = ((result.inputRate - result.bestCostInput) / result.bestCostInput) * 100;
+  }
+  if (result.bestCostOutput !== undefined && result.outputRate !== undefined && result.bestCostOutput > 0) {
+    result.outputMargin = ((result.outputRate - result.bestCostOutput) / result.bestCostOutput) * 100;
+  }
 }
 
 function compare(
@@ -690,20 +858,50 @@ function compare(
     const isPerUnitPricing = pricingUnit !== 'per-token';
 
     if (ll) {
-      const inputDrift = calcDrift(dbInput, ll.inputCostPerToken);
       result.litellmInput = ll.inputCostPerToken;
       result.litellmOutput = ll.outputCostPerToken;
-      if (isPerUnitPricing) {
-        // Only compare input (text prompt tokens); output is per-image vs per-token — incomparable
-        result.litellmDrift = inputDrift;
+
+      // Attach tiered/resolution data
+      if (ll.tieredPricing) result.tieredPricing = ll.tieredPricing;
+      if (ll.resolutionTiers) result.resolutionTiers = ll.resolutionTiers;
+
+      if (pricingUnit === 'per-image') {
+        // Image models: compare output per-image if available
+        const llOutputPerImage = ll.outputCostPerImage;
+        if (llOutputPerImage !== undefined) {
+          result.litellmOutputPerImage = llOutputPerImage;
+          const outputDrift = calcDrift(dbOutput, llOutputPerImage);
+          // Also compare input tokens if both sides have data
+          const inputDrift =
+            ll.inputCostPerToken !== undefined && dbInput > 0 ? calcDrift(dbInput, ll.inputCostPerToken) : 0;
+          result.litellmDrift = Math.max(inputDrift, outputDrift);
+        } else {
+          // Fallback: only compare input tokens
+          const inputDrift = ll.inputCostPerToken !== undefined ? calcDrift(dbInput, ll.inputCostPerToken) : 0;
+          result.litellmDrift = inputDrift;
+        }
+      } else if (pricingUnit === 'per-second') {
+        // Video models: compare output per-second if available
+        const llOutputPerSecond = ll.outputCostPerVideoPerSecond;
+        if (llOutputPerSecond !== undefined) {
+          result.litellmOutputPerSecond = llOutputPerSecond;
+          const outputDrift = calcDrift(dbOutput, llOutputPerSecond);
+          result.litellmDrift = outputDrift;
+        } else {
+          result.litellmDrift = 0;
+        }
       } else {
-        const outputDrift = calcDrift(dbOutput, ll.outputCostPerToken);
+        // Token models: original logic
+        const inputDrift = ll.inputCostPerToken !== undefined ? calcDrift(dbInput, ll.inputCostPerToken) : 0;
+        const outputDrift = ll.outputCostPerToken !== undefined ? calcDrift(dbOutput, ll.outputCostPerToken) : 0;
         result.litellmDrift = Math.max(inputDrift, outputDrift);
       }
-      maxDrift = Math.max(maxDrift, result.litellmDrift);
+      if (result.litellmDrift !== undefined) {
+        maxDrift = Math.max(maxDrift, result.litellmDrift);
+      }
     }
 
-    if (or) {
+    if (or && or.inputCostPerToken !== undefined && or.outputCostPerToken !== undefined) {
       const inputDrift = calcDrift(dbInput, or.inputCostPerToken);
       result.openrouterInput = or.inputCostPerToken;
       result.openrouterOutput = or.outputCostPerToken;
@@ -787,6 +985,7 @@ function compare(
       result.hasPricingIssue = false;
     }
 
+    pickBestCost(result);
     results.push(result);
   }
 
