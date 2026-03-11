@@ -8,7 +8,7 @@ import { Area, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip,
 
 import type { ProjectGroupedTrend, ProjectTrendSummary } from '../../pages/customer/hooks';
 
-type ProjectUsageMetric = 'credits' | 'usage' | 'requests' | 'avgDuration';
+type ProjectUsageMetric = 'credits' | 'usage' | 'requests' | 'avgDuration' | 'avgTtfb';
 
 interface ProjectUsageChartsProps {
   projects?: ProjectTrendSummary[];
@@ -48,7 +48,7 @@ function CustomTooltip({ active = false, payload = [], label = 0, metric, granul
   const formatValue = (value: number) => {
     if (metric === 'credits') return `${creditPrefix}${formatNumber(value)}`;
     if (metric === 'requests') return formatNumber(value, 0, true);
-    if (metric === 'avgDuration') return `${Number(value).toFixed(1)}s`;
+    if (metric === 'avgDuration' || metric === 'avgTtfb') return `${Number(value).toFixed(1)}s`;
     return formatNumber(value, 0, true);
   };
 
@@ -76,7 +76,9 @@ function CustomTooltip({ active = false, payload = [], label = 0, metric, granul
         ? t('analytics.totalRequests')
         : metric === 'avgDuration'
           ? t('analytics.avgDuration')
-          : t('analytics.totalUsage');
+          : metric === 'avgTtfb'
+            ? t('analytics.avgTtfb')
+            : t('analytics.totalUsage');
 
   return (
     <div
@@ -180,7 +182,9 @@ export function ProjectUsageCharts({
             ? stats?.totalCalls
             : metric === 'avgDuration'
               ? stats?.avgDuration
-              : stats?.totalUsage;
+              : metric === 'avgTtfb'
+                ? stats?.avgTtfb
+                : stats?.totalUsage;
 
       const comparisonValue =
         metric === 'credits'
@@ -189,7 +193,9 @@ export function ProjectUsageCharts({
             ? comparisonStats?.totalCalls
             : metric === 'avgDuration'
               ? comparisonStats?.avgDuration
-              : comparisonStats?.totalUsage;
+              : metric === 'avgTtfb'
+                ? comparisonStats?.avgTtfb
+                : comparisonStats?.totalUsage;
 
       row[projectKey] = value || 0;
       if (hasComparison) {
@@ -247,7 +253,7 @@ export function ProjectUsageCharts({
               key={projectKey}
               type="monotone"
               dataKey={projectKey}
-              stackId={metric === 'avgDuration' ? undefined : 'projects'}
+              stackId={metric === 'avgDuration' || metric === 'avgTtfb' ? undefined : 'projects'}
               stroke={color}
               fill={alpha(color, 0.2)}
               strokeWidth={1.5}

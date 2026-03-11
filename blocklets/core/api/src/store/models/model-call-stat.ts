@@ -268,7 +268,14 @@ export default class ModelCallStat extends Model<
       timestamp: number;
       byProject: Record<
         string,
-        { totalUsage: number; totalCredits: number; totalCalls: number; successCalls: number; avgDuration: number }
+        {
+          totalUsage: number;
+          totalCredits: number;
+          totalCalls: number;
+          successCalls: number;
+          avgDuration: number;
+          avgTtfb: number;
+        }
       >;
     }>;
     granularity: 'hour' | 'day';
@@ -312,7 +319,14 @@ export default class ModelCallStat extends Model<
     const trends = trendBuckets.map(({ timestamp, byProject }) => {
       const normalizedByProject: Record<
         string,
-        { totalUsage: number; totalCredits: number; totalCalls: number; successCalls: number; avgDuration: number }
+        {
+          totalUsage: number;
+          totalCredits: number;
+          totalCalls: number;
+          successCalls: number;
+          avgDuration: number;
+          avgTtfb: number;
+        }
       > = {};
 
       Object.entries(byProject).forEach(([appDidKey, stats]) => {
@@ -322,6 +336,7 @@ export default class ModelCallStat extends Model<
           totalCalls: stats.totalCalls,
           successCalls: stats.successCalls,
           avgDuration: stats.avgDuration || 0,
+          avgTtfb: stats.avgTtfb ? Math.round((stats.avgTtfb / 1000) * 10) / 10 : 0,
         };
       });
 
@@ -1015,7 +1030,15 @@ export default class ModelCallStat extends Model<
     })) as any[];
 
     const totalRow = totalRows[0] || {};
-    return ModelCallStat.buildStatsFromAggregateRow(totalRow);
+    const stats = ModelCallStat.buildStatsFromAggregateRow(totalRow);
+
+    // Compute TTFB percentiles from individual rows (SQLite lacks PERCENTILE_CONT)
+    if (stats.avgTtfb || stats.avgProviderTtfb) {
+      const percentiles = await ModelCallStat.getTtfbPercentiles(whereClause);
+      Object.assign(stats, percentiles);
+    }
+
+    return stats;
   }
 
   private static getTimezoneOffsetSeconds(timezoneOffset?: number): number {
@@ -1098,6 +1121,41 @@ export default class ModelCallStat extends Model<
       totalProviderTtfb,
       avgProviderTtfb,
       byType: {},
+    };
+  }
+
+  private static computePercentile(sortedValues: number[], p: number): number | undefined {
+    const len = sortedValues.length;
+    if (len === 0) return undefined;
+    const index = (p / 100) * (len - 1);
+    const lower = Math.floor(index);
+    const upper = Math.ceil(index);
+    if (lower === upper) return Math.round(sortedValues[lower]! * 10) / 10;
+    const weight = index - lower;
+    return Math.round((sortedValues[lower]! * (1 - weight) + sortedValues[upper]! * weight) * 10) / 10;
+  }
+
+  private static async getTtfbPercentiles(
+    whereClause: any
+  ): Promise<{ p50Ttfb?: number; p95Ttfb?: number; p50ProviderTtfb?: number; p95ProviderTtfb?: number }> {
+    const rows = (await ModelCall.findAll({
+      attributes: ['ttfb', 'providerTtfb'],
+      where: { ...whereClause, status: 'success' },
+      order: [['ttfb', 'ASC']],
+      raw: true,
+    })) as unknown as Array<{ ttfb: number | null; providerTtfb: number | null }>;
+
+    const ttfbValues = rows.map((r) => r.ttfb).filter((v): v is number => v != null);
+    const providerTtfbValues = rows
+      .map((r) => r.providerTtfb)
+      .filter((v): v is number => v != null)
+      .sort((a, b) => a - b);
+
+    return {
+      p50Ttfb: ModelCallStat.computePercentile(ttfbValues, 50),
+      p95Ttfb: ModelCallStat.computePercentile(ttfbValues, 95),
+      p50ProviderTtfb: ModelCallStat.computePercentile(providerTtfbValues, 50),
+      p95ProviderTtfb: ModelCallStat.computePercentile(providerTtfbValues, 95),
     };
   }
 

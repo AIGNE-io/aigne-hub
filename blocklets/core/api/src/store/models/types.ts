@@ -33,8 +33,12 @@ export interface DailyStats {
   // TTFB metrics
   totalTtfb?: number;
   avgTtfb?: number;
+  p50Ttfb?: number;
+  p95Ttfb?: number;
   totalProviderTtfb?: number;
   avgProviderTtfb?: number;
+  p50ProviderTtfb?: number;
+  p95ProviderTtfb?: number;
 
   byType: Partial<Record<CallType, TypeStats>>;
 }
