@@ -5,9 +5,9 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  '@aigne/aigne-hub': ^1.74.0-beta.8
+  '@aigne/aigne-hub': ^1.74.0-beta.9
   '@aigne/observability-api': ^1.21.0-beta.8
-  '@aigne/openai': ^1.74.0-beta.8
+  '@aigne/openai': ^1.74.0-beta.9
   '@arcblock/did': 1.27.16
   '@arcblock/did-connect-js': 1.27.16
   '@arcblock/did-ext': 1.27.16
@@ -85,17 +85,17 @@ importers:
         specifier: ^1.17.8
         version: 1.17.8
       '@aigne/aigne-hub':
-        specifier: ^1.74.0-beta.8
-        version: 1.74.0-beta.8(@modelcontextprotocol/sdk@1.25.1(hono@4.11.1)(zod@4.2.1))(ws@8.18.3)
+        specifier: ^1.74.0-beta.9
+        version: 1.74.0-beta.9(@modelcontextprotocol/sdk@1.25.1(hono@4.11.1)(zod@4.2.1))(ws@8.18.3)
       '@aigne/model-base':
-        specifier: ^1.74.0-beta.8
-        version: 1.74.0-beta.8
+        specifier: ^1.74.0-beta.9
+        version: 1.74.0-beta.9
       '@aigne/observability-api':
         specifier: ^1.21.0-beta.8
         version: 1.21.0-beta.8(@libsql/client@0.15.15)(bun-types@1.3.4)(sqlite3@5.1.7)
       '@aigne/openai':
-        specifier: ^1.74.0-beta.8
-        version: 1.74.0-beta.8(ws@8.18.3)
+        specifier: ^1.74.0-beta.9
+        version: 1.74.0-beta.9(ws@8.18.3)
       '@arcblock/did':
         specifier: 1.27.16
         version: 1.27.16
@@ -620,44 +620,44 @@ packages:
   '@adobe/css-tools@4.4.4':
     resolution: {integrity: sha512-Elp+iwUx5rN5+Y8xLt5/GRoG20WGoDCQ/1Fb+1LiGtvwbDavuSk0jhD/eZdckHAuzcDzccnkv+rEjyWfRx18gg==}
 
-  '@aigne/aigne-hub@1.74.0-beta.8':
-    resolution: {integrity: sha512-Nyywc1iN4H7b/xGgH6/85Dr3/vkO+pyZM/XNx14bswErwsHECJkRGodQYQyrbpV0YkyIrAVzo9o5TAqDe5oYgg==}
+  '@aigne/aigne-hub@1.74.0-beta.9':
+    resolution: {integrity: sha512-gDN27fsnIO+OKXZqRWGIRk5b395ju8BqDgHpHm9AdAurZQ5t25Yr9dZj/T/QwXr64GoGvukKo2x14H7fVSnhDA==}
 
-  '@aigne/anthropic@1.74.0-beta.8':
-    resolution: {integrity: sha512-rwGIGlbKWg9q/JpWh1LHUkyfG2jgNk3AY30WqWsVH4WSDT+KiNk4NtymWzIxuwhyKNBOLzaNWXmdUxRIbeObcQ==}
+  '@aigne/anthropic@1.74.0-beta.9':
+    resolution: {integrity: sha512-J/0wbqwdgzMoOHKR7/masf6d9gBFnrKUj30d5XN6ZMNr++G7KsT86cqW9G9qA2tZPixg8nWtq9fF+k72tbKHLQ==}
 
-  '@aigne/bedrock@1.74.0-beta.8':
-    resolution: {integrity: sha512-dYL1T73I9wYoVln1ojMmnuGFmPUQ9ns0/Gb5d8eiNbRM6UA4rH0QbCqggqpRwZaWHSdQlIbBQ83Y2ExlpolpsQ==}
+  '@aigne/bedrock@1.74.0-beta.9':
+    resolution: {integrity: sha512-a0Hdttk80xGPHpmWm6pEkhRsq08oQwwpBXkEAnyrHilByQ+mwQBsg2HZF6hSYWrgJMkH1cO/WTBWNA2kvFzfeQ==}
 
-  '@aigne/deepseek@1.74.0-beta.8':
-    resolution: {integrity: sha512-ng6joDPG9i1RqUIgTBeZt1u6E1t4aY+U/a2vDa7uKaCxBCJZsdj/bky5WX1UMH85Qf2P72U+nvXrwjluhheeQw==}
+  '@aigne/deepseek@1.74.0-beta.9':
+    resolution: {integrity: sha512-bN4JRfGVfy+aZYqsE1uWtvHoro6TE2ZLPPuTfiWBsw2/kgzLw4XYbt8a0OPqA5q6LI3j1du425cuDWCTs5G5PA==}
 
-  '@aigne/doubao@1.74.0-beta.8':
-    resolution: {integrity: sha512-yom/4RXQOjGZkw7f8/ws0LUaXDG8lnWtYucxaagYfghyEYvoOafXBn2v7phd0O0ZGgzrHriE9qVkeIhB+JrV+A==}
+  '@aigne/doubao@1.74.0-beta.9':
+    resolution: {integrity: sha512-b41L8K9F4SYtNIF9KCjy0RB4UyQ8f5r4s/WAGSjnoOkyKGQFO1jNwPkoMvh9O2OAbKehxxT4M7DH0tvqV2TQeg==}
 
-  '@aigne/gemini@1.74.0-beta.8':
-    resolution: {integrity: sha512-i+ZZZSR/Klu45QztdzFNrllYknXmeJhtKV2rmff8a+yylEECuPmrd7Ou4xYvimityqEGEZM07kbzV4hc2TeM5A==}
+  '@aigne/gemini@1.74.0-beta.9':
+    resolution: {integrity: sha512-8DH0KptRt/6A524+h/Rrr2IZtKNn0ZiKLxIbqzjlZsmBZgXHORbDyku7kWhaYWxNH64A9w6UBZrC+bNbM7nI3A==}
 
-  '@aigne/ideogram@1.74.0-beta.8':
-    resolution: {integrity: sha512-JRykNbMkbjACT99USHDkR3Sb9iuKhyVYkWjqHSUALCVhMAT0SfjvwIstzoNZ+kdLzhTqFXeoTzm2Edmc1/0ypg==}
+  '@aigne/ideogram@1.74.0-beta.9':
+    resolution: {integrity: sha512-iaM9oqHP0symVUxnjncHbqrgGK7RvfLEWSH1tZq2YTyL6+AFjUOFXYNFDygeo/vlHCReXb6Q8EnlC37cCFc3VQ==}
 
-  '@aigne/model-base@1.74.0-beta.8':
-    resolution: {integrity: sha512-FP9xe/+6Pq7L82l22sacgcqt6/MM/rTkqar46YEBKXwa9AmXZlwqQLk7/KUjX8r3mId3s6HvZlpS86Q4EYFwnw==}
+  '@aigne/model-base@1.74.0-beta.9':
+    resolution: {integrity: sha512-ERSShypYZ1tB7nR036WOIvGwHsGt4sVJOmV/RFn4ar1wywl8xz7Os59HqghCN1IVikJ9nIDcpsYNDWHZMk1GhA==}
 
   '@aigne/observability-api@1.21.0-beta.8':
     resolution: {integrity: sha512-F7pfMNlPCVIVDgs4KyJLeOtZAMkKOs6m2/2ivoGwqAjm0VWcoRjAMVFVgb333ijrlnJwT//sXllUqpmvQE7P9g==}
 
-  '@aigne/ollama@1.74.0-beta.8':
-    resolution: {integrity: sha512-2o5XA8vgcgvLw/f74DBuLIb81104gDqwcNPHRQ3Dz0qCOiMIE3CQOwGeSLuw6kBHS/1NxrdumuAFdxoFNx+n1w==}
+  '@aigne/ollama@1.74.0-beta.9':
+    resolution: {integrity: sha512-2sQ211HIdFDDCvSBQVejm00UWmkrAO0ot9FL3LGaHLoJd6DNKfmSy99xjZV7HFmSA9sAcIBO8Ig/uOvElRuXEg==}
 
-  '@aigne/open-router@1.74.0-beta.8':
-    resolution: {integrity: sha512-NmBjwMlgPEpiX94mBZ0PlDK2UO3TrBjY+IHVwuJvqOnST5nYD99m2Dt9iDdlR3AlApyGxaRxANamluyXAFNhtA==}
+  '@aigne/open-router@1.74.0-beta.9':
+    resolution: {integrity: sha512-i9l+4pSS6biro++YDjDCsWYqHWOtFdD4QEtN/5TTL9bL1/5yhRL37zbl18hC+4dIHi6olQCSNTiQ6IuDk3k6BA==}
 
-  '@aigne/openai@1.74.0-beta.8':
-    resolution: {integrity: sha512-GPh3TH9n4SJL3k15wEKNGTe+7zEry4kyVudRfQT60ZEWOzDGa5xjocRwgtANC8tvKSQ5CzPXNA2wwmRHdOPiKQ==}
+  '@aigne/openai@1.74.0-beta.9':
+    resolution: {integrity: sha512-GG+uNbVCUr+4/vbrA9EwRvyS1HG2OF8G8zQNolAoypwx/wgdIHm9Q7RDDZu/FMhfUFXmT60QIG5kK4U47Gn40g==}
 
-  '@aigne/poe@1.74.0-beta.8':
-    resolution: {integrity: sha512-AuPrpss5vDu3BFf8Meu/X/uOQIN4nZZx/4aUdjA7mW62oj/S6unfMCsuqppUZbxrV76s/RCNzaOKmgXhgYlm/w==}
+  '@aigne/poe@1.74.0-beta.9':
+    resolution: {integrity: sha512-s/cXy98KU3LjrC7GpBdqaeyUyIS+Khl7hM+RRu6mIwnqsOGlii01haDmUKm2vPrPsok3tYzslwimhqipi+/sXg==}
 
   '@aigne/sqlite@0.4.9':
     resolution: {integrity: sha512-1aFFbMt0qD+Rvmzc/e5lrmtLcs/iT8ncTK7jfIu/V+YfNsr5htmfDspgy9+eCy08ad/Ga+cOD+E+vWbUd+c5cQ==}
@@ -666,8 +666,8 @@ packages:
     resolution: {integrity: sha512-28GrlAzaE1RkCQhkBn953gOd0hvCOAlZzjs4R5xPRphyNgZtDf058i2VfGDTyGvcVVkLhhoTy7s85srOM52krQ==}
     hasBin: true
 
-  '@aigne/xai@1.74.0-beta.8':
-    resolution: {integrity: sha512-eAtoacE6Sitqr5HafaI5oV2PEcHrGouHCIfi0BMEwahZftG3X1nJBaEIRlBTUd0v4yg89MwVSIESGzYtwKEJSA==}
+  '@aigne/xai@1.74.0-beta.9':
+    resolution: {integrity: sha512-aSCsFapHbpkmxol1BkbfGr8YYjNOnaf067qOnmava3pz2pMi07NrsrsKHj6/OcPnvUT5rjj9bYqWbTmbjICrgQ==}
 
   '@anthropic-ai/sdk@0.63.1':
     resolution: {integrity: sha512-wMA/Xx5GLO+npV992YKUfsmlI6699XG/jFjCPTf/nsMBfUh3e3KmNiOKuhqSMZibOjoLOlhYc7L4pfLPI8A+RA==}
@@ -10839,20 +10839,20 @@ snapshots:
 
   '@adobe/css-tools@4.4.4': {}
 
-  '@aigne/aigne-hub@1.74.0-beta.8(@modelcontextprotocol/sdk@1.25.1(hono@4.11.1)(zod@4.2.1))(ws@8.18.3)':
+  '@aigne/aigne-hub@1.74.0-beta.9(@modelcontextprotocol/sdk@1.25.1(hono@4.11.1)(zod@4.2.1))(ws@8.18.3)':
     dependencies:
-      '@aigne/anthropic': 1.74.0-beta.8
-      '@aigne/bedrock': 1.74.0-beta.8
-      '@aigne/deepseek': 1.74.0-beta.8(ws@8.18.3)
-      '@aigne/doubao': 1.74.0-beta.8(ws@8.18.3)
-      '@aigne/gemini': 1.74.0-beta.8(@modelcontextprotocol/sdk@1.25.1(hono@4.11.1)(zod@4.2.1))
-      '@aigne/ideogram': 1.74.0-beta.8
-      '@aigne/model-base': 1.74.0-beta.8
-      '@aigne/ollama': 1.74.0-beta.8(ws@8.18.3)
-      '@aigne/open-router': 1.74.0-beta.8(ws@8.18.3)
-      '@aigne/openai': 1.74.0-beta.8(ws@8.18.3)
-      '@aigne/poe': 1.74.0-beta.8(ws@8.18.3)
-      '@aigne/xai': 1.74.0-beta.8(ws@8.18.3)
+      '@aigne/anthropic': 1.74.0-beta.9
+      '@aigne/bedrock': 1.74.0-beta.9
+      '@aigne/deepseek': 1.74.0-beta.9(ws@8.18.3)
+      '@aigne/doubao': 1.74.0-beta.9(ws@8.18.3)
+      '@aigne/gemini': 1.74.0-beta.9(@modelcontextprotocol/sdk@1.25.1(hono@4.11.1)(zod@4.2.1))
+      '@aigne/ideogram': 1.74.0-beta.9
+      '@aigne/model-base': 1.74.0-beta.9
+      '@aigne/ollama': 1.74.0-beta.9(ws@8.18.3)
+      '@aigne/open-router': 1.74.0-beta.9(ws@8.18.3)
+      '@aigne/openai': 1.74.0-beta.9(ws@8.18.3)
+      '@aigne/poe': 1.74.0-beta.9(ws@8.18.3)
+      '@aigne/xai': 1.74.0-beta.9(ws@8.18.3)
       '@smithy/node-http-handler': 4.4.6
       https-proxy-agent: 7.0.6
       ufo: 1.6.1
@@ -10865,17 +10865,17 @@ snapshots:
       - utf-8-validate
       - ws
 
-  '@aigne/anthropic@1.74.0-beta.8':
+  '@aigne/anthropic@1.74.0-beta.9':
     dependencies:
-      '@aigne/model-base': 1.74.0-beta.8
+      '@aigne/model-base': 1.74.0-beta.9
       '@anthropic-ai/sdk': 0.63.1(zod@3.25.76)
       zod: 3.25.76
     transitivePeerDependencies:
       - supports-color
 
-  '@aigne/bedrock@1.74.0-beta.8':
+  '@aigne/bedrock@1.74.0-beta.9':
     dependencies:
-      '@aigne/model-base': 1.74.0-beta.8
+      '@aigne/model-base': 1.74.0-beta.9
       '@aigne/uuid': 13.0.1
       '@aws-sdk/client-bedrock-runtime': 3.953.0
       yaml: 2.8.2
@@ -10884,26 +10884,26 @@ snapshots:
       - aws-crt
       - supports-color
 
-  '@aigne/deepseek@1.74.0-beta.8(ws@8.18.3)':
+  '@aigne/deepseek@1.74.0-beta.9(ws@8.18.3)':
     dependencies:
-      '@aigne/openai': 1.74.0-beta.8(ws@8.18.3)
+      '@aigne/openai': 1.74.0-beta.9(ws@8.18.3)
     transitivePeerDependencies:
       - supports-color
       - ws
 
-  '@aigne/doubao@1.74.0-beta.8(ws@8.18.3)':
+  '@aigne/doubao@1.74.0-beta.9(ws@8.18.3)':
     dependencies:
-      '@aigne/model-base': 1.74.0-beta.8
-      '@aigne/openai': 1.74.0-beta.8(ws@8.18.3)
+      '@aigne/model-base': 1.74.0-beta.9
+      '@aigne/openai': 1.74.0-beta.9(ws@8.18.3)
       ufo: 1.6.1
       zod: 3.25.76
     transitivePeerDependencies:
       - supports-color
       - ws
 
-  '@aigne/gemini@1.74.0-beta.8(@modelcontextprotocol/sdk@1.25.1(hono@4.11.1)(zod@4.2.1))':
+  '@aigne/gemini@1.74.0-beta.9(@modelcontextprotocol/sdk@1.25.1(hono@4.11.1)(zod@4.2.1))':
     dependencies:
-      '@aigne/model-base': 1.74.0-beta.8
+      '@aigne/model-base': 1.74.0-beta.9
       '@aigne/uuid': 13.0.1
       '@google/genai': 1.34.0(@modelcontextprotocol/sdk@1.25.1(hono@4.11.1)(zod@4.2.1))
       yaml: 2.8.2
@@ -10915,15 +10915,15 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@aigne/ideogram@1.74.0-beta.8':
+  '@aigne/ideogram@1.74.0-beta.9':
     dependencies:
-      '@aigne/model-base': 1.74.0-beta.8
+      '@aigne/model-base': 1.74.0-beta.9
       ufo: 1.6.1
       zod: 3.25.67
     transitivePeerDependencies:
       - supports-color
 
-  '@aigne/model-base@1.74.0-beta.8':
+  '@aigne/model-base@1.74.0-beta.9':
     dependencies:
       '@aigne/uuid': 13.0.1
       '@types/debug': 4.1.12
@@ -11004,23 +11004,23 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@aigne/ollama@1.74.0-beta.8(ws@8.18.3)':
+  '@aigne/ollama@1.74.0-beta.9(ws@8.18.3)':
     dependencies:
-      '@aigne/openai': 1.74.0-beta.8(ws@8.18.3)
+      '@aigne/openai': 1.74.0-beta.9(ws@8.18.3)
     transitivePeerDependencies:
       - supports-color
       - ws
 
-  '@aigne/open-router@1.74.0-beta.8(ws@8.18.3)':
+  '@aigne/open-router@1.74.0-beta.9(ws@8.18.3)':
     dependencies:
-      '@aigne/openai': 1.74.0-beta.8(ws@8.18.3)
+      '@aigne/openai': 1.74.0-beta.9(ws@8.18.3)
     transitivePeerDependencies:
       - supports-color
       - ws
 
-  '@aigne/openai@1.74.0-beta.8(ws@8.18.3)':
+  '@aigne/openai@1.74.0-beta.9(ws@8.18.3)':
     dependencies:
-      '@aigne/model-base': 1.74.0-beta.8
+      '@aigne/model-base': 1.74.0-beta.9
       '@aigne/uuid': 13.0.1
       openai: 6.14.0(ws@8.18.3)(zod@3.25.76)
       zod: 3.25.76
@@ -11028,9 +11028,9 @@ snapshots:
       - supports-color
       - ws
 
-  '@aigne/poe@1.74.0-beta.8(ws@8.18.3)':
+  '@aigne/poe@1.74.0-beta.9(ws@8.18.3)':
     dependencies:
-      '@aigne/openai': 1.74.0-beta.8(ws@8.18.3)
+      '@aigne/openai': 1.74.0-beta.9(ws@8.18.3)
     transitivePeerDependencies:
       - supports-color
       - ws
@@ -11074,9 +11074,9 @@ snapshots:
 
   '@aigne/uuid@13.0.1': {}
 
-  '@aigne/xai@1.74.0-beta.8(ws@8.18.3)':
+  '@aigne/xai@1.74.0-beta.9(ws@8.18.3)':
     dependencies:
-      '@aigne/openai': 1.74.0-beta.8(ws@8.18.3)
+      '@aigne/openai': 1.74.0-beta.9(ws@8.18.3)
     transitivePeerDependencies:
       - supports-color
       - ws
