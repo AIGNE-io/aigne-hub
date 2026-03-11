@@ -62,6 +62,7 @@ interface ModelCallItem {
   };
   credits: number;
   duration?: number;
+  ttfb?: number;
   errorReason?: string;
   appDid?: string;
   appInfo?: { appName: string; appDid: string; appLogo?: string; appUrl?: string };
@@ -470,6 +471,22 @@ export function ProjectCallHistory({
                 color: isSlow ? theme.palette.warning.main : 'inherit',
               }}>
               {formatLatency(call.duration)}
+            </Typography>
+          );
+        },
+      },
+    },
+    {
+      name: 'ttfb',
+      label: 'TTFB',
+      align: 'right',
+      options: {
+        customBodyRender: (_value: any, tableMeta: any) => {
+          const call = modelCalls[tableMeta.rowIndex];
+          if (!call) return null;
+          return (
+            <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
+              {formatLatency(call.ttfb != null ? call.ttfb / 1000 : undefined)}
             </Typography>
           );
         },
@@ -955,14 +972,10 @@ export function ProjectCallHistory({
                 selectedCall ? `${creditPrefix}${formatNumber(selectedCall.credits)}` : '-'
               )}
               {renderMetricCard(t('duration'), formatLatency(selectedCall?.duration))}
-            </Box>
-
-            <Box
-              sx={{
-                display: 'grid',
-                gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
-                gap: 2,
-              }}>
+              {renderMetricCard(
+                'TTFB',
+                formatLatency(selectedCall?.ttfb != null ? selectedCall.ttfb / 1000 : undefined)
+              )}
               {renderMetricCard(
                 t('provider'),
                 selectedProvider?.name ? (
