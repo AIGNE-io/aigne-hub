@@ -734,6 +734,7 @@ interface ComparisonResult {
   outputRateIssue?: number; // Negative = loss (rate < cost)
   hasPricingIssue: boolean;
   // Image/video pricing from LiteLLM (same-unit as DB)
+  litellmInputPerImage?: number;
   litellmOutputPerImage?: number;
   litellmOutputPerSecond?: number;
   // Tiered / resolution variant details
@@ -750,38 +751,65 @@ interface ComparisonResult {
 }
 
 function pickBestCost(result: ComparisonResult): void {
-  // Priority: provider-page > openrouter > litellm
-  if (result.providerPageInput !== undefined && result.providerPageOutput !== undefined) {
-    result.bestCostInput = result.providerPageInput;
-    result.bestCostOutput = result.providerPageOutput;
-    result.bestCostSource = 'provider-page';
-    result.bestCostSourceLabel = '官方';
-    result.bestCostUrl = result.providerPageUrl;
-  } else if (result.openrouterInput !== undefined && result.openrouterOutput !== undefined) {
-    result.bestCostInput = result.openrouterInput;
-    result.bestCostOutput = result.openrouterOutput;
-    result.bestCostSource = 'openrouter';
-    result.bestCostSourceLabel = 'OpenRouter';
-  } else if (
-    result.pricingUnit === 'per-token' &&
-    result.litellmInput !== undefined &&
-    result.litellmOutput !== undefined
-  ) {
-    result.bestCostInput = result.litellmInput;
-    result.bestCostOutput = result.litellmOutput;
-    result.bestCostSource = 'litellm';
-    result.bestCostSourceLabel = 'LiteLLM';
-  } else if (result.pricingUnit === 'per-image' && result.litellmOutputPerImage !== undefined) {
-    // Image models: use per-image cost from LiteLLM
-    result.bestCostOutput = result.litellmOutputPerImage;
-    if (result.litellmInput !== undefined) result.bestCostInput = result.litellmInput;
-    result.bestCostSource = 'litellm';
-    result.bestCostSourceLabel = 'LiteLLM';
-  } else if (result.pricingUnit === 'per-second' && result.litellmOutputPerSecond !== undefined) {
-    // Video models: use per-second cost from LiteLLM
-    result.bestCostOutput = result.litellmOutputPerSecond;
-    result.bestCostSource = 'litellm';
-    result.bestCostSourceLabel = 'LiteLLM';
+  if (result.pricingUnit === 'per-image' || result.pricingUnit === 'per-second') {
+    // Image/video models: output MUST be in per-image/per-second unit (not per-token).
+    // Provider page & OpenRouter only provide per-token output prices, which are
+    // incompatible with DB sell prices (per-image / per-second). Use LiteLLM for output.
+    if (result.pricingUnit === 'per-image' && result.resolutionTiers?.length) {
+      // Resolution tiers contain complete tiered info — use highest tier as best cost
+      result.bestCostOutput = Math.max(...result.resolutionTiers.map((t) => t.costPerImage));
+    } else if (result.pricingUnit === 'per-image' && result.litellmOutputPerImage !== undefined) {
+      // Fallback: flat per-image cost from LiteLLM
+      result.bestCostOutput = result.litellmOutputPerImage;
+    } else if (result.pricingUnit === 'per-second' && result.litellmOutputPerSecond !== undefined) {
+      result.bestCostOutput = result.litellmOutputPerSecond;
+    }
+    // Input: for per-image models, prefer per-image input cost from LiteLLM;
+    // otherwise fall back to per-token (provider-page > openrouter > litellm)
+    if (result.pricingUnit === 'per-image' && result.litellmInputPerImage !== undefined) {
+      result.bestCostInput = result.litellmInputPerImage;
+      if (!result.bestCostSource) {
+        result.bestCostSource = 'litellm';
+        result.bestCostSourceLabel = 'LiteLLM';
+      }
+    } else if (result.providerPageInput !== undefined) {
+      result.bestCostInput = result.providerPageInput;
+      result.bestCostSource = 'provider-page';
+      result.bestCostSourceLabel = '官方';
+      result.bestCostUrl = result.providerPageUrl;
+    } else if (result.openrouterInput !== undefined) {
+      result.bestCostInput = result.openrouterInput;
+      result.bestCostSource = 'openrouter';
+      result.bestCostSourceLabel = 'OpenRouter';
+    } else if (result.litellmInput !== undefined) {
+      result.bestCostInput = result.litellmInput;
+      result.bestCostSource = 'litellm';
+      result.bestCostSourceLabel = 'LiteLLM';
+    }
+    // If output came from LiteLLM but source wasn't set yet, mark it
+    if (result.bestCostOutput !== undefined && !result.bestCostSource) {
+      result.bestCostSource = 'litellm';
+      result.bestCostSourceLabel = 'LiteLLM';
+    }
+  } else {
+    // Per-token models: priority provider-page > openrouter > litellm
+    if (result.providerPageInput !== undefined && result.providerPageOutput !== undefined) {
+      result.bestCostInput = result.providerPageInput;
+      result.bestCostOutput = result.providerPageOutput;
+      result.bestCostSource = 'provider-page';
+      result.bestCostSourceLabel = '官方';
+      result.bestCostUrl = result.providerPageUrl;
+    } else if (result.openrouterInput !== undefined && result.openrouterOutput !== undefined) {
+      result.bestCostInput = result.openrouterInput;
+      result.bestCostOutput = result.openrouterOutput;
+      result.bestCostSource = 'openrouter';
+      result.bestCostSourceLabel = 'OpenRouter';
+    } else if (result.litellmInput !== undefined && result.litellmOutput !== undefined) {
+      result.bestCostInput = result.litellmInput;
+      result.bestCostOutput = result.litellmOutput;
+      result.bestCostSource = 'litellm';
+      result.bestCostSourceLabel = 'LiteLLM';
+    }
   }
 
   // Calculate margin: (售价 - 成本) / 成本 × 100
@@ -865,9 +893,30 @@ function compare(
       if (ll.tieredPricing) result.tieredPricing = ll.tieredPricing;
       if (ll.resolutionTiers) result.resolutionTiers = ll.resolutionTiers;
 
+      // Derive resolution tiers for image models that have outputCostPerImageToken
+      // but no explicit resolutionTiers (e.g. Google gemini image models)
+      if (
+        pricingUnit === 'per-image' &&
+        !result.resolutionTiers &&
+        ll.outputCostPerImage != null &&
+        ll.outputCostPerImageToken != null
+      ) {
+        const stdCost = ll.outputCostPerImage;
+        const hiResCost = ll.outputCostPerImageToken * 2000; // 4K images ≈ 2000 tokens (Google docs)
+        if (Math.abs(hiResCost - stdCost) / stdCost > 0.05) {
+          // Only add tiers when 4K price materially differs from standard
+          result.resolutionTiers = [
+            { quality: '1K-2K', size: '', costPerImage: stdCost },
+            { quality: '4K', size: '', costPerImage: hiResCost },
+          ];
+        }
+      }
+
       if (pricingUnit === 'per-image') {
         // Image models: compare output per-image if available
-        const llOutputPerImage = ll.outputCostPerImage;
+        // LiteLLM uses output_cost_per_image (imagen) or input_cost_per_image (dall-e)
+        const llOutputPerImage = ll.outputCostPerImage ?? ll.inputCostPerImage;
+        if (ll.inputCostPerImage !== undefined) result.litellmInputPerImage = ll.inputCostPerImage;
         if (llOutputPerImage !== undefined) {
           result.litellmOutputPerImage = llOutputPerImage;
           const outputDrift = calcDrift(dbOutput, llOutputPerImage);
@@ -879,6 +928,22 @@ function compare(
           // Fallback: only compare input tokens
           const inputDrift = ll.inputCostPerToken !== undefined ? calcDrift(dbInput, ll.inputCostPerToken) : 0;
           result.litellmDrift = inputDrift;
+        }
+        // Derive resolution tiers for models with output_cost_per_image_token but no explicit resolutionTiers
+        // (e.g., Google image models with 1K-2K and 4K pricing tiers)
+        if (!result.resolutionTiers?.length && ll.outputCostPerImageToken && ll.outputCostPerImage) {
+          const tokPerImg = ll.outputCostPerImageToken;
+          // Google documents: 1K-2K images ≈ 1120 tokens, 4K images ≈ 2000 tokens
+          const stdTokens = Math.round(ll.outputCostPerImage / tokPerImg);
+          const hiTokens = Math.round(stdTokens * 1.786); // ~2000 for Google (1120 × 1.786)
+          const stdCost = ll.outputCostPerImage;
+          const hiCost = tokPerImg * hiTokens;
+          if (Math.abs(stdCost - hiCost) > 0.001) {
+            result.resolutionTiers = [
+              { quality: '1K-2K', size: `~${stdTokens}tok`, costPerImage: stdCost },
+              { quality: '4K', size: `~${hiTokens}tok`, costPerImage: hiCost },
+            ];
+          }
         }
       } else if (pricingUnit === 'per-second') {
         // Video models: compare output per-second if available
