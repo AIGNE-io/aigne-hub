@@ -551,6 +551,7 @@ export default flatten({
     projectStats: '项目统计',
     selectProjectToView: '请选择一个项目查看详情',
     avgDuration: '平均时长',
+    avgTtfb: '平均 TTFB',
     p95Duration: 'P95 调用时长',
     callsTrend: '调用量',
     durationTrend: '延时',

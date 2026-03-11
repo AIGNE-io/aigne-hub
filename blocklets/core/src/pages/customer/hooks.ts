@@ -314,6 +314,7 @@ export interface UsageTrend {
   successCalls: number;
   successRate: number;
   avgDuration: number;
+  avgTtfb?: number;
   totalCredits: number;
   totalUsage: number;
 }
@@ -328,6 +329,7 @@ export interface ProjectGroupedTrend {
       totalCalls: number;
       successCalls: number;
       avgDuration: number;
+      avgTtfb?: number;
     }
   >;
 }
@@ -586,6 +588,7 @@ export interface ProjectTrend {
   calls: number;
   successCalls: number;
   avgDuration: number;
+  avgTtfb?: number;
   totalCredits: number;
   totalUsage: number;
 }
