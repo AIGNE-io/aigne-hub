@@ -47,7 +47,7 @@ const PROVIDER_PAGES: Record<string, ProviderPageConfig> = {
               const section = modelSection[0];
               // Match pricing patterns: $5.00 / 1M or $0.150 / 1M
               const prices = section.match(/\$?([\d.]+)\s*\/\s*1M/gi);
-              if (prices && prices.length >= 2) {
+              if (prices && prices.length >= 2 && prices[0] && prices[1]) {
                 const inputPrice = parseFloat(prices[0].replace(/[^0-9.]/g, ''));
                 const outputPrice = parseFloat(prices[1].replace(/[^0-9.]/g, ''));
 
@@ -99,7 +99,7 @@ const PROVIDER_PAGES: Record<string, ProviderPageConfig> = {
               // Match pricing: $X.XX / MTok or per million tokens
               const prices = section.match(/\$?([\d.]+)\s*(?:\/|per)\s*(?:1M|MTok|million)/gi);
 
-              if (prices && prices.length >= 2) {
+              if (prices && prices.length >= 2 && prices[0] && prices[1]) {
                 const inputPrice = parseFloat(prices[0].replace(/[^0-9.]/g, ''));
                 const outputPrice = parseFloat(prices[1].replace(/[^0-9.]/g, ''));
 
@@ -149,7 +149,7 @@ const PROVIDER_PAGES: Record<string, ProviderPageConfig> = {
               // Google uses various formats: "$X / 1 million tokens"
               const prices = section.match(/\$?([\d.]+)\s*(?:\/|per)\s*(?:1\s*million|million|1M)/gi);
 
-              if (prices && prices.length >= 2) {
+              if (prices && prices.length >= 2 && prices[0] && prices[1]) {
                 const inputPrice = parseFloat(prices[0].replace(/[^0-9.]/g, ''));
                 const outputPrice = parseFloat(prices[1].replace(/[^0-9.]/g, ''));
 
@@ -186,7 +186,7 @@ const PROVIDER_PAGES: Record<string, ProviderPageConfig> = {
         const inputMatch = html.match(/1M INPUT TOKENS \(CACHE MISS\)<\/td><td[^>]*>\$?([\d.]+)/i);
         const outputMatch = html.match(/1M OUTPUT TOKENS<\/td><td[^>]*>\$?([\d.]+)/i);
 
-        if (inputMatch && outputMatch) {
+        if (inputMatch?.[1] && outputMatch?.[1]) {
           const inputPerMillion = parseFloat(inputMatch[1]);
           const outputPerMillion = parseFloat(outputMatch[1]);
 
@@ -244,7 +244,7 @@ const PROVIDER_PAGES: Record<string, ProviderPageConfig> = {
               // xAI pricing format: $X.XX per million tokens or /1M
               const prices = section.match(/\$?([\d.]+)\s*(?:\/|per)\s*(?:1M|million)/gi);
 
-              if (prices && prices.length >= 2) {
+              if (prices && prices.length >= 2 && prices[0] && prices[1]) {
                 const inputPrice = parseFloat(prices[0].replace(/[^0-9.]/g, ''));
                 const outputPrice = parseFloat(prices[1].replace(/[^0-9.]/g, ''));
 
