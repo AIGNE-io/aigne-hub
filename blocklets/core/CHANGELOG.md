@@ -1,3 +1,7 @@
+## 0.9.10 (2026-3-11)
+
+- feat: add embedding model support to v2 API
+
 ## 0.9.9 (2026-3-9)
 
 - fix: forward upstream API error status instead of always returning 500

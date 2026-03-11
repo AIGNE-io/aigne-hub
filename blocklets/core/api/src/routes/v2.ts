@@ -1,13 +1,8 @@
-import { AIGNEHubChatModel, findImageModel, findVideoModel, parseModel } from '@aigne/aigne-hub';
+import { AIGNEHubChatModel, findEmbeddingModel, findImageModel, findVideoModel, parseModel } from '@aigne/aigne-hub';
 import type { ChatModelOutput, Message } from '@aigne/model-base';
-import { imageModelInputSchema, videoModelInputSchema } from '@aigne/model-base';
+import { embeddingModelInputSchema, imageModelInputSchema, videoModelInputSchema } from '@aigne/model-base';
 import { getModelNameWithProvider, getOpenAIV2, getReqModel } from '@api/libs/ai-provider';
-import {
-  createRetryHandler,
-  processChatCompletion,
-  processEmbeddings,
-  processImageGeneration,
-} from '@api/libs/ai-routes';
+import { createRetryHandler, processChatCompletion, processImageGeneration } from '@api/libs/ai-routes';
 import { Config, buildUsageWithCredits } from '@api/libs/env';
 import logger from '@api/libs/logger';
 import { HubModelHTTPServer, invokePayloadSchema } from '@api/libs/model-http-server';
@@ -700,7 +695,21 @@ router.post(
     withModelStatus({
       type: 'embedding',
       handler: async (req, res) => {
+        const body = checkArguments('Check embedding payload', invokePayloadSchema, req.body);
+        const input = checkArguments(
+          'Check embedding model input',
+          embeddingModelInputSchema.passthrough(),
+          body.input
+        );
+
         const userDid = req.user?.did;
+        const m = getReqModel(req);
+        if (!m) throw new CustomError(400, 'Model is required for embedding');
+        const { provider, model } = parseModel(m);
+        if (!provider || !model) throw new CustomError(400, `Invalid model format: ${m}, should be {provider}/{model}`);
+
+        const { match: M } = findEmbeddingModel(provider);
+        if (!M) throw new CustomError(400, `Embedding model provider ${provider} not found`);
 
         const rp = getResolvedProvider(req);
 
@@ -709,27 +718,46 @@ router.post(
         await checkModelRateAvailable(rp.modelName, rp.providerId);
         req.timings?.end('preChecks');
 
+        req.timings?.start('getCredentials');
+        const credential = await getProviderCredentials(provider);
+        req.timings?.end('getCredentials');
+
+        if (req.resolvedProvider) {
+          req.resolvedProvider.credentialId = credential.id || '';
+          if (credential.providerId) {
+            req.resolvedProvider.providerId = credential.providerId;
+          }
+        }
+        const modelInstance = M.create(credential);
+
+        logger.info('embedding model with provider', getReqModel(req));
+
         req.timings?.start('aiCall');
-        const usageData = await processEmbeddings(req);
+        const response = await modelInstance.invoke({
+          ...input,
+          modelOptions: { ...input.modelOptions, model },
+        });
         req.timings?.end('aiCall');
 
         req.timings?.start('usage');
-        if (usageData && userDid) {
-          await createUsageAndCompleteModelCall({
+        let aigneHubCredits: number | undefined;
+
+        if (response.usage && userDid) {
+          aigneHubCredits = await createUsageAndCompleteModelCall({
             req,
             type: 'embedding',
-            promptTokens: usageData.promptTokens,
+            promptTokens: response.usage.inputTokens || 0,
             completionTokens: 0,
-            model: usageData.model,
+            model: m,
             userDid: userDid!,
             appId: req.headers['x-aigne-hub-client-did'] as string,
             creditBasedBillingEnabled: Config.creditBasedBillingEnabled,
             additionalMetrics: {
-              totalTokens: usageData.promptTokens,
+              totalTokens: response.usage.inputTokens || 0,
             },
             metadata: {
               endpoint: req.path,
-              inputText: Array.isArray(req.body?.input) ? req.body.input.length : 1,
+              inputText: Array.isArray(input.input) ? input.input.length : 1,
             },
             providerId: req.resolvedProvider?.providerId,
           }).catch((err) => {
@@ -751,7 +779,11 @@ router.post(
         }
         req.timings?.end('usage');
 
-        res.json({ data: usageData?.data });
+        res.json({
+          ...response,
+          usage: { ...response.usage, ...buildUsageWithCredits(aigneHubCredits) },
+          modelWithProvider: getReqModel(req),
+        });
       },
     }),
   ])
