@@ -44,6 +44,7 @@ export interface ModelCall {
   totalUsage: number;
   credits: number;
   duration?: number;
+  ttfb?: number;
   errorReason?: string;
   appDid?: string;
   userDid?: string;
@@ -423,6 +424,21 @@ export function CallHistory({
           return (
             <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
               {formatDuration(call.duration)}
+            </Typography>
+          );
+        },
+      },
+    },
+    {
+      name: 'ttfb',
+      label: 'TTFB',
+      options: {
+        customBodyRender: (_value: any, tableMeta: any) => {
+          const call = modelCalls[tableMeta.rowIndex];
+          if (!call) return null;
+          return (
+            <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
+              {formatDuration(call.ttfb != null ? call.ttfb / 1000 : undefined)}
             </Typography>
           );
         },

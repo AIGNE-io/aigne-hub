@@ -462,6 +462,7 @@ router.get('/projects/calls', user, async (req, res) => {
         'errorReason',
         'appDid',
         'userDid',
+        'ttfb',
       ],
     });
 
@@ -482,6 +483,7 @@ router.get('/projects/calls', user, async (req, res) => {
         errorReason: call.errorReason,
         appDid: call.appDid,
         userDid: call.userDid,
+        ttfb: call.ttfb !== undefined && call.ttfb !== null ? Number(call.ttfb) : null,
       })),
       count: calls.count,
       page,
