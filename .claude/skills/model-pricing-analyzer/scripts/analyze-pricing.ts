@@ -447,7 +447,184 @@ interface ProviderPageConfig {
   extractPricing: (html: string) => ProviderPagePricing[];
 }
 
-// NOTE: OpenAI is excluded — Cloudflare returns 403, cannot scrape
+// OpenAI pricing cache (extracted via browser DOM since Cloudflare blocks direct fetch)
+const OPENAI_PRICING_CACHE_FILE = '/tmp/aigne-openai-pricing-cache.json';
+const OPENAI_PRICING_CACHE_TTL = 60 * 60 * 1000; // 1 hour
+
+interface OpenAIPricingCache {
+  timestamp: number;
+  sourceUrl: string;
+  textModels: Array<{
+    id: string;
+    name: string;
+    inputPerMTok: number;
+    cachedInputPerMTok?: number;
+    outputPerMTok: number;
+    tieredPricing?: { threshold: string; inputPerMTok: number; cachedInputPerMTok?: number; outputPerMTok: number };
+  }>;
+  fineTuningModels?: Array<{
+    id: string;
+    name: string;
+    inputPerMTok: number;
+    cachedInputPerMTok?: number;
+    outputPerMTok: number;
+  }>;
+  legacyModels?: Array<{
+    id: string;
+    name: string;
+    inputPerMTok: number;
+    cachedInputPerMTok?: number;
+    outputPerMTok: number;
+  }>;
+  embeddingModels?: Array<{
+    id: string;
+    name: string;
+    inputPerMTok: number;
+  }>;
+  imageTokenModels?: Array<{
+    id: string;
+    name: string;
+    inputPerMTok: number;
+    cachedInputPerMTok?: number;
+    outputPerMTok: number;
+  }>;
+  imageModels: Array<{
+    id: string;
+    name: string;
+    variants: Array<{ quality: string; size: string; costPerImage: number }>;
+  }>;
+  videoModels: Array<{
+    id: string;
+    name: string;
+    variants: Array<{ resolution: string; costPerSecond: number }>;
+  }>;
+}
+
+async function loadOpenAIPricingCache(): Promise<ProviderPagePricing[]> {
+  try {
+    const data = await fs.readFile(OPENAI_PRICING_CACHE_FILE, 'utf-8');
+    const cache: OpenAIPricingCache = JSON.parse(data);
+
+    // Check TTL
+    if (Date.now() - cache.timestamp > OPENAI_PRICING_CACHE_TTL) {
+      console.error(
+        `⚠️  OpenAI pricing cache expired (age: ${Math.round((Date.now() - cache.timestamp) / 60000)}min). Run browser extraction to refresh.`
+      );
+      return [];
+    }
+
+    const results: ProviderPagePricing[] = [];
+    const url = cache.sourceUrl || 'https://platform.openai.com/docs/pricing';
+
+    // Text models: convert $/1M tokens to per-token
+    for (const m of cache.textModels || []) {
+      // For tiered models, use the base (standard) tier prices
+      results.push({
+        provider: 'openai',
+        model: m.id,
+        inputCostPerToken: m.inputPerMTok / 1e6,
+        outputCostPerToken: m.outputPerMTok / 1e6,
+        url,
+      });
+    }
+
+    // Fine-tuning and legacy models: only if not already covered by a previous section
+    const seenIds = new Set((cache.textModels || []).map((m) => m.id));
+    for (const m of cache.fineTuningModels || []) {
+      if (seenIds.has(m.id)) continue;
+      seenIds.add(m.id);
+      results.push({
+        provider: 'openai',
+        model: m.id,
+        inputCostPerToken: m.inputPerMTok / 1e6,
+        outputCostPerToken: m.outputPerMTok / 1e6,
+        url,
+      });
+    }
+    for (const m of cache.legacyModels || []) {
+      if (seenIds.has(m.id)) continue;
+      seenIds.add(m.id);
+      results.push({
+        provider: 'openai',
+        model: m.id,
+        inputCostPerToken: m.inputPerMTok / 1e6,
+        outputCostPerToken: m.outputPerMTok / 1e6,
+        url,
+      });
+    }
+    // Embedding models (input-only pricing, output = 0)
+    for (const m of cache.embeddingModels || []) {
+      if (seenIds.has(m.id)) continue;
+      seenIds.add(m.id);
+      results.push({
+        provider: 'openai',
+        model: m.id,
+        inputCostPerToken: m.inputPerMTok / 1e6,
+        outputCostPerToken: 0,
+        url,
+      });
+    }
+    // Image token models (input/output per MTok — vision/multimodal pricing)
+    for (const m of cache.imageTokenModels || []) {
+      if (seenIds.has(m.id)) continue;
+      seenIds.add(m.id);
+      results.push({
+        provider: 'openai',
+        model: m.id,
+        inputCostPerToken: m.inputPerMTok / 1e6,
+        outputCostPerToken: m.outputPerMTok / 1e6,
+        url,
+      });
+    }
+
+    // Image models: use medium-quality 1024x1024 as representative per-image price
+    // Store in outputCostPerToken field (compare() handles per-image vs per-token distinction via DB type)
+    for (const m of cache.imageModels || []) {
+      // Find medium/standard quality at 1024x1024 as representative price
+      const representative =
+        m.variants.find((v) => (v.quality === 'medium' || v.quality === 'standard') && v.size === '1024x1024') ||
+        m.variants.find((v) => v.size === '1024x1024') ||
+        m.variants[0];
+      if (representative) {
+        results.push({
+          provider: 'openai',
+          model: m.id,
+          inputCostPerToken: 0, // image models don't have meaningful input token cost
+          outputCostPerToken: representative.costPerImage, // per-image cost stored here
+          url,
+        });
+      }
+    }
+
+    // Video models: use first variant as representative per-second price
+    for (const m of cache.videoModels || []) {
+      const representative = m.variants[0];
+      if (representative) {
+        results.push({
+          provider: 'openai',
+          model: m.id,
+          inputCostPerToken: 0,
+          outputCostPerToken: representative.costPerSecond, // per-second cost stored here
+          url,
+        });
+      }
+    }
+
+    console.error(`Loaded ${results.length} OpenAI models from browser-extracted cache (${OPENAI_PRICING_CACHE_FILE})`);
+    return results;
+  } catch (err: any) {
+    if (err.code === 'ENOENT') {
+      console.error(
+        `⚠️  OpenAI pricing cache not found (${OPENAI_PRICING_CACHE_FILE}). Run browser DOM extraction to create it.`
+      );
+    } else {
+      console.error(`⚠️  Failed to read OpenAI pricing cache: ${err.message}`);
+    }
+    return [];
+  }
+}
+
+// NOTE: OpenAI is excluded from PROVIDER_PAGES (Cloudflare 403) — uses separate browser-extracted cache above
 const PROVIDER_PAGES: Record<string, ProviderPageConfig> = {
   anthropic: {
     url: 'https://docs.anthropic.com/en/docs/about-claude/pricing',
@@ -459,12 +636,20 @@ const PROVIDER_PAGES: Record<string, ProviderPageConfig> = {
       // Display name → DB model names mapping
       // Anthropic pricing table format: Model | Input $/MTok | Cache prices... | Output $/MTok
       // So first $ amount = input, last $ amount = output
+      // Order matters: more specific patterns must come before less specific ones
       const models: Array<{ pattern: RegExp; dbNames: string[] }> = [
         { pattern: /Claude Opus 4\.6/i, dbNames: ['claude-opus-4-6'] },
         { pattern: /Claude Opus 4\.5/i, dbNames: ['claude-opus-4-5'] },
         { pattern: /Claude Opus 4\.1/i, dbNames: ['claude-opus-4-1'] },
+        { pattern: /Claude Opus 4(?![.\d])/i, dbNames: ['claude-opus-4'] },
+        { pattern: /Claude Sonnet 4\.6/i, dbNames: ['claude-sonnet-4-6'] },
         { pattern: /Claude Sonnet 4\.5/i, dbNames: ['claude-sonnet-4-5'] },
+        { pattern: /Claude Sonnet 4(?![.\d])/i, dbNames: ['claude-sonnet-4'] },
+        { pattern: /Claude Sonnet 3\.7/i, dbNames: ['claude-sonnet-3-7'] },
         { pattern: /Claude Haiku 4\.5/i, dbNames: ['claude-haiku-4-5'] },
+        { pattern: /Claude Haiku 3\.5/i, dbNames: ['claude-haiku-3-5'] },
+        { pattern: /Claude Opus 3(?![.\d])/i, dbNames: ['claude-opus-3'] },
+        { pattern: /Claude Haiku 3(?![.\d])/i, dbNames: ['claude-haiku-3'] },
       ];
 
       for (const { pattern, dbNames } of models) {
@@ -476,7 +661,7 @@ const PROVIDER_PAGES: Record<string, ProviderPageConfig> = {
           const startIdx = searchFrom + match.index;
           // Anthropic table: 5 columns per row (Input | 5m Cache | 1h Cache | Cache Hit | Output)
           // Extract exactly the first 5 "$X / MTok" prices after the model name
-          const window = text.substring(startIdx, startIdx + 300);
+          const window = text.substring(startIdx, startIdx + 400);
           const priceRegex = /\$([\d]+(?:\.[\d]+)?)\s*\/\s*MTok/g;
           const prices: number[] = [];
           let priceMatch;
@@ -494,7 +679,7 @@ const PROVIDER_PAGES: Record<string, ProviderPageConfig> = {
                 model: dbName,
                 inputCostPerToken: inputPerMTok / 1e6,
                 outputCostPerToken: outputPerMTok / 1e6,
-                url: 'https://docs.anthropic.com/en/docs/about-claude/pricing',
+                url,
               });
             }
             found = true;
@@ -689,7 +874,15 @@ async function fetchProviderPages(): Promise<Map<string, ProviderPagePricing>> {
     })
   );
 
-  console.error(`Fetched ${totalCount} models from Provider Pages (${Object.keys(PROVIDER_PAGES).length} providers)`);
+  // Load OpenAI pricing from browser-extracted cache (separate from provider page scraping)
+  const openaiModels = await loadOpenAIPricingCache();
+  for (const r of openaiModels) {
+    map.set(`${r.provider}/${r.model}`, r);
+    totalCount++;
+  }
+
+  const providerCount = Object.keys(PROVIDER_PAGES).length + (openaiModels.length > 0 ? 1 : 0);
+  console.error(`Fetched ${totalCount} models from Provider Pages (${providerCount} providers)`);
 
   // Save cache if we got any results
   if (totalCount > 0) {

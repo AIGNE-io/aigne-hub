@@ -109,6 +109,9 @@ const ok = data.filter((m) => !attn.includes(m));
 const driftN = data.filter(hasDrift).length;
 const noN = data.filter(hasNoData).length;
 
+// Collect unique providers (sorted) for filter buttons
+const allProviders = [...new Set(data.map((m) => m.provider))].sort((a, b) => a.localeCompare(b));
+
 let rid = 0;
 
 function buildSection(models) {
@@ -120,7 +123,9 @@ function buildSection(models) {
   // Sort providers alphabetically, then models by name within each provider
   const sortedProvs = Object.entries(g).sort((a, b) => a[0].localeCompare(b[0]));
   for (const [prov, ms] of sortedProvs) {
-    ms.sort((a, b) => a.model.localeCompare(b.model));
+    // Sort by type group (text → image → video → other), then alphabetically
+    const typeOrder = { chatCompletion: 0, embedding: 1, imageGeneration: 2, video: 3 };
+    ms.sort((a, b) => (typeOrder[a.type] ?? 9) - (typeOrder[b.type] ?? 9) || a.model.localeCompare(b.model));
     rows += `<tr class="prow"><td colspan="${COLS}"><strong>${provName(prov)}</strong><span class="pcnt">${ms.length}</span></td></tr>`;
 
     for (const m of ms) {
@@ -370,6 +375,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Noto
 .fb{padding:8px 16px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;cursor:pointer;font-size:13px;transition:all .12s}
 .fb:hover{background:#f7fafc}
 .fb.active{background:#2d3748;color:#fff;border-color:#2d3748}
+.tb-sep{width:1px;height:24px;background:#e2e8f0;margin:0 4px;flex-shrink:0}
+.pb{padding:6px 12px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;cursor:pointer;font-size:12px;transition:all .12s;color:#4a5568}
+.pb:hover{background:#edf2f7;border-color:#a0aec0}
+.pb.active{background:#4c51bf;color:#fff;border-color:#4c51bf}
 
 .sec{background:#fff;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.05);border:1px solid #e2e8f0;margin-bottom:20px;overflow-x:auto}
 .sec-h{padding:16px 24px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;gap:10px}
@@ -492,6 +501,8 @@ table.mt th{padding:11px 14px;text-align:left;font-weight:600;color:#4a5568;font
     <button class="fb" data-f="drift">漂移</button>
     <button class="fb" data-f="no-data">无数据</button>
     <button class="fb" data-f="normal">正常</button>
+    <span class="tb-sep"></span>
+    ${allProviders.map((p) => `<button class="pb" data-p="${p}">${provName(p)}</button>`).join('\n    ')}
   </div>
 
   ${
@@ -523,10 +534,15 @@ document.addEventListener('click',e=>{
 
 // Search & Filter
 const si=document.getElementById('si');
-let cf='all';
+let cf='all',cp='';
 document.querySelectorAll('.fb').forEach(b=>b.addEventListener('click',()=>{
   document.querySelectorAll('.fb').forEach(x=>x.classList.remove('active'));
   b.classList.add('active');cf=b.dataset.f;go();
+}));
+document.querySelectorAll('.pb').forEach(b=>b.addEventListener('click',()=>{
+  if(b.classList.contains('active')){b.classList.remove('active');cp=''}
+  else{document.querySelectorAll('.pb').forEach(x=>x.classList.remove('active'));b.classList.add('active');cp=b.dataset.p}
+  go();
 }));
 si.addEventListener('input',go);
 
@@ -535,7 +551,8 @@ function go(){
   document.querySelectorAll('.r1').forEach(r1=>{
     const s=r1.dataset.search.toLowerCase();
     const st=r1.dataset.status;
-    const vis=(!q||s.includes(q))&&(cf==='all'||st===cf);
+    const prov=s.split('/')[0];
+    const vis=(!q||s.includes(q))&&(cf==='all'||st===cf)&&(!cp||prov===cp);
     r1.classList.toggle('hidden',!vis);
     const r2=r1.nextElementSibling;
     if(r2&&r2.classList.contains('r2')) r2.classList.toggle('hidden',!vis);
