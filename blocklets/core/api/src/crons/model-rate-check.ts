@@ -42,7 +42,11 @@ async function recordDriftHistory(drifted: PriceDiscrepancy[], timestamp: number
     model: d.model,
     type: d.type,
     changeType: 'source_drift' as const,
-    source: d.drifts.litellm ? 'litellm' : d.drifts.openrouter ? 'openrouter' : 'unknown',
+    source: (() => {
+      const sources = Object.entries(d.drifts) as [string, { maxDrift: number }][];
+      if (sources.length === 0) return 'unknown';
+      return sources.reduce((best, cur) => (cur[1].maxDrift > best[1].maxDrift ? cur : best))[0];
+    })(),
     previousUnitCosts: d.dbUnitCosts,
     currentUnitCosts: null,
     previousRates: { inputRate: d.dbInputRate, outputRate: d.dbOutputRate },

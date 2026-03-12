@@ -372,15 +372,10 @@ export const checkModelIsValid = async (
   },
   customTestModel?: string
 ) => {
-  // Mask API key for logging (show first 8 and last 4 characters)
-  const maskedApiKey = params.apiKey
-    ? `${params.apiKey.substring(0, 8)}...${params.apiKey.substring(params.apiKey.length - 4)}`
-    : undefined;
-
   logger.debug('=== checkModelIsValid START ===');
   logger.debug('Provider name:', providerName);
-  logger.debug('API Key:', maskedApiKey);
-  logger.debug('Base URL:', params.baseURL || '(not set)');
+  logger.debug('Has API key:', !!params.apiKey);
+  logger.debug('Has base URL:', !!params.baseURL);
   logger.debug('Custom test model:', customTestModel || '(using default)');
   logger.debug('Has access key pair:', !!(params.accessKeyId && params.secretAccessKey));
   logger.debug('Region:', params.region || '(not set)');
@@ -395,26 +390,21 @@ export const checkModelIsValid = async (
     const createParams = testModel ? { ...params, model: testModel } : params;
     logger.debug('Creating model with params:', {
       hasApiKey: !!createParams.apiKey,
-      apiKey: createParams.apiKey
-        ? `${createParams.apiKey.substring(0, 8)}...${createParams.apiKey.substring(createParams.apiKey.length - 4)}`
-        : '(not set)',
-      baseURL: createParams.baseURL || '(not set)',
+      hasBaseURL: !!createParams.baseURL,
       model: (createParams as any).model || '(not set)',
     });
 
     const model = m.create(createParams);
     logger.debug('Created model instance:', model.name);
 
-    // Try to access the credential to see what the model will actually use
+    // Verify model credential is accessible
     try {
       // eslint-disable-next-line prefer-destructuring
       const credential = (model as any).credential;
       if (credential) {
         logger.debug('Model credential config:', {
-          url: credential.url || '(not set)',
-          apiKey: credential.apiKey
-            ? `${credential.apiKey.substring(0, 8)}...${credential.apiKey.substring(credential.apiKey.length - 4)}`
-            : '(not set)',
+          hasUrl: !!credential.url,
+          hasApiKey: !!credential.apiKey,
           model: credential.model || '(not set)',
         });
       }

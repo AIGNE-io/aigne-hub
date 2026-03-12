@@ -72,8 +72,11 @@ AiModelRate.afterUpdate((instance) => {
         loggerMod.error('Failed to record rate change history', { error: err });
       });
     }
-  } catch {
-    // Silently ignore errors in history recording — it's non-critical
+  } catch (err) {
+    // Lazy import logger to avoid circular deps
+    // eslint-disable-next-line global-require
+    const loggerMod = require('@api/libs/logger').default;
+    loggerMod.warn('afterUpdate history recording failed', { error: err });
   }
 });
 
