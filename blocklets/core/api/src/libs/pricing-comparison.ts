@@ -26,6 +26,7 @@ export interface PriceDiscrepancy {
   drifts: {
     litellm?: { inputDrift: number; outputDrift: number; maxDrift: number };
     openrouter?: { inputDrift: number; outputDrift: number; maxDrift: number };
+    providerPage?: { inputDrift: number; outputDrift: number; maxDrift: number };
   };
   maxDrift: number;
   exceedsThreshold: boolean;
@@ -123,8 +124,12 @@ export async function compareAgainstDbRates(
     const providerName = providerMap.get(rate.providerId) || '';
     const lookupKey = `${providerName}/${rate.model}`;
 
-    const dbInput = Number(rate.unitCosts?.input ?? rate.inputRate ?? 0);
-    const dbOutput = Number(rate.unitCosts?.output ?? rate.outputRate ?? 0);
+    // Only compare when unitCosts is available — inputRate/outputRate are selling prices (with profit),
+    // comparing them against external cost prices would cause systematic false positives
+    if (!rate.unitCosts?.input && !rate.unitCosts?.output) continue;
+
+    const dbInput = Number(rate.unitCosts.input ?? 0);
+    const dbOutput = Number(rate.unitCosts.output ?? 0);
 
     const litellm = litellmMap.get(lookupKey);
     const openrouter = openrouterMap.get(lookupKey);
@@ -147,6 +152,18 @@ export async function compareAgainstDbRates(
       const drift = Math.max(inputDrift, outputDrift);
       drifts.openrouter = { inputDrift, outputDrift, maxDrift: drift };
       maxDrift = Math.max(maxDrift, drift);
+    }
+
+    if (page) {
+      const ppInput = page.inputCostPerToken;
+      const ppOutput = page.outputCostPerToken;
+      if (ppInput != null || ppOutput != null) {
+        const inputDrift = ppInput != null ? calcDrift(dbInput, ppInput) : 0;
+        const outputDrift = ppOutput != null ? calcDrift(dbOutput, ppOutput) : 0;
+        const drift = Math.max(inputDrift, outputDrift);
+        drifts.providerPage = { inputDrift, outputDrift, maxDrift: drift };
+        maxDrift = Math.max(maxDrift, drift);
+      }
     }
 
     // Only report if at least one source has data
