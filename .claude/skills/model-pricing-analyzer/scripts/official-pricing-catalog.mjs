@@ -1106,7 +1106,7 @@ async function scrapeXAI() {
         'python3',
         [
           '-c',
-          `import urllib.request,ssl;c=ssl.create_default_context();c.check_hostname=False;c.verify_mode=ssl.CERT_NONE;r=urllib.request.urlopen(urllib.request.Request('${url}',headers={'User-Agent':'${UA}'}),context=c,timeout=20);print(r.read().decode())`,
+          `import urllib.request;r=urllib.request.urlopen(urllib.request.Request('${url}',headers={'User-Agent':'${UA}'}),timeout=20);print(r.read().decode())`,
         ],
         { timeout: 30000, maxBuffer: 10 * 1024 * 1024 }
       ).toString();
