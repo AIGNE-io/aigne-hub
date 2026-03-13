@@ -1,5 +1,6 @@
 {
   "extends": "../../tsconfig",
+  "exclude": ["api/src/tests/integration"],
   "ts-node": {
     "files": true,
     "require": ["tsconfig-paths/register"],
@@ -13,7 +14,7 @@
       "@app/*": ["./src/*"],
       "@api/*": ["./api/src/*"],
       "@blocklet/aigne-hub": ["../../packages/ai-kit/src"],
-      "@blocklet/aigne-hub/*": ["../../packages/ai-kit/src/*"],
+      "@blocklet/aigne-hub/*": ["../../packages/ai-kit/src/*"]
       // "@aigne/hub": ["../../../aigne-framework/models/aigne-hub/src"],
       // "@aigne/hub/*": ["../../../aigne-framework/models/aigne-hub/src/*"],
       // "@aigne/core": ["../../../aigne-framework/core/src"],

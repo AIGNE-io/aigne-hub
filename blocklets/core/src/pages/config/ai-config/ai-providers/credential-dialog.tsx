@@ -59,6 +59,7 @@ export default function CredentialDialog({ provider, onClose, onCredentialChange
       setLoading(true);
       await api.get(`/api/ai-providers/${provider.id}/credentials/${credential.id}/check`);
       onCredentialChange();
+      Toast.success(t('testConnectionSuccess'));
     } catch (error: any) {
       Toast.error(formatError(error) || t('checkCredentialFailed'));
     } finally {
@@ -262,7 +263,7 @@ export default function CredentialDialog({ provider, onClose, onCredentialChange
                           </Box>
 
                           <Stack direction="row" spacing={1} sx={{ position: 'absolute', right: '-8px', top: '-8px' }}>
-                            {!credential.active && (
+                            <Tooltip title={t('testConnection')}>
                               <IconButton
                                 size="small"
                                 onClick={() => handleCheckCredential(credential)}
@@ -282,7 +283,7 @@ export default function CredentialDialog({ provider, onClose, onCredentialChange
                                 disabled={loading}>
                                 <RefreshIcon className="refresh-icon" />
                               </IconButton>
-                            )}
+                            </Tooltip>
 
                             <IconButton
                               size="small"

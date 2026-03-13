@@ -30,7 +30,7 @@ jobs:
           debug: true
           language: 'zh-CN'
           suggest_pr_title: true
-          disable_review: false
+          disable_review: true
           review_simple_changes: false
           review_comment_lgtm: false
           system_message: |

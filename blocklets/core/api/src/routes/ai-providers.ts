@@ -6,7 +6,7 @@ import logger from '@api/libs/logger';
 import modelRegistry from '@api/libs/model-registry';
 import { ensureAdmin } from '@api/libs/security';
 import { createListParamSchema, getWhereFromKvQuery } from '@api/libs/validate';
-import { checkModelIsValid } from '@api/providers/models';
+import { checkModelIsValid, getDefaultTestModels } from '@api/providers/models';
 import AiCredential, { CredentialValue } from '@api/store/models/ai-credential';
 import AiModelRate from '@api/store/models/ai-model-rate';
 import AiModelStatus from '@api/store/models/ai-model-status';
@@ -108,6 +108,7 @@ const createCredentialSchema = Joi.object({
     )
     .required(),
   credentialType: Joi.string().valid('api_key', 'access_key_pair', 'custom').default('api_key'),
+  testModel: Joi.string().max(100).optional(),
 });
 
 const createModelRateSchema = Joi.object({
@@ -197,6 +198,11 @@ const calculateRate = (unitCost: number, profitMargin: number, creditPrice: numb
       .toFixed(6)
   );
 };
+
+// get default test models for credential validation
+router.get('/test-models', ensureAdmin, (_req, res) => {
+  return res.json(getDefaultTestModels());
+});
 
 // get providers
 router.get('/', user, async (req, res) => {
@@ -343,11 +349,16 @@ router.post('/:providerId/credentials', ensureAdmin, async (req, res) => {
       return res.status(404).json({ error: 'Provider not found' });
     }
 
-    await checkModelIsValid(provider.name, {
-      apiKey: rawValue.credentialType === 'api_key' ? rawValue.value : undefined,
-      accessKeyId: rawValue.credentialType === 'access_key_pair' ? rawValue.value.access_key_id : undefined,
-      secretAccessKey: rawValue.credentialType === 'access_key_pair' ? rawValue.value.secret_access_key : undefined,
-    });
+    await checkModelIsValid(
+      provider.name,
+      {
+        apiKey: rawValue.credentialType === 'api_key' ? rawValue.value : undefined,
+        accessKeyId: rawValue.credentialType === 'access_key_pair' ? rawValue.value.access_key_id : undefined,
+        secretAccessKey: rawValue.credentialType === 'access_key_pair' ? rawValue.value.secret_access_key : undefined,
+        region: provider.region || undefined,
+      },
+      rawValue.testModel
+    );
 
     // 处理凭证值
     let credentialValue: CredentialValue;
@@ -412,11 +423,16 @@ router.put('/:providerId/credentials/:credentialId', ensureAdmin, async (req, re
       return res.status(404).json({ error: 'Provider not found' });
     }
 
-    await checkModelIsValid(provider.name, {
-      apiKey: value.credentialType === 'api_key' ? value.value : undefined,
-      accessKeyId: value.credentialType === 'access_key_pair' ? value.value.access_key_id : undefined,
-      secretAccessKey: value.credentialType === 'access_key_pair' ? value.value.secret_access_key : undefined,
-    });
+    await checkModelIsValid(
+      provider.name,
+      {
+        apiKey: value.credentialType === 'api_key' ? value.value : undefined,
+        accessKeyId: value.credentialType === 'access_key_pair' ? value.value.access_key_id : undefined,
+        secretAccessKey: value.credentialType === 'access_key_pair' ? value.value.secret_access_key : undefined,
+        region: provider.region || undefined,
+      },
+      value.testModel
+    );
 
     // 处理凭证值
     let credentialValue: CredentialValue;
@@ -483,15 +499,53 @@ router.delete('/:providerId/credentials/:credentialId', ensureAdmin, async (req,
   }
 });
 
+// test raw credentials without saving (for pre-submit validation)
+router.post('/:providerId/credentials/test', ensureAdmin, rateLimitMiddleware, async (req, res) => {
+  try {
+    const provider = await AiProvider.findByPk(req.params.providerId);
+    if (!provider) {
+      return res.status(404).json({ error: 'Provider not found' });
+    }
+
+    const { value, credentialType, testModel } = req.body;
+    if (!value) {
+      return res.status(400).json({ error: 'Credential value is required' });
+    }
+
+    const params: {
+      apiKey?: string;
+      accessKeyId?: string;
+      secretAccessKey?: string;
+      region?: string;
+    } = {};
+
+    if (credentialType === 'api_key' && typeof value === 'string') {
+      params.apiKey = value;
+    } else if (credentialType === 'access_key_pair' && typeof value === 'object') {
+      params.accessKeyId = value.access_key_id;
+      params.secretAccessKey = value.secret_access_key;
+      if (provider.region) {
+        params.region = provider.region;
+      }
+    }
+
+    await checkModelIsValid(provider.name, params, testModel);
+    return res.json({ success: true });
+  } catch (err) {
+    return res.status(400).json({ error: 'Invalid credentials', detail: err.message });
+  }
+});
+
 router.get('/:providerId/credentials/:credentialId/check', ensureAdmin, async (req, res) => {
   const { credentialId, providerId } = req.params;
+  const { testModel } = req.query as { testModel?: string };
 
   try {
     if (!credentialId || !providerId) {
       throw new Error('Credential ID and provider ID are required');
     }
 
-    const credential = await checkCredentials(credentialId, providerId);
+    const credential = await checkCredentials(credentialId, providerId, testModel);
     const credentialJson = {
       ...credential.toJSON(),
       displayText: credential.getDisplayText(),

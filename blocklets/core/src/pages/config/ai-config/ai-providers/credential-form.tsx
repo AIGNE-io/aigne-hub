@@ -12,11 +12,14 @@ import {
   MenuItem,
   Select,
   Stack,
+  TextField,
+  Typography,
 } from '@mui/material';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 
 import FormInput from '../../../../components/form-input';
+import { useSessionContext } from '../../../../contexts/session';
 
 export interface CredentialValue {
   access_key_id?: string;
@@ -29,6 +32,7 @@ export interface CredentialFormData {
   name: string;
   value: string | CredentialValue;
   credentialType: 'api_key' | 'access_key_pair' | 'custom';
+  testModel?: string;
 }
 
 const CREDENTIAL_TYPE_OPTIONS = [
@@ -55,8 +59,26 @@ export default function CredentialForm({
   provider = null,
 }: CredentialFormProps) {
   const { t } = useLocaleContext();
+  const { api } = useSessionContext();
   const [loading, setLoading] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; error?: string } | null>(null);
+  const [testModel, setTestModel] = useState('');
   const [showPassword, setShowPassword] = useState<Record<string, boolean>>({});
+
+  // Fetch default test model for this provider
+  useEffect(() => {
+    if (provider?.name) {
+      api
+        .get('/api/ai-providers/test-models')
+        .then((res: any) => {
+          const model = res.data?.[provider.name] || '';
+          setTestModel(model);
+        })
+        .catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [provider?.name]);
 
   // 根据provider类型设置默认凭证类型
   const getDefaultCredentialType = () => {
@@ -80,11 +102,34 @@ export default function CredentialForm({
   const handleFormSubmit = async (data: CredentialFormData) => {
     setLoading(true);
     try {
-      await onSubmit(data);
+      await onSubmit({ ...data, testModel: testModel || undefined });
     } catch (error: any) {
       Toast.error(error.message || t('submitFailed'));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleTestConnection = async () => {
+    const isValid = await methods.trigger();
+    if (!isValid) return;
+
+    const data = methods.getValues();
+    setTesting(true);
+    setTestResult(null);
+    try {
+      await api.post(`/api/ai-providers/${provider.id}/credentials/test`, {
+        value: data.value,
+        credentialType: data.credentialType,
+        testModel: testModel || undefined,
+      });
+      setTestResult({ success: true });
+      Toast.success(t('testConnectionSuccess'));
+    } catch (error: any) {
+      const detail = error?.response?.data?.detail || error.message || t('testConnectionFailed');
+      setTestResult({ success: false, error: detail });
+    } finally {
+      setTesting(false);
     }
   };
 
@@ -187,6 +232,34 @@ export default function CredentialForm({
           )}
 
           {renderValueFields()}
+
+          {provider && (
+            <Box>
+              <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start' }}>
+                <TextField
+                  size="small"
+                  label={t('testModel')}
+                  value={testModel}
+                  onChange={(e) => setTestModel(e.target.value)}
+                  helperText={t('testModelHelp')}
+                  fullWidth
+                />
+                <Button
+                  variant="outlined"
+                  onClick={handleTestConnection}
+                  disabled={testing || loading}
+                  sx={{ whiteSpace: 'nowrap', minWidth: 'auto', mt: '1px !important' }}>
+                  {testing ? <CircularProgress size={16} sx={{ mr: 1 }} /> : null}
+                  {t('testConnection')}
+                </Button>
+              </Stack>
+              {testResult && !testResult.success && (
+                <Typography variant="body2" sx={{ color: 'error.main', fontSize: 12, mt: 1 }}>
+                  {testResult.error}
+                </Typography>
+              )}
+            </Box>
+          )}
 
           <Stack
             direction="row"

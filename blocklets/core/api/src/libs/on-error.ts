@@ -1,4 +1,4 @@
-import { ChatModelOutput } from '@aigne/core';
+import type { ChatModelOutput } from '@aigne/model-base';
 import { getComponentMountPoint } from '@blocklet/sdk/lib/component';
 import Config from '@blocklet/sdk/lib/config';
 import { Request } from 'express';

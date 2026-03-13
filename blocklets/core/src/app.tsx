@@ -10,20 +10,24 @@ import { Global, css } from '@emotion/react';
 import { Box, CircularProgress, CssBaseline } from '@mui/material';
 import { ReactNode, Suspense, lazy } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
-import { Route, RouterProvider, createBrowserRouter, createRoutesFromElements } from 'react-router-dom';
+import { Navigate, Route, RouterProvider, createBrowserRouter, createRoutesFromElements } from 'react-router-dom';
 
 import NotFoundView from './components/error/not-found';
 import UserLayout from './components/layout/user';
 import Loading from './components/loading';
 import { TransitionProvider } from './components/loading/progress-bar';
-import { SessionProvider } from './contexts/session';
+import { SessionProvider, useIsRole } from './contexts/session';
 import { translations } from './locales';
 import { HomeLazy } from './pages/home';
 import { ChatLazy } from './pages/playground';
 
-const ConfigPage = lazy(() => import('./pages/config'));
+const ConfigLayout = lazy(() => import('./pages/config'));
+const ConfigOverviewPage = lazy(() => import('./pages/config/overview'));
+const ConfigAIConfigPage = lazy(() => import('./pages/config/ai-config'));
+const ConfigUsagePage = lazy(() => import('./pages/admin/usage'));
 const CreditBoardPage = lazy(() => import('./pages/customer/usage'));
 const PricingPage = lazy(() => import('./pages/pricing'));
+const ProjectPage = lazy(() => import('./pages/usage/projects/project-page'));
 
 export default function App() {
   const basename = window.blocklet?.prefix || '/';
@@ -70,16 +74,26 @@ export default function App() {
   );
 }
 
+function ConfigProjectRoute() {
+  const isAdmin = useIsRole('owner', 'admin');
+  return <ProjectPage isAdmin={isAdmin} />;
+}
+
 function AppRoutes({ basename }: { basename: string }) {
   const router = createBrowserRouter(
     createRoutesFromElements(
       <Route>
         <Route index element={<HomeLazy />} />
-        <Route path="/config">
-          <Route index element={<ConfigPage />} />
-          <Route path=":group" element={<ConfigPage />} />
-          <Route path=":group/:page" element={<ConfigPage />} />
-          <Route path="*" element={<ConfigPage />} />
+        <Route path="/config" element={<ConfigLayout />}>
+          <Route index element={<Navigate to="overview" replace />} />
+          <Route path="overview" element={<ConfigOverviewPage />} />
+          <Route path="ai-config" element={<ConfigAIConfigPage />} />
+          <Route path="ai-config/:page" element={<ConfigAIConfigPage />} />
+          <Route path="usage" element={<ConfigUsagePage />} />
+          <Route path="projects" element={<ConfigProjectRoute />} />
+          <Route path="projects/:appDid" element={<ConfigProjectRoute />} />
+          <Route path="playground" element={<ChatLazy />} />
+          <Route path="*" element={<Navigate to="overview" replace />} />
         </Route>
         <Route
           key="credit-board"
@@ -87,6 +101,15 @@ function AppRoutes({ basename }: { basename: string }) {
           element={
             <UserLayout>
               <CreditBoardPage />
+            </UserLayout>
+          }
+        />
+        <Route
+          key="project"
+          path="/usage/projects/:appDid"
+          element={
+            <UserLayout>
+              <ProjectPage isAdmin={false} />
             </UserLayout>
           }
         />

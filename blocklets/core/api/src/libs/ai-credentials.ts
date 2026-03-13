@@ -4,7 +4,7 @@ import AiProvider from '@api/store/models/ai-provider';
 
 import { AIGNE_HUB_DEFAULT_WEIGHT } from './constants';
 
-const checkCredentials = async (credentialId: string, providerId: string) => {
+const checkCredentials = async (credentialId: string, providerId: string, testModel?: string) => {
   const [credential, provider] = await Promise.all([
     AiCredential.findOne({ where: { id: credentialId, providerId } }),
     AiProvider.findByPk(providerId),
@@ -23,16 +23,20 @@ const checkCredentials = async (credentialId: string, providerId: string) => {
     apiKey?: string;
     accessKeyId?: string;
     secretAccessKey?: string;
+    region?: string;
   } = {};
 
   if (credential.credentialType === 'api_key') {
-    params.apiKey = value.value;
+    params.apiKey = value.api_key;
   } else if (credential.credentialType === 'access_key_pair') {
-    params.accessKeyId = value.value.access_key_id;
-    params.secretAccessKey = value.value.secret_access_key;
+    params.accessKeyId = value.access_key_id;
+    params.secretAccessKey = value.secret_access_key;
+    if (provider.region) {
+      params.region = provider.region;
+    }
   }
 
-  await checkModelIsValid(provider.name, params);
+  await checkModelIsValid(provider.name, params, testModel);
   await credential.update({ active: true, error: null, weight: AIGNE_HUB_DEFAULT_WEIGHT });
 
   return credential;
