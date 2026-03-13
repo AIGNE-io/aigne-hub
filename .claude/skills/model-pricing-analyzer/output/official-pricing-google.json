@@ -1,0 +1,409 @@
+{
+  "timestamp": 1773391177040,
+  "entries": [
+    {
+      "provider": "google",
+      "modelId": "gemini-3.1-pro-preview",
+      "displayName": "Gemini 3.1 Pro Preview",
+      "pricingUnit": "per-token",
+      "modelType": "chatCompletion",
+      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
+      "extractionMethod": "catalog-scraper",
+      "inputCostPerToken": 0.000002,
+      "outputCostPerToken": 0.000012,
+      "cachedInputCostPerToken": 2.0000000000000002e-7,
+      "cacheTiers": [
+        {
+          "label": "read",
+          "costPerToken": 2.0000000000000002e-7
+        }
+      ],
+      "contextTiers": [
+        {
+          "threshold": ">200K",
+          "inputCostPerToken": 0.000004,
+          "outputCostPerToken": 0.000018
+        }
+      ],
+      "batchPricing": {
+        "inputCostPerToken": 0.000001,
+        "outputCostPerToken": 0.000006
+      }
+    },
+    {
+      "provider": "google",
+      "modelId": "gemini-3.1-flash-lite-preview",
+      "displayName": "Gemini 3.1 Flash-Lite Preview",
+      "pricingUnit": "per-token",
+      "modelType": "chatCompletion",
+      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
+      "extractionMethod": "catalog-scraper",
+      "inputCostPerToken": 2.5e-7,
+      "outputCostPerToken": 0.0000015,
+      "cachedInputCostPerToken": 2.5000000000000002e-8,
+      "cacheTiers": [
+        {
+          "label": "read",
+          "costPerToken": 2.5000000000000002e-8
+        }
+      ],
+      "batchPricing": {
+        "inputCostPerToken": 1.25e-7,
+        "outputCostPerToken": 7.5e-7
+      }
+    },
+    {
+      "provider": "google",
+      "modelId": "gemini-3.1-flash-image-preview",
+      "displayName": "Gemini 3.1 Flash Image Preview",
+      "pricingUnit": "per-image",
+      "modelType": "imageGeneration",
+      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
+      "extractionMethod": "catalog-scraper",
+      "inputCostPerToken": 5e-7,
+      "outputCostPerToken": 0.000003,
+      "costPerImage": 0.045
+    },
+    {
+      "provider": "google",
+      "modelId": "gemini-3-flash-preview",
+      "displayName": "Gemini 3 Flash Preview",
+      "pricingUnit": "per-token",
+      "modelType": "chatCompletion",
+      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
+      "extractionMethod": "catalog-scraper",
+      "inputCostPerToken": 5e-7,
+      "outputCostPerToken": 0.000003,
+      "cachedInputCostPerToken": 5.0000000000000004e-8,
+      "cacheTiers": [
+        {
+          "label": "read",
+          "costPerToken": 5.0000000000000004e-8
+        }
+      ],
+      "batchPricing": {
+        "inputCostPerToken": 2.5e-7,
+        "outputCostPerToken": 0.0000015
+      }
+    },
+    {
+      "provider": "google",
+      "modelId": "gemini-3-pro-image-preview",
+      "displayName": "Gemini 3 Pro Image Preview",
+      "pricingUnit": "per-image",
+      "modelType": "imageGeneration",
+      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
+      "extractionMethod": "catalog-scraper",
+      "inputCostPerToken": 0.000002,
+      "outputCostPerToken": 0.000012,
+      "costPerImage": 0.134
+    },
+    {
+      "provider": "google",
+      "modelId": "gemini-2.5-pro",
+      "displayName": "Gemini 2.5 Pro",
+      "pricingUnit": "per-token",
+      "modelType": "chatCompletion",
+      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
+      "extractionMethod": "catalog-scraper",
+      "inputCostPerToken": 0.00000125,
+      "outputCostPerToken": 0.00001,
+      "cachedInputCostPerToken": 1.25e-7,
+      "cacheTiers": [
+        {
+          "label": "read",
+          "costPerToken": 1.25e-7
+        }
+      ],
+      "contextTiers": [
+        {
+          "threshold": ">200K",
+          "inputCostPerToken": 0.0000025,
+          "outputCostPerToken": 0.000015
+        }
+      ],
+      "batchPricing": {
+        "inputCostPerToken": 6.25e-7,
+        "outputCostPerToken": 0.000005
+      }
+    },
+    {
+      "provider": "google",
+      "modelId": "gemini-2.5-flash",
+      "displayName": "Gemini 2.5 Flash",
+      "pricingUnit": "per-token",
+      "modelType": "chatCompletion",
+      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
+      "extractionMethod": "catalog-scraper",
+      "inputCostPerToken": 3e-7,
+      "outputCostPerToken": 0.0000025,
+      "cachedInputCostPerToken": 3e-8,
+      "cacheTiers": [
+        {
+          "label": "read",
+          "costPerToken": 3e-8
+        }
+      ],
+      "batchPricing": {
+        "inputCostPerToken": 1.5e-7,
+        "outputCostPerToken": 0.00000125
+      }
+    },
+    {
+      "provider": "google",
+      "modelId": "gemini-2.5-flash-lite",
+      "displayName": "Gemini 2.5 Flash-Lite",
+      "pricingUnit": "per-token",
+      "modelType": "chatCompletion",
+      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
+      "extractionMethod": "catalog-scraper",
+      "inputCostPerToken": 1.0000000000000001e-7,
+      "outputCostPerToken": 4.0000000000000003e-7,
+      "cachedInputCostPerToken": 1e-8,
+      "cacheTiers": [
+        {
+          "label": "read",
+          "costPerToken": 1e-8
+        }
+      ],
+      "batchPricing": {
+        "inputCostPerToken": 5.0000000000000004e-8,
+        "outputCostPerToken": 2.0000000000000002e-7
+      }
+    },
+    {
+      "provider": "google",
+      "modelId": "gemini-2.5-flash-lite-preview-09-2025",
+      "displayName": "Gemini 2.5 Flash-Lite Preview",
+      "pricingUnit": "per-token",
+      "modelType": "chatCompletion",
+      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
+      "extractionMethod": "catalog-scraper",
+      "inputCostPerToken": 1.0000000000000001e-7,
+      "outputCostPerToken": 4.0000000000000003e-7,
+      "cachedInputCostPerToken": 1e-8,
+      "cacheTiers": [
+        {
+          "label": "read",
+          "costPerToken": 1e-8
+        }
+      ],
+      "batchPricing": {
+        "inputCostPerToken": 5.0000000000000004e-8,
+        "outputCostPerToken": 2.0000000000000002e-7
+      }
+    },
+    {
+      "provider": "google",
+      "modelId": "gemini-2.5-flash-native-audio-preview-12-2025",
+      "displayName": "Gemini 2.5 Flash Native Audio (Live API)",
+      "pricingUnit": "per-token",
+      "modelType": "audio",
+      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
+      "extractionMethod": "catalog-scraper",
+      "inputCostPerToken": 5e-7,
+      "outputCostPerToken": 0.000002
+    },
+    {
+      "provider": "google",
+      "modelId": "gemini-2.5-flash-image",
+      "displayName": "Gemini 2.5 Flash Image",
+      "pricingUnit": "per-image",
+      "modelType": "imageGeneration",
+      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
+      "extractionMethod": "catalog-scraper",
+      "inputCostPerToken": 3e-7,
+      "costPerImage": 0.039
+    },
+    {
+      "provider": "google",
+      "modelId": "gemini-2.5-flash-preview-tts",
+      "displayName": "Gemini 2.5 Flash Preview TTS",
+      "pricingUnit": "per-token",
+      "modelType": "audio",
+      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
+      "extractionMethod": "catalog-scraper",
+      "inputCostPerToken": 5e-7,
+      "outputCostPerToken": 0.00001
+    },
+    {
+      "provider": "google",
+      "modelId": "gemini-2.5-pro-preview-tts",
+      "displayName": "Gemini 2.5 Pro Preview TTS",
+      "pricingUnit": "per-token",
+      "modelType": "audio",
+      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
+      "extractionMethod": "catalog-scraper",
+      "inputCostPerToken": 0.000001,
+      "outputCostPerToken": 0.00002
+    },
+    {
+      "provider": "google",
+      "modelId": "gemini-2.0-flash",
+      "displayName": "Gemini 2.0 Flash",
+      "pricingUnit": "per-token",
+      "modelType": "chatCompletion",
+      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
+      "extractionMethod": "catalog-scraper",
+      "inputCostPerToken": 1.0000000000000001e-7,
+      "outputCostPerToken": 4.0000000000000003e-7,
+      "cachedInputCostPerToken": 2.5000000000000002e-8,
+      "cacheTiers": [
+        {
+          "label": "read",
+          "costPerToken": 2.5000000000000002e-8
+        }
+      ],
+      "batchPricing": {
+        "inputCostPerToken": 5.0000000000000004e-8,
+        "outputCostPerToken": 2.0000000000000002e-7
+      },
+      "deprecated": true
+    },
+    {
+      "provider": "google",
+      "modelId": "gemini-2.0-flash-lite",
+      "displayName": "Gemini 2.0 Flash-Lite",
+      "pricingUnit": "per-token",
+      "modelType": "chatCompletion",
+      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
+      "extractionMethod": "catalog-scraper",
+      "inputCostPerToken": 7.5e-8,
+      "outputCostPerToken": 3e-7,
+      "batchPricing": {
+        "inputCostPerToken": 3.75e-8,
+        "outputCostPerToken": 1.5e-7
+      },
+      "deprecated": true
+    },
+    {
+      "provider": "google",
+      "modelId": "imagen-4.0-fast-generate-001",
+      "displayName": "Imagen 4 Fast",
+      "pricingUnit": "per-token",
+      "modelType": "imageGeneration",
+      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
+      "extractionMethod": "catalog-scraper",
+      "costPerImage": 0.02
+    },
+    {
+      "provider": "google",
+      "modelId": "imagen-4.0-generate-001",
+      "displayName": "Imagen 4",
+      "pricingUnit": "per-token",
+      "modelType": "imageGeneration",
+      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
+      "extractionMethod": "catalog-scraper",
+      "costPerImage": 0.04
+    },
+    {
+      "provider": "google",
+      "modelId": "imagen-4.0-ultra-generate-001",
+      "displayName": "Imagen 4 Ultra",
+      "pricingUnit": "per-token",
+      "modelType": "imageGeneration",
+      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
+      "extractionMethod": "catalog-scraper",
+      "costPerImage": 0.06
+    },
+    {
+      "provider": "google",
+      "modelId": "veo-3.1-generate-preview",
+      "displayName": "Veo 3.1",
+      "pricingUnit": "per-second",
+      "modelType": "video",
+      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
+      "extractionMethod": "catalog-scraper",
+      "costPerSecond": 0.4
+    },
+    {
+      "provider": "google",
+      "modelId": "veo-3.1-fast-generate-preview",
+      "displayName": "Veo 3.1 Fast",
+      "pricingUnit": "per-second",
+      "modelType": "video",
+      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
+      "extractionMethod": "catalog-scraper",
+      "costPerSecond": 0.15
+    },
+    {
+      "provider": "google",
+      "modelId": "veo-3.0-generate-001",
+      "displayName": "Veo 3",
+      "pricingUnit": "per-second",
+      "modelType": "video",
+      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
+      "extractionMethod": "catalog-scraper",
+      "costPerSecond": 0.4
+    },
+    {
+      "provider": "google",
+      "modelId": "veo-3.0-fast-generate-001",
+      "displayName": "Veo 3 Fast",
+      "pricingUnit": "per-second",
+      "modelType": "video",
+      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
+      "extractionMethod": "catalog-scraper",
+      "costPerSecond": 0.15
+    },
+    {
+      "provider": "google",
+      "modelId": "veo-2.0-generate-001",
+      "displayName": "Veo 2",
+      "pricingUnit": "per-second",
+      "modelType": "video",
+      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
+      "extractionMethod": "catalog-scraper",
+      "costPerSecond": 0.35
+    },
+    {
+      "provider": "google",
+      "modelId": "gemini-embedding-2-preview",
+      "displayName": "Gemini Embedding 2 Preview",
+      "pricingUnit": "per-token",
+      "modelType": "embedding",
+      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
+      "extractionMethod": "catalog-scraper",
+      "inputCostPerToken": 2.0000000000000002e-7
+    },
+    {
+      "provider": "google",
+      "modelId": "gemini-embedding-001",
+      "displayName": "Gemini Embedding",
+      "pricingUnit": "per-token",
+      "modelType": "embedding",
+      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
+      "extractionMethod": "catalog-scraper",
+      "inputCostPerToken": 1.5e-7
+    },
+    {
+      "provider": "google",
+      "modelId": "gemini-robotics-er-1.5-preview",
+      "displayName": "Gemini Robotics-ER 1.5 Preview",
+      "pricingUnit": "per-token",
+      "modelType": "chatCompletion",
+      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
+      "extractionMethod": "catalog-scraper",
+      "inputCostPerToken": 3e-7,
+      "outputCostPerToken": 0.0000025
+    },
+    {
+      "provider": "google",
+      "modelId": "gemini-2.5-computer-use-preview-10-2025",
+      "displayName": "Gemini 2.5 Computer Use Preview",
+      "pricingUnit": "per-token",
+      "modelType": "chatCompletion",
+      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
+      "extractionMethod": "catalog-scraper",
+      "inputCostPerToken": 0.00000125,
+      "outputCostPerToken": 0.00001,
+      "contextTiers": [
+        {
+          "threshold": ">200K",
+          "inputCostPerToken": 0.0000025,
+          "outputCostPerToken": 0.000015
+        }
+      ]
+    }
+  ]
+}
