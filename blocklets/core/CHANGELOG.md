@@ -1,3 +1,10 @@
+## 0.9.11 (2026-3-13)
+
+- fix: use rounding instead of truncation for credit formatting
+- refactor: simplify flushPendingUsageReports startup call
+- feat: flush pending usage reports on startup
+- feat: add PAUSE_USAGE_REPORT env var to pause usage reporting
+
 ## 0.9.10 (2026-3-11)
 
 - feat: add embedding model support to v2 API
