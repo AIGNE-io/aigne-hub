@@ -16,6 +16,7 @@ import { getModelNameWithProvider } from './ai-provider';
 import { wallet } from './auth';
 import { CREDIT_DECIMAL_PLACES, Config } from './env';
 import logger from './logger';
+import shouldExecuteTask from './master-cluster';
 import { createMeterEvent, getActiveSubscriptionOfApp, invalidateCreditCache, isPaymentRunning } from './payment';
 
 export async function createAndReportUsage({
@@ -597,7 +598,6 @@ export async function createUsageAndCompleteModelCall({
  * - Reuses executeOriginalReportLogicWithProtection which has atomic claim logic built-in.
  */
 export async function flushPendingUsageReports() {
-  const shouldExecuteTask = (await import('./master-cluster')).default;
   if (!shouldExecuteTask('flushPendingUsageReports')) {
     logger.info('Skipping flushPendingUsageReports: not master cluster');
     return;
@@ -614,7 +614,7 @@ export async function flushPendingUsageReports() {
   }
 
   try {
-    const oneMinuteAgo = new Date(Date.now() - 60_000);
+    const oneMinuteAgo = new Date(Date.now() - 60000);
 
     // Find all distinct (appId, userDid) pairs that have unreported usage older than 1 minute
     const pendingGroups = (await Usage.findAll({

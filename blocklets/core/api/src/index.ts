@@ -117,12 +117,9 @@ const server = app.listen(port, async (err?: any) => {
   if (Config.creditBasedBillingEnabled) {
     paymentClient.ensureStart(async () => {
       await ensureMeter();
-      // Flush unreported usage records after payment is ready (delayed 1 min to avoid racing)
-      setTimeout(() => {
-        flushPendingUsageReports().catch((err) => {
-          logger.error('flushPendingUsageReports failed', { error: err });
-        });
-      }, 60_000);
+      flushPendingUsageReports().catch((err) => {
+        logger.error('flushPendingUsageReports failed', { error: err });
+      });
     });
   }
 });
