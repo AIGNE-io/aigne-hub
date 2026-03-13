@@ -18,13 +18,19 @@
 import { createHash } from 'crypto';
 import fs from 'fs';
 import https from 'https';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 /** @typedef {import('./pricing-schema').OfficialPricingEntry} OfficialPricingEntry */
 /** @typedef {import('./pricing-schema').OfficialPricingResult} OfficialPricingResult */
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const OUTPUT_DIR = path.join(__dirname, '..', 'output');
+fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+
 const UA = 'Mozilla/5.0 (compatible; AIGNE-Hub-Catalog/1.0)';
 const PAGE_URL = 'https://developers.openai.com/api/docs/pricing?latest-pricing=standard';
-const LLM_CACHE_PATH = '/tmp/aigne-openai-llm-cache.json';
+const LLM_CACHE_PATH = path.join(OUTPUT_DIR, 'aigne-openai-llm-cache.json');
 const LLM_CACHE_TTL = 3600_000; // 1 hour
 
 // ──────────────────────────────────────────────────────────────────────────────

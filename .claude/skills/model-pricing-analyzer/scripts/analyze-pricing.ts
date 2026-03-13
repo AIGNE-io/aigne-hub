@@ -203,7 +203,10 @@ async function main(): Promise<void> {
     const shouldGenerateHtml = await askGenerateHtml();
     if (shouldGenerateHtml) {
       const { execSync } = await import('child_process');
-      const tempFile = '/tmp/pricing-analysis.json';
+      const scriptDir = new URL('.', import.meta.url).pathname;
+      const outputDir = path.join(scriptDir, '..', 'output');
+      await fs.mkdir(outputDir, { recursive: true });
+      const tempFile = path.join(outputDir, 'pricing-analysis.json');
       const timestamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
       const outputFile = `pricing-analysis-${opts.env || 'local'}-${timestamp}.html`;
 
@@ -211,7 +214,6 @@ async function main(): Promise<void> {
       await fs.writeFile(tempFile, JSON.stringify(results, null, 2));
 
       // Generate HTML report
-      const scriptDir = new URL('.', import.meta.url).pathname;
       const reportScript = `${scriptDir}/generate-html-report.mjs`;
 
       try {
