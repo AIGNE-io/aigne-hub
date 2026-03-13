@@ -397,6 +397,10 @@ export const Config = {
     return this._pricing;
   },
 
+  get pauseUsageReport() {
+    return process.env.PAUSE_USAGE_REPORT === 'true' || process.env.PAUSE_USAGE_REPORT === '1';
+  },
+
   get usageReportThrottleTime() {
     return process.env.USAGE_REPORT_THROTTLE_TIME ? parseInt(process.env.USAGE_REPORT_THROTTLE_TIME, 10) : 600e3;
   },

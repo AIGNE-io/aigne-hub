@@ -14,6 +14,7 @@ import crons from './crons/index';
 import { Config, isDevelopment } from './libs/env';
 import logger, { accessLogMiddleware } from './libs/logger';
 import { autoUpdateSubscriptionMeta, ensureMeter, paymentClient } from './libs/payment';
+import { flushPendingUsageReports } from './libs/usage';
 import { subscribeEvents } from './listeners/listen';
 import routes from './routes';
 import { initAuthRouter } from './routes/auth';
@@ -116,6 +117,9 @@ const server = app.listen(port, async (err?: any) => {
   if (Config.creditBasedBillingEnabled) {
     paymentClient.ensureStart(async () => {
       await ensureMeter();
+      flushPendingUsageReports().catch((err) => {
+        logger.error('flushPendingUsageReports failed', { error: err });
+      });
     });
   }
 });

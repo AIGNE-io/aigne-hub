@@ -16,6 +16,7 @@ import { getModelNameWithProvider } from './ai-provider';
 import { wallet } from './auth';
 import { CREDIT_DECIMAL_PLACES, Config } from './env';
 import logger from './logger';
+import shouldExecuteTask from './master-cluster';
 import { createMeterEvent, getActiveSubscriptionOfApp, invalidateCreditCache, isPaymentRunning } from './payment';
 
 export async function createAndReportUsage({
@@ -232,6 +233,11 @@ async function reportUsage({ appId }: { appId: string }) {
   tasks[appId] ??= throttle(
     async ({ appId }: { appId: string }) => {
       try {
+        if (Config.pauseUsageReport) {
+          logger.info('Usage report is paused by PAUSE_USAGE_REPORT, skipping', { appId });
+          return;
+        }
+
         if (!isPaymentRunning()) {
           logger.info('Payment is not running, skipping usage report', { appId });
           return;
@@ -301,6 +307,11 @@ async function reportUsageV2({ appId, userDid }: { appId: string; userDid: strin
 
 async function executeOriginalReportLogicWithProtection({ appId, userDid }: { appId: string; userDid: string }) {
   try {
+    if (Config.pauseUsageReport) {
+      logger.info('Usage report is paused by PAUSE_USAGE_REPORT, skipping', { appId, userDid });
+      return;
+    }
+
     if (!isPaymentRunning()) {
       logger.info('Payment is not running, skipping usage report', { appId, userDid });
       return;
@@ -578,6 +589,68 @@ export async function createUsageAndCompleteModelCall({
   }
 
   return credits;
+}
+
+/**
+ * Flush all pending (unreported) usage records on startup.
+ * - Only runs on the master cluster instance to avoid duplicate processing.
+ * - Only processes records created more than 1 minute ago to avoid racing with in-flight requests.
+ * - Reuses executeOriginalReportLogicWithProtection which has atomic claim logic built-in.
+ */
+export async function flushPendingUsageReports() {
+  if (!shouldExecuteTask('flushPendingUsageReports')) {
+    logger.info('Skipping flushPendingUsageReports: not master cluster');
+    return;
+  }
+
+  if (Config.pauseUsageReport) {
+    logger.info('flushPendingUsageReports: skipped because PAUSE_USAGE_REPORT is enabled');
+    return;
+  }
+
+  if (!isPaymentRunning()) {
+    logger.info('flushPendingUsageReports: skipped because payment is not running');
+    return;
+  }
+
+  try {
+    const oneMinuteAgo = new Date(Date.now() - 60000);
+
+    // Find all distinct (appId, userDid) pairs that have unreported usage older than 1 minute
+    const pendingGroups = (await Usage.findAll({
+      attributes: ['appId', 'userDid'],
+      where: {
+        usageReportStatus: null,
+        createdAt: { [Op.lt]: oneMinuteAgo },
+      },
+      group: ['appId', 'userDid'],
+      raw: true,
+    })) as unknown as { appId: string; userDid: string }[];
+
+    if (pendingGroups.length === 0) {
+      logger.info('flushPendingUsageReports: no pending usage records found');
+      return;
+    }
+
+    logger.info('flushPendingUsageReports: found pending groups', { count: pendingGroups.length });
+
+    // Process groups sequentially to avoid overwhelming payment API
+    // eslint-disable-next-line no-restricted-syntax
+    for (const { appId, userDid } of pendingGroups) {
+      if (!appId || !userDid) continue;
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        await executeOriginalReportLogicWithProtection({ appId, userDid });
+        logger.info('flushPendingUsageReports: reported for group', { appId, userDid });
+      } catch (error) {
+        logger.error('flushPendingUsageReports: failed for group', { appId, userDid, error });
+      }
+    }
+
+    logger.info('flushPendingUsageReports: completed');
+  } catch (error) {
+    logger.error('flushPendingUsageReports: unexpected error', { error });
+  }
 }
 
 export function handleModelCallError(req: Request, error: Error): void {
