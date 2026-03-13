@@ -232,6 +232,11 @@ async function reportUsage({ appId }: { appId: string }) {
   tasks[appId] ??= throttle(
     async ({ appId }: { appId: string }) => {
       try {
+        if (Config.pauseUsageReport) {
+          logger.info('Usage report is paused by PAUSE_USAGE_REPORT, skipping', { appId });
+          return;
+        }
+
         if (!isPaymentRunning()) {
           logger.info('Payment is not running, skipping usage report', { appId });
           return;
@@ -301,6 +306,11 @@ async function reportUsageV2({ appId, userDid }: { appId: string; userDid: strin
 
 async function executeOriginalReportLogicWithProtection({ appId, userDid }: { appId: string; userDid: string }) {
   try {
+    if (Config.pauseUsageReport) {
+      logger.info('Usage report is paused by PAUSE_USAGE_REPORT, skipping', { appId, userDid });
+      return;
+    }
+
     if (!isPaymentRunning()) {
       logger.info('Payment is not running, skipping usage report', { appId, userDid });
       return;
