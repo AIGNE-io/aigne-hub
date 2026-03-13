@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Official Pricing Catalog — 2026-03-13 08:39:37 UTC</title>
+<title>Official Pricing Catalog — 2026-03-13 12:32:25 UTC</title>
 <style>
   :root {
     --bg: #f8fafc; --card: #fff; --border: #e2e8f0;
@@ -131,6 +131,41 @@
   tr.model-row:hover td, tr.model-row:hover + .tier-row td { background: #f8fafc; }
   .empty-msg { padding: 24px; text-align: center; color: var(--muted); }
 
+  /* Summary bar (health mode) */
+  .summary-bar { max-width: 1400px; margin: 0 auto 24px; display: flex; gap: 12px; flex-wrap: wrap; }
+  .summary-stat {
+    flex: 1; min-width: 120px; padding: 16px; border-radius: 10px; text-align: center;
+    background: var(--card); border: 1px solid var(--border);
+  }
+  .summary-stat .stat-count { display: block; font-size: 28px; font-weight: 700; }
+  .summary-stat .stat-label { display: block; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .summary-stat.loss { border-color: #fca5a5; background: #fef2f2; }
+  .summary-stat.loss .stat-count { color: #dc2626; }
+  .summary-stat.drift { border-color: #fdba74; background: #fff7ed; }
+  .summary-stat.drift .stat-count { color: #ea580c; }
+  .summary-stat.noref { border-color: #cbd5e1; }
+  .summary-stat.noref .stat-count { color: #64748b; }
+  .summary-stat.ok { border-color: #86efac; background: #f0fdf4; }
+  .summary-stat.ok .stat-count { color: #16a34a; }
+  .summary-stat.total { border-color: #93c5fd; background: #eff6ff; }
+  .summary-stat.total .stat-count { color: #2563eb; }
+
+  /* Health card subtitle */
+  .health-subtitle { padding: 4px 24px 8px; font-size: 13px; color: var(--muted); border-bottom: 1px solid var(--border); }
+
+  /* Provider tag in health cards */
+  .provider-tag {
+    display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px;
+    border-radius: 4px; white-space: nowrap; background: #f1f5f9; color: #475569;
+  }
+
+  /* Drift cell variants */
+  .drift-cell { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .drift-cell.loss { background: #fee2e2; color: #dc2626; }
+  .drift-cell.high { background: #fed7aa; color: #ea580c; }
+  .drift-cell.mild { background: #fefce8; color: #a16207; }
+  .drift-cell.ok { background: #dcfce7; color: #16a34a; }
+
   @media (max-width: 1100px) {
     body { padding: 12px; }
     th, td { padding: 6px 8px; font-size: 12px; }
@@ -141,7 +176,7 @@
 <body>
 <div class="header">
   <h1>Official Pricing Catalog</h1>
-  <div class="ts">Generated: 2026-03-13 08:39:37 UTC</div>
+  <div class="ts">Generated: 2026-03-13 12:32:25 UTC</div>
   
 </div>
 <div class="search-bar">
@@ -638,7 +673,7 @@
 <div class="provider-card" style="border-color:#2196f3">
       <div class="provider-header" style="background:#e3f2fd;color:#0d47a1">
         <h2>OpenAI</h2>
-        <span class="model-count">124 models</span>
+        <span class="model-count">112 models</span>
       </div>
       <div class="source-note">Source: <a href="https://developers.openai.com/api/docs/pricing?latest-pricing=standard" target="_blank">https://developers.openai.com/api/docs/pricing?latest-pricing=standard</a></div>
       <div class="table-wrapper">
@@ -651,48 +686,190 @@
           <th>Cache Write</th><th>Cache Read</th>
           
         </tr></thead>
-        <tbody><tr class="model-row " data-model="gpt-5.4">
-        <td class="model-name" rowspan="2">gpt-5.4</td>
+        <tbody><tr class="family-row"><td colspan="6"><strong>Reasoning: o4</strong></td></tr><tr class="model-row " data-model="o4-mini">
+        <td class="model-name" rowspan="1">o4-mini</td>
         <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$2.50</td>
-        <td class="mono">$15.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono">$0.250</td>
+        <td class="mono">$1.10</td>
+        <td class="mono">$4.40</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono">$0.275</td>
         
-      </tr><tr class="tier-row tier-context" data-model="gpt-5.4">
-          <td class="tier-cell"><span class="tier-badge context">> 200K</span></td>
-          <td class="mono">$5.00</td>
-          <td class="mono">$22.50</td>
-          <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
-          
-        </tr><tr class="model-row " data-model="gpt-5.4-pro">
-        <td class="model-name" rowspan="2">gpt-5.4-pro</td>
+      </tr><tr class="model-row " data-model="o4-mini-2025-04-16">
+        <td class="model-name" rowspan="1">o4-mini-2025-04-16<span class="badge type">fineTuning</span></td>
         <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$30.00</td>
-        <td class="mono">$180.00</td>
+        <td class="mono">$4.00</td>
+        <td class="mono">$16.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono">$1.00</td>
+        
+      </tr><tr class="model-row " data-model="o4-mini-2025-04-16-data-sharing">
+        <td class="model-name" rowspan="1">o4-mini-2025-04-16-data-sharing<span class="badge type">fineTuning</span></td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$2.00</td>
+        <td class="mono">$8.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono">$0.500</td>
+        
+      </tr><tr class="model-row " data-model="o4-mini-deep-research">
+        <td class="model-name" rowspan="1">o4-mini-deep-research</td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$2.00</td>
+        <td class="mono">$8.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono">$0.500</td>
+        
+      </tr><tr class="family-row"><td colspan="6"><strong>Reasoning: o3</strong></td></tr><tr class="model-row " data-model="o3">
+        <td class="model-name" rowspan="1">o3</td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$2.00</td>
+        <td class="mono">$8.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono">$0.500</td>
+        
+      </tr><tr class="model-row " data-model="o3-deep-research">
+        <td class="model-name" rowspan="1">o3-deep-research</td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$10.00</td>
+        <td class="mono">$40.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono">$2.50</td>
+        
+      </tr><tr class="model-row " data-model="o3-mini">
+        <td class="model-name" rowspan="1">o3-mini</td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$1.10</td>
+        <td class="mono">$4.40</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono">$0.550</td>
+        
+      </tr><tr class="model-row " data-model="o3-pro">
+        <td class="model-name" rowspan="1">o3-pro</td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$20.00</td>
+        <td class="mono">$80.00</td>
         <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
         
-      </tr><tr class="tier-row tier-context" data-model="gpt-5.4-pro">
-          <td class="tier-cell"><span class="tier-badge context">> 200K</span></td>
-          <td class="mono">$60.00</td>
-          <td class="mono">$270.00</td>
-          <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
-          
-        </tr><tr class="model-row " data-model="gpt-5.2">
-        <td class="model-name" rowspan="1">gpt-5.2</td>
+      </tr><tr class="family-row"><td colspan="6"><strong>Reasoning: o1</strong></td></tr><tr class="model-row " data-model="o1">
+        <td class="model-name" rowspan="1">o1</td>
         <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$1.75</td>
-        <td class="mono">$14.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono">$0.175</td>
+        <td class="mono">$15.00</td>
+        <td class="mono">$60.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono">$7.50</td>
         
-      </tr><tr class="model-row " data-model="gpt-5.1">
+      </tr><tr class="model-row " data-model="o1-mini">
+        <td class="model-name" rowspan="1">o1-mini</td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$1.10</td>
+        <td class="mono">$4.40</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono">$0.550</td>
+        
+      </tr><tr class="model-row " data-model="o1-pro">
+        <td class="model-name" rowspan="1">o1-pro</td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$150.00</td>
+        <td class="mono">$600.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
+        
+      </tr><tr class="family-row"><td colspan="6"><strong>GPT-5.x</strong></td></tr><tr class="model-row " data-model="gpt-5.1">
         <td class="model-name" rowspan="1">gpt-5.1</td>
         <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
         <td class="mono">$1.25</td>
         <td class="mono">$10.00</td>
         <td class="mono"><span class="na">-</span></td><td class="mono">$0.125</td>
         
-      </tr><tr class="model-row " data-model="gpt-5">
+      </tr><tr class="model-row " data-model="gpt-5.1-chat-latest">
+        <td class="model-name" rowspan="1">gpt-5.1-chat-latest</td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$1.25</td>
+        <td class="mono">$10.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono">$0.125</td>
+        
+      </tr><tr class="model-row " data-model="gpt-5.1-codex">
+        <td class="model-name" rowspan="1">gpt-5.1-codex</td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$1.25</td>
+        <td class="mono">$10.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono">$0.125</td>
+        
+      </tr><tr class="model-row " data-model="gpt-5.1-codex-max">
+        <td class="model-name" rowspan="1">gpt-5.1-codex-max</td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$1.25</td>
+        <td class="mono">$10.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono">$0.125</td>
+        
+      </tr><tr class="model-row " data-model="gpt-5.1-codex-mini">
+        <td class="model-name" rowspan="1">gpt-5.1-codex-mini</td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$0.250</td>
+        <td class="mono">$2.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono">$0.025</td>
+        
+      </tr><tr class="model-row " data-model="gpt-5.2">
+        <td class="model-name" rowspan="1">gpt-5.2</td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$1.75</td>
+        <td class="mono">$14.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono">$0.175</td>
+        
+      </tr><tr class="model-row " data-model="gpt-5.2-chat-latest">
+        <td class="model-name" rowspan="1">gpt-5.2-chat-latest</td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$1.75</td>
+        <td class="mono">$14.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono">$0.175</td>
+        
+      </tr><tr class="model-row " data-model="gpt-5.2-codex">
+        <td class="model-name" rowspan="1">gpt-5.2-codex</td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$1.75</td>
+        <td class="mono">$14.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono">$0.175</td>
+        
+      </tr><tr class="model-row " data-model="gpt-5.2-pro">
+        <td class="model-name" rowspan="1">gpt-5.2-pro</td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$21.00</td>
+        <td class="mono">$168.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
+        
+      </tr><tr class="model-row " data-model="gpt-5.3-chat-latest">
+        <td class="model-name" rowspan="1">gpt-5.3-chat-latest</td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$1.75</td>
+        <td class="mono">$14.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono">$0.175</td>
+        
+      </tr><tr class="model-row " data-model="gpt-5.3-codex">
+        <td class="model-name" rowspan="1">gpt-5.3-codex</td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$1.75</td>
+        <td class="mono">$14.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono">$0.175</td>
+        
+      </tr><tr class="model-row " data-model="gpt-5.4">
+        <td class="model-name" rowspan="1">gpt-5.4</td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$2.50</td>
+        <td class="mono">$15.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono">$0.250</td>
+        
+      </tr><tr class="model-row " data-model="gpt-5.4-pro">
+        <td class="model-name" rowspan="1">gpt-5.4-pro</td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$30.00</td>
+        <td class="mono">$180.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
+        
+      </tr><tr class="family-row"><td colspan="6"><strong>GPT-5</strong></td></tr><tr class="model-row " data-model="gpt-5">
         <td class="model-name" rowspan="1">gpt-5</td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$1.25</td>
+        <td class="mono">$10.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono">$0.125</td>
+        
+      </tr><tr class="model-row " data-model="gpt-5-chat-latest">
+        <td class="model-name" rowspan="1">gpt-5-chat-latest</td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$1.25</td>
+        <td class="mono">$10.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono">$0.125</td>
+        
+      </tr><tr class="model-row " data-model="gpt-5-codex">
+        <td class="model-name" rowspan="1">gpt-5-codex</td>
         <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
         <td class="mono">$1.25</td>
         <td class="mono">$10.00</td>
@@ -712,76 +889,6 @@
         <td class="mono">$0.400</td>
         <td class="mono"><span class="na">-</span></td><td class="mono">$5.00e-3</td>
         
-      </tr><tr class="model-row " data-model="gpt-5.3-chat-latest">
-        <td class="model-name" rowspan="1">gpt-5.3-chat-latest</td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$1.75</td>
-        <td class="mono">$14.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono">$0.175</td>
-        
-      </tr><tr class="model-row " data-model="gpt-5.2-chat-latest">
-        <td class="model-name" rowspan="1">gpt-5.2-chat-latest</td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$1.75</td>
-        <td class="mono">$14.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono">$0.175</td>
-        
-      </tr><tr class="model-row " data-model="gpt-5.1-chat-latest">
-        <td class="model-name" rowspan="1">gpt-5.1-chat-latest</td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$1.25</td>
-        <td class="mono">$10.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono">$0.125</td>
-        
-      </tr><tr class="model-row " data-model="gpt-5-chat-latest">
-        <td class="model-name" rowspan="1">gpt-5-chat-latest</td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$1.25</td>
-        <td class="mono">$10.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono">$0.125</td>
-        
-      </tr><tr class="model-row " data-model="gpt-5.3-codex">
-        <td class="model-name" rowspan="1">gpt-5.3-codex</td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$1.75</td>
-        <td class="mono">$14.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono">$0.175</td>
-        
-      </tr><tr class="model-row " data-model="gpt-5.2-codex">
-        <td class="model-name" rowspan="1">gpt-5.2-codex</td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$1.75</td>
-        <td class="mono">$14.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono">$0.175</td>
-        
-      </tr><tr class="model-row " data-model="gpt-5.1-codex-max">
-        <td class="model-name" rowspan="1">gpt-5.1-codex-max</td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$1.25</td>
-        <td class="mono">$10.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono">$0.125</td>
-        
-      </tr><tr class="model-row " data-model="gpt-5.1-codex">
-        <td class="model-name" rowspan="1">gpt-5.1-codex</td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$1.25</td>
-        <td class="mono">$10.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono">$0.125</td>
-        
-      </tr><tr class="model-row " data-model="gpt-5-codex">
-        <td class="model-name" rowspan="1">gpt-5-codex</td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$1.25</td>
-        <td class="mono">$10.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono">$0.125</td>
-        
-      </tr><tr class="model-row " data-model="gpt-5.2-pro">
-        <td class="model-name" rowspan="1">gpt-5.2-pro</td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$21.00</td>
-        <td class="mono">$168.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
-        
       </tr><tr class="model-row " data-model="gpt-5-pro">
         <td class="model-name" rowspan="1">gpt-5-pro</td>
         <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
@@ -789,12 +896,26 @@
         <td class="mono">$120.00</td>
         <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
         
-      </tr><tr class="model-row " data-model="gpt-4.1">
+      </tr><tr class="model-row " data-model="gpt-5-search-api">
+        <td class="model-name" rowspan="1">gpt-5-search-api</td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$1.25</td>
+        <td class="mono">$10.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono">$0.125</td>
+        
+      </tr><tr class="family-row"><td colspan="6"><strong>GPT-4.1</strong></td></tr><tr class="model-row " data-model="gpt-4.1">
         <td class="model-name" rowspan="1">gpt-4.1</td>
         <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
         <td class="mono">$2.00</td>
         <td class="mono">$8.00</td>
         <td class="mono"><span class="na">-</span></td><td class="mono">$0.500</td>
+        
+      </tr><tr class="model-row " data-model="gpt-4.1-2025-04-14">
+        <td class="model-name" rowspan="1">gpt-4.1-2025-04-14<span class="badge type">fineTuning</span></td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$3.00</td>
+        <td class="mono">$12.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono">$0.750</td>
         
       </tr><tr class="model-row " data-model="gpt-4.1-mini">
         <td class="model-name" rowspan="1">gpt-4.1-mini</td>
@@ -803,6 +924,13 @@
         <td class="mono">$1.60</td>
         <td class="mono"><span class="na">-</span></td><td class="mono">$0.100</td>
         
+      </tr><tr class="model-row " data-model="gpt-4.1-mini-2025-04-14">
+        <td class="model-name" rowspan="1">gpt-4.1-mini-2025-04-14<span class="badge type">fineTuning</span></td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$0.800</td>
+        <td class="mono">$3.20</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono">$0.200</td>
+        
       </tr><tr class="model-row " data-model="gpt-4.1-nano">
         <td class="model-name" rowspan="1">gpt-4.1-nano</td>
         <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
@@ -810,7 +938,14 @@
         <td class="mono">$0.400</td>
         <td class="mono"><span class="na">-</span></td><td class="mono">$0.025</td>
         
-      </tr><tr class="model-row " data-model="gpt-4o">
+      </tr><tr class="model-row " data-model="gpt-4.1-nano-2025-04-14">
+        <td class="model-name" rowspan="1">gpt-4.1-nano-2025-04-14<span class="badge type">fineTuning</span></td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$0.200</td>
+        <td class="mono">$0.800</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono">$0.050</td>
+        
+      </tr><tr class="family-row"><td colspan="6"><strong>GPT-4o</strong></td></tr><tr class="model-row " data-model="gpt-4o">
         <td class="model-name" rowspan="1">gpt-4o</td>
         <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
         <td class="mono">$2.50</td>
@@ -824,319 +959,18 @@
         <td class="mono">$15.00</td>
         <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
         
-      </tr><tr class="model-row " data-model="gpt-4o-mini">
-        <td class="model-name" rowspan="1">gpt-4o-mini</td>
+      </tr><tr class="model-row " data-model="gpt-4o-2024-08-06">
+        <td class="model-name" rowspan="1">gpt-4o-2024-08-06<span class="badge type">fineTuning</span></td>
         <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$0.150</td>
-        <td class="mono">$0.600</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono">$0.075</td>
-        
-      </tr><tr class="model-row " data-model="gpt-realtime">
-        <td class="model-name" rowspan="1">gpt-realtime</td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$4.00</td>
-        <td class="mono">$16.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono">$0.400</td>
-        
-      </tr><tr class="model-row " data-model="gpt-realtime-1.5">
-        <td class="model-name" rowspan="1">gpt-realtime-1.5</td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$4.00</td>
-        <td class="mono">$16.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono">$0.400</td>
-        
-      </tr><tr class="model-row " data-model="gpt-realtime-mini">
-        <td class="model-name" rowspan="1">gpt-realtime-mini</td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$0.600</td>
-        <td class="mono">$2.40</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono">$0.060</td>
-        
-      </tr><tr class="model-row " data-model="gpt-4o-realtime-preview">
-        <td class="model-name" rowspan="1">gpt-4o-realtime-preview</td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$5.00</td>
-        <td class="mono">$20.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono">$2.50</td>
-        
-      </tr><tr class="model-row " data-model="gpt-4o-mini-realtime-preview">
-        <td class="model-name" rowspan="1">gpt-4o-mini-realtime-preview</td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$0.600</td>
-        <td class="mono">$2.40</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono">$0.300</td>
-        
-      </tr><tr class="model-row " data-model="gpt-audio">
-        <td class="model-name" rowspan="1">gpt-audio</td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$2.50</td>
-        <td class="mono">$10.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
-        
-      </tr><tr class="model-row " data-model="gpt-audio-1.5">
-        <td class="model-name" rowspan="1">gpt-audio-1.5</td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$2.50</td>
-        <td class="mono">$10.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
-        
-      </tr><tr class="model-row " data-model="gpt-audio-mini">
-        <td class="model-name" rowspan="1">gpt-audio-mini</td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$0.600</td>
-        <td class="mono">$2.40</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
+        <td class="mono">$3.75</td>
+        <td class="mono">$15.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono">$1.88</td>
         
       </tr><tr class="model-row " data-model="gpt-4o-audio-preview">
         <td class="model-name" rowspan="1">gpt-4o-audio-preview</td>
         <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
         <td class="mono">$2.50</td>
         <td class="mono">$10.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
-        
-      </tr><tr class="model-row " data-model="gpt-4o-mini-audio-preview">
-        <td class="model-name" rowspan="1">gpt-4o-mini-audio-preview</td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$0.150</td>
-        <td class="mono">$0.600</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
-        
-      </tr><tr class="model-row " data-model="o1">
-        <td class="model-name" rowspan="1">o1</td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$15.00</td>
-        <td class="mono">$60.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono">$7.50</td>
-        
-      </tr><tr class="model-row " data-model="o1-pro">
-        <td class="model-name" rowspan="1">o1-pro</td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$150.00</td>
-        <td class="mono">$600.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
-        
-      </tr><tr class="model-row " data-model="o3-pro">
-        <td class="model-name" rowspan="1">o3-pro</td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$20.00</td>
-        <td class="mono">$80.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
-        
-      </tr><tr class="model-row " data-model="o3">
-        <td class="model-name" rowspan="1">o3</td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$2.00</td>
-        <td class="mono">$8.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono">$0.500</td>
-        
-      </tr><tr class="model-row " data-model="o3-deep-research">
-        <td class="model-name" rowspan="1">o3-deep-research</td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$10.00</td>
-        <td class="mono">$40.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono">$2.50</td>
-        
-      </tr><tr class="model-row " data-model="o4-mini">
-        <td class="model-name" rowspan="1">o4-mini</td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$1.10</td>
-        <td class="mono">$4.40</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono">$0.275</td>
-        
-      </tr><tr class="model-row " data-model="o4-mini-deep-research">
-        <td class="model-name" rowspan="1">o4-mini-deep-research</td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$2.00</td>
-        <td class="mono">$8.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono">$0.500</td>
-        
-      </tr><tr class="model-row " data-model="o3-mini">
-        <td class="model-name" rowspan="1">o3-mini</td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$1.10</td>
-        <td class="mono">$4.40</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono">$0.550</td>
-        
-      </tr><tr class="model-row " data-model="o1-mini">
-        <td class="model-name" rowspan="1">o1-mini</td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$1.10</td>
-        <td class="mono">$4.40</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono">$0.550</td>
-        
-      </tr><tr class="model-row " data-model="gpt-5.1-codex-mini">
-        <td class="model-name" rowspan="1">gpt-5.1-codex-mini</td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$0.250</td>
-        <td class="mono">$2.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono">$0.025</td>
-        
-      </tr><tr class="model-row " data-model="codex-mini-latest">
-        <td class="model-name" rowspan="1">codex-mini-latest</td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$1.50</td>
-        <td class="mono">$6.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono">$0.375</td>
-        
-      </tr><tr class="model-row " data-model="gpt-5-search-api">
-        <td class="model-name" rowspan="1">gpt-5-search-api</td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$1.25</td>
-        <td class="mono">$10.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono">$0.125</td>
-        
-      </tr><tr class="model-row " data-model="gpt-4o-mini-search-preview">
-        <td class="model-name" rowspan="1">gpt-4o-mini-search-preview</td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$0.150</td>
-        <td class="mono">$0.600</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
-        
-      </tr><tr class="model-row " data-model="gpt-4o-search-preview">
-        <td class="model-name" rowspan="1">gpt-4o-search-preview</td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$2.50</td>
-        <td class="mono">$10.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
-        
-      </tr><tr class="model-row " data-model="computer-use-preview">
-        <td class="model-name" rowspan="1">computer-use-preview</td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$3.00</td>
-        <td class="mono">$12.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
-        
-      </tr><tr class="model-row " data-model="gpt-image-1.5">
-        <td class="model-name" rowspan="1">gpt-image-1.5</td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$5.00</td>
-        <td class="mono">$10.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono">$1.25</td>
-        
-      </tr><tr class="model-row " data-model="chatgpt-image-latest">
-        <td class="model-name" rowspan="1">chatgpt-image-latest</td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$5.00</td>
-        <td class="mono">$10.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono">$1.25</td>
-        
-      </tr><tr class="model-row " data-model="gpt-image-1">
-        <td class="model-name" rowspan="1">gpt-image-1</td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$5.00</td>
-        <td class="mono"><span class="na">-</span></td>
-        <td class="mono"><span class="na">-</span></td><td class="mono">$1.25</td>
-        
-      </tr><tr class="model-row " data-model="gpt-image-1-mini">
-        <td class="model-name" rowspan="1">gpt-image-1-mini</td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$2.00</td>
-        <td class="mono"><span class="na">-</span></td>
-        <td class="mono"><span class="na">-</span></td><td class="mono">$0.200</td>
-        
-      </tr><tr class="model-row special" data-model="gpt-image-1.5/image">
-        <td class="model-name" rowspan="1">gpt-image-1.5 (image tokens)<span class="badge type">image</span></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$8.00</td>
-        <td class="mono">$32.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono">$2.00</td>
-        
-      </tr><tr class="model-row special" data-model="chatgpt-image-latest/image">
-        <td class="model-name" rowspan="1">chatgpt-image-latest (image tokens)<span class="badge type">image</span></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$8.00</td>
-        <td class="mono">$32.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono">$2.00</td>
-        
-      </tr><tr class="model-row special" data-model="gpt-image-1/image">
-        <td class="model-name" rowspan="1">gpt-image-1 (image tokens)<span class="badge type">image</span></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$10.00</td>
-        <td class="mono">$40.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono">$2.50</td>
-        
-      </tr><tr class="model-row special" data-model="gpt-image-1-mini/image">
-        <td class="model-name" rowspan="1">gpt-image-1-mini (image tokens)<span class="badge type">image</span></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$2.50</td>
-        <td class="mono">$8.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono">$0.250</td>
-        
-      </tr><tr class="model-row special" data-model="gpt-realtime/image">
-        <td class="model-name" rowspan="1">gpt-realtime (image tokens)<span class="badge type">image</span></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$5.00</td>
-        <td class="mono"><span class="na">-</span></td>
-        <td class="mono"><span class="na">-</span></td><td class="mono">$0.500</td>
-        
-      </tr><tr class="model-row special" data-model="gpt-realtime-1.5/image">
-        <td class="model-name" rowspan="1">gpt-realtime-1.5 (image tokens)<span class="badge type">image</span></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$5.00</td>
-        <td class="mono"><span class="na">-</span></td>
-        <td class="mono"><span class="na">-</span></td><td class="mono">$0.500</td>
-        
-      </tr><tr class="model-row special" data-model="gpt-realtime-mini/image">
-        <td class="model-name" rowspan="1">gpt-realtime-mini (image tokens)<span class="badge type">image</span></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$0.800</td>
-        <td class="mono"><span class="na">-</span></td>
-        <td class="mono"><span class="na">-</span></td><td class="mono">$0.080</td>
-        
-      </tr><tr class="model-row " data-model="gpt-realtime/audio">
-        <td class="model-name" rowspan="1">gpt-realtime (audio tokens)<span class="badge type">audio</span></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$32.00</td>
-        <td class="mono">$64.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono">$0.400</td>
-        
-      </tr><tr class="model-row " data-model="gpt-realtime-1.5/audio">
-        <td class="model-name" rowspan="1">gpt-realtime-1.5 (audio tokens)<span class="badge type">audio</span></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$32.00</td>
-        <td class="mono">$64.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono">$0.400</td>
-        
-      </tr><tr class="model-row " data-model="gpt-realtime-mini/audio">
-        <td class="model-name" rowspan="1">gpt-realtime-mini (audio tokens)<span class="badge type">audio</span></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$10.00</td>
-        <td class="mono">$20.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono">$0.300</td>
-        
-      </tr><tr class="model-row " data-model="gpt-4o-realtime-preview/audio">
-        <td class="model-name" rowspan="1">gpt-4o-realtime-preview (audio tokens)<span class="badge type">audio</span></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$40.00</td>
-        <td class="mono">$80.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono">$2.50</td>
-        
-      </tr><tr class="model-row " data-model="gpt-4o-mini-realtime-preview/audio">
-        <td class="model-name" rowspan="1">gpt-4o-mini-realtime-preview (audio tokens)<span class="badge type">audio</span></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$10.00</td>
-        <td class="mono">$20.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono">$0.300</td>
-        
-      </tr><tr class="model-row " data-model="gpt-audio/audio">
-        <td class="model-name" rowspan="1">gpt-audio (audio tokens)<span class="badge type">audio</span></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$32.00</td>
-        <td class="mono">$64.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
-        
-      </tr><tr class="model-row " data-model="gpt-audio-1.5/audio">
-        <td class="model-name" rowspan="1">gpt-audio-1.5 (audio tokens)<span class="badge type">audio</span></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$32.00</td>
-        <td class="mono">$64.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
-        
-      </tr><tr class="model-row " data-model="gpt-audio-mini/audio">
-        <td class="model-name" rowspan="1">gpt-audio-mini (audio tokens)<span class="badge type">audio</span></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$10.00</td>
-        <td class="mono">$20.00</td>
         <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
         
       </tr><tr class="model-row " data-model="gpt-4o-audio-preview/audio">
@@ -1146,117 +980,12 @@
         <td class="mono">$80.00</td>
         <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
         
-      </tr><tr class="model-row " data-model="gpt-4o-mini-audio-preview/audio">
-        <td class="model-name" rowspan="1">gpt-4o-mini-audio-preview (audio tokens)<span class="badge type">audio</span></td>
+      </tr><tr class="model-row " data-model="gpt-4o-mini">
+        <td class="model-name" rowspan="1">gpt-4o-mini</td>
         <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$10.00</td>
-        <td class="mono">$20.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
-        
-      </tr><tr class="model-row " data-model="sora-2">
-        <td class="model-name" rowspan="1">sora-2<span class="badge type">video</span><div class="aliases">$0.1/s</div></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono"><span class="na">-</span></td>
-        <td class="mono"><span class="na">-</span></td>
-        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
-        
-      </tr><tr class="model-row " data-model="sora-2-pro">
-        <td class="model-name" rowspan="1">sora-2-pro<span class="badge type">video</span><div class="aliases">$0.3/s, $0.5/s (1024x1792 / 1792x1024), $0.7/s (1080x1920 / 1920x1080)</div></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono"><span class="na">-</span></td>
-        <td class="mono"><span class="na">-</span></td>
-        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
-        
-      </tr><tr class="model-row " data-model="gpt-4o-transcribe">
-        <td class="model-name" rowspan="1">gpt-4o-transcribe<span class="badge type">transcription</span></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$2.50</td>
-        <td class="mono">$10.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
-        
-      </tr><tr class="model-row " data-model="gpt-4o-transcribe-diarize">
-        <td class="model-name" rowspan="1">gpt-4o-transcribe-diarize<span class="badge type">transcription</span></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$2.50</td>
-        <td class="mono">$10.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
-        
-      </tr><tr class="model-row " data-model="gpt-4o-mini-transcribe">
-        <td class="model-name" rowspan="1">gpt-4o-mini-transcribe<span class="badge type">transcription</span></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$1.25</td>
-        <td class="mono">$5.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
-        
-      </tr><tr class="model-row " data-model="gpt-4o-mini-tts">
-        <td class="model-name" rowspan="1">gpt-4o-mini-tts<span class="badge type">transcription</span></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$0.150</td>
         <td class="mono">$0.600</td>
-        <td class="mono"><span class="na">-</span></td>
-        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
-        
-      </tr><tr class="model-row " data-model="whisper">
-        <td class="model-name" rowspan="1">whisper<span class="badge type">transcription</span><div class="aliases">$0.006/min</div></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono"><span class="na">-</span></td>
-        <td class="mono"><span class="na">-</span></td>
-        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
-        
-      </tr><tr class="model-row special" data-model="tts-hd">
-        <td class="model-name" rowspan="1">tts-hd<span class="badge type">tts</span><div class="aliases">$30/1M chars</div></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono"><span class="na">-</span></td>
-        <td class="mono"><span class="na">-</span></td>
-        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
-        
-      </tr><tr class="model-row special" data-model="tts">
-        <td class="model-name" rowspan="1">tts<span class="badge type">tts</span><div class="aliases">$15/1M chars</div></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono"><span class="na">-</span></td>
-        <td class="mono"><span class="na">-</span></td>
-        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
-        
-      </tr><tr class="model-row " data-model="o4-mini-2025-04-16">
-        <td class="model-name" rowspan="1">o4-mini-2025-04-16<span class="badge type">fineTuning</span></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$4.00</td>
-        <td class="mono">$16.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono">$1.00</td>
-        
-      </tr><tr class="model-row " data-model="o4-mini-2025-04-16-data-sharing">
-        <td class="model-name" rowspan="1">o4-mini-2025-04-16-data-sharing<span class="badge type">fineTuning</span></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$2.00</td>
-        <td class="mono">$8.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono">$0.500</td>
-        
-      </tr><tr class="model-row " data-model="gpt-4.1-2025-04-14">
-        <td class="model-name" rowspan="1">gpt-4.1-2025-04-14<span class="badge type">fineTuning</span></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$3.00</td>
-        <td class="mono">$12.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono">$0.750</td>
-        
-      </tr><tr class="model-row " data-model="gpt-4.1-mini-2025-04-14">
-        <td class="model-name" rowspan="1">gpt-4.1-mini-2025-04-14<span class="badge type">fineTuning</span></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$0.800</td>
-        <td class="mono">$3.20</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono">$0.200</td>
-        
-      </tr><tr class="model-row " data-model="gpt-4.1-nano-2025-04-14">
-        <td class="model-name" rowspan="1">gpt-4.1-nano-2025-04-14<span class="badge type">fineTuning</span></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$0.200</td>
-        <td class="mono">$0.800</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono">$0.050</td>
-        
-      </tr><tr class="model-row " data-model="gpt-4o-2024-08-06">
-        <td class="model-name" rowspan="1">gpt-4o-2024-08-06<span class="badge type">fineTuning</span></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$3.75</td>
-        <td class="mono">$15.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono">$1.88</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono">$0.075</td>
         
       </tr><tr class="model-row " data-model="gpt-4o-mini-2024-07-18">
         <td class="model-name" rowspan="1">gpt-4o-mini-2024-07-18<span class="badge type">fineTuning</span></td>
@@ -1265,172 +994,81 @@
         <td class="mono">$1.20</td>
         <td class="mono"><span class="na">-</span></td><td class="mono">$0.150</td>
         
-      </tr><tr class="model-row " data-model="gpt-3.5-turbo">
-        <td class="model-name" rowspan="1">gpt-3.5-turbo<span class="badge type">fineTuning</span></td>
+      </tr><tr class="model-row " data-model="gpt-4o-mini-audio-preview">
+        <td class="model-name" rowspan="1">gpt-4o-mini-audio-preview</td>
         <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$3.00</td>
-        <td class="mono">$6.00</td>
+        <td class="mono">$0.150</td>
+        <td class="mono">$0.600</td>
         <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
         
-      </tr><tr class="model-row " data-model="davinci-002">
-        <td class="model-name" rowspan="1">davinci-002<span class="badge type">fineTuning</span></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$12.00</td>
-        <td class="mono">$12.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
-        
-      </tr><tr class="model-row " data-model="babbage-002">
-        <td class="model-name" rowspan="1">babbage-002<span class="badge type">fineTuning</span></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$1.60</td>
-        <td class="mono">$1.60</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
-        
-      </tr><tr class="model-row " data-model="gpt-image-1.5">
-        <td class="model-name" rowspan="1">gpt-image-1.5<span class="badge type">imageGeneration</span><div class="aliases">$0.009–$0.2/image</div></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono"><span class="na">-</span></td>
-        <td class="mono"><span class="na">-</span></td>
-        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
-        
-      </tr><tr class="model-row " data-model="chatgpt-image-latest">
-        <td class="model-name" rowspan="1">chatgpt-image-latest<span class="badge type">imageGeneration</span><div class="aliases">$0.009–$0.2/image</div></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono"><span class="na">-</span></td>
-        <td class="mono"><span class="na">-</span></td>
-        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
-        
-      </tr><tr class="model-row " data-model="gpt-image-1">
-        <td class="model-name" rowspan="1">gpt-image-1<span class="badge type">imageGeneration</span><div class="aliases">$0.011–$0.25/image</div></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono"><span class="na">-</span></td>
-        <td class="mono"><span class="na">-</span></td>
-        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
-        
-      </tr><tr class="model-row " data-model="gpt-image-1-mini">
-        <td class="model-name" rowspan="1">gpt-image-1-mini<span class="badge type">imageGeneration</span><div class="aliases">$0.005–$0.052/image</div></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono"><span class="na">-</span></td>
-        <td class="mono"><span class="na">-</span></td>
-        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
-        
-      </tr><tr class="model-row " data-model="dall-e-3">
-        <td class="model-name" rowspan="1">dall-e-3<span class="badge type">imageGeneration</span><div class="aliases">$0.04–$0.12/image</div></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono"><span class="na">-</span></td>
-        <td class="mono"><span class="na">-</span></td>
-        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
-        
-      </tr><tr class="model-row " data-model="dall-e-2">
-        <td class="model-name" rowspan="1">dall-e-2<span class="badge type">imageGeneration</span><div class="aliases">$0.016–$0.02/image</div></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono"><span class="na">-</span></td>
-        <td class="mono"><span class="na">-</span></td>
-        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
-        
-      </tr><tr class="model-row special" data-model="text-embedding-3-small">
-        <td class="model-name" rowspan="1">text-embedding-3-small<span class="badge type">embedding</span></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$0.020</td>
-        <td class="mono"><span class="na">-</span></td>
-        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
-        
-      </tr><tr class="model-row special" data-model="text-embedding-3-large">
-        <td class="model-name" rowspan="1">text-embedding-3-large<span class="badge type">embedding</span></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$0.130</td>
-        <td class="mono"><span class="na">-</span></td>
-        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
-        
-      </tr><tr class="model-row special" data-model="text-embedding-ada-002">
-        <td class="model-name" rowspan="1">text-embedding-ada-002<span class="badge type">embedding</span></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$0.100</td>
-        <td class="mono"><span class="na">-</span></td>
-        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
-        
-      </tr><tr class="model-row " data-model="container-1gb">
-        <td class="model-name" rowspan="1">container-1gb<span class="badge type">tool</span><div class="aliases">$0.03/20min</div></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono"><span class="na">-</span></td>
-        <td class="mono"><span class="na">-</span></td>
-        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
-        
-      </tr><tr class="model-row " data-model="container-4gb">
-        <td class="model-name" rowspan="1">container-4gb<span class="badge type">tool</span><div class="aliases">$0.12/20min</div></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono"><span class="na">-</span></td>
-        <td class="mono"><span class="na">-</span></td>
-        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
-        
-      </tr><tr class="model-row " data-model="container-16gb">
-        <td class="model-name" rowspan="1">container-16gb<span class="badge type">tool</span><div class="aliases">$0.48/20min</div></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono"><span class="na">-</span></td>
-        <td class="mono"><span class="na">-</span></td>
-        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
-        
-      </tr><tr class="model-row " data-model="container-64gb">
-        <td class="model-name" rowspan="1">container-64gb<span class="badge type">tool</span><div class="aliases">$1.92/20min</div></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono"><span class="na">-</span></td>
-        <td class="mono"><span class="na">-</span></td>
-        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
-        
-      </tr><tr class="model-row " data-model="file-search-storage">
-        <td class="model-name" rowspan="1">file-search-storage<span class="badge type">tool</span><div class="aliases">$0.1/GB-day</div></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono"><span class="na">-</span></td>
-        <td class="mono"><span class="na">-</span></td>
-        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
-        
-      </tr><tr class="model-row " data-model="file-search-call">
-        <td class="model-name" rowspan="1">file-search-call<span class="badge type">tool</span><div class="aliases">$2.5/1k calls</div></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono"><span class="na">-</span></td>
-        <td class="mono"><span class="na">-</span></td>
-        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
-        
-      </tr><tr class="model-row " data-model="web-search">
-        <td class="model-name" rowspan="1">web-search<span class="badge type">tool</span><div class="aliases">$10/1k calls</div></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono"><span class="na">-</span></td>
-        <td class="mono"><span class="na">-</span></td>
-        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
-        
-      </tr><tr class="model-row " data-model="web-search-reasoning-preview">
-        <td class="model-name" rowspan="1">web-search-reasoning-preview<span class="badge type">tool</span><div class="aliases">$10/1k calls</div></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono"><span class="na">-</span></td>
-        <td class="mono"><span class="na">-</span></td>
-        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
-        
-      </tr><tr class="model-row " data-model="web-search-non-reasoning-preview">
-        <td class="model-name" rowspan="1">web-search-non-reasoning-preview<span class="badge type">tool</span><div class="aliases">$25/1k calls</div></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono"><span class="na">-</span></td>
-        <td class="mono"><span class="na">-</span></td>
-        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
-        
-      </tr><tr class="model-row deprecated" data-model="chatgpt-4o-latest">
-        <td class="model-name" rowspan="1">chatgpt-4o-latest<span class="badge dep">deprecated</span></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$5.00</td>
-        <td class="mono">$15.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
-        
-      </tr><tr class="model-row deprecated" data-model="gpt-4-turbo-2024-04-09">
-        <td class="model-name" rowspan="1">gpt-4-turbo-2024-04-09<span class="badge dep">deprecated</span></td>
+      </tr><tr class="model-row " data-model="gpt-4o-mini-audio-preview/audio">
+        <td class="model-name" rowspan="1">gpt-4o-mini-audio-preview (audio tokens)<span class="badge type">audio</span></td>
         <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
         <td class="mono">$10.00</td>
-        <td class="mono">$30.00</td>
+        <td class="mono">$20.00</td>
         <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
         
-      </tr><tr class="model-row deprecated" data-model="gpt-4-0125-preview">
+      </tr><tr class="model-row " data-model="gpt-4o-mini-realtime-preview">
+        <td class="model-name" rowspan="1">gpt-4o-mini-realtime-preview</td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$0.600</td>
+        <td class="mono">$2.40</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono">$0.300</td>
+        
+      </tr><tr class="model-row " data-model="gpt-4o-mini-realtime-preview/audio">
+        <td class="model-name" rowspan="1">gpt-4o-mini-realtime-preview (audio tokens)<span class="badge type">audio</span></td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$10.00</td>
+        <td class="mono">$20.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono">$0.300</td>
+        
+      </tr><tr class="model-row " data-model="gpt-4o-mini-search-preview">
+        <td class="model-name" rowspan="1">gpt-4o-mini-search-preview</td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$0.150</td>
+        <td class="mono">$0.600</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
+        
+      </tr><tr class="model-row " data-model="gpt-4o-realtime-preview">
+        <td class="model-name" rowspan="1">gpt-4o-realtime-preview</td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$5.00</td>
+        <td class="mono">$20.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono">$2.50</td>
+        
+      </tr><tr class="model-row " data-model="gpt-4o-realtime-preview/audio">
+        <td class="model-name" rowspan="1">gpt-4o-realtime-preview (audio tokens)<span class="badge type">audio</span></td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$40.00</td>
+        <td class="mono">$80.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono">$2.50</td>
+        
+      </tr><tr class="model-row " data-model="gpt-4o-search-preview">
+        <td class="model-name" rowspan="1">gpt-4o-search-preview</td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$2.50</td>
+        <td class="mono">$10.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
+        
+      </tr><tr class="family-row"><td colspan="6"><strong>GPT-4 (Legacy)</strong></td></tr><tr class="model-row deprecated" data-model="gpt-4-0125-preview">
         <td class="model-name" rowspan="1">gpt-4-0125-preview<span class="badge dep">deprecated</span></td>
         <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
         <td class="mono">$10.00</td>
         <td class="mono">$30.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
+        
+      </tr><tr class="model-row deprecated" data-model="gpt-4-0314">
+        <td class="model-name" rowspan="1">gpt-4-0314<span class="badge dep">deprecated</span></td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$30.00</td>
+        <td class="mono">$60.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
+        
+      </tr><tr class="model-row deprecated" data-model="gpt-4-0613">
+        <td class="model-name" rowspan="1">gpt-4-0613<span class="badge dep">deprecated</span></td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$30.00</td>
+        <td class="mono">$60.00</td>
         <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
         
       </tr><tr class="model-row deprecated" data-model="gpt-4-1106-preview">
@@ -1447,25 +1085,60 @@
         <td class="mono">$30.00</td>
         <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
         
-      </tr><tr class="model-row deprecated" data-model="gpt-4-0613">
-        <td class="model-name" rowspan="1">gpt-4-0613<span class="badge dep">deprecated</span></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$30.00</td>
-        <td class="mono">$60.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
-        
-      </tr><tr class="model-row deprecated" data-model="gpt-4-0314">
-        <td class="model-name" rowspan="1">gpt-4-0314<span class="badge dep">deprecated</span></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$30.00</td>
-        <td class="mono">$60.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
-        
       </tr><tr class="model-row deprecated" data-model="gpt-4-32k">
         <td class="model-name" rowspan="1">gpt-4-32k<span class="badge dep">deprecated</span></td>
         <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
         <td class="mono">$60.00</td>
         <td class="mono">$120.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
+        
+      </tr><tr class="model-row deprecated" data-model="gpt-4-turbo-2024-04-09">
+        <td class="model-name" rowspan="1">gpt-4-turbo-2024-04-09<span class="badge dep">deprecated</span></td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$10.00</td>
+        <td class="mono">$30.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
+        
+      </tr><tr class="family-row"><td colspan="6"><strong>ChatGPT</strong></td></tr><tr class="model-row deprecated" data-model="chatgpt-4o-latest">
+        <td class="model-name" rowspan="1">chatgpt-4o-latest<span class="badge dep">deprecated</span></td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$5.00</td>
+        <td class="mono">$15.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
+        
+      </tr><tr class="model-row " data-model="chatgpt-image-latest">
+        <td class="model-name" rowspan="1">chatgpt-image-latest</td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$5.00</td>
+        <td class="mono">$10.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono">$1.25</td>
+        
+      </tr><tr class="model-row " data-model="chatgpt-image-latest">
+        <td class="model-name" rowspan="1">chatgpt-image-latest<span class="badge type">imageGeneration</span><div class="aliases">$0.009–$0.2/image</div></td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono"><span class="na">-</span></td>
+        <td class="mono"><span class="na">-</span></td>
+        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
+        
+      </tr><tr class="model-row special" data-model="chatgpt-image-latest/image">
+        <td class="model-name" rowspan="1">chatgpt-image-latest (image tokens)<span class="badge type">image</span></td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$8.00</td>
+        <td class="mono">$32.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono">$2.00</td>
+        
+      </tr><tr class="family-row"><td colspan="6"><strong>GPT-3.5 (Legacy)</strong></td></tr><tr class="model-row deprecated" data-model="gpt-3.5-0301">
+        <td class="model-name" rowspan="1">gpt-3.5-0301<span class="badge dep">deprecated</span></td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$1.50</td>
+        <td class="mono">$2.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
+        
+      </tr><tr class="model-row " data-model="gpt-3.5-turbo">
+        <td class="model-name" rowspan="1">gpt-3.5-turbo<span class="badge type">fineTuning</span></td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$3.00</td>
+        <td class="mono">$6.00</td>
         <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
         
       </tr><tr class="model-row deprecated" data-model="gpt-3.5-turbo">
@@ -1482,13 +1155,6 @@
         <td class="mono">$1.50</td>
         <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
         
-      </tr><tr class="model-row deprecated" data-model="gpt-3.5-turbo-1106">
-        <td class="model-name" rowspan="1">gpt-3.5-turbo-1106<span class="badge dep">deprecated</span></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$1.00</td>
-        <td class="mono">$2.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
-        
       </tr><tr class="model-row deprecated" data-model="gpt-3.5-turbo-0613">
         <td class="model-name" rowspan="1">gpt-3.5-turbo-0613<span class="badge dep">deprecated</span></td>
         <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
@@ -1496,17 +1162,10 @@
         <td class="mono">$2.00</td>
         <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
         
-      </tr><tr class="model-row deprecated" data-model="gpt-3.5-0301">
-        <td class="model-name" rowspan="1">gpt-3.5-0301<span class="badge dep">deprecated</span></td>
+      </tr><tr class="model-row deprecated" data-model="gpt-3.5-turbo-1106">
+        <td class="model-name" rowspan="1">gpt-3.5-turbo-1106<span class="badge dep">deprecated</span></td>
         <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$1.50</td>
-        <td class="mono">$2.00</td>
-        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
-        
-      </tr><tr class="model-row deprecated" data-model="gpt-3.5-turbo-instruct">
-        <td class="model-name" rowspan="1">gpt-3.5-turbo-instruct<span class="badge dep">deprecated</span></td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$1.50</td>
+        <td class="mono">$1.00</td>
         <td class="mono">$2.00</td>
         <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
         
@@ -1517,11 +1176,256 @@
         <td class="mono">$4.00</td>
         <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
         
-      </tr><tr class="model-row deprecated" data-model="davinci-002">
-        <td class="model-name" rowspan="1">davinci-002<span class="badge dep">deprecated</span></td>
+      </tr><tr class="model-row deprecated" data-model="gpt-3.5-turbo-instruct">
+        <td class="model-name" rowspan="1">gpt-3.5-turbo-instruct<span class="badge dep">deprecated</span></td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$1.50</td>
+        <td class="mono">$2.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
+        
+      </tr><tr class="family-row"><td colspan="6"><strong>Codex</strong></td></tr><tr class="model-row " data-model="codex-mini-latest">
+        <td class="model-name" rowspan="1">codex-mini-latest</td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$1.50</td>
+        <td class="mono">$6.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono">$0.375</td>
+        
+      </tr><tr class="family-row"><td colspan="6"><strong>Image Generation</strong></td></tr><tr class="model-row " data-model="dall-e-2">
+        <td class="model-name" rowspan="1">dall-e-2<span class="badge type">imageGeneration</span><div class="aliases">$0.016–$0.02/image</div></td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono"><span class="na">-</span></td>
+        <td class="mono"><span class="na">-</span></td>
+        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
+        
+      </tr><tr class="model-row " data-model="dall-e-3">
+        <td class="model-name" rowspan="1">dall-e-3<span class="badge type">imageGeneration</span><div class="aliases">$0.04–$0.12/image</div></td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono"><span class="na">-</span></td>
+        <td class="mono"><span class="na">-</span></td>
+        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
+        
+      </tr><tr class="model-row " data-model="gpt-image-1">
+        <td class="model-name" rowspan="1">gpt-image-1</td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$5.00</td>
+        <td class="mono"><span class="na">-</span></td>
+        <td class="mono"><span class="na">-</span></td><td class="mono">$1.25</td>
+        
+      </tr><tr class="model-row " data-model="gpt-image-1">
+        <td class="model-name" rowspan="1">gpt-image-1<span class="badge type">imageGeneration</span><div class="aliases">$0.011–$0.25/image</div></td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono"><span class="na">-</span></td>
+        <td class="mono"><span class="na">-</span></td>
+        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
+        
+      </tr><tr class="model-row " data-model="gpt-image-1-mini">
+        <td class="model-name" rowspan="1">gpt-image-1-mini</td>
         <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
         <td class="mono">$2.00</td>
-        <td class="mono">$2.00</td>
+        <td class="mono"><span class="na">-</span></td>
+        <td class="mono"><span class="na">-</span></td><td class="mono">$0.200</td>
+        
+      </tr><tr class="model-row " data-model="gpt-image-1-mini">
+        <td class="model-name" rowspan="1">gpt-image-1-mini<span class="badge type">imageGeneration</span><div class="aliases">$0.005–$0.052/image</div></td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono"><span class="na">-</span></td>
+        <td class="mono"><span class="na">-</span></td>
+        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
+        
+      </tr><tr class="model-row special" data-model="gpt-image-1-mini/image">
+        <td class="model-name" rowspan="1">gpt-image-1-mini (image tokens)<span class="badge type">image</span></td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$2.50</td>
+        <td class="mono">$8.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono">$0.250</td>
+        
+      </tr><tr class="model-row " data-model="gpt-image-1.5">
+        <td class="model-name" rowspan="1">gpt-image-1.5</td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$5.00</td>
+        <td class="mono">$10.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono">$1.25</td>
+        
+      </tr><tr class="model-row " data-model="gpt-image-1.5">
+        <td class="model-name" rowspan="1">gpt-image-1.5<span class="badge type">imageGeneration</span><div class="aliases">$0.009–$0.2/image</div></td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono"><span class="na">-</span></td>
+        <td class="mono"><span class="na">-</span></td>
+        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
+        
+      </tr><tr class="model-row special" data-model="gpt-image-1.5/image">
+        <td class="model-name" rowspan="1">gpt-image-1.5 (image tokens)<span class="badge type">image</span></td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$8.00</td>
+        <td class="mono">$32.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono">$2.00</td>
+        
+      </tr><tr class="model-row special" data-model="gpt-image-1/image">
+        <td class="model-name" rowspan="1">gpt-image-1 (image tokens)<span class="badge type">image</span></td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$10.00</td>
+        <td class="mono">$40.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono">$2.50</td>
+        
+      </tr><tr class="family-row"><td colspan="6"><strong>Video Generation</strong></td></tr><tr class="model-row " data-model="sora-2">
+        <td class="model-name" rowspan="1">sora-2<span class="badge type">video</span><div class="aliases">$0.1/s, $0.05/s (high-res)</div></td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono"><span class="na">-</span></td>
+        <td class="mono"><span class="na">-</span></td>
+        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
+        
+      </tr><tr class="model-row " data-model="sora-2-pro">
+        <td class="model-name" rowspan="1">sora-2-pro<span class="badge type">video</span><div class="aliases">$0.3/s, $0.5/s (high-res), $0.7/s (high-res), $0.15/s (high-res), $0.25/s (high-res), $0.35/s (high-res)</div></td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono"><span class="na">-</span></td>
+        <td class="mono"><span class="na">-</span></td>
+        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
+        
+      </tr><tr class="family-row"><td colspan="6"><strong>Audio / Realtime</strong></td></tr><tr class="model-row " data-model="gpt-audio">
+        <td class="model-name" rowspan="1">gpt-audio</td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$2.50</td>
+        <td class="mono">$10.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
+        
+      </tr><tr class="model-row " data-model="gpt-audio-1.5">
+        <td class="model-name" rowspan="1">gpt-audio-1.5</td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$2.50</td>
+        <td class="mono">$10.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
+        
+      </tr><tr class="model-row " data-model="gpt-audio-1.5/audio">
+        <td class="model-name" rowspan="1">gpt-audio-1.5 (audio tokens)<span class="badge type">audio</span></td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$32.00</td>
+        <td class="mono">$64.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
+        
+      </tr><tr class="model-row " data-model="gpt-audio-mini">
+        <td class="model-name" rowspan="1">gpt-audio-mini</td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$0.600</td>
+        <td class="mono">$2.40</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
+        
+      </tr><tr class="model-row " data-model="gpt-audio-mini/audio">
+        <td class="model-name" rowspan="1">gpt-audio-mini (audio tokens)<span class="badge type">audio</span></td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$10.00</td>
+        <td class="mono">$20.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
+        
+      </tr><tr class="model-row " data-model="gpt-audio/audio">
+        <td class="model-name" rowspan="1">gpt-audio (audio tokens)<span class="badge type">audio</span></td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$32.00</td>
+        <td class="mono">$64.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
+        
+      </tr><tr class="model-row " data-model="gpt-realtime">
+        <td class="model-name" rowspan="1">gpt-realtime</td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$4.00</td>
+        <td class="mono">$16.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono">$0.400</td>
+        
+      </tr><tr class="model-row " data-model="gpt-realtime-1.5">
+        <td class="model-name" rowspan="1">gpt-realtime-1.5</td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$4.00</td>
+        <td class="mono">$16.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono">$0.400</td>
+        
+      </tr><tr class="model-row " data-model="gpt-realtime-1.5/audio">
+        <td class="model-name" rowspan="1">gpt-realtime-1.5 (audio tokens)<span class="badge type">audio</span></td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$32.00</td>
+        <td class="mono">$64.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono">$0.400</td>
+        
+      </tr><tr class="model-row special" data-model="gpt-realtime-1.5/image">
+        <td class="model-name" rowspan="1">gpt-realtime-1.5 (image tokens)<span class="badge type">image</span></td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$5.00</td>
+        <td class="mono"><span class="na">-</span></td>
+        <td class="mono"><span class="na">-</span></td><td class="mono">$0.500</td>
+        
+      </tr><tr class="model-row " data-model="gpt-realtime-mini">
+        <td class="model-name" rowspan="1">gpt-realtime-mini</td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$0.600</td>
+        <td class="mono">$2.40</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono">$0.060</td>
+        
+      </tr><tr class="model-row " data-model="gpt-realtime-mini/audio">
+        <td class="model-name" rowspan="1">gpt-realtime-mini (audio tokens)<span class="badge type">audio</span></td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$10.00</td>
+        <td class="mono">$20.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono">$0.300</td>
+        
+      </tr><tr class="model-row special" data-model="gpt-realtime-mini/image">
+        <td class="model-name" rowspan="1">gpt-realtime-mini (image tokens)<span class="badge type">image</span></td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$0.800</td>
+        <td class="mono"><span class="na">-</span></td>
+        <td class="mono"><span class="na">-</span></td><td class="mono">$0.080</td>
+        
+      </tr><tr class="model-row " data-model="gpt-realtime/audio">
+        <td class="model-name" rowspan="1">gpt-realtime (audio tokens)<span class="badge type">audio</span></td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$32.00</td>
+        <td class="mono">$64.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono">$0.400</td>
+        
+      </tr><tr class="model-row special" data-model="gpt-realtime/image">
+        <td class="model-name" rowspan="1">gpt-realtime (image tokens)<span class="badge type">image</span></td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$5.00</td>
+        <td class="mono"><span class="na">-</span></td>
+        <td class="mono"><span class="na">-</span></td><td class="mono">$0.500</td>
+        
+      </tr><tr class="model-row special" data-model="tts">
+        <td class="model-name" rowspan="1">tts<span class="badge type">tts</span><div class="aliases">$15.00/1M chars</div></td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono"><span class="na">-</span></td>
+        <td class="mono"><span class="na">-</span></td>
+        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
+        
+      </tr><tr class="model-row special" data-model="tts-hd">
+        <td class="model-name" rowspan="1">tts-hd<span class="badge type">tts</span><div class="aliases">$30.00/1M chars</div></td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono"><span class="na">-</span></td>
+        <td class="mono"><span class="na">-</span></td>
+        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
+        
+      </tr><tr class="family-row"><td colspan="6"><strong>Embeddings</strong></td></tr><tr class="model-row special" data-model="text-embedding-3-large">
+        <td class="model-name" rowspan="1">text-embedding-3-large<span class="badge type">embedding</span></td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$0.130</td>
+        <td class="mono"><span class="na">-</span></td>
+        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
+        
+      </tr><tr class="model-row special" data-model="text-embedding-3-small">
+        <td class="model-name" rowspan="1">text-embedding-3-small<span class="badge type">embedding</span></td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$0.020</td>
+        <td class="mono"><span class="na">-</span></td>
+        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
+        
+      </tr><tr class="model-row special" data-model="text-embedding-ada-002">
+        <td class="model-name" rowspan="1">text-embedding-ada-002<span class="badge type">embedding</span></td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$0.100</td>
+        <td class="mono"><span class="na">-</span></td>
+        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
+        
+      </tr><tr class="family-row"><td colspan="6"><strong>Other</strong></td></tr><tr class="model-row " data-model="babbage-002">
+        <td class="model-name" rowspan="1">babbage-002<span class="badge type">fineTuning</span></td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$1.60</td>
+        <td class="mono">$1.60</td>
         <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
         
       </tr><tr class="model-row deprecated" data-model="babbage-002">
@@ -1529,6 +1433,41 @@
         <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
         <td class="mono">$0.400</td>
         <td class="mono">$0.400</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
+        
+      </tr><tr class="model-row " data-model="computer-use-preview">
+        <td class="model-name" rowspan="1">computer-use-preview</td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$3.00</td>
+        <td class="mono">$12.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
+        
+      </tr><tr class="model-row " data-model="davinci-002">
+        <td class="model-name" rowspan="1">davinci-002<span class="badge type">fineTuning</span></td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$12.00</td>
+        <td class="mono">$12.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
+        
+      </tr><tr class="model-row deprecated" data-model="davinci-002">
+        <td class="model-name" rowspan="1">davinci-002<span class="badge dep">deprecated</span></td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$2.00</td>
+        <td class="mono">$2.00</td>
+        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
+        
+      </tr><tr class="model-row " data-model="web-search">
+        <td class="model-name" rowspan="1">web-search<span class="badge type">tool</span><div class="aliases">$10.00/1k calls</div></td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono"><span class="na">-</span></td>
+        <td class="mono"><span class="na">-</span></td>
+        <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
+        
+      </tr><tr class="model-row " data-model="whisper">
+        <td class="model-name" rowspan="1">whisper<span class="badge type">transcription</span><div class="aliases">$0.006/min</div></td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono"><span class="na">-</span></td>
+        <td class="mono"><span class="na">-</span></td>
         <td class="mono"><span class="na">-</span></td><td class="mono"><span class="na">-</span></td>
         
       </tr></tbody>
@@ -1627,158 +1566,7 @@
         <td class="mono">$15.00</td>
         
         
-      </tr><tr class="model-row " data-model="grok-4-fast-reasoning">
-        <td class="model-name" rowspan="2">grok-4-fast-reasoning</td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$0.200</td>
-        <td class="mono">$0.500</td>
-        
-        
-      </tr><tr class="tier-row tier-context" data-model="grok-4-fast-reasoning">
-          <td class="tier-cell"><span class="tier-badge context">> 200K</span></td>
-          <td class="mono">$0.400</td>
-          <td class="mono">$1.00</td>
-          
-          
-        </tr><tr class="model-row " data-model="grok-4-fast">
-        <td class="model-name" rowspan="2">grok-4-fast</td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$0.200</td>
-        <td class="mono">$0.500</td>
-        
-        
-      </tr><tr class="tier-row tier-context" data-model="grok-4-fast">
-          <td class="tier-cell"><span class="tier-badge context">> 200K</span></td>
-          <td class="mono">$0.400</td>
-          <td class="mono">$1.00</td>
-          
-          
-        </tr><tr class="model-row " data-model="grok-4-fast-reasoning-latest">
-        <td class="model-name" rowspan="2">grok-4-fast-reasoning-latest</td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$0.200</td>
-        <td class="mono">$0.500</td>
-        
-        
-      </tr><tr class="tier-row tier-context" data-model="grok-4-fast-reasoning-latest">
-          <td class="tier-cell"><span class="tier-badge context">> 200K</span></td>
-          <td class="mono">$0.400</td>
-          <td class="mono">$1.00</td>
-          
-          
-        </tr><tr class="model-row " data-model="grok-4-fast-non-reasoning">
-        <td class="model-name" rowspan="2">grok-4-fast-non-reasoning</td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$0.200</td>
-        <td class="mono">$0.500</td>
-        
-        
-      </tr><tr class="tier-row tier-context" data-model="grok-4-fast-non-reasoning">
-          <td class="tier-cell"><span class="tier-badge context">> 200K</span></td>
-          <td class="mono">$0.400</td>
-          <td class="mono">$1.00</td>
-          
-          
-        </tr><tr class="model-row " data-model="grok-4-fast-non-reasoning-latest">
-        <td class="model-name" rowspan="2">grok-4-fast-non-reasoning-latest</td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$0.200</td>
-        <td class="mono">$0.500</td>
-        
-        
-      </tr><tr class="tier-row tier-context" data-model="grok-4-fast-non-reasoning-latest">
-          <td class="tier-cell"><span class="tier-badge context">> 200K</span></td>
-          <td class="mono">$0.400</td>
-          <td class="mono">$1.00</td>
-          
-          
-        </tr><tr class="model-row " data-model="grok-4.20-multi-agent-beta-0309">
-        <td class="model-name" rowspan="2">grok-4.20-multi-agent-beta-0309</td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$2.00</td>
-        <td class="mono">$6.00</td>
-        
-        
-      </tr><tr class="tier-row tier-context" data-model="grok-4.20-multi-agent-beta-0309">
-          <td class="tier-cell"><span class="tier-badge context">> 200K</span></td>
-          <td class="mono">$4.00</td>
-          <td class="mono">$12.00</td>
-          
-          
-        </tr><tr class="model-row " data-model="grok-4.20-multi-agent-beta-latest">
-        <td class="model-name" rowspan="2">grok-4.20-multi-agent-beta-latest</td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$2.00</td>
-        <td class="mono">$6.00</td>
-        
-        
-      </tr><tr class="tier-row tier-context" data-model="grok-4.20-multi-agent-beta-latest">
-          <td class="tier-cell"><span class="tier-badge context">> 200K</span></td>
-          <td class="mono">$4.00</td>
-          <td class="mono">$12.00</td>
-          
-          
-        </tr><tr class="model-row " data-model="grok-code-fast-1">
-        <td class="model-name" rowspan="1">grok-code-fast-1</td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$0.200</td>
-        <td class="mono">$1.50</td>
-        
-        
-      </tr><tr class="model-row " data-model="grok-code-fast">
-        <td class="model-name" rowspan="1">grok-code-fast</td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$0.200</td>
-        <td class="mono">$1.50</td>
-        
-        
-      </tr><tr class="model-row " data-model="grok-code-fast-1-0825">
-        <td class="model-name" rowspan="1">grok-code-fast-1-0825</td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$0.200</td>
-        <td class="mono">$1.50</td>
-        
-        
-      </tr><tr class="model-row " data-model="grok-4-0709">
-        <td class="model-name" rowspan="2">grok-4-0709</td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$3.00</td>
-        <td class="mono">$15.00</td>
-        
-        
-      </tr><tr class="tier-row tier-context" data-model="grok-4-0709">
-          <td class="tier-cell"><span class="tier-badge context">> 200K</span></td>
-          <td class="mono">$6.00</td>
-          <td class="mono">$30.00</td>
-          
-          
-        </tr><tr class="model-row " data-model="grok-4">
-        <td class="model-name" rowspan="2">grok-4</td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$3.00</td>
-        <td class="mono">$15.00</td>
-        
-        
-      </tr><tr class="tier-row tier-context" data-model="grok-4">
-          <td class="tier-cell"><span class="tier-badge context">> 200K</span></td>
-          <td class="mono">$6.00</td>
-          <td class="mono">$30.00</td>
-          
-          
-        </tr><tr class="model-row " data-model="grok-4-latest">
-        <td class="model-name" rowspan="2">grok-4-latest</td>
-        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$3.00</td>
-        <td class="mono">$15.00</td>
-        
-        
-      </tr><tr class="tier-row tier-context" data-model="grok-4-latest">
-          <td class="tier-cell"><span class="tier-badge context">> 200K</span></td>
-          <td class="mono">$6.00</td>
-          <td class="mono">$30.00</td>
-          
-          
-        </tr><tr class="model-row " data-model="grok-4-1-fast-reasoning">
+      </tr><tr class="model-row " data-model="grok-4-1-fast-reasoning">
         <td class="model-name" rowspan="2">grok-4-1-fast-reasoning</td>
         <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
         <td class="mono">$0.200</td>
@@ -1882,33 +1670,135 @@
           <td class="mono">$12.00</td>
           
           
-        </tr><tr class="model-row " data-model="grok-4-1-fast-non-reasoning">
-        <td class="model-name" rowspan="2">grok-4-1-fast-non-reasoning</td>
+        </tr><tr class="model-row " data-model="grok-4-fast-non-reasoning">
+        <td class="model-name" rowspan="2">grok-4-fast-non-reasoning</td>
         <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
         <td class="mono">$0.200</td>
         <td class="mono">$0.500</td>
         
         
-      </tr><tr class="tier-row tier-context" data-model="grok-4-1-fast-non-reasoning">
+      </tr><tr class="tier-row tier-context" data-model="grok-4-fast-non-reasoning">
           <td class="tier-cell"><span class="tier-badge context">> 200K</span></td>
           <td class="mono">$0.400</td>
           <td class="mono">$1.00</td>
           
           
-        </tr><tr class="model-row " data-model="grok-4-1-fast-non-reasoning-latest">
-        <td class="model-name" rowspan="2">grok-4-1-fast-non-reasoning-latest</td>
+        </tr><tr class="model-row " data-model="grok-4-fast-non-reasoning-latest">
+        <td class="model-name" rowspan="2">grok-4-fast-non-reasoning-latest</td>
         <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
         <td class="mono">$0.200</td>
         <td class="mono">$0.500</td>
         
         
-      </tr><tr class="tier-row tier-context" data-model="grok-4-1-fast-non-reasoning-latest">
+      </tr><tr class="tier-row tier-context" data-model="grok-4-fast-non-reasoning-latest">
           <td class="tier-cell"><span class="tier-badge context">> 200K</span></td>
           <td class="mono">$0.400</td>
           <td class="mono">$1.00</td>
           
           
-        </tr><tr class="model-row " data-model="grok-4.20-beta-0309-reasoning">
+        </tr><tr class="model-row " data-model="grok-4-0709">
+        <td class="model-name" rowspan="2">grok-4-0709</td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$3.00</td>
+        <td class="mono">$15.00</td>
+        
+        
+      </tr><tr class="tier-row tier-context" data-model="grok-4-0709">
+          <td class="tier-cell"><span class="tier-badge context">> 200K</span></td>
+          <td class="mono">$6.00</td>
+          <td class="mono">$30.00</td>
+          
+          
+        </tr><tr class="model-row " data-model="grok-4">
+        <td class="model-name" rowspan="2">grok-4</td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$3.00</td>
+        <td class="mono">$15.00</td>
+        
+        
+      </tr><tr class="tier-row tier-context" data-model="grok-4">
+          <td class="tier-cell"><span class="tier-badge context">> 200K</span></td>
+          <td class="mono">$6.00</td>
+          <td class="mono">$30.00</td>
+          
+          
+        </tr><tr class="model-row " data-model="grok-4-latest">
+        <td class="model-name" rowspan="2">grok-4-latest</td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$3.00</td>
+        <td class="mono">$15.00</td>
+        
+        
+      </tr><tr class="tier-row tier-context" data-model="grok-4-latest">
+          <td class="tier-cell"><span class="tier-badge context">> 200K</span></td>
+          <td class="mono">$6.00</td>
+          <td class="mono">$30.00</td>
+          
+          
+        </tr><tr class="model-row " data-model="grok-3-mini">
+        <td class="model-name" rowspan="1">grok-3-mini</td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$0.300</td>
+        <td class="mono">$0.500</td>
+        
+        
+      </tr><tr class="model-row " data-model="grok-3-mini-latest">
+        <td class="model-name" rowspan="1">grok-3-mini-latest</td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$0.300</td>
+        <td class="mono">$0.500</td>
+        
+        
+      </tr><tr class="model-row " data-model="grok-3-mini-beta">
+        <td class="model-name" rowspan="1">grok-3-mini-beta</td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$0.300</td>
+        <td class="mono">$0.500</td>
+        
+        
+      </tr><tr class="model-row " data-model="grok-3-mini-fast">
+        <td class="model-name" rowspan="1">grok-3-mini-fast</td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$0.300</td>
+        <td class="mono">$0.500</td>
+        
+        
+      </tr><tr class="model-row " data-model="grok-3-mini-fast-latest">
+        <td class="model-name" rowspan="1">grok-3-mini-fast-latest</td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$0.300</td>
+        <td class="mono">$0.500</td>
+        
+        
+      </tr><tr class="model-row " data-model="grok-3-mini-fast-beta">
+        <td class="model-name" rowspan="1">grok-3-mini-fast-beta</td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$0.300</td>
+        <td class="mono">$0.500</td>
+        
+        
+      </tr><tr class="model-row " data-model="grok-code-fast-1">
+        <td class="model-name" rowspan="1">grok-code-fast-1</td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$0.200</td>
+        <td class="mono">$1.50</td>
+        
+        
+      </tr><tr class="model-row " data-model="grok-code-fast">
+        <td class="model-name" rowspan="1">grok-code-fast</td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$0.200</td>
+        <td class="mono">$1.50</td>
+        
+        
+      </tr><tr class="model-row " data-model="grok-code-fast-1-0825">
+        <td class="model-name" rowspan="1">grok-code-fast-1-0825</td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$0.200</td>
+        <td class="mono">$1.50</td>
+        
+        
+      </tr><tr class="model-row " data-model="grok-4.20-beta-0309-reasoning">
         <td class="model-name" rowspan="2">grok-4.20-beta-0309-reasoning</td>
         <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
         <td class="mono">$2.00</td>
@@ -2038,49 +1928,98 @@
           <td class="mono">$12.00</td>
           
           
-        </tr><tr class="model-row " data-model="grok-3-mini">
-        <td class="model-name" rowspan="1">grok-3-mini</td>
+        </tr><tr class="model-row " data-model="grok-4-fast-reasoning">
+        <td class="model-name" rowspan="2">grok-4-fast-reasoning</td>
         <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$0.300</td>
+        <td class="mono">$0.200</td>
         <td class="mono">$0.500</td>
         
         
-      </tr><tr class="model-row " data-model="grok-3-mini-latest">
-        <td class="model-name" rowspan="1">grok-3-mini-latest</td>
+      </tr><tr class="tier-row tier-context" data-model="grok-4-fast-reasoning">
+          <td class="tier-cell"><span class="tier-badge context">> 200K</span></td>
+          <td class="mono">$0.400</td>
+          <td class="mono">$1.00</td>
+          
+          
+        </tr><tr class="model-row " data-model="grok-4-fast">
+        <td class="model-name" rowspan="2">grok-4-fast</td>
         <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$0.300</td>
+        <td class="mono">$0.200</td>
         <td class="mono">$0.500</td>
         
         
-      </tr><tr class="model-row " data-model="grok-3-mini-beta">
-        <td class="model-name" rowspan="1">grok-3-mini-beta</td>
+      </tr><tr class="tier-row tier-context" data-model="grok-4-fast">
+          <td class="tier-cell"><span class="tier-badge context">> 200K</span></td>
+          <td class="mono">$0.400</td>
+          <td class="mono">$1.00</td>
+          
+          
+        </tr><tr class="model-row " data-model="grok-4-fast-reasoning-latest">
+        <td class="model-name" rowspan="2">grok-4-fast-reasoning-latest</td>
         <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$0.300</td>
+        <td class="mono">$0.200</td>
         <td class="mono">$0.500</td>
         
         
-      </tr><tr class="model-row " data-model="grok-3-mini-fast">
-        <td class="model-name" rowspan="1">grok-3-mini-fast</td>
+      </tr><tr class="tier-row tier-context" data-model="grok-4-fast-reasoning-latest">
+          <td class="tier-cell"><span class="tier-badge context">> 200K</span></td>
+          <td class="mono">$0.400</td>
+          <td class="mono">$1.00</td>
+          
+          
+        </tr><tr class="model-row " data-model="grok-4-1-fast-non-reasoning">
+        <td class="model-name" rowspan="2">grok-4-1-fast-non-reasoning</td>
         <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$0.300</td>
+        <td class="mono">$0.200</td>
         <td class="mono">$0.500</td>
         
         
-      </tr><tr class="model-row " data-model="grok-3-mini-fast-latest">
-        <td class="model-name" rowspan="1">grok-3-mini-fast-latest</td>
+      </tr><tr class="tier-row tier-context" data-model="grok-4-1-fast-non-reasoning">
+          <td class="tier-cell"><span class="tier-badge context">> 200K</span></td>
+          <td class="mono">$0.400</td>
+          <td class="mono">$1.00</td>
+          
+          
+        </tr><tr class="model-row " data-model="grok-4-1-fast-non-reasoning-latest">
+        <td class="model-name" rowspan="2">grok-4-1-fast-non-reasoning-latest</td>
         <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$0.300</td>
+        <td class="mono">$0.200</td>
         <td class="mono">$0.500</td>
         
         
-      </tr><tr class="model-row " data-model="grok-3-mini-fast-beta">
-        <td class="model-name" rowspan="1">grok-3-mini-fast-beta</td>
+      </tr><tr class="tier-row tier-context" data-model="grok-4-1-fast-non-reasoning-latest">
+          <td class="tier-cell"><span class="tier-badge context">> 200K</span></td>
+          <td class="mono">$0.400</td>
+          <td class="mono">$1.00</td>
+          
+          
+        </tr><tr class="model-row " data-model="grok-4.20-multi-agent-beta-0309">
+        <td class="model-name" rowspan="2">grok-4.20-multi-agent-beta-0309</td>
         <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
-        <td class="mono">$0.300</td>
-        <td class="mono">$0.500</td>
+        <td class="mono">$2.00</td>
+        <td class="mono">$6.00</td>
         
         
-      </tr><tr class="model-row " data-model="grok-imagine-image">
+      </tr><tr class="tier-row tier-context" data-model="grok-4.20-multi-agent-beta-0309">
+          <td class="tier-cell"><span class="tier-badge context">> 200K</span></td>
+          <td class="mono">$4.00</td>
+          <td class="mono">$12.00</td>
+          
+          
+        </tr><tr class="model-row " data-model="grok-4.20-multi-agent-beta-latest">
+        <td class="model-name" rowspan="2">grok-4.20-multi-agent-beta-latest</td>
+        <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
+        <td class="mono">$2.00</td>
+        <td class="mono">$6.00</td>
+        
+        
+      </tr><tr class="tier-row tier-context" data-model="grok-4.20-multi-agent-beta-latest">
+          <td class="tier-cell"><span class="tier-badge context">> 200K</span></td>
+          <td class="mono">$4.00</td>
+          <td class="mono">$12.00</td>
+          
+          
+        </tr><tr class="model-row " data-model="grok-imagine-image">
         <td class="model-name" rowspan="1">grok-imagine-image<span class="badge type">imageGeneration</span></td>
         <td class="tier-cell"><span class="tier-badge standard">Standard</span></td>
         <td class="mono"><span class="na">-</span></td>
@@ -2109,24 +2048,21 @@
 <script>
 document.getElementById('search').addEventListener('input', function(e) {
   const q = e.target.value.toLowerCase();
-  document.querySelectorAll('tbody').forEach(tbody => {
+  document.querySelectorAll('tbody').forEach(function(tbody) {
     let currentModelVisible = false;
-    tbody.querySelectorAll('tr').forEach(tr => {
+    tbody.querySelectorAll('tr').forEach(function(tr) {
       if (tr.classList.contains('family-row') || tr.classList.contains('hub-only-divider')) {
         tr.style.display = !q ? '' : 'none';
-        tr._show = false;
         return;
       }
       if (tr.classList.contains('tier-row')) {
         tr.style.display = currentModelVisible ? '' : 'none';
         return;
       }
-      // Model row or hub-only-row
       const modelId = tr.getAttribute('data-model') || '';
       const text = tr.textContent.toLowerCase();
       currentModelVisible = !q || text.includes(q) || modelId.includes(q);
       tr.style.display = currentModelVisible ? '' : 'none';
-      // Show family/divider header
       if (currentModelVisible && q) {
         let prev = tr.previousElementSibling;
         while (prev && !prev.classList.contains('family-row') && !prev.classList.contains('hub-only-divider')) {
@@ -2135,6 +2071,16 @@ document.getElementById('search').addEventListener('input', function(e) {
         if (prev) prev.style.display = '';
       }
     });
+  });
+  // Update health card counts when filtering
+  document.querySelectorAll('.provider-card').forEach(function(card) {
+    const tbody = card.querySelector('tbody');
+    if (!tbody) return;
+    const visible = tbody.querySelectorAll('tr:not([style*="display: none"])').length;
+    const total = tbody.querySelectorAll('tr').length;
+    const countEl = card.querySelector('.model-count');
+    if (countEl && q) countEl.textContent = visible + '/' + total + ' models';
+    else if (countEl) countEl.textContent = total + ' models';
   });
 });
 </script>
