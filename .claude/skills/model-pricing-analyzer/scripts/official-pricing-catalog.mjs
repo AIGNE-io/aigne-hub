@@ -20,14 +20,15 @@
  *   - Hub:       GET /api/ai-providers/model-rates (optional)
  */
 
-import { execSync } from 'child_process';
 import fs from 'fs';
 import http from 'http';
 import https from 'https';
-import { dirname, join } from 'path';
+import path from 'path';
 import { fileURLToPath } from 'url';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const OUTPUT_DIR = path.join(__dirname, '..', 'output');
+fs.mkdirSync(OUTPUT_DIR, { recursive: true });
 
 const UA = 'Mozilla/5.0 (compatible; AIGNE-Hub-Catalog/1.0)';
 
@@ -323,7 +324,7 @@ async function scrapeAnthropic() {
 
   console.error(`  Anthropic: ${models.length} models extracted`);
   if (models.length === 0) {
-    const rawPath = '/tmp/aigne-raw-anthropic.txt';
+    const rawPath = path.join(OUTPUT_DIR, 'aigne-raw-anthropic.txt');
     fs.writeFileSync(rawPath, text);
     console.error(`  ⚠️  Regex extracted 0 models — raw text saved to ${rawPath}`);
     return { provider: 'Anthropic', url, models, rawTextPath: rawPath };
@@ -571,7 +572,7 @@ async function scrapeGoogle() {
 
   console.error(`  Google: ${models.length} models extracted`);
   if (models.length === 0) {
-    const rawPath = '/tmp/aigne-raw-google.md';
+    const rawPath = path.join(OUTPUT_DIR, 'aigne-raw-google.md');
     fs.writeFileSync(rawPath, md);
     console.error(`  ⚠️  Markdown parse extracted 0 models — raw saved to ${rawPath}`);
     return { provider: 'Google', url, models, rawTextPath: rawPath };
@@ -580,188 +581,546 @@ async function scrapeGoogle() {
 }
 
 // ─── OpenAI ─────────────────────────────────────────────────────────────────
-// Delegates to scrape-openai-pricing.mjs (the full, optimized scraper)
+// Direct scrape from developers.openai.com (Standard tier only)
 
 const OPENAI_URL = 'https://developers.openai.com/api/docs/pricing?latest-pricing=standard';
 
 /**
- * Convert the native scraper output (section-based) to the models array format
- * expected by official-pricing-catalog.mjs downstream code (HTML + cache).
+ * Parse rows from a "Standard Model Input Cached input Output ... [next section]" block.
+ * Each row: `model_name [context] $input [$cached|-] $output`
  */
-function scraperOutputToModels(output) {
-  const models = [];
+function parseOpenAISection(text, sectionStart, sectionEnd) {
+  const block = text.substring(sectionStart, sectionEnd);
+  const entries = [];
+  const seen = new Set();
 
-  // ── text models → standard chatCompletion models ──
-  if (output.text) {
-    for (const [id, data] of Object.entries(output.text)) {
-      const model = { name: id, id, inputPerMTok: data.input, outputPerMTok: data.output };
-      if (data.cachedInput != null) model.cacheRead = data.cachedInput;
-      if (data.contextTiers) {
-        const tiers = Object.entries(data.contextTiers);
-        if (tiers.length > 0) {
-          const [threshold, tier] = tiers[0];
-          model.longContextInput = tier.input;
-          model.longContextOutput = tier.output;
-          model.longContextThreshold = threshold;
-          if (tier.cachedInput != null) model.longContextCachedInput = tier.cachedInput;
-        }
+  // Pass 1: 3-field matches (input, cached-or-dash, output-or-dash)
+  const regex3 =
+    /([\w][\w./-]*(?:-[\w.]+)*)(?:\s+\(([^)]+)\))?\s+\$([\d.]+)\s+(?:\$([\d.]+)|[-/])\s+(?:\$([\d.]+)|[-/])/g;
+  let m;
+  while ((m = regex3.exec(block)) !== null) {
+    const id = m[1];
+    if (id.includes('window') || id.includes('function') || id.includes('var')) continue;
+    const contextNote = m[2] || null;
+    const key = `${id}|${contextNote || ''}`;
+    seen.add(key);
+    entries.push({
+      id,
+      contextNote,
+      input: parseFloat(m[3]),
+      cachedInput: m[4] ? parseFloat(m[4]) : null,
+      output: m[5] ? parseFloat(m[5]) : null,
+    });
+  }
+
+  // Pass 2: 2-field matches for models with no cached column at all (e.g. gpt-5.4-pro)
+  const regex2 = /([\w][\w./-]*(?:-[\w.]+)*)(?:\s+\(([^)]+)\))?\s+\$([\d.]+)\s+\$([\d.]+)/g;
+  while ((m = regex2.exec(block)) !== null) {
+    const id = m[1];
+    if (id.includes('window') || id.includes('function') || id.includes('var')) continue;
+    const contextNote = m[2] || null;
+    const key = `${id}|${contextNote || ''}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    entries.push({
+      id,
+      contextNote,
+      input: parseFloat(m[3]),
+      cachedInput: null,
+      output: parseFloat(m[4]),
+    });
+  }
+
+  return entries;
+}
+
+/**
+ * Convert raw parsed entries into catalog model objects, grouping context tiers.
+ */
+function openAIEntriesToModels(entries, type) {
+  const modelMap = new Map(); // id → model object
+  const order = []; // preserve insertion order
+
+  for (const e of entries) {
+    const isHighTier = e.contextNote && e.contextNote.startsWith('>');
+
+    if (isHighTier) {
+      const base = modelMap.get(e.id);
+      if (base) {
+        const label = e.contextNote.replace(/\s*context length\s*/i, '').trim();
+        base.longContextInput = e.input;
+        base.longContextOutput = e.output;
+        base.longContextThreshold = label;
+        if (e.cachedInput != null) base.longContextCachedInput = e.cachedInput;
       }
-      models.push(model);
+      continue;
     }
+
+    const model = { name: e.id, id: e.id, inputPerMTok: e.input, outputPerMTok: e.output };
+    if (e.cachedInput != null) model.cacheRead = e.cachedInput;
+    if (type) model.type = type;
+    modelMap.set(e.id, model);
+    order.push(e.id);
   }
 
-  // ── image token models ──
-  if (output.image) {
-    for (const [id, data] of Object.entries(output.image)) {
-      const model = {
-        name: `${id} (image tokens)`,
-        id: `${id}/image`,
-        inputPerMTok: data.input,
-        outputPerMTok: data.output,
-        type: 'image',
-      };
-      if (data.cachedInput != null) model.cacheRead = data.cachedInput;
-      models.push(model);
+  return order.map((id) => modelMap.get(id));
+}
+
+// Assign family groups for OpenAI models
+function assignOpenAIFamilies(models) {
+  const getFamily = (id) => {
+    if (id.startsWith('o4')) return 'Reasoning: o4';
+    if (id.startsWith('o3')) return 'Reasoning: o3';
+    if (id.startsWith('o1')) return 'Reasoning: o1';
+    if (id.match(/^gpt-5\./)) return 'GPT-5.x';
+    if (id.startsWith('gpt-5')) return 'GPT-5';
+    if (id.startsWith('gpt-4.')) return 'GPT-4.1';
+    if (id.startsWith('gpt-4.5')) return 'GPT-4.5';
+    if (id.startsWith('gpt-4o')) return 'GPT-4o';
+    if (id.startsWith('gpt-4')) return 'GPT-4 (Legacy)';
+    if (id.startsWith('chatgpt')) return 'ChatGPT';
+    if (id.startsWith('gpt-3')) return 'GPT-3.5 (Legacy)';
+    if (id.startsWith('codex')) return 'Codex';
+    if (id.startsWith('gpt-image') || id.startsWith('dall-e')) return 'Image Generation';
+    if (id.startsWith('sora')) return 'Video Generation';
+    if (id.startsWith('gpt-audio') || id.startsWith('gpt-realtime') || id.includes('tts') || id.includes('transcribe'))
+      return 'Audio / Realtime';
+    if (id.startsWith('text-embedding')) return 'Embeddings';
+    return 'Other';
+  };
+  for (const m of models) m.family = getFamily(m.id);
+}
+
+function sortOpenAIModels(models) {
+  const order = (id) => {
+    if (id.startsWith('o4')) return 0;
+    if (id.startsWith('o3')) return 1;
+    if (id.startsWith('o1')) return 2;
+    if (id.match(/^gpt-5\./)) return 3;
+    if (id.startsWith('gpt-5')) return 4;
+    if (id.startsWith('gpt-4.')) return 5;
+    if (id.startsWith('gpt-4o')) return 6;
+    if (id.startsWith('gpt-4')) return 7;
+    if (id.startsWith('chatgpt')) return 8;
+    if (id.startsWith('gpt-3')) return 9;
+    if (id.startsWith('codex')) return 10;
+    if (id.startsWith('gpt-image') || id.startsWith('dall-e')) return 11;
+    if (id.startsWith('sora')) return 12;
+    if (id.startsWith('gpt-audio') || id.startsWith('gpt-realtime') || id.includes('tts') || id.includes('transcribe'))
+      return 13;
+    if (id.startsWith('text-embedding')) return 14;
+    return 20;
+  };
+  models.sort((a, b) => order(a.id) - order(b.id) || a.id.localeCompare(b.id));
+}
+
+/**
+ * Parse pricing data from Astro Island `<astro-island component-export="TextTokenPricingTables" props="...">`.
+ * Returns { [tier]: [{ name, input, cached, output }, ...] }
+ */
+function parseAstroIslandPricing(html) {
+  const islandRe = /<astro-island[^>]*component-export="TextTokenPricingTables"[^>]*props="([^"]*)"/g;
+  let match;
+  const tiers = {};
+
+  while ((match = islandRe.exec(html)) !== null) {
+    const props = match[1]
+      .replace(/&quot;/g, '"')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>');
+
+    const tierMatch = props.match(/"tier":\[0,"([^"]+)"\]/);
+    if (!tierMatch) continue;
+    const tier = tierMatch[1];
+
+    // Each row: [1,[[0,"model"],[0,input],[0,cached_or_dash],[0,output]]]
+    const rowRe = /\[1,\[\[0,"([^"]+)"\],\[0,([\d.]+|null)\],\[0,(?:"(-|)"|null|([\d.]+))\],\[0,([\d.]+|null)\]\]\]/g;
+    const rows = [];
+    let rm;
+    while ((rm = rowRe.exec(props)) !== null) {
+      const name = rm[1];
+      const input = rm[2] !== 'null' ? parseFloat(rm[2]) : null;
+      const cachedStr = rm[3] !== undefined ? rm[3] : rm[4];
+      const cached = cachedStr && cachedStr !== '-' && cachedStr !== '' ? parseFloat(cachedStr) : null;
+      const output = rm[5] !== 'null' ? parseFloat(rm[5]) : null;
+      rows.push({ name, input, cached, output });
     }
+
+    tiers[tier] = rows;
   }
 
-  // ── audio token models ──
-  if (output.audio) {
-    for (const [id, data] of Object.entries(output.audio)) {
-      const model = {
-        name: `${id} (audio tokens)`,
-        id: `${id}/audio`,
-        inputPerMTok: data.input,
-        outputPerMTok: data.output,
-        type: 'audio',
-      };
-      if (data.cachedInput != null) model.cacheRead = data.cachedInput;
-      models.push(model);
-    }
-  }
-
-  // ── video models ──
-  if (output.video) {
-    for (const [id, data] of Object.entries(output.video)) {
-      const model = { name: id, id, type: 'video', costPerSecond: data.perSecond, note: `$${data.perSecond}/s` };
-      if (data.resolutionTiers) {
-        for (const [res, tier] of Object.entries(data.resolutionTiers)) {
-          model.note += `, $${tier.perSecond}/s (${res})`;
-        }
-      }
-      models.push(model);
-    }
-  }
-
-  // ── transcription & speech ──
-  if (output.transcription) {
-    for (const [id, data] of Object.entries(output.transcription)) {
-      if (data.text || data.audio) {
-        // Token-based transcription/TTS model
-        const model = { name: id, id, type: 'transcription' };
-        if (data.text?.input != null) model.inputPerMTok = data.text.input;
-        if (data.text?.output != null) model.outputPerMTok = data.text.output;
-        if (data.estimatedPerMinute != null) model.costPerMinute = data.estimatedPerMinute;
-        models.push(model);
-      } else if (data.perMinute != null) {
-        models.push({
-          name: id,
-          id,
-          type: 'transcription',
-          costPerMinute: data.perMinute,
-          note: `$${data.perMinute}/min`,
-        });
-      } else if (data.perMillionChars != null) {
-        models.push({
-          name: id,
-          id,
-          type: 'tts',
-          costPerMillionChars: data.perMillionChars,
-          note: `$${data.perMillionChars}/1M chars`,
-        });
-      }
-    }
-  }
-
-  // ── fine-tuning ──
-  if (output.fineTuning) {
-    for (const [id, data] of Object.entries(output.fineTuning)) {
-      const model = { name: id, id, inputPerMTok: data.input, outputPerMTok: data.output, type: 'fineTuning' };
-      if (data.cachedInput != null) model.cacheRead = data.cachedInput;
-      if (data.trainingPerMTok != null) model.trainingPerMTok = data.trainingPerMTok;
-      if (data.trainingPerHour != null) model.trainingPerHour = data.trainingPerHour;
-      models.push(model);
-    }
-  }
-
-  // ── image generation (per-image) ──
-  if (output.imageGeneration) {
-    for (const [id, data] of Object.entries(output.imageGeneration)) {
-      if (data.variants && data.variants.length > 0) {
-        const cheapest = Math.min(...data.variants.map((v) => v.perImage));
-        models.push({
-          name: id,
-          id,
-          type: 'imageGeneration',
-          costPerImage: cheapest,
-          imageVariants: data.variants,
-          note: `$${cheapest}–$${Math.max(...data.variants.map((v) => v.perImage))}/image`,
-        });
-      }
-    }
-  }
-
-  // ── embeddings ──
-  if (output.embedding) {
-    for (const [id, data] of Object.entries(output.embedding)) {
-      models.push({ name: id, id, inputPerMTok: data.input, type: 'embedding' });
-    }
-  }
-
-  // ── built-in tools ──
-  if (output.builtInTools) {
-    for (const [id, data] of Object.entries(output.builtInTools)) {
-      const model = { name: id, id, type: 'tool' };
-      if (data.per1kCalls != null) model.note = `$${data.per1kCalls}/1k calls`;
-      if (data.per20min != null) model.note = `$${data.per20min}/20min`;
-      if (data.perGBPerDay != null) model.note = `$${data.perGBPerDay}/GB-day`;
-      models.push(model);
-    }
-  }
-
-  // ── legacy ──
-  if (output.legacy) {
-    for (const [id, data] of Object.entries(output.legacy)) {
-      models.push({ name: id, id, inputPerMTok: data.input, outputPerMTok: data.output, deprecated: true });
-    }
-  }
-
-  return models;
+  return tiers;
 }
 
 async function scrapeOpenAI() {
   const url = OPENAI_URL;
-  const scraperPath = join(__dirname, 'scrape-openai-pricing.mjs');
-
   console.error('Fetching OpenAI pricing from developers.openai.com ...');
 
+  let html;
   try {
-    const stdout = execSync(`node "${scraperPath}" --no-llm`, {
-      encoding: 'utf-8',
-      timeout: 60000,
-      stdio: ['pipe', 'pipe', 'pipe'],
-    });
-
-    // The scraper writes JSON to stdout, logs to stderr
-    const output = JSON.parse(stdout.trim());
-    const models = scraperOutputToModels(output);
-
-    console.error(`  OpenAI: ${models.length} models extracted (official, Standard tier)`);
-    return { provider: 'OpenAI', url, models };
+    html = await fetch(url);
   } catch (err) {
-    console.error(`  Failed to run scrape-openai-pricing.mjs: ${err.message}`);
+    console.error(`  Failed to fetch OpenAI pricing: ${err.message}`);
     return { provider: 'OpenAI', url, models: [] };
   }
+
+  const models = [];
+  let astroUsed = false;
+
+  // ── Strategy 0: Astro Island props (structured data, most complete) ──
+  const astroTiers = parseAstroIslandPricing(html);
+  const astroStandard = astroTiers['standard'];
+
+  if (astroStandard && astroStandard.length > 0) {
+    const entries = astroStandard
+      .map((r) => ({
+        id: r.name.replace(/\s*\([^)]*\)\s*$/, ''), // strip context annotations like "(272K context length)"
+        contextNote: r.name.match(/\(([^)]+)\)/)?.[1] || null,
+        input: r.input,
+        cachedInput: r.cached,
+        output: r.output,
+      }))
+      .filter((e) => e.input != null); // filter out rows with null input
+
+    models.push(...openAIEntriesToModels(entries, null));
+    console.error(`  OpenAI: ${models.length} text-token models from Astro props (Standard tier)`);
+    astroUsed = true;
+  }
+
+  // ── Fallback: text-based parsing (Strategy 1 & 2) ──
+  const text = strip(html);
+
+  if (!astroUsed) {
+    // ── Text tokens (Standard section) ──
+    // New page layout uses tabs: Batch|Flex|Standard|Priority with "Our latest models" / "All models" sub-sections
+    // Try new format first, fall back to legacy marker
+    let textStdIdx = -1;
+    let textEndIdx = -1;
+
+    // Strategy 1: New tab layout — find "Standard Our latest models" or "Standard All models"
+    const stdTabIdx = text.indexOf('Standard Our latest models');
+    if (stdTabIdx > 0) {
+      textStdIdx = stdTabIdx;
+      // End at next tab (Priority) or next major section
+      const priorityIdx = text.indexOf('Priority Our latest models', stdTabIdx + 30);
+      const jsBlockIdx = text.indexOf('if (!window.__contentSwitcherInit)', stdTabIdx + 30);
+      textEndIdx = -1;
+      for (const c of [priorityIdx, jsBlockIdx]) {
+        if (c > textStdIdx && (textEndIdx === -1 || c < textEndIdx)) textEndIdx = c;
+      }
+    }
+
+    // Strategy 2: Legacy format
+    if (textStdIdx === -1) {
+      textStdIdx = text.indexOf('Standard Model Input Cached input Output');
+      if (textStdIdx > 0) {
+        textEndIdx = text.indexOf('Priority Model Input Cached input Output', textStdIdx + 10);
+      }
+    }
+
+    if (textStdIdx === -1) {
+      console.error('  ERROR: Could not find Standard text section');
+      const rawPath = path.join(OUTPUT_DIR, 'aigne-raw-openai.txt');
+      fs.writeFileSync(rawPath, text);
+      console.error(`  ⚠️  Regex extracted 0 models — raw text saved to ${rawPath}`);
+      return { provider: 'OpenAI', url, models: [], rawTextPath: rawPath };
+    }
+    const textEntries = parseOpenAISection(text, textStdIdx, textEndIdx > 0 ? textEndIdx : textStdIdx + 8000);
+    models.push(...openAIEntriesToModels(textEntries, null));
+  }
+
+  // Track existing model IDs to avoid duplicates from subsequent sections
+  const existingIds = new Set(models.map((m) => m.id));
+
+  // ── Image tokens (Standard section) ──
+  const imgSectionIdx = text.indexOf('Image tokens');
+  if (imgSectionIdx > 0) {
+    // Try new tab format first, then legacy
+    let imgStdIdx = text.indexOf('Standard Model Input Cached Input Output', imgSectionIdx);
+    if (imgStdIdx === -1) {
+      // In new tab layout, image section may use same "Standard" + table pattern
+      const imgStdTab = text.indexOf('Standard Model Input Cached input Output', imgSectionIdx);
+      if (imgStdTab > 0) imgStdIdx = imgStdTab;
+    }
+    if (imgStdIdx > 0) {
+      const imgEnd1 = text.indexOf('Audio tokens', imgStdIdx);
+      const imgEnd2 = text.indexOf('if (!window.__contentSwitcherInit)', imgStdIdx);
+      let imgEndIdx = -1;
+      for (const c of [imgEnd1, imgEnd2]) {
+        if (c > imgStdIdx && (imgEndIdx === -1 || c < imgEndIdx)) imgEndIdx = c;
+      }
+      const imgEntries = parseOpenAISection(text, imgStdIdx, imgEndIdx > 0 ? imgEndIdx : imgStdIdx + 2000);
+      const imgModels = openAIEntriesToModels(imgEntries, 'image');
+      // Tag as image-token pricing (suffix to avoid id collision with text section)
+      for (const m of imgModels) {
+        m.name = `${m.id} (image tokens)`;
+        m.id = `${m.id}/image`;
+      }
+      models.push(...imgModels);
+    }
+  }
+
+  // ── Audio tokens ──
+  const audioIdx = text.indexOf('Audio tokens');
+  if (audioIdx > 0) {
+    const audioEnd1 = text.indexOf('Video', audioIdx + 20);
+    const audioEnd2 = text.indexOf('Fine-tuning', audioIdx + 20);
+    let audioEndIdx = -1;
+    for (const c of [audioEnd1, audioEnd2]) {
+      if (c > audioIdx && (audioEndIdx === -1 || c < audioEndIdx)) audioEndIdx = c;
+    }
+    const audioEntries = parseOpenAISection(text, audioIdx, audioEndIdx > 0 ? audioEndIdx : audioIdx + 2000);
+    const audioModels = openAIEntriesToModels(audioEntries, 'audio');
+    for (const m of audioModels) {
+      m.name = `${m.id} (audio tokens)`;
+      m.id = `${m.id}/audio`;
+    }
+    models.push(...audioModels);
+  }
+
+  // ── Video ──
+  const videoIdx = text.indexOf('Video Prices per second');
+  if (videoIdx > 0) {
+    const videoEnd = text.indexOf('Fine-tuning', videoIdx);
+    const videoBlock = text.substring(videoIdx, videoEnd > 0 ? videoEnd : videoIdx + 1000);
+    const vRegex = /(sora[\w-]+)\s+(?:Portrait|Landscape)[^$]*\$([\d.]+)/g;
+    let vm;
+    const seenVideo = new Map();
+    while ((vm = vRegex.exec(videoBlock)) !== null) {
+      const id = vm[1];
+      const price = parseFloat(vm[2]);
+      if (!seenVideo.has(id)) {
+        seenVideo.set(id, { name: id, id, type: 'video', costPerSecond: price, note: `$${price}/s` });
+      } else {
+        const existing = seenVideo.get(id);
+        existing.note += `, $${price}/s (high-res)`;
+      }
+    }
+    models.push(...seenVideo.values());
+  }
+
+  // ── Fine-tuning (Standard tier) ──
+  const ftIdx = text.indexOf('Fine-tuning Prices per 1M tokens');
+  if (ftIdx > 0) {
+    const ftEnd = findSectionEnd(text, ftIdx, ['Built-in tools'], 5000);
+    const ftBlock = text.substring(ftIdx, ftEnd);
+    const ftStdIdx = ftBlock.lastIndexOf('Standard');
+    if (ftStdIdx > 0) {
+      const ftStdBlock = ftBlock.substring(ftStdIdx);
+      const ftRe =
+        /([\w][\w./-]+(?:-[\w.]+)*(?:\s+with\s+data\s+sharing)?)\s+\$([\d.]+)\s*(?:\/\s*hour\s+)?\$([\d.]+)\s+(?:\$([\d.]+)|[-])\s+\$([\d.]+)/g;
+      let fm;
+      while ((fm = ftRe.exec(ftStdBlock)) !== null) {
+        const rawId = fm[1].trim();
+        if (rawId.includes('window') || rawId.includes('function')) continue;
+        const id = rawId.replace(/\s+with\s+data\s+sharing/, '-data-sharing');
+        const trainingVal = parseFloat(fm[2]);
+        const input = parseFloat(fm[3]);
+        const cached = fm[4] ? parseFloat(fm[4]) : null;
+        const output = parseFloat(fm[5]);
+        const trainingCtx = ftStdBlock.substring(fm.index, fm.index + fm[0].length);
+        const isPerHour = trainingCtx.includes('/ hour');
+        const model = { name: id, id, inputPerMTok: input, outputPerMTok: output, type: 'fineTuning' };
+        if (cached != null) model.cacheRead = cached;
+        if (isPerHour) model.trainingPerHour = trainingVal;
+        else model.trainingPerMTok = trainingVal;
+        models.push(model);
+      }
+    }
+  }
+
+  // ── Image Generation (per-image) ──
+  const igIdx = text.indexOf('Image generation Prices per image');
+  if (igIdx > 0) {
+    const igEnd = findSectionEnd(text, igIdx, ['Embeddings Prices per 1M tokens'], 4000);
+    const igBlock = text.substring(igIdx, igEnd);
+
+    const igModelDefs = [
+      { search: 'GPT Image 1.5', id: 'gpt-image-1.5', sizes: ['1024x1024', '1024x1536', '1536x1024'] },
+      {
+        search: 'GPT Image Latest',
+        altSearch: 'ChatGPT Image Latest',
+        id: 'chatgpt-image-latest',
+        sizes: ['1024x1024', '1024x1536', '1536x1024'],
+      },
+      {
+        search: 'GPT Image 1 ',
+        id: 'gpt-image-1',
+        sizes: ['1024x1024', '1024x1536', '1536x1024'],
+        skipIfFollowedBy: 'Mini',
+      },
+      { search: 'GPT Image 1 Mini', id: 'gpt-image-1-mini', sizes: ['1024x1024', '1024x1792', '1792x1024'] },
+      { search: 'DALL', id: 'dall-e-3', sizes: ['1024x1024', '1024x1792', '1792x1024'] },
+      { search: 'DALL', id: 'dall-e-2', sizes: ['256x256', '512x512', '1024x1024'] },
+    ];
+
+    const igPositions = [];
+    let igSearchFrom = 0;
+    for (const def of igModelDefs) {
+      let pos = igSearchFrom;
+      while (true) {
+        pos = igBlock.indexOf(def.search, pos);
+        if (pos === -1 && def.altSearch) pos = igBlock.indexOf(def.altSearch, igSearchFrom);
+        if (pos === -1) break;
+        if (def.skipIfFollowedBy && igBlock.substring(pos + def.search.length).startsWith(def.skipIfFollowedBy)) {
+          pos += def.search.length;
+          continue;
+        }
+        break;
+      }
+      if (pos === -1) continue;
+      igPositions.push({ ...def, pos });
+      igSearchFrom = pos + def.search.length;
+    }
+
+    const qualityRowRegex = /(Low|Medium|High|Standard|HD)\s+\$([\d.]+)\s+\$([\d.]+)\s+\$([\d.]+)/g;
+
+    for (let i = 0; i < igPositions.length; i++) {
+      const def = igPositions[i];
+      const modelStart = def.pos;
+      const modelEnd = i + 1 < igPositions.length ? igPositions[i + 1].pos : igBlock.length;
+      const modelBlock = igBlock.substring(modelStart, modelEnd);
+      const variants = [];
+
+      qualityRowRegex.lastIndex = 0;
+      let qm;
+      while ((qm = qualityRowRegex.exec(modelBlock)) !== null) {
+        const quality = qm[1].toLowerCase();
+        const prices = [parseFloat(qm[2]), parseFloat(qm[3]), parseFloat(qm[4])];
+        for (let j = 0; j < 3 && j < def.sizes.length; j++) {
+          variants.push({ quality, size: def.sizes[j], perImage: prices[j] });
+        }
+      }
+
+      if (variants.length > 0) {
+        const cheapest = Math.min(...variants.map((v) => v.perImage));
+        models.push({
+          name: def.id,
+          id: def.id,
+          type: 'imageGeneration',
+          costPerImage: cheapest,
+          imageVariants: variants,
+          note: `$${cheapest}–$${Math.max(...variants.map((v) => v.perImage))}/image`,
+        });
+      }
+    }
+  }
+
+  // ── Embeddings ──
+  const embIdx = text.indexOf('Embeddings Prices per 1M tokens');
+  if (embIdx > 0) {
+    const embEnd = findSectionEnd(text, embIdx, ['Built-in tools', 'Legacy models'], 1500);
+    const embBlock = text.substring(embIdx, embEnd);
+    const embRe = /(text-embedding[\w-]+)\s+\$([\d.]+)/g;
+    let em;
+    while ((em = embRe.exec(embBlock)) !== null) {
+      models.push({ name: em[1], id: em[1], inputPerMTok: parseFloat(em[2]), type: 'embedding' });
+    }
+  }
+
+  // ── Transcription & Speech ──
+  {
+    let tsIdx = text.indexOf('Transcription and speech generation');
+    if (tsIdx === -1) tsIdx = text.indexOf('Transcription');
+    if (tsIdx > 0) {
+      const tsEnd = findSectionEnd(text, tsIdx, ['Image generation', 'Embeddings'], 3000);
+      const tsBlock = text.substring(tsIdx, tsEnd);
+
+      // Whisper per-minute
+      const whiskerMatch = tsBlock.match(/Whisper[^$]*\$([\d.]+)\s*\/\s*minute/i);
+      if (whiskerMatch) {
+        models.push({
+          name: 'whisper',
+          id: 'whisper',
+          type: 'transcription',
+          costPerMinute: parseFloat(whiskerMatch[1]),
+          note: `$${whiskerMatch[1]}/min`,
+        });
+      }
+      // TTS per-million-chars
+      const ttsHdMatch = tsBlock.match(/TTS\s+HD[^$]*\$([\d.]+)\s*\/\s*1M\s*char/i);
+      if (ttsHdMatch) {
+        models.push({
+          name: 'tts-hd',
+          id: 'tts-hd',
+          type: 'tts',
+          costPerMillionChars: parseFloat(ttsHdMatch[1]),
+          note: `$${ttsHdMatch[1]}/1M chars`,
+        });
+      }
+      const ttsMatch = tsBlock.match(/(?<!\w)TTS(?!\s+HD)[^$]*\$([\d.]+)\s*\/\s*1M\s*char/i);
+      if (ttsMatch) {
+        models.push({
+          name: 'tts',
+          id: 'tts',
+          type: 'tts',
+          costPerMillionChars: parseFloat(ttsMatch[1]),
+          note: `$${ttsMatch[1]}/1M chars`,
+        });
+      }
+    }
+  }
+
+  // ── Built-in Tools ──
+  {
+    let btIdx = text.indexOf('Built-in tools', text.indexOf('Fine-tuning'));
+    if (btIdx === -1) btIdx = text.indexOf('Built-in tools');
+    if (btIdx > 0) {
+      const btEnd = findSectionEnd(text, btIdx, ['Transcription', 'Legacy models', 'Data residency'], 3000);
+      const btBlock = text.substring(btIdx, btEnd);
+
+      // Web search
+      const webSearchMatch = btBlock.match(
+        /Web search\s*(?:\(all models\))?\s*(?:\[\d+\])?\s*\|?\s*\$([\d.]+)\s*\/\s*1k\s*calls/i
+      );
+      if (webSearchMatch) {
+        models.push({
+          name: 'web-search',
+          id: 'web-search',
+          type: 'tool',
+          note: `$${webSearchMatch[1]}/1k calls`,
+        });
+      }
+    }
+  }
+
+  // ── Legacy models (Standard tier) ──
+  const legIdx = text.indexOf('Legacy models Prices per 1M tokens');
+  if (legIdx > 0) {
+    const legEnd = findSectionEnd(text, legIdx, ['Data residency', 'AgentKit'], 4000);
+    const legBlock = text.substring(legIdx, legEnd);
+    const legStdIdx = legBlock.lastIndexOf('Standard');
+    if (legStdIdx > 0) {
+      const legStdBlock = legBlock.substring(legStdIdx);
+      const legRe = /([\w][\w./-]*(?:-[\w.]+)*)\s+\$([\d.]+)\s+\$([\d.]+)/g;
+      let lm;
+      while ((lm = legRe.exec(legStdBlock)) !== null) {
+        const id = lm[1];
+        if (id.includes('window') || id.includes('function') || id.includes('var')) continue;
+        if (id === 'Standard' || id === 'Batch') continue;
+        models.push({
+          name: id,
+          id,
+          inputPerMTok: parseFloat(lm[2]),
+          outputPerMTok: parseFloat(lm[3]),
+          deprecated: true,
+        });
+      }
+    }
+  }
+
+  assignOpenAIFamilies(models);
+  sortOpenAIModels(models);
+
+  console.error(`  OpenAI: ${models.length} models extracted (official, Standard tier)`);
+  if (models.length === 0) {
+    const rawPath = path.join(OUTPUT_DIR, 'aigne-raw-openai.txt');
+    fs.writeFileSync(rawPath, text);
+    console.error(`  ⚠️  Regex extracted 0 models — raw text saved to ${rawPath}`);
+    return { provider: 'OpenAI', url, models, rawTextPath: rawPath };
+  }
+  return { provider: 'OpenAI', url, models };
 }
 
 // ─── DeepSeek ─────────────────────────────────────────────────────────────────
@@ -796,7 +1155,7 @@ async function scrapeDeepSeek() {
 
   console.error(`  DeepSeek: ${models.length} models extracted`);
   if (models.length === 0) {
-    const rawPath = '/tmp/aigne-raw-deepseek.txt';
+    const rawPath = path.join(OUTPUT_DIR, 'aigne-raw-deepseek.txt');
     fs.writeFileSync(rawPath, text);
     console.error(`  ⚠️  Regex extracted 0 models — raw text saved to ${rawPath}`);
     return { provider: 'DeepSeek', url, models, rawTextPath: rawPath };
@@ -909,7 +1268,7 @@ async function scrapeXAI() {
 
   console.error(`  xAI: ${models.length} models extracted`);
   if (models.length === 0) {
-    const rawPath = '/tmp/aigne-raw-xai.txt';
+    const rawPath = path.join(OUTPUT_DIR, 'aigne-raw-xai.txt');
     fs.writeFileSync(rawPath, html.substring(0, 500000));
     console.error(`  ⚠️  Regex extracted 0 models — raw text saved to ${rawPath}`);
     return { provider: 'xAI', url, models, rawTextPath: rawPath };
@@ -1171,6 +1530,181 @@ function generateHTML(results, hubMap) {
     </div>`;
   }
 
+  // ── Health mode: categorize Hub models by pricing health ──
+  const healthColors = {
+    costLoss: { bg: '#fef2f2', border: '#ef4444', header: '#991b1b' },
+    highDrift: { bg: '#fff7ed', border: '#f97316', header: '#9a3412' },
+    noRef: { bg: '#f8fafc', border: '#94a3b8', header: '#475569' },
+    normal: { bg: '#f0fdf4', border: '#22c55e', header: '#166534' },
+  };
+
+  function driftCell(pct) {
+    if (pct == null) return '<span class="na">-</span>';
+    const sign = pct >= 0 ? '+' : '';
+    const label = sign + pct.toFixed(1) + '%';
+    let cls;
+    if (pct < -0.5) cls = 'loss';
+    else if (pct > 5) cls = 'high';
+    else if (Math.abs(pct) <= 0.5) cls = 'ok';
+    else cls = 'mild';
+    return `<span class="drift-cell ${cls}">${label}</span>`;
+  }
+
+  function renderHealthCards() {
+    const LOSS_THRESHOLD = -0.5;
+    const HIGH_DRIFT_THRESHOLD = 5;
+    const dbProviderMap = {
+      Anthropic: 'anthropic',
+      Google: 'google',
+      OpenAI: 'openai',
+      DeepSeek: 'deepseek',
+      xAI: 'xai',
+    };
+
+    // Build official pricing map keyed by "dbProvider/modelId"
+    const officialMap = new Map();
+    const providerDisplayNames = {};
+    for (const result of results) {
+      const dbKey = dbProviderMap[result.provider] || result.provider.toLowerCase();
+      providerDisplayNames[dbKey] = result.provider;
+      for (const model of result.models) {
+        officialMap.set(`${dbKey}/${model.id}`, model);
+      }
+    }
+
+    // Categorize Hub models
+    const costLoss = [];
+    const highDrift = [];
+    const noOfficialData = [];
+    const normal = [];
+
+    for (const [key, hub] of hubMap) {
+      const provider = hub.provider;
+      const modelId = hub.model;
+      const displayProvider = providerDisplayNames[provider] || provider;
+      const hubIn = hub.inputRate ? hub.inputRate * 1e6 : null;
+      const hubOut = hub.outputRate ? hub.outputRate * 1e6 : null;
+      if (hubIn == null && hubOut == null) continue;
+
+      const official = officialMap.get(key);
+      const officialIn = official?.inputPerMTok ?? null;
+      const officialOut = official?.outputPerMTok ?? null;
+      const inDrift = calcDrift(hubIn, officialIn);
+      const outDrift = calcDrift(hubOut, officialOut);
+
+      const entry = {
+        provider: displayProvider,
+        providerKey: provider,
+        modelId,
+        officialIn,
+        officialOut,
+        hubIn,
+        hubOut,
+        inputDrift: inDrift,
+        outputDrift: outDrift,
+      };
+
+      if (!official || (officialIn == null && officialOut == null)) {
+        noOfficialData.push(entry);
+      } else {
+        const hasLoss =
+          (inDrift != null && inDrift < LOSS_THRESHOLD) || (outDrift != null && outDrift < LOSS_THRESHOLD);
+        const hasBigDrift =
+          (inDrift != null && inDrift > HIGH_DRIFT_THRESHOLD) || (outDrift != null && outDrift > HIGH_DRIFT_THRESHOLD);
+        if (hasLoss) {
+          entry.worstDrift = Math.min(inDrift ?? 0, outDrift ?? 0);
+          costLoss.push(entry);
+        } else if (hasBigDrift) {
+          entry.worstDrift = Math.max(Math.abs(inDrift ?? 0), Math.abs(outDrift ?? 0));
+          highDrift.push(entry);
+        } else {
+          normal.push(entry);
+        }
+      }
+    }
+
+    costLoss.sort((a, b) => a.worstDrift - b.worstDrift);
+    highDrift.sort((a, b) => b.worstDrift - a.worstDrift);
+    noOfficialData.sort((a, b) => a.provider.localeCompare(b.provider) || a.modelId.localeCompare(b.modelId));
+    normal.sort((a, b) => a.provider.localeCompare(b.provider) || a.modelId.localeCompare(b.modelId));
+
+    function renderHealthSection(title, subtitle, entries, colors) {
+      if (entries.length === 0) {
+        return `<div class="provider-card" style="border-color:${colors.border}">
+          <div class="provider-header" style="background:${colors.bg};color:${colors.header}">
+            <h2>${title}</h2><span class="model-count">0 models</span>
+          </div>
+          <p class="empty-msg">No models in this category</p>
+        </div>`;
+      }
+      const rows = entries
+        .map(
+          (e) => `<tr data-model="${e.modelId}">
+        <td><span class="provider-tag">${e.provider}</span></td>
+        <td class="model-name">${e.modelId}</td>
+        <td class="mono">${fmtPrice(e.officialIn)}</td>
+        <td class="mono">${fmtPrice(e.officialOut)}</td>
+        <td class="mono">${fmtPrice(e.hubIn)}</td>
+        <td class="mono">${fmtPrice(e.hubOut)}</td>
+        <td class="mono">${driftCell(e.inputDrift)}</td>
+        <td class="mono">${driftCell(e.outputDrift)}</td>
+      </tr>`
+        )
+        .join('');
+
+      return `<div class="provider-card" style="border-color:${colors.border}">
+        <div class="provider-header" style="background:${colors.bg};color:${colors.header}">
+          <h2>${title}</h2><span class="model-count">${entries.length} models</span>
+        </div>
+        <div class="health-subtitle">${subtitle}</div>
+        <div class="table-wrapper">
+        <table>
+          <thead><tr>
+            <th>Provider</th><th>Model</th>
+            <th>Official In/MTok</th><th>Official Out/MTok</th>
+            <th class="hub-col">Hub In/MTok</th><th class="hub-col">Hub Out/MTok</th>
+            <th>In Drift</th><th>Out Drift</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+        </div>
+      </div>`;
+    }
+
+    const totalHub = costLoss.length + highDrift.length + noOfficialData.length + normal.length;
+    const summaryBar = `<div class="summary-bar">
+      <div class="summary-stat loss"><span class="stat-count">${costLoss.length}</span><span class="stat-label">Cost Loss</span></div>
+      <div class="summary-stat drift"><span class="stat-count">${highDrift.length}</span><span class="stat-label">High Drift</span></div>
+      <div class="summary-stat noref"><span class="stat-count">${noOfficialData.length}</span><span class="stat-label">No Reference</span></div>
+      <div class="summary-stat ok"><span class="stat-count">${normal.length}</span><span class="stat-label">Normal</span></div>
+      <div class="summary-stat total"><span class="stat-count">${totalHub}</span><span class="stat-label">Total Hub</span></div>
+    </div>`;
+
+    const cards = [
+      renderHealthSection(
+        'Cost Loss',
+        'Hub selling below official price — potential margin loss',
+        costLoss,
+        healthColors.costLoss
+      ),
+      renderHealthSection(
+        'High Drift',
+        'Hub price exceeds official by >5% — review for competitiveness',
+        highDrift,
+        healthColors.highDrift
+      ),
+      renderHealthSection(
+        'No Official Reference',
+        'Hub models without matching official pricing data',
+        noOfficialData,
+        healthColors.noRef
+      ),
+      renderHealthSection('Normal', 'Hub pricing aligned with official rates', normal, healthColors.normal),
+    ];
+
+    return summaryBar + '\n' + cards.join('\n');
+  }
+
   return `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -1304,6 +1838,41 @@ function generateHTML(results, hubMap) {
   tr.model-row:hover td, tr.model-row:hover + .tier-row td { background: #f8fafc; }
   .empty-msg { padding: 24px; text-align: center; color: var(--muted); }
 
+  /* Summary bar (health mode) */
+  .summary-bar { max-width: 1400px; margin: 0 auto 24px; display: flex; gap: 12px; flex-wrap: wrap; }
+  .summary-stat {
+    flex: 1; min-width: 120px; padding: 16px; border-radius: 10px; text-align: center;
+    background: var(--card); border: 1px solid var(--border);
+  }
+  .summary-stat .stat-count { display: block; font-size: 28px; font-weight: 700; }
+  .summary-stat .stat-label { display: block; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .summary-stat.loss { border-color: #fca5a5; background: #fef2f2; }
+  .summary-stat.loss .stat-count { color: #dc2626; }
+  .summary-stat.drift { border-color: #fdba74; background: #fff7ed; }
+  .summary-stat.drift .stat-count { color: #ea580c; }
+  .summary-stat.noref { border-color: #cbd5e1; }
+  .summary-stat.noref .stat-count { color: #64748b; }
+  .summary-stat.ok { border-color: #86efac; background: #f0fdf4; }
+  .summary-stat.ok .stat-count { color: #16a34a; }
+  .summary-stat.total { border-color: #93c5fd; background: #eff6ff; }
+  .summary-stat.total .stat-count { color: #2563eb; }
+
+  /* Health card subtitle */
+  .health-subtitle { padding: 4px 24px 8px; font-size: 13px; color: var(--muted); border-bottom: 1px solid var(--border); }
+
+  /* Provider tag in health cards */
+  .provider-tag {
+    display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px;
+    border-radius: 4px; white-space: nowrap; background: #f1f5f9; color: #475569;
+  }
+
+  /* Drift cell variants */
+  .drift-cell { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .drift-cell.loss { background: #fee2e2; color: #dc2626; }
+  .drift-cell.high { background: #fed7aa; color: #ea580c; }
+  .drift-cell.mild { background: #fefce8; color: #a16207; }
+  .drift-cell.ok { background: #dcfce7; color: #16a34a; }
+
   @media (max-width: 1100px) {
     body { padding: 12px; }
     th, td { padding: 6px 8px; font-size: 12px; }
@@ -1313,7 +1882,7 @@ function generateHTML(results, hubMap) {
 </head>
 <body>
 <div class="header">
-  <h1>Official Pricing Catalog</h1>
+  <h1>${hasHub ? 'Hub Pricing Health Report' : 'Official Pricing Catalog'}</h1>
   <div class="ts">Generated: ${ts}</div>
   ${hasHub ? '<div class="hub-info">Hub data integrated</div>' : ''}
 </div>
@@ -1321,29 +1890,26 @@ function generateHTML(results, hubMap) {
   <input type="text" id="search" placeholder="Search models... (e.g. opus, gemini, gpt-4o)" autofocus>
 </div>
 
-${results.map(renderProvider).join('\n')}
+${hasHub ? renderHealthCards() : results.map(renderProvider).join('\n')}
 
 <script>
 document.getElementById('search').addEventListener('input', function(e) {
   const q = e.target.value.toLowerCase();
-  document.querySelectorAll('tbody').forEach(tbody => {
+  document.querySelectorAll('tbody').forEach(function(tbody) {
     let currentModelVisible = false;
-    tbody.querySelectorAll('tr').forEach(tr => {
+    tbody.querySelectorAll('tr').forEach(function(tr) {
       if (tr.classList.contains('family-row') || tr.classList.contains('hub-only-divider')) {
         tr.style.display = !q ? '' : 'none';
-        tr._show = false;
         return;
       }
       if (tr.classList.contains('tier-row')) {
         tr.style.display = currentModelVisible ? '' : 'none';
         return;
       }
-      // Model row or hub-only-row
       const modelId = tr.getAttribute('data-model') || '';
       const text = tr.textContent.toLowerCase();
       currentModelVisible = !q || text.includes(q) || modelId.includes(q);
       tr.style.display = currentModelVisible ? '' : 'none';
-      // Show family/divider header
       if (currentModelVisible && q) {
         let prev = tr.previousElementSibling;
         while (prev && !prev.classList.contains('family-row') && !prev.classList.contains('hub-only-divider')) {
@@ -1352,6 +1918,16 @@ document.getElementById('search').addEventListener('input', function(e) {
         if (prev) prev.style.display = '';
       }
     });
+  });
+  // Update health card counts when filtering
+  document.querySelectorAll('.provider-card').forEach(function(card) {
+    const tbody = card.querySelector('tbody');
+    if (!tbody) return;
+    const visible = tbody.querySelectorAll('tr:not([style*="display: none"])').length;
+    const total = tbody.querySelectorAll('tr').length;
+    const countEl = card.querySelector('.model-count');
+    if (countEl && q) countEl.textContent = visible + '/' + total + ' models';
+    else if (countEl) countEl.textContent = total + ' models';
   });
 });
 </script>
@@ -1521,7 +2097,7 @@ async function main() {
       }
 
       // Write per-provider cache file (each provider independent, failures don't affect others)
-      const cacheFile = join(__dirname, '..', 'output', `official-pricing-${providerKey}.json`);
+      const cacheFile = path.join(OUTPUT_DIR, `aigne-official-pricing-${providerKey}.json`);
       if (entries.length > 0) {
         const cache = { timestamp: Date.now(), entries };
         fs.writeFileSync(cacheFile, JSON.stringify(cache, null, 2));
@@ -1539,7 +2115,7 @@ async function main() {
   }
 
   const html = generateHTML(data, hubMap);
-  const outPath = opts.outputFile || join(__dirname, '..', 'output', 'official-pricing-catalog.html');
+  const outPath = opts.outputFile || path.join(OUTPUT_DIR, 'official-pricing-catalog.html');
   fs.writeFileSync(outPath, html, 'utf-8');
   console.error(`Report written to ${outPath}`);
 }

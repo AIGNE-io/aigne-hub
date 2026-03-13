@@ -9,12 +9,17 @@
  */
 
 import fs from 'fs/promises';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 import axios from 'axios';
 
 import { buildApiUrl } from './detect-mount-point.mjs';
 import type { OfficialPricingCache, OfficialPricingEntry } from './pricing-schema';
 import { normalizeProvider } from './provider-aliases';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const OUTPUT_DIR = path.join(__dirname, '..', 'output');
 
 const LITELLM_API_URL = 'https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json';
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/models';
@@ -60,7 +65,7 @@ const OFFICIAL_PRICING_PROVIDERS = ['anthropic', 'google', 'openai', 'deepseek',
 const OFFICIAL_PRICING_CACHE_TTL = 60 * 60 * 1000; // 1 hour
 
 function officialPricingCachePath(provider: string): string {
-  return new URL(`../output/official-pricing-${provider}.json`, import.meta.url).pathname;
+  return path.join(OUTPUT_DIR, `aigne-official-pricing-${provider}.json`);
 }
 
 export async function loadOfficialPricingCache(): Promise<Map<string, OfficialPricingEntry> | null> {
@@ -302,7 +307,12 @@ export async function fetchOpenRouter(): Promise<Map<string, ExternalRate>> {
       const input = parseFloat(model.pricing.prompt);
       const output = parseFloat(model.pricing.completion);
       if (!isNaN(input) && !isNaN(output)) {
-        map.set(`${provider}/${modelName}`, { inputCostPerToken: input, outputCostPerToken: output });
+        const rate = { inputCostPerToken: input, outputCostPerToken: output };
+        map.set(`${provider}/${modelName}`, rate);
+        // Also store under original prefix (e.g., "x-ai/grok-4") so DB entries using raw OpenRouter IDs can match
+        if (provider !== prefix) {
+          map.set(`${prefix}/${modelName}`, rate);
+        }
       }
     }
     console.error(`Fetched ${map.size} models from OpenRouter`);

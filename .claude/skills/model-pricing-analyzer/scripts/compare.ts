@@ -7,7 +7,7 @@
 
 import type { DbRate, ExternalRate } from './fetch-sources';
 import type { CacheTier, OfficialPricingEntry, PricingUnit } from './pricing-schema';
-import { deriveResolutionTiers } from './provider-aliases';
+import { deriveResolutionTiers, modelNameFallbacks } from './provider-aliases';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -56,7 +56,16 @@ export interface ComparisonResult {
   officialCacheWrite?: number;
   officialCacheRead?: number;
   officialCacheTiers?: CacheTier[];
-  officialCacheDrift?: number; // max drift between DB cache rates and official page cache costs
+  // Tiered pricing loss analysis (DB cost < highest tier = potential loss at high volume)
+  tierMaxInput?: number; // highest tier input cost
+  tierMaxOutput?: number; // highest tier output cost
+  tierInputDrift?: number; // drift between dbInput and tierMaxInput
+  tierOutputDrift?: number; // drift between dbOutput and tierMaxOutput
+  // Cache tier loss analysis (DB cache cost < highest tier = potential loss)
+  cacheTierMaxWrite?: number;
+  cacheTierMaxRead?: number;
+  cacheTierWriteDrift?: number;
+  cacheTierReadDrift?: number;
   // Best cost source (for simplified report)
   bestCostInput?: number;
   bestCostOutput?: number;
@@ -201,6 +210,10 @@ export function compare(
     const dbInput = Number(rate.unitCosts?.input ?? rate.inputRate ?? 0);
     const dbOutput = Number(rate.unitCosts?.output ?? rate.outputRate ?? 0);
 
+    // Model name fallbacks (e.g. claude-sonnet-4-0 → claude-sonnet-4)
+    const modelFallbacks = modelNameFallbacks(rate.model);
+    const fallbackKeys = modelFallbacks.map((m) => (providerName === 'openrouter' ? m : `${providerName}/${m}`));
+
     // LiteLLM lookup with fallbacks for provider name mismatches
     let ll = litellm.get(lookupKey);
     if (!ll && providerName === 'openrouter') {
@@ -219,8 +232,28 @@ export function compare(
         }
       }
     }
-    const or = openrouter.get(lookupKey);
-    const pp = providerPages.get(lookupKey);
+    // Try model name fallbacks for LiteLLM (e.g. claude-sonnet-4-0 → claude-sonnet-4)
+    if (!ll) {
+      for (const fbKey of fallbackKeys) {
+        ll = litellm.get(fbKey);
+        if (ll) break;
+      }
+      if (!ll) {
+        for (const fbModel of modelFallbacks) {
+          for (const tryProvider of ['openai', 'anthropic', 'google', 'gemini', 'deepseek', 'xai']) {
+            ll = litellm.get(`${tryProvider}/${fbModel}`);
+            if (ll) break;
+          }
+          if (ll) break;
+        }
+      }
+    }
+    const or =
+      openrouter.get(lookupKey) ??
+      fallbackKeys.reduce<ExternalRate | undefined>((found, k) => found ?? openrouter.get(k), undefined);
+    const pp =
+      providerPages.get(lookupKey) ??
+      fallbackKeys.reduce<OfficialPricingEntry | undefined>((found, k) => found ?? providerPages.get(k), undefined);
 
     // Determine pricing unit based on model type
     const pricingUnit: LocalPricingUnit =
@@ -355,33 +388,19 @@ export function compare(
       // Official cache tier data from provider page
       if (pp.cacheTiers?.length) {
         result.officialCacheTiers = pp.cacheTiers;
-        const readTier = pp.cacheTiers.find((t) => t.label === 'read' || t.label === 'cached-input');
-        const writeTier = pp.cacheTiers.find((t) => t.label.includes('write'));
-        if (readTier) result.officialCacheRead = readTier.costPerToken;
-        if (writeTier) result.officialCacheWrite = writeTier.costPerToken;
-
-        // Compare official cache with DB cache rates
-        let ocDrift = 0;
-        if (dbCacheWrite > 0 && writeTier && writeTier.costPerToken > 0) {
-          ocDrift = Math.max(ocDrift, calcDrift(dbCacheWrite, writeTier.costPerToken));
-        }
-        if (dbCacheRead > 0 && readTier && readTier.costPerToken > 0) {
-          ocDrift = Math.max(ocDrift, calcDrift(dbCacheRead, readTier.costPerToken));
-        }
-        if (ocDrift > 0) {
-          result.officialCacheDrift = ocDrift;
-          maxDrift = Math.max(maxDrift, ocDrift);
-        }
+        const readTiers = pp.cacheTiers.filter((t) => t.label === 'read' || t.label === 'cached-input');
+        const writeTiers = pp.cacheTiers.filter((t) => t.label.includes('write'));
+        const maxWriteCost = writeTiers.length > 0 ? Math.max(...writeTiers.map((t) => t.costPerToken)) : 0;
+        const maxReadCost = readTiers.length > 0 ? Math.max(...readTiers.map((t) => t.costPerToken)) : 0;
+        if (maxWriteCost > 0) result.officialCacheWrite = maxWriteCost;
+        if (maxReadCost > 0) result.officialCacheRead = maxReadCost;
+        // Drift is handled uniformly via cache tier loss analysis below (same as input/output tiers)
       } else if (pp.cachedInputCostPerToken !== undefined) {
         result.officialCacheRead = pp.cachedInputCostPerToken;
-        if (dbCacheRead > 0 && pp.cachedInputCostPerToken > 0) {
-          result.officialCacheDrift = calcDrift(dbCacheRead, pp.cachedInputCostPerToken);
-          maxDrift = Math.max(maxDrift, result.officialCacheDrift);
-        }
       }
     }
 
-    // Cache token pricing comparison
+    // Cache token pricing — store DB and LiteLLM values for reference
     if (dbCacheWrite > 0 || dbCacheRead > 0) {
       result.dbCacheWrite = dbCacheWrite;
       result.dbCacheRead = dbCacheRead;
@@ -390,16 +409,80 @@ export function compare(
       result.litellmCacheWrite = ll.cacheWriteCostPerToken;
       result.litellmCacheRead = ll.cacheReadCostPerToken;
 
-      let cDrift = 0;
-      if (dbCacheWrite > 0 && ll.cacheWriteCostPerToken !== undefined && ll.cacheWriteCostPerToken > 0) {
-        cDrift = Math.max(cDrift, calcDrift(dbCacheWrite, ll.cacheWriteCostPerToken));
+      // Only compute LiteLLM cache drift when NO official cache tiers exist.
+      // When official tiers exist, the tier loss analysis below handles everything
+      // uniformly (same pattern as input/output tiered pricing).
+      const hasOfficialCacheTiers = (result.officialCacheTiers?.length ?? 0) > 0;
+      if (!hasOfficialCacheTiers) {
+        let cDrift = 0;
+        if (dbCacheWrite > 0 && ll.cacheWriteCostPerToken !== undefined && ll.cacheWriteCostPerToken > 0) {
+          cDrift = Math.max(cDrift, calcDrift(dbCacheWrite, ll.cacheWriteCostPerToken));
+        }
+        if (dbCacheRead > 0 && ll.cacheReadCostPerToken !== undefined && ll.cacheReadCostPerToken > 0) {
+          cDrift = Math.max(cDrift, calcDrift(dbCacheRead, ll.cacheReadCostPerToken));
+        }
+        if (cDrift > 0) {
+          result.cacheDrift = cDrift;
+          maxDrift = Math.max(maxDrift, cDrift);
+        }
       }
-      if (dbCacheRead > 0 && ll.cacheReadCostPerToken !== undefined && ll.cacheReadCostPerToken > 0) {
-        cDrift = Math.max(cDrift, calcDrift(dbCacheRead, ll.cacheReadCostPerToken));
+    }
+
+    // Tiered pricing loss analysis: if DB cost uses base tier but higher tiers exist,
+    // the actual cost at high token volumes will exceed DB cost → potential loss
+    if (result.tieredPricing?.length && pricingUnit === 'per-token') {
+      const maxTierInput = Math.max(...result.tieredPricing.map((t) => t.input ?? 0));
+      const maxTierOutput = Math.max(...result.tieredPricing.map((t) => t.output ?? 0));
+
+      if (maxTierInput > dbInput && dbInput > 0) {
+        result.tierMaxInput = maxTierInput;
+        result.tierInputDrift = calcDrift(dbInput, maxTierInput);
+        maxDrift = Math.max(maxDrift, result.tierInputDrift);
       }
-      if (cDrift > 0) {
-        result.cacheDrift = cDrift;
-        maxDrift = Math.max(maxDrift, cDrift);
+      if (maxTierOutput > dbOutput && dbOutput > 0) {
+        result.tierMaxOutput = maxTierOutput;
+        result.tierOutputDrift = calcDrift(dbOutput, maxTierOutput);
+        maxDrift = Math.max(maxDrift, result.tierOutputDrift);
+      }
+    }
+
+    // Cache tier loss analysis: if DB cache cost < highest tier cost → potential loss
+    if (result.officialCacheTiers?.length) {
+      const writeTiers = result.officialCacheTiers.filter((t) => t.label.includes('write'));
+      const readTiers = result.officialCacheTiers.filter((t) => t.label === 'read' || t.label === 'cached-input');
+
+      if (writeTiers.length > 0) {
+        const maxWriteCost = Math.max(...writeTiers.map((t) => t.costPerToken));
+        if (dbCacheWrite > 0 && dbCacheWrite < maxWriteCost) {
+          const drift = calcDrift(dbCacheWrite, maxWriteCost);
+          // Skip floating point noise (e.g. 1e-7 vs 1.0000000000000001e-7)
+          if (drift > 1e-6) {
+            result.cacheTierMaxWrite = maxWriteCost;
+            result.cacheTierWriteDrift = drift;
+            maxDrift = Math.max(maxDrift, drift);
+          }
+        } else if ((dbCacheWrite === 0 || dbCacheWrite === undefined) && maxWriteCost > 0) {
+          result.cacheTierMaxWrite = maxWriteCost;
+          result.cacheTierWriteDrift = 1; // 100% — no cache write cost set
+          maxDrift = Math.max(maxDrift, 1);
+        }
+      }
+
+      if (readTiers.length > 0) {
+        const maxReadCost = Math.max(...readTiers.map((t) => t.costPerToken));
+        if (dbCacheRead > 0 && dbCacheRead < maxReadCost) {
+          const drift = calcDrift(dbCacheRead, maxReadCost);
+          // Skip floating point noise (e.g. 1e-7 vs 1.0000000000000001e-7)
+          if (drift > 1e-6) {
+            result.cacheTierMaxRead = maxReadCost;
+            result.cacheTierReadDrift = drift;
+            maxDrift = Math.max(maxDrift, drift);
+          }
+        } else if ((dbCacheRead === 0 || dbCacheRead === undefined) && maxReadCost > 0) {
+          result.cacheTierMaxRead = maxReadCost;
+          result.cacheTierReadDrift = 1;
+          maxDrift = Math.max(maxDrift, 1);
+        }
       }
     }
 
@@ -518,6 +601,60 @@ export function printTable(results: ComparisonResult[], threshold: number): void
               console.log(
                 `   📊 缓存读取差异：${readDiff > 0 ? '高出' : '低了'} ${Math.abs(readDiff).toFixed(1)}% (DB: ${formatCost(r.dbCacheRead)} vs LiteLLM: ${formatCost(llCache.read)})`
               );
+          }
+        }
+      }
+
+      // Show tiered pricing loss warnings
+      if (r.tierMaxInput !== undefined || r.tierMaxOutput !== undefined) {
+        console.log(`   📶 阶梯定价风险（DB 使用基础价，高量时实际成本更高）：`);
+        if (r.tieredPricing) {
+          for (const t of r.tieredPricing) {
+            const parts: string[] = [];
+            if (t.input !== undefined && t.input > r.dbInput) {
+              const pct = ((t.input - r.dbInput) / r.dbInput) * 100;
+              parts.push(`输入 ${formatCost(t.input)} (+${pct.toFixed(0)}%)`);
+            }
+            if (t.output !== undefined && t.output > r.dbOutput) {
+              const pct = ((t.output - r.dbOutput) / r.dbOutput) * 100;
+              parts.push(`输出 ${formatCost(t.output)} (+${pct.toFixed(0)}%)`);
+            }
+            if (parts.length > 0) {
+              console.log(`      >${t.threshold} tokens: ${parts.join(', ')} 🔴 潜在亏损`);
+            }
+          }
+        }
+      }
+
+      // Show cache tier loss warnings
+      if (r.cacheTierMaxWrite !== undefined || r.cacheTierMaxRead !== undefined) {
+        console.log(`   🗄️ 缓存 tier 风险：`);
+        if (r.officialCacheTiers) {
+          for (const ct of r.officialCacheTiers) {
+            if (ct.label.includes('write')) {
+              const dbVal = r.dbCacheWrite ?? 0;
+              if (ct.costPerToken > dbVal) {
+                const pct = dbVal > 0 ? ((ct.costPerToken - dbVal) / dbVal) * 100 : 100;
+                console.log(
+                  `      ${ct.label}: ${formatCost(ct.costPerToken)} vs DB ${formatCost(dbVal)} (+${pct.toFixed(0)}%) 🔴`
+                );
+              } else {
+                console.log(`      ${ct.label}: ${formatCost(ct.costPerToken)} vs DB ${formatCost(dbVal)} ✅`);
+              }
+            }
+          }
+          for (const ct of r.officialCacheTiers) {
+            if (ct.label === 'read' || ct.label === 'cached-input') {
+              const dbVal = r.dbCacheRead ?? 0;
+              if (ct.costPerToken > dbVal) {
+                const pct = dbVal > 0 ? ((ct.costPerToken - dbVal) / dbVal) * 100 : 100;
+                console.log(
+                  `      ${ct.label}: ${formatCost(ct.costPerToken)} vs DB ${formatCost(dbVal)} (+${pct.toFixed(0)}%) 🔴`
+                );
+              } else {
+                console.log(`      ${ct.label}: ${formatCost(ct.costPerToken)} vs DB ${formatCost(dbVal)} ✅`);
+              }
+            }
           }
         }
       }

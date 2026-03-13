@@ -54,9 +54,9 @@ pnpm tsx .claude/skills/model-pricing-analyzer/scripts/analyze-pricing.ts --env 
 pnpm tsx .claude/skills/model-pricing-analyzer/scripts/analyze-pricing.ts --env production --threshold 0.1
 
 # Generate HTML report manually
-pnpm tsx .claude/skills/model-pricing-analyzer/scripts/analyze-pricing.ts --env staging --json > /tmp/report.json
-sed -n '/^\[/,$p' /tmp/report.json > /tmp/clean.json
-node .claude/skills/model-pricing-analyzer/scripts/generate-html-report.mjs /tmp/clean.json pricing-report.html
+pnpm tsx .claude/skills/model-pricing-analyzer/scripts/analyze-pricing.ts --env staging --json > .claude/skills/model-pricing-analyzer/output/report.json
+sed -n '/^\[/,$p' .claude/skills/model-pricing-analyzer/output/report.json > .claude/skills/model-pricing-analyzer/output/clean.json
+node .claude/skills/model-pricing-analyzer/scripts/generate-html-report.mjs .claude/skills/model-pricing-analyzer/output/clean.json pricing-report.html
 ```
 
 Options:

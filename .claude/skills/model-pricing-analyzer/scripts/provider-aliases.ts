@@ -45,6 +45,21 @@ export function normalizeProvider(name: string): string | undefined {
 }
 
 /**
+ * Generate fallback model name variants for lookup.
+ * For Claude models, names ending in "-X-0" (e.g. "claude-sonnet-4-0") should
+ * fall back to the base name without "-0" (e.g. "claude-sonnet-4"), since official
+ * pricing may use either form.
+ */
+export function modelNameFallbacks(model: string): string[] {
+  const fallbacks: string[] = [];
+  // claude-xxx-N-0 → claude-xxx-N (e.g. claude-sonnet-4-0 → claude-sonnet-4)
+  if (/^claude-.*-\d+-0$/.test(model)) {
+    fallbacks.push(model.replace(/-0$/, ''));
+  }
+  return fallbacks;
+}
+
+/**
  * Derive resolution tiers for image models that have per-image and per-image-token pricing.
  * Used for Google-style image models with 1K-2K and 4K pricing tiers.
  *
