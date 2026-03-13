@@ -60,7 +60,7 @@ const OFFICIAL_PRICING_PROVIDERS = ['anthropic', 'google', 'openai', 'deepseek',
 const OFFICIAL_PRICING_CACHE_TTL = 60 * 60 * 1000; // 1 hour
 
 function officialPricingCachePath(provider: string): string {
-  return `/tmp/aigne-official-pricing-${provider}.json`;
+  return new URL(`../output/official-pricing-${provider}.json`, import.meta.url).pathname;
 }
 
 export async function loadOfficialPricingCache(): Promise<Map<string, OfficialPricingEntry> | null> {

@@ -561,7 +561,13 @@ function parseVideo(text) {
   const sectionIdx = text.indexOf('Video Prices per second');
   if (sectionIdx === -1) return {};
   const endIdx = findSectionEnd(text, sectionIdx, ['Fine-tuning'], 1000);
-  const videoBlock = text.substring(sectionIdx, endIdx);
+  const fullBlock = text.substring(sectionIdx, endIdx);
+
+  // Only parse the "Standard" sub-table — skip "Batch" to avoid mixing tiers.
+  // The stripped text looks like: "Standard Batch Standard Model ... $0.10 ... Batch Model ... $0.05"
+  // Find "Batch Model" which marks the start of the Batch table and stop there.
+  const batchModelIdx = fullBlock.indexOf('Batch Model');
+  const videoBlock = batchModelIdx > 0 ? fullBlock.substring(0, batchModelIdx) : fullBlock;
 
   // Pattern: model Portrait: WxH Landscape: WxH $price
   const vRegex = /(sora[\w-]+)\s+Portrait:\s*(\d+x\d+)\s+Landscape:\s*(\d+x\d+)\s+\$([\d.]+)/g;
@@ -611,6 +617,9 @@ function parseTranscription(text) {
 
   if (textSection !== -1 && audioSection !== -1) {
     const textBlock = block.substring(textSection, audioSection);
+    // Match models with input + optional output + estimated cost/minute
+    // gpt-4o-mini-tts: $0.60 - $0.015 / minute  (input only, dash for output)
+    // gpt-4o-transcribe: $2.50 $10.00 $0.006 / minute (input + output)
     const re = /(gpt-[\w-]+)\s*\|?\s*\$([\d.]+)\s*\|?\s*(?:\$([\d.]+)|[-])\s*\|?\s*\$([\d.]+)\s*\/\s*minute/g;
     let m;
     while ((m = re.exec(textBlock)) !== null) {
@@ -620,12 +629,32 @@ function parseTranscription(text) {
       if (m[3]) result[id].text.output = parseFloat(m[3]);
       result[id].estimatedPerMinute = parseFloat(m[4]);
     }
+
+    // If regex above missed any model (e.g. gpt-4o-mini-tts with different whitespace),
+    // try a more lenient pattern: model $price ... $price / minute
+    const reFallback = /(gpt-[\w-]+)\s+\$([\d.]+)\s+(?:\$([\d.]+)\s+)?\$([\d.]+)\s*\/\s*minute/g;
+    let mf;
+    while ((mf = reFallback.exec(textBlock)) !== null) {
+      const id = mf[1];
+      if (result[id]) continue; // already matched by primary regex
+      result[id] = {};
+      // Determine if we have 2 or 3 dollar values before "/ minute"
+      if (mf[3]) {
+        // 3 values: input, output, perMinute
+        result[id].text = { input: parseFloat(mf[2]), output: parseFloat(mf[3]) };
+      } else {
+        // 2 values: input, perMinute (no output)
+        result[id].text = { input: parseFloat(mf[2]) };
+      }
+      result[id].estimatedPerMinute = parseFloat(mf[4]);
+    }
   }
 
   // ── Sub-table 2: Audio tokens ──
   if (audioSection !== -1) {
     const audioEnd = otherSection > audioSection ? otherSection : audioSection + 1000;
     const audioBlock = block.substring(audioSection, audioEnd);
+    // Match: model [- or $input] [- or $output] $cost / minute
     const re = /(gpt-[\w-]+)\s*\|?\s*(?:\$([\d.]+)|[-])\s*\|?\s*(?:\$([\d.]+)|[-])\s*\|?\s*\$([\d.]+)\s*\/\s*minute/g;
     let m;
     while ((m = re.exec(audioBlock)) !== null) {
@@ -635,6 +664,28 @@ function parseTranscription(text) {
       if (m[2]) result[id].audio.input = parseFloat(m[2]);
       if (m[3]) result[id].audio.output = parseFloat(m[3]);
       if (!result[id].estimatedPerMinute) result[id].estimatedPerMinute = parseFloat(m[4]);
+    }
+
+    // Fallback for audio tokens: model $price $price / minute (without dash placeholders)
+    // When dashes are stripped from HTML, we can't tell input from output by position alone.
+    // Use model name heuristic: TTS models produce audio (output), transcribe models consume audio (input).
+    const reFallback = /(gpt-[\w-]+)\s+(?:\$([\d.]+)\s+)?\$([\d.]+)\s*\/\s*minute/g;
+    let mf;
+    while ((mf = reFallback.exec(audioBlock)) !== null) {
+      const id = mf[1];
+      if (result[id]?.audio) continue; // already matched
+      if (!result[id]) result[id] = {};
+      result[id].audio = {};
+      if (mf[2]) {
+        // TTS models have audio output; transcribe models have audio input
+        const isTTS = id.includes('tts');
+        if (isTTS) {
+          result[id].audio.output = parseFloat(mf[2]);
+        } else {
+          result[id].audio.input = parseFloat(mf[2]);
+        }
+      }
+      if (!result[id].estimatedPerMinute) result[id].estimatedPerMinute = parseFloat(mf[3]);
     }
   }
 
@@ -748,7 +799,7 @@ function parseImageGeneration(text) {
       sizes: ['1024x1024', '1024x1536', '1536x1024'],
       skipIfFollowedBy: 'Mini',
     },
-    { search: 'GPT Image 1 Mini', id: 'gpt-image-1-mini', sizes: ['1024x1024', '1024x1792', '1792x1024'] },
+    { search: 'GPT Image 1 Mini', id: 'gpt-image-1-mini', sizes: ['1024x1024', '1024x1536', '1536x1024'] },
     { search: 'DALL', id: 'dall-e-3', sizes: ['1024x1024', '1024x1792', '1792x1024'] },
     { search: 'DALL', id: 'dall-e-2', sizes: ['256x256', '512x512', '1024x1024'] },
   ];

@@ -1,0 +1,402 @@
+{
+  "timestamp": 1773391177037,
+  "entries": [
+    {
+      "provider": "anthropic",
+      "modelId": "claude-opus-4-6",
+      "displayName": "Claude Opus 4.6",
+      "pricingUnit": "per-token",
+      "modelType": "chatCompletion",
+      "sourceUrl": "https://docs.anthropic.com/en/docs/about-claude/pricing",
+      "extractionMethod": "catalog-scraper",
+      "inputCostPerToken": 0.000005,
+      "outputCostPerToken": 0.000025,
+      "cachedInputCostPerToken": 5e-7,
+      "cacheTiers": [
+        {
+          "label": "5min-write",
+          "costPerToken": 0.00000625
+        },
+        {
+          "label": "1h-write",
+          "costPerToken": 0.00001
+        },
+        {
+          "label": "read",
+          "costPerToken": 5e-7
+        }
+      ],
+      "contextTiers": [
+        {
+          "threshold": ">200K",
+          "inputCostPerToken": 0.00001,
+          "outputCostPerToken": 0.0000375
+        }
+      ],
+      "batchPricing": {
+        "inputCostPerToken": 0.0000025,
+        "outputCostPerToken": 0.0000125
+      },
+      "specialModes": [
+        {
+          "mode": "fast-mode",
+          "inputCostPerToken": 0.00003,
+          "outputCostPerToken": 0.00015
+        }
+      ]
+    },
+    {
+      "provider": "anthropic",
+      "modelId": "claude-opus-4-5",
+      "displayName": "Claude Opus 4.5",
+      "pricingUnit": "per-token",
+      "modelType": "chatCompletion",
+      "sourceUrl": "https://docs.anthropic.com/en/docs/about-claude/pricing",
+      "extractionMethod": "catalog-scraper",
+      "inputCostPerToken": 0.000005,
+      "outputCostPerToken": 0.000025,
+      "cachedInputCostPerToken": 5e-7,
+      "cacheTiers": [
+        {
+          "label": "5min-write",
+          "costPerToken": 0.00000625
+        },
+        {
+          "label": "1h-write",
+          "costPerToken": 0.00001
+        },
+        {
+          "label": "read",
+          "costPerToken": 5e-7
+        }
+      ],
+      "batchPricing": {
+        "inputCostPerToken": 0.0000025,
+        "outputCostPerToken": 0.0000125
+      }
+    },
+    {
+      "provider": "anthropic",
+      "modelId": "claude-opus-4-1",
+      "displayName": "Claude Opus 4.1",
+      "pricingUnit": "per-token",
+      "modelType": "chatCompletion",
+      "sourceUrl": "https://docs.anthropic.com/en/docs/about-claude/pricing",
+      "extractionMethod": "catalog-scraper",
+      "inputCostPerToken": 0.000015,
+      "outputCostPerToken": 0.000075,
+      "cachedInputCostPerToken": 0.0000015,
+      "cacheTiers": [
+        {
+          "label": "5min-write",
+          "costPerToken": 0.00001875
+        },
+        {
+          "label": "1h-write",
+          "costPerToken": 0.00003
+        },
+        {
+          "label": "read",
+          "costPerToken": 0.0000015
+        }
+      ],
+      "batchPricing": {
+        "inputCostPerToken": 0.0000075,
+        "outputCostPerToken": 0.0000375
+      }
+    },
+    {
+      "provider": "anthropic",
+      "modelId": "claude-opus-4",
+      "displayName": "Claude Opus 4",
+      "pricingUnit": "per-token",
+      "modelType": "chatCompletion",
+      "sourceUrl": "https://docs.anthropic.com/en/docs/about-claude/pricing",
+      "extractionMethod": "catalog-scraper",
+      "inputCostPerToken": 0.000015,
+      "outputCostPerToken": 0.000075,
+      "cachedInputCostPerToken": 0.0000015,
+      "cacheTiers": [
+        {
+          "label": "5min-write",
+          "costPerToken": 0.00001875
+        },
+        {
+          "label": "1h-write",
+          "costPerToken": 0.00003
+        },
+        {
+          "label": "read",
+          "costPerToken": 0.0000015
+        }
+      ],
+      "batchPricing": {
+        "inputCostPerToken": 0.0000075,
+        "outputCostPerToken": 0.0000375
+      }
+    },
+    {
+      "provider": "anthropic",
+      "modelId": "claude-sonnet-4-6",
+      "displayName": "Claude Sonnet 4.6",
+      "pricingUnit": "per-token",
+      "modelType": "chatCompletion",
+      "sourceUrl": "https://docs.anthropic.com/en/docs/about-claude/pricing",
+      "extractionMethod": "catalog-scraper",
+      "inputCostPerToken": 0.000003,
+      "outputCostPerToken": 0.000015,
+      "cachedInputCostPerToken": 3e-7,
+      "cacheTiers": [
+        {
+          "label": "5min-write",
+          "costPerToken": 0.00000375
+        },
+        {
+          "label": "1h-write",
+          "costPerToken": 0.000006
+        },
+        {
+          "label": "read",
+          "costPerToken": 3e-7
+        }
+      ],
+      "contextTiers": [
+        {
+          "threshold": ">200K",
+          "inputCostPerToken": 0.000006,
+          "outputCostPerToken": 0.0000225
+        }
+      ],
+      "batchPricing": {
+        "inputCostPerToken": 0.0000015,
+        "outputCostPerToken": 0.0000075
+      }
+    },
+    {
+      "provider": "anthropic",
+      "modelId": "claude-sonnet-4-5",
+      "displayName": "Claude Sonnet 4.5",
+      "pricingUnit": "per-token",
+      "modelType": "chatCompletion",
+      "sourceUrl": "https://docs.anthropic.com/en/docs/about-claude/pricing",
+      "extractionMethod": "catalog-scraper",
+      "inputCostPerToken": 0.000003,
+      "outputCostPerToken": 0.000015,
+      "cachedInputCostPerToken": 3e-7,
+      "cacheTiers": [
+        {
+          "label": "5min-write",
+          "costPerToken": 0.00000375
+        },
+        {
+          "label": "1h-write",
+          "costPerToken": 0.000006
+        },
+        {
+          "label": "read",
+          "costPerToken": 3e-7
+        }
+      ],
+      "contextTiers": [
+        {
+          "threshold": ">200K",
+          "inputCostPerToken": 0.000006,
+          "outputCostPerToken": 0.0000225
+        }
+      ],
+      "batchPricing": {
+        "inputCostPerToken": 0.0000015,
+        "outputCostPerToken": 0.0000075
+      }
+    },
+    {
+      "provider": "anthropic",
+      "modelId": "claude-sonnet-4",
+      "displayName": "Claude Sonnet 4",
+      "pricingUnit": "per-token",
+      "modelType": "chatCompletion",
+      "sourceUrl": "https://docs.anthropic.com/en/docs/about-claude/pricing",
+      "extractionMethod": "catalog-scraper",
+      "inputCostPerToken": 0.000003,
+      "outputCostPerToken": 0.000015,
+      "cachedInputCostPerToken": 3e-7,
+      "cacheTiers": [
+        {
+          "label": "5min-write",
+          "costPerToken": 0.00000375
+        },
+        {
+          "label": "1h-write",
+          "costPerToken": 0.000006
+        },
+        {
+          "label": "read",
+          "costPerToken": 3e-7
+        }
+      ],
+      "contextTiers": [
+        {
+          "threshold": ">200K",
+          "inputCostPerToken": 0.000006,
+          "outputCostPerToken": 0.0000225
+        }
+      ],
+      "batchPricing": {
+        "inputCostPerToken": 0.0000015,
+        "outputCostPerToken": 0.0000075
+      }
+    },
+    {
+      "provider": "anthropic",
+      "modelId": "claude-sonnet-3-7",
+      "displayName": "Claude Sonnet 3.7",
+      "pricingUnit": "per-token",
+      "modelType": "chatCompletion",
+      "sourceUrl": "https://docs.anthropic.com/en/docs/about-claude/pricing",
+      "extractionMethod": "catalog-scraper",
+      "inputCostPerToken": 0.000003,
+      "outputCostPerToken": 0.000015,
+      "cachedInputCostPerToken": 3e-7,
+      "cacheTiers": [
+        {
+          "label": "5min-write",
+          "costPerToken": 0.00000375
+        },
+        {
+          "label": "1h-write",
+          "costPerToken": 0.000006
+        },
+        {
+          "label": "read",
+          "costPerToken": 3e-7
+        }
+      ],
+      "batchPricing": {
+        "inputCostPerToken": 0.0000015,
+        "outputCostPerToken": 0.0000075
+      },
+      "deprecated": true
+    },
+    {
+      "provider": "anthropic",
+      "modelId": "claude-haiku-4-5",
+      "displayName": "Claude Haiku 4.5",
+      "pricingUnit": "per-token",
+      "modelType": "chatCompletion",
+      "sourceUrl": "https://docs.anthropic.com/en/docs/about-claude/pricing",
+      "extractionMethod": "catalog-scraper",
+      "inputCostPerToken": 0.000001,
+      "outputCostPerToken": 0.000005,
+      "cachedInputCostPerToken": 1.0000000000000001e-7,
+      "cacheTiers": [
+        {
+          "label": "5min-write",
+          "costPerToken": 0.00000125
+        },
+        {
+          "label": "1h-write",
+          "costPerToken": 0.000002
+        },
+        {
+          "label": "read",
+          "costPerToken": 1.0000000000000001e-7
+        }
+      ],
+      "batchPricing": {
+        "inputCostPerToken": 5e-7,
+        "outputCostPerToken": 0.0000025
+      }
+    },
+    {
+      "provider": "anthropic",
+      "modelId": "claude-haiku-3-5",
+      "displayName": "Claude Haiku 3.5",
+      "pricingUnit": "per-token",
+      "modelType": "chatCompletion",
+      "sourceUrl": "https://docs.anthropic.com/en/docs/about-claude/pricing",
+      "extractionMethod": "catalog-scraper",
+      "inputCostPerToken": 8.000000000000001e-7,
+      "outputCostPerToken": 0.000004,
+      "cachedInputCostPerToken": 8e-8,
+      "cacheTiers": [
+        {
+          "label": "5min-write",
+          "costPerToken": 0.000001
+        },
+        {
+          "label": "1h-write",
+          "costPerToken": 0.0000016000000000000001
+        },
+        {
+          "label": "read",
+          "costPerToken": 8e-8
+        }
+      ],
+      "batchPricing": {
+        "inputCostPerToken": 4.0000000000000003e-7,
+        "outputCostPerToken": 0.000002
+      }
+    },
+    {
+      "provider": "anthropic",
+      "modelId": "claude-opus-3",
+      "displayName": "Claude Opus 3",
+      "pricingUnit": "per-token",
+      "modelType": "chatCompletion",
+      "sourceUrl": "https://docs.anthropic.com/en/docs/about-claude/pricing",
+      "extractionMethod": "catalog-scraper",
+      "inputCostPerToken": 0.000015,
+      "outputCostPerToken": 0.000075,
+      "cachedInputCostPerToken": 0.0000015,
+      "cacheTiers": [
+        {
+          "label": "5min-write",
+          "costPerToken": 0.00001875
+        },
+        {
+          "label": "1h-write",
+          "costPerToken": 0.00003
+        },
+        {
+          "label": "read",
+          "costPerToken": 0.0000015
+        }
+      ],
+      "batchPricing": {
+        "inputCostPerToken": 0.0000075,
+        "outputCostPerToken": 0.0000375
+      },
+      "deprecated": true
+    },
+    {
+      "provider": "anthropic",
+      "modelId": "claude-haiku-3",
+      "displayName": "Claude Haiku 3",
+      "pricingUnit": "per-token",
+      "modelType": "chatCompletion",
+      "sourceUrl": "https://docs.anthropic.com/en/docs/about-claude/pricing",
+      "extractionMethod": "catalog-scraper",
+      "inputCostPerToken": 2.5e-7,
+      "outputCostPerToken": 0.00000125,
+      "cachedInputCostPerToken": 3e-8,
+      "cacheTiers": [
+        {
+          "label": "5min-write",
+          "costPerToken": 3e-7
+        },
+        {
+          "label": "1h-write",
+          "costPerToken": 5e-7
+        },
+        {
+          "label": "read",
+          "costPerToken": 3e-8
+        }
+      ],
+      "batchPricing": {
+        "inputCostPerToken": 1.25e-7,
+        "outputCostPerToken": 6.25e-7
+      }
+    }
+  ]
+}
