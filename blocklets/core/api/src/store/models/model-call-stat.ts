@@ -473,9 +473,9 @@ export default class ModelCallStat extends Model<
       totalDuration: (target.totalDuration || 0) + (source.totalDuration || 0),
       avgDuration: 0,
       totalTtfb: (target.totalTtfb || 0) + (source.totalTtfb || 0),
-      ttfbCount: mergedTtfbCount || undefined,
+      ttfbCount: mergedTtfbCount,
       totalProviderTtfb: (target.totalProviderTtfb || 0) + (source.totalProviderTtfb || 0),
-      providerTtfbCount: mergedProviderTtfbCount || undefined,
+      providerTtfbCount: mergedProviderTtfbCount,
       byType: {},
     };
 

@@ -278,11 +278,6 @@ export function compare(
           const inputDrift = ll.inputCostPerToken !== undefined ? calcDrift(dbInput, ll.inputCostPerToken) : 0;
           result.litellmDrift = inputDrift;
         }
-        // Second pass: derive resolution tiers if still missing
-        if (!result.resolutionTiers?.length && ll.outputCostPerImageToken && ll.outputCostPerImage) {
-          const derived = deriveResolutionTiers(ll.outputCostPerImage, ll.outputCostPerImageToken);
-          if (derived) result.resolutionTiers = derived;
-        }
       } else if (pricingUnit === 'per-second') {
         // Video models: compare output per-second if available
         const llOutputPerSecond = ll.outputCostPerVideoPerSecond;

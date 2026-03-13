@@ -46,6 +46,9 @@ BREAKING_CHANGE.MD
 
 # Generated analysis reports
 pricing-analysis-*.html
+pricing-report.html
+.claude/skills/model-pricing-analyzer/scripts/pricing-report.html
+.claude/skills/model-pricing-analyzer/scripts/generate-card-report.mjs
 tes.json
 
 # Keep script dependencies for auth and pricing tools
