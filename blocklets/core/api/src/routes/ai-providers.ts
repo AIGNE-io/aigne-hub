@@ -56,6 +56,30 @@ const rateLimitMiddleware = (req: Request, res: Response, next: NextFunction): v
   next();
 };
 
+function extractCredentialParams(
+  rawValue: { value: any; credentialType: string },
+  provider: { baseUrl?: string; region?: string }
+): { apiKey?: string; baseURL?: string; accessKeyId?: string; secretAccessKey?: string; region?: string } {
+  const params: { apiKey?: string; baseURL?: string; accessKeyId?: string; secretAccessKey?: string; region?: string } =
+    {};
+
+  if (rawValue.credentialType === 'api_key') {
+    if (typeof rawValue.value === 'string') {
+      params.apiKey = rawValue.value;
+    } else if (typeof rawValue.value === 'object' && rawValue.value.api_key) {
+      params.apiKey = rawValue.value.api_key;
+    }
+  } else if (rawValue.credentialType === 'access_key_pair' && typeof rawValue.value === 'object') {
+    params.accessKeyId = rawValue.value.access_key_id;
+    params.secretAccessKey = rawValue.value.secret_access_key;
+  }
+
+  if (provider.baseUrl) params.baseURL = provider.baseUrl;
+  if (provider.region) params.region = provider.region;
+
+  return params;
+}
+
 const router = Router();
 
 const user = sessionMiddleware({ accessKey: true });
@@ -349,16 +373,8 @@ router.post('/:providerId/credentials', ensureAdmin, async (req, res) => {
       return res.status(404).json({ error: 'Provider not found' });
     }
 
-    await checkModelIsValid(
-      provider.name,
-      {
-        apiKey: rawValue.credentialType === 'api_key' ? rawValue.value : undefined,
-        accessKeyId: rawValue.credentialType === 'access_key_pair' ? rawValue.value.access_key_id : undefined,
-        secretAccessKey: rawValue.credentialType === 'access_key_pair' ? rawValue.value.secret_access_key : undefined,
-        region: provider.region || undefined,
-      },
-      rawValue.testModel
-    );
+    const params = extractCredentialParams(rawValue, provider);
+    await checkModelIsValid(provider.name, params, rawValue.testModel);
 
     // 处理凭证值
     let credentialValue: CredentialValue;
@@ -423,16 +439,8 @@ router.put('/:providerId/credentials/:credentialId', ensureAdmin, async (req, re
       return res.status(404).json({ error: 'Provider not found' });
     }
 
-    await checkModelIsValid(
-      provider.name,
-      {
-        apiKey: value.credentialType === 'api_key' ? value.value : undefined,
-        accessKeyId: value.credentialType === 'access_key_pair' ? value.value.access_key_id : undefined,
-        secretAccessKey: value.credentialType === 'access_key_pair' ? value.value.secret_access_key : undefined,
-        region: provider.region || undefined,
-      },
-      value.testModel
-    );
+    const params = extractCredentialParams(value, provider);
+    await checkModelIsValid(provider.name, params, value.testModel);
 
     // 处理凭证值
     let credentialValue: CredentialValue;
@@ -512,23 +520,7 @@ router.post('/:providerId/credentials/test', ensureAdmin, rateLimitMiddleware, a
       return res.status(400).json({ error: 'Credential value is required' });
     }
 
-    const params: {
-      apiKey?: string;
-      accessKeyId?: string;
-      secretAccessKey?: string;
-      region?: string;
-    } = {};
-
-    if (credentialType === 'api_key' && typeof value === 'string') {
-      params.apiKey = value;
-    } else if (credentialType === 'access_key_pair' && typeof value === 'object') {
-      params.accessKeyId = value.access_key_id;
-      params.secretAccessKey = value.secret_access_key;
-      if (provider.region) {
-        params.region = provider.region;
-      }
-    }
-
+    const params = extractCredentialParams({ value, credentialType }, provider);
     await checkModelIsValid(provider.name, params, testModel);
     return res.json({ success: true });
   } catch (err) {

@@ -1,3 +1,14 @@
+## 0.9.11 (2026-3-12)
+
+- feat: add TTFB monitoring and model rate history tracking
+- feat: expose TTFB metrics in API and frontend charts
+- feat: add TTFB column to call history tables and detail drawer
+- feat: add model pricing analyzer skill with multi-unit and cache support
+- fix: pass provider baseURL and region to credential validation
+- fix: improve credential validation debugging and performance monitoring
+- fix: resolve TS type errors in provider-pricing-pages
+
+
 ## 0.9.10 (2026-3-11)
 
 - feat: add embedding model support to v2 API

@@ -97,6 +97,7 @@ const toDailyStats = (trends?: UsageTrend[]): DailyStats[] => {
     totalCalls: trend.calls || 0,
     totalUsage: trend.totalUsage || 0,
     avgDuration: trend.avgDuration || 0,
+    avgTtfb: trend.avgTtfb || 0,
   }));
 };
 
@@ -134,6 +135,7 @@ export function UsageOverviewCard({
           totalCredits: trend.totalCredits,
           totalCalls: trend.calls,
           avgDuration: trend.avgDuration || 0,
+          avgTtfb: trend.avgTtfb || 0,
           successCalls: trend.successCalls || 0,
         },
       },
@@ -157,6 +159,7 @@ export function UsageOverviewCard({
           totalCredits: trend.totalCredits,
           totalCalls: trend.calls,
           avgDuration: trend.avgDuration || 0,
+          avgTtfb: trend.avgTtfb || 0,
           successCalls: trend.successCalls || 0,
         },
       },

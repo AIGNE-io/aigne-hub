@@ -6,12 +6,14 @@ import {
   ENABLE_ARCHIVE_MODEL_DATA_CRON,
   MODEL_CALL_MONTHLY_STATS_CRON_TIME,
   MODEL_CALL_STATS_CRON_TIME,
+  MODEL_RATE_CHECK_CRON_TIME,
 } from '@api/libs/env';
 
 import logger from '../libs/logger';
 import shouldExecuteTask from '../libs/master-cluster';
 import { executeArchiveTask } from './archive-task';
 import { createHourlyModelCallStats, createMonthlyModelCallStats, getHoursToWarmup } from './model-call-stats';
+import { executeRateCheck } from './model-rate-check';
 
 function init() {
   Cron.init({
@@ -66,6 +68,17 @@ function init() {
           if (ENABLE_ARCHIVE_MODEL_DATA_CRON && shouldExecuteTask('archive.model.data cron')) {
             logger.info('Executing archive task on cluster:', { instanceId: process.env.BLOCKLET_INSTANCE_ID });
             await executeArchiveTask();
+          }
+        },
+        options: { runOnInit: false },
+      },
+      {
+        name: 'model.rate.check',
+        time: MODEL_RATE_CHECK_CRON_TIME,
+        fn: async () => {
+          logger.info('cron model.rate.check');
+          if (shouldExecuteTask('model.rate.check cron')) {
+            await executeRateCheck();
           }
         },
         options: { runOnInit: false },

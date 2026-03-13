@@ -12,6 +12,7 @@ export interface DailyStats {
   totalCalls: number;
   totalUsage: number;
   avgDuration?: number;
+  avgTtfb?: number;
 }
 
 // Legacy data format for backward compatibility
@@ -22,7 +23,7 @@ export interface LegacyDailyStats {
   requests: number;
 }
 
-export type UsageChartMetric = 'credits' | 'usage' | 'requests' | 'avgDuration';
+export type UsageChartMetric = 'credits' | 'usage' | 'requests' | 'avgDuration' | 'avgTtfb';
 
 type MetricConfig = {
   label: string;
@@ -63,6 +64,7 @@ interface ComparisonStats {
   comparisonTotalUsage?: number;
   comparisonTotalCalls?: number;
   comparisonAvgDuration?: number;
+  comparisonAvgTtfb?: number;
   comparisonDate?: string;
 }
 
@@ -123,6 +125,15 @@ const getMetricConfig = ({
     color: theme.palette.info.main,
     currentValueKey: 'avgDuration',
     comparisonValueKey: 'comparisonAvgDuration',
+    formatValue: (value?: number) => formatDuration(value),
+  },
+  avgTtfb: {
+    label: t('analytics.avgTtfb'),
+    dataKey: 'avgTtfb',
+    comparisonKey: 'comparisonAvgTtfb',
+    color: theme.palette.secondary.main,
+    currentValueKey: 'avgTtfb',
+    comparisonValueKey: 'comparisonAvgTtfb',
     formatValue: (value?: number) => formatDuration(value),
   },
 });
@@ -342,6 +353,9 @@ export function UsageCharts({
     if (metricType === 'avgDuration') {
       return (stat as DailyStats).avgDuration ?? 0;
     }
+    if (metricType === 'avgTtfb') {
+      return (stat as DailyStats).avgTtfb ?? 0;
+    }
     return (stat as DailyStats).totalUsage ?? (stat as LegacyDailyStats).tokens ?? 0;
   };
 
@@ -355,6 +369,7 @@ export function UsageCharts({
           comparisonTotalUsage: getMetricValue(comparison, 'usage'),
           comparisonTotalCalls: getMetricValue(comparison, 'requests'),
           comparisonAvgDuration: getMetricValue(comparison, 'avgDuration'),
+          comparisonAvgTtfb: getMetricValue(comparison, 'avgTtfb'),
           comparisonDate: comparison?.date,
         };
       })
@@ -372,6 +387,7 @@ export function UsageCharts({
   const chartTitleMap: Record<UsageChartMetric, string> = {
     credits: t('analytics.dailyCreditsUsage'),
     avgDuration: t('analytics.avgDuration'),
+    avgTtfb: t('analytics.avgTtfb'),
     usage: t('analytics.dailyUsage'),
     requests: t('analytics.dailyUsage'),
   };
