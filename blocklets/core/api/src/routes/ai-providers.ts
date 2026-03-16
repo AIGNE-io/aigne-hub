@@ -244,9 +244,9 @@ const bulkRateUpdateSchema = Joi.object({
         source: Joi.string().optional(),
       })
     )
-    .when('mode', { is: 'sync', then: Joi.required() }),
+    .when('mode', { is: 'sync', then: Joi.optional() }),
 
-  // sync mode: also accepts raw OfficialPricingEntry[] array
+  // sync mode: also accepts raw OfficialPricingEntry[] array (either updates or entries required)
   entries: Joi.array()
     .items(
       Joi.object({
