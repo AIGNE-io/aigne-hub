@@ -798,12 +798,12 @@ async function doSync(isDryRun){
   try{
     const body={mode:'sync',entries:${JSON.stringify(
       data
-        .filter((m) => m.officialInput !== undefined || m.officialOutput !== undefined)
+        .filter((m) => m.providerPageInput !== undefined || m.providerPageOutput !== undefined)
         .map((m) => ({
           provider: m.provider,
           modelId: m.model,
-          inputCostPerToken: m.officialInput ?? null,
-          outputCostPerToken: m.officialOutput ?? null,
+          inputCostPerToken: m.providerPageInput ?? null,
+          outputCostPerToken: m.providerPageOutput ?? null,
           cachedInputCostPerToken: m.officialCacheRead ?? null,
           modelType: m.type,
         }))
