@@ -9,6 +9,7 @@ import { createListParamSchema, getWhereFromKvQuery } from '@api/libs/validate';
 import { checkModelIsValid, getDefaultTestModels } from '@api/providers/models';
 import AiCredential, { CredentialValue } from '@api/store/models/ai-credential';
 import AiModelRate from '@api/store/models/ai-model-rate';
+import AiModelRateHistory from '@api/store/models/ai-model-rate-history';
 import AiModelStatus from '@api/store/models/ai-model-status';
 import AiProvider from '@api/store/models/ai-provider';
 import { formatError } from '@blocklet/error';
@@ -20,6 +21,14 @@ import pick from 'lodash/pick';
 import pAll from 'p-all';
 import { Op } from 'sequelize';
 
+import {
+  SyncUpdate,
+  buildSyncResult,
+  matchUpdateToDbRate,
+  officialPricingToSyncUpdates,
+  propagateToTier2,
+  unitCostsChanged,
+} from '../libs/bulk-rate-sync';
 import { getFormatModelType, modelStatusQueue, typeFilterMap } from '../libs/status';
 
 const testModelsRateLimit = new Map<string, { count: number; startTime: number }>();
@@ -200,8 +209,59 @@ const modelRatesListSchema = createListParamSchema<{
 });
 
 const bulkRateUpdateSchema = Joi.object({
-  profitMargin: Joi.number().min(0).required(),
-  creditPrice: Joi.number().min(0).required(),
+  mode: Joi.string().valid('margin', 'sync').default('margin'),
+
+  // margin mode fields (required when mode=margin)
+  profitMargin: Joi.number()
+    .min(0)
+    .when('mode', {
+      is: 'margin',
+      then: Joi.required(),
+      otherwise: Joi.when('applyRates', { is: true, then: Joi.required(), otherwise: Joi.optional() }),
+    }),
+  creditPrice: Joi.number()
+    .positive()
+    .when('mode', {
+      is: 'margin',
+      then: Joi.required(),
+      otherwise: Joi.when('applyRates', { is: true, then: Joi.required(), otherwise: Joi.optional() }),
+    }),
+
+  // sync mode fields
+  updates: Joi.array()
+    .items(
+      Joi.object({
+        providerId: Joi.string().required(),
+        model: Joi.string().required(),
+        unitCosts: Joi.object({
+          input: Joi.number().min(0).required(),
+          output: Joi.number().min(0).required(),
+        }).required(),
+        caching: Joi.object({
+          readRate: Joi.number().min(0),
+          writeRate: Joi.number().min(0),
+        }).optional(),
+        source: Joi.string().optional(),
+      })
+    )
+    .when('mode', { is: 'sync', then: Joi.required() }),
+
+  // sync mode: also accepts raw OfficialPricingEntry[] array
+  entries: Joi.array()
+    .items(
+      Joi.object({
+        provider: Joi.string().required(),
+        modelId: Joi.string().required(),
+        inputCostPerToken: Joi.number().allow(null),
+        outputCostPerToken: Joi.number().allow(null),
+        cachedInputCostPerToken: Joi.number().allow(null),
+        cacheTiers: Joi.array().items(Joi.object({ label: Joi.string(), costPerToken: Joi.number() })),
+        modelType: Joi.string(),
+      }).unknown(true)
+    )
+    .when('mode', { is: 'sync', then: Joi.optional() }),
+
+  applyRates: Joi.boolean().default(false),
 });
 
 interface BulkUpdateSummary {
@@ -1261,6 +1321,11 @@ router.post('/bulk-rate-update', ensureAdmin, async (req, res) => {
       });
     }
 
+    if (value.mode === 'sync') {
+      return await handleSyncMode(res, value);
+    }
+
+    // ── Existing margin mode ──
     const { profitMargin, creditPrice } = value;
 
     const modelRates = await AiModelRate.findAll({
@@ -1334,6 +1399,148 @@ router.post('/bulk-rate-update', ensureAdmin, async (req, res) => {
     return res.status(500).json({ error: formatError(error) || 'Failed to bulk update model rates' });
   }
 });
+
+/**
+ * Sync mode handler for bulk-rate-update.
+ * Accepts either pre-formatted `updates[]` (SyncUpdate) or raw `entries[]` (OfficialPricingEntry).
+ * Matches to DB models, updates unitCosts, optionally recalculates rates, propagates to tier2.
+ */
+async function handleSyncMode(res: Response, value: any) {
+  const { applyRates, profitMargin, creditPrice } = value;
+
+  // Accept either pre-formatted updates or raw OfficialPricingEntry[]
+  let syncUpdates: SyncUpdate[];
+  if (value.updates) {
+    syncUpdates = value.updates;
+  } else if (value.entries) {
+    syncUpdates = officialPricingToSyncUpdates(value.entries);
+  } else {
+    return res.status(400).json({ error: 'sync mode requires either "updates" or "entries" array' });
+  }
+
+  const dbRates = await AiModelRate.findAll({
+    include: [{ model: AiProvider, as: 'provider', attributes: ['id', 'name', 'displayName'] }],
+  });
+
+  const updated: any[] = [];
+  const unchanged: any[] = [];
+  const unmatched: any[] = [];
+  const errors: any[] = [];
+  const tier1Updates = new Map<string, { input: number; output: number }>();
+
+  for (const update of syncUpdates) {
+    const match = matchUpdateToDbRate(dbRates as any[], update.providerId, update.model);
+
+    if (!match) {
+      unmatched.push({ model: update.model, provider: update.providerId, source: update.source });
+      continue;
+    }
+
+    if (!unitCostsChanged(match.unitCosts, update.unitCosts)) {
+      unchanged.push({ id: match.id, model: match.model, provider: match.providerId });
+      continue;
+    }
+
+    try {
+      const updateData: any = { unitCosts: update.unitCosts };
+      if (update.caching) updateData.caching = update.caching;
+
+      if (applyRates && profitMargin != null && creditPrice != null) {
+        updateData.inputRate = calculateRate(Number(update.unitCosts.input), profitMargin, creditPrice);
+        updateData.outputRate = calculateRate(Number(update.unitCosts.output), profitMargin, creditPrice);
+      }
+
+      const oldUnitCosts = match.unitCosts || null;
+      const oldRates = { inputRate: Number(match.inputRate), outputRate: Number(match.outputRate) };
+
+      await (match as any).update(updateData);
+
+      updated.push({
+        id: match.id,
+        model: match.model,
+        provider: match.providerId,
+        oldUnitCosts,
+        newUnitCosts: update.unitCosts,
+        oldRates,
+        newRates: applyRates ? { inputRate: updateData.inputRate, outputRate: updateData.outputRate } : oldRates,
+      });
+
+      // Track tier1 updates for propagation
+      tier1Updates.set(`${match.providerId}:${match.model}`, update.unitCosts);
+    } catch (err: any) {
+      errors.push({ model: match.model, provider: match.providerId, error: err.message });
+    }
+  }
+
+  // Propagate to tier2 providers
+  const tier2Updates = propagateToTier2(dbRates as any[], tier1Updates);
+  for (const t2 of tier2Updates) {
+    const match = dbRates.find((r) => r.providerId === t2.providerId && r.model === t2.model);
+    if (!match) continue;
+    if (!unitCostsChanged(match.unitCosts, t2.unitCosts)) continue;
+
+    try {
+      const updateData: any = { unitCosts: t2.unitCosts };
+      if (applyRates && profitMargin != null && creditPrice != null) {
+        updateData.inputRate = calculateRate(Number(t2.unitCosts.input), profitMargin, creditPrice);
+        updateData.outputRate = calculateRate(Number(t2.unitCosts.output), profitMargin, creditPrice);
+      }
+      await (match as any).update(updateData);
+      updated.push({
+        id: match.id,
+        model: match.model,
+        provider: match.providerId,
+        oldUnitCosts: match.unitCosts || null,
+        newUnitCosts: t2.unitCosts,
+        source: t2.source,
+      });
+    } catch (err: any) {
+      errors.push({ model: match.model, provider: match.providerId, error: err.message });
+    }
+  }
+
+  // Create bulk update summary history record
+  if (updated.length > 0) {
+    try {
+      await AiModelRateHistory.create({
+        providerId: 'system',
+        model: '_bulk_sync',
+        type: 'system',
+        changeType: 'bulk_update',
+        source: 'official-pricing-catalog',
+        previousUnitCosts: null,
+        currentUnitCosts: null,
+        previousRates: null,
+        currentRates: null,
+        driftPercent: null,
+        detectedAt: Math.floor(Date.now() / 1000),
+        metadata: {
+          totalUpdated: updated.length,
+          totalUnchanged: unchanged.length,
+          totalUnmatched: unmatched.length,
+          totalErrors: errors.length,
+          updates: updated.map((u: any) => ({
+            model: u.model,
+            provider: u.provider,
+            oldInput: u.oldUnitCosts?.input,
+            newInput: u.newUnitCosts.input,
+            oldOutput: u.oldUnitCosts?.output,
+            newOutput: u.newUnitCosts.output,
+          })),
+        },
+      });
+    } catch (histErr) {
+      logger.error('Failed to create bulk_update history record:', histErr);
+    }
+  }
+
+  const result = buildSyncResult({ updated, unchanged, unmatched, errors });
+
+  return res.json({
+    message: `Sync completed: ${result.summary.updated} updated, ${result.summary.unchanged} unchanged, ${result.summary.unmatched} unmatched`,
+    ...result,
+  });
+}
 
 router.get('/health', async (_req, res) => {
   const credentials = (await AiCredential.findAll({

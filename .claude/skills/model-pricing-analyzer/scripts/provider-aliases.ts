@@ -45,18 +45,99 @@ export function normalizeProvider(name: string): string | undefined {
 }
 
 /**
+ * Provider tier classification.
+ * tier1: Primary providers with direct pricing pages.
+ * tier2: Aggregators that resell tier1 models — inherit tier1 pricing.
+ */
+export const PROVIDER_TIERS = {
+  tier1: ['openai', 'anthropic', 'google', 'xai', 'deepseek', 'doubao'] as const,
+  tier2: ['poe', 'openrouter', 'rock'] as const,
+};
+
+/**
+ * Static overrides for model names that can't be derived by rules.
+ * Maps external/misspelled name → canonical DB model name.
+ */
+export const MODEL_NAME_OVERRIDES: Record<string, string> = {
+  'gemini-flash-2.5': 'gemini-2.5-flash',
+  'gpt-3.5-turbo-instruct': 'gpt-3.5-turbo-instruct',
+};
+
+/**
  * Generate fallback model name variants for lookup.
- * For Claude models, names ending in "-X-0" (e.g. "claude-sonnet-4-0") should
- * fall back to the base name without "-0" (e.g. "claude-sonnet-4"), since official
- * pricing may use either form.
+ * - claude-xxx-N-0 → claude-xxx-N
+ * - gpt-4o-2024-08-06 → gpt-4o (date suffix)
  */
 export function modelNameFallbacks(model: string): string[] {
+  if (MODEL_NAME_OVERRIDES[model]) {
+    return [MODEL_NAME_OVERRIDES[model]];
+  }
+
   const fallbacks: string[] = [];
+
   // claude-xxx-N-0 → claude-xxx-N (e.g. claude-sonnet-4-0 → claude-sonnet-4)
   if (/^claude-.*-\d+-0$/.test(model)) {
     fallbacks.push(model.replace(/-0$/, ''));
   }
+
+  // gpt-4o-2024-08-06 → gpt-4o (date suffix: YYYY-MM-DD)
+  const dateMatch = model.match(/^(.+)-(\d{4}-\d{2}-\d{2})$/);
+  if (dateMatch?.[1]) {
+    fallbacks.push(dateMatch[1]);
+  }
+
   return fallbacks;
+}
+
+/** Infer tier1 provider from model name prefix (for tier2 providers like Poe). */
+const MODEL_PREFIX_TO_PROVIDER: Record<string, string> = {
+  'claude-': 'anthropic',
+  'gpt-': 'openai',
+  'o1-': 'openai',
+  'o3-': 'openai',
+  'o4-': 'openai',
+  'gemini-': 'google',
+  'grok-': 'xai',
+  'deepseek-': 'deepseek',
+};
+
+/**
+ * For tier2 providers, resolve the underlying tier1 provider and model name.
+ * For tier1 providers, returns as-is (with override/fallback applied).
+ */
+export function resolveModelMapping(
+  dbModel: string,
+  dbProvider: string
+): { primaryProvider: string; primaryModel: string } {
+  const canonicalProvider = normalizeProvider(dbProvider) || dbProvider;
+  const isTier2 = (PROVIDER_TIERS.tier2 as readonly string[]).includes(canonicalProvider);
+
+  const resolvedModel = MODEL_NAME_OVERRIDES[dbModel] || dbModel;
+
+  if (!isTier2) {
+    return { primaryProvider: canonicalProvider, primaryModel: resolvedModel };
+  }
+
+  // OpenRouter: "anthropic/claude-sonnet-4" → split on /
+  if (canonicalProvider === 'openrouter' && resolvedModel.includes('/')) {
+    const slashIdx = resolvedModel.indexOf('/');
+    const providerPrefix = resolvedModel.slice(0, slashIdx);
+    const modelName = resolvedModel.slice(slashIdx + 1);
+    const mappedProvider = normalizeProvider(providerPrefix);
+    if (mappedProvider && (PROVIDER_TIERS.tier1 as readonly string[]).includes(mappedProvider)) {
+      return { primaryProvider: mappedProvider, primaryModel: modelName };
+    }
+  }
+
+  // Poe and others: infer provider from model name prefix
+  for (const [prefix, provider] of Object.entries(MODEL_PREFIX_TO_PROVIDER)) {
+    if (resolvedModel.startsWith(prefix)) {
+      return { primaryProvider: provider, primaryModel: resolvedModel };
+    }
+  }
+
+  // Can't resolve — return as-is
+  return { primaryProvider: canonicalProvider, primaryModel: resolvedModel };
 }
 
 /**
