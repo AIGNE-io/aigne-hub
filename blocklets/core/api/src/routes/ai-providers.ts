@@ -265,6 +265,9 @@ const bulkRateUpdateSchema = Joi.object({
 
   // sync mode: soft-delete tier1 models not found in official pricing data
   deprecateUnmatched: Joi.boolean().default(false),
+
+  // sync mode: dry run — return preview without executing any changes
+  dryRun: Joi.boolean().default(false),
 });
 
 interface BulkUpdateSummary {
@@ -1424,7 +1427,7 @@ router.post('/bulk-rate-update', ensureAdmin, async (req, res) => {
  * Matches to DB models, updates unitCosts, optionally recalculates rates, propagates to tier2.
  */
 async function handleSyncMode(req: Request, res: Response, value: any) {
-  const { applyRates, profitMargin, creditPrice } = value;
+  const { applyRates, profitMargin, creditPrice, dryRun } = value;
   const operatedBy = req.user?.did || 'system';
 
   // Accept either pre-formatted updates or raw OfficialPricingEntry[]
@@ -1472,7 +1475,9 @@ async function handleSyncMode(req: Request, res: Response, value: any) {
       const oldUnitCosts = match.unitCosts || null;
       const oldRates = { inputRate: Number(match.inputRate), outputRate: Number(match.outputRate) };
 
-      await (match as any).update(updateData);
+      if (!dryRun) {
+        await (match as any).update(updateData);
+      }
 
       updated.push({
         id: match.id,
@@ -1504,7 +1509,9 @@ async function handleSyncMode(req: Request, res: Response, value: any) {
         updateData.inputRate = calculateRate(Number(t2.unitCosts.input), profitMargin, creditPrice);
         updateData.outputRate = calculateRate(Number(t2.unitCosts.output), profitMargin, creditPrice);
       }
-      await (match as any).update(updateData);
+      if (!dryRun) {
+        await (match as any).update(updateData);
+      }
       updated.push({
         id: match.id,
         model: match.model,
@@ -1522,7 +1529,6 @@ async function handleSyncMode(req: Request, res: Response, value: any) {
   const deprecated: any[] = [];
   if (value.deprecateUnmatched) {
     const tier1Providers = new Set(['openai', 'anthropic', 'google', 'xai', 'deepseek', 'doubao']);
-    // Collect all matched model keys (providerId:model) from sync processing
     const matchedKeys = new Set<string>();
     for (const u of [...updated, ...unchanged]) {
       matchedKeys.add(`${u.provider}:${u.model}`);
@@ -1534,88 +1540,93 @@ async function handleSyncMode(req: Request, res: Response, value: any) {
 
     for (const rate of tier1DbRates) {
       if (!matchedKeys.has(`${rate.providerId}:${rate.model}`)) {
-        try {
-          await rate.update({
-            deprecated: true,
-            deprecatedAt: new Date(),
-            deprecatedReason: 'Model not found in official pricing data',
-          });
-          deprecated.push({ id: rate.id, model: rate.model, provider: rate.providerId });
-        } catch (err: any) {
-          errors.push({ model: rate.model, provider: rate.providerId, error: `deprecate failed: ${err.message}` });
+        if (!dryRun) {
+          try {
+            await rate.update({
+              deprecated: true,
+              deprecatedAt: new Date(),
+              deprecatedReason: 'Model not found in official pricing data',
+            });
+          } catch (err: any) {
+            errors.push({ model: rate.model, provider: rate.providerId, error: `deprecate failed: ${err.message}` });
+            continue;
+          }
         }
+        deprecated.push({ id: rate.id, model: rate.model, provider: rate.providerId });
       }
     }
   }
 
-  // Create bulk update summary history record
-  if (updated.length > 0) {
-    try {
-      await AiModelRateHistory.create({
-        providerId: 'system',
-        model: '_bulk_sync',
-        type: 'system',
-        changeType: 'bulk_update',
-        source: 'official-pricing-catalog',
-        previousUnitCosts: null,
-        currentUnitCosts: null,
-        previousRates: null,
-        currentRates: null,
-        driftPercent: null,
-        detectedAt: Math.floor(Date.now() / 1000),
-        metadata: {
-          operatedBy,
-          totalUpdated: updated.length,
-          totalUnchanged: unchanged.length,
-          totalUnmatched: unmatched.length,
-          totalErrors: errors.length,
-          totalDeprecated: deprecated.length,
-          updates: updated.map((u: any) => ({
-            model: u.model,
-            provider: u.provider,
-            oldInput: u.oldUnitCosts?.input,
-            newInput: u.newUnitCosts.input,
-            oldOutput: u.oldUnitCosts?.output,
-            newOutput: u.newUnitCosts.output,
-          })),
-        },
-      });
-    } catch (histErr) {
-      logger.error('Failed to create bulk_update history record:', histErr);
+  // Write history records (skip in dryRun)
+  if (!dryRun) {
+    if (updated.length > 0) {
+      try {
+        await AiModelRateHistory.create({
+          providerId: 'system',
+          model: '_bulk_sync',
+          type: 'system',
+          changeType: 'bulk_update',
+          source: 'official-pricing-catalog',
+          previousUnitCosts: null,
+          currentUnitCosts: null,
+          previousRates: null,
+          currentRates: null,
+          driftPercent: null,
+          detectedAt: Math.floor(Date.now() / 1000),
+          metadata: {
+            operatedBy,
+            totalUpdated: updated.length,
+            totalUnchanged: unchanged.length,
+            totalUnmatched: unmatched.length,
+            totalErrors: errors.length,
+            totalDeprecated: deprecated.length,
+            updates: updated.map((u: any) => ({
+              model: u.model,
+              provider: u.provider,
+              oldInput: u.oldUnitCosts?.input,
+              newInput: u.newUnitCosts.input,
+              oldOutput: u.oldUnitCosts?.output,
+              newOutput: u.newUnitCosts.output,
+            })),
+          },
+        });
+      } catch (histErr) {
+        logger.error('Failed to create bulk_update history record:', histErr);
+      }
     }
-  }
 
-  // Create deprecation history record
-  if (deprecated.length > 0) {
-    try {
-      await AiModelRateHistory.create({
-        providerId: 'system',
-        model: '_bulk_deprecate',
-        type: 'system',
-        changeType: 'bulk_update',
-        source: 'official-pricing-catalog',
-        previousUnitCosts: null,
-        currentUnitCosts: null,
-        previousRates: null,
-        currentRates: null,
-        driftPercent: null,
-        detectedAt: Math.floor(Date.now() / 1000),
-        metadata: {
-          operatedBy,
-          action: 'deprecate',
-          totalDeprecated: deprecated.length,
-          models: deprecated.map((d: any) => ({ model: d.model, provider: d.provider })),
-        },
-      });
-    } catch (histErr) {
-      logger.error('Failed to create deprecation history record:', histErr);
+    if (deprecated.length > 0) {
+      try {
+        await AiModelRateHistory.create({
+          providerId: 'system',
+          model: '_bulk_deprecate',
+          type: 'system',
+          changeType: 'bulk_update',
+          source: 'official-pricing-catalog',
+          previousUnitCosts: null,
+          currentUnitCosts: null,
+          previousRates: null,
+          currentRates: null,
+          driftPercent: null,
+          detectedAt: Math.floor(Date.now() / 1000),
+          metadata: {
+            operatedBy,
+            action: 'deprecate',
+            totalDeprecated: deprecated.length,
+            models: deprecated.map((d: any) => ({ model: d.model, provider: d.provider })),
+          },
+        });
+      } catch (histErr) {
+        logger.error('Failed to create deprecation history record:', histErr);
+      }
     }
   }
 
   const result = buildSyncResult({ updated, unchanged, unmatched, errors });
 
   return res.json({
-    message: `Sync completed: ${result.summary.updated} updated, ${result.summary.unchanged} unchanged, ${result.summary.unmatched} unmatched, ${deprecated.length} deprecated`,
+    message: `${dryRun ? '[DRY RUN] ' : ''}Sync completed: ${result.summary.updated} updated, ${result.summary.unchanged} unchanged, ${result.summary.unmatched} unmatched, ${deprecated.length} deprecated`,
+    dryRun: !!dryRun,
     ...result,
     deprecated,
   });

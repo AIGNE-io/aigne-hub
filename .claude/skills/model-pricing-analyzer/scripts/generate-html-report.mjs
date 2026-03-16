@@ -747,9 +747,122 @@ table.mt th{padding:11px 14px;text-align:left;font-weight:600;color:#4a5568;font
     <div class="sec-h"><h2>定价正常</h2><span class="cnt ok sec-cnt">${ok.length}</span><span class="sec-sub">定价在合理范围内</span><span class="chevron">▼</span></div>
     <div class="sec-body"><table class="mt">${THEAD}<tbody>${buildSection(ok)}</tbody></table></div>
   </div>
+
+  <!-- Sync Panel -->
+  <div class="sec" id="sync-panel" style="background:#fff;margin-top:24px">
+    <div class="sec-h" style="cursor:default;background:linear-gradient(135deg,#2d3748,#4a5568)">
+      <h2 style="color:#fff">API 同步面板</h2>
+      <span class="sec-sub" style="color:rgba(255,255,255,.7)">预览变更 / 一键同步到数据库</span>
+    </div>
+    <div class="sec-body" style="padding:20px 24px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+        <div>
+          <label style="font-size:13px;font-weight:600;color:#4a5568;display:block;margin-bottom:6px">API 地址</label>
+          <input type="text" id="sync-url" placeholder="https://your-hub.example.com" style="width:100%;padding:10px 14px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px"/>
+        </div>
+        <div>
+          <label style="font-size:13px;font-weight:600;color:#4a5568;display:block;margin-bottom:6px">Access Token</label>
+          <input type="password" id="sync-token" placeholder="输入管理员 Access Token" style="width:100%;padding:10px 14px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px"/>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;margin-bottom:20px;align-items:center">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#4a5568;cursor:pointer">
+          <input type="checkbox" id="sync-deprecate"/> 软删除未匹配模型
+        </label>
+        <span style="flex:1"></span>
+        <button id="sync-preview-btn" onclick="doSync(true)" style="padding:10px 24px;background:#4a5568;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;transition:all .15s">预览变更</button>
+        <button id="sync-execute-btn" onclick="doSync(false)" style="padding:10px 24px;background:#38a169;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;transition:all .15s;display:none">确认执行同步</button>
+      </div>
+      <div id="sync-status" style="display:none;padding:14px 18px;border-radius:8px;font-size:13px;margin-bottom:16px"></div>
+      <div id="sync-result" style="display:none"></div>
+    </div>
+  </div>
 </div>
 
 <script>
+// Sync panel logic
+async function doSync(isDryRun){
+  const url=document.getElementById('sync-url').value.trim().replace(/\\/$/,'');
+  const token=document.getElementById('sync-token').value.trim();
+  const deprecate=document.getElementById('sync-deprecate').checked;
+  const status=document.getElementById('sync-status');
+  const result=document.getElementById('sync-result');
+  const execBtn=document.getElementById('sync-execute-btn');
+
+  if(!url){showStatus('请输入 API 地址','#feebc8','#c05621');return}
+  if(!token){showStatus('请输入 Access Token','#feebc8','#c05621');return}
+
+  showStatus(isDryRun?'正在预览变更...':'正在执行同步...','#ebf8ff','#2b6cb0');
+  execBtn.style.display='none';
+
+  try{
+    const body={mode:'sync',entries:${JSON.stringify(
+      data
+        .filter((m) => m.officialInput !== undefined || m.officialOutput !== undefined)
+        .map((m) => ({
+          provider: m.provider,
+          modelId: m.model,
+          inputCostPerToken: m.officialInput ?? null,
+          outputCostPerToken: m.officialOutput ?? null,
+          cachedInputCostPerToken: m.officialCacheRead ?? null,
+          modelType: m.type,
+        }))
+    )},dryRun:isDryRun,deprecateUnmatched:deprecate};
+
+    const resp=await fetch(url+'/api/ai-providers/bulk-rate-update',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+      body:JSON.stringify(body),
+    });
+    const json=await resp.json();
+    if(!resp.ok)throw new Error(json.error||resp.statusText);
+
+    const s=json.summary||{};
+    const dep=json.deprecated||[];
+    const bg=isDryRun?'#ebf8ff':'#c6f6d5';
+    const fg=isDryRun?'#2b6cb0':'#276749';
+    const prefix=isDryRun?'[预览] ':'[已执行] ';
+    showStatus(prefix+'更新 '+s.updated+' / 无变化 '+s.unchanged+' / 未匹配 '+s.unmatched+(dep.length?' / 软删除 '+dep.length:''),bg,fg);
+
+    // Show details
+    let h='';
+    if(json.updated&&json.updated.length){
+      h+='<div style="margin-bottom:12px"><strong style="color:#276749">待更新 ('+json.updated.length+')</strong>';
+      h+='<table style="width:100%;font-size:12px;border-collapse:collapse;margin-top:6px"><tr style="background:#f7fafc"><th style="padding:6px 10px;text-align:left">Provider</th><th style="padding:6px 10px;text-align:left">Model</th><th style="padding:6px 10px;text-align:right">旧 Input</th><th style="padding:6px 10px;text-align:right">新 Input</th><th style="padding:6px 10px;text-align:right">旧 Output</th><th style="padding:6px 10px;text-align:right">新 Output</th></tr>';
+      json.updated.forEach(u=>{
+        h+='<tr style="border-bottom:1px solid #edf2f7"><td style="padding:4px 10px">'+u.provider+'</td><td style="padding:4px 10px">'+u.model+'</td>';
+        h+='<td style="padding:4px 10px;text-align:right;color:#a0aec0">'+(u.oldUnitCosts?u.oldUnitCosts.input:'-')+'</td>';
+        h+='<td style="padding:4px 10px;text-align:right;font-weight:600">'+u.newUnitCosts.input+'</td>';
+        h+='<td style="padding:4px 10px;text-align:right;color:#a0aec0">'+(u.oldUnitCosts?u.oldUnitCosts.output:'-')+'</td>';
+        h+='<td style="padding:4px 10px;text-align:right;font-weight:600">'+u.newUnitCosts.output+'</td></tr>';
+      });
+      h+='</table></div>';
+    }
+    if(dep.length){
+      h+='<div style="margin-bottom:12px"><strong style="color:#9b2c2c">待软删除 ('+dep.length+')</strong>';
+      h+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">';
+      dep.forEach(d=>{h+='<span style="padding:3px 10px;background:#fed7d7;color:#9b2c2c;border-radius:4px;font-size:12px">'+d.provider+'/'+d.model+'</span>'});
+      h+='</div></div>';
+    }
+    if(json.unmatched&&json.unmatched.length){
+      h+='<details style="margin-bottom:12px"><summary style="cursor:pointer;font-size:13px;color:#718096">未匹配 ('+json.unmatched.length+')</summary>';
+      h+='<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">';
+      json.unmatched.forEach(u=>{h+='<span style="padding:2px 8px;background:#fefcbf;color:#975a16;border-radius:3px;font-size:11px">'+u.provider+'/'+u.model+'</span>'});
+      h+='</div></details>';
+    }
+    result.style.display=h?'block':'none';
+    result.innerHTML=h;
+
+    if(isDryRun&&s.updated>0)execBtn.style.display='inline-block';
+  }catch(e){
+    showStatus('错误: '+e.message,'#fed7d7','#9b2c2c');
+    result.style.display='none';
+  }
+}
+function showStatus(msg,bg,fg){
+  const el=document.getElementById('sync-status');
+  el.style.display='block';el.style.background=bg;el.style.color=fg;el.textContent=msg;
+}
 // Popover (fixed positioning to avoid section overflow clipping)
 let op=null;
 function positionPop(trigger,pop){
