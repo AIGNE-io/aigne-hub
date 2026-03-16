@@ -723,14 +723,23 @@ function parseTranscription(text) {
 
 function parseFineTuning(text) {
   const sectionIdx = text.indexOf('Fine-tuning Prices per 1M tokens');
-  if (sectionIdx === -1) return {};
+  if (sectionIdx === -1) {
+    console.error('    Fine-tuning section marker not found');
+    return {};
+  }
 
-  const endIdx = findSectionEnd(text, sectionIdx, ['Built-in tools'], 5000);
+  const endIdx = findSectionEnd(text, sectionIdx, ['Built-in tools', 'AgentKit'], 3000);
   const fullBlock = text.substring(sectionIdx, endIdx);
+  // Section boundary resolved
 
   // Find the "Standard" sub-table (skip "Batch" which comes first)
-  const stdIdx = fullBlock.lastIndexOf('Standard');
-  if (stdIdx === -1) return {};
+  // Use 'Standard Model' to avoid matching a 'Standard' from an unrelated section
+  let stdIdx = fullBlock.indexOf('Standard Model Training');
+  if (stdIdx === -1) stdIdx = fullBlock.lastIndexOf('Standard');
+  if (stdIdx === -1) {
+    console.error('    Fine-tuning: Standard sub-table not found');
+    return {};
+  }
 
   const stdBlock = fullBlock.substring(stdIdx);
   const result = {};
@@ -1361,7 +1370,8 @@ async function main() {
   );
 
   // ─── Fine-tuning ──────────────────────────────────────────────────────
-  let fineTuningModels = await tryLLMFallback('fineTuning', parseFineTuning(text));
+  // Use cleanText (scripts removed) to avoid JS noise overflowing section boundaries
+  let fineTuningModels = await tryLLMFallback('fineTuning', parseFineTuning(cleanText));
   console.error(`  Fine-tuning models: ${Object.keys(fineTuningModels).length} [${extractionMethod.fineTuning}]`);
 
   // ─── Image Generation ─────────────────────────────────────────────────

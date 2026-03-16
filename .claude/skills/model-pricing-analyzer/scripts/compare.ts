@@ -191,6 +191,72 @@ function pickBestCost(result: ComparisonResult): void {
   }
 }
 
+// ─── Type-aware Official Pricing Lookup ──────────────────────────────────────
+
+/**
+ * Check if a cache entry's modelType is compatible with a DB rate's type.
+ * Incompatible types (e.g. fineTuning vs chatCompletion) have different pricing
+ * and should not be matched together.
+ */
+function isTypeCompatible(dbType: string, cacheType?: string): boolean {
+  if (!cacheType || !dbType) return true;
+  if (dbType === cacheType) return true;
+  // fineTuning pricing is 1.5-2x of chatCompletion — never mix
+  if (
+    (dbType === 'chatCompletion' && cacheType === 'fineTuning') ||
+    (dbType === 'fineTuning' && cacheType === 'chatCompletion')
+  )
+    return false;
+  // imageGeneration uses per-image pricing, not per-token
+  if (
+    (dbType === 'chatCompletion' && cacheType === 'imageGeneration') ||
+    (dbType === 'imageGeneration' && cacheType === 'chatCompletion')
+  )
+    return false;
+  // audio uses per-token but at very different rates than text
+  if ((dbType === 'chatCompletion' && cacheType === 'audio') || (dbType === 'audio' && cacheType === 'chatCompletion'))
+    return false;
+  return true;
+}
+
+/**
+ * Look up official pricing with type awareness.
+ * Priority:
+ *   1. Type-qualified exact key (provider/model::type)
+ *   2. Base exact key, if type-compatible
+ *   3. Type-qualified fallback keys (provider/fallbackModel::type)
+ *   4. Base fallback keys, if type-compatible
+ *   5. undefined (no match)
+ */
+function lookupOfficialPricing(
+  cache: Map<string, OfficialPricingEntry>,
+  lookupKey: string,
+  fallbackKeys: string[],
+  dbType: string
+): OfficialPricingEntry | undefined {
+  // 1. Try type-qualified exact key
+  if (dbType) {
+    const typed = cache.get(`${lookupKey}::${dbType}`);
+    if (typed) return typed;
+  }
+
+  // 2. Try base exact key with type compatibility check
+  const base = cache.get(lookupKey);
+  if (base && isTypeCompatible(dbType, base.modelType)) return base;
+
+  // 3–4. Try fallback keys (type-qualified first, then base with compatibility check)
+  for (const fbKey of fallbackKeys) {
+    if (dbType) {
+      const typed = cache.get(`${fbKey}::${dbType}`);
+      if (typed) return typed;
+    }
+    const fb = cache.get(fbKey);
+    if (fb && isTypeCompatible(dbType, fb.modelType)) return fb;
+  }
+
+  return undefined;
+}
+
 // ─── Core Compare ────────────────────────────────────────────────────────────
 
 export function compare(
@@ -251,9 +317,10 @@ export function compare(
     const or =
       openrouter.get(lookupKey) ??
       fallbackKeys.reduce<ExternalRate | undefined>((found, k) => found ?? openrouter.get(k), undefined);
-    const pp =
-      providerPages.get(lookupKey) ??
-      fallbackKeys.reduce<OfficialPricingEntry | undefined>((found, k) => found ?? providerPages.get(k), undefined);
+    // Type-aware official pricing lookup: prefer entries matching DB model type.
+    // This prevents matching chatCompletion DB models to fineTuning cache entries
+    // (which have 1.5-2x pricing) or imageGeneration entries for text models.
+    const pp = lookupOfficialPricing(providerPages, lookupKey, fallbackKeys, rate.type);
 
     // Determine pricing unit based on model type
     const pricingUnit: LocalPricingUnit =

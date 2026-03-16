@@ -595,7 +595,8 @@ async function scrapeGoogle() {
 }
 
 // ─── OpenAI ─────────────────────────────────────────────────────────────────
-// Direct scrape from developers.openai.com (Standard tier only)
+// Delegates to scrape-openai-pricing.mjs for complete extraction (text, image,
+// audio, video, transcription, fine-tuning, image-gen, embedding, built-in tools, legacy).
 
 const OPENAI_URL = 'https://developers.openai.com/api/docs/pricing?latest-pricing=standard';
 
@@ -769,8 +770,144 @@ function parseAstroIslandPricing(html) {
 
 async function scrapeOpenAI() {
   const url = OPENAI_URL;
-  console.error('Fetching OpenAI pricing from developers.openai.com ...');
+  console.error('  Fetching OpenAI pricing from developers.openai.com ...');
 
+  // Delegate to dedicated scraper for complete extraction
+  const scraperPath = path.join(__dirname, 'scrape-openai-pricing.mjs');
+  try {
+    const { execFileSync } = await import('child_process');
+    const stdout = execFileSync('node', [scraperPath, '--json', '--no-llm'], {
+      timeout: 90000,
+      maxBuffer: 1024 * 1024,
+      encoding: 'utf-8',
+    });
+    const scraperData = JSON.parse(stdout);
+    const models = convertScraperToModels(scraperData);
+    assignOpenAIFamilies(models);
+    sortOpenAIModels(models);
+    console.error(`  OpenAI: ${models.length} models extracted (official, Standard tier)`);
+    return { provider: 'OpenAI', url, models };
+  } catch (err) {
+    console.error(`  ⚠️  OpenAI dedicated scraper failed: ${err.message}`);
+    console.error('  Falling back to inline parsing...');
+    return scrapeOpenAIFallback();
+  }
+}
+
+/**
+ * Convert scrape-openai-pricing.mjs JSON output → catalog model array.
+ * Maps each section (text, audio, video, transcription, fineTuning, imageGeneration, embedding, builtInTools, legacy)
+ * into the unified { name, id, type, inputPerMTok, outputPerMTok, ... } format.
+ */
+function convertScraperToModels(data) {
+  const models = [];
+
+  // ── Text token models ──
+  for (const [id, m] of Object.entries(data.text || {})) {
+    const model = { name: id, id, inputPerMTok: m.input, outputPerMTok: m.output };
+    if (m.cachedInput != null) model.cacheRead = m.cachedInput;
+    if (m.contextTiers) {
+      const tier = Object.entries(m.contextTiers)[0];
+      if (tier) {
+        model.longContextThreshold = tier[0];
+        model.longContextInput = tier[1].input;
+        model.longContextOutput = tier[1].output;
+        if (tier[1].cachedInput != null) model.longContextCachedInput = tier[1].cachedInput;
+      }
+    }
+    models.push(model);
+  }
+
+  // ── Image token models (input pricing for vision) ──
+  for (const [id, m] of Object.entries(data.image || {})) {
+    const model = { name: id, id, type: 'image', inputPerMTok: m.input, outputPerMTok: m.output };
+    if (m.cachedInput != null) model.cacheRead = m.cachedInput;
+    models.push(model);
+  }
+
+  // ── Audio token models ──
+  for (const [id, m] of Object.entries(data.audio || {})) {
+    const model = { name: id, id, type: 'audio', inputPerMTok: m.input, outputPerMTok: m.output };
+    if (m.cachedInput != null) model.cacheRead = m.cachedInput;
+    models.push(model);
+  }
+
+  // ── Video ──
+  for (const [id, m] of Object.entries(data.video || {})) {
+    models.push({ name: id, id, type: 'video', costPerSecond: m.perSecond });
+  }
+
+  // ── Transcription & Speech ──
+  for (const [id, m] of Object.entries(data.transcription || {})) {
+    if (m.perMinute != null) {
+      models.push({ name: id, id, type: 'transcription', costPerMinute: m.perMinute });
+    } else if (m.perMillionChars != null) {
+      models.push({ name: id, id, type: 'tts', costPerMillionChars: m.perMillionChars });
+    } else if (m.text || m.audio) {
+      // Newer transcription/TTS models with token pricing (e.g. gpt-4o-transcribe)
+      const model = { name: id, id, type: 'transcription' };
+      if (m.text?.input != null) model.inputPerMTok = m.text.input;
+      if (m.text?.output != null) model.outputPerMTok = m.text.output;
+      if (m.audio?.input != null) model.audioInputPerMTok = m.audio.input;
+      if (m.audio?.output != null) model.audioOutputPerMTok = m.audio.output;
+      if (m.estimatedPerMinute != null) model.costPerMinute = m.estimatedPerMinute;
+      models.push(model);
+    }
+  }
+
+  // ── Fine-tuning ──
+  for (const [id, m] of Object.entries(data.fineTuning || {})) {
+    const model = { name: id, id, type: 'fineTuning', inputPerMTok: m.input, outputPerMTok: m.output };
+    if (m.cachedInput != null) model.cacheRead = m.cachedInput;
+    if (m.trainingPerHour != null) model.trainingPerHour = m.trainingPerHour;
+    else if (m.training != null) model.trainingPerMTok = m.training;
+    models.push(model);
+  }
+
+  // ── Image Generation ──
+  for (const [id, m] of Object.entries(data.imageGeneration || {})) {
+    const model = { name: id, id, type: 'imageGeneration' };
+    if (m.variants) {
+      model.imageVariants = m.variants;
+      // Use medium 1024x1024 as representative price, or first variant
+      const rep = m.variants.find((v) => v.quality === 'medium' && v.size === '1024x1024') || m.variants[0];
+      if (rep) model.costPerImage = rep.perImage;
+    } else if (m.perImage != null) {
+      model.costPerImage = m.perImage;
+    }
+    models.push(model);
+  }
+
+  // ── Embeddings ──
+  for (const [id, m] of Object.entries(data.embedding || {})) {
+    models.push({ name: id, id, type: 'embedding', inputPerMTok: m.input });
+  }
+
+  // ── Built-in Tools ──
+  for (const [id, m] of Object.entries(data.builtInTools || {})) {
+    const model = { name: id, id, type: 'tool' };
+    if (m.per1kCalls != null) model.note = `$${m.per1kCalls}/1k calls`;
+    if (m.per20min != null) model.note = `$${m.per20min}/20min`;
+    if (m.perGBPerDay != null) model.note = `$${m.perGBPerDay}/GB/day`;
+    models.push(model);
+  }
+
+  // ── Legacy ──
+  for (const [id, m] of Object.entries(data.legacy || {})) {
+    const model = { name: id, id, inputPerMTok: m.input, outputPerMTok: m.output, deprecated: true };
+    if (m.cachedInput != null) model.cacheRead = m.cachedInput;
+    models.push(model);
+  }
+
+  return models;
+}
+
+/**
+ * Fallback: inline parsing if the dedicated scraper fails.
+ * Kept minimal — only extracts text models from Astro props.
+ */
+async function scrapeOpenAIFallback() {
+  const url = OPENAI_URL;
   let html;
   try {
     html = await fetch(url);
@@ -780,9 +917,6 @@ async function scrapeOpenAI() {
   }
 
   const models = [];
-  let astroUsed = false;
-
-  // ── Strategy 0: Astro Island props (structured data, most complete) ──
   const astroTiers = parseAstroIslandPricing(html);
   const astroStandard = astroTiers['standard'];
 
@@ -798,348 +932,18 @@ async function scrapeOpenAI() {
       .filter((e) => e.input != null); // filter out rows with null input
 
     models.push(...openAIEntriesToModels(entries, null));
-    console.error(`  OpenAI: ${models.length} text-token models from Astro props (Standard tier)`);
-    astroUsed = true;
+    console.error(`  OpenAI (fallback): ${models.length} text-token models from Astro props`);
   }
-
-  // ── Fallback: text-based parsing (Strategy 1 & 2) ──
-  const text = strip(html);
-
-  if (!astroUsed) {
-    // ── Text tokens (Standard section) ──
-    // New page layout uses tabs: Batch|Flex|Standard|Priority with "Our latest models" / "All models" sub-sections
-    // Try new format first, fall back to legacy marker
-    let textStdIdx = -1;
-    let textEndIdx = -1;
-
-    // Strategy 1: New tab layout — find "Standard Our latest models" or "Standard All models"
-    const stdTabIdx = text.indexOf('Standard Our latest models');
-    if (stdTabIdx > 0) {
-      textStdIdx = stdTabIdx;
-      // End at next tab (Priority) or next major section
-      const priorityIdx = text.indexOf('Priority Our latest models', stdTabIdx + 30);
-      const jsBlockIdx = text.indexOf('if (!window.__contentSwitcherInit)', stdTabIdx + 30);
-      textEndIdx = -1;
-      for (const c of [priorityIdx, jsBlockIdx]) {
-        if (c > textStdIdx && (textEndIdx === -1 || c < textEndIdx)) textEndIdx = c;
-      }
-    }
-
-    // Strategy 2: Legacy format
-    if (textStdIdx === -1) {
-      textStdIdx = text.indexOf('Standard Model Input Cached input Output');
-      if (textStdIdx > 0) {
-        textEndIdx = text.indexOf('Priority Model Input Cached input Output', textStdIdx + 10);
-      }
-    }
-
-    if (textStdIdx === -1) {
-      console.error('  ERROR: Could not find Standard text section');
-      const rawPath = path.join(OUTPUT_DIR, 'aigne-raw-openai.txt');
-      fs.writeFileSync(rawPath, text);
-      console.error(`  ⚠️  Regex extracted 0 models — raw text saved to ${rawPath}`);
-      return { provider: 'OpenAI', url, models: [], rawTextPath: rawPath };
-    }
-    const textEntries = parseOpenAISection(text, textStdIdx, textEndIdx > 0 ? textEndIdx : textStdIdx + 8000);
-    models.push(...openAIEntriesToModels(textEntries, null));
-  }
-
-  // Track existing model IDs to avoid duplicates from subsequent sections
-  const existingIds = new Set(models.map((m) => m.id));
-
-  // ── Image tokens (Standard section) ──
-  const imgSectionIdx = text.indexOf('Image tokens');
-  if (imgSectionIdx > 0) {
-    // Try new tab format first, then legacy
-    let imgStdIdx = text.indexOf('Standard Model Input Cached Input Output', imgSectionIdx);
-    if (imgStdIdx === -1) {
-      // In new tab layout, image section may use same "Standard" + table pattern
-      const imgStdTab = text.indexOf('Standard Model Input Cached input Output', imgSectionIdx);
-      if (imgStdTab > 0) imgStdIdx = imgStdTab;
-    }
-    if (imgStdIdx > 0) {
-      const imgEnd1 = text.indexOf('Audio tokens', imgStdIdx);
-      const imgEnd2 = text.indexOf('if (!window.__contentSwitcherInit)', imgStdIdx);
-      let imgEndIdx = -1;
-      for (const c of [imgEnd1, imgEnd2]) {
-        if (c > imgStdIdx && (imgEndIdx === -1 || c < imgEndIdx)) imgEndIdx = c;
-      }
-      const imgEntries = parseOpenAISection(text, imgStdIdx, imgEndIdx > 0 ? imgEndIdx : imgStdIdx + 2000);
-      const imgModels = openAIEntriesToModels(imgEntries, 'image');
-      // Tag as image-token pricing (suffix to avoid id collision with text section)
-      for (const m of imgModels) {
-        m.name = `${m.id} (image tokens)`;
-        m.id = `${m.id}/image`;
-      }
-      models.push(...imgModels);
-    }
-  }
-
-  // ── Audio tokens ──
-  const audioIdx = text.indexOf('Audio tokens');
-  if (audioIdx > 0) {
-    const audioEnd1 = text.indexOf('Video', audioIdx + 20);
-    const audioEnd2 = text.indexOf('Fine-tuning', audioIdx + 20);
-    let audioEndIdx = -1;
-    for (const c of [audioEnd1, audioEnd2]) {
-      if (c > audioIdx && (audioEndIdx === -1 || c < audioEndIdx)) audioEndIdx = c;
-    }
-    const audioEntries = parseOpenAISection(text, audioIdx, audioEndIdx > 0 ? audioEndIdx : audioIdx + 2000);
-    const audioModels = openAIEntriesToModels(audioEntries, 'audio');
-    for (const m of audioModels) {
-      m.name = `${m.id} (audio tokens)`;
-      m.id = `${m.id}/audio`;
-    }
-    models.push(...audioModels);
-  }
-
-  // ── Video ──
-  const videoIdx = text.indexOf('Video Prices per second');
-  if (videoIdx > 0) {
-    const videoEnd = text.indexOf('Fine-tuning', videoIdx);
-    const videoBlock = text.substring(videoIdx, videoEnd > 0 ? videoEnd : videoIdx + 1000);
-    const vRegex = /(sora[\w-]+)\s+(?:Portrait|Landscape)[^$]*\$([\d.]+)/g;
-    let vm;
-    const seenVideo = new Map();
-    while ((vm = vRegex.exec(videoBlock)) !== null) {
-      const id = vm[1];
-      const price = parseFloat(vm[2]);
-      if (!seenVideo.has(id)) {
-        seenVideo.set(id, { name: id, id, type: 'video', costPerSecond: price, note: `$${price}/s` });
-      } else {
-        const existing = seenVideo.get(id);
-        existing.note += `, $${price}/s (high-res)`;
-      }
-    }
-    models.push(...seenVideo.values());
-  }
-
-  // ── Fine-tuning (Standard tier) ──
-  // Use stripClean to remove JS noise that causes section boundary overflow
-  const cleanText = stripClean(html);
-  const ftIdx = cleanText.indexOf('Fine-tuning Prices per 1M tokens');
-  if (ftIdx > 0) {
-    const ftEnd = findSectionEnd(cleanText, ftIdx, ['Built-in tools', 'AgentKit'], 3000);
-    const ftBlock = cleanText.substring(ftIdx, ftEnd);
-    let ftStdIdx = ftBlock.indexOf('Standard Model Training');
-    if (ftStdIdx === -1) ftStdIdx = ftBlock.lastIndexOf('Standard');
-    if (ftStdIdx > 0) {
-      const ftStdBlock = ftBlock.substring(ftStdIdx);
-      const ftRe =
-        /([\w][\w./-]+(?:-[\w.]+)*(?:\s+with\s+data\s+sharing)?)\s+\$([\d.]+)\s*(?:\/\s*hour\s+)?\$([\d.]+)\s+(?:\$([\d.]+)|[-])\s+\$([\d.]+)/g;
-      let fm;
-      while ((fm = ftRe.exec(ftStdBlock)) !== null) {
-        const rawId = fm[1].trim();
-        if (rawId.includes('window') || rawId.includes('function')) continue;
-        const id = rawId.replace(/\s+with\s+data\s+sharing/, '-data-sharing');
-        const trainingVal = parseFloat(fm[2]);
-        const input = parseFloat(fm[3]);
-        const cached = fm[4] ? parseFloat(fm[4]) : null;
-        const output = parseFloat(fm[5]);
-        const trainingCtx = ftStdBlock.substring(fm.index, fm.index + fm[0].length);
-        const isPerHour = trainingCtx.includes('/ hour');
-        const model = { name: id, id, inputPerMTok: input, outputPerMTok: output, type: 'fineTuning' };
-        if (cached != null) model.cacheRead = cached;
-        if (isPerHour) model.trainingPerHour = trainingVal;
-        else model.trainingPerMTok = trainingVal;
-        models.push(model);
-      }
-    }
-  }
-
-  // ── Image Generation (per-image) ──
-  const igIdx = text.indexOf('Image generation Prices per image');
-  if (igIdx > 0) {
-    const igEnd = findSectionEnd(text, igIdx, ['Embeddings Prices per 1M tokens'], 4000);
-    const igBlock = text.substring(igIdx, igEnd);
-
-    const igModelDefs = [
-      { search: 'GPT Image 1.5', id: 'gpt-image-1.5', sizes: ['1024x1024', '1024x1536', '1536x1024'] },
-      {
-        search: 'GPT Image Latest',
-        altSearch: 'ChatGPT Image Latest',
-        id: 'chatgpt-image-latest',
-        sizes: ['1024x1024', '1024x1536', '1536x1024'],
-      },
-      {
-        search: 'GPT Image 1 ',
-        id: 'gpt-image-1',
-        sizes: ['1024x1024', '1024x1536', '1536x1024'],
-        skipIfFollowedBy: 'Mini',
-      },
-      { search: 'GPT Image 1 Mini', id: 'gpt-image-1-mini', sizes: ['1024x1024', '1024x1792', '1792x1024'] },
-      { search: 'DALL', id: 'dall-e-3', sizes: ['1024x1024', '1024x1792', '1792x1024'] },
-      { search: 'DALL', id: 'dall-e-2', sizes: ['256x256', '512x512', '1024x1024'] },
-    ];
-
-    const igPositions = [];
-    let igSearchFrom = 0;
-    for (const def of igModelDefs) {
-      let pos = igSearchFrom;
-      while (true) {
-        pos = igBlock.indexOf(def.search, pos);
-        if (pos === -1 && def.altSearch) pos = igBlock.indexOf(def.altSearch, igSearchFrom);
-        if (pos === -1) break;
-        if (def.skipIfFollowedBy && igBlock.substring(pos + def.search.length).startsWith(def.skipIfFollowedBy)) {
-          pos += def.search.length;
-          continue;
-        }
-        break;
-      }
-      if (pos === -1) continue;
-      igPositions.push({ ...def, pos });
-      igSearchFrom = pos + def.search.length;
-    }
-
-    const qualityRowRegex = /(Low|Medium|High|Standard|HD)\s+\$([\d.]+)\s+\$([\d.]+)\s+\$([\d.]+)/g;
-
-    for (let i = 0; i < igPositions.length; i++) {
-      const def = igPositions[i];
-      const modelStart = def.pos;
-      const modelEnd = i + 1 < igPositions.length ? igPositions[i + 1].pos : igBlock.length;
-      const modelBlock = igBlock.substring(modelStart, modelEnd);
-      const variants = [];
-
-      qualityRowRegex.lastIndex = 0;
-      let qm;
-      while ((qm = qualityRowRegex.exec(modelBlock)) !== null) {
-        const quality = qm[1].toLowerCase();
-        const prices = [parseFloat(qm[2]), parseFloat(qm[3]), parseFloat(qm[4])];
-        for (let j = 0; j < 3 && j < def.sizes.length; j++) {
-          variants.push({ quality, size: def.sizes[j], perImage: prices[j] });
-        }
-      }
-
-      if (variants.length > 0) {
-        const cheapest = Math.min(...variants.map((v) => v.perImage));
-        models.push({
-          name: def.id,
-          id: def.id,
-          type: 'imageGeneration',
-          costPerImage: cheapest,
-          imageVariants: variants,
-          note: `$${cheapest}–$${Math.max(...variants.map((v) => v.perImage))}/image`,
-        });
-      }
-    }
-  }
-
-  // ── Embeddings ──
-  const embIdx = text.indexOf('Embeddings Prices per 1M tokens');
-  if (embIdx > 0) {
-    const embEnd = findSectionEnd(text, embIdx, ['Built-in tools', 'Legacy models'], 1500);
-    const embBlock = text.substring(embIdx, embEnd);
-    const embRe = /(text-embedding[\w-]+)\s+\$([\d.]+)/g;
-    let em;
-    while ((em = embRe.exec(embBlock)) !== null) {
-      models.push({ name: em[1], id: em[1], inputPerMTok: parseFloat(em[2]), type: 'embedding' });
-    }
-  }
-
-  // ── Transcription & Speech ──
-  {
-    let tsIdx = text.indexOf('Transcription and speech generation');
-    if (tsIdx === -1) tsIdx = text.indexOf('Transcription');
-    if (tsIdx > 0) {
-      const tsEnd = findSectionEnd(text, tsIdx, ['Image generation', 'Embeddings'], 3000);
-      const tsBlock = text.substring(tsIdx, tsEnd);
-
-      // Whisper per-minute
-      const whiskerMatch = tsBlock.match(/Whisper[^$]*\$([\d.]+)\s*\/\s*minute/i);
-      if (whiskerMatch) {
-        models.push({
-          name: 'whisper',
-          id: 'whisper',
-          type: 'transcription',
-          costPerMinute: parseFloat(whiskerMatch[1]),
-          note: `$${whiskerMatch[1]}/min`,
-        });
-      }
-      // TTS per-million-chars
-      const ttsHdMatch = tsBlock.match(/TTS\s+HD[^$]*\$([\d.]+)\s*\/\s*1M\s*char/i);
-      if (ttsHdMatch) {
-        models.push({
-          name: 'tts-hd',
-          id: 'tts-hd',
-          type: 'tts',
-          costPerMillionChars: parseFloat(ttsHdMatch[1]),
-          note: `$${ttsHdMatch[1]}/1M chars`,
-        });
-      }
-      const ttsMatch = tsBlock.match(/(?<!\w)TTS(?!\s+HD)[^$]*\$([\d.]+)\s*\/\s*1M\s*char/i);
-      if (ttsMatch) {
-        models.push({
-          name: 'tts',
-          id: 'tts',
-          type: 'tts',
-          costPerMillionChars: parseFloat(ttsMatch[1]),
-          note: `$${ttsMatch[1]}/1M chars`,
-        });
-      }
-    }
-  }
-
-  // ── Built-in Tools ──
-  {
-    let btIdx = text.indexOf('Built-in tools', text.indexOf('Fine-tuning'));
-    if (btIdx === -1) btIdx = text.indexOf('Built-in tools');
-    if (btIdx > 0) {
-      const btEnd = findSectionEnd(text, btIdx, ['Transcription', 'Legacy models', 'Data residency'], 3000);
-      const btBlock = text.substring(btIdx, btEnd);
-
-      // Web search
-      const webSearchMatch = btBlock.match(
-        /Web search\s*(?:\(all models\))?\s*(?:\[\d+\])?\s*\|?\s*\$([\d.]+)\s*\/\s*1k\s*calls/i
-      );
-      if (webSearchMatch) {
-        models.push({
-          name: 'web-search',
-          id: 'web-search',
-          type: 'tool',
-          note: `$${webSearchMatch[1]}/1k calls`,
-        });
-      }
-    }
-  }
-
-  // ── Legacy models (Standard tier) ──
-  const legIdx = text.indexOf('Legacy models Prices per 1M tokens');
-  if (legIdx > 0) {
-    const legEnd = findSectionEnd(text, legIdx, ['Data residency', 'AgentKit'], 4000);
-    const legBlock = text.substring(legIdx, legEnd);
-    const legStdIdx = legBlock.lastIndexOf('Standard');
-    if (legStdIdx > 0) {
-      const legStdBlock = legBlock.substring(legStdIdx);
-      const legRe = /([\w][\w./-]*(?:-[\w.]+)*)\s+\$([\d.]+)\s+\$([\d.]+)/g;
-      let lm;
-      while ((lm = legRe.exec(legStdBlock)) !== null) {
-        const id = lm[1];
-        if (id.includes('window') || id.includes('function') || id.includes('var')) continue;
-        if (id === 'Standard' || id === 'Batch') continue;
-        models.push({
-          name: id,
-          id,
-          inputPerMTok: parseFloat(lm[2]),
-          outputPerMTok: parseFloat(lm[3]),
-          deprecated: true,
-        });
-      }
-    }
-  }
-
   assignOpenAIFamilies(models);
   sortOpenAIModels(models);
-
-  console.error(`  OpenAI: ${models.length} models extracted (official, Standard tier)`);
-  if (models.length === 0) {
-    const rawPath = path.join(OUTPUT_DIR, 'aigne-raw-openai.txt');
-    fs.writeFileSync(rawPath, text);
-    console.error(`  ⚠️  Regex extracted 0 models — raw text saved to ${rawPath}`);
-    return { provider: 'OpenAI', url, models, rawTextPath: rawPath };
-  }
-  return { provider: 'OpenAI', url, models };
+  console.error(`  OpenAI (fallback): ${models.length} models total`);
+  return { provider: 'OpenAI', url: OPENAI_URL, models };
 }
 
+// --- Dead code removed: old inline OpenAI text/image/audio/video/fine-tuning/transcription/legacy parsers ---
+// All OpenAI parsing now delegated to scrape-openai-pricing.mjs via scrapeOpenAI().
+// scrapeOpenAIFallback() retained for Astro-only minimal extraction.
+// ---
 // ─── DeepSeek ─────────────────────────────────────────────────────────────────
 async function scrapeDeepSeek() {
   const url = 'https://api-docs.deepseek.com/quick_start/pricing';

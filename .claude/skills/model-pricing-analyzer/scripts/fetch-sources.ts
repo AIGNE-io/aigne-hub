@@ -58,40 +58,40 @@ export interface ExternalRate {
 }
 
 // ─── Official Pricing Cache ──────────────────────────────────────────────────
-// Each provider has its own cache file with independent TTL.
-// This prevents one provider's scrape failure from wiping other providers' data.
+// Reads the merged all-providers cache file written by official-pricing-catalog.mjs --cache.
 
-const OFFICIAL_PRICING_PROVIDERS = ['anthropic', 'google', 'openai', 'deepseek', 'xai'];
+const OFFICIAL_PRICING_ALL_PATH = path.join(OUTPUT_DIR, 'aigne-official-pricing-all.json');
 const OFFICIAL_PRICING_CACHE_TTL = 60 * 60 * 1000; // 1 hour
 
-function officialPricingCachePath(provider: string): string {
-  return path.join(OUTPUT_DIR, `aigne-official-pricing-${provider}.json`);
-}
-
 export async function loadOfficialPricingCache(): Promise<Map<string, OfficialPricingEntry> | null> {
-  const map = new Map<string, OfficialPricingEntry>();
-  let loadedAny = false;
+  try {
+    const data = await fs.readFile(OFFICIAL_PRICING_ALL_PATH, 'utf-8');
+    const cache = JSON.parse(data) as { timestamp: number; entries: OfficialPricingEntry[] };
+    if (Date.now() - cache.timestamp > OFFICIAL_PRICING_CACHE_TTL) return null;
 
-  for (const provider of OFFICIAL_PRICING_PROVIDERS) {
-    const filePath = officialPricingCachePath(provider);
-    try {
-      const data = await fs.readFile(filePath, 'utf-8');
-      const cache: OfficialPricingCache = JSON.parse(data);
-      if (Date.now() - cache.timestamp < OFFICIAL_PRICING_CACHE_TTL) {
-        for (const entry of cache.entries) {
-          const id = entry.modelId || (entry as any).model;
-          if (id) {
-            map.set(`${entry.provider}/${id}`, entry);
-          }
-        }
-        loadedAny = true;
+    const map = new Map<string, OfficialPricingEntry>();
+    for (const entry of cache.entries) {
+      const id = entry.modelId || (entry as any).model;
+      if (!id) continue;
+      const baseKey = `${entry.provider}/${id}`;
+
+      // Always store under type-qualified key for precise lookups
+      if (entry.modelType) {
+        map.set(`${baseKey}::${entry.modelType}`, entry);
       }
-    } catch {
-      /* this provider's cache missing or expired — other providers unaffected */
-    }
-  }
 
-  return loadedAny ? map : null;
+      // For the base key (no type qualifier), prefer chatCompletion over other types.
+      // This ensures that when a model has both chatCompletion and fineTuning entries,
+      // the base key points to chatCompletion (the most commonly needed type).
+      const existing = map.get(baseKey);
+      if (!existing || (existing.modelType !== 'chatCompletion' && entry.modelType === 'chatCompletion')) {
+        map.set(baseKey, entry);
+      }
+    }
+    return map.size > 0 ? map : null;
+  } catch {
+    return null;
+  }
 }
 
 // ─── Hub DB Rates ────────────────────────────────────────────────────────────
