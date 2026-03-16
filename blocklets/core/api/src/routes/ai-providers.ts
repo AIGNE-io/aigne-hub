@@ -1333,7 +1333,7 @@ router.get('/test-models', user, ensureAdmin, rateLimitMiddleware, async (req, r
   }
 });
 
-router.post('/bulk-rate-update', ensureAdmin, async (req, res) => {
+router.post('/bulk-rate-update', user, ensureAdmin, async (req, res) => {
   try {
     const { error, value } = bulkRateUpdateSchema.validate(req.body);
     if (error) {
