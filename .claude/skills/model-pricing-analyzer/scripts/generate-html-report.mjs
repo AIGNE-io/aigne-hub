@@ -12,13 +12,15 @@
 import fs from 'fs';
 import path from 'path';
 
-let data, outputFile;
+let data, outputFile, apiBaseUrl;
 if (process.argv[2] && process.argv[2] !== '-') {
   data = JSON.parse(fs.readFileSync(process.argv[2], 'utf-8'));
   outputFile = process.argv[3] || null;
+  apiBaseUrl = process.argv[4] || '';
 } else {
   data = JSON.parse(fs.readFileSync('/dev/stdin', 'utf-8'));
   outputFile = process.argv[2] === '-' ? process.argv[3] || null : null;
+  apiBaseUrl = '';
 }
 
 const PRICING_URLS = {
@@ -758,7 +760,7 @@ table.mt th{padding:11px 14px;text-align:left;font-weight:600;color:#4a5568;font
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
         <div>
           <label style="font-size:13px;font-weight:600;color:#4a5568;display:block;margin-bottom:6px">API 地址</label>
-          <input type="text" id="sync-url" placeholder="https://your-hub.example.com" style="width:100%;padding:10px 14px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px"/>
+          <input type="text" id="sync-url" value="${apiBaseUrl}" readonly style="width:100%;padding:10px 14px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;background:#f7fafc;color:#4a5568"/>
         </div>
         <div>
           <label style="font-size:13px;font-weight:600;color:#4a5568;display:block;margin-bottom:6px">Access Token</label>

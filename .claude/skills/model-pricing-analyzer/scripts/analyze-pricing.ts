@@ -179,7 +179,9 @@ async function main(): Promise<void> {
       console.error('   Hint: remove --no-scrape to auto-fetch official pricing.');
     }
   } else {
-    log(`✅ Official pricing: ${officialCache.size} models from provider docs`);
+    // Map contains both base keys and type-qualified keys; count unique base keys only
+    const uniqueModels = new Set([...officialCache.keys()].filter((k) => !k.includes('::')));
+    log(`✅ Official pricing: ${uniqueModels.size} models from provider docs`);
   }
 
   if (dbRates.length === 0) {
@@ -218,7 +220,7 @@ async function main(): Promise<void> {
 
       try {
         console.log('\n📝 Generating HTML report...');
-        execSync(`node "${reportScript}" "${tempFile}" "${outputFile}"`, { stdio: 'inherit' });
+        execSync(`node "${reportScript}" "${tempFile}" "${outputFile}" "${opts.hubUrl}"`, { stdio: 'inherit' });
 
         // Open in browser
         console.log('\n🌐 Opening report in browser...');
