@@ -112,6 +112,8 @@ export interface SyncUpdate {
 interface DbRateLike {
   id: string;
   providerId: string;
+  /** Provider name resolved from the AiProvider association (e.g. "openai", "anthropic"). */
+  providerName?: string;
   model: string;
   type?: string;
   inputRate?: number;
@@ -164,12 +166,16 @@ export interface SyncResult {
  * Tries: exact match → modelNameFallbacks (overrides + date suffix stripping).
  */
 export function matchUpdateToDbRate(dbRates: DbRateLike[], providerId: string, model: string): DbRateLike | null {
-  const exact = dbRates.find((r) => r.providerId === providerId && r.model === model);
+  // Match by provider name (from association) OR provider ID (direct FK).
+  // Sync updates use provider names ("openai"), while DB stores FK IDs (snowflake).
+  const matchesProvider = (r: DbRateLike) => r.providerId === providerId || r.providerName === providerId;
+
+  const exact = dbRates.find((r) => matchesProvider(r) && r.model === model);
   if (exact) return exact;
 
   const fallbacks = modelNameFallbacks(model);
   for (const fallback of fallbacks) {
-    const match = dbRates.find((r) => r.providerId === providerId && r.model === fallback);
+    const match = dbRates.find((r) => matchesProvider(r) && r.model === fallback);
     if (match) return match;
   }
 
@@ -220,11 +226,17 @@ export function propagateToTier2(
   dbRates: DbRateLike[],
   tier1Updates: Map<string, { input: number; output: number }>
 ): SyncUpdate[] {
-  const tier2Rates = dbRates.filter((r) => (PROVIDER_TIERS.tier2 as readonly string[]).includes(r.providerId));
+  // Use providerName (resolved from association) for tier classification
+  const tier2Names = PROVIDER_TIERS.tier2 as readonly string[];
+  const tier2Rates = dbRates.filter((r) => {
+    const name = r.providerName || r.providerId;
+    return tier2Names.includes(name);
+  });
   const propagated: SyncUpdate[] = [];
 
   for (const rate of tier2Rates) {
-    const { primaryProvider, primaryModel } = resolveModelMapping(rate.model, rate.providerId);
+    const providerName = rate.providerName || rate.providerId;
+    const { primaryProvider, primaryModel } = resolveModelMapping(rate.model, providerName);
     const key = `${primaryProvider}:${primaryModel}`;
     const tier1Cost = tier1Updates.get(key);
 

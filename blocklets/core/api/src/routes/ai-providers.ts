@@ -1440,8 +1440,15 @@ async function handleSyncMode(req: Request, res: Response, value: any) {
     return res.status(400).json({ error: 'sync mode requires either "updates" or "entries" array' });
   }
 
-  const dbRates = await AiModelRate.findAll({
+  const rawDbRates = await AiModelRate.findAll({
     include: [{ model: AiProvider, as: 'provider', attributes: ['id', 'name', 'displayName'] }],
+  });
+
+  // Enrich DB rates with providerName for name-based matching.
+  // Sync entries use provider names ("openai"), but DB stores FK IDs (snowflake).
+  const dbRates = rawDbRates.map((r: any) => {
+    r.providerName = r.provider?.name?.toLowerCase() || '';
+    return r;
   });
 
   const updated: any[] = [];
@@ -1458,8 +1465,10 @@ async function handleSyncMode(req: Request, res: Response, value: any) {
       continue;
     }
 
+    const providerName = (match as any).providerName || match.providerId;
+
     if (!unitCostsChanged(match.unitCosts, update.unitCosts)) {
-      unchanged.push({ id: match.id, model: match.model, provider: match.providerId });
+      unchanged.push({ id: match.id, model: match.model, provider: providerName });
       continue;
     }
 
@@ -1482,27 +1491,29 @@ async function handleSyncMode(req: Request, res: Response, value: any) {
       updated.push({
         id: match.id,
         model: match.model,
-        provider: match.providerId,
+        provider: providerName,
         oldUnitCosts,
         newUnitCosts: update.unitCosts,
         oldRates,
         newRates: applyRates ? { inputRate: updateData.inputRate, outputRate: updateData.outputRate } : oldRates,
       });
 
-      // Track tier1 updates for propagation
-      tier1Updates.set(`${match.providerId}:${match.model}`, update.unitCosts);
+      // Track tier1 updates for propagation (keyed by provider NAME, not FK ID)
+      tier1Updates.set(`${providerName}:${match.model}`, update.unitCosts);
     } catch (err: any) {
-      errors.push({ model: match.model, provider: match.providerId, error: err.message });
+      errors.push({ model: match.model, provider: providerName, error: err.message });
     }
   }
 
   // Propagate to tier2 providers
   const tier2Updates = propagateToTier2(dbRates as any[], tier1Updates);
   for (const t2 of tier2Updates) {
+    // propagateToTier2 returns the original providerId (FK ID) for DB matching
     const match = dbRates.find((r) => r.providerId === t2.providerId && r.model === t2.model);
     if (!match) continue;
     if (!unitCostsChanged(match.unitCosts, t2.unitCosts)) continue;
 
+    const t2ProviderName = (match as any).providerName || match.providerId;
     try {
       const updateData: any = { unitCosts: t2.unitCosts };
       if (applyRates && profitMargin != null && creditPrice != null) {
@@ -1515,13 +1526,13 @@ async function handleSyncMode(req: Request, res: Response, value: any) {
       updated.push({
         id: match.id,
         model: match.model,
-        provider: match.providerId,
+        provider: t2ProviderName,
         oldUnitCosts: match.unitCosts || null,
         newUnitCosts: t2.unitCosts,
         source: t2.source,
       });
     } catch (err: any) {
-      errors.push({ model: match.model, provider: match.providerId, error: err.message });
+      errors.push({ model: match.model, provider: t2ProviderName, error: err.message });
     }
   }
 
@@ -1534,12 +1545,14 @@ async function handleSyncMode(req: Request, res: Response, value: any) {
       matchedKeys.add(`${u.provider}:${u.model}`);
     }
 
+    // Use providerName (not FK ID) for tier classification
     const tier1DbRates = dbRates.filter(
-      (r) => tier1Providers.has(r.providerId) && !r.deprecated && r.type === 'chatCompletion'
+      (r) => tier1Providers.has((r as any).providerName || '') && !r.deprecated && r.type === 'chatCompletion'
     );
 
     for (const rate of tier1DbRates) {
-      if (!matchedKeys.has(`${rate.providerId}:${rate.model}`)) {
+      const rateName = (rate as any).providerName || rate.providerId;
+      if (!matchedKeys.has(`${rateName}:${rate.model}`)) {
         if (!dryRun) {
           try {
             await rate.update({
@@ -1548,11 +1561,11 @@ async function handleSyncMode(req: Request, res: Response, value: any) {
               deprecatedReason: 'Model not found in official pricing data',
             });
           } catch (err: any) {
-            errors.push({ model: rate.model, provider: rate.providerId, error: `deprecate failed: ${err.message}` });
+            errors.push({ model: rate.model, provider: rateName, error: `deprecate failed: ${err.message}` });
             continue;
           }
         }
-        deprecated.push({ id: rate.id, model: rate.model, provider: rate.providerId });
+        deprecated.push({ id: rate.id, model: rate.model, provider: rateName });
       }
     }
   }

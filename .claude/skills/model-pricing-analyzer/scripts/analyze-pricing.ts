@@ -209,8 +209,7 @@ async function main(): Promise<void> {
       const outputDir = path.join(scriptDir, '..', 'output');
       await fs.mkdir(outputDir, { recursive: true });
       const tempFile = path.join(outputDir, 'pricing-analysis.json');
-      const timestamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-      const outputFile = `pricing-analysis-${opts.env || 'local'}-${timestamp}.html`;
+      const outputFile = path.join(outputDir, `pricing-report-${opts.env || 'local'}.html`);
 
       // Write JSON to temp file
       await fs.writeFile(tempFile, JSON.stringify(results, null, 2));
