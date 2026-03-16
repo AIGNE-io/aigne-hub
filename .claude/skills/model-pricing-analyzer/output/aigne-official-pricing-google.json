@@ -1,5 +1,5 @@
 {
-  "timestamp": 1773405145870,
+  "timestamp": 1773648998432,
   "entries": [
     {
       "provider": "google",
@@ -11,11 +11,11 @@
       "extractionMethod": "catalog-scraper",
       "inputCostPerToken": 0.000002,
       "outputCostPerToken": 0.000012,
-      "cachedInputCostPerToken": 2.0000000000000002e-7,
+      "cachedInputCostPerToken": 2e-7,
       "cacheTiers": [
         {
           "label": "read",
-          "costPerToken": 2.0000000000000002e-7
+          "costPerToken": 2e-7
         }
       ],
       "contextTiers": [
@@ -40,11 +40,11 @@
       "extractionMethod": "catalog-scraper",
       "inputCostPerToken": 2.5e-7,
       "outputCostPerToken": 0.0000015,
-      "cachedInputCostPerToken": 2.5000000000000002e-8,
+      "cachedInputCostPerToken": 2.5e-8,
       "cacheTiers": [
         {
           "label": "read",
-          "costPerToken": 2.5000000000000002e-8
+          "costPerToken": 2.5e-8
         }
       ],
       "batchPricing": {
@@ -74,11 +74,11 @@
       "extractionMethod": "catalog-scraper",
       "inputCostPerToken": 5e-7,
       "outputCostPerToken": 0.000003,
-      "cachedInputCostPerToken": 5.0000000000000004e-8,
+      "cachedInputCostPerToken": 5e-8,
       "cacheTiers": [
         {
           "label": "read",
-          "costPerToken": 5.0000000000000004e-8
+          "costPerToken": 5e-8
         }
       ],
       "batchPricing": {
@@ -157,8 +157,8 @@
       "modelType": "chatCompletion",
       "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
       "extractionMethod": "catalog-scraper",
-      "inputCostPerToken": 1.0000000000000001e-7,
-      "outputCostPerToken": 4.0000000000000003e-7,
+      "inputCostPerToken": 1e-7,
+      "outputCostPerToken": 4e-7,
       "cachedInputCostPerToken": 1e-8,
       "cacheTiers": [
         {
@@ -167,8 +167,8 @@
         }
       ],
       "batchPricing": {
-        "inputCostPerToken": 5.0000000000000004e-8,
-        "outputCostPerToken": 2.0000000000000002e-7
+        "inputCostPerToken": 5e-8,
+        "outputCostPerToken": 2e-7
       }
     },
     {
@@ -179,8 +179,8 @@
       "modelType": "chatCompletion",
       "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
       "extractionMethod": "catalog-scraper",
-      "inputCostPerToken": 1.0000000000000001e-7,
-      "outputCostPerToken": 4.0000000000000003e-7,
+      "inputCostPerToken": 1e-7,
+      "outputCostPerToken": 4e-7,
       "cachedInputCostPerToken": 1e-8,
       "cacheTiers": [
         {
@@ -189,8 +189,8 @@
         }
       ],
       "batchPricing": {
-        "inputCostPerToken": 5.0000000000000004e-8,
-        "outputCostPerToken": 2.0000000000000002e-7
+        "inputCostPerToken": 5e-8,
+        "outputCostPerToken": 2e-7
       }
     },
     {
@@ -245,18 +245,18 @@
       "modelType": "chatCompletion",
       "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
       "extractionMethod": "catalog-scraper",
-      "inputCostPerToken": 1.0000000000000001e-7,
-      "outputCostPerToken": 4.0000000000000003e-7,
-      "cachedInputCostPerToken": 2.5000000000000002e-8,
+      "inputCostPerToken": 1e-7,
+      "outputCostPerToken": 4e-7,
+      "cachedInputCostPerToken": 2.5e-8,
       "cacheTiers": [
         {
           "label": "read",
-          "costPerToken": 2.5000000000000002e-8
+          "costPerToken": 2.5e-8
         }
       ],
       "batchPricing": {
-        "inputCostPerToken": 5.0000000000000004e-8,
-        "outputCostPerToken": 2.0000000000000002e-7
+        "inputCostPerToken": 5e-8,
+        "outputCostPerToken": 2e-7
       },
       "deprecated": true
     },
@@ -364,7 +364,7 @@
       "modelType": "embedding",
       "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
       "extractionMethod": "catalog-scraper",
-      "inputCostPerToken": 2.0000000000000002e-7
+      "inputCostPerToken": 2e-7
     },
     {
       "provider": "google",

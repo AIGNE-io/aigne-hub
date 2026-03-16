@@ -1,5 +1,5 @@
 {
-  "timestamp": 1773405145869,
+  "timestamp": 1773648998432,
   "entries": [
     {
       "provider": "anthropic",
@@ -24,13 +24,6 @@
         {
           "label": "read",
           "costPerToken": 5e-7
-        }
-      ],
-      "contextTiers": [
-        {
-          "threshold": ">200K",
-          "inputCostPerToken": 0.00001,
-          "outputCostPerToken": 0.0000375
         }
       ],
       "batchPricing": {
@@ -160,13 +153,6 @@
           "costPerToken": 3e-7
         }
       ],
-      "contextTiers": [
-        {
-          "threshold": ">200K",
-          "inputCostPerToken": 0.000006,
-          "outputCostPerToken": 0.0000225
-        }
-      ],
       "batchPricing": {
         "inputCostPerToken": 0.0000015,
         "outputCostPerToken": 0.0000075
@@ -197,13 +183,6 @@
           "costPerToken": 3e-7
         }
       ],
-      "contextTiers": [
-        {
-          "threshold": ">200K",
-          "inputCostPerToken": 0.000006,
-          "outputCostPerToken": 0.0000225
-        }
-      ],
       "batchPricing": {
         "inputCostPerToken": 0.0000015,
         "outputCostPerToken": 0.0000075
@@ -232,13 +211,6 @@
         {
           "label": "read",
           "costPerToken": 3e-7
-        }
-      ],
-      "contextTiers": [
-        {
-          "threshold": ">200K",
-          "inputCostPerToken": 0.000006,
-          "outputCostPerToken": 0.0000225
         }
       ],
       "batchPricing": {
@@ -287,7 +259,7 @@
       "extractionMethod": "catalog-scraper",
       "inputCostPerToken": 0.000001,
       "outputCostPerToken": 0.000005,
-      "cachedInputCostPerToken": 1.0000000000000001e-7,
+      "cachedInputCostPerToken": 1e-7,
       "cacheTiers": [
         {
           "label": "5min-write",
@@ -299,7 +271,7 @@
         },
         {
           "label": "read",
-          "costPerToken": 1.0000000000000001e-7
+          "costPerToken": 1e-7
         }
       ],
       "batchPricing": {
@@ -315,7 +287,7 @@
       "modelType": "chatCompletion",
       "sourceUrl": "https://docs.anthropic.com/en/docs/about-claude/pricing",
       "extractionMethod": "catalog-scraper",
-      "inputCostPerToken": 8.000000000000001e-7,
+      "inputCostPerToken": 8e-7,
       "outputCostPerToken": 0.000004,
       "cachedInputCostPerToken": 8e-8,
       "cacheTiers": [
@@ -325,7 +297,7 @@
         },
         {
           "label": "1h-write",
-          "costPerToken": 0.0000016000000000000001
+          "costPerToken": 0.0000016
         },
         {
           "label": "read",
@@ -333,7 +305,7 @@
         }
       ],
       "batchPricing": {
-        "inputCostPerToken": 4.0000000000000003e-7,
+        "inputCostPerToken": 4e-7,
         "outputCostPerToken": 0.000002
       }
     },

@@ -109,6 +109,20 @@ function strip(html) {
     .replace(/\s+/g, ' ');
 }
 
+/** Strip HTML with script/style removal first (clean text, no JS noise). */
+function stripClean(html) {
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&#?[\w]+;/g, '')
+    .replace(/\s+/g, ' ');
+}
+
 /** Find earliest index from candidates that is > start, or fallback. */
 function findSectionEnd(text, start, candidates, fallbackLen = 3000) {
   let best = -1;
@@ -901,11 +915,14 @@ async function scrapeOpenAI() {
   }
 
   // ── Fine-tuning (Standard tier) ──
-  const ftIdx = text.indexOf('Fine-tuning Prices per 1M tokens');
+  // Use stripClean to remove JS noise that causes section boundary overflow
+  const cleanText = stripClean(html);
+  const ftIdx = cleanText.indexOf('Fine-tuning Prices per 1M tokens');
   if (ftIdx > 0) {
-    const ftEnd = findSectionEnd(text, ftIdx, ['Built-in tools'], 5000);
-    const ftBlock = text.substring(ftIdx, ftEnd);
-    const ftStdIdx = ftBlock.lastIndexOf('Standard');
+    const ftEnd = findSectionEnd(cleanText, ftIdx, ['Built-in tools', 'AgentKit'], 3000);
+    const ftBlock = cleanText.substring(ftIdx, ftEnd);
+    let ftStdIdx = ftBlock.indexOf('Standard Model Training');
+    if (ftStdIdx === -1) ftStdIdx = ftBlock.lastIndexOf('Standard');
     if (ftStdIdx > 0) {
       const ftStdBlock = ftBlock.substring(ftStdIdx);
       const ftRe =
@@ -1248,7 +1265,10 @@ async function scrapeXAI() {
     seen.add(name);
     const priceRaw = p.match(/\\"pricePerImage\\":\\"\$n(\d+)\\"/)?.[1];
     if (priceRaw) {
-      models.push({ id: name, name, type: 'imageGeneration', costPerImage: parseInt(priceRaw) / 10000 });
+      // xAI RSC stores all prices in the same base unit (divide by 1e10 for $).
+      // Language models use /1e4 ($/MTok) then /1e6 ($/token) = /1e10 total.
+      // Image prices are per-image, so divide by 1e10 directly.
+      models.push({ id: name, name, type: 'imageGeneration', costPerImage: parseInt(priceRaw) / 1e10 });
     }
   }
 
@@ -1262,7 +1282,8 @@ async function scrapeXAI() {
     seen.add(name);
     const priceRaw = p.match(/\\"pricePerSecond\\":\\"\$n(\d+)\\"/)?.[1];
     if (priceRaw) {
-      models.push({ id: name, name, type: 'video', costPerSecond: parseInt(priceRaw) / 10000 });
+      // Same base unit as image models — divide by 1e10 for $/second.
+      models.push({ id: name, name, type: 'video', costPerSecond: parseInt(priceRaw) / 1e10 });
     }
   }
 
@@ -2021,20 +2042,23 @@ async function main() {
           extractionMethod: 'catalog-scraper',
         };
 
-        // Token pricing ($/MTok → $/token)
-        if (m.inputPerMTok != null) entry.inputCostPerToken = m.inputPerMTok / 1e6;
-        if (m.outputPerMTok != null) entry.outputCostPerToken = m.outputPerMTok / 1e6;
+        // $/MTok → $/token with floating-point precision cleanup (10 sig digits)
+        const toPerToken = (perMTok) => parseFloat((perMTok / 1e6).toPrecision(10));
+
+        // Token pricing
+        if (m.inputPerMTok != null) entry.inputCostPerToken = toPerToken(m.inputPerMTok);
+        if (m.outputPerMTok != null) entry.outputCostPerToken = toPerToken(m.outputPerMTok);
 
         // Cache tiers
         const cacheTiers = [];
-        if (m.cacheWrite5m != null) cacheTiers.push({ label: '5min-write', costPerToken: m.cacheWrite5m / 1e6 });
-        if (m.cacheWrite1h != null) cacheTiers.push({ label: '1h-write', costPerToken: m.cacheWrite1h / 1e6 });
+        if (m.cacheWrite5m != null) cacheTiers.push({ label: '5min-write', costPerToken: toPerToken(m.cacheWrite5m) });
+        if (m.cacheWrite1h != null) cacheTiers.push({ label: '1h-write', costPerToken: toPerToken(m.cacheWrite1h) });
         if (m.cacheRead != null) {
-          cacheTiers.push({ label: 'read', costPerToken: m.cacheRead / 1e6 });
-          entry.cachedInputCostPerToken = m.cacheRead / 1e6;
+          cacheTiers.push({ label: 'read', costPerToken: toPerToken(m.cacheRead) });
+          entry.cachedInputCostPerToken = toPerToken(m.cacheRead);
         }
         // OpenAI cache format
-        if (m.cacheWrite != null) cacheTiers.push({ label: 'write', costPerToken: m.cacheWrite / 1e6 });
+        if (m.cacheWrite != null) cacheTiers.push({ label: 'write', costPerToken: toPerToken(m.cacheWrite) });
         if (cacheTiers.length > 0) entry.cacheTiers = cacheTiers;
 
         // Context tiers (long context pricing)
@@ -2042,8 +2066,8 @@ async function main() {
           entry.contextTiers = [
             {
               threshold: m.longContextThreshold || '>200K',
-              inputCostPerToken: m.longContextInput != null ? m.longContextInput / 1e6 : undefined,
-              outputCostPerToken: m.longContextOutput != null ? m.longContextOutput / 1e6 : undefined,
+              inputCostPerToken: m.longContextInput != null ? toPerToken(m.longContextInput) : undefined,
+              outputCostPerToken: m.longContextOutput != null ? toPerToken(m.longContextOutput) : undefined,
             },
           ];
         }
@@ -2051,8 +2075,8 @@ async function main() {
         // Batch pricing
         if (m.batchInput != null || m.batchOutput != null) {
           entry.batchPricing = {
-            inputCostPerToken: m.batchInput != null ? m.batchInput / 1e6 : 0,
-            outputCostPerToken: m.batchOutput != null ? m.batchOutput / 1e6 : 0,
+            inputCostPerToken: m.batchInput != null ? toPerToken(m.batchInput) : 0,
+            outputCostPerToken: m.batchOutput != null ? toPerToken(m.batchOutput) : 0,
           };
         }
 
@@ -2061,8 +2085,8 @@ async function main() {
           entry.specialModes = [
             {
               mode: 'fast-mode',
-              inputCostPerToken: m.fastModeInput != null ? m.fastModeInput / 1e6 : undefined,
-              outputCostPerToken: m.fastModeOutput != null ? m.fastModeOutput / 1e6 : undefined,
+              inputCostPerToken: m.fastModeInput != null ? toPerToken(m.fastModeInput) : undefined,
+              outputCostPerToken: m.fastModeOutput != null ? toPerToken(m.fastModeOutput) : undefined,
             },
           ];
         }
@@ -2081,7 +2105,7 @@ async function main() {
         if (m.costPerSecond != null) entry.costPerSecond = m.costPerSecond;
 
         // Fine-tuning training cost
-        if (m.trainingPerMTok != null) entry.trainingCostPerToken = m.trainingPerMTok / 1e6;
+        if (m.trainingPerMTok != null) entry.trainingCostPerToken = toPerToken(m.trainingPerMTok);
         if (m.trainingPerHour != null) entry.trainingCostPerHour = m.trainingPerHour;
 
         // Transcription / TTS
@@ -2112,6 +2136,87 @@ async function main() {
     }
 
     console.error(`✅ Cache written: ${totalEntries} entries total (per-provider files)`);
+
+    // ── Merge all provider caches into unified output files ──
+    const allEntries = [];
+    const providers = ['anthropic', 'google', 'openai', 'deepseek', 'xai'];
+    for (const p of providers) {
+      const cacheFile = path.join(OUTPUT_DIR, `aigne-official-pricing-${p}.json`);
+      if (fs.existsSync(cacheFile)) {
+        try {
+          const cache = JSON.parse(fs.readFileSync(cacheFile, 'utf-8'));
+          if (cache.entries) allEntries.push(...cache.entries);
+        } catch (e) {
+          console.error(`  ⚠️  Failed to read ${p} cache: ${e.message}`);
+        }
+      }
+    }
+
+    if (allEntries.length > 0) {
+      // 1. Combined OfficialPricingEntry array (full detail with cache tiers, batch, etc.)
+      const combinedPath = path.join(OUTPUT_DIR, 'aigne-official-pricing-all.json');
+      fs.writeFileSync(
+        combinedPath,
+        JSON.stringify(
+          { timestamp: Date.now(), providers, totalModels: allEntries.length, entries: allEntries },
+          null,
+          2
+        )
+      );
+      console.error(`✅ Combined: ${allEntries.length} entries → ${combinedPath}`);
+
+      // 2. LiteLLM-compatible format: { "provider/modelId": { ... } }
+      const litellmMap = {};
+      for (const entry of allEntries) {
+        const key = `${entry.provider}/${entry.modelId}`;
+        const item = {
+          input_cost_per_token: entry.inputCostPerToken ?? null,
+          output_cost_per_token: entry.outputCostPerToken ?? null,
+          model_type: entry.modelType || 'chatCompletion',
+          source_url: entry.sourceUrl,
+        };
+
+        // Cache pricing (cheapest read tier)
+        if (entry.cachedInputCostPerToken != null) {
+          item.cache_read_input_token_cost = entry.cachedInputCostPerToken;
+        }
+        // Cache write (first write tier)
+        const writeTier = (entry.cacheTiers || []).find((t) => t.label.includes('write'));
+        if (writeTier) {
+          item.cache_creation_input_token_cost = writeTier.costPerToken;
+        }
+
+        // Batch pricing
+        if (entry.batchPricing) {
+          item.batch_input_cost_per_token = entry.batchPricing.inputCostPerToken;
+          item.batch_output_cost_per_token = entry.batchPricing.outputCostPerToken;
+        }
+
+        // Image
+        if (entry.costPerImage != null) item.cost_per_image = entry.costPerImage;
+        // Video
+        if (entry.costPerSecond != null) item.cost_per_second = entry.costPerSecond;
+        // Audio
+        if (entry.costPerMinute != null) item.cost_per_minute = entry.costPerMinute;
+
+        // Context-length tiers (flatten to longest context tier)
+        if (entry.contextTiers?.length > 0) {
+          item.context_tiers = entry.contextTiers.map((t) => ({
+            threshold: t.threshold,
+            input_cost_per_token: t.inputCostPerToken ?? null,
+            output_cost_per_token: t.outputCostPerToken ?? null,
+          }));
+        }
+
+        if (entry.deprecated) item.deprecated = true;
+
+        litellmMap[key] = item;
+      }
+
+      const litellmPath = path.join(OUTPUT_DIR, 'aigne-official-pricing-litellm.json');
+      fs.writeFileSync(litellmPath, JSON.stringify(litellmMap, null, 2));
+      console.error(`✅ LiteLLM format: ${Object.keys(litellmMap).length} models → ${litellmPath}`);
+    }
   }
 
   const html = generateHTML(data, hubMap);
