@@ -868,7 +868,6 @@ table.mt th{padding:11px 14px;text-align:left;font-weight:600;color:#4a5568;font
         <span style="font-size:12px;color:#4a5568">已选 <strong id="um-sel-cnt">0</strong></span>
         <button class="um-btn" onclick="toggleUmAll(true)">全选</button>
         <button class="um-btn" onclick="toggleUmAll(false)">取消</button>
-        <button class="um-btn" onclick="toggleUmVisible(true)">选可见</button>
       </span>
       <span class="chevron">▼</span></div>
     <div class="sec-body"><table class="mt"><thead><tr>
@@ -966,6 +965,7 @@ const __umEntries=${JSON.stringify(
     pricingUnit: m.pricingUnit ?? 'per-token',
     costPerImage: m.costPerImage ?? undefined,
     costPerSecond: m.costPerSecond ?? undefined,
+    isNew: true,
   }))
 )};
 const __umMap=new Map(__umEntries.map(e=>[e.provider+'/'+e.modelId,e]));
@@ -984,12 +984,14 @@ function updUmCnt(){
   if(el)el.textContent=cnt;
   const syncEl=document.getElementById('sync-um-cnt');
   if(syncEl)syncEl.textContent=cnt;
-  // Update header "select all" checkbox indeterminate / checked state
+  // Update header "select all" checkbox based on VISIBLE rows only
   const allChk=document.getElementById('um-chk-all');
   if(allChk){
-    const total=document.querySelectorAll('.um-chk').length;
-    allChk.checked=cnt>0&&cnt===total;
-    allChk.indeterminate=cnt>0&&cnt<total;
+    const visibleChks=document.querySelectorAll('.um-row:not(.hidden) .um-chk');
+    let visChecked=0;
+    visibleChks.forEach(cb=>{if(cb.checked)visChecked++});
+    allChk.checked=visibleChks.length>0&&visChecked===visibleChks.length;
+    allChk.indeterminate=visChecked>0&&visChecked<visibleChks.length;
   }
 }
 function applyUmCheck(key,checked){
@@ -999,13 +1001,6 @@ function applyUmCheck(key,checked){
   updUmCnt();
 }
 function toggleUmAll(on){
-  document.querySelectorAll('.um-chk').forEach(cb=>{
-    cb.checked=on;
-    applyUmCheck(cb.dataset.umk,on);
-  });
-  updUmCnt();
-}
-function toggleUmVisible(on){
   document.querySelectorAll('.um-row:not(.hidden) .um-chk').forEach(cb=>{
     cb.checked=on;
     applyUmCheck(cb.dataset.umk,on);
@@ -1034,7 +1029,7 @@ function updSelCnt(){
   document.getElementById('sync-sel-cnt').textContent=getSyncSelected().size;
 }
 function toggleSyncAll(on){
-  document.querySelectorAll('.rchk-in').forEach(cb=>{
+  document.querySelectorAll('.mrow:not(.hidden) .rchk-in').forEach(cb=>{
     cb.checked=on;
     applyRead(cb.dataset.rk,on);
   });
@@ -1111,7 +1106,7 @@ async function doSync(isDryRun){
     const bg=isDryRun?'#ebf8ff':'#c6f6d5';
     const fg=isDryRun?'#2b6cb0':'#276749';
     const prefix=isDryRun?'[预览] ':'[已执行] ';
-    showStatus(prefix+'更新 '+s.updated+' / 无变化 '+s.unchanged+' / 未匹配 '+s.unmatched+(dep.length?' / 软删除 '+dep.length:''),bg,fg);
+    showStatus(prefix+'更新 '+s.updated+(s.created?' / 新增 '+s.created:'')+' / 无变化 '+s.unchanged+' / 未匹配 '+s.unmatched+(dep.length?' / 软删除 '+dep.length:''),bg,fg);
 
     // Show details
     let h='';
@@ -1137,6 +1132,24 @@ async function doSync(isDryRun){
       });
       h+='</table></div>';
     }
+    if(json.created&&json.created.length){
+      h+='<div style="margin-bottom:12px"><strong style="color:#2b6cb0">待新增 ('+json.created.length+')</strong>';
+      const hasRates=applyRates&&json.created.some(c=>c.rates);
+      h+='<table style="width:100%;font-size:12px;border-collapse:collapse;margin-top:6px"><tr style="background:#ebf8ff"><th style="padding:6px 10px;text-align:left">Provider</th><th style="padding:6px 10px;text-align:left">Model</th><th style="padding:6px 10px;text-align:left">Type</th><th style="padding:6px 10px;text-align:right">Input Cost</th><th style="padding:6px 10px;text-align:right">Output Cost</th>';
+      if(hasRates)h+='<th style="padding:6px 10px;text-align:right">InputRate</th><th style="padding:6px 10px;text-align:right">OutputRate</th>';
+      h+='</tr>';
+      json.created.forEach(c=>{
+        h+='<tr style="border-bottom:1px solid #bee3f8"><td style="padding:4px 10px">'+c.provider+'</td><td style="padding:4px 10px">'+c.model+'</td><td style="padding:4px 10px">'+c.type+'</td>';
+        h+='<td style="padding:4px 10px;text-align:right;font-weight:600">'+c.unitCosts.input+'</td>';
+        h+='<td style="padding:4px 10px;text-align:right;font-weight:600">'+c.unitCosts.output+'</td>';
+        if(hasRates){
+          h+='<td style="padding:4px 10px;text-align:right;font-weight:600;color:#2b6cb0">'+(c.rates?c.rates.inputRate:'-')+'</td>';
+          h+='<td style="padding:4px 10px;text-align:right;font-weight:600;color:#2b6cb0">'+(c.rates?c.rates.outputRate:'-')+'</td>';
+        }
+        h+='</tr>';
+      });
+      h+='</table></div>';
+    }
     if(dep.length){
       h+='<div style="margin-bottom:12px"><strong style="color:#9b2c2c">待软删除 ('+dep.length+')</strong>';
       h+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">';
@@ -1146,13 +1159,13 @@ async function doSync(isDryRun){
     if(json.unmatched&&json.unmatched.length){
       h+='<details style="margin-bottom:12px"><summary style="cursor:pointer;font-size:13px;color:#718096">未匹配 ('+json.unmatched.length+')</summary>';
       h+='<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">';
-      json.unmatched.forEach(u=>{h+='<span style="padding:2px 8px;background:#fefcbf;color:#975a16;border-radius:3px;font-size:11px">'+u.provider+'/'+u.model+'</span>'});
+      json.unmatched.forEach(u=>{h+='<span style="padding:2px 8px;background:#fefcbf;color:#975a16;border-radius:3px;font-size:11px">'+u.provider+'/'+u.model+(u.reason?' ('+u.reason+')':'')+'</span>'});
       h+='</div></details>';
     }
     result.style.display=h?'block':'none';
     result.innerHTML=h;
 
-    if(isDryRun&&(s.updated>0||dep.length>0))execBtn.style.display='inline-block';
+    if(isDryRun&&(s.updated>0||dep.length>0||(s.created&&s.created>0)))execBtn.style.display='inline-block';
   }catch(e){
     showStatus('错误: '+e.message,'#fed7d7','#9b2c2c');
     result.style.display='none';
@@ -1328,6 +1341,8 @@ function go(){
     const cnt=sec.querySelector('.sec-cnt');
     if(cnt&&secType)cnt.textContent=counts[secType]||0;
   });
+  // Refresh header checkbox state after visibility change
+  updUmCnt();
 }
 </script>
 </body>

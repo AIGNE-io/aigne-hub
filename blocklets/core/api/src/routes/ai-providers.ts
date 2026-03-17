@@ -22,6 +22,7 @@ import pAll from 'p-all';
 import { Op } from 'sequelize';
 
 import {
+  CreatedEntry,
   SyncUpdate,
   buildSyncResult,
   matchUpdateToDbRate,
@@ -242,6 +243,8 @@ const bulkRateUpdateSchema = Joi.object({
           writeRate: Joi.number().min(0),
         }).optional(),
         source: Joi.string().optional(),
+        isNew: Joi.boolean().optional(),
+        modelType: Joi.string().optional(),
       })
     )
     .when('mode', { is: 'sync', then: Joi.optional() }),
@@ -257,6 +260,7 @@ const bulkRateUpdateSchema = Joi.object({
         cachedInputCostPerToken: Joi.number().allow(null),
         cacheTiers: Joi.array().items(Joi.object({ label: Joi.string(), costPerToken: Joi.number() })),
         modelType: Joi.string(),
+        isNew: Joi.boolean(),
       }).unknown(true)
     )
     .when('mode', { is: 'sync', then: Joi.optional() }),
@@ -1454,14 +1458,94 @@ async function handleSyncMode(req: Request, res: Response, value: any) {
   const updated: any[] = [];
   const unchanged: any[] = [];
   const unmatched: any[] = [];
+  const created: CreatedEntry[] = [];
   const errors: any[] = [];
   const tier1Updates = new Map<string, { input: number; output: number }>();
+
+  // Pre-fetch all AiProviders to build name→id map (avoid N+1 queries)
+  const allProviders = await AiProvider.findAll();
+  const providerNameToId = new Map<string, string>();
+  for (const p of allProviders) {
+    providerNameToId.set(p.name.toLowerCase(), p.id);
+  }
+
+  // DB ENUM: only these types can be created
+  const SUPPORTED_TYPES = new Set(['chatCompletion', 'embedding', 'imageGeneration', 'video']);
 
   for (const update of syncUpdates) {
     const match = matchUpdateToDbRate(dbRates as any[], update.providerId, update.model);
 
     if (!match) {
-      unmatched.push({ model: update.model, provider: update.providerId, source: update.source });
+      if (update.isNew) {
+        // --- Create new model rate ---
+        const dbProviderId = providerNameToId.get(update.providerId.toLowerCase());
+        if (!dbProviderId) {
+          unmatched.push({ model: update.model, provider: update.providerId, source: update.source, reason: 'provider not configured' });
+          continue;
+        }
+
+        const modelType = update.modelType || 'chatCompletion';
+        if (!SUPPORTED_TYPES.has(modelType)) {
+          unmatched.push({ model: update.model, provider: update.providerId, source: update.source, reason: `unsupported type: ${modelType}` });
+          continue;
+        }
+
+        // Check for duplicates
+        const existing = await AiModelRate.findOne({
+          where: { providerId: dbProviderId, model: update.model, type: modelType },
+        });
+        if (existing) {
+          unchanged.push({ id: existing.id, model: existing.model, provider: update.providerId });
+          continue;
+        }
+
+        // Calculate rates if applyRates is enabled
+        let newInputRate: number | undefined;
+        let newOutputRate: number | undefined;
+        if (applyRates && profitMargin != null && creditPrice != null) {
+          newInputRate = calculateRate(Number(update.unitCosts.input), profitMargin, creditPrice);
+          newOutputRate = calculateRate(Number(update.unitCosts.output), profitMargin, creditPrice);
+        }
+
+        try {
+          const modelDisplay = update.modelDisplay || AiModelRate.getDefaultModelDisplay(update.model);
+          const createData: any = {
+            providerId: dbProviderId,
+            model: update.model,
+            modelDisplay,
+            type: modelType,
+            unitCosts: update.unitCosts,
+            inputRate: newInputRate ?? 0,
+            outputRate: newOutputRate ?? 0,
+          };
+          if (update.caching) createData.caching = update.caching;
+
+          if (!dryRun) {
+            const record = await AiModelRate.create(createData);
+            created.push({
+              id: record.id,
+              model: update.model,
+              provider: update.providerId,
+              type: modelType,
+              unitCosts: update.unitCosts,
+              ...(applyRates ? { rates: { inputRate: newInputRate!, outputRate: newOutputRate! } } : {}),
+            });
+          } else {
+            created.push({
+              id: `new-${update.providerId}-${update.model}`,
+              model: update.model,
+              provider: update.providerId,
+              type: modelType,
+              unitCosts: update.unitCosts,
+              ...(applyRates ? { rates: { inputRate: newInputRate!, outputRate: newOutputRate! } } : {}),
+            });
+          }
+        } catch (err: any) {
+          errors.push({ model: update.model, provider: update.providerId, error: `create failed: ${err.message}` });
+        }
+      } else {
+        unmatched.push({ model: update.model, provider: update.providerId, source: update.source });
+      }
       continue;
     }
 
@@ -1633,6 +1717,7 @@ async function handleSyncMode(req: Request, res: Response, value: any) {
             totalUpdated: updated.length,
             totalUnchanged: unchanged.length,
             totalUnmatched: unmatched.length,
+            totalCreated: created.length,
             totalErrors: errors.length,
             totalDeprecated: deprecated.length,
             updates: updated.map((u: any) => ({
@@ -1647,6 +1732,32 @@ async function handleSyncMode(req: Request, res: Response, value: any) {
         });
       } catch (histErr) {
         logger.error('Failed to create bulk_update history record:', histErr);
+      }
+    }
+
+    if (created.length > 0) {
+      try {
+        await AiModelRateHistory.create({
+          providerId: 'system',
+          model: '_bulk_create',
+          type: 'system',
+          changeType: 'bulk_create',
+          source: 'official-pricing-catalog',
+          previousUnitCosts: null,
+          currentUnitCosts: null,
+          previousRates: null,
+          currentRates: null,
+          driftPercent: null,
+          detectedAt: Math.floor(Date.now() / 1000),
+          metadata: {
+            operatedBy,
+            action: 'create',
+            totalCreated: created.length,
+            models: created.map((c) => ({ model: c.model, provider: c.provider, type: c.type })),
+          },
+        });
+      } catch (histErr) {
+        logger.error('Failed to create bulk_create history record:', histErr);
       }
     }
 
@@ -1677,10 +1788,10 @@ async function handleSyncMode(req: Request, res: Response, value: any) {
     }
   }
 
-  const result = buildSyncResult({ updated, unchanged, unmatched, errors });
+  const result = buildSyncResult({ updated, unchanged, unmatched, created, errors });
 
   return res.json({
-    message: `${dryRun ? '[DRY RUN] ' : ''}Sync completed: ${result.summary.updated} updated, ${result.summary.unchanged} unchanged, ${result.summary.unmatched} unmatched, ${deprecated.length} deprecated`,
+    message: `${dryRun ? '[DRY RUN] ' : ''}Sync completed: ${result.summary.updated} updated, ${result.summary.created} created, ${result.summary.unchanged} unchanged, ${result.summary.unmatched} unmatched, ${deprecated.length} deprecated`,
     dryRun: !!dryRun,
     ...result,
     deprecated,

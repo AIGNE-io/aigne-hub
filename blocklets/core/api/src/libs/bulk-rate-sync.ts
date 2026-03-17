@@ -107,6 +107,9 @@ export interface SyncUpdate {
   unitCosts: { input: number; output: number };
   caching?: { readRate?: number; writeRate?: number };
   source?: string;
+  isNew?: boolean;
+  modelType?: string;
+  modelDisplay?: string;
 }
 
 interface DbRateLike {
@@ -139,6 +142,15 @@ interface UnmatchedEntry {
   source?: string;
 }
 
+export interface CreatedEntry {
+  id: string;
+  model: string;
+  provider: string;
+  type: string;
+  unitCosts: { input: number; output: number };
+  rates?: { inputRate: number; outputRate: number };
+}
+
 interface ErrorEntry {
   model: string;
   provider: string;
@@ -149,12 +161,14 @@ export interface SyncResult {
   updated: UpdatedEntry[];
   unchanged: UpdatedEntry[];
   unmatched: UnmatchedEntry[];
+  created: CreatedEntry[];
   errors: ErrorEntry[];
   summary: {
     total: number;
     updated: number;
     unchanged: number;
     unmatched: number;
+    created: number;
     errors: number;
   };
 }
@@ -189,15 +203,17 @@ export function buildSyncResult(data: {
   updated: UpdatedEntry[];
   unchanged: UpdatedEntry[];
   unmatched: UnmatchedEntry[];
+  created: CreatedEntry[];
   errors: ErrorEntry[];
 }): SyncResult {
   return {
     ...data,
     summary: {
-      total: data.updated.length + data.unchanged.length + data.unmatched.length + data.errors.length,
+      total: data.updated.length + data.unchanged.length + data.unmatched.length + data.created.length + data.errors.length,
       updated: data.updated.length,
       unchanged: data.unchanged.length,
       unmatched: data.unmatched.length,
+      created: data.created.length,
       errors: data.errors.length,
     },
   };
@@ -265,6 +281,7 @@ export function officialPricingToSyncUpdates(
     cachedInputCostPerToken?: number | null;
     cacheTiers?: Array<{ label: string; costPerToken: number }>;
     modelType?: string;
+    isNew?: boolean;
   }>
 ): SyncUpdate[] {
   const updates: SyncUpdate[] = [];
@@ -284,6 +301,9 @@ export function officialPricingToSyncUpdates(
       },
       source: 'official-pricing-catalog',
     };
+
+    if (entry.isNew) update.isNew = true;
+    if (entry.modelType) update.modelType = entry.modelType;
 
     // Map caching info
     const readRate = entry.cachedInputCostPerToken;

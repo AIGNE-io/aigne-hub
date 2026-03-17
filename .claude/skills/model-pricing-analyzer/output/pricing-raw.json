@@ -1,0 +1,20 @@
+
+node:internal/modules/run_main:122
+    triggerUncaughtException(
+    ^
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/Users/zac/work/arcblock/aigne-hub/scripts/analyze-pricing.ts' imported from /Users/zac/work/arcblock/aigne-hub/
+    at finalizeResolution (node:internal/modules/esm/resolve:275:11)
+    at moduleResolve (node:internal/modules/esm/resolve:860:10)
+    at defaultResolve (node:internal/modules/esm/resolve:984:11)
+    at nextResolve (node:internal/modules/esm/hooks:748:28)
+    at resolveBase (file:///Users/zac/work/arcblock/aigne-hub/node_modules/tsx/dist/esm/index.mjs?1773625377462:2:3744)
+    at resolveDirectory (file:///Users/zac/work/arcblock/aigne-hub/node_modules/tsx/dist/esm/index.mjs?1773625377462:2:4243)
+    at resolveTsPaths (file:///Users/zac/work/arcblock/aigne-hub/node_modules/tsx/dist/esm/index.mjs?1773625377462:2:4984)
+    at resolve (file:///Users/zac/work/arcblock/aigne-hub/node_modules/tsx/dist/esm/index.mjs?1773625377462:2:5361)
+    at nextResolve (node:internal/modules/esm/hooks:748:28)
+    at Hooks.resolve (node:internal/modules/esm/hooks:240:30) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///Users/zac/work/arcblock/aigne-hub/scripts/analyze-pricing.ts'
+}
+
+Node.js v22.15.1

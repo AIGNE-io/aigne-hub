@@ -1,14 +1,233 @@
 {
-  "timestamp": 1773741909815,
-  "providers": [
-    "anthropic",
-    "google",
-    "openai",
-    "deepseek",
-    "xai"
+  "results": [
+    {
+      "provider": "xai",
+      "model": "grok-3-mini-fast",
+      "type": "chatCompletion",
+      "pricingUnit": "per-token",
+      "dbInput": 3e-7,
+      "dbOutput": 5e-7,
+      "maxDrift": 0.875,
+      "exceedsThreshold": true,
+      "hasPricingIssue": false,
+      "litellmInput": 6e-7,
+      "litellmOutput": 0.000004,
+      "litellmDrift": 0.875,
+      "providerPageInput": 3e-7,
+      "providerPageOutput": 5e-7,
+      "providerPageDrift": 0,
+      "providerPageUrl": "https://docs.x.ai/developers/models",
+      "officialCacheTiers": [
+        {
+          "label": "read",
+          "costPerToken": 7.5e-8
+        }
+      ],
+      "officialCacheRead": 7.5e-8,
+      "dbCacheWrite": 0,
+      "dbCacheRead": 7.5e-8,
+      "litellmCacheRead": 1.5e-7,
+      "inputRate": 3.03e-7,
+      "outputRate": 5.05e-7,
+      "inputRateIssue": 1.0000000000000044,
+      "outputRateIssue": 1.0000000000000115,
+      "bestCostInput": 3e-7,
+      "bestCostOutput": 5e-7,
+      "bestCostSource": "provider-page",
+      "bestCostSourceLabel": "官方",
+      "bestCostUrl": "https://docs.x.ai/developers/models",
+      "inputMargin": 1.0000000000000044,
+      "outputMargin": 1.0000000000000115
+    },
+    {
+      "provider": "deepseek",
+      "model": "deepseek-chat",
+      "type": "chatCompletion",
+      "pricingUnit": "per-token",
+      "dbInput": 2.8e-7,
+      "dbOutput": 4.2e-7,
+      "maxDrift": 0.5280898876404494,
+      "exceedsThreshold": true,
+      "hasPricingIssue": false,
+      "litellmInput": 2.8e-7,
+      "litellmOutput": 4.2e-7,
+      "litellmDrift": 0,
+      "openrouterInput": 3.2e-7,
+      "openrouterOutput": 8.9e-7,
+      "openrouterDrift": 0.5280898876404494,
+      "providerPageInput": 2.8e-7,
+      "providerPageOutput": 4.2e-7,
+      "providerPageDrift": 0,
+      "providerPageUrl": "https://api-docs.deepseek.com/quick_start/pricing",
+      "officialCacheTiers": [
+        {
+          "label": "read",
+          "costPerToken": 2.8e-8
+        }
+      ],
+      "officialCacheRead": 2.8e-8,
+      "dbCacheWrite": 0,
+      "dbCacheRead": 2.8e-8,
+      "litellmCacheWrite": 0,
+      "litellmCacheRead": 2.8e-8,
+      "inputRate": 2.828e-7,
+      "outputRate": 4.242e-7,
+      "inputRateIssue": 0.9999999999999996,
+      "outputRateIssue": 0.9999999999999996,
+      "bestCostInput": 2.8e-7,
+      "bestCostOutput": 4.2e-7,
+      "bestCostSource": "provider-page",
+      "bestCostSourceLabel": "官方",
+      "bestCostUrl": "https://api-docs.deepseek.com/quick_start/pricing",
+      "inputMargin": 0.9999999999999996,
+      "outputMargin": 0.9999999999999996
+    },
+    {
+      "provider": "openai",
+      "model": "chatgpt-4o-latest",
+      "type": "chatCompletion",
+      "pricingUnit": "per-token",
+      "dbInput": 0.000005,
+      "dbOutput": 0.000015,
+      "maxDrift": 0,
+      "exceedsThreshold": false,
+      "hasPricingIssue": false,
+      "litellmInput": 0.000005,
+      "litellmOutput": 0.000015,
+      "litellmDrift": 0,
+      "providerPageInput": 0.000005,
+      "providerPageOutput": 0.000015,
+      "providerPageDrift": 0,
+      "providerPageUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
+      "inputRate": 0.00000505,
+      "outputRate": 0.00001515,
+      "inputRateIssue": 0.9999999999999903,
+      "outputRateIssue": 1.0000000000000018,
+      "bestCostInput": 0.000005,
+      "bestCostOutput": 0.000015,
+      "bestCostSource": "provider-page",
+      "bestCostSourceLabel": "官方",
+      "bestCostUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
+      "inputMargin": 0.9999999999999903,
+      "outputMargin": 1.0000000000000018
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-3.5-turbo",
+      "type": "chatCompletion",
+      "pricingUnit": "per-token",
+      "dbInput": 5e-7,
+      "dbOutput": 0.0000015,
+      "maxDrift": 0,
+      "exceedsThreshold": false,
+      "hasPricingIssue": false,
+      "litellmInput": 5e-7,
+      "litellmOutput": 0.0000015,
+      "litellmDrift": 0,
+      "openrouterInput": 5e-7,
+      "openrouterOutput": 0.0000015,
+      "openrouterDrift": 0,
+      "providerPageInput": 5e-7,
+      "providerPageOutput": 0.0000015,
+      "providerPageDrift": 0,
+      "providerPageUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
+      "inputRate": 5.05e-7,
+      "outputRate": 0.000001515,
+      "inputRateIssue": 1.0000000000000115,
+      "outputRateIssue": 0.9999999999999905,
+      "bestCostInput": 5e-7,
+      "bestCostOutput": 0.0000015,
+      "bestCostSource": "provider-page",
+      "bestCostSourceLabel": "官方",
+      "bestCostUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
+      "inputMargin": 1.0000000000000115,
+      "outputMargin": 0.9999999999999905
+    },
+    {
+      "provider": "openrouter",
+      "model": "anthropic/claude-opus-4.5",
+      "type": "chatCompletion",
+      "pricingUnit": "per-token",
+      "dbInput": 0.000005,
+      "dbOutput": 0.000025,
+      "maxDrift": 0,
+      "exceedsThreshold": false,
+      "hasPricingIssue": false,
+      "litellmInput": 0.000005,
+      "litellmOutput": 0.000025,
+      "litellmDrift": 0,
+      "openrouterInput": 0.000005,
+      "openrouterOutput": 0.000025,
+      "openrouterDrift": 0,
+      "dbCacheWrite": 0.00000625,
+      "dbCacheRead": 5e-7,
+      "litellmCacheWrite": 0.00000625,
+      "litellmCacheRead": 5e-7,
+      "inputRate": 0.00000505,
+      "outputRate": 0.00002525,
+      "inputRateIssue": 0.9999999999999903,
+      "outputRateIssue": 0.9999999999999971,
+      "bestCostInput": 0.000005,
+      "bestCostOutput": 0.000025,
+      "bestCostSource": "openrouter",
+      "bestCostSourceLabel": "OpenRouter",
+      "inputMargin": 0.9999999999999903,
+      "outputMargin": 0.9999999999999971
+    },
+    {
+      "provider": "openrouter",
+      "model": "anthropic/claude-opus-4",
+      "type": "chatCompletion",
+      "pricingUnit": "per-token",
+      "dbInput": 0.000015,
+      "dbOutput": 0.000075,
+      "maxDrift": 0,
+      "exceedsThreshold": false,
+      "hasPricingIssue": false,
+      "litellmInput": 0.000015,
+      "litellmOutput": 0.000075,
+      "litellmDrift": 0,
+      "openrouterInput": 0.000015,
+      "openrouterOutput": 0.000075,
+      "openrouterDrift": 0,
+      "providerPageInput": 0.000015,
+      "providerPageOutput": 0.000075,
+      "providerPageDrift": 0,
+      "providerPageUrl": "https://docs.anthropic.com/en/docs/about-claude/pricing",
+      "officialCacheTiers": [
+        {
+          "label": "5min-write",
+          "costPerToken": 0.00001875
+        },
+        {
+          "label": "1h-write",
+          "costPerToken": 0.00003
+        },
+        {
+          "label": "read",
+          "costPerToken": 0.0000015
+        }
+      ],
+      "officialCacheWrite": 0.00003,
+      "officialCacheRead": 0.0000015,
+      "dbCacheWrite": 0.00003,
+      "dbCacheRead": 0.0000015,
+      "litellmCacheWrite": 0.00001875,
+      "litellmCacheRead": 0.0000015,
+      "inputRate": 0.00001515,
+      "outputRate": 0.00007575,
+      "inputRateIssue": 1.0000000000000018,
+      "outputRateIssue": 1.0000000000000062,
+      "bestCostInput": 0.000015,
+      "bestCostOutput": 0.000075,
+      "bestCostSource": "provider-page",
+      "bestCostSourceLabel": "官方",
+      "bestCostUrl": "https://docs.anthropic.com/en/docs/about-claude/pricing",
+      "inputMargin": 1.0000000000000018,
+      "outputMargin": 1.0000000000000062
+    }
   ],
-  "totalModels": 194,
-  "entries": [
+  "unmatchedModels": [
     {
       "provider": "anthropic",
       "modelId": "claude-opus-4-6",
@@ -80,36 +299,6 @@
       "provider": "anthropic",
       "modelId": "claude-opus-4-1",
       "displayName": "Claude Opus 4.1",
-      "pricingUnit": "per-token",
-      "modelType": "chatCompletion",
-      "sourceUrl": "https://docs.anthropic.com/en/docs/about-claude/pricing",
-      "extractionMethod": "catalog-scraper",
-      "inputCostPerToken": 0.000015,
-      "outputCostPerToken": 0.000075,
-      "cachedInputCostPerToken": 0.0000015,
-      "cacheTiers": [
-        {
-          "label": "5min-write",
-          "costPerToken": 0.00001875
-        },
-        {
-          "label": "1h-write",
-          "costPerToken": 0.00003
-        },
-        {
-          "label": "read",
-          "costPerToken": 0.0000015
-        }
-      ],
-      "batchPricing": {
-        "inputCostPerToken": 0.0000075,
-        "outputCostPerToken": 0.0000375
-      }
-    },
-    {
-      "provider": "anthropic",
-      "modelId": "claude-opus-4",
-      "displayName": "Claude Opus 4",
       "pricingUnit": "per-token",
       "modelType": "chatCompletion",
       "sourceUrl": "https://docs.anthropic.com/en/docs/about-claude/pricing",
@@ -377,410 +566,6 @@
         "inputCostPerToken": 1.25e-7,
         "outputCostPerToken": 6.25e-7
       }
-    },
-    {
-      "provider": "google",
-      "modelId": "gemini-3.1-pro-preview",
-      "displayName": "Gemini 3.1 Pro Preview",
-      "pricingUnit": "per-token",
-      "modelType": "chatCompletion",
-      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
-      "extractionMethod": "catalog-scraper",
-      "inputCostPerToken": 0.000002,
-      "outputCostPerToken": 0.000012,
-      "cachedInputCostPerToken": 2e-7,
-      "cacheTiers": [
-        {
-          "label": "read",
-          "costPerToken": 2e-7
-        }
-      ],
-      "contextTiers": [
-        {
-          "threshold": ">200K",
-          "inputCostPerToken": 0.000004,
-          "outputCostPerToken": 0.000018
-        }
-      ],
-      "batchPricing": {
-        "inputCostPerToken": 0.000001,
-        "outputCostPerToken": 0.000006
-      }
-    },
-    {
-      "provider": "google",
-      "modelId": "gemini-3.1-flash-lite-preview",
-      "displayName": "Gemini 3.1 Flash-Lite Preview",
-      "pricingUnit": "per-token",
-      "modelType": "chatCompletion",
-      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
-      "extractionMethod": "catalog-scraper",
-      "inputCostPerToken": 2.5e-7,
-      "outputCostPerToken": 0.0000015,
-      "cachedInputCostPerToken": 2.5e-8,
-      "cacheTiers": [
-        {
-          "label": "read",
-          "costPerToken": 2.5e-8
-        }
-      ],
-      "batchPricing": {
-        "inputCostPerToken": 1.25e-7,
-        "outputCostPerToken": 7.5e-7
-      }
-    },
-    {
-      "provider": "google",
-      "modelId": "gemini-3.1-flash-image-preview",
-      "displayName": "Gemini 3.1 Flash Image Preview",
-      "pricingUnit": "per-image",
-      "modelType": "imageGeneration",
-      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
-      "extractionMethod": "catalog-scraper",
-      "inputCostPerToken": 5e-7,
-      "outputCostPerToken": 0.000003,
-      "costPerImage": 0.045
-    },
-    {
-      "provider": "google",
-      "modelId": "gemini-3-flash-preview",
-      "displayName": "Gemini 3 Flash Preview",
-      "pricingUnit": "per-token",
-      "modelType": "chatCompletion",
-      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
-      "extractionMethod": "catalog-scraper",
-      "inputCostPerToken": 5e-7,
-      "outputCostPerToken": 0.000003,
-      "cachedInputCostPerToken": 5e-8,
-      "cacheTiers": [
-        {
-          "label": "read",
-          "costPerToken": 5e-8
-        }
-      ],
-      "batchPricing": {
-        "inputCostPerToken": 2.5e-7,
-        "outputCostPerToken": 0.0000015
-      }
-    },
-    {
-      "provider": "google",
-      "modelId": "gemini-3-pro-image-preview",
-      "displayName": "Gemini 3 Pro Image Preview",
-      "pricingUnit": "per-image",
-      "modelType": "imageGeneration",
-      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
-      "extractionMethod": "catalog-scraper",
-      "inputCostPerToken": 0.000002,
-      "outputCostPerToken": 0.000012,
-      "costPerImage": 0.134
-    },
-    {
-      "provider": "google",
-      "modelId": "gemini-2.5-pro",
-      "displayName": "Gemini 2.5 Pro",
-      "pricingUnit": "per-token",
-      "modelType": "chatCompletion",
-      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
-      "extractionMethod": "catalog-scraper",
-      "inputCostPerToken": 0.00000125,
-      "outputCostPerToken": 0.00001,
-      "cachedInputCostPerToken": 1.25e-7,
-      "cacheTiers": [
-        {
-          "label": "read",
-          "costPerToken": 1.25e-7
-        }
-      ],
-      "contextTiers": [
-        {
-          "threshold": ">200K",
-          "inputCostPerToken": 0.0000025,
-          "outputCostPerToken": 0.000015
-        }
-      ],
-      "batchPricing": {
-        "inputCostPerToken": 6.25e-7,
-        "outputCostPerToken": 0.000005
-      }
-    },
-    {
-      "provider": "google",
-      "modelId": "gemini-2.5-flash",
-      "displayName": "Gemini 2.5 Flash",
-      "pricingUnit": "per-token",
-      "modelType": "chatCompletion",
-      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
-      "extractionMethod": "catalog-scraper",
-      "inputCostPerToken": 3e-7,
-      "outputCostPerToken": 0.0000025,
-      "cachedInputCostPerToken": 3e-8,
-      "cacheTiers": [
-        {
-          "label": "read",
-          "costPerToken": 3e-8
-        }
-      ],
-      "batchPricing": {
-        "inputCostPerToken": 1.5e-7,
-        "outputCostPerToken": 0.00000125
-      }
-    },
-    {
-      "provider": "google",
-      "modelId": "gemini-2.5-flash-lite",
-      "displayName": "Gemini 2.5 Flash-Lite",
-      "pricingUnit": "per-token",
-      "modelType": "chatCompletion",
-      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
-      "extractionMethod": "catalog-scraper",
-      "inputCostPerToken": 1e-7,
-      "outputCostPerToken": 4e-7,
-      "cachedInputCostPerToken": 1e-8,
-      "cacheTiers": [
-        {
-          "label": "read",
-          "costPerToken": 1e-8
-        }
-      ],
-      "batchPricing": {
-        "inputCostPerToken": 5e-8,
-        "outputCostPerToken": 2e-7
-      }
-    },
-    {
-      "provider": "google",
-      "modelId": "gemini-2.5-flash-lite-preview-09-2025",
-      "displayName": "Gemini 2.5 Flash-Lite Preview",
-      "pricingUnit": "per-token",
-      "modelType": "chatCompletion",
-      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
-      "extractionMethod": "catalog-scraper",
-      "inputCostPerToken": 1e-7,
-      "outputCostPerToken": 4e-7,
-      "cachedInputCostPerToken": 1e-8,
-      "cacheTiers": [
-        {
-          "label": "read",
-          "costPerToken": 1e-8
-        }
-      ],
-      "batchPricing": {
-        "inputCostPerToken": 5e-8,
-        "outputCostPerToken": 2e-7
-      }
-    },
-    {
-      "provider": "google",
-      "modelId": "gemini-2.5-flash-native-audio-preview-12-2025",
-      "displayName": "Gemini 2.5 Flash Native Audio (Live API)",
-      "pricingUnit": "per-token",
-      "modelType": "audio",
-      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
-      "extractionMethod": "catalog-scraper",
-      "inputCostPerToken": 5e-7,
-      "outputCostPerToken": 0.000002
-    },
-    {
-      "provider": "google",
-      "modelId": "gemini-2.5-flash-image",
-      "displayName": "Gemini 2.5 Flash Image",
-      "pricingUnit": "per-image",
-      "modelType": "imageGeneration",
-      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
-      "extractionMethod": "catalog-scraper",
-      "inputCostPerToken": 3e-7,
-      "costPerImage": 0.039
-    },
-    {
-      "provider": "google",
-      "modelId": "gemini-2.5-flash-preview-tts",
-      "displayName": "Gemini 2.5 Flash Preview TTS",
-      "pricingUnit": "per-token",
-      "modelType": "audio",
-      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
-      "extractionMethod": "catalog-scraper",
-      "inputCostPerToken": 5e-7,
-      "outputCostPerToken": 0.00001
-    },
-    {
-      "provider": "google",
-      "modelId": "gemini-2.5-pro-preview-tts",
-      "displayName": "Gemini 2.5 Pro Preview TTS",
-      "pricingUnit": "per-token",
-      "modelType": "audio",
-      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
-      "extractionMethod": "catalog-scraper",
-      "inputCostPerToken": 0.000001,
-      "outputCostPerToken": 0.00002
-    },
-    {
-      "provider": "google",
-      "modelId": "gemini-2.0-flash",
-      "displayName": "Gemini 2.0 Flash",
-      "pricingUnit": "per-token",
-      "modelType": "chatCompletion",
-      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
-      "extractionMethod": "catalog-scraper",
-      "inputCostPerToken": 1e-7,
-      "outputCostPerToken": 4e-7,
-      "cachedInputCostPerToken": 2.5e-8,
-      "cacheTiers": [
-        {
-          "label": "read",
-          "costPerToken": 2.5e-8
-        }
-      ],
-      "batchPricing": {
-        "inputCostPerToken": 5e-8,
-        "outputCostPerToken": 2e-7
-      },
-      "deprecated": true
-    },
-    {
-      "provider": "google",
-      "modelId": "gemini-2.0-flash-lite",
-      "displayName": "Gemini 2.0 Flash-Lite",
-      "pricingUnit": "per-token",
-      "modelType": "chatCompletion",
-      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
-      "extractionMethod": "catalog-scraper",
-      "inputCostPerToken": 7.5e-8,
-      "outputCostPerToken": 3e-7,
-      "batchPricing": {
-        "inputCostPerToken": 3.75e-8,
-        "outputCostPerToken": 1.5e-7
-      },
-      "deprecated": true
-    },
-    {
-      "provider": "google",
-      "modelId": "imagen-4.0-fast-generate-001",
-      "displayName": "Imagen 4 Fast",
-      "pricingUnit": "per-token",
-      "modelType": "imageGeneration",
-      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
-      "extractionMethod": "catalog-scraper",
-      "costPerImage": 0.02
-    },
-    {
-      "provider": "google",
-      "modelId": "imagen-4.0-generate-001",
-      "displayName": "Imagen 4",
-      "pricingUnit": "per-token",
-      "modelType": "imageGeneration",
-      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
-      "extractionMethod": "catalog-scraper",
-      "costPerImage": 0.04
-    },
-    {
-      "provider": "google",
-      "modelId": "imagen-4.0-ultra-generate-001",
-      "displayName": "Imagen 4 Ultra",
-      "pricingUnit": "per-token",
-      "modelType": "imageGeneration",
-      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
-      "extractionMethod": "catalog-scraper",
-      "costPerImage": 0.06
-    },
-    {
-      "provider": "google",
-      "modelId": "veo-3.1-generate-preview",
-      "displayName": "Veo 3.1",
-      "pricingUnit": "per-second",
-      "modelType": "video",
-      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
-      "extractionMethod": "catalog-scraper",
-      "costPerSecond": 0.4
-    },
-    {
-      "provider": "google",
-      "modelId": "veo-3.1-fast-generate-preview",
-      "displayName": "Veo 3.1 Fast",
-      "pricingUnit": "per-second",
-      "modelType": "video",
-      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
-      "extractionMethod": "catalog-scraper",
-      "costPerSecond": 0.15
-    },
-    {
-      "provider": "google",
-      "modelId": "veo-3.0-generate-001",
-      "displayName": "Veo 3",
-      "pricingUnit": "per-second",
-      "modelType": "video",
-      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
-      "extractionMethod": "catalog-scraper",
-      "costPerSecond": 0.4
-    },
-    {
-      "provider": "google",
-      "modelId": "veo-3.0-fast-generate-001",
-      "displayName": "Veo 3 Fast",
-      "pricingUnit": "per-second",
-      "modelType": "video",
-      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
-      "extractionMethod": "catalog-scraper",
-      "costPerSecond": 0.15
-    },
-    {
-      "provider": "google",
-      "modelId": "veo-2.0-generate-001",
-      "displayName": "Veo 2",
-      "pricingUnit": "per-second",
-      "modelType": "video",
-      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
-      "extractionMethod": "catalog-scraper",
-      "costPerSecond": 0.35
-    },
-    {
-      "provider": "google",
-      "modelId": "gemini-embedding-2-preview",
-      "displayName": "Gemini Embedding 2 Preview",
-      "pricingUnit": "per-token",
-      "modelType": "embedding",
-      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
-      "extractionMethod": "catalog-scraper",
-      "inputCostPerToken": 2e-7
-    },
-    {
-      "provider": "google",
-      "modelId": "gemini-embedding-001",
-      "displayName": "Gemini Embedding",
-      "pricingUnit": "per-token",
-      "modelType": "embedding",
-      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
-      "extractionMethod": "catalog-scraper",
-      "inputCostPerToken": 1.5e-7
-    },
-    {
-      "provider": "google",
-      "modelId": "gemini-robotics-er-1.5-preview",
-      "displayName": "Gemini Robotics-ER 1.5 Preview",
-      "pricingUnit": "per-token",
-      "modelType": "chatCompletion",
-      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
-      "extractionMethod": "catalog-scraper",
-      "inputCostPerToken": 3e-7,
-      "outputCostPerToken": 0.0000025
-    },
-    {
-      "provider": "google",
-      "modelId": "gemini-2.5-computer-use-preview-10-2025",
-      "displayName": "Gemini 2.5 Computer Use Preview",
-      "pricingUnit": "per-token",
-      "modelType": "chatCompletion",
-      "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing.md.txt",
-      "extractionMethod": "catalog-scraper",
-      "inputCostPerToken": 0.00000125,
-      "outputCostPerToken": 0.00001,
-      "contextTiers": [
-        {
-          "threshold": ">200K",
-          "inputCostPerToken": 0.0000025,
-          "outputCostPerToken": 0.000015
-        }
-      ]
     },
     {
       "provider": "openai",
@@ -1725,18 +1510,6 @@
     },
     {
       "provider": "openai",
-      "modelId": "chatgpt-4o-latest",
-      "displayName": "chatgpt-4o-latest",
-      "pricingUnit": "per-token",
-      "modelType": "chatCompletion",
-      "sourceUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
-      "extractionMethod": "catalog-scraper",
-      "inputCostPerToken": 0.000005,
-      "outputCostPerToken": 0.000015,
-      "deprecated": true
-    },
-    {
-      "provider": "openai",
       "modelId": "chatgpt-image-latest",
       "displayName": "chatgpt-image-latest",
       "pricingUnit": "per-token",
@@ -1755,63 +1528,6 @@
     },
     {
       "provider": "openai",
-      "modelId": "chatgpt-image-latest",
-      "displayName": "chatgpt-image-latest",
-      "pricingUnit": "per-image",
-      "modelType": "imageGeneration",
-      "sourceUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
-      "extractionMethod": "catalog-scraper",
-      "costPerImage": 0.034,
-      "imageVariants": [
-        {
-          "quality": "low",
-          "size": "1024x1024",
-          "costPerImage": 0.009
-        },
-        {
-          "quality": "low",
-          "size": "1024x1536",
-          "costPerImage": 0.013
-        },
-        {
-          "quality": "low",
-          "size": "1536x1024",
-          "costPerImage": 0.013
-        },
-        {
-          "quality": "medium",
-          "size": "1024x1024",
-          "costPerImage": 0.034
-        },
-        {
-          "quality": "medium",
-          "size": "1024x1536",
-          "costPerImage": 0.05
-        },
-        {
-          "quality": "medium",
-          "size": "1536x1024",
-          "costPerImage": 0.05
-        },
-        {
-          "quality": "high",
-          "size": "1024x1024",
-          "costPerImage": 0.133
-        },
-        {
-          "quality": "high",
-          "size": "1024x1536",
-          "costPerImage": 0.2
-        },
-        {
-          "quality": "high",
-          "size": "1536x1024",
-          "costPerImage": 0.2
-        }
-      ]
-    },
-    {
-      "provider": "openai",
       "modelId": "gpt-3.5-0301",
       "displayName": "gpt-3.5-0301",
       "pricingUnit": "per-token",
@@ -1820,29 +1536,6 @@
       "extractionMethod": "catalog-scraper",
       "inputCostPerToken": 0.0000015,
       "outputCostPerToken": 0.000002,
-      "deprecated": true
-    },
-    {
-      "provider": "openai",
-      "modelId": "gpt-3.5-turbo",
-      "displayName": "gpt-3.5-turbo",
-      "pricingUnit": "per-token",
-      "modelType": "fineTuning",
-      "sourceUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
-      "extractionMethod": "catalog-scraper",
-      "inputCostPerToken": 0.000003,
-      "outputCostPerToken": 0.000006
-    },
-    {
-      "provider": "openai",
-      "modelId": "gpt-3.5-turbo",
-      "displayName": "gpt-3.5-turbo",
-      "pricingUnit": "per-token",
-      "modelType": "chatCompletion",
-      "sourceUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
-      "extractionMethod": "catalog-scraper",
-      "inputCostPerToken": 5e-7,
-      "outputCostPerToken": 0.0000015,
       "deprecated": true
     },
     {
@@ -2011,63 +1704,6 @@
     },
     {
       "provider": "openai",
-      "modelId": "gpt-image-1",
-      "displayName": "gpt-image-1",
-      "pricingUnit": "per-image",
-      "modelType": "imageGeneration",
-      "sourceUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
-      "extractionMethod": "catalog-scraper",
-      "costPerImage": 0.042,
-      "imageVariants": [
-        {
-          "quality": "low",
-          "size": "1024x1024",
-          "costPerImage": 0.011
-        },
-        {
-          "quality": "low",
-          "size": "1024x1536",
-          "costPerImage": 0.016
-        },
-        {
-          "quality": "low",
-          "size": "1536x1024",
-          "costPerImage": 0.016
-        },
-        {
-          "quality": "medium",
-          "size": "1024x1024",
-          "costPerImage": 0.042
-        },
-        {
-          "quality": "medium",
-          "size": "1024x1536",
-          "costPerImage": 0.063
-        },
-        {
-          "quality": "medium",
-          "size": "1536x1024",
-          "costPerImage": 0.063
-        },
-        {
-          "quality": "high",
-          "size": "1024x1024",
-          "costPerImage": 0.167
-        },
-        {
-          "quality": "high",
-          "size": "1024x1536",
-          "costPerImage": 0.25
-        },
-        {
-          "quality": "high",
-          "size": "1536x1024",
-          "costPerImage": 0.25
-        }
-      ]
-    },
-    {
-      "provider": "openai",
       "modelId": "gpt-image-1-mini",
       "displayName": "gpt-image-1-mini",
       "pricingUnit": "per-token",
@@ -2080,81 +1716,6 @@
         {
           "label": "read",
           "costPerToken": 2e-7
-        }
-      ]
-    },
-    {
-      "provider": "openai",
-      "modelId": "gpt-image-1-mini",
-      "displayName": "gpt-image-1-mini",
-      "pricingUnit": "per-token",
-      "modelType": "imageGeneration",
-      "sourceUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
-      "extractionMethod": "catalog-scraper",
-      "inputCostPerToken": 0.00000125,
-      "outputCostPerToken": 0.000004,
-      "cachedInputCostPerToken": 1.3e-7,
-      "cacheTiers": [
-        {
-          "label": "read",
-          "costPerToken": 1.3e-7
-        }
-      ]
-    },
-    {
-      "provider": "openai",
-      "modelId": "gpt-image-1-mini",
-      "displayName": "gpt-image-1-mini",
-      "pricingUnit": "per-image",
-      "modelType": "imageGeneration",
-      "sourceUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
-      "extractionMethod": "catalog-scraper",
-      "costPerImage": 0.011,
-      "imageVariants": [
-        {
-          "quality": "low",
-          "size": "1024x1024",
-          "costPerImage": 0.005
-        },
-        {
-          "quality": "low",
-          "size": "1024x1536",
-          "costPerImage": 0.006
-        },
-        {
-          "quality": "low",
-          "size": "1536x1024",
-          "costPerImage": 0.006
-        },
-        {
-          "quality": "medium",
-          "size": "1024x1024",
-          "costPerImage": 0.011
-        },
-        {
-          "quality": "medium",
-          "size": "1024x1536",
-          "costPerImage": 0.015
-        },
-        {
-          "quality": "medium",
-          "size": "1536x1024",
-          "costPerImage": 0.015
-        },
-        {
-          "quality": "high",
-          "size": "1024x1024",
-          "costPerImage": 0.036
-        },
-        {
-          "quality": "high",
-          "size": "1024x1536",
-          "costPerImage": 0.052
-        },
-        {
-          "quality": "high",
-          "size": "1536x1024",
-          "costPerImage": 0.052
         }
       ]
     },
@@ -2173,81 +1734,6 @@
         {
           "label": "read",
           "costPerToken": 0.00000125
-        }
-      ]
-    },
-    {
-      "provider": "openai",
-      "modelId": "gpt-image-1.5",
-      "displayName": "gpt-image-1.5",
-      "pricingUnit": "per-token",
-      "modelType": "imageGeneration",
-      "sourceUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
-      "extractionMethod": "catalog-scraper",
-      "inputCostPerToken": 0.000004,
-      "outputCostPerToken": 0.000016,
-      "cachedInputCostPerToken": 0.000001,
-      "cacheTiers": [
-        {
-          "label": "read",
-          "costPerToken": 0.000001
-        }
-      ]
-    },
-    {
-      "provider": "openai",
-      "modelId": "gpt-image-1.5",
-      "displayName": "gpt-image-1.5",
-      "pricingUnit": "per-image",
-      "modelType": "imageGeneration",
-      "sourceUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
-      "extractionMethod": "catalog-scraper",
-      "costPerImage": 0.034,
-      "imageVariants": [
-        {
-          "quality": "low",
-          "size": "1024x1024",
-          "costPerImage": 0.009
-        },
-        {
-          "quality": "low",
-          "size": "1024x1536",
-          "costPerImage": 0.013
-        },
-        {
-          "quality": "low",
-          "size": "1536x1024",
-          "costPerImage": 0.013
-        },
-        {
-          "quality": "medium",
-          "size": "1024x1024",
-          "costPerImage": 0.034
-        },
-        {
-          "quality": "medium",
-          "size": "1024x1536",
-          "costPerImage": 0.05
-        },
-        {
-          "quality": "medium",
-          "size": "1536x1024",
-          "costPerImage": 0.05
-        },
-        {
-          "quality": "high",
-          "size": "1024x1024",
-          "costPerImage": 0.133
-        },
-        {
-          "quality": "high",
-          "size": "1024x1536",
-          "costPerImage": 0.2
-        },
-        {
-          "quality": "high",
-          "size": "1536x1024",
-          "costPerImage": 0.2
         }
       ]
     },
@@ -2292,17 +1778,6 @@
       "extractionMethod": "catalog-scraper",
       "inputCostPerToken": 0.0000025,
       "outputCostPerToken": 0.00001
-    },
-    {
-      "provider": "openai",
-      "modelId": "gpt-audio-1.5",
-      "displayName": "gpt-audio-1.5",
-      "pricingUnit": "per-token",
-      "modelType": "audio",
-      "sourceUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
-      "extractionMethod": "catalog-scraper",
-      "inputCostPerToken": 0.000032,
-      "outputCostPerToken": 0.000064
     },
     {
       "provider": "openai",
@@ -2353,24 +1828,6 @@
     },
     {
       "provider": "openai",
-      "modelId": "gpt-realtime-1.5",
-      "displayName": "gpt-realtime-1.5",
-      "pricingUnit": "per-token",
-      "modelType": "audio",
-      "sourceUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
-      "extractionMethod": "catalog-scraper",
-      "inputCostPerToken": 0.000032,
-      "outputCostPerToken": 0.000064,
-      "cachedInputCostPerToken": 4e-7,
-      "cacheTiers": [
-        {
-          "label": "read",
-          "costPerToken": 4e-7
-        }
-      ]
-    },
-    {
-      "provider": "openai",
       "modelId": "gpt-realtime-mini",
       "displayName": "gpt-realtime-mini",
       "pricingUnit": "per-token",
@@ -2384,24 +1841,6 @@
         {
           "label": "read",
           "costPerToken": 6e-8
-        }
-      ]
-    },
-    {
-      "provider": "openai",
-      "modelId": "gpt-realtime-mini",
-      "displayName": "gpt-realtime-mini",
-      "pricingUnit": "per-token",
-      "modelType": "audio",
-      "sourceUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
-      "extractionMethod": "catalog-scraper",
-      "inputCostPerToken": 0.00001,
-      "outputCostPerToken": 0.00002,
-      "cachedInputCostPerToken": 3e-7,
-      "cacheTiers": [
-        {
-          "label": "read",
-          "costPerToken": 3e-7
         }
       ]
     },
@@ -2460,17 +1899,6 @@
       "modelId": "babbage-002",
       "displayName": "babbage-002",
       "pricingUnit": "per-token",
-      "modelType": "fineTuning",
-      "sourceUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
-      "extractionMethod": "catalog-scraper",
-      "inputCostPerToken": 0.0000016,
-      "outputCostPerToken": 0.0000016
-    },
-    {
-      "provider": "openai",
-      "modelId": "babbage-002",
-      "displayName": "babbage-002",
-      "pricingUnit": "per-token",
       "modelType": "chatCompletion",
       "sourceUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
       "extractionMethod": "catalog-scraper",
@@ -2494,17 +1922,6 @@
       "modelId": "davinci-002",
       "displayName": "davinci-002",
       "pricingUnit": "per-token",
-      "modelType": "fineTuning",
-      "sourceUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
-      "extractionMethod": "catalog-scraper",
-      "inputCostPerToken": 0.000012,
-      "outputCostPerToken": 0.000012
-    },
-    {
-      "provider": "openai",
-      "modelId": "davinci-002",
-      "displayName": "davinci-002",
-      "pricingUnit": "per-token",
       "modelType": "chatCompletion",
       "sourceUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
       "extractionMethod": "catalog-scraper",
@@ -2521,24 +1938,6 @@
       "sourceUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
       "extractionMethod": "catalog-scraper",
       "costPerMinute": 0.006
-    },
-    {
-      "provider": "deepseek",
-      "modelId": "deepseek-chat",
-      "displayName": "DeepSeek Chat (V3.2 Non-thinking)",
-      "pricingUnit": "per-token",
-      "modelType": "chatCompletion",
-      "sourceUrl": "https://api-docs.deepseek.com/quick_start/pricing",
-      "extractionMethod": "catalog-scraper",
-      "inputCostPerToken": 2.8e-7,
-      "outputCostPerToken": 4.2e-7,
-      "cachedInputCostPerToken": 2.8e-8,
-      "cacheTiers": [
-        {
-          "label": "read",
-          "costPerToken": 2.8e-8
-        }
-      ]
     },
     {
       "provider": "deepseek",
@@ -2598,24 +1997,6 @@
       "provider": "xai",
       "modelId": "grok-3-mini-beta",
       "displayName": "grok-3-mini-beta",
-      "pricingUnit": "per-token",
-      "modelType": "chatCompletion",
-      "sourceUrl": "https://docs.x.ai/developers/models",
-      "extractionMethod": "catalog-scraper",
-      "inputCostPerToken": 3e-7,
-      "outputCostPerToken": 5e-7,
-      "cachedInputCostPerToken": 7.5e-8,
-      "cacheTiers": [
-        {
-          "label": "read",
-          "costPerToken": 7.5e-8
-        }
-      ]
-    },
-    {
-      "provider": "xai",
-      "modelId": "grok-3-mini-fast",
-      "displayName": "grok-3-mini-fast",
       "pricingUnit": "per-token",
       "modelType": "chatCompletion",
       "sourceUrl": "https://docs.x.ai/developers/models",

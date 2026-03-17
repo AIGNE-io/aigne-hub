@@ -1,5 +1,5 @@
 {
-  "timestamp": 1773648998433,
+  "timestamp": 1773741909814,
   "entries": [
     {
       "provider": "openai",
@@ -394,6 +394,13 @@
           "label": "read",
           "costPerToken": 2.5e-7
         }
+      ],
+      "contextTiers": [
+        {
+          "threshold": ">272K",
+          "inputCostPerToken": 0.000005,
+          "outputCostPerToken": 0.0000225
+        }
       ]
     },
     {
@@ -405,7 +412,14 @@
       "sourceUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
       "extractionMethod": "catalog-scraper",
       "inputCostPerToken": 0.00003,
-      "outputCostPerToken": 0.00018
+      "outputCostPerToken": 0.00018,
+      "contextTiers": [
+        {
+          "threshold": ">272K",
+          "inputCostPerToken": 0.00006,
+          "outputCostPerToken": 0.00027
+        }
+      ]
     },
     {
       "provider": "openai",
@@ -560,8 +574,7 @@
           "label": "read",
           "costPerToken": 7.5e-7
         }
-      ],
-      "trainingCostPerToken": 0.000025
+      ]
     },
     {
       "provider": "openai",
@@ -597,8 +610,7 @@
           "label": "read",
           "costPerToken": 2e-7
         }
-      ],
-      "trainingCostPerToken": 0.000005
+      ]
     },
     {
       "provider": "openai",
@@ -634,8 +646,7 @@
           "label": "read",
           "costPerToken": 5e-8
         }
-      ],
-      "trainingCostPerToken": 0.0000015
+      ]
     },
     {
       "provider": "openai",
@@ -682,8 +693,7 @@
           "label": "read",
           "costPerToken": 0.000001875
         }
-      ],
-      "trainingCostPerToken": 0.000025
+      ]
     },
     {
       "provider": "openai",
@@ -730,8 +740,7 @@
           "label": "read",
           "costPerToken": 1.5e-7
         }
-      ],
-      "trainingCostPerToken": 0.000003
+      ]
     },
     {
       "provider": "openai",
@@ -775,6 +784,29 @@
     },
     {
       "provider": "openai",
+      "modelId": "gpt-4o-mini-transcribe",
+      "displayName": "gpt-4o-mini-transcribe",
+      "pricingUnit": "per-minute",
+      "modelType": "transcription",
+      "sourceUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
+      "extractionMethod": "catalog-scraper",
+      "inputCostPerToken": 0.00000125,
+      "outputCostPerToken": 0.000005,
+      "costPerMinute": 0.003
+    },
+    {
+      "provider": "openai",
+      "modelId": "gpt-4o-mini-tts",
+      "displayName": "gpt-4o-mini-tts",
+      "pricingUnit": "per-minute",
+      "modelType": "transcription",
+      "sourceUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
+      "extractionMethod": "catalog-scraper",
+      "inputCostPerToken": 6e-7,
+      "costPerMinute": 0.015
+    },
+    {
+      "provider": "openai",
       "modelId": "gpt-4o-realtime-preview",
       "displayName": "gpt-4o-realtime-preview",
       "pricingUnit": "per-token",
@@ -801,6 +833,30 @@
       "extractionMethod": "catalog-scraper",
       "inputCostPerToken": 0.0000025,
       "outputCostPerToken": 0.00001
+    },
+    {
+      "provider": "openai",
+      "modelId": "gpt-4o-transcribe",
+      "displayName": "gpt-4o-transcribe",
+      "pricingUnit": "per-minute",
+      "modelType": "transcription",
+      "sourceUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
+      "extractionMethod": "catalog-scraper",
+      "inputCostPerToken": 0.0000025,
+      "outputCostPerToken": 0.00001,
+      "costPerMinute": 0.006
+    },
+    {
+      "provider": "openai",
+      "modelId": "gpt-4o-transcribe-diarize",
+      "displayName": "gpt-4o-transcribe-diarize",
+      "pricingUnit": "per-minute",
+      "modelType": "transcription",
+      "sourceUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
+      "extractionMethod": "catalog-scraper",
+      "inputCostPerToken": 0.0000025,
+      "outputCostPerToken": 0.00001,
+      "costPerMinute": 0.006
     },
     {
       "provider": "openai",
@@ -924,7 +980,7 @@
       "modelType": "imageGeneration",
       "sourceUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
       "extractionMethod": "catalog-scraper",
-      "costPerImage": 0.009,
+      "costPerImage": 0.034,
       "imageVariants": [
         {
           "quality": "low",
@@ -994,8 +1050,7 @@
       "sourceUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
       "extractionMethod": "catalog-scraper",
       "inputCostPerToken": 0.000003,
-      "outputCostPerToken": 0.000006,
-      "trainingCostPerToken": 0.000008
+      "outputCostPerToken": 0.000006
     },
     {
       "provider": "openai",
@@ -1181,7 +1236,7 @@
       "modelType": "imageGeneration",
       "sourceUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
       "extractionMethod": "catalog-scraper",
-      "costPerImage": 0.011,
+      "costPerImage": 0.042,
       "imageVariants": [
         {
           "quality": "low",
@@ -1251,11 +1306,29 @@
       "provider": "openai",
       "modelId": "gpt-image-1-mini",
       "displayName": "gpt-image-1-mini",
+      "pricingUnit": "per-token",
+      "modelType": "imageGeneration",
+      "sourceUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
+      "extractionMethod": "catalog-scraper",
+      "inputCostPerToken": 0.00000125,
+      "outputCostPerToken": 0.000004,
+      "cachedInputCostPerToken": 1.3e-7,
+      "cacheTiers": [
+        {
+          "label": "read",
+          "costPerToken": 1.3e-7
+        }
+      ]
+    },
+    {
+      "provider": "openai",
+      "modelId": "gpt-image-1-mini",
+      "displayName": "gpt-image-1-mini",
       "pricingUnit": "per-image",
       "modelType": "imageGeneration",
       "sourceUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
       "extractionMethod": "catalog-scraper",
-      "costPerImage": 0.005,
+      "costPerImage": 0.011,
       "imageVariants": [
         {
           "quality": "low",
@@ -1264,12 +1337,12 @@
         },
         {
           "quality": "low",
-          "size": "1024x1792",
+          "size": "1024x1536",
           "costPerImage": 0.006
         },
         {
           "quality": "low",
-          "size": "1792x1024",
+          "size": "1536x1024",
           "costPerImage": 0.006
         },
         {
@@ -1279,12 +1352,12 @@
         },
         {
           "quality": "medium",
-          "size": "1024x1792",
+          "size": "1024x1536",
           "costPerImage": 0.015
         },
         {
           "quality": "medium",
-          "size": "1792x1024",
+          "size": "1536x1024",
           "costPerImage": 0.015
         },
         {
@@ -1294,49 +1367,13 @@
         },
         {
           "quality": "high",
-          "size": "1024x1792",
+          "size": "1024x1536",
           "costPerImage": 0.052
         },
         {
           "quality": "high",
-          "size": "1792x1024",
+          "size": "1536x1024",
           "costPerImage": 0.052
-        }
-      ]
-    },
-    {
-      "provider": "openai",
-      "modelId": "gpt-image-1-mini/image/image",
-      "displayName": "gpt-image-1-mini/image (image tokens)",
-      "pricingUnit": "per-token",
-      "modelType": "imageGeneration",
-      "sourceUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
-      "extractionMethod": "catalog-scraper",
-      "inputCostPerToken": 0.00000125,
-      "outputCostPerToken": 0.000004,
-      "cachedInputCostPerToken": 1.3e-7,
-      "cacheTiers": [
-        {
-          "label": "read",
-          "costPerToken": 1.3e-7
-        }
-      ]
-    },
-    {
-      "provider": "openai",
-      "modelId": "gpt-image-1-mini/image/image",
-      "displayName": "gpt-image-1-mini/image (image tokens)",
-      "pricingUnit": "per-token",
-      "modelType": "imageGeneration",
-      "sourceUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
-      "extractionMethod": "catalog-scraper",
-      "inputCostPerToken": 0.00000125,
-      "outputCostPerToken": 0.000004,
-      "cachedInputCostPerToken": 1.3e-7,
-      "cacheTiers": [
-        {
-          "label": "read",
-          "costPerToken": 1.3e-7
         }
       ]
     },
@@ -1362,11 +1399,29 @@
       "provider": "openai",
       "modelId": "gpt-image-1.5",
       "displayName": "gpt-image-1.5",
+      "pricingUnit": "per-token",
+      "modelType": "imageGeneration",
+      "sourceUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
+      "extractionMethod": "catalog-scraper",
+      "inputCostPerToken": 0.000004,
+      "outputCostPerToken": 0.000016,
+      "cachedInputCostPerToken": 0.000001,
+      "cacheTiers": [
+        {
+          "label": "read",
+          "costPerToken": 0.000001
+        }
+      ]
+    },
+    {
+      "provider": "openai",
+      "modelId": "gpt-image-1.5",
+      "displayName": "gpt-image-1.5",
       "pricingUnit": "per-image",
       "modelType": "imageGeneration",
       "sourceUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
       "extractionMethod": "catalog-scraper",
-      "costPerImage": 0.009,
+      "costPerImage": 0.034,
       "imageVariants": [
         {
           "quality": "low",
@@ -1417,42 +1472,6 @@
     },
     {
       "provider": "openai",
-      "modelId": "gpt-image-1.5/image/image",
-      "displayName": "gpt-image-1.5/image (image tokens)",
-      "pricingUnit": "per-token",
-      "modelType": "imageGeneration",
-      "sourceUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
-      "extractionMethod": "catalog-scraper",
-      "inputCostPerToken": 0.000004,
-      "outputCostPerToken": 0.000016,
-      "cachedInputCostPerToken": 0.000001,
-      "cacheTiers": [
-        {
-          "label": "read",
-          "costPerToken": 0.000001
-        }
-      ]
-    },
-    {
-      "provider": "openai",
-      "modelId": "gpt-image-1.5/image/image",
-      "displayName": "gpt-image-1.5/image (image tokens)",
-      "pricingUnit": "per-token",
-      "modelType": "imageGeneration",
-      "sourceUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
-      "extractionMethod": "catalog-scraper",
-      "inputCostPerToken": 0.000004,
-      "outputCostPerToken": 0.000016,
-      "cachedInputCostPerToken": 0.000001,
-      "cacheTiers": [
-        {
-          "label": "read",
-          "costPerToken": 0.000001
-        }
-      ]
-    },
-    {
-      "provider": "openai",
       "modelId": "sora-2",
       "displayName": "sora-2",
       "pricingUnit": "per-second",
@@ -1495,8 +1514,8 @@
     },
     {
       "provider": "openai",
-      "modelId": "gpt-audio-1.5/audio",
-      "displayName": "gpt-audio-1.5 (audio tokens)",
+      "modelId": "gpt-audio-1.5",
+      "displayName": "gpt-audio-1.5",
       "pricingUnit": "per-token",
       "modelType": "audio",
       "sourceUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
@@ -1553,8 +1572,8 @@
     },
     {
       "provider": "openai",
-      "modelId": "gpt-realtime-1.5/audio",
-      "displayName": "gpt-realtime-1.5 (audio tokens)",
+      "modelId": "gpt-realtime-1.5",
+      "displayName": "gpt-realtime-1.5",
       "pricingUnit": "per-token",
       "modelType": "audio",
       "sourceUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
@@ -1589,8 +1608,8 @@
     },
     {
       "provider": "openai",
-      "modelId": "gpt-realtime-mini/audio",
-      "displayName": "gpt-realtime-mini (audio tokens)",
+      "modelId": "gpt-realtime-mini",
+      "displayName": "gpt-realtime-mini",
       "pricingUnit": "per-token",
       "modelType": "audio",
       "sourceUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
@@ -1664,8 +1683,7 @@
       "sourceUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
       "extractionMethod": "catalog-scraper",
       "inputCostPerToken": 0.0000016,
-      "outputCostPerToken": 0.0000016,
-      "trainingCostPerToken": 4e-7
+      "outputCostPerToken": 0.0000016
     },
     {
       "provider": "openai",
@@ -1699,8 +1717,7 @@
       "sourceUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
       "extractionMethod": "catalog-scraper",
       "inputCostPerToken": 0.000012,
-      "outputCostPerToken": 0.000012,
-      "trainingCostPerToken": 0.000006
+      "outputCostPerToken": 0.000012
     },
     {
       "provider": "openai",
