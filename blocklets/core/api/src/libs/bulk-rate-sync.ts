@@ -287,11 +287,13 @@ export function officialPricingToSyncUpdates(
 
     // Map caching info
     const readRate = entry.cachedInputCostPerToken;
-    const writeTier = entry.cacheTiers?.find((t) => t.label.includes('write'));
-    if (readRate != null || writeTier) {
+    const writeTiers = entry.cacheTiers?.filter((t) => t.label.includes('write')) || [];
+    const maxWriteTier =
+      writeTiers.length > 0 ? writeTiers.reduce((max, t) => (t.costPerToken > max.costPerToken ? t : max)) : null;
+    if (readRate != null || maxWriteTier) {
       update.caching = {};
       if (readRate != null) update.caching.readRate = readRate;
-      if (writeTier) update.caching.writeRate = writeTier.costPerToken;
+      if (maxWriteTier) update.caching.writeRate = maxWriteTier.costPerToken;
     }
 
     updates.push(update);

@@ -12,13 +12,28 @@
 import fs from 'fs';
 import path from 'path';
 
-let data, outputFile, apiBaseUrl;
+let data,
+  unmatchedModels = [],
+  outputFile,
+  apiBaseUrl;
 if (process.argv[2] && process.argv[2] !== '-') {
-  data = JSON.parse(fs.readFileSync(process.argv[2], 'utf-8'));
+  const raw = JSON.parse(fs.readFileSync(process.argv[2], 'utf-8'));
+  if (Array.isArray(raw)) {
+    data = raw; // backward compat
+  } else {
+    data = raw.results || raw;
+    unmatchedModels = raw.unmatchedModels || [];
+  }
   outputFile = process.argv[3] || null;
   apiBaseUrl = process.argv[4] || '';
 } else {
-  data = JSON.parse(fs.readFileSync('/dev/stdin', 'utf-8'));
+  const raw = JSON.parse(fs.readFileSync('/dev/stdin', 'utf-8'));
+  if (Array.isArray(raw)) {
+    data = raw;
+  } else {
+    data = raw.results || raw;
+    unmatchedModels = raw.unmatchedModels || [];
+  }
   outputFile = process.argv[2] === '-' ? process.argv[3] || null : null;
   apiBaseUrl = '';
 }
@@ -134,14 +149,17 @@ function buildCacheTierCol(tiers, dbSellVal) {
 const DTH = 2;
 const COLS = 8;
 const isPerUnit = (m) => m.pricingUnit === 'per-image' || m.pricingUnit === 'per-second';
-const hasDrift = (m) =>
-  (!isPerUnit(m) && m.inputMargin != null && Math.abs(m.inputMargin) > DTH) ||
-  (m.outputMargin != null && Math.abs(m.outputMargin) > DTH) ||
-  // per-image/per-second 模型的 providerPageOutput 可能取的是最低变体，
-  // 与 DB 售价（最高变体）比较会产生虚假漂移；如果 outputMargin 正常则跳过
-  (m.exceedsThreshold &&
-    m.maxDrift > 0 &&
-    !(isPerUnit(m) && m.outputMargin != null && Math.abs(m.outputMargin) <= DTH));
+const hasDrift = (m) => {
+  // DB sell vs best-cost margin check (direct actionable drift)
+  const inputOff = !isPerUnit(m) && m.inputMargin != null && Math.abs(m.inputMargin) > DTH;
+  const outputOff = m.outputMargin != null && Math.abs(m.outputMargin) > DTH;
+  if (inputOff || outputOff) return true;
+  // Cache tier drift: DB cache price < official highest tier (actionable)
+  if (m.cacheTierWriteDrift > 0 || m.cacheTierReadDrift > 0) return true;
+  // If DB margins are within threshold, don't flag drift from external source disagreements
+  // (e.g. LiteLLM has stale data but DB matches official — not actionable)
+  return false;
+};
 const hasBelowCost = (m) => {
   if (
     (m.outputMargin != null && m.outputMargin < -DTH) ||
@@ -217,8 +235,10 @@ const ok = data.filter(
     !noMatchKeys.has(`${m.provider}/${m.model}`)
 );
 
-// Collect unique providers (sorted) for filter buttons
-const allProviders = [...new Set(data.map((m) => m.provider))].sort((a, b) => a.localeCompare(b));
+// Collect unique providers (sorted) for filter buttons — include providers from both DB and unmatched
+const allProviders = [...new Set([...data.map((m) => m.provider), ...unmatchedModels.map((m) => m.provider)])].sort(
+  (a, b) => a.localeCompare(b)
+);
 
 let rid = 0;
 
@@ -389,7 +409,7 @@ function buildSection(models) {
       pop += `</div>`;
 
       const modelHtml = `<span class="ti">${icon}</span><code class="mname" title="${m.provider}/${m.model}"><strong>${m.model}</strong></code>${unit ? `<span class="utag">${unit}</span>` : ''}`;
-      const checkHtml = `<label class="rchk" title="标记为已读"><input type="checkbox" class="rchk-in" data-rk="${mKey}"/><span class="rchk-box"></span></label>`;
+      const checkHtml = `<label class="rchk" title="选中同步"><input type="checkbox" class="rchk-in" data-rk="${mKey}"/><span class="rchk-box"></span></label>`;
       const sourcesHtml = `<div class="sarea" data-popover="pop-${id}">${badges}</div>${pop}`;
 
       if (hasMultiCost) {
@@ -487,6 +507,80 @@ function buildSection(models) {
   return rows;
 }
 
+// --- Unmatched official models section ---
+const typeOrder = {
+  chatCompletion: 0,
+  embedding: 1,
+  imageGeneration: 2,
+  audio: 3,
+  video: 4,
+  fineTuning: 5,
+  transcription: 6,
+};
+const typeLabels = {
+  chatCompletion: '对话',
+  embedding: '嵌入',
+  imageGeneration: '图像',
+  audio: '音频',
+  video: '视频',
+  fineTuning: '微调',
+  transcription: '转录',
+  tool: '工具',
+};
+function fmtMTok(v) {
+  if (v === undefined || v === null) return '<span class="na">-</span>';
+  if (v === 0) return '$0';
+  const p = v * 1e6;
+  if (p < 0.01) return '$' + p.toExponential(2);
+  if (p < 1) return '$' + p.toFixed(3);
+  return '$' + p.toFixed(2);
+}
+const UM_COLS = 7;
+function buildUnmatchedSection(models) {
+  if (!models.length) return `<tr><td colspan="${UM_COLS}" class="empty">无</td></tr>`;
+  // Group by provider
+  const g = {};
+  for (const m of models) (g[m.provider] ??= []).push(m);
+  let rows = '';
+  const sortedProvs = Object.entries(g).sort((a, b) => a[0].localeCompare(b[0]));
+  for (const [prov, ms] of sortedProvs) {
+    ms.sort(
+      (a, b) =>
+        (typeOrder[a.modelType] ?? 9) - (typeOrder[b.modelType] ?? 9) ||
+        (a.modelId || '').localeCompare(b.modelId || '')
+    );
+    rows += `<tr class="prow" data-provider="${prov}"><td colspan="${UM_COLS}"><strong>${provName(prov)}</strong><span class="pcnt">${ms.length}</span></td></tr>`;
+    for (const m of ms) {
+      const mKey = `${m.provider}/${m.modelId}`;
+      const typeLabel = typeLabels[m.modelType] || m.modelType || '-';
+      const ppUrl = m.sourceUrl || PRICING_URLS[m.provider] || '';
+      const linkStart = ppUrl ? `<a href="${ppUrl}" target="_blank" class="sb-link">` : '';
+      const linkEnd = ppUrl ? '</a>' : '';
+      // Cache display: show read price, hover shows all tiers
+      let cacheHtml = '<span class="na">-</span>';
+      if (m.cacheTiers && m.cacheTiers.length > 0) {
+        const readTier = m.cacheTiers.find((t) => t.label === 'read' || t.label === 'cached-input');
+        const readVal = readTier ? fmtMTok(readTier.costPerToken) : fmtMTok(m.cachedInputCostPerToken);
+        const tierDetails = m.cacheTiers.map((t) => `${t.label}: ${fmtMTok(t.costPerToken)}`).join('&#10;');
+        cacheHtml = `<span class="mono" title="${tierDetails}">${readVal}</span>`;
+      } else if (m.cachedInputCostPerToken != null) {
+        cacheHtml = `<span class="mono">${fmtMTok(m.cachedInputCostPerToken)}</span>`;
+      }
+      const checkHtml = `<label class="rchk" title="选中"><input type="checkbox" class="um-chk" data-umk="${mKey}"/><span class="rchk-box"></span></label>`;
+      rows += `<tr class="mrow um-row" data-search="${mKey} ${m.modelType || ''}" data-provider="${prov}" data-umk="${mKey}">`;
+      rows += `<td class="mcol"><code class="mname" title="${mKey}"><strong>${m.modelId}</strong></code></td>`;
+      rows += `<td><span class="type-tag">${typeLabel}</span></td>`;
+      rows += `<td class="pc mono">${fmtMTok(m.inputCostPerToken)}</td>`;
+      rows += `<td class="pc mono">${fmtMTok(m.outputCostPerToken)}</td>`;
+      rows += `<td class="pc">${cacheHtml}</td>`;
+      rows += `<td class="scol">${linkStart}<span class="sb sb-pp">官方<span class="sb-ext">↗</span></span>${linkEnd}</td>`;
+      rows += `<td class="ck-col">${checkHtml}</td>`;
+      rows += `</tr>`;
+    }
+  }
+  return rows;
+}
+
 const THEAD = `<thead><tr>
   <th style="width:19%">模型</th>
   <th style="width:10%"></th>
@@ -495,7 +589,7 @@ const THEAD = `<thead><tr>
   <th style="width:12%">Cache Write</th>
   <th style="width:11%">Cache Read</th>
   <th style="width:20%">数据源</th>
-  <th style="width:4%">已读</th>
+  <th style="width:4%" title="勾选已审阅的模型，同步时只更新已勾选的">同步</th>
 </tr></thead>`;
 
 const html = `<!DOCTYPE html>
@@ -513,7 +607,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Noto
 .hdr h1{font-size:1.65rem;font-weight:700;margin-bottom:6px}
 .hdr .meta{font-size:.9rem;opacity:.78}
 
-.summary{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:20px}
+.summary{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-bottom:20px}
 .st{background:#fff;padding:20px;border-radius:12px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.05);border:1px solid #e2e8f0}
 .st .n{font-size:1.85rem;font-weight:700;margin-bottom:2px}
 .st .l{color:#718096;font-size:.88rem}
@@ -580,14 +674,14 @@ table.mt th{padding:11px 14px;text-align:left;font-weight:600;color:#4a5568;font
 /* Read checkbox column */
 .ck-col{text-align:center;vertical-align:middle !important}
 .rchk{display:inline-flex;align-items:center;cursor:pointer;vertical-align:middle;flex-shrink:0}
-.rchk-in{position:absolute;opacity:0;pointer-events:none}
+.rchk input[type="checkbox"]{position:absolute;opacity:0;pointer-events:none}
 .rchk-box{width:18px;height:18px;border:2px solid #cbd5e0;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
 .rchk-box::after{content:'';display:none;width:5px;height:9px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg);margin-top:-1px}
-.rchk-in:checked+.rchk-box{background:#38a169;border-color:#38a169}
-.rchk-in:checked+.rchk-box::after{display:block}
+.rchk input[type="checkbox"]:checked+.rchk-box{background:#38a169;border-color:#38a169}
+.rchk input[type="checkbox"]:checked+.rchk-box::after{display:block}
 .rchk:hover .rchk-box{border-color:#a0aec0}
-.mrow.read-done td{opacity:.45}
-.mrow.read-done:hover td{opacity:.75}
+.mrow.read-done td{background:rgba(56,161,105,.06)}
+.mrow.read-done:hover td{background:rgba(56,161,105,.10)}
 .mrow.read-done .ck-col{opacity:1}
 
 /* Model col */
@@ -682,6 +776,20 @@ table.mt th{padding:11px 14px;text-align:left;font-weight:600;color:#4a5568;font
 .pcache-item{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;background:#fff;border:1px solid #e2e8f0;border-radius:6px}
 .pcache-lbl{color:#718096;font-size:11px}
 
+/* Unmatched official section */
+.sec-unmatched{background:#eff6ff;border-color:#90cdf4}
+.sec-unmatched .sec-h{border-color:#90cdf4}
+.st.info .n{color:#3182ce}
+.cnt.info{background:#bee3f8;color:#2b6cb0}
+.type-tag{display:inline-block;padding:1px 7px;border-radius:6px;font-size:11px;font-weight:600;background:#edf2f7;color:#4a5568}
+.um-row td{padding:8px 14px;border-bottom:1px solid #edf2f7;vertical-align:middle}
+.um-row:hover td{background:rgba(255,255,255,.5)}
+.um-row.um-checked td{background:rgba(49,130,206,.06)}
+.um-row.um-checked:hover td{background:rgba(49,130,206,.10)}
+.um-sel-bar{display:inline-flex;align-items:center;gap:8px;margin-left:12px;font-size:12px}
+.um-btn{padding:3px 10px;border:1px solid #90cdf4;border-radius:5px;background:#fff;cursor:pointer;font-size:11px;color:#2b6cb0;transition:all .12s}
+.um-btn:hover{background:#ebf8ff;border-color:#63b3ed}
+
 .empty{padding:20px;text-align:center;color:#a0aec0;font-size:14px}
 
 /* No-official badge */
@@ -703,14 +811,15 @@ table.mt th{padding:11px 14px;text-align:left;font-weight:600;color:#4a5568;font
     <div class="st danger" data-f="drift"><div class="n" id="sum-drift">${driftModels.length}</div><div class="l">漂移量过大</div></div>
     <div class="st miss" data-f="no-match"><div class="n" id="sum-nomatch">${noMatchModels.length}</div><div class="l">未找到官方数据</div></div>
     <div class="st ok" data-f="normal"><div class="n" id="sum-ok">${ok.length}</div><div class="l">定价正常</div></div>
+    <div class="st info" data-f="unmatched"><div class="n" id="sum-unmatched">${unmatchedModels.length}</div><div class="l">官方未录入</div></div>
     <div class="st" data-f="all"><div class="n" id="sum-total">${data.length}</div><div class="l">总计</div></div>
   </div>
 
   <div class="tb">
     <input type="text" class="sinput" placeholder="搜索模型..." id="si"/>
     <button class="fb tier-btn" id="tier-toggle" title="展开/折叠所有分层定价">展开变体</button>
-    <button class="fb" id="read-filter">隐藏已读</button>
-    <button class="fb" id="read-clear" title="清除所有已读标记" style="font-size:11px;color:#a0aec0">清除已读</button>
+    <button class="fb" id="read-filter">隐藏已选</button>
+    <button class="fb" id="read-clear" title="清除所有同步选中标记" style="font-size:11px;color:#a0aec0">清除选中</button>
     <span class="tb-sep"></span>
     ${allProviders.map((p) => `<button class="pb" data-p="${p}">${provName(p)}</button>`).join('\n    ')}
   </div>
@@ -750,6 +859,31 @@ table.mt th{padding:11px 14px;text-align:left;font-weight:600;color:#4a5568;font
     <div class="sec-body"><table class="mt">${THEAD}<tbody>${buildSection(ok)}</tbody></table></div>
   </div>
 
+  ${
+    unmatchedModels.length > 0
+      ? `
+  <div class="sec sec-unmatched" data-sec="unmatched">
+    <div class="sec-h"><h2>官方可用但未录入</h2><span class="cnt info sec-cnt">${unmatchedModels.length}</span><span class="sec-sub">官方定价页面有数据但 Hub DB 中尚未录入的模型</span>
+      <span class="um-sel-bar" onclick="event.stopPropagation()">
+        <span style="font-size:12px;color:#4a5568">已选 <strong id="um-sel-cnt">0</strong></span>
+        <button class="um-btn" onclick="toggleUmAll(true)">全选</button>
+        <button class="um-btn" onclick="toggleUmAll(false)">取消</button>
+        <button class="um-btn" onclick="toggleUmVisible(true)">选可见</button>
+      </span>
+      <span class="chevron">▼</span></div>
+    <div class="sec-body"><table class="mt"><thead><tr>
+      <th style="width:23%">模型</th>
+      <th style="width:9%">类型</th>
+      <th style="width:14%">Input</th>
+      <th style="width:14%">Output</th>
+      <th style="width:14%">Cache</th>
+      <th style="width:18%">官方来源</th>
+      <th style="width:4%" title="勾选要操作的模型"><label class="rchk" style="vertical-align:middle" onclick="event.stopPropagation()"><input type="checkbox" id="um-chk-all" onchange="toggleUmAll(this.checked)"/><span class="rchk-box"></span></label></th>
+    </tr></thead><tbody>${buildUnmatchedSection(unmatchedModels)}</tbody></table></div>
+  </div>`
+      : ''
+  }
+
   <!-- Sync Panel -->
   <div class="sec" id="sync-panel" style="background:#fff;margin-top:24px">
     <div class="sec-h" style="cursor:default;background:linear-gradient(135deg,#2d3748,#4a5568)">
@@ -763,14 +897,28 @@ table.mt th{padding:11px 14px;text-align:left;font-weight:600;color:#4a5568;font
           <input type="text" id="sync-url" value="${apiBaseUrl}" readonly style="width:100%;padding:10px 14px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;background:#f7fafc;color:#4a5568"/>
         </div>
         <div>
-          <label style="font-size:13px;font-weight:600;color:#4a5568;display:block;margin-bottom:6px">Access Token</label>
+          <label style="font-size:13px;font-weight:600;color:#4a5568;display:block;margin-bottom:6px">Access Token <span style="font-weight:400;color:#a0aec0;font-size:11px">(按域名自动保存)</span></label>
           <input type="password" id="sync-token" placeholder="输入管理员 Access Token" style="width:100%;padding:10px 14px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px"/>
         </div>
       </div>
-      <div style="display:flex;gap:10px;margin-bottom:20px;align-items:center">
+      <div style="display:flex;gap:10px;margin-bottom:16px;align-items:center;flex-wrap:wrap">
         <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#4a5568;cursor:pointer">
-          <input type="checkbox" id="sync-deprecate"/> 软删除未匹配模型
+          <input type="checkbox" id="sync-apply-rates" checked onchange="document.getElementById('sync-rates-opts').style.display=this.checked?'flex':'none'"/> 同时更新售价
         </label>
+        <span id="sync-rates-opts" style="display:flex;gap:12px;align-items:center">
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:#718096">利润率%<input type="number" id="sync-margin" value="1" min="0" max="100" step="0.5" style="width:60px;padding:4px 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;text-align:center"/></label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:#718096" title="1 积分等于多少美元。例如：积分单价=1 表示 1 credit = $1；积分单价=0.01 表示 1 credit = $0.01（售价数值会放大 100 倍）">积分单价 <span style="cursor:help;color:#a0aec0">&#9432;</span><input type="number" id="sync-credit-price" value="1" min="0.01" step="0.01" style="width:60px;padding:4px 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;text-align:center"/></label>
+        </span>
+      </div>
+      <div style="display:flex;gap:10px;margin-bottom:16px;align-items:center">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#4a5568;cursor:pointer">
+          <input type="checkbox" id="sync-deprecate" checked/> 软删除未匹配模型
+        </label>
+      </div>
+      <div style="display:flex;gap:10px;margin-bottom:20px;align-items:center">
+        <span style="font-size:13px;color:#4a5568">已录入 <strong id="sync-sel-cnt">0</strong> 个 &nbsp;|&nbsp; 未录入 <strong id="sync-um-cnt" style="color:#3182ce">0</strong> 个<span style="font-size:11px;color:#a0aec0;margin-left:2px">(新增)</span></span>
+        <button onclick="toggleSyncAll(true)" style="padding:4px 12px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;cursor:pointer;font-size:12px;color:#4a5568">全选已录入</button>
+        <button onclick="toggleSyncAll(false)" style="padding:4px 12px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;cursor:pointer;font-size:12px;color:#4a5568">取消全选</button>
         <span style="flex:1"></span>
         <button id="sync-preview-btn" onclick="doSync(true)" style="padding:10px 24px;background:#4a5568;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;transition:all .15s">预览变更</button>
         <button id="sync-execute-btn" onclick="doSync(false)" style="padding:10px 24px;background:#38a169;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;transition:all .15s;display:none">确认执行同步</button>
@@ -782,11 +930,143 @@ table.mt th{padding:11px 14px;text-align:left;font-weight:600;color:#4a5568;font
 </div>
 
 <script>
+// All syncable entries (generated at report time)
+const __allEntries=${JSON.stringify(
+  data
+    .filter((m) => m.bestCostInput !== undefined || m.bestCostOutput !== undefined)
+    .map((m) => ({
+      provider: m.provider,
+      modelId: m.model,
+      inputCostPerToken: m.bestCostInput ?? null,
+      outputCostPerToken: m.bestCostOutput ?? null,
+      cachedInputCostPerToken: m.officialCacheRead ?? m.litellmCacheRead ?? null,
+      cacheTiers:
+        m.officialCacheTiers ??
+        (m.litellmCacheWrite || m.litellmCacheRead
+          ? [
+              ...(m.litellmCacheWrite ? [{ label: 'write', costPerToken: m.litellmCacheWrite }] : []),
+              ...(m.litellmCacheRead ? [{ label: 'read', costPerToken: m.litellmCacheRead }] : []),
+            ]
+          : undefined),
+      modelType: m.type,
+    }))
+)};
+const __entryMap=new Map(__allEntries.map(e=>[e.provider+'/'+e.modelId,e]));
+
+// Unmatched official entries (for sync "add new" operation)
+const __umEntries=${JSON.stringify(
+  unmatchedModels.map((m) => ({
+    provider: m.provider,
+    modelId: m.modelId,
+    inputCostPerToken: m.inputCostPerToken ?? null,
+    outputCostPerToken: m.outputCostPerToken ?? null,
+    cachedInputCostPerToken: m.cachedInputCostPerToken ?? null,
+    cacheTiers: m.cacheTiers ?? undefined,
+    modelType: m.modelType ?? 'chatCompletion',
+    pricingUnit: m.pricingUnit ?? 'per-token',
+    costPerImage: m.costPerImage ?? undefined,
+    costPerSecond: m.costPerSecond ?? undefined,
+  }))
+)};
+const __umMap=new Map(__umEntries.map(e=>[e.provider+'/'+e.modelId,e]));
+
+// --- Unmatched selection ---
+const UM_LS='aigne-pricing-um-sel';
+let umSelSet=new Set(JSON.parse(localStorage.getItem(UM_LS)||'[]'));
+function getUmSelected(){
+  const keys=new Set();
+  document.querySelectorAll('.um-chk:checked').forEach(cb=>keys.add(cb.dataset.umk));
+  return keys;
+}
+function updUmCnt(){
+  const cnt=getUmSelected().size;
+  const el=document.getElementById('um-sel-cnt');
+  if(el)el.textContent=cnt;
+  const syncEl=document.getElementById('sync-um-cnt');
+  if(syncEl)syncEl.textContent=cnt;
+  // Update header "select all" checkbox indeterminate / checked state
+  const allChk=document.getElementById('um-chk-all');
+  if(allChk){
+    const total=document.querySelectorAll('.um-chk').length;
+    allChk.checked=cnt>0&&cnt===total;
+    allChk.indeterminate=cnt>0&&cnt<total;
+  }
+}
+function applyUmCheck(key,checked){
+  if(checked)umSelSet.add(key);else umSelSet.delete(key);
+  localStorage.setItem(UM_LS,JSON.stringify([...umSelSet]));
+  document.querySelectorAll('.um-row[data-umk="'+key+'"]').forEach(r=>r.classList.toggle('um-checked',checked));
+  updUmCnt();
+}
+function toggleUmAll(on){
+  document.querySelectorAll('.um-chk').forEach(cb=>{
+    cb.checked=on;
+    applyUmCheck(cb.dataset.umk,on);
+  });
+  updUmCnt();
+}
+function toggleUmVisible(on){
+  document.querySelectorAll('.um-row:not(.hidden) .um-chk').forEach(cb=>{
+    cb.checked=on;
+    applyUmCheck(cb.dataset.umk,on);
+  });
+  updUmCnt();
+}
+// Init unmatched checkboxes from localStorage
+document.querySelectorAll('.um-chk').forEach(cb=>{
+  const k=cb.dataset.umk;
+  if(umSelSet.has(k)){
+    cb.checked=true;
+    const row=cb.closest('.um-row');
+    if(row)row.classList.add('um-checked');
+  }
+  cb.addEventListener('change',e=>{e.stopPropagation();applyUmCheck(k,cb.checked)});
+});
+updUmCnt();
+
+// Sync selection: read from table row checkboxes (.rchk-in[data-rk])
+function getSyncSelected(){
+  const keys=new Set();
+  document.querySelectorAll('.rchk-in:checked').forEach(cb=>keys.add(cb.dataset.rk));
+  return keys;
+}
+function updSelCnt(){
+  document.getElementById('sync-sel-cnt').textContent=getSyncSelected().size;
+}
+function toggleSyncAll(on){
+  document.querySelectorAll('.rchk-in').forEach(cb=>{
+    cb.checked=on;
+    applyRead(cb.dataset.rk,on);
+  });
+  updSelCnt();
+}
+
+// Token persistence (per domain)
+(function(){
+  const urlEl=document.getElementById('sync-url');
+  const tokEl=document.getElementById('sync-token');
+  try{
+    const domain=new URL(urlEl.value).hostname;
+    const saved=localStorage.getItem('aigne-sync-token:'+domain);
+    if(saved)tokEl.value=saved;
+  }catch(e){}
+  tokEl.addEventListener('input',function(){
+    try{
+      const domain=new URL(urlEl.value).hostname;
+      if(tokEl.value)localStorage.setItem('aigne-sync-token:'+domain,tokEl.value);
+      else localStorage.removeItem('aigne-sync-token:'+domain);
+    }catch(e){}
+  });
+})();
+
 // Sync panel logic
 async function doSync(isDryRun){
   const url=document.getElementById('sync-url').value.trim().replace(/\\/$/,'');
   const token=document.getElementById('sync-token').value.trim();
   const deprecate=document.getElementById('sync-deprecate').checked;
+  const applyRates=document.getElementById('sync-apply-rates').checked;
+  const profitMargin=parseFloat(document.getElementById('sync-margin').value);
+  const creditPrice=parseFloat(document.getElementById('sync-credit-price').value);
   const status=document.getElementById('sync-status');
   const result=document.getElementById('sync-result');
   const execBtn=document.getElementById('sync-execute-btn');
@@ -794,22 +1074,29 @@ async function doSync(isDryRun){
   if(!url){showStatus('请输入 API 地址','#feebc8','#c05621');return}
   if(!token){showStatus('请输入 Access Token','#feebc8','#c05621');return}
 
-  showStatus(isDryRun?'正在预览变更...':'正在执行同步...','#ebf8ff','#2b6cb0');
+  const checkedKeys=getSyncSelected();
+  const selectedEntries=__allEntries.filter(e=>checkedKeys.has(e.provider+'/'+e.modelId));
+
+  // Also include selected unmatched (new) models
+  const umKeys=getUmSelected();
+  const selectedUm=__umEntries.filter(e=>umKeys.has(e.provider+'/'+e.modelId));
+  const allSelected=[...selectedEntries,...selectedUm];
+
+  if(!allSelected.length){showStatus('请先勾选要同步的模型（已录入或未录入）','#feebc8','#c05621');return}
+
+  // Safety: disable deprecate when partially selected (would delete unselected models)
+  const isPartial=selectedEntries.length<__allEntries.length;
+  const safeDeprecate=deprecate&&!isPartial;
+  const cntMsg=selectedEntries.length+(selectedUm.length?' + '+selectedUm.length+' 新增':'');
+  if(deprecate&&isPartial){
+    showStatus('部分选择（'+cntMsg+'/'+__allEntries.length+'）已自动关闭「软删除」。'+(isDryRun?'正在预览...':'正在同步...'),'#ebf8ff','#2b6cb0');
+  }else{
+    showStatus(isDryRun?'正在预览 '+cntMsg+' 个模型...':'正在执行同步 '+cntMsg+' 个模型...','#ebf8ff','#2b6cb0');
+  }
   execBtn.style.display='none';
 
   try{
-    const body={mode:'sync',entries:${JSON.stringify(
-      data
-        .filter((m) => m.providerPageInput !== undefined || m.providerPageOutput !== undefined)
-        .map((m) => ({
-          provider: m.provider,
-          modelId: m.model,
-          inputCostPerToken: m.providerPageInput ?? null,
-          outputCostPerToken: m.providerPageOutput ?? null,
-          cachedInputCostPerToken: m.officialCacheRead ?? null,
-          modelType: m.type,
-        }))
-    )},dryRun:isDryRun,deprecateUnmatched:deprecate};
+    const body={mode:'sync',entries:allSelected,dryRun:isDryRun,deprecateUnmatched:safeDeprecate,applyRates:applyRates,profitMargin:applyRates?profitMargin:undefined,creditPrice:applyRates?creditPrice:undefined};
 
     const resp=await fetch(url+'/api/ai-providers/bulk-rate-update',{
       method:'POST',
@@ -830,13 +1117,23 @@ async function doSync(isDryRun){
     let h='';
     if(json.updated&&json.updated.length){
       h+='<div style="margin-bottom:12px"><strong style="color:#276749">待更新 ('+json.updated.length+')</strong>';
-      h+='<table style="width:100%;font-size:12px;border-collapse:collapse;margin-top:6px"><tr style="background:#f7fafc"><th style="padding:6px 10px;text-align:left">Provider</th><th style="padding:6px 10px;text-align:left">Model</th><th style="padding:6px 10px;text-align:right">旧 Input</th><th style="padding:6px 10px;text-align:right">新 Input</th><th style="padding:6px 10px;text-align:right">旧 Output</th><th style="padding:6px 10px;text-align:right">新 Output</th></tr>';
+      const hasRates=applyRates&&json.updated.some(u=>u.newInputRate!==undefined||u.newOutputRate!==undefined);
+      h+='<table style="width:100%;font-size:12px;border-collapse:collapse;margin-top:6px"><tr style="background:#f7fafc"><th style="padding:6px 10px;text-align:left">Provider</th><th style="padding:6px 10px;text-align:left">Model</th><th style="padding:6px 10px;text-align:right">旧 Input Cost</th><th style="padding:6px 10px;text-align:right">新 Input Cost</th><th style="padding:6px 10px;text-align:right">旧 Output Cost</th><th style="padding:6px 10px;text-align:right">新 Output Cost</th>';
+      if(hasRates)h+='<th style="padding:6px 10px;text-align:right">旧 InputRate</th><th style="padding:6px 10px;text-align:right">新 InputRate</th><th style="padding:6px 10px;text-align:right">旧 OutputRate</th><th style="padding:6px 10px;text-align:right">新 OutputRate</th>';
+      h+='</tr>';
       json.updated.forEach(u=>{
         h+='<tr style="border-bottom:1px solid #edf2f7"><td style="padding:4px 10px">'+u.provider+'</td><td style="padding:4px 10px">'+u.model+'</td>';
         h+='<td style="padding:4px 10px;text-align:right;color:#a0aec0">'+(u.oldUnitCosts?u.oldUnitCosts.input:'-')+'</td>';
         h+='<td style="padding:4px 10px;text-align:right;font-weight:600">'+u.newUnitCosts.input+'</td>';
         h+='<td style="padding:4px 10px;text-align:right;color:#a0aec0">'+(u.oldUnitCosts?u.oldUnitCosts.output:'-')+'</td>';
-        h+='<td style="padding:4px 10px;text-align:right;font-weight:600">'+u.newUnitCosts.output+'</td></tr>';
+        h+='<td style="padding:4px 10px;text-align:right;font-weight:600">'+u.newUnitCosts.output+'</td>';
+        if(hasRates){
+          h+='<td style="padding:4px 10px;text-align:right;color:#a0aec0">'+(u.oldInputRate!=null?u.oldInputRate:'-')+'</td>';
+          h+='<td style="padding:4px 10px;text-align:right;font-weight:600;color:#2b6cb0">'+(u.newInputRate!=null?u.newInputRate:'-')+'</td>';
+          h+='<td style="padding:4px 10px;text-align:right;color:#a0aec0">'+(u.oldOutputRate!=null?u.oldOutputRate:'-')+'</td>';
+          h+='<td style="padding:4px 10px;text-align:right;font-weight:600;color:#2b6cb0">'+(u.newOutputRate!=null?u.newOutputRate:'-')+'</td>';
+        }
+        h+='</tr>';
       });
       h+='</table></div>';
     }
@@ -855,7 +1152,7 @@ async function doSync(isDryRun){
     result.style.display=h?'block':'none';
     result.innerHTML=h;
 
-    if(isDryRun&&s.updated>0)execBtn.style.display='inline-block';
+    if(isDryRun&&(s.updated>0||dep.length>0))execBtn.style.display='inline-block';
   }catch(e){
     showStatus('错误: '+e.message,'#fed7d7','#9b2c2c');
     result.style.display='none';
@@ -962,6 +1259,7 @@ function applyRead(key,checked){
     if(r2&&r2.classList.contains('r2'))r2.classList.toggle('read-done',checked);
   });
   go();
+  updSelCnt();
 }
 // Init checkboxes from localStorage
 document.querySelectorAll('.rchk-in').forEach(cb=>{
@@ -973,9 +1271,10 @@ document.querySelectorAll('.rchk-in').forEach(cb=>{
   }
   cb.addEventListener('change',e=>{e.stopPropagation();applyRead(k,cb.checked)});
 });
+updSelCnt();
 // Filter & clear buttons
 const readBtn=document.getElementById('read-filter');
-readBtn.addEventListener('click',()=>{hideRead=!hideRead;readBtn.classList.toggle('active',hideRead);readBtn.textContent=hideRead?'显示全部':'隐藏已读';go()});
+readBtn.addEventListener('click',()=>{hideRead=!hideRead;readBtn.classList.toggle('active',hideRead);readBtn.textContent=hideRead?'显示全部':'隐藏已选';go()});
 document.getElementById('read-clear').addEventListener('click',()=>{
   readSet.clear();localStorage.removeItem(LS_KEY);
   document.querySelectorAll('.rchk-in').forEach(cb=>{cb.checked=false});
@@ -985,7 +1284,7 @@ document.getElementById('read-clear').addEventListener('click',()=>{
 
 function go(){
   const q=si.value.toLowerCase().trim();
-  const counts={'below-cost':0,drift:0,'no-match':0,normal:0,total:0};
+  const counts={'below-cost':0,drift:0,'no-match':0,normal:0,total:0,unmatched:0};
   document.querySelectorAll('.r1').forEach(r1=>{
     const s=r1.dataset.search.toLowerCase();
     const st=r1.dataset.status;
@@ -998,10 +1297,21 @@ function go(){
     if(r2&&r2.classList.contains('r2')) r2.classList.toggle('hidden',!vis);
     if(vis){counts[st]=(counts[st]||0)+1;counts.total++}
   });
+  // Filter unmatched section rows
+  document.querySelectorAll('.um-row').forEach(row=>{
+    const s=row.dataset.search.toLowerCase();
+    const prov=row.dataset.provider;
+    const k=row.dataset.umk;
+    const isChecked=umSelSet.has(k);
+    const vis=(!q||s.includes(q))&&(cf==='all'||cf==='unmatched')&&(!cp||prov===cp)&&(!hideRead||!isChecked);
+    row.classList.toggle('hidden',!vis);
+    if(vis)counts.unmatched++;
+  });
+  // Update provider headers visibility for all sections (including unmatched)
   document.querySelectorAll('.prow').forEach(p=>{
     let n=p.nextElementSibling,v=false;
     while(n&&!n.classList.contains('prow')){
-      if(n.classList.contains('r1')&&!n.classList.contains('hidden')){v=true;break}
+      if((n.classList.contains('r1')||n.classList.contains('um-row'))&&!n.classList.contains('hidden')){v=true;break}
       n=n.nextElementSibling;
     }
     p.classList.toggle('hidden',!v);
@@ -1011,6 +1321,7 @@ function go(){
   el('sum-drift').textContent=counts.drift;
   el('sum-nomatch').textContent=counts['no-match'];
   el('sum-ok').textContent=counts.normal;
+  el('sum-unmatched').textContent=counts.unmatched;
   el('sum-total').textContent=counts.total;
   document.querySelectorAll('.sec').forEach(sec=>{
     const secType=sec.dataset.sec;
@@ -1029,5 +1340,5 @@ if (outputFile) {
   process.stdout.write(html);
 }
 console.error(
-  `${belowCostModels.length} below-cost, ${driftModels.length} drift, ${noMatchModels.length} no-match, ${ok.length} normal, ${data.length} total`
+  `${belowCostModels.length} below-cost, ${driftModels.length} drift, ${noMatchModels.length} no-match, ${ok.length} normal, ${unmatchedModels.length} unmatched-official, ${data.length} total`
 );

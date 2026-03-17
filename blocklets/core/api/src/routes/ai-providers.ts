@@ -285,7 +285,7 @@ const calculateRate = (unitCost: number, profitMargin: number, creditPrice: numb
     new BigNumber(unitCost)
       .multipliedBy(1 + profitMargin / 100)
       .dividedBy(creditPrice)
-      .toFixed(6)
+      .toFixed(10)
   );
 };
 
@@ -1467,18 +1467,43 @@ async function handleSyncMode(req: Request, res: Response, value: any) {
 
     const providerName = (match as any).providerName || match.providerId;
 
-    if (!unitCostsChanged(match.unitCosts, update.unitCosts)) {
+    const costsChanged = unitCostsChanged(match.unitCosts, update.unitCosts);
+
+    // Check if caching data changed
+    const oldCaching = (match as any).caching || {};
+    const cachingChanged =
+      update.caching &&
+      (Math.abs(Number(oldCaching.readRate || 0) - Number(update.caching.readRate || 0)) > 1e-15 ||
+        Math.abs(Number(oldCaching.writeRate || 0) - Number(update.caching.writeRate || 0)) > 1e-15);
+
+    // When applyRates is enabled, also check if rates need recalculation
+    let ratesNeedUpdate = false;
+    let newInputRate: number | undefined;
+    let newOutputRate: number | undefined;
+    if (applyRates && profitMargin != null && creditPrice != null) {
+      newInputRate = calculateRate(Number(update.unitCosts.input), profitMargin, creditPrice);
+      newOutputRate = calculateRate(Number(update.unitCosts.output), profitMargin, creditPrice);
+      const tolerance = 1e-15;
+      ratesNeedUpdate =
+        Math.abs(Number(match.inputRate) - newInputRate) > tolerance ||
+        Math.abs(Number(match.outputRate) - newOutputRate) > tolerance;
+    }
+
+    if (!costsChanged && !ratesNeedUpdate && !cachingChanged) {
       unchanged.push({ id: match.id, model: match.model, provider: providerName });
       continue;
     }
 
     try {
-      const updateData: any = { unitCosts: update.unitCosts };
+      const updateData: any = {};
+      if (costsChanged) {
+        updateData.unitCosts = update.unitCosts;
+      }
       if (update.caching) updateData.caching = update.caching;
 
-      if (applyRates && profitMargin != null && creditPrice != null) {
-        updateData.inputRate = calculateRate(Number(update.unitCosts.input), profitMargin, creditPrice);
-        updateData.outputRate = calculateRate(Number(update.unitCosts.output), profitMargin, creditPrice);
+      if (applyRates && newInputRate != null && newOutputRate != null) {
+        updateData.inputRate = newInputRate;
+        updateData.outputRate = newOutputRate;
       }
 
       const oldUnitCosts = match.unitCosts || null;
@@ -1495,7 +1520,7 @@ async function handleSyncMode(req: Request, res: Response, value: any) {
         oldUnitCosts,
         newUnitCosts: update.unitCosts,
         oldRates,
-        newRates: applyRates ? { inputRate: updateData.inputRate, outputRate: updateData.outputRate } : oldRates,
+        newRates: applyRates ? { inputRate: newInputRate, outputRate: newOutputRate } : oldRates,
       });
 
       // Track tier1 updates for propagation (keyed by provider NAME, not FK ID)
@@ -1511,24 +1536,41 @@ async function handleSyncMode(req: Request, res: Response, value: any) {
     // propagateToTier2 returns the original providerId (FK ID) for DB matching
     const match = dbRates.find((r) => r.providerId === t2.providerId && r.model === t2.model);
     if (!match) continue;
-    if (!unitCostsChanged(match.unitCosts, t2.unitCosts)) continue;
+
+    const t2CostsChanged = unitCostsChanged(match.unitCosts, t2.unitCosts);
+    let t2RatesNeedUpdate = false;
+    let t2NewInputRate: number | undefined;
+    let t2NewOutputRate: number | undefined;
+    if (applyRates && profitMargin != null && creditPrice != null) {
+      t2NewInputRate = calculateRate(Number(t2.unitCosts.input), profitMargin, creditPrice);
+      t2NewOutputRate = calculateRate(Number(t2.unitCosts.output), profitMargin, creditPrice);
+      const tolerance = 1e-15;
+      t2RatesNeedUpdate =
+        Math.abs(Number(match.inputRate) - t2NewInputRate) > tolerance ||
+        Math.abs(Number(match.outputRate) - t2NewOutputRate) > tolerance;
+    }
+    if (!t2CostsChanged && !t2RatesNeedUpdate) continue;
 
     const t2ProviderName = (match as any).providerName || match.providerId;
     try {
-      const updateData: any = { unitCosts: t2.unitCosts };
-      if (applyRates && profitMargin != null && creditPrice != null) {
-        updateData.inputRate = calculateRate(Number(t2.unitCosts.input), profitMargin, creditPrice);
-        updateData.outputRate = calculateRate(Number(t2.unitCosts.output), profitMargin, creditPrice);
+      const updateData: any = {};
+      if (t2CostsChanged) updateData.unitCosts = t2.unitCosts;
+      if (applyRates && t2NewInputRate != null && t2NewOutputRate != null) {
+        updateData.inputRate = t2NewInputRate;
+        updateData.outputRate = t2NewOutputRate;
       }
       if (!dryRun) {
         await (match as any).update(updateData);
       }
+      const oldRates = { inputRate: Number(match.inputRate), outputRate: Number(match.outputRate) };
       updated.push({
         id: match.id,
         model: match.model,
         provider: t2ProviderName,
         oldUnitCosts: match.unitCosts || null,
         newUnitCosts: t2.unitCosts,
+        oldRates,
+        newRates: applyRates ? { inputRate: t2NewInputRate, outputRate: t2NewOutputRate } : oldRates,
         source: t2.source,
       });
     } catch (err: any) {

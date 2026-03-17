@@ -33,6 +33,9 @@ import { promisify } from 'util';
 
 import { compare, printTable } from './compare';
 import { fetchDbRates, fetchLiteLLM, fetchOpenRouter, loadOfficialPricingCache } from './fetch-sources';
+import type { DbRate } from './fetch-sources';
+import type { OfficialPricingEntry } from './pricing-schema';
+import { PROVIDER_TIERS, modelNameFallbacks, resolveModelMapping } from './provider-aliases';
 
 const execFileAsync = promisify(execFile);
 
@@ -153,6 +156,64 @@ async function askGenerateHtml(): Promise<boolean> {
   });
 }
 
+/**
+ * Find official pricing entries that exist in the cache but have no corresponding DB model.
+ * This is the "reverse lookup" — official → DB direction.
+ */
+function findUnmatchedOfficialModels(
+  dbRates: DbRate[],
+  officialCache: Map<string, OfficialPricingEntry>
+): OfficialPricingEntry[] {
+  // 1. Compute relevant tier1 providers from DB rates
+  const tier2Set = new Set(PROVIDER_TIERS.tier2 as readonly string[]);
+  const relevantProviders = new Set<string>();
+
+  // Collect all cache keys that DB models have matched (or could match)
+  const matchedKeys = new Set<string>();
+
+  for (const rate of dbRates) {
+    const providerName = rate.provider?.name || '';
+    const { primaryProvider, primaryModel } = resolveModelMapping(rate.model, providerName);
+
+    // Track the tier1 provider as relevant
+    if (!tier2Set.has(primaryProvider)) {
+      relevantProviders.add(primaryProvider);
+    }
+
+    // Build all possible lookup keys this DB model would match against
+    const baseKey = `${primaryProvider}/${primaryModel}`;
+    matchedKeys.add(baseKey);
+
+    // Also add fallback keys
+    const fallbacks = modelNameFallbacks(primaryModel);
+    for (const fb of fallbacks) {
+      matchedKeys.add(`${primaryProvider}/${fb}`);
+    }
+
+    // For tier1 providers used directly, also mark with original provider name
+    if (providerName && providerName !== primaryProvider) {
+      matchedKeys.add(`${providerName}/${rate.model}`);
+    }
+  }
+
+  // 2. Iterate official cache, collect unmatched entries from relevant providers
+  const unmatched: OfficialPricingEntry[] = [];
+  for (const [key, entry] of officialCache) {
+    // Skip type-qualified keys (e.g. "openai/gpt-4o::chatCompletion") to avoid duplicates
+    if (key.includes('::')) continue;
+
+    // Only include models from providers that are relevant (exist in DB)
+    if (!relevantProviders.has(entry.provider)) continue;
+
+    // Check if this model was matched by any DB model
+    if (!matchedKeys.has(key)) {
+      unmatched.push(entry);
+    }
+  }
+
+  return unmatched;
+}
+
 async function main(): Promise<void> {
   const opts = await parseArgs();
   // Use stderr for info logs so --json output stays clean on stdout
@@ -195,9 +256,16 @@ async function main(): Promise<void> {
   const providerPages = officialCache ?? new Map();
   const results = compare(dbRates, litellm, openrouter, providerPages, opts.threshold);
 
-  // 4. Output
+  // 4. Find unmatched official models (reverse lookup)
+  const unmatchedModels = providerPages.size > 0 ? findUnmatchedOfficialModels(dbRates, providerPages) : [];
+  if (unmatchedModels.length > 0) {
+    log(`📋 官方未录入模型: ${unmatchedModels.length} 个`);
+  }
+
+  // 5. Output
+  const fullOutput = { results, unmatchedModels };
   if (opts.json) {
-    console.log(JSON.stringify(results, null, 2));
+    console.log(JSON.stringify(fullOutput, null, 2));
   } else {
     printTable(results, opts.threshold);
 
@@ -211,8 +279,8 @@ async function main(): Promise<void> {
       const tempFile = path.join(outputDir, 'pricing-analysis.json');
       const outputFile = path.join(outputDir, `pricing-report-${opts.env || 'local'}.html`);
 
-      // Write JSON to temp file
-      await fs.writeFile(tempFile, JSON.stringify(results, null, 2));
+      // Write JSON to temp file (full output with unmatchedModels)
+      await fs.writeFile(tempFile, JSON.stringify(fullOutput, null, 2));
 
       // Generate HTML report
       const reportScript = `${scriptDir}/generate-html-report.mjs`;
