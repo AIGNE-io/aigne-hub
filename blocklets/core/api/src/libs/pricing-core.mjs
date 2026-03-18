@@ -1,3 +1,4 @@
+/* eslint-disable */
 /**
  * Shared Pricing Core — pure computation functions used by both Node.js CLI and browser HTML.
  *

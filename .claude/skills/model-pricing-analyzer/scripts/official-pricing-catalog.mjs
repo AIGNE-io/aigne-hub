@@ -10,6 +10,8 @@
  *   node official-pricing-catalog.mjs [output.html]
  *   node official-pricing-catalog.mjs --json
  *   node official-pricing-catalog.mjs --cache
+ *   node official-pricing-catalog.mjs --remote                      # use default remote pricing data
+ *   node official-pricing-catalog.mjs --remote [url] --cache        # use custom remote URL
  *   node official-pricing-catalog.mjs --env production [output.html]
  *   node official-pricing-catalog.mjs --hub-url https://hub.aigne.io [output.html]
  *
@@ -40,7 +42,7 @@ const ENV_URLS = {
 // ─── CLI argument parsing ────────────────────────────────────────────────────
 function parseArgs() {
   const args = process.argv.slice(2);
-  const opts = { json: false, hubUrl: null, env: null, outputFile: null, cache: false };
+  const opts = { json: false, hubUrl: null, env: null, outputFile: null, cache: false, remote: null };
 
   for (let i = 0; i < args.length; i++) {
     switch (args[i]) {
@@ -61,6 +63,15 @@ function parseArgs() {
       case '--cache':
         opts.cache = true;
         break;
+      case '--remote': {
+        const next = args[i + 1];
+        if (next && !next.startsWith('--')) {
+          opts.remote = args[++i];
+        } else {
+          opts.remote = 'https://raw.githubusercontent.com/blocklet/model-pricing-data/main/data/pricing.json';
+        }
+        break;
+      }
       default:
         if (!args[i].startsWith('--')) opts.outputFile = args[i];
     }
@@ -1761,21 +1772,206 @@ document.getElementById('search').addEventListener('input', function(e) {
 }
 
 // ─── Main ───────────────────────────────────────────────────────────────────
+// ─── Remote pricing data (from pre-built JSON) ──────────────────────────────
+const REMOTE_PRICING_URL = 'https://raw.githubusercontent.com/blocklet/model-pricing-data/main/data/pricing.json';
+
+/**
+ * Fetch pre-built pricing data from a remote JSON URL and convert to the same
+ * per-provider OfficialPricingEntry format that the individual scrapers produce.
+ *
+ * The remote JSON schema uses:
+ *   providers[provider][modelId::modelType] = { caching: { read, write-5min, ... }, ... }
+ * We convert to:
+ *   { provider, modelId, cacheTiers: [{ label, costPerToken }], cachedInputCostPerToken, ... }
+ */
+async function fetchRemotePricing(url) {
+  console.error(`Fetching remote pricing from ${url}...`);
+  const raw = await fetch(url);
+  const json = JSON.parse(raw);
+
+  if (!json.providers) throw new Error('Invalid remote pricing JSON: missing "providers" key');
+
+  const MAIN_PROVIDERS = ['openai', 'anthropic', 'google', 'xai', 'deepseek'];
+  const results = [];
+
+  for (const providerKey of MAIN_PROVIDERS) {
+    const providerData = json.providers[providerKey];
+    if (!providerData) {
+      console.error(`  ${providerKey}: not found in remote data`);
+      results.push({ provider: providerKey, url: '', models: [], entries: [] });
+      continue;
+    }
+
+    const entries = [];
+    for (const [key, val] of Object.entries(providerData)) {
+      // Keys are "modelId::modelType" or just "modelId" (for OpenRouter-style)
+      const parts = key.split('::');
+      const modelId = parts[0];
+      const modelType = val.modelType || parts[1] || 'chatCompletion';
+
+      const entry = {
+        provider: providerKey,
+        modelId,
+        displayName: val.displayName || modelId,
+        pricingUnit: val.pricingUnit || 'per-token',
+        modelType,
+        sourceUrl: val.sourceUrl || '',
+        extractionMethod: val.extractionMethod || 'remote-catalog',
+      };
+
+      // Token pricing (already in $/token)
+      if (val.inputCostPerToken != null) entry.inputCostPerToken = val.inputCostPerToken;
+      if (val.outputCostPerToken != null) entry.outputCostPerToken = val.outputCostPerToken;
+
+      // Convert caching object → cacheTiers array + cachedInputCostPerToken
+      if (val.caching && typeof val.caching === 'object') {
+        const cacheTiers = [];
+        for (const [label, costPerToken] of Object.entries(val.caching)) {
+          cacheTiers.push({ label, costPerToken });
+        }
+        if (cacheTiers.length > 0) entry.cacheTiers = cacheTiers;
+
+        // Set cachedInputCostPerToken from "read" tier
+        if (val.caching.read != null) entry.cachedInputCostPerToken = val.caching.read;
+      }
+
+      // Context tiers (pass through)
+      if (val.contextTiers?.length > 0) entry.contextTiers = val.contextTiers;
+
+      // Batch pricing (pass through)
+      if (val.batchPricing) entry.batchPricing = val.batchPricing;
+
+      // Special modes (pass through)
+      if (val.specialModes?.length > 0) entry.specialModes = val.specialModes;
+
+      // Image generation
+      if (val.costPerImage != null) entry.costPerImage = val.costPerImage;
+      if (val.imageVariants) entry.imageVariants = val.imageVariants;
+
+      // Video
+      if (val.costPerSecond != null) entry.costPerSecond = val.costPerSecond;
+      if (val.videoVariants) entry.videoVariants = val.videoVariants;
+
+      // Fine-tuning
+      if (val.trainingCostPerToken != null) entry.trainingCostPerToken = val.trainingCostPerToken;
+      if (val.trainingCostPerHour != null) entry.trainingCostPerHour = val.trainingCostPerHour;
+
+      // Audio / transcription
+      if (val.costPerMinute != null) entry.costPerMinute = val.costPerMinute;
+      if (val.costPerMillionChars != null) entry.costPerMillionChars = val.costPerMillionChars;
+
+      if (val.deprecated) entry.deprecated = true;
+
+      entries.push(entry);
+    }
+
+    const sourceUrl = json._meta?.sources?.[providerKey]?.url || '';
+    console.error(`  ${providerKey}: ${entries.length} entries from remote`);
+
+    // Convert entries to scraper-format models for HTML report + --json mode
+    const models = entries
+      .filter((e) => e.pricingUnit === 'per-token' && e.modelType === 'chatCompletion')
+      .map((e) => {
+        const toMTok = (v) => (v != null ? parseFloat((v * 1e6).toPrecision(10)) : undefined);
+        const m = {
+          name: e.displayName || e.modelId,
+          id: e.modelId,
+          inputPerMTok: toMTok(e.inputCostPerToken),
+          outputPerMTok: toMTok(e.outputCostPerToken),
+        };
+        if (e.deprecated) m.deprecated = true;
+        // Cache tiers
+        if (e.cacheTiers) {
+          for (const t of e.cacheTiers) {
+            if (t.label === 'write-5min' || t.label === '5min-write') m.cacheWrite5m = toMTok(t.costPerToken);
+            else if (t.label === 'write-1h' || t.label === '1h-write') m.cacheWrite1h = toMTok(t.costPerToken);
+            else if (t.label === 'read') m.cacheRead = toMTok(t.costPerToken);
+            else if (t.label === 'write') m.cacheWrite = toMTok(t.costPerToken);
+          }
+        }
+        if (e.cachedInputCostPerToken != null && !m.cacheRead) m.cacheRead = toMTok(e.cachedInputCostPerToken);
+        // Context tiers
+        if (e.contextTiers?.[0]) {
+          const ct = e.contextTiers[0];
+          m.longContextInput = toMTok(ct.inputCostPerToken);
+          m.longContextOutput = toMTok(ct.outputCostPerToken);
+          m.longContextThreshold = ct.threshold;
+        }
+        // Batch pricing
+        if (e.batchPricing) {
+          m.batchInput = toMTok(e.batchPricing.inputCostPerToken);
+          m.batchOutput = toMTok(e.batchPricing.outputCostPerToken);
+        }
+        // Special modes
+        if (e.specialModes) {
+          for (const sm of e.specialModes) {
+            if (sm.mode === 'fast-mode') {
+              m.fastModeInput = toMTok(sm.inputCostPerToken);
+              m.fastModeOutput = toMTok(sm.outputCostPerToken);
+            }
+          }
+        }
+        return m;
+      });
+
+    // Also add non-token models (image, video, embedding, etc.)
+    for (const e of entries) {
+      if (e.pricingUnit === 'per-token' && e.modelType === 'chatCompletion') continue;
+      const m = { name: e.displayName || e.modelId, id: e.modelId, type: e.modelType };
+      if (e.pricingUnit === 'per-token') {
+        const toMTok = (v) => (v != null ? parseFloat((v * 1e6).toPrecision(10)) : undefined);
+        m.inputPerMTok = toMTok(e.inputCostPerToken);
+        m.outputPerMTok = toMTok(e.outputCostPerToken);
+      }
+      if (e.costPerImage != null) m.costPerImage = e.costPerImage;
+      if (e.costPerSecond != null) m.costPerSecond = e.costPerSecond;
+      if (e.deprecated) m.deprecated = true;
+      models.push(m);
+    }
+
+    const providerDisplayName = {
+      openai: 'OpenAI',
+      anthropic: 'Anthropic',
+      google: 'Google',
+      xai: 'xAI',
+      deepseek: 'DeepSeek',
+    };
+    results.push({ provider: providerDisplayName[providerKey] || providerKey, url: sourceUrl, models, entries });
+  }
+
+  const total = results.reduce((s, r) => s + r.entries.length, 0);
+  console.error(`✅ Remote: ${total} entries total from ${MAIN_PROVIDERS.length} providers`);
+  return results;
+}
+
 async function main() {
   const opts = parseArgs();
 
-  // Fetch official pricing + Hub rates in parallel
-  const [scrapeResults, hubMap] = await Promise.all([
-    Promise.allSettled([scrapeAnthropic(), scrapeGoogle(), scrapeOpenAI(), scrapeDeepSeek(), scrapeXAI()]),
-    fetchHubRates(opts.hubUrl),
-  ]);
+  let data;
+  if (opts.remote) {
+    // ── Remote mode: fetch pre-built pricing data ──
+    const [remoteResults, hubMap_] = await Promise.all([fetchRemotePricing(opts.remote), fetchHubRates(opts.hubUrl)]);
+    data = remoteResults;
+    // Attach hubMap for later use
+    data._hubMap = hubMap_;
+  } else {
+    // ── Scrape mode (default): fetch from provider pages directly ──
+    const [scrapeResults, hubMap_] = await Promise.all([
+      Promise.allSettled([scrapeAnthropic(), scrapeGoogle(), scrapeOpenAI(), scrapeDeepSeek(), scrapeXAI()]),
+      fetchHubRates(opts.hubUrl),
+    ]);
 
-  const data = scrapeResults.map((r, i) => {
-    if (r.status === 'fulfilled') return r.value;
-    const name = ['Anthropic', 'Google', 'OpenAI', 'DeepSeek', 'xAI'][i];
-    console.error(`Failed to scrape ${name}: ${r.reason?.message}`);
-    return { provider: name, url: '', models: [] };
-  });
+    data = scrapeResults.map((r, i) => {
+      if (r.status === 'fulfilled') return r.value;
+      const name = ['Anthropic', 'Google', 'OpenAI', 'DeepSeek', 'xAI'][i];
+      console.error(`Failed to scrape ${name}: ${r.reason?.message}`);
+      return { provider: name, url: '', models: [] };
+    });
+    data._hubMap = hubMap_;
+  }
+
+  const hubMap = data._hubMap || new Map();
+  delete data._hubMap;
 
   if (opts.json) {
     // Include Hub data in JSON output
@@ -1826,6 +2022,17 @@ async function main() {
     for (const d of data) {
       const providerKey = providerNameMap[d.provider] || d.provider.toLowerCase();
       const sourceUrl = d.url || '';
+
+      // Remote mode: entries are already in OfficialPricingEntry format
+      if (d.entries && d.entries.length > 0) {
+        const cacheFile = path.join(OUTPUT_DIR, `aigne-official-pricing-${providerKey}.json`);
+        const cache = { timestamp: Date.now(), entries: d.entries };
+        fs.writeFileSync(cacheFile, JSON.stringify(cache, null, 2));
+        console.error(`  ${d.provider}: ${d.entries.length} entries → ${cacheFile}`);
+        totalEntries += d.entries.length;
+        continue;
+      }
+
       const entries = [];
 
       for (const m of d.models) {

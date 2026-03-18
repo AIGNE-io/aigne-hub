@@ -7,6 +7,52 @@
  * - All functions use `export function` syntax (stripped when inlined)
  */
 
+// ─── Mount Point Detection ───────────────────────────────────────────────────
+
+const AIGNE_HUB_DID = 'z8ia3xzq2tMq8CRHfaXj1BTYJyYnEcHbqP8cJ';
+var __mountPointCache = {};
+
+/**
+ * Detect blocklet mount point from __blocklet__.js (browser-side).
+ * Caches per origin to avoid repeated requests.
+ */
+export async function detectMountPointBrowser(hubUrl) {
+  try {
+    var origin = new URL(hubUrl).origin;
+    if (__mountPointCache[origin] !== undefined) return __mountPointCache[origin];
+    var resp = await fetch(origin + '/__blocklet__.js?type=json&owner=1&nocache=1');
+    if (!resp.ok) {
+      __mountPointCache[origin] = '/';
+      return '/';
+    }
+    var data = await resp.json();
+    if (data.componentMountPoints && Array.isArray(data.componentMountPoints)) {
+      var hub = data.componentMountPoints.find(function (c) {
+        return c.did === AIGNE_HUB_DID;
+      });
+      if (hub && hub.mountPoint) {
+        __mountPointCache[origin] = hub.mountPoint;
+        return hub.mountPoint;
+      }
+    }
+    __mountPointCache[origin] = '/';
+    return '/';
+  } catch (e) {
+    __mountPointCache[origin] = '/';
+    return '/';
+  }
+}
+
+/**
+ * Build API URL with correct mount point (browser-side).
+ */
+export async function buildApiUrlBrowser(hubUrl, apiPath) {
+  var origin = new URL(hubUrl).origin;
+  var mp = await detectMountPointBrowser(hubUrl);
+  if (mp === '/') return origin + apiPath;
+  return origin + mp.replace(/\/$/, '') + apiPath;
+}
+
 // ─── Hub DB Rates ────────────────────────────────────────────────────────────
 
 /**
@@ -20,8 +66,9 @@ export async function fetchDbRatesBrowser(hubUrl, token) {
   if (token) headers['Authorization'] = 'Bearer ' + token;
   const all = [];
   let page = 1;
+  const apiBase = await buildApiUrlBrowser(hubUrl, '/api/ai-providers/model-rates');
   while (true) {
-    const resp = await fetch(hubUrl + '/api/ai-providers/model-rates?pageSize=100&page=' + page, { headers });
+    const resp = await fetch(apiBase + '?pageSize=100&page=' + page, { headers });
     if (!resp.ok) {
       const txt = await resp.text().catch(function () {
         return resp.statusText;

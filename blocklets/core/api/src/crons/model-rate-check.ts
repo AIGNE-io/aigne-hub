@@ -1,95 +1,254 @@
-import { RATE_SOURCE_DRIFT_THRESHOLD } from '@api/libs/env';
+import { ENABLE_AUTO_RATE_UPDATE, RATE_SOURCE_DRIFT_THRESHOLD } from '@api/libs/env';
 import logger from '@api/libs/logger';
 import { NotificationManager } from '@api/libs/notifications/manager';
 import { compareAgainstDbRates } from '@api/libs/pricing-comparison';
-import type { PriceDiscrepancy } from '@api/libs/pricing-comparison';
+import type { ComparisonResult } from '@api/libs/pricing-comparison';
+import AiModelRate from '@api/store/models/ai-model-rate';
 import AiModelRateHistory from '@api/store/models/ai-model-rate-history';
+import AiProvider from '@api/store/models/ai-provider';
 
 export async function executeRateCheck(): Promise<void> {
   logger.info('Starting rate check...');
 
   try {
-    const discrepancies = await compareAgainstDbRates(RATE_SOURCE_DRIFT_THRESHOLD, { forceRefresh: true });
+    const results = await compareAgainstDbRates(RATE_SOURCE_DRIFT_THRESHOLD);
 
-    const drifted = discrepancies.filter((d) => d.exceedsThreshold);
+    const belowCost = results.filter((r) => r.classification === 'below-cost');
+    const drift = results.filter((r) => r.classification === 'drift');
 
-    if (drifted.length === 0) {
-      logger.info('Rate check completed: no significant drift detected');
+    if (belowCost.length === 0 && drift.length === 0) {
+      logger.info('Rate check completed: no issues detected');
       return;
     }
 
-    logger.warn('Rate drift detected', {
-      count: drifted.length,
+    logger.warn('Rate issues detected', {
+      belowCost: belowCost.length,
+      drift: drift.length,
       threshold: RATE_SOURCE_DRIFT_THRESHOLD,
+      belowCostModels: belowCost.map((d) => ({
+        model: `${d.provider}/${d.model}`,
+        dbInput: d.dbInput,
+        dbOutput: d.dbOutput,
+        bestCostInput: d.bestCostInput,
+        bestCostOutput: d.bestCostOutput,
+        bestCostSource: d.bestCostSource,
+        inputMargin: d.inputMargin != null ? `${d.inputMargin.toFixed(1)}%` : undefined,
+        outputMargin: d.outputMargin != null ? `${d.outputMargin.toFixed(1)}%` : undefined,
+      })),
     });
 
-    // Record drift history
     const now = Math.floor(Date.now() / 1000);
-    await recordDriftHistory(drifted, now);
+    await recordHistory([...belowCost, ...drift], now);
 
-    // Send notification
-    await sendDriftNotification(drifted);
+    let autoUpdated = 0;
+    logger.info('Auto-update check', {
+      ENABLE_AUTO_RATE_UPDATE,
+      belowCostCount: belowCost.length,
+      envRaw: process.env.ENABLE_AUTO_RATE_UPDATE,
+    });
+    if (ENABLE_AUTO_RATE_UPDATE && belowCost.length > 0) {
+      autoUpdated = await autoApplyUpdates(belowCost);
+    }
 
-    logger.info('Rate check completed', { driftedModels: drifted.length });
+    await sendNotification(belowCost, drift, autoUpdated);
+
+    logger.info('Rate check completed', { belowCost: belowCost.length, drift: drift.length, autoUpdated });
   } catch (error) {
     logger.error('Rate check failed', { error });
   }
 }
 
-async function recordDriftHistory(drifted: PriceDiscrepancy[], timestamp: number): Promise<void> {
-  const records = drifted.map((d) => ({
-    providerId: d.providerId,
+/**
+ * Auto-fix below-cost models:
+ * - unitCosts → bestCost (standard tier cost basis)
+ * - inputRate/outputRate → raised to highest tier cost (ensure no loss at any usage level)
+ *
+ * pricing-core provides:
+ * - bestCostInput/Output: standard cost (for unitCosts)
+ * - tierMaxInput/Output: highest context-tier cost (for sell rate floor)
+ * - cacheTierMaxWrite/Read: highest cache tier (for caching rate floor)
+ */
+async function autoApplyUpdates(entries: ComparisonResult[]): Promise<number> {
+  let updated = 0;
+  const providers = await AiProvider.findAll();
+  const nameToId = new Map(providers.map((p) => [p.name as string, p.id]));
+
+  for (const d of entries) {
+    const providerId = nameToId.get(d.provider);
+    if (!providerId) continue;
+
+    try {
+      const rate = await AiModelRate.findOne({
+        where: { providerId, model: d.model, type: d.type },
+      });
+      if (!rate) continue;
+
+      const prevUnitCosts = rate.unitCosts ? { ...rate.unitCosts } : null;
+      const prevInputRate = Number(rate.inputRate ?? 0);
+      const prevOutputRate = Number(rate.outputRate ?? 0);
+
+      // unitCosts = standard cost basis
+      const newUnitCosts = {
+        input: d.bestCostInput ?? Number(rate.unitCosts?.input ?? 0),
+        output: d.bestCostOutput ?? Number(rate.unitCosts?.output ?? 0),
+      };
+
+      // sell rate = max(current sell, highest tier cost) — ensure no loss
+      const highestInput = Math.max(d.tierMaxInput ?? 0, d.bestCostInput ?? 0);
+      const highestOutput = Math.max(d.tierMaxOutput ?? 0, d.bestCostOutput ?? 0);
+      const newInputRate = Math.max(prevInputRate, highestInput);
+      const newOutputRate = Math.max(prevOutputRate, highestOutput);
+
+      // cache write/read = max(current, highest cache tier cost)
+      const prevCacheWrite = rate.caching ? Number(rate.caching.writeRate ?? 0) : 0;
+      const prevCacheRead = rate.caching ? Number(rate.caching.readRate ?? 0) : 0;
+      const highestCacheWrite = Math.max(d.cacheTierMaxWrite ?? 0, d.officialCacheWrite ?? 0, d.litellmCacheWrite ?? 0);
+      const highestCacheRead = Math.max(d.cacheTierMaxRead ?? 0, d.officialCacheRead ?? 0, d.litellmCacheRead ?? 0);
+      const newCacheWrite = Math.max(prevCacheWrite, highestCacheWrite);
+      const newCacheRead = Math.max(prevCacheRead, highestCacheRead);
+
+      const updateFields: Record<string, any> = { unitCosts: newUnitCosts };
+      if (newInputRate > prevInputRate) updateFields.inputRate = newInputRate;
+      if (newOutputRate > prevOutputRate) updateFields.outputRate = newOutputRate;
+
+      // Update caching if any value needs to be raised
+      if (newCacheWrite > prevCacheWrite || newCacheRead > prevCacheRead) {
+        updateFields.caching = {
+          writeRate: newCacheWrite > prevCacheWrite ? newCacheWrite : prevCacheWrite,
+          readRate: newCacheRead > prevCacheRead ? newCacheRead : prevCacheRead,
+        };
+      }
+
+      // Skip if nothing actually changes
+      const unitCostsChanged =
+        newUnitCosts.input !== Number(prevUnitCosts?.input ?? 0) ||
+        newUnitCosts.output !== Number(prevUnitCosts?.output ?? 0);
+      const ratesChanged = updateFields.inputRate != null || updateFields.outputRate != null;
+      const cachingChanged = updateFields.caching != null;
+      if (!unitCostsChanged && !ratesChanged && !cachingChanged) {
+        logger.info('Auto-update skipped (no change)', { model: `${d.provider}/${d.model}` });
+        continue;
+      }
+
+      await rate.update(updateFields);
+
+      await AiModelRateHistory.create({
+        providerId,
+        model: d.model,
+        type: d.type,
+        changeType: 'auto_update',
+        source: d.bestCostSource || 'unknown',
+        previousUnitCosts: prevUnitCosts,
+        currentUnitCosts: newUnitCosts,
+        previousRates: { inputRate: prevInputRate, outputRate: prevOutputRate },
+        currentRates: {
+          inputRate: updateFields.inputRate ?? prevInputRate,
+          outputRate: updateFields.outputRate ?? prevOutputRate,
+        },
+        driftPercent: Math.round(d.maxDrift * 10000) / 100,
+        detectedAt: Math.floor(Date.now() / 1000),
+        metadata: { classification: d.classification },
+      });
+
+      updated++;
+      logger.info('Auto-updated model', {
+        model: `${d.provider}/${d.model}`,
+        unitCosts: unitCostsChanged ? { prev: prevUnitCosts, new: newUnitCosts } : 'unchanged',
+        inputRate: updateFields.inputRate != null ? { prev: prevInputRate, new: newInputRate } : 'unchanged',
+        outputRate: updateFields.outputRate != null ? { prev: prevOutputRate, new: newOutputRate } : 'unchanged',
+        cacheWrite: updateFields.caching ? { prev: prevCacheWrite, new: newCacheWrite } : 'unchanged',
+        cacheRead: updateFields.caching ? { prev: prevCacheRead, new: newCacheRead } : 'unchanged',
+        source: d.bestCostSource,
+      });
+    } catch (err) {
+      logger.error('Failed to auto-update', {
+        model: `${d.provider}/${d.model}`,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  if (updated > 0) logger.info('Auto-applied updates', { updated, total: entries.length });
+  return updated;
+}
+
+async function recordHistory(models: ComparisonResult[], timestamp: number): Promise<void> {
+  const records = models.map((d) => ({
+    providerId: d.provider,
     model: d.model,
     type: d.type,
     changeType: 'source_drift' as const,
-    source: (() => {
-      const sources = Object.entries(d.drifts) as [string, { maxDrift: number }][];
-      if (sources.length === 0) return 'unknown';
-      return sources.reduce((best, cur) => (cur[1].maxDrift > best[1].maxDrift ? cur : best))[0];
-    })(),
-    previousUnitCosts: d.dbUnitCosts,
+    source: d.bestCostSource || 'unknown',
+    previousUnitCosts: { input: d.dbInput, output: d.dbOutput },
     currentUnitCosts: null,
-    previousRates: { inputRate: d.dbInputRate, outputRate: d.dbOutputRate },
+    previousRates: { inputRate: d.inputRate ?? 0, outputRate: d.outputRate ?? 0 },
     currentRates: null,
     driftPercent: Math.round(d.maxDrift * 10000) / 100,
     detectedAt: timestamp,
     metadata: {
-      sources: d.sources,
-      drifts: d.drifts,
+      classification: d.classification,
+      bestCostInput: d.bestCostInput,
+      bestCostOutput: d.bestCostOutput,
+      bestCostSource: d.bestCostSource,
+      inputMargin: d.inputMargin,
+      outputMargin: d.outputMargin,
     },
   }));
 
   try {
     await AiModelRateHistory.bulkCreate(records);
-    logger.info('Recorded drift history', { count: records.length });
+    logger.info('Recorded history', { count: records.length });
   } catch (error) {
-    logger.error('Failed to record drift history', { error });
+    logger.error('Failed to record history', { error });
   }
 }
 
-async function sendDriftNotification(drifted: PriceDiscrepancy[]): Promise<void> {
-  const top5 = drifted.slice(0, 5);
-  const modelList = top5
-    .map((d) => `• ${d.providerName}/${d.model}: ${(d.maxDrift * 100).toFixed(1)}% drift`)
-    .join('\n');
+async function sendNotification(
+  belowCost: ComparisonResult[],
+  drift: ComparisonResult[],
+  autoUpdated: number
+): Promise<void> {
+  const fmtMtok = (v: number) => `$${(v * 1e6).toFixed(2)}`;
 
-  const title = `Rate Drift Alert: ${drifted.length} model(s) detected`;
-  const body = `The following models have pricing that differs from external sources by more than ${(RATE_SOURCE_DRIFT_THRESHOLD * 100).toFixed(0)}%:\n\n${modelList}${drifted.length > 5 ? `\n\n...and ${drifted.length - 5} more` : ''}`;
+  const formatModel = (d: ComparisonResult) => {
+    const parts = [`${d.provider}/${d.model}`];
+    if (d.bestCostOutput) parts.push(`cost=${fmtMtok(d.bestCostOutput)}`);
+    if (d.outputRate) parts.push(`sell=${fmtMtok(d.outputRate)}`);
+    if (d.outputMargin != null) parts.push(`${d.outputMargin.toFixed(1)}%`);
+    return `• ${parts.join(' ')}`;
+  };
+
+  const sections: string[] = [];
+
+  if (autoUpdated > 0) {
+    sections.push(`✅ Auto-fixed: ${autoUpdated} model(s)`);
+  }
+
+  if (belowCost.length > 0) {
+    const list = belowCost.slice(0, 5).map(formatModel).join('\n');
+    sections.push(
+      `🔴 Below cost (${belowCost.length}):\n${list}${belowCost.length > 5 ? `\n  ...+${belowCost.length - 5} more` : ''}`
+    );
+  }
+
+  if (drift.length > 0) {
+    const list = drift.slice(0, 3).map(formatModel).join('\n');
+    sections.push(`🟡 Drift (${drift.length}):\n${list}${drift.length > 3 ? `\n  ...+${drift.length - 3} more` : ''}`);
+  }
+
+  const title =
+    belowCost.length > 0
+      ? `🔴 ${belowCost.length} model(s) below cost${drift.length > 0 ? `, ${drift.length} drift` : ''}`
+      : `🟡 ${drift.length} model(s) price drift`;
 
   try {
     await NotificationManager.sendCustomNotificationByRoles(['owner'], {
       title,
-      body,
-      actions: [
-        {
-          name: 'view',
-          title: 'View Model Rates',
-          link: '/admin/ai-providers',
-        },
-      ],
+      body: sections.join('\n\n'),
+      actions: [{ name: 'view', title: 'View Model Rates', link: '/admin/ai-providers' }],
     });
-    logger.info('Drift notification sent');
+    logger.info('Notification sent', { belowCost: belowCost.length, drift: drift.length });
   } catch (error) {
-    logger.error('Failed to send drift notification', { error });
+    logger.error('Failed to send notification', { error });
   }
 }

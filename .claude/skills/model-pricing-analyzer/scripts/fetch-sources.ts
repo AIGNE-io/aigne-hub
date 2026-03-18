@@ -64,33 +64,113 @@ export interface ExternalRate {
 const OFFICIAL_PRICING_ALL_PATH = path.join(OUTPUT_DIR, 'aigne-official-pricing-all.json');
 const OFFICIAL_PRICING_CACHE_TTL = 60 * 60 * 1000; // 1 hour
 
+const REMOTE_PRICING_URL = 'https://raw.githubusercontent.com/blocklet/model-pricing-data/main/data/pricing.json';
+const MAIN_PROVIDERS = ['openai', 'anthropic', 'google', 'xai', 'deepseek'];
+
+function _buildOfficialMap(entries: OfficialPricingEntry[]): Map<string, OfficialPricingEntry> | null {
+  const map = new Map<string, OfficialPricingEntry>();
+  for (const entry of entries) {
+    const id = entry.modelId || (entry as any).model;
+    if (!id) continue;
+    const baseKey = `${entry.provider}/${id}`;
+
+    // Always store under type-qualified key for precise lookups
+    if (entry.modelType) {
+      map.set(`${baseKey}::${entry.modelType}`, entry);
+    }
+
+    // For the base key, prefer higher-priority types (chatCompletion > lexicon > ... > fineTuning).
+    const existing = map.get(baseKey);
+    if (!existing || _typePriority(entry.modelType) < _typePriority(existing.modelType)) {
+      map.set(baseKey, entry);
+    }
+  }
+  return map.size > 0 ? map : null;
+}
+
 export async function loadOfficialPricingCache(): Promise<Map<string, OfficialPricingEntry> | null> {
   try {
     const data = await fs.readFile(OFFICIAL_PRICING_ALL_PATH, 'utf-8');
     const cache = JSON.parse(data) as { timestamp: number; entries: OfficialPricingEntry[] };
     if (Date.now() - cache.timestamp > OFFICIAL_PRICING_CACHE_TTL) return null;
+    return _buildOfficialMap(cache.entries);
+  } catch {
+    return null;
+  }
+}
 
-    const map = new Map<string, OfficialPricingEntry>();
-    for (const entry of cache.entries) {
-      const id = entry.modelId || (entry as any).model;
-      if (!id) continue;
-      const baseKey = `${entry.provider}/${id}`;
+/**
+ * Fetch official pricing directly from the remote pre-built catalog.
+ * This avoids running the catalog subprocess and is the fastest path.
+ * The remote JSON uses { providers: { [provider]: { [modelId::type]: entry } } }
+ * and we convert the `caching` object to `cacheTiers` array + `cachedInputCostPerToken`.
+ */
+export async function fetchRemoteOfficialPricing(
+  url: string = REMOTE_PRICING_URL
+): Promise<Map<string, OfficialPricingEntry> | null> {
+  try {
+    const res = await axios.get(url, { timeout: 30000 });
+    const json = res.data as {
+      _meta?: any;
+      providers: Record<string, Record<string, any>>;
+    };
+    if (!json.providers) return null;
 
-      // Always store under type-qualified key for precise lookups
-      if (entry.modelType) {
-        map.set(`${baseKey}::${entry.modelType}`, entry);
-      }
+    const entries: OfficialPricingEntry[] = [];
 
-      // For the base key, prefer higher-priority types (chatCompletion > lexicon > ... > fineTuning).
-      // This ensures that when a model has both chatCompletion and fineTuning entries,
-      // the base key points to the standard/chatCompletion entry.
-      const existing = map.get(baseKey);
-      if (!existing || _typePriority(entry.modelType) < _typePriority(existing.modelType)) {
-        map.set(baseKey, entry);
+    for (const providerKey of MAIN_PROVIDERS) {
+      const providerData = json.providers[providerKey];
+      if (!providerData) continue;
+
+      for (const [key, val] of Object.entries(providerData) as [string, any][]) {
+        const parts = key.split('::');
+        const modelId = parts[0];
+        const modelType = val.modelType || parts[1] || 'chatCompletion';
+
+        const entry: OfficialPricingEntry = {
+          provider: providerKey,
+          modelId,
+          displayName: val.displayName || modelId,
+          pricingUnit: val.pricingUnit || 'per-token',
+          modelType,
+          sourceUrl: val.sourceUrl || '',
+          extractionMethod: val.extractionMethod || 'remote-catalog',
+        };
+
+        if (val.inputCostPerToken != null) entry.inputCostPerToken = val.inputCostPerToken;
+        if (val.outputCostPerToken != null) entry.outputCostPerToken = val.outputCostPerToken;
+
+        // Convert caching object → cacheTiers + cachedInputCostPerToken
+        if (val.caching && typeof val.caching === 'object') {
+          const cacheTiers: { label: string; costPerToken: number }[] = [];
+          for (const [label, costPerToken] of Object.entries(val.caching) as [string, number][]) {
+            cacheTiers.push({ label, costPerToken });
+          }
+          if (cacheTiers.length > 0) entry.cacheTiers = cacheTiers;
+          if (val.caching.read != null) entry.cachedInputCostPerToken = val.caching.read;
+        }
+
+        if (val.contextTiers?.length > 0) entry.contextTiers = val.contextTiers;
+        if (val.batchPricing) entry.batchPricing = val.batchPricing;
+        if (val.specialModes?.length > 0) entry.specialModes = val.specialModes;
+        if (val.costPerImage != null) entry.costPerImage = val.costPerImage;
+        if (val.imageVariants) entry.imageVariants = val.imageVariants;
+        if (val.costPerSecond != null) entry.costPerSecond = val.costPerSecond;
+        if (val.videoVariants) entry.videoVariants = val.videoVariants;
+        if (val.deprecated) entry.deprecated = true;
+
+        entries.push(entry);
       }
     }
-    return map.size > 0 ? map : null;
-  } catch {
+
+    // Also write to local cache file so subsequent --no-scrape runs can use it
+    const cacheData = { timestamp: Date.now(), providers: MAIN_PROVIDERS, totalModels: entries.length, entries };
+    await fs.mkdir(OUTPUT_DIR, { recursive: true });
+    await fs.writeFile(OFFICIAL_PRICING_ALL_PATH, JSON.stringify(cacheData, null, 2));
+
+    return _buildOfficialMap(entries);
+  } catch (err: any) {
+    console.error(`Failed to fetch remote pricing: ${err.message}`);
     return null;
   }
 }

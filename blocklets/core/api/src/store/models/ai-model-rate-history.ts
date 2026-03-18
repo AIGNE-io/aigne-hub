@@ -3,7 +3,7 @@ import { CreationOptional, DataTypes, InferAttributes, InferCreationAttributes, 
 import nextId from '../../libs/next-id';
 import { sequelize } from '../sequelize';
 
-export type RateChangeType = 'source_drift' | 'manual_update' | 'bulk_update' | 'bulk_create';
+export type RateChangeType = 'source_drift' | 'manual_update' | 'bulk_update' | 'bulk_create' | 'auto_update';
 
 export default class AiModelRateHistory extends Model<
   InferAttributes<AiModelRateHistory>,

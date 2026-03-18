@@ -34,11 +34,24 @@ const coreJS = stripModuleSyntax(fs.readFileSync(path.join(__dirname, 'core', 'p
 const fetchJS = stripModuleSyntax(fs.readFileSync(path.join(__dirname, 'core', 'fetch-browser.mjs'), 'utf-8'));
 
 let officialPricingData = 'null';
-if (officialPricingPath) {
-  try {
-    officialPricingData = fs.readFileSync(officialPricingPath, 'utf-8').trim();
-  } catch (e) {
-    console.error(`Warning: Could not read official pricing: ${officialPricingPath}`);
+{
+  // Try explicit path first, then auto-detect from output dir
+  const candidates = [
+    officialPricingPath,
+    path.join(__dirname, '..', 'output', 'aigne-official-pricing-all.json'),
+    path.join(__dirname, 'output', 'aigne-official-pricing-all.json'),
+  ].filter(Boolean);
+  for (const p of candidates) {
+    try {
+      officialPricingData = fs.readFileSync(p, 'utf-8').trim();
+      console.error(`Official pricing loaded from: ${path.resolve(p)}`);
+      break;
+    } catch (e) {
+      // try next
+    }
+  }
+  if (officialPricingData === 'null') {
+    console.error('Warning: No local official pricing found, HTML will fetch from remote catalog at runtime');
   }
 }
 
@@ -570,13 +583,23 @@ function renderReport(results,groups,unmatchedModels){
   var allProviders=[...new Set([...results.map(function(m){return m.provider}),...unmatchedModels.map(function(m){return m.provider})])].sort();
 
   // Build sync data
-  __allEntries=results.filter(function(m){return m.bestCostInput!==undefined||m.bestCostOutput!==undefined}).map(function(m){return{
+  __allEntries=results.filter(function(m){return m.bestCostInput!==undefined||m.bestCostOutput!==undefined}).map(function(m){
+    // Merge cache tiers: start with official, add LiteLLM write if official lacks it
+    var ct=m.officialCacheTiers?[...m.officialCacheTiers]:[];
+    var hasOfficialWrite=ct.some(function(t){return t.label.indexOf('write')>=0});
+    if(!hasOfficialWrite&&m.litellmCacheWrite){ct.push({label:'write',costPerToken:m.litellmCacheWrite})}
+    if(!ct.length&&(m.litellmCacheWrite||m.litellmCacheRead)){
+      if(m.litellmCacheWrite)ct.push({label:'write',costPerToken:m.litellmCacheWrite});
+      if(m.litellmCacheRead)ct.push({label:'read',costPerToken:m.litellmCacheRead});
+    }
+    return{
     provider:m.provider,modelId:m.model,
     inputCostPerToken:m.bestCostInput??null,outputCostPerToken:m.bestCostOutput??null,
     cachedInputCostPerToken:m.officialCacheRead??m.litellmCacheRead??null,
-    cacheTiers:m.officialCacheTiers??(m.litellmCacheWrite||m.litellmCacheRead?[...(m.litellmCacheWrite?[{label:'write',costPerToken:m.litellmCacheWrite}]:[]),...(m.litellmCacheRead?[{label:'read',costPerToken:m.litellmCacheRead}]:[])]:undefined),
+    cacheTiers:ct.length?ct:undefined,
     tieredPricing:m.tieredPricing?.length?m.tieredPricing:undefined,
     resolutionTiers:m.resolutionTiers?.length?m.resolutionTiers:undefined,
+    initialMaxDrift:m.maxDrift??0,
     modelType:m.type}});
   __entryMap=new Map(__allEntries.map(function(e){return[e.provider+'/'+e.modelId,e]}));
   __umEntries=unmatchedModels.map(function(m){return{
@@ -797,7 +820,8 @@ async function doSync(isDryRun){
   execBtn.style.display='none';
   try{
     var body={mode:'sync',entries:allSelected,dryRun:isDryRun,deprecateUnmatched:safeDeprecate,applyRates:applyRates,profitMargin:applyRates?profitMargin:undefined,creditPrice:applyRates?creditPrice:undefined};
-    var resp=await fetch(url+'/api/ai-providers/bulk-rate-update',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify(body)});
+    var bulkUrl=await buildApiUrlBrowser(url,'/api/ai-providers/bulk-rate-update');
+    var resp=await fetch(bulkUrl,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify(body)});
     var json=await resp.json();if(!resp.ok)throw new Error(json.error||resp.statusText);
     var s=json.summary||{};var dep=json.deprecated||[];
     var bg=isDryRun?'#ebf8ff':'#c6f6d5';var fg=isDryRun?'#2b6cb0':'#276749';
@@ -874,7 +898,8 @@ async function fetchLiveDbRates(){
   var headers={};if(token)headers['Authorization']='Bearer '+token;
   try{
     var all=[];var page=1;
-    while(true){var resp=await fetch(hubUrl+'/api/ai-providers/model-rates?pageSize=100&page='+page,{headers:headers});if(!resp.ok)throw new Error('HTTP '+resp.status);var data=await resp.json();var list=data.list||[];all.push(...list);if(list.length<100)break;page++}
+    var apiBase=await buildApiUrlBrowser(hubUrl,'/api/ai-providers/model-rates');
+    while(true){var resp=await fetch(apiBase+'?pageSize=100&page='+page,{headers:headers});if(!resp.ok)throw new Error('HTTP '+resp.status);var data=await resp.json();var list=data.list||[];all.push(...list);if(list.length<100)break;page++}
     var map=new Map();for(var r of all){var pName=r.provider?.name||'';var key=pName+'/'+r.model;map.set(key,{inputRate:Number(r.inputRate)||0,outputRate:Number(r.outputRate)||0,unitCosts:{input:Number(r.unitCosts?.input)||0,output:Number(r.unitCosts?.output)||0},cacheWriteRate:Number(r.caching?.writeRate)||0,cacheReadRate:Number(r.caching?.readRate)||0,type:r.type||''})}
     return map;
   }catch(e){console.error('fetchLiveDbRates failed:',e);return null}
@@ -943,13 +968,28 @@ async function doRefreshDb(){
     try{openrouter=await fetchOpenRouterBrowser();setStep('or','done',openrouter.size+' 条')}
     catch(e){setStep('or','error');__warnings.push('OpenRouter 数据加载失败 (可能 CORS): '+e.message)}
 
-    // 4. Official pricing
+    // 4. Official pricing — use embedded data or fetch from remote catalog
     setStep('op','active');
     var officialMap=new Map();
     if(__officialPricingFallback&&__officialPricingFallback.entries){
       officialMap=buildOfficialPricingMap(__officialPricingFallback.entries);
       setStep('op','done',officialMap.size+' 条 (嵌入)');
-    }else{setStep('op','done','无数据')}
+    }else{
+      try{
+        var remoteCatalogUrl='https://raw.githubusercontent.com/blocklet/model-pricing-data/main/data/pricing.json';
+        var remoteResp=await fetch(remoteCatalogUrl);
+        if(remoteResp.ok){
+          var remoteJson=await remoteResp.json();
+          if(remoteJson&&remoteJson.providers){
+            var remoteEntries=[];
+            var MAIN_PROVS=['openai','anthropic','google','xai','deepseek'];
+            for(var pk of MAIN_PROVS){var pd=remoteJson.providers[pk];if(!pd)continue;for(var[rk,rv]of Object.entries(pd)){var pts=rk.split('::');var mid=pts[0];var mt=rv.modelType||pts[1]||'chatCompletion';var re={provider:pk,modelId:mid,displayName:rv.displayName||mid,pricingUnit:rv.pricingUnit||'per-token',modelType:mt,sourceUrl:rv.sourceUrl||'',extractionMethod:rv.extractionMethod||'remote-catalog'};if(rv.inputCostPerToken!=null)re.inputCostPerToken=rv.inputCostPerToken;if(rv.outputCostPerToken!=null)re.outputCostPerToken=rv.outputCostPerToken;if(rv.caching&&typeof rv.caching==='object'){var ct=[];for(var[cl,cv]of Object.entries(rv.caching))ct.push({label:cl,costPerToken:cv});if(ct.length>0)re.cacheTiers=ct;if(rv.caching.read!=null)re.cachedInputCostPerToken=rv.caching.read}if(rv.contextTiers?.length>0)re.contextTiers=rv.contextTiers;if(rv.costPerImage!=null)re.costPerImage=rv.costPerImage;if(rv.costPerSecond!=null)re.costPerSecond=rv.costPerSecond;if(rv.deprecated)re.deprecated=true;remoteEntries.push(re)}}
+            officialMap=buildOfficialPricingMap(remoteEntries);
+            setStep('op','done',officialMap.size+' 条 (远程)');
+          }else{setStep('op','done','无数据')}
+        }else{setStep('op','error')}
+      }catch(e){setStep('op','error');__warnings.push('官方定价远程获取失败: '+e.message)}
+    }
 
     // 5. Compare
     setStep('calc','active');

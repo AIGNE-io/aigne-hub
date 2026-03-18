@@ -65,6 +65,10 @@ Options:
 - `--threshold <n>`: Drift threshold as decimal (default: 0.1 = 10%)
 - `--json`: Output as JSON
 - `--token <token>`: Auth token (auto-loaded if --env is specified)
+- `--scrape`: Force direct scraping of provider pages (instead of default remote catalog)
+- `--no-scrape`: Skip official pricing fetch entirely, use existing local cache
+
+Note: By default, official pricing is fetched from the pre-built remote catalog at `blocklet/model-pricing-data`. No API keys or manual scraping needed.
 
 ### Step 2: Interpret Results
 

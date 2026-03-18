@@ -1839,4 +1839,12 @@ router.get('/health', async (_req, res) => {
   });
 });
 
+// ─── Manual Rate Check Trigger (admin only) ─────────────────────────────────
+router.post('/trigger-rate-check', user, ensureAdmin, async (_req, res) => {
+  const { executeRateCheck } = await import('@api/crons/model-rate-check');
+  // Run in background, return immediately
+  executeRateCheck().catch((err) => logger.error('Manual rate check failed', { error: err }));
+  res.json({ message: 'Rate check triggered', timestamp: new Date().toISOString() });
+});
+
 export default router;

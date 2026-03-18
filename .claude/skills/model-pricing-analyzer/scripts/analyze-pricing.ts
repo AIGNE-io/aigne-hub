@@ -5,8 +5,8 @@
  * Fetches current model rates from AIGNE Hub API and compares them
  * against LiteLLM, OpenRouter, and official pricing data.
  *
- * Always fetches real-time official pricing by automatically running the
- * catalog scraper in parallel with other data sources.
+ * By default, fetches official pricing from the pre-built remote catalog
+ * (blocklet/model-pricing-data). Use --scrape to fall back to direct scraping.
  *
  * Usage:
  *   npx ts-node scripts/analyze-pricing.ts [options]
@@ -17,11 +17,14 @@
  *   --threshold <n>     Drift threshold as decimal (default: 0.1 = 10%)
  *   --json              Output as JSON instead of table
  *   --token <token>     Auth token (only needed for write operations, read is public)
- *   --no-scrape         Skip official pricing scrape, use existing cache
+ *   --no-scrape         Skip official pricing fetch entirely, use existing cache
+ *   --remote [url]      Use remote pre-built pricing catalog (default)
+ *   --scrape            Scrape provider pages directly instead of using remote catalog
  *
  * Examples:
  *   pnpm tsx scripts/analyze-pricing.ts --env staging
  *   pnpm tsx scripts/analyze-pricing.ts --env production --json
+ *   pnpm tsx scripts/analyze-pricing.ts --env staging --scrape
  *   pnpm tsx scripts/analyze-pricing.ts --env staging --no-scrape
  */
 
@@ -33,7 +36,13 @@ import { promisify } from 'util';
 
 import { compare, printTable } from './compare';
 import { findUnmatchedOfficialModels as _findUnmatched } from './core/pricing-core.mjs';
-import { fetchDbRates, fetchLiteLLM, fetchOpenRouter, loadOfficialPricingCache } from './fetch-sources';
+import {
+  fetchDbRates,
+  fetchLiteLLM,
+  fetchOpenRouter,
+  fetchRemoteOfficialPricing,
+  loadOfficialPricingCache,
+} from './fetch-sources';
 import type { OfficialPricingEntry } from './pricing-schema';
 
 /** Unmatched model entry enriched with LiteLLM cross-reference data */
@@ -59,6 +68,8 @@ interface CliOptions {
   json: boolean;
   token?: string;
   noScrape: boolean;
+  remote?: string;
+  scrape: boolean;
 }
 
 const ENV_URLS: Record<string, string> = {
@@ -86,6 +97,8 @@ async function parseArgs(): Promise<CliOptions> {
     threshold: 0.1,
     json: false,
     noScrape: false,
+    scrape: false,
+    remote: 'https://raw.githubusercontent.com/blocklet/model-pricing-data/main/data/pricing.json',
   };
 
   for (let i = 0; i < args.length; i++) {
@@ -108,6 +121,19 @@ async function parseArgs(): Promise<CliOptions> {
       case '--no-scrape':
         opts.noScrape = true;
         break;
+      case '--remote': {
+        const next = args[i + 1];
+        if (next && !next.startsWith('--')) {
+          opts.remote = args[++i];
+        } else {
+          opts.remote = 'https://raw.githubusercontent.com/blocklet/model-pricing-data/main/data/pricing.json';
+        }
+        break;
+      }
+      case '--scrape':
+        opts.scrape = true;
+        opts.remote = undefined;
+        break;
     }
   }
 
@@ -129,13 +155,19 @@ async function parseArgs(): Promise<CliOptions> {
   return opts;
 }
 
-async function refreshOfficialPricing(log: (...args: any[]) => void): Promise<void> {
+async function refreshOfficialPricing(log: (...args: any[]) => void, remoteUrl?: string): Promise<void> {
   const scriptDir = new URL('.', import.meta.url).pathname;
   const catalogScript = path.join(scriptDir, 'official-pricing-catalog.mjs');
 
-  log('🔄 Scraping real-time official pricing data...');
+  const catalogArgs = ['--cache'];
+  if (remoteUrl) {
+    catalogArgs.push('--remote', remoteUrl);
+    log('🔄 Fetching official pricing from remote catalog...');
+  } else {
+    log('🔄 Scraping real-time official pricing data...');
+  }
   try {
-    const { stderr } = await execFileAsync('node', [catalogScript, '--cache'], {
+    const { stderr } = await execFileAsync('node', [catalogScript, ...catalogArgs], {
       timeout: 120000,
     });
     if (stderr) {
@@ -177,27 +209,32 @@ async function main(): Promise<void> {
   log(`Hub URL: ${opts.hubUrl}`);
   log(`Threshold: ${(opts.threshold * 100).toFixed(0)}%\n`);
 
-  // 1. Fetch ALL data sources in parallel (including fresh official pricing scrape)
-  const scrapePromise = opts.noScrape ? Promise.resolve() : refreshOfficialPricing(log);
+  // 1. Fetch ALL data sources in parallel
+  // When remote URL is set (default), fetch official pricing directly without subprocess
+  const officialPromise: Promise<Map<string, any> | null> = opts.noScrape
+    ? loadOfficialPricingCache()
+    : opts.remote
+      ? fetchRemoteOfficialPricing(opts.remote).then((map) => {
+          if (map)
+            log(
+              `✅ Official pricing: ${new Set([...map.keys()].filter((k) => !k.includes('::'))).size} models from remote catalog`
+            );
+          return map;
+        })
+      : refreshOfficialPricing(log).then(() => loadOfficialPricingCache());
 
-  const [, dbRates, litellm, openrouter] = await Promise.all([
-    scrapePromise,
+  const [officialCache, dbRates, litellm, openrouter] = await Promise.all([
+    officialPromise,
     fetchDbRates(opts.hubUrl, opts.token),
     fetchLiteLLM(),
     fetchOpenRouter(),
   ]);
 
-  // 2. Read the (now-fresh) official pricing cache
-  const officialCache = await loadOfficialPricingCache();
   if (!officialCache) {
     console.error('⚠️  Official pricing data unavailable.');
     if (opts.noScrape) {
       console.error('   Hint: remove --no-scrape to auto-fetch official pricing.');
     }
-  } else {
-    // Map contains both base keys and type-qualified keys; count unique base keys only
-    const uniqueModels = new Set([...officialCache.keys()].filter((k) => !k.includes('::')));
-    log(`✅ Official pricing: ${uniqueModels.size} models from provider docs`);
   }
 
   if (dbRates.length === 0) {

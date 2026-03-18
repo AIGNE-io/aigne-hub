@@ -81,7 +81,7 @@ function init() {
             await executeRateCheck();
           }
         },
-        options: { runOnInit: false },
+        options: { runOnInit: true },
       },
     ],
     onError: (error: Error, name: string) => {
