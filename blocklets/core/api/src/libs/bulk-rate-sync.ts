@@ -133,6 +133,8 @@ interface UpdatedEntry {
   newUnitCosts: { input: number; output: number };
   oldRates?: { inputRate: number; outputRate: number };
   newRates?: { inputRate: number; outputRate: number };
+  oldCaching?: { readRate?: number; writeRate?: number } | null;
+  newCaching?: { readRate?: number; writeRate?: number } | null;
   source?: string;
 }
 
@@ -149,6 +151,7 @@ export interface CreatedEntry {
   type: string;
   unitCosts: { input: number; output: number };
   rates?: { inputRate: number; outputRate: number };
+  caching?: { readRate?: number; writeRate?: number } | null;
 }
 
 interface ErrorEntry {
@@ -209,7 +212,8 @@ export function buildSyncResult(data: {
   return {
     ...data,
     summary: {
-      total: data.updated.length + data.unchanged.length + data.unmatched.length + data.created.length + data.errors.length,
+      total:
+        data.updated.length + data.unchanged.length + data.unmatched.length + data.created.length + data.errors.length,
       updated: data.updated.length,
       unchanged: data.unchanged.length,
       unmatched: data.unmatched.length,

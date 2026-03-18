@@ -32,10 +32,23 @@ import path from 'path';
 import { promisify } from 'util';
 
 import { compare, printTable } from './compare';
+import { findUnmatchedOfficialModels as _findUnmatched } from './core/pricing-core.mjs';
 import { fetchDbRates, fetchLiteLLM, fetchOpenRouter, loadOfficialPricingCache } from './fetch-sources';
-import type { DbRate } from './fetch-sources';
 import type { OfficialPricingEntry } from './pricing-schema';
-import { PROVIDER_TIERS, modelNameFallbacks, resolveModelMapping } from './provider-aliases';
+
+/** Unmatched model entry enriched with LiteLLM cross-reference data */
+interface UnmatchedModelEntry extends OfficialPricingEntry {
+  litellmInput?: number;
+  litellmOutput?: number;
+  litellmCacheWrite?: number;
+  litellmCacheRead?: number;
+}
+
+const findUnmatchedOfficialModels = _findUnmatched as (
+  dbRates: any[],
+  officialCache: Map<string, OfficialPricingEntry>,
+  litellm: Map<string, any>
+) => UnmatchedModelEntry[];
 
 const execFileAsync = promisify(execFile);
 
@@ -156,64 +169,6 @@ async function askGenerateHtml(): Promise<boolean> {
   });
 }
 
-/**
- * Find official pricing entries that exist in the cache but have no corresponding DB model.
- * This is the "reverse lookup" — official → DB direction.
- */
-function findUnmatchedOfficialModels(
-  dbRates: DbRate[],
-  officialCache: Map<string, OfficialPricingEntry>
-): OfficialPricingEntry[] {
-  // 1. Compute relevant tier1 providers from DB rates
-  const tier2Set = new Set(PROVIDER_TIERS.tier2 as readonly string[]);
-  const relevantProviders = new Set<string>();
-
-  // Collect all cache keys that DB models have matched (or could match)
-  const matchedKeys = new Set<string>();
-
-  for (const rate of dbRates) {
-    const providerName = rate.provider?.name || '';
-    const { primaryProvider, primaryModel } = resolveModelMapping(rate.model, providerName);
-
-    // Track the tier1 provider as relevant
-    if (!tier2Set.has(primaryProvider)) {
-      relevantProviders.add(primaryProvider);
-    }
-
-    // Build all possible lookup keys this DB model would match against
-    const baseKey = `${primaryProvider}/${primaryModel}`;
-    matchedKeys.add(baseKey);
-
-    // Also add fallback keys
-    const fallbacks = modelNameFallbacks(primaryModel);
-    for (const fb of fallbacks) {
-      matchedKeys.add(`${primaryProvider}/${fb}`);
-    }
-
-    // For tier1 providers used directly, also mark with original provider name
-    if (providerName && providerName !== primaryProvider) {
-      matchedKeys.add(`${providerName}/${rate.model}`);
-    }
-  }
-
-  // 2. Iterate official cache, collect unmatched entries from relevant providers
-  const unmatched: OfficialPricingEntry[] = [];
-  for (const [key, entry] of officialCache) {
-    // Skip type-qualified keys (e.g. "openai/gpt-4o::chatCompletion") to avoid duplicates
-    if (key.includes('::')) continue;
-
-    // Only include models from providers that are relevant (exist in DB)
-    if (!relevantProviders.has(entry.provider)) continue;
-
-    // Check if this model was matched by any DB model
-    if (!matchedKeys.has(key)) {
-      unmatched.push(entry);
-    }
-  }
-
-  return unmatched;
-}
-
 async function main(): Promise<void> {
   const opts = await parseArgs();
   // Use stderr for info logs so --json output stays clean on stdout
@@ -256,8 +211,8 @@ async function main(): Promise<void> {
   const providerPages = officialCache ?? new Map();
   const results = compare(dbRates, litellm, openrouter, providerPages, opts.threshold);
 
-  // 4. Find unmatched official models (reverse lookup)
-  const unmatchedModels = providerPages.size > 0 ? findUnmatchedOfficialModels(dbRates, providerPages) : [];
+  // 4. Find unmatched official models (reverse lookup, requires both official + LiteLLM confirmation)
+  const unmatchedModels = providerPages.size > 0 ? findUnmatchedOfficialModels(dbRates, providerPages, litellm) : [];
   if (unmatchedModels.length > 0) {
     log(`📋 官方未录入模型: ${unmatchedModels.length} 个`);
   }
@@ -276,18 +231,21 @@ async function main(): Promise<void> {
       const scriptDir = new URL('.', import.meta.url).pathname;
       const outputDir = path.join(scriptDir, '..', 'output');
       await fs.mkdir(outputDir, { recursive: true });
-      const tempFile = path.join(outputDir, 'pricing-analysis.json');
       const outputFile = path.join(outputDir, `pricing-report-${opts.env || 'local'}.html`);
 
-      // Write JSON to temp file (full output with unmatchedModels)
+      // Save analysis JSON for reference (CLI output, not needed by HTML generator)
+      const tempFile = path.join(outputDir, 'pricing-analysis.json');
       await fs.writeFile(tempFile, JSON.stringify(fullOutput, null, 2));
 
-      // Generate HTML report
-      const reportScript = `${scriptDir}/generate-html-report.mjs`;
+      // Generate self-contained HTML report (fetches data at runtime)
+      const reportScript = path.join(scriptDir, 'generate-html-report.mjs');
+      const officialPricingPath = path.join(outputDir, 'aigne-official-pricing-all.json');
 
       try {
         console.log('\n📝 Generating HTML report...');
-        execSync(`node "${reportScript}" "${tempFile}" "${outputFile}" "${opts.hubUrl}"`, { stdio: 'inherit' });
+        execSync(`node "${reportScript}" "${outputFile}" "${opts.hubUrl}" "${officialPricingPath}"`, {
+          stdio: 'inherit',
+        });
 
         // Open in browser
         console.log('\n🌐 Opening report in browser...');

@@ -1,5 +1,5 @@
 {
-  "timestamp": 1773741909814,
+  "timestamp": 1773806029498,
   "entries": [
     {
       "provider": "openai",
@@ -27,13 +27,13 @@
       "modelType": "fineTuning",
       "sourceUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
       "extractionMethod": "catalog-scraper",
-      "inputCostPerToken": 0.000004,
-      "outputCostPerToken": 0.000016,
-      "cachedInputCostPerToken": 0.000001,
+      "inputCostPerToken": 0.000002,
+      "outputCostPerToken": 0.000008,
+      "cachedInputCostPerToken": 5e-7,
       "cacheTiers": [
         {
           "label": "read",
-          "costPerToken": 0.000001
+          "costPerToken": 5e-7
         }
       ],
       "trainingCostPerHour": 100
@@ -46,13 +46,13 @@
       "modelType": "fineTuning",
       "sourceUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
       "extractionMethod": "catalog-scraper",
-      "inputCostPerToken": 0.000002,
-      "outputCostPerToken": 0.000008,
-      "cachedInputCostPerToken": 5e-7,
+      "inputCostPerToken": 0.000001,
+      "outputCostPerToken": 0.000004,
+      "cachedInputCostPerToken": 2.5e-7,
       "cacheTiers": [
         {
           "label": "read",
-          "costPerToken": 5e-7
+          "costPerToken": 2.5e-7
         }
       ],
       "trainingCostPerHour": 100
@@ -405,6 +405,42 @@
     },
     {
       "provider": "openai",
+      "modelId": "gpt-5.4-mini",
+      "displayName": "gpt-5.4-mini",
+      "pricingUnit": "per-token",
+      "modelType": "chatCompletion",
+      "sourceUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
+      "extractionMethod": "catalog-scraper",
+      "inputCostPerToken": 7.5e-7,
+      "outputCostPerToken": 0.0000045,
+      "cachedInputCostPerToken": 7.5e-8,
+      "cacheTiers": [
+        {
+          "label": "read",
+          "costPerToken": 7.5e-8
+        }
+      ]
+    },
+    {
+      "provider": "openai",
+      "modelId": "gpt-5.4-nano",
+      "displayName": "gpt-5.4-nano",
+      "pricingUnit": "per-token",
+      "modelType": "chatCompletion",
+      "sourceUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
+      "extractionMethod": "catalog-scraper",
+      "inputCostPerToken": 2e-7,
+      "outputCostPerToken": 0.00000125,
+      "cachedInputCostPerToken": 2e-8,
+      "cacheTiers": [
+        {
+          "label": "read",
+          "costPerToken": 2e-8
+        }
+      ]
+    },
+    {
+      "provider": "openai",
       "modelId": "gpt-5.4-pro",
       "displayName": "gpt-5.4-pro",
       "pricingUnit": "per-token",
@@ -566,13 +602,13 @@
       "modelType": "fineTuning",
       "sourceUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
       "extractionMethod": "catalog-scraper",
-      "inputCostPerToken": 0.000003,
-      "outputCostPerToken": 0.000012,
-      "cachedInputCostPerToken": 7.5e-7,
+      "inputCostPerToken": 0.0000015,
+      "outputCostPerToken": 0.000006,
+      "cachedInputCostPerToken": 5e-7,
       "cacheTiers": [
         {
           "label": "read",
-          "costPerToken": 7.5e-7
+          "costPerToken": 5e-7
         }
       ]
     },
@@ -602,13 +638,13 @@
       "modelType": "fineTuning",
       "sourceUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
       "extractionMethod": "catalog-scraper",
-      "inputCostPerToken": 8e-7,
-      "outputCostPerToken": 0.0000032,
-      "cachedInputCostPerToken": 2e-7,
+      "inputCostPerToken": 4e-7,
+      "outputCostPerToken": 0.0000016,
+      "cachedInputCostPerToken": 1e-7,
       "cacheTiers": [
         {
           "label": "read",
-          "costPerToken": 2e-7
+          "costPerToken": 1e-7
         }
       ]
     },
@@ -638,13 +674,13 @@
       "modelType": "fineTuning",
       "sourceUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
       "extractionMethod": "catalog-scraper",
-      "inputCostPerToken": 2e-7,
-      "outputCostPerToken": 8e-7,
-      "cachedInputCostPerToken": 5e-8,
+      "inputCostPerToken": 1e-7,
+      "outputCostPerToken": 4e-7,
+      "cachedInputCostPerToken": 2.5e-8,
       "cacheTiers": [
         {
           "label": "read",
-          "costPerToken": 5e-8
+          "costPerToken": 2.5e-8
         }
       ]
     },
@@ -685,13 +721,13 @@
       "modelType": "fineTuning",
       "sourceUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
       "extractionMethod": "catalog-scraper",
-      "inputCostPerToken": 0.00000375,
-      "outputCostPerToken": 0.000015,
-      "cachedInputCostPerToken": 0.000001875,
+      "inputCostPerToken": 0.000002225,
+      "outputCostPerToken": 0.0000125,
+      "cachedInputCostPerToken": 9e-7,
       "cacheTiers": [
         {
           "label": "read",
-          "costPerToken": 0.000001875
+          "costPerToken": 9e-7
         }
       ]
     },
@@ -732,13 +768,13 @@
       "modelType": "fineTuning",
       "sourceUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
       "extractionMethod": "catalog-scraper",
-      "inputCostPerToken": 3e-7,
-      "outputCostPerToken": 0.0000012,
-      "cachedInputCostPerToken": 1.5e-7,
+      "inputCostPerToken": 1.5e-7,
+      "outputCostPerToken": 6e-7,
+      "cachedInputCostPerToken": 7.5e-8,
       "cacheTiers": [
         {
           "label": "read",
-          "costPerToken": 1.5e-7
+          "costPerToken": 7.5e-8
         }
       ]
     },
@@ -1049,8 +1085,8 @@
       "modelType": "fineTuning",
       "sourceUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
       "extractionMethod": "catalog-scraper",
-      "inputCostPerToken": 0.000003,
-      "outputCostPerToken": 0.000006
+      "inputCostPerToken": 0.0000015,
+      "outputCostPerToken": 0.000003
     },
     {
       "provider": "openai",
@@ -1682,8 +1718,8 @@
       "modelType": "fineTuning",
       "sourceUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
       "extractionMethod": "catalog-scraper",
-      "inputCostPerToken": 0.0000016,
-      "outputCostPerToken": 0.0000016
+      "inputCostPerToken": 8e-7,
+      "outputCostPerToken": 9e-7
     },
     {
       "provider": "openai",
@@ -1716,8 +1752,8 @@
       "modelType": "fineTuning",
       "sourceUrl": "https://developers.openai.com/api/docs/pricing?latest-pricing=standard",
       "extractionMethod": "catalog-scraper",
-      "inputCostPerToken": 0.000012,
-      "outputCostPerToken": 0.000012
+      "inputCostPerToken": 0.000006,
+      "outputCostPerToken": 0.000006
     },
     {
       "provider": "openai",

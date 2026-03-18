@@ -9,6 +9,7 @@
 export type PricingUnit = 'per-token' | 'per-image' | 'per-second' | 'per-minute';
 export type ModelType =
   | 'chatCompletion'
+  | 'lexicon'
   | 'embedding'
   | 'imageGeneration'
   | 'video'

@@ -972,11 +972,13 @@ function parseLegacy(text) {
   const endIdx = findSectionEnd(text, sectionIdx, ['Data residency', 'AgentKit'], 4000);
   const fullBlock = text.substring(sectionIdx, endIdx);
 
-  // Find the "Standard" sub-table (skip "Batch")
+  // Find the "Standard" sub-table — stop before "Batch" to avoid mixing tiers.
   const stdIdx = fullBlock.lastIndexOf('Standard');
   if (stdIdx === -1) return {};
 
-  const stdBlock = fullBlock.substring(stdIdx);
+  const afterStd = fullBlock.substring(stdIdx);
+  const batchModelIdx = afterStd.indexOf('Batch Model');
+  const stdBlock = batchModelIdx > 0 ? afterStd.substring(0, batchModelIdx) : afterStd;
   const result = {};
 
   // Pattern: model $input $output (no cached column in legacy)

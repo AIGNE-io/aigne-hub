@@ -1480,13 +1480,23 @@ async function handleSyncMode(req: Request, res: Response, value: any) {
         // --- Create new model rate ---
         const dbProviderId = providerNameToId.get(update.providerId.toLowerCase());
         if (!dbProviderId) {
-          unmatched.push({ model: update.model, provider: update.providerId, source: update.source, reason: 'provider not configured' });
+          unmatched.push({
+            model: update.model,
+            provider: update.providerId,
+            source: update.source,
+            reason: 'provider not configured',
+          });
           continue;
         }
 
         const modelType = update.modelType || 'chatCompletion';
         if (!SUPPORTED_TYPES.has(modelType)) {
-          unmatched.push({ model: update.model, provider: update.providerId, source: update.source, reason: `unsupported type: ${modelType}` });
+          unmatched.push({
+            model: update.model,
+            provider: update.providerId,
+            source: update.source,
+            reason: `unsupported type: ${modelType}`,
+          });
           continue;
         }
 
@@ -1529,6 +1539,7 @@ async function handleSyncMode(req: Request, res: Response, value: any) {
               type: modelType,
               unitCosts: update.unitCosts,
               ...(applyRates ? { rates: { inputRate: newInputRate!, outputRate: newOutputRate! } } : {}),
+              ...(update.caching ? { caching: update.caching } : {}),
             });
           } else {
             created.push({
@@ -1538,6 +1549,7 @@ async function handleSyncMode(req: Request, res: Response, value: any) {
               type: modelType,
               unitCosts: update.unitCosts,
               ...(applyRates ? { rates: { inputRate: newInputRate!, outputRate: newOutputRate! } } : {}),
+              ...(update.caching ? { caching: update.caching } : {}),
             });
           }
         } catch (err: any) {
@@ -1605,6 +1617,8 @@ async function handleSyncMode(req: Request, res: Response, value: any) {
         newUnitCosts: update.unitCosts,
         oldRates,
         newRates: applyRates ? { inputRate: newInputRate, outputRate: newOutputRate } : oldRates,
+        oldCaching: oldCaching.readRate != null || oldCaching.writeRate != null ? oldCaching : null,
+        newCaching: update.caching || null,
       });
 
       // Track tier1 updates for propagation (keyed by provider NAME, not FK ID)
@@ -1647,6 +1661,7 @@ async function handleSyncMode(req: Request, res: Response, value: any) {
         await (match as any).update(updateData);
       }
       const oldRates = { inputRate: Number(match.inputRate), outputRate: Number(match.outputRate) };
+      const t2OldCaching = (match as any).caching || {};
       updated.push({
         id: match.id,
         model: match.model,
@@ -1655,6 +1670,7 @@ async function handleSyncMode(req: Request, res: Response, value: any) {
         newUnitCosts: t2.unitCosts,
         oldRates,
         newRates: applyRates ? { inputRate: t2NewInputRate, outputRate: t2NewOutputRate } : oldRates,
+        oldCaching: t2OldCaching.readRate != null || t2OldCaching.writeRate != null ? t2OldCaching : null,
         source: t2.source,
       });
     } catch (err: any) {

@@ -14,6 +14,7 @@ import { fileURLToPath } from 'url';
 
 import axios from 'axios';
 
+import { typePriority as _typePriority } from './core/pricing-core.mjs';
 import { buildApiUrl } from './detect-mount-point.mjs';
 import type { OfficialPricingCache, OfficialPricingEntry } from './pricing-schema';
 import { normalizeProvider } from './provider-aliases';
@@ -80,11 +81,11 @@ export async function loadOfficialPricingCache(): Promise<Map<string, OfficialPr
         map.set(`${baseKey}::${entry.modelType}`, entry);
       }
 
-      // For the base key (no type qualifier), prefer chatCompletion over other types.
+      // For the base key, prefer higher-priority types (chatCompletion > lexicon > ... > fineTuning).
       // This ensures that when a model has both chatCompletion and fineTuning entries,
-      // the base key points to chatCompletion (the most commonly needed type).
+      // the base key points to the standard/chatCompletion entry.
       const existing = map.get(baseKey);
-      if (!existing || (existing.modelType !== 'chatCompletion' && entry.modelType === 'chatCompletion')) {
+      if (!existing || _typePriority(entry.modelType) < _typePriority(existing.modelType)) {
         map.set(baseKey, entry);
       }
     }
