@@ -3,5 +3,12 @@
   "compilerOptions": {
     "noEmit": true
   },
-  "include": [".eslintrc.js", "cloudflare/src/**/*.ts", "cloudflare/*.ts"]
+  "include": [
+    ".eslintrc.js",
+    "cloudflare/src/**/*.ts",
+    "cloudflare/*.ts",
+    "cloudflare/frontend/src/**/*.ts",
+    "cloudflare/frontend/src/**/*.tsx",
+    "cloudflare/frontend/*.ts"
+  ]
 }

@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ES2022",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "baseUrl": "./",
+    "paths": {
+      "@app/*": ["../../blocklets/core/src/*"],
+      "@blocklet/aigne-hub": ["../../packages/ai-kit/src"],
+      "@blocklet/aigne-hub/*": ["../../packages/ai-kit/src/*"]
+    }
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx", "../../blocklets/core/src/**/*.ts", "../../blocklets/core/src/**/*.tsx"],
+  "exclude": ["node_modules", "dist"]
+}
