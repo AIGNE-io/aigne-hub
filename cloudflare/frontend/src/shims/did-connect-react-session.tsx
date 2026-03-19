@@ -19,17 +19,49 @@ interface Session {
   logout: () => void;
 }
 
+// Simple EventEmitter stub for session events
+class SimpleEvents {
+  private handlers: Record<string, Array<(...args: unknown[]) => void>> = {};
+
+  on(event: string, handler: (...args: unknown[]) => void) {
+    if (!this.handlers[event]) this.handlers[event] = [];
+    this.handlers[event].push(handler);
+  }
+
+  once(event: string, handler: (...args: unknown[]) => void) {
+    const wrapped = (...args: unknown[]) => {
+      handler(...args);
+      this.off(event, wrapped);
+    };
+    this.on(event, wrapped);
+  }
+
+  off(event: string, handler: (...args: unknown[]) => void) {
+    if (this.handlers[event]) {
+      this.handlers[event] = this.handlers[event].filter((h) => h !== handler);
+    }
+  }
+
+  emit(event: string, ...args: unknown[]) {
+    (this.handlers[event] || []).forEach((h) => h(...args));
+  }
+}
+
+const events = new SimpleEvents();
+
 interface SessionContextValue {
-  session: Session;
+  session: Session & { initialized: boolean };
   api: typeof api;
-  login: () => void;
+  events: SimpleEvents;
+  login: (...args: unknown[]) => void;
   logout: () => void;
   connectApi: unknown;
 }
 
 const SessionContext = createContext<SessionContextValue>({
-  session: { user: null, token: '', loading: true, login: () => {}, logout: () => {} },
+  session: { user: null, token: '', loading: true, initialized: false, login: () => {}, logout: () => {} },
   api,
+  events,
   login: () => {},
   logout: () => {},
   connectApi: null,
@@ -60,8 +92,16 @@ function SessionProvider({ children }: { children: React.ReactNode }) {
       .finally(() => setLoading(false));
   }, []);
 
-  const login = useCallback(() => {
-    window.location.href = '/auth/login/google';
+  const login = useCallback((...args: unknown[]) => {
+    // In dev mode, use dev-login endpoint for instant admin session
+    const isDev = window.location.hostname === 'localhost';
+    const opts = (args[1] || {}) as { redirect?: string };
+    const redirect = opts.redirect || window.location.href;
+    if (isDev) {
+      window.location.href = `/auth/dev-login?role=admin&redirect=${encodeURIComponent(redirect)}`;
+    } else {
+      window.location.href = '/auth/login/google';
+    }
   }, []);
 
   const logout = useCallback(() => {
@@ -77,9 +117,11 @@ function SessionProvider({ children }: { children: React.ReactNode }) {
         user,
         token: user ? 'session-active' : '',
         loading,
+        initialized: !loading,
         login,
         logout,
       },
+      events,
       api,
       login,
       logout,

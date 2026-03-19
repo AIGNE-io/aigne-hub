@@ -1,4 +1,4 @@
-import { createAuthRoutes } from '@aigne/cf-auth';
+import { createAuthRoutes, createSession, getSessionCookie } from '@aigne/cf-auth';
 import type { AuthUser } from '@aigne/cf-auth';
 import { drizzle } from 'drizzle-orm/d1';
 import { Hono } from 'hono';
@@ -66,6 +66,35 @@ app.get('/api/health', async (c) => {
   } catch {
     return c.json({ status: 'error', db: 'not connected' }, 500);
   }
+});
+
+// Dev-only: mock login endpoint (creates a session cookie without OAuth)
+app.get('/auth/dev-login', async (c) => {
+  if (c.env.ENVIRONMENT === 'production') {
+    return c.json({ error: 'Not available in production' }, 403);
+  }
+  const authConfig = buildAuthConfig(c.env);
+  const role = (c.req.query('role') as 'admin' | 'member') || 'admin';
+  const token = await createSession(
+    {
+      id: `dev:${role}`,
+      email: `${role}@dev.local`,
+      name: `Dev ${role}`,
+      provider: 'google',
+      providerId: `dev-${role}`,
+      role,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+    authConfig
+  );
+  return new Response(null, {
+    status: 302,
+    headers: {
+      Location: c.req.query('redirect') || '/',
+      'Set-Cookie': getSessionCookie(token, authConfig),
+    },
+  });
 });
 
 // --- Public routes (no auth required) ---
