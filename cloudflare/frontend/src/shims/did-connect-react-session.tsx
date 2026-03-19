@@ -8,7 +8,7 @@ interface SessionUser {
   avatar?: string;
 }
 
-interface SessionState {
+interface Session {
   user: SessionUser | null;
   token: string;
   loading: boolean;
@@ -16,12 +16,19 @@ interface SessionState {
   logout: () => void;
 }
 
-const SessionContext = createContext<SessionState>({
-  user: null,
-  token: '',
-  loading: true,
+interface SessionContextValue {
+  session: Session;
+  login: () => void;
+  logout: () => void;
+  // compat fields that original did-connect-react provides
+  connectApi: unknown;
+}
+
+const SessionContext = createContext<SessionContextValue>({
+  session: { user: null, token: '', loading: true },
   login: () => {},
   logout: () => {},
+  connectApi: null,
 });
 
 function SessionProvider({ children }: { children: React.ReactNode }) {
@@ -29,7 +36,6 @@ function SessionProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Fetch session from CF Auth SDK
     fetch('/auth/session', { credentials: 'include' })
       .then((res) => {
         if (res.ok) return res.json();
@@ -46,9 +52,7 @@ function SessionProvider({ children }: { children: React.ReactNode }) {
           });
         }
       })
-      .catch(() => {
-        // Session fetch failed, user stays null
-      })
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
@@ -63,13 +67,18 @@ function SessionProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const value = useMemo<SessionState>(
+  const value = useMemo<SessionContextValue>(
     () => ({
-      user,
-      token: user ? 'session-active' : '',
-      loading,
+      session: {
+        user,
+        token: user ? 'session-active' : '',
+        loading,
+        login,
+        logout,
+      },
       login,
       logout,
+      connectApi: null,
     }),
     [user, loading, login, logout]
   );
@@ -77,14 +86,14 @@ function SessionProvider({ children }: { children: React.ReactNode }) {
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }
 
-function SessionConsumer({ children }: { children: (session: SessionState) => React.ReactNode }) {
+function SessionConsumer({ children }: { children: (value: SessionContextValue) => React.ReactNode }) {
   return <SessionContext.Consumer>{children}</SessionContext.Consumer>;
 }
 
-function withSession<P extends object>(Component: React.ComponentType<P & { session: SessionState }>) {
+function withSession<P extends object>(Component: React.ComponentType<P & { session: SessionContextValue }>) {
   return function WrappedComponent(props: P) {
-    const session = useContext(SessionContext);
-    return <Component {...props} session={session} />;
+    const ctx = useContext(SessionContext);
+    return <Component {...props} session={ctx} />;
   };
 }
 

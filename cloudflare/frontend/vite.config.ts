@@ -55,6 +55,12 @@ export default defineConfig({
     },
     dedupe: ['@mui/material', '@mui/utils', '@mui/icons-material', 'react', 'react-dom', 'axios'],
   },
+  server: {
+    proxy: {
+      '/api': 'http://localhost:8787',
+      '/auth': 'http://localhost:8787',
+    },
+  },
   build: {
     outDir: 'dist',
     rollupOptions: {
