@@ -1161,46 +1161,56 @@ export default class ModelCallStat extends Model<
     };
   }
 
-  private static async getPercentileByOffset(
-    whereClause: any,
-    column: string,
-    percentile: number
-  ): Promise<number | undefined> {
-    const countResult = (await ModelCall.count({
-      where: { ...whereClause, status: 'success', [column]: { [Op.not]: null } },
-    })) as number;
-    if (countResult === 0) return undefined;
-
-    const index = Math.floor((percentile / 100) * (countResult - 1));
-    const rows = (await ModelCall.findAll({
-      attributes: [column],
-      where: { ...whereClause, status: 'success', [column]: { [Op.not]: null } },
-      order: [[column, 'ASC']],
-      offset: index,
-      limit: 2,
-      raw: true,
-    })) as unknown as Array<Record<string, number | null>>;
-
-    if (rows.length === 0) return undefined;
-    const lower = rows[0]![column] as number;
-    if (rows.length === 1 || index === countResult - 1) return Math.round(lower * 10) / 10;
-
-    const exactIndex = (percentile / 100) * (countResult - 1);
-    const weight = exactIndex - index;
-    const upper = rows[1]![column] as number;
-    return Math.round((lower * (1 - weight) + upper * weight) * 10) / 10;
-  }
-
   private static async getTtfbPercentiles(
     whereClause: any
   ): Promise<{ p50Ttfb?: number; p95Ttfb?: number; p50ProviderTtfb?: number; p95ProviderTtfb?: number }> {
-    const [p50Ttfb, p95Ttfb, p50ProviderTtfb, p95ProviderTtfb] = await Promise.all([
-      ModelCallStat.getPercentileByOffset(whereClause, 'ttfb', 50),
-      ModelCallStat.getPercentileByOffset(whereClause, 'ttfb', 95),
-      ModelCallStat.getPercentileByOffset(whereClause, 'providerTtfb', 50),
-      ModelCallStat.getPercentileByOffset(whereClause, 'providerTtfb', 95),
+    // Count once per column, then compute both percentiles using the shared count
+    const [ttfbResult, providerResult] = await Promise.all([
+      ModelCallStat.getPercentilesForColumn(whereClause, 'ttfb', [50, 95]),
+      ModelCallStat.getPercentilesForColumn(whereClause, 'providerTtfb', [50, 95]),
     ]);
-    return { p50Ttfb, p95Ttfb, p50ProviderTtfb, p95ProviderTtfb };
+    return {
+      p50Ttfb: ttfbResult[0],
+      p95Ttfb: ttfbResult[1],
+      p50ProviderTtfb: providerResult[0],
+      p95ProviderTtfb: providerResult[1],
+    };
+  }
+
+  /** Compute multiple percentiles for a single column with one COUNT query. */
+  private static async getPercentilesForColumn(
+    whereClause: any,
+    column: string,
+    percentiles: number[]
+  ): Promise<Array<number | undefined>> {
+    const countResult = (await ModelCall.count({
+      where: { ...whereClause, status: 'success', [column]: { [Op.not]: null } },
+    })) as number;
+    if (countResult === 0) return percentiles.map(() => undefined);
+
+    // Fetch all needed percentile values in parallel using the shared count
+    return Promise.all(
+      percentiles.map(async (pct) => {
+        const index = Math.floor((pct / 100) * (countResult - 1));
+        const rows = (await ModelCall.findAll({
+          attributes: [column],
+          where: { ...whereClause, status: 'success', [column]: { [Op.not]: null } },
+          order: [[column, 'ASC']],
+          offset: index,
+          limit: 2,
+          raw: true,
+        })) as unknown as Array<Record<string, number | null>>;
+
+        if (rows.length === 0) return undefined;
+        const lower = rows[0]![column] as number;
+        if (rows.length === 1 || index === countResult - 1) return Math.round(lower * 10) / 10;
+
+        const exactIndex = (pct / 100) * (countResult - 1);
+        const weight = exactIndex - index;
+        const upper = rows[1]![column] as number;
+        return Math.round((lower * (1 - weight) + upper * weight) * 10) / 10;
+      })
+    );
   }
 
   private static buildProjectTrendBuckets(

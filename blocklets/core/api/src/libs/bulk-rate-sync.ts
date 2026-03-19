@@ -300,8 +300,8 @@ export function officialPricingToSyncUpdates(
       providerId: provider,
       model: entry.modelId,
       unitCosts: {
-        input: entry.inputCostPerToken || 0,
-        output: entry.outputCostPerToken || 0,
+        input: entry.inputCostPerToken ?? 0,
+        output: entry.outputCostPerToken ?? 0,
       },
       source: 'official-pricing-catalog',
     };

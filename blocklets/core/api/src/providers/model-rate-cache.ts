@@ -33,10 +33,10 @@ AiModelRate.afterCreate(() => {
   clearAllRotationCache();
 });
 
-AiModelRate.afterUpdate((instance) => {
+AiModelRate.afterUpdate((instance, options) => {
   clearModelRateCache();
 
-  // Record manual rate change in history
+  // Record rate change in history
   try {
     const changed = instance.changed();
     if (changed && (changed.includes('inputRate') || changed.includes('outputRate') || changed.includes('unitCosts'))) {
@@ -46,12 +46,16 @@ AiModelRate.afterUpdate((instance) => {
       const previousOutputRate = instance.previous('outputRate');
       const previousUnitCosts = instance.previous('unitCosts');
 
+      // Determine change source from update context (set by bulk-sync callers)
+      const changeType = (options as any)?.changeType || 'manual_update';
+      const source = (options as any)?.source || 'admin';
+
       AiModelRateHistory.create({
         providerId: instance.providerId,
         model: instance.model,
         type: instance.type as string,
-        changeType: 'manual_update',
-        source: 'admin',
+        changeType,
+        source,
         previousUnitCosts: previousUnitCosts || null,
         currentUnitCosts: instance.unitCosts || null,
         previousRates: {

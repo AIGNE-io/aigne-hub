@@ -1086,7 +1086,7 @@ router.get('/model-rates', user, async (req, res) => {
 
     // Filter deprecated models unless explicitly requested
     if (req.query.includeDeprecated !== 'true') {
-      where[Op.or] = [{ deprecated: false }, { deprecated: null }];
+      where[Op.and] = [...(where[Op.and] || []), { [Op.or]: [{ deprecated: false }, { deprecated: null }] }];
     }
 
     if (query.providerId) {
@@ -1500,10 +1500,10 @@ async function handleSyncMode(req: Request, res: Response, value: any) {
           continue;
         }
 
-        // Check for duplicates
-        const existing = await AiModelRate.findOne({
-          where: { providerId: dbProviderId, model: update.model, type: modelType },
-        });
+        // Check for duplicates using in-memory data (avoid N+1 DB queries)
+        const existing = dbRates.find(
+          (r) => r.providerId === dbProviderId && r.model === update.model && r.type === modelType
+        );
         if (existing) {
           unchanged.push({ id: existing.id, model: existing.model, provider: update.providerId });
           continue;
@@ -1597,6 +1597,13 @@ async function handleSyncMode(req: Request, res: Response, value: any) {
       }
       if (update.caching) updateData.caching = update.caching;
 
+      // Clear deprecated flag if model reappears in official pricing
+      if ((match as any).deprecated) {
+        updateData.deprecated = false;
+        updateData.deprecatedAt = null;
+        updateData.deprecatedReason = null;
+      }
+
       if (applyRates && newInputRate != null && newOutputRate != null) {
         updateData.inputRate = newInputRate;
         updateData.outputRate = newOutputRate;
@@ -1606,7 +1613,10 @@ async function handleSyncMode(req: Request, res: Response, value: any) {
       const oldRates = { inputRate: Number(match.inputRate), outputRate: Number(match.outputRate) };
 
       if (!dryRun) {
-        await (match as any).update(updateData);
+        await (match as any).update(updateData, {
+          changeType: 'bulk_sync',
+          source: update.source || 'official-pricing-catalog',
+        });
       }
 
       updated.push({
