@@ -10,12 +10,25 @@ export class WsClient {
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   constructor(url: string, _options?: Record<string, unknown>) {
-    this.url = url.replace(/^ws/, 'http').replace('/websocket', '/api/events');
+    // Original URL format: //host:port/prefix (no protocol, no /websocket)
+    // Convert to SSE endpoint
+    const base = url.startsWith('//') ? `${window.location.protocol}${url}` : url;
+    this.url = `${base.replace(/\/$/, '')}/api/events`;
   }
 
   connect() {
     if (this.eventSource) return;
-    this.eventSource = new EventSource(this.url);
+    try {
+      this.eventSource = new EventSource(this.url);
+    } catch {
+      // EventSource connection failed, silently ignore
+      return;
+    }
+    this.eventSource.onerror = () => {
+      // Silently handle connection errors - SSE will auto-reconnect
+      this.eventSource?.close();
+      this.eventSource = null;
+    };
     this.eventSource.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);

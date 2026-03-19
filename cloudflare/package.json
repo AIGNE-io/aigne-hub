@@ -10,6 +10,7 @@
     "deploy:staging": "wrangler deploy --env staging",
     "db:generate": "drizzle-kit generate",
     "db:migrate:local": "wrangler d1 execute aigne-hub-dev --local --file=migrations/0001_initial.sql",
+    "db:seed": "wrangler d1 execute aigne-hub-dev --local --file=scripts/seed-data.sql",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

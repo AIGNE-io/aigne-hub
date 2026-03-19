@@ -1,4 +1,7 @@
+import axios from 'axios';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+
+const api = axios.create({ baseURL: window?.blocklet?.prefix || '/', timeout: 30000 });
 
 interface SessionUser {
   did: string;
@@ -18,14 +21,15 @@ interface Session {
 
 interface SessionContextValue {
   session: Session;
+  api: typeof api;
   login: () => void;
   logout: () => void;
-  // compat fields that original did-connect-react provides
   connectApi: unknown;
 }
 
 const SessionContext = createContext<SessionContextValue>({
-  session: { user: null, token: '', loading: true },
+  session: { user: null, token: '', loading: true, login: () => {}, logout: () => {} },
+  api,
   login: () => {},
   logout: () => {},
   connectApi: null,
@@ -76,6 +80,7 @@ function SessionProvider({ children }: { children: React.ReactNode }) {
         login,
         logout,
       },
+      api,
       login,
       logout,
       connectApi: null,
