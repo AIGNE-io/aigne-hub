@@ -1,4 +1,4 @@
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 interface SessionUser {
   did: string;
@@ -16,23 +16,65 @@ interface SessionState {
   logout: () => void;
 }
 
-const defaultSession: SessionState = {
+const SessionContext = createContext<SessionState>({
   user: null,
   token: '',
-  loading: false,
-  login: () => {
-    window.location.href = '/auth/login/google';
-  },
-  logout: () => {
-    window.location.href = '/auth/logout';
-  },
-};
-
-const SessionContext = createContext<SessionState>(defaultSession);
+  loading: true,
+  login: () => {},
+  logout: () => {},
+});
 
 function SessionProvider({ children }: { children: React.ReactNode }) {
-  // TODO: Replace with real CF Auth SDK session when available
-  return <SessionContext.Provider value={defaultSession}>{children}</SessionContext.Provider>;
+  const [user, setUser] = useState<SessionUser | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Fetch session from CF Auth SDK
+    fetch('/auth/session', { credentials: 'include' })
+      .then((res) => {
+        if (res.ok) return res.json();
+        return { user: null };
+      })
+      .then((data: { user?: { id: string; email?: string; name?: string; role?: string; avatar?: string } }) => {
+        if (data.user) {
+          setUser({
+            did: data.user.id,
+            email: data.user.email,
+            fullName: data.user.name,
+            role: data.user.role || 'member',
+            avatar: data.user.avatar,
+          });
+        }
+      })
+      .catch(() => {
+        // Session fetch failed, user stays null
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  const login = useCallback(() => {
+    window.location.href = '/auth/login/google';
+  }, []);
+
+  const logout = useCallback(() => {
+    fetch('/auth/logout', { method: 'POST', credentials: 'include' }).finally(() => {
+      setUser(null);
+      window.location.href = '/';
+    });
+  }, []);
+
+  const value = useMemo<SessionState>(
+    () => ({
+      user,
+      token: user ? 'session-active' : '',
+      loading,
+      login,
+      logout,
+    }),
+    [user, loading, login, logout]
+  );
+
+  return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }
 
 function SessionConsumer({ children }: { children: (session: SessionState) => React.ReactNode }) {

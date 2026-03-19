@@ -1,5 +1,5 @@
 import { createAuthRoutes } from '@aigne/cf-auth';
-import type { AuthConfig, AuthUser } from '@aigne/cf-auth';
+import type { AuthUser } from '@aigne/cf-auth';
 import { drizzle } from 'drizzle-orm/d1';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
@@ -8,6 +8,8 @@ import { cors } from 'hono/cors';
 import { archiveOldRecords } from './crons/archive';
 import { aggregateModelCallStats } from './crons/model-call-stats';
 import * as schema from './db/schema';
+// Auth middleware
+import { buildAuthConfig, loadUser } from './middleware/auth';
 // API routes
 import aiProviderRoutes from './routes/ai-providers';
 import eventsRoutes from './routes/events';
@@ -49,7 +51,13 @@ app.use('*', async (c, next) => {
   await next();
 });
 
-// Health check
+// Load user from session (cookie JWT or dev headers) for all requests
+app.use('*', async (c, next) => {
+  const middleware = loadUser(c.env);
+  return middleware(c, next);
+});
+
+// Health check (public, no auth)
 app.get('/api/health', async (c) => {
   try {
     const result = await c.env.DB.prepare('SELECT 1 as ok').first();
@@ -60,16 +68,19 @@ app.get('/api/health', async (c) => {
   }
 });
 
-app.route('/api/ai-providers', aiProviderRoutes);
+// --- Public routes (no auth required) ---
+app.route('/api/ai-providers', aiProviderRoutes); // models/model-rates are public, admin routes check internally
+app.route('/api', eventsRoutes); // /api/events
+app.route('/api', userRoutes); // /api/app/status (public)
+
+// --- Authenticated routes ---
 app.route('/api/v1', v1Routes);
 app.route('/api/v2', v2Routes);
 app.route('/api/usage', usageRoutes);
 app.route('/api/user', userRoutes);
-app.route('/api', userRoutes); // /api/app/status
-app.route('/api', eventsRoutes); // /api/events
 app.route('/api/payment', paymentRoutes);
 
-// Auth routes - mounted dynamically based on env
+// Auth routes (login/callback/logout/session)
 app.all('/auth/*', async (c) => {
   const authConfig = buildAuthConfig(c.env);
   const authApp = createAuthRoutes(authConfig);
@@ -101,36 +112,6 @@ async function scheduled(event: ScheduledEvent, env: Env, _ctx: ExecutionContext
     default:
       break;
   }
-}
-
-function buildAuthConfig(env: Env): AuthConfig {
-  const providers: AuthConfig['providers'] = {};
-
-  if (env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) {
-    providers.google = {
-      clientId: env.GOOGLE_CLIENT_ID,
-      clientSecret: env.GOOGLE_CLIENT_SECRET,
-    };
-  }
-
-  if (env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET) {
-    providers.github = {
-      clientId: env.GITHUB_CLIENT_ID,
-      clientSecret: env.GITHUB_CLIENT_SECRET,
-    };
-  }
-
-  return {
-    providers,
-    session: {
-      kvBinding: env.AUTH_KV,
-      secret: env.AUTH_SECRET,
-      maxAge: 7 * 24 * 60 * 60,
-    },
-    d1Binding: env.DB,
-    baseUrl: env.BASE_URL,
-    adminEmails: env.ADMIN_EMAILS?.split(',').map((e) => e.trim()),
-  };
 }
 
 export default {
