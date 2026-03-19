@@ -38,7 +38,9 @@ export async function executeRateCheck(): Promise<void> {
     });
 
     const now = Math.floor(Date.now() / 1000);
-    await recordHistory([...belowCost, ...drift], now);
+    const providers = await AiProvider.findAll();
+    const nameToId = new Map(providers.map((p) => [p.name as string, p.id]));
+    await recordHistory([...belowCost, ...drift], now, nameToId);
 
     let autoUpdated = 0;
     logger.info('Auto-update check', {
@@ -47,7 +49,7 @@ export async function executeRateCheck(): Promise<void> {
       envRaw: process.env.ENABLE_AUTO_RATE_UPDATE,
     });
     if (ENABLE_AUTO_RATE_UPDATE && belowCost.length > 0) {
-      autoUpdated = await autoApplyUpdates(belowCost);
+      autoUpdated = await autoApplyUpdates(belowCost, nameToId);
     }
 
     await sendNotification(belowCost, drift, autoUpdated);
@@ -68,19 +70,19 @@ export async function executeRateCheck(): Promise<void> {
  * - tierMaxInput/Output: highest context-tier cost (for sell rate floor)
  * - cacheTierMaxWrite/Read: highest cache tier (for caching rate floor)
  */
-async function autoApplyUpdates(entries: ComparisonResult[]): Promise<number> {
+async function autoApplyUpdates(entries: ComparisonResult[], nameToId: Map<string, string>): Promise<number> {
   let updated = 0;
-  const providers = await AiProvider.findAll();
-  const nameToId = new Map(providers.map((p) => [p.name as string, p.id]));
+
+  // Pre-load all model rates to avoid N+1 queries in the loop
+  const allRates = await AiModelRate.findAll();
+  const rateMap = new Map(allRates.map((r) => [`${r.providerId}:${r.model}:${r.type}`, r]));
 
   for (const d of entries) {
     const providerId = nameToId.get(d.provider);
     if (!providerId) continue;
 
     try {
-      const rate = await AiModelRate.findOne({
-        where: { providerId, model: d.model, type: d.type },
-      });
+      const rate = rateMap.get(`${providerId}:${d.model}:${d.type}`);
       if (!rate) continue;
 
       const prevUnitCosts = rate.unitCosts ? { ...rate.unitCosts } : null;
@@ -130,7 +132,8 @@ async function autoApplyUpdates(entries: ComparisonResult[]): Promise<number> {
         continue;
       }
 
-      await rate.update(updateFields);
+      // skipHistory: suppress the afterUpdate hook's history write to avoid double-recording
+      await rate.update(updateFields, { skipHistory: true } as any);
 
       await AiModelRateHistory.create({
         providerId,
@@ -172,9 +175,13 @@ async function autoApplyUpdates(entries: ComparisonResult[]): Promise<number> {
   return updated;
 }
 
-async function recordHistory(models: ComparisonResult[], timestamp: number): Promise<void> {
+async function recordHistory(
+  models: ComparisonResult[],
+  timestamp: number,
+  nameToId: Map<string, string>
+): Promise<void> {
   const records = models.map((d) => ({
-    providerId: d.provider,
+    providerId: nameToId.get(d.provider) ?? d.provider,
     model: d.model,
     type: d.type,
     changeType: 'source_drift' as const,

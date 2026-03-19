@@ -1597,7 +1597,10 @@ async function handleSyncMode(req: Request, res: Response, value: any) {
       if (costsChanged) {
         updateData.unitCosts = update.unitCosts;
       }
-      if (update.caching) updateData.caching = update.caching;
+      if (update.caching) {
+        // Merge with existing caching to avoid losing fields not in the update
+        updateData.caching = { ...((match as any).caching || {}), ...update.caching };
+      }
 
       // Clear deprecated flag if model reappears in official pricing
       if ((match as any).deprecated) {

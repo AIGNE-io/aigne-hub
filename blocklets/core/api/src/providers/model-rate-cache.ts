@@ -36,7 +36,8 @@ AiModelRate.afterCreate(() => {
 AiModelRate.afterUpdate((instance, options) => {
   clearModelRateCache();
 
-  // Record rate change in history
+  // Record rate change in history (skip if caller handles history explicitly)
+  if ((options as any)?.skipHistory) return;
   try {
     const changed = instance.changed();
     if (changed && (changed.includes('inputRate') || changed.includes('outputRate') || changed.includes('unitCosts'))) {
