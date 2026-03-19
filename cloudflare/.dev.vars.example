@@ -1,0 +1,21 @@
+# Copy this file to .dev.vars and fill in values
+# .dev.vars is gitignored - safe for secrets
+
+# JWT session signing secret (any random string)
+AUTH_SECRET=local-dev-secret-change-in-production
+
+# Google OAuth (optional for local, login will 404 without these)
+# Create at: https://console.cloud.google.com/apis/credentials
+# GOOGLE_CLIENT_ID=xxx.apps.googleusercontent.com
+# GOOGLE_CLIENT_SECRET=GOCSPX-xxx
+
+# GitHub OAuth (optional for local)
+# Create at: https://github.com/settings/developers
+# GITHUB_CLIENT_ID=Iv1.xxx
+# GITHUB_CLIENT_SECRET=xxx
+
+# Admin emails (comma-separated, these users get admin role on login)
+ADMIN_EMAILS=admin@example.com
+
+# Blocklet Server origin for payment proxy (optional)
+# BLOCKLET_SERVER_ORIGIN=https://your-blocklet-server.com
