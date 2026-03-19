@@ -1,6 +1,7 @@
 packages:
   - blocklets/*
   - packages/*
+  - cloudflare
 
 onlyBuiltDependencies:
   - core-js

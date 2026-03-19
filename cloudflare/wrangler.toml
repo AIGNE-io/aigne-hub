@@ -1,0 +1,43 @@
+name = "aigne-hub"
+main = "src/worker.ts"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "aigne-hub-dev"
+database_id = "local"
+
+[vars]
+ENVIRONMENT = "development"
+
+[triggers]
+crons = [
+  "0 * * * *",
+  "*/30 * * * *",
+  "0 2 * * *",
+]
+
+# --- Staging ---
+[env.staging]
+name = "aigne-hub-staging"
+
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "aigne-hub-staging"
+database_id = "TODO"
+
+[env.staging.vars]
+ENVIRONMENT = "staging"
+
+# --- Production ---
+[env.production]
+name = "aigne-hub-production"
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "aigne-hub-production"
+database_id = "TODO"
+
+[env.production.vars]
+ENVIRONMENT = "production"
