@@ -5,6 +5,8 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 
 import * as schema from './db/schema';
+// API routes
+import aiProviderRoutes from './routes/ai-providers';
 
 export type Env = {
   DB: D1Database;
@@ -48,6 +50,8 @@ app.get('/api/health', async (c) => {
     return c.json({ status: 'error', db: 'not connected' }, 500);
   }
 });
+
+app.route('/api/ai-providers', aiProviderRoutes);
 
 // Auth routes - mounted dynamically based on env
 app.all('/auth/*', async (c) => {
