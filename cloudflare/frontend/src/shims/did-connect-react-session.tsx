@@ -72,6 +72,15 @@ function SessionProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // TODO: restore real auth when CF Auth SDK is ready
+    // Skip auth for local dev — always use mock admin
+    const isDev = window.location.hostname === 'localhost';
+    if (isDev) {
+      setUser({ did: 'dev:admin', email: 'admin@dev.local', fullName: 'Dev Admin', role: 'owner', avatar: undefined });
+      setLoading(false);
+      return;
+    }
+
     fetch('/auth/session', { credentials: 'include' })
       .then((res) => {
         if (res.ok) return res.json();
