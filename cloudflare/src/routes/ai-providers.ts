@@ -421,13 +421,17 @@ routes.get('/models', async (c) => {
       modelDisplay: rate.modelDisplay,
       type: rate.type,
       provider: provider.name,
-      providerDisplay: provider.displayName,
+      providerId: rate.providerId,
+      providerDisplayName: provider.displayName,
+      // Frontend expects these field names:
+      input_credits_per_token: parseFloat(rate.inputRate) || 0,
+      output_credits_per_token: parseFloat(rate.outputRate) || 0,
       inputRate: rate.inputRate,
       outputRate: rate.outputRate,
       unitCosts: rate.unitCosts,
       caching: rate.caching,
       modelMetadata: rate.modelMetadata,
-      available: status?.available ?? true,
+      status: status ? { available: status.available, error: status.error } : undefined,
     };
   });
 
