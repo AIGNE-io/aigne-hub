@@ -8,8 +8,13 @@ binding = "DB"
 database_name = "aigne-hub-dev"
 database_id = "local"
 
+[[kv_namespaces]]
+binding = "AUTH_KV"
+id = "local"
+
 [vars]
 ENVIRONMENT = "development"
+BASE_URL = "http://localhost:8787"
 
 [triggers]
 crons = [

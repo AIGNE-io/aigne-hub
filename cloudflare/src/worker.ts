@@ -1,3 +1,5 @@
+import { createAuthRoutes } from '@aigne/cf-auth';
+import type { AuthConfig, AuthUser } from '@aigne/cf-auth';
 import { drizzle } from 'drizzle-orm/d1';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
@@ -6,12 +8,21 @@ import * as schema from './db/schema';
 
 export type Env = {
   DB: D1Database;
+  AUTH_KV: KVNamespace;
   ENVIRONMENT: string;
+  AUTH_SECRET: string;
+  GOOGLE_CLIENT_ID?: string;
+  GOOGLE_CLIENT_SECRET?: string;
+  GITHUB_CLIENT_ID?: string;
+  GITHUB_CLIENT_SECRET?: string;
+  ADMIN_EMAILS?: string;
+  BASE_URL: string;
   BLOCKLET_SERVER_ORIGIN?: string;
 };
 
 export type Variables = {
   db: ReturnType<typeof drizzle<typeof schema>>;
+  user?: AuthUser;
 };
 
 export type HonoEnv = { Bindings: Env; Variables: Variables };
@@ -36,6 +47,13 @@ app.get('/api/health', async (c) => {
   } catch {
     return c.json({ status: 'error', db: 'not connected' }, 500);
   }
+});
+
+// Auth routes - mounted dynamically based on env
+app.all('/auth/*', async (c) => {
+  const authConfig = buildAuthConfig(c.env);
+  const authApp = createAuthRoutes(authConfig);
+  return authApp.fetch(c.req.raw, c.env);
 });
 
 // SPA fallback (for frontend routing)
@@ -64,6 +82,36 @@ async function scheduled(event: ScheduledEvent, env: Env, _ctx: ExecutionContext
     default:
       break;
   }
+}
+
+function buildAuthConfig(env: Env): AuthConfig {
+  const providers: AuthConfig['providers'] = {};
+
+  if (env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) {
+    providers.google = {
+      clientId: env.GOOGLE_CLIENT_ID,
+      clientSecret: env.GOOGLE_CLIENT_SECRET,
+    };
+  }
+
+  if (env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET) {
+    providers.github = {
+      clientId: env.GITHUB_CLIENT_ID,
+      clientSecret: env.GITHUB_CLIENT_SECRET,
+    };
+  }
+
+  return {
+    providers,
+    session: {
+      kvBinding: env.AUTH_KV,
+      secret: env.AUTH_SECRET,
+      maxAge: 7 * 24 * 60 * 60,
+    },
+    d1Binding: env.DB,
+    baseUrl: env.BASE_URL,
+    adminEmails: env.ADMIN_EMAILS?.split(',').map((e) => e.trim()),
+  };
 }
 
 export default {

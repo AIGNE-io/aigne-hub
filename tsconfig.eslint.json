@@ -9,6 +9,7 @@
     "cloudflare/*.ts",
     "cloudflare/frontend/src/**/*.ts",
     "cloudflare/frontend/src/**/*.tsx",
-    "cloudflare/frontend/*.ts"
+    "cloudflare/frontend/*.ts",
+    "packages/cf-auth/src/**/*.ts"
   ]
 }

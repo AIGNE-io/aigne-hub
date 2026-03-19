@@ -1,0 +1,22 @@
+{
+  "name": "@aigne/cf-auth",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "arctic": "^3.5.0",
+    "hono": "^4.7.0",
+    "oslo": "^1.2.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250313.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  }
+}
