@@ -1005,14 +1005,12 @@ async function doRefreshDb(){
     try{litellm=await fetchLiteLLMBrowser();setStep('ll','done',litellm.size+' 条')}
     catch(e){setStep('ll','error');__warnings.push('LiteLLM 数据加载失败: '+e.message)}
 
-    // 3. Official pricing (includes OpenRouter data) — use embedded data or fetch from remote catalog
+    // 3. Official pricing (includes OpenRouter data) — fetch remote first, fallback to embedded
     var openrouter=new Map();
     setStep('op','active');
     var officialMap=new Map();
-    if(__officialPricingFallback&&__officialPricingFallback.entries){
-      officialMap=buildOfficialPricingMap(__officialPricingFallback.entries);
-      setStep('op','done',officialMap.size+' 条 (嵌入)');
-    }else{
+    var usedFallback=false;
+    {
       try{
         var remoteCatalogUrl='https://raw.githubusercontent.com/blocklet/model-pricing-data/main/data/pricing.json';
         var remoteResp=await fetch(remoteCatalogUrl);
@@ -1026,7 +1024,13 @@ async function doRefreshDb(){
             setStep('op','done',officialMap.size+' 条 (远程)');
           }else{setStep('op','done','无数据')}
         }else{setStep('op','error')}
-      }catch(e){setStep('op','error');__warnings.push('官方定价远程获取失败: '+e.message)}
+      }catch(e){__warnings.push('官方定价远程获取失败: '+e.message)}
+      // Fallback to embedded data if remote fetch failed or returned empty
+      if(officialMap.size===0&&__officialPricingFallback&&__officialPricingFallback.entries){
+        officialMap=buildOfficialPricingMap(__officialPricingFallback.entries);
+        usedFallback=true;
+        setStep('op','done',officialMap.size+' 条 (嵌入)');
+      }else if(officialMap.size===0){setStep('op','error')}
     }
 
     // 5. Compare
