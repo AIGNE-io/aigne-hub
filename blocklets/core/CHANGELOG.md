@@ -1,3 +1,7 @@
+## 0.9.13 (2026-3-19)
+
+- fix: copy pricing-core.mjs to dist during api build
+
 ## 0.9.12 (2026-3-19)
 
 - fix: resolve TS2532/TS2345 type errors in provider-pricing-pages
