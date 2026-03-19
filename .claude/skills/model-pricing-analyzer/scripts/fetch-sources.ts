@@ -65,7 +65,7 @@ const OFFICIAL_PRICING_ALL_PATH = path.join(OUTPUT_DIR, 'aigne-official-pricing-
 const OFFICIAL_PRICING_CACHE_TTL = 60 * 60 * 1000; // 1 hour
 
 const REMOTE_PRICING_URL = 'https://raw.githubusercontent.com/blocklet/model-pricing-data/main/data/pricing.json';
-const MAIN_PROVIDERS = ['openai', 'anthropic', 'google', 'xai', 'deepseek'];
+const MAIN_PROVIDERS = ['openai', 'anthropic', 'google', 'xai', 'deepseek', 'openrouter'];
 
 function _buildOfficialMap(entries: OfficialPricingEntry[]): Map<string, OfficialPricingEntry> | null {
   const map = new Map<string, OfficialPricingEntry>();
@@ -124,7 +124,8 @@ export async function fetchRemoteOfficialPricing(
 
       for (const [key, val] of Object.entries(providerData) as [string, any][]) {
         const parts = key.split('::');
-        const modelId = parts[0];
+        // Normalize version dots to hyphens: claude-opus-4.6 → claude-opus-4-6
+        const modelId = parts[0].replace(/(\d+)\.(\d+)$/g, '$1-$2');
         const modelType = val.modelType || parts[1] || 'chatCompletion';
 
         const entry: OfficialPricingEntry = {

@@ -1791,7 +1791,7 @@ async function fetchRemotePricing(url) {
 
   if (!json.providers) throw new Error('Invalid remote pricing JSON: missing "providers" key');
 
-  const MAIN_PROVIDERS = ['openai', 'anthropic', 'google', 'xai', 'deepseek'];
+  const MAIN_PROVIDERS = ['openai', 'anthropic', 'google', 'xai', 'deepseek', 'openrouter'];
   const results = [];
 
   for (const providerKey of MAIN_PROVIDERS) {
@@ -1806,7 +1806,8 @@ async function fetchRemotePricing(url) {
     for (const [key, val] of Object.entries(providerData)) {
       // Keys are "modelId::modelType" or just "modelId" (for OpenRouter-style)
       const parts = key.split('::');
-      const modelId = parts[0];
+      // Normalize version dots to hyphens: claude-opus-4.6 → claude-opus-4-6
+      const modelId = parts[0].replace(/(\d+)\.(\d+)$/g, '$1-$2');
       const modelType = val.modelType || parts[1] || 'chatCompletion';
 
       const entry = {

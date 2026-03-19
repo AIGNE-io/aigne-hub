@@ -928,12 +928,11 @@ export function compare(dbRates, litellm, openrouter, providerPages, threshold) 
       if (maxTierInput > dbInput && dbInput > 0) {
         result.tierMaxInput = maxTierInput;
         result.tierInputDrift = calcDrift(dbInput, maxTierInput);
-        maxDrift = Math.max(maxDrift, result.tierInputDrift);
+        // Note: tier drift is NOT added to maxDrift — it is handled by hasNotHighestTier classification
       }
       if (maxTierOutput > dbOutput && dbOutput > 0) {
         result.tierMaxOutput = maxTierOutput;
         result.tierOutputDrift = calcDrift(dbOutput, maxTierOutput);
-        maxDrift = Math.max(maxDrift, result.tierOutputDrift);
       }
     }
 
