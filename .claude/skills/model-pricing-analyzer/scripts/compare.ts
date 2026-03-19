@@ -158,22 +158,19 @@ export function printTable(results: ComparisonResult[], threshold: number): void
           console.log(`   📊 输出成本差异：${outputDiff > 0 ? '高出' : '低了'} ${Math.abs(outputDiff).toFixed(1)}%`);
         }
 
-        if (hasLiteLLM && r.cacheDrift !== undefined && r.cacheDrift > threshold) {
-          const llCache = { write: r.litellmCacheWrite, read: r.litellmCacheRead };
-          if (llCache.write !== undefined && r.dbCacheWrite) {
-            const writeDiff = ((r.dbCacheWrite - llCache.write) / llCache.write) * 100;
-            if (Math.abs(writeDiff) > threshold * 100)
-              console.log(
-                `   📊 缓存写入差异：${writeDiff > 0 ? '高出' : '低了'} ${Math.abs(writeDiff).toFixed(1)}% (DB: ${formatCost(r.dbCacheWrite)} vs LiteLLM: ${formatCost(llCache.write)})`
-              );
-          }
-          if (llCache.read !== undefined && r.dbCacheRead) {
-            const readDiff = ((r.dbCacheRead - llCache.read) / llCache.read) * 100;
-            if (Math.abs(readDiff) > threshold * 100)
-              console.log(
-                `   📊 缓存读取差异：${readDiff > 0 ? '高出' : '低了'} ${Math.abs(readDiff).toFixed(1)}% (DB: ${formatCost(r.dbCacheRead)} vs LiteLLM: ${formatCost(llCache.read)})`
-              );
-          }
+        if (r.bestCostCacheWrite && r.dbCacheWrite) {
+          const writeDiff = ((r.dbCacheWrite - r.bestCostCacheWrite) / r.bestCostCacheWrite) * 100;
+          if (Math.abs(writeDiff) > threshold * 100)
+            console.log(
+              `   📊 缓存写入差异：${writeDiff > 0 ? '高出' : '低了'} ${Math.abs(writeDiff).toFixed(1)}% (DB: ${formatCost(r.dbCacheWrite)} vs ${r.bestCostSourceLabel}: ${formatCost(r.bestCostCacheWrite)})`
+            );
+        }
+        if (r.bestCostCacheRead && r.dbCacheRead) {
+          const readDiff = ((r.dbCacheRead - r.bestCostCacheRead) / r.bestCostCacheRead) * 100;
+          if (Math.abs(readDiff) > threshold * 100)
+            console.log(
+              `   📊 缓存读取差异：${readDiff > 0 ? '高出' : '低了'} ${Math.abs(readDiff).toFixed(1)}% (DB: ${formatCost(r.dbCacheRead)} vs ${r.bestCostSourceLabel}: ${formatCost(r.bestCostCacheRead)})`
+            );
         }
       }
 

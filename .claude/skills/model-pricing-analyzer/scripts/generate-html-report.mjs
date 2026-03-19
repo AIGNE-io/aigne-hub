@@ -295,7 +295,7 @@ table.mt th{padding:11px 14px;text-align:left;font-weight:600;color:#4a5568;font
 <div class="wrap">
   <div class="hdr">
     <h1>AIGNE Hub 定价报告</h1>
-    <div class="meta">生成时间：${new Date().toLocaleString('zh-CN')} &nbsp;|&nbsp; 成本优先级：官方 → OpenRouter → LiteLLM &nbsp;|&nbsp; $/1M tokens &nbsp;|&nbsp; 图片 $/张 &nbsp;|&nbsp; 视频 $/sec &nbsp;|&nbsp; 点击数据源列可查看各来源详细对比</div>
+    <div class="meta">生成时间：${new Date().toLocaleString('zh-CN')} &nbsp;|&nbsp; 成本优先级：官方 → LiteLLM → OpenRouter &nbsp;|&nbsp; 单一数据来源 &nbsp;|&nbsp; $/1M tokens &nbsp;|&nbsp; 图片 $/张 &nbsp;|&nbsp; 视频 $/sec</div>
   </div>
 
   <div id="loading-area" class="loading-wrap">
@@ -391,11 +391,11 @@ function setStep(id,state,info){
 }
 
 // ─── HTML Helpers ────────────────────────────────────────────────────────────
-var COLS=8;
-var THEAD='<thead><tr><th style="width:19%">模型</th><th style="width:10%"></th><th style="width:12%">Input</th><th style="width:12%">Output</th><th style="width:12%">Cache Write</th><th style="width:11%">Cache Read</th><th style="width:20%">数据源</th><th style="width:4%" title="勾选已审阅的模型，同步时只更新已勾选的">同步</th></tr></thead>';
+var COLS=9;
+var THEAD='<thead><tr><th style="width:18%">模型</th><th style="width:10%"></th><th style="width:11%">Input</th><th style="width:11%">Output</th><th style="width:11%">Cache Write</th><th style="width:10%">Cache Read</th><th style="width:18%">数据源</th><th style="width:4%" title="勾选已审阅的模型，同步时只更新已勾选的">同步</th><th style="width:3%" title="标记模型为已移除">删除</th></tr></thead>';
 var typeOrder={chatCompletion:0,lexicon:0.5,embedding:1,imageGeneration:2,video:3};
 var typeLabels={chatCompletion:'对话',lexicon:'词典',embedding:'嵌入',imageGeneration:'图像',audio:'音频',video:'视频',fineTuning:'微调',transcription:'转录',tool:'工具'};
-var UM_COLS=7;
+var UM_COLS=8;
 
 function fmt(v,pu){return formatPriceHtml(v,pu)}
 function mg(margin,field){
@@ -469,8 +469,8 @@ function buildSection(models){
       var sO=m.outputRate??m.dbOutput,sI=m.inputRate??m.dbInput;
       var sCW=m.dbCacheWrite,sCR=m.dbCacheRead;
       var cO=m.bestCostOutput,cI=m.bestCostInput;
-      var cCW=m.officialCacheWrite??m.litellmCacheWrite;
-      var cCR=m.officialCacheRead??m.litellmCacheRead;
+      var cCW=m.bestCostCacheWrite;
+      var cCR=m.bestCostCacheRead;
       var fmtIn=function(v){return isPerUnitPricing(m)?'—':fmt(v,pu)};
       var costRows=[];
       var hasTieredPricing=m.tieredPricing&&m.tieredPricing.length>0;
@@ -492,10 +492,12 @@ function buildSection(models){
       if(hasMultiCost){var highest=costRows[costRows.length-1];mI=isPerUnitPricing(m)?undefined:calcMargin(sI,highest.input);mO=calcMargin(sO,highest.output)}
       else{mI=isPerUnitPricing(m)?undefined:calcMargin(sI,cI);mO=calcMargin(sO,cO)}
       var mCW=calcMargin(sCW,cCW),mCR=calcMargin(sCR,cCR);
-      var _cwTiers=(m.officialCacheTiers||[]).filter(function(t){return t.label.includes('write')});
-      var _crTiers=(m.officialCacheTiers||[]).filter(function(t){return t.label==='read'||t.label==='cached-input'});
+      var _cwTiers=(m.bestCostCacheTiers||[]).filter(function(t){return t.label.includes('write')});
+      var _crTiers=(m.bestCostCacheTiers||[]).filter(function(t){return t.label==='read'||t.label==='cached-input'});
       var cwSubTbl=_cwTiers.length>1?buildCacheTierCol(_cwTiers,sCW,'sell-cw'):null;
       var crSubTbl=_crTiers.length>1?buildCacheTierCol(_crTiers,sCR,'sell-cr'):null;
+      // Show all 3 source badges (active/inactive), but cost values only from the best source
+      var bs=m.bestCostSource;
       var hasPP=m.providerPageInput!==undefined||m.providerPageOutput!==undefined;
       var hasLL=m.litellmInput!==undefined||m.litellmOutputPerImage!==undefined||m.litellmOutputPerSecond!==undefined;
       var hasOR=m.openrouterInput!==undefined;
@@ -504,17 +506,20 @@ function buildSection(models){
       var badges='';
       if(isOR){badges+='<a href="https://openrouter.ai" target="_blank" class="sb-link"><span class="sb '+(hasOR?'sb-or':'sb-off')+'">OpenRouter</span></a>';badges+='<span class="sb '+(hasLL?'sb-ll':'sb-off')+'">LiteLLM</span>'}
       else{if(ppUrl)badges+='<a href="'+ppUrl+'" target="_blank" class="sb-link"><span class="sb '+(hasPP?'sb-pp':'sb-off')+'">官方<span class="sb-ext">↗</span></span></a>';else badges+='<span class="sb '+(hasPP?'sb-pp':'sb-off')+'">官方</span>';badges+='<span class="sb '+(hasLL?'sb-ll':'sb-off')+'">LiteLLM</span>';badges+='<span class="sb '+(hasOR?'sb-or':'sb-off')+'">OpenRouter</span>'}
-      var pop='<div class="pop" id="pop-'+id+'"><div class="parr"></div><div class="phd">'+m.provider+'/'+m.model+'</div>';
+      // Popover: show all sources for comparison, highlight the one being used
+      var pop='<div class="pop" id="pop-'+id+'"><div class="parr"></div><div class="phd">'+m.provider+'/'+m.model+' <span style="font-size:11px;font-weight:400;color:#718096">使用: '+(m.bestCostSourceLabel||'无')+'</span></div>';
       pop+='<table class="ptbl"><thead><tr><th>来源</th><th>Input</th><th>Output</th><th>Cache Write</th><th>Cache Read</th></tr></thead><tbody>';
-      if(hasPP){pop+='<tr><td><span class="sb sb-pp">官方</span>'+(m.providerPageUrl?' <a href="'+m.providerPageUrl+'" target="_blank" class="lk">↗</a>':'')+'</td>';pop+='<td class="mono">'+fmt(m.providerPageInput,pu)+'</td><td class="mono">'+fmt(m.providerPageOutput,pu)+'</td>';pop+='<td class="mono">'+(m.officialCacheWrite?fmt(m.officialCacheWrite,'per-token'):'<span class="na">-</span>')+'</td>';pop+='<td class="mono">'+(m.officialCacheRead?fmt(m.officialCacheRead,'per-token'):'<span class="na">-</span>')+'</td></tr>'}
-      if(hasLL){pop+='<tr><td><span class="sb sb-ll">LiteLLM</span></td>';if(pu==='per-image')pop+='<td class="mono">'+fmt(m.litellmInput,'per-token')+'</td><td class="mono">'+fmt(m.litellmOutputPerImage,'per-image')+'</td>';else if(pu==='per-second')pop+='<td class="mono">'+fmt(m.litellmInput,'per-token')+'</td><td class="mono">'+fmt(m.litellmOutputPerSecond,'per-second')+'</td>';else pop+='<td class="mono">'+fmt(m.litellmInput,'per-token')+'</td><td class="mono">'+fmt(m.litellmOutput,'per-token')+'</td>';pop+='<td class="mono">'+fmt(m.litellmCacheWrite,'per-token')+'</td><td class="mono">'+fmt(m.litellmCacheRead,'per-token')+'</td></tr>'}
-      if(hasOR){pop+='<tr><td><span class="sb sb-or">OpenRouter</span></td><td class="mono">'+fmt(m.openrouterInput,'per-token')+'</td><td class="mono">'+fmt(m.openrouterOutput,'per-token')+'</td><td class="na">-</td><td class="na">-</td></tr>'}
+      var usedCls=function(src){return bs===src?' style="background:#f0fff4"':''};
+      if(hasPP){pop+='<tr'+usedCls('provider-page')+'><td><span class="sb sb-pp">官方</span>'+(bs==='provider-page'?' <span style="font-size:10px;color:#38a169">✓</span>':'')+(m.providerPageUrl?' <a href="'+m.providerPageUrl+'" target="_blank" class="lk">↗</a>':'')+'</td>';pop+='<td class="mono">'+fmt(m.providerPageInput,pu)+'</td><td class="mono">'+fmt(m.providerPageOutput,pu)+'</td>';pop+='<td class="mono">'+(m.officialCacheWrite?fmt(m.officialCacheWrite,'per-token'):'<span class="na">-</span>')+'</td>';pop+='<td class="mono">'+(m.officialCacheRead?fmt(m.officialCacheRead,'per-token'):'<span class="na">-</span>')+'</td></tr>'}
+      if(hasLL){pop+='<tr'+usedCls('litellm')+'><td><span class="sb sb-ll">LiteLLM</span>'+(bs==='litellm'?' <span style="font-size:10px;color:#38a169">✓</span>':'')+'</td>';if(pu==='per-image')pop+='<td class="mono">'+fmt(m.litellmInput,'per-token')+'</td><td class="mono">'+fmt(m.litellmOutputPerImage,'per-image')+'</td>';else if(pu==='per-second')pop+='<td class="mono">'+fmt(m.litellmInput,'per-token')+'</td><td class="mono">'+fmt(m.litellmOutputPerSecond,'per-second')+'</td>';else pop+='<td class="mono">'+fmt(m.litellmInput,'per-token')+'</td><td class="mono">'+fmt(m.litellmOutput,'per-token')+'</td>';pop+='<td class="mono">'+fmt(m.litellmCacheWrite,'per-token')+'</td><td class="mono">'+fmt(m.litellmCacheRead,'per-token')+'</td></tr>'}
+      if(hasOR){pop+='<tr'+usedCls('openrouter')+'><td><span class="sb sb-or">OpenRouter</span>'+(bs==='openrouter'?' <span style="font-size:10px;color:#38a169">✓</span>':'')+'</td><td class="mono">'+fmt(m.openrouterInput,'per-token')+'</td><td class="mono">'+fmt(m.openrouterOutput,'per-token')+'</td><td class="na">-</td><td class="na">-</td></tr>'}
       pop+='<tr class="psell"><td><span class="sb sb-us">Hub</span></td><td class="mono">'+fmtIn(sI)+'</td><td class="mono">'+fmt(sO,pu)+'</td><td class="mono">'+fmt(sCW,'per-token')+'</td><td class="mono">'+fmt(sCR,'per-token')+'</td></tr>';
       pop+='</tbody></table>';
-      if(m.officialCacheTiers&&m.officialCacheTiers.length>0){pop+='<div class="pcache"><span class="pcache-h">官方 Cache Tiers</span>';for(var tier of m.officialCacheTiers)pop+='<span class="pcache-item"><span class="pcache-lbl">'+tier.label+'</span><span class="mono">'+fmt(tier.costPerToken,'per-token')+'</span></span>';pop+='</div>'}
+      if(m.bestCostCacheTiers&&m.bestCostCacheTiers.length>0){pop+='<div class="pcache"><span class="pcache-h">Cache Tiers</span>';for(var tier of m.bestCostCacheTiers)pop+='<span class="pcache-item"><span class="pcache-lbl">'+tier.label+'</span><span class="mono">'+fmt(tier.costPerToken,'per-token')+'</span></span>';pop+='</div>'}
       pop+='</div>';
       var modelHtml='<span class="ti">'+icon+'</span><code class="mname" title="'+m.provider+'/'+m.model+'"><strong>'+m.model+'</strong></code>'+(unit?'<span class="utag">'+unit+'</span>':'');
-      var checkHtml='<label class="rchk" title="选中同步"><input type="checkbox" class="rchk-in" data-rk="'+mKey+'"/><span class="rchk-box"></span></label><button class="del-btn" title="标记移除" data-rk="'+mKey+'">🗑</button>';
+      var syncHtml='<label class="rchk" title="选中同步"><input type="checkbox" class="rchk-in" data-rk="'+mKey+'"/><span class="rchk-box"></span></label>';
+      var delHtml='<button class="del-btn" title="标记移除" data-rk="'+mKey+'">🗑</button>';
       var sourcesHtml='<div class="sarea" data-popover="pop-'+id+'">'+badges+'</div>'+pop;
       if(hasMultiCost){
         var matchIdx_=-1;
@@ -531,12 +536,12 @@ function buildSection(models){
         rows+='<tr class="mrow r1" '+dsAttr+'><td class="mcol">'+modelHtml+'</td><td class="pc" colspan="3">'+stbl+'</td>';
         rows+=cwSubTbl?'<td class="pc">'+cwSubTbl+'</td>':'<td class="pc"><div class="cache-dual mono">'+fmt(cCW,'per-token')+'</div><div class="cache-dual">'+cacheSellCell(sCW,cCW,mCW,'sell-cw')+'</div></td>';
         rows+=crSubTbl?'<td class="pc">'+crSubTbl+'</td>':'<td class="pc"><div class="cache-dual mono">'+fmt(cCR,'per-token')+'</div><div class="cache-dual">'+cacheSellCell(sCR,cCR,mCR,'sell-cr')+'</div></td>';
-        rows+='<td class="scol">'+sourcesHtml+'</td><td class="ck-col">'+checkHtml+'</td></tr>';
+        rows+='<td class="scol">'+sourcesHtml+'</td><td class="ck-col">'+syncHtml+'</td><td class="ck-col">'+delHtml+'</td></tr>';
       }else{
         rows+='<tr class="mrow r1" '+dsAttr+'><td class="mcol" rowspan="2">'+modelHtml+'</td><td class="lbl lbl-cost">成本</td><td class="pc mono">'+fmtIn(cI)+'</td><td class="pc mono">'+fmt(cO,pu)+'</td>';
         rows+=cwSubTbl?'<td class="pc" rowspan="2">'+cwSubTbl+'</td>':'<td class="pc mono">'+fmt(cCW,'per-token')+'</td>';
         rows+=crSubTbl?'<td class="pc" rowspan="2">'+crSubTbl+'</td>':'<td class="pc mono">'+fmt(cCR,'per-token')+'</td>';
-        rows+='<td class="scol" rowspan="2">'+sourcesHtml+'</td><td class="ck-col" rowspan="2">'+checkHtml+'</td></tr>';
+        rows+='<td class="scol" rowspan="2">'+sourcesHtml+'</td><td class="ck-col" rowspan="2">'+syncHtml+'</td><td class="ck-col" rowspan="2">'+delHtml+'</td></tr>';
         rows+='<tr class="mrow r2" '+dsAttr+'><td class="lbl lbl-sell">售价</td><td class="pc"><span class="mono" data-field="sell-in">'+fmtIn(sI)+'</span> '+mg(mI,'input')+'</td><td class="pc"><span class="mono" data-field="sell-out">'+fmt(sO,pu)+'</span> '+mg(mO,'output')+'</td>';
         if(!cwSubTbl)rows+='<td class="pc">'+cacheSellCell(sCW,cCW,mCW,'sell-cw')+'</td>';
         if(!crSubTbl)rows+='<td class="pc">'+cacheSellCell(sCR,cCR,mCR,'sell-cr')+'</td>';
@@ -593,7 +598,7 @@ function buildUnmatchedSection(models){
       rows+='<td class="pc"><span class="mono">'+fmtMTok(m.outputCostPerToken)+'</span></td>';
       rows+='<td class="pc">'+cacheHtml+'</td>';
       rows+='<td class="scol">'+sourcesHtml+'</td>';
-      rows+='<td class="ck-col">'+checkHtml+'</td></tr>';
+      rows+='<td class="ck-col">'+checkHtml+'</td><td></td></tr>';
     }
   }
   return rows;
@@ -606,18 +611,18 @@ function renderReport(results,groups,unmatchedModels){
 
   // Build sync data
   __allEntries=results.filter(function(m){return m.bestCostInput!==undefined||m.bestCostOutput!==undefined}).map(function(m){
-    // Merge cache tiers: start with official, add LiteLLM write if official lacks it
-    var ct=m.officialCacheTiers?[...m.officialCacheTiers]:[];
-    var hasOfficialWrite=ct.some(function(t){return t.label.indexOf('write')>=0});
-    if(!hasOfficialWrite&&m.litellmCacheWrite){ct.push({label:'write',costPerToken:m.litellmCacheWrite})}
-    if(!ct.length&&(m.litellmCacheWrite||m.litellmCacheRead)){
-      if(m.litellmCacheWrite)ct.push({label:'write',costPerToken:m.litellmCacheWrite});
-      if(m.litellmCacheRead)ct.push({label:'read',costPerToken:m.litellmCacheRead});
+    // Single source cache tiers
+    var ct=m.bestCostCacheTiers?[...m.bestCostCacheTiers]:[];
+    // If best source is LiteLLM with cache data but no tiers, synthesize entries
+    if(!ct.length&&m.bestCostSource==='litellm'){
+      if(m.bestCostCacheWrite)ct.push({label:'write',costPerToken:m.bestCostCacheWrite});
+      if(m.bestCostCacheRead)ct.push({label:'read',costPerToken:m.bestCostCacheRead});
     }
     return{
     provider:m.provider,modelId:m.model,
     inputCostPerToken:m.bestCostInput??null,outputCostPerToken:m.bestCostOutput??null,
-    cachedInputCostPerToken:m.officialCacheRead??m.litellmCacheRead??null,
+    cachedInputCostPerToken:m.bestCostCacheRead??null,
+    bestCostInput:m.bestCostInput??null,bestCostOutput:m.bestCostOutput??null,
     cacheTiers:ct.length?ct:undefined,
     tieredPricing:m.tieredPricing?.length?m.tieredPricing:undefined,
     resolutionTiers:m.resolutionTiers?.length?m.resolutionTiers:undefined,
@@ -670,7 +675,7 @@ function renderReport(results,groups,unmatchedModels){
   secHtml+='<div class="sec sec-ok" data-sec="normal"><div class="sec-h"><h2>定价正常</h2><span class="cnt ok sec-cnt">'+groups.normal.length+'</span><span class="sec-sub">定价在合理范围内</span><span class="sec-right"><span class="sec-sel-bar" onclick="event.stopPropagation()"><span class="sec-sel-label">全选</span><label class="rchk" style="vertical-align:middle"><input type="checkbox" class="sec-chk-all" onchange="toggleSecSync(\\'normal\\',this.checked)"/><span class="rchk-box"></span></label></span><span class="chevron">▼</span></span></div><div class="sec-body"><table class="mt">'+THEAD+'<tbody>'+buildSection(groups.normal)+'</tbody></table></div></div>';
   // Unmatched
   if(unmatchedModels.length>0){
-    secHtml+='<div class="sec sec-unmatched" data-sec="unmatched"><div class="sec-h"><h2>官方可用但未录入</h2><span class="cnt info sec-cnt">'+unmatchedModels.length+'</span><span class="sec-sub">官方定价 + LiteLLM 双源确认，Hub DB 中尚未录入的模型</span><span class="chevron">▼</span></div><div class="sec-body"><div class="um-toolbar" onclick="event.stopPropagation()"><div class="um-toolbar-left"><button class="um-btn um-btn-quick" onclick="toggleUmQuick()">快速筛选</button><button class="um-btn" onclick="toggleUmAll(true)">全选</button><button class="um-btn um-btn-reset" onclick="toggleUmAll(false)">重置</button></div><div class="um-toolbar-right"><span style="font-size:12px;color:#4a5568">已选 <strong id="um-sel-cnt">0</strong></span></div></div><table class="mt"><thead><tr><th style="width:22%">模型</th><th style="width:8%">类型</th><th style="width:14%" title="官方定价 / LiteLLM 对比">Input</th><th style="width:14%" title="官方定价 / LiteLLM 对比">Output</th><th style="width:13%">Cache</th><th style="width:17%">数据源</th><th style="width:4%" title="勾选要操作的模型"><label class="rchk" style="vertical-align:middle" onclick="event.stopPropagation()"><input type="checkbox" id="um-chk-all" onchange="toggleUmAll(this.checked)"/><span class="rchk-box"></span></label></th></tr></thead><tbody>'+buildUnmatchedSection(unmatchedModels)+'</tbody></table></div></div>';
+    secHtml+='<div class="sec sec-unmatched" data-sec="unmatched"><div class="sec-h"><h2>官方可用但未录入</h2><span class="cnt info sec-cnt">'+unmatchedModels.length+'</span><span class="sec-sub">官方定价 + LiteLLM 双源确认，Hub DB 中尚未录入的模型</span><span class="chevron">▼</span></div><div class="sec-body"><div class="um-toolbar" onclick="event.stopPropagation()"><div class="um-toolbar-left"><button class="um-btn um-btn-quick" onclick="toggleUmQuick()">快速筛选</button><button class="um-btn" onclick="toggleUmAll(true)">全选</button><button class="um-btn um-btn-reset" onclick="toggleUmAll(false)">重置</button></div><div class="um-toolbar-right"><span style="font-size:12px;color:#4a5568">已选 <strong id="um-sel-cnt">0</strong></span></div></div><table class="mt"><thead><tr><th style="width:22%">模型</th><th style="width:8%">类型</th><th style="width:14%" title="官方定价 / LiteLLM 对比">Input</th><th style="width:14%" title="官方定价 / LiteLLM 对比">Output</th><th style="width:13%">Cache</th><th style="width:17%">数据源</th><th style="width:4%" title="勾选要操作的模型"><label class="rchk" style="vertical-align:middle" onclick="event.stopPropagation()"><input type="checkbox" id="um-chk-all" onchange="toggleUmAll(this.checked)"/><span class="rchk-box"></span></label></th><th style="width:3%"></th></tr></thead><tbody>'+buildUnmatchedSection(unmatchedModels)+'</tbody></table></div></div>';
   }
 
   // Warnings
@@ -773,10 +778,11 @@ function initEventHandlers(){
   var markDepBtn=document.getElementById('mark-deprecated');
   if(markDepBtn)markDepBtn.addEventListener('click',doMarkDeprecated);
 
-  // Delete button delegation — click trash icon to move single row to deprecated
+  // Delete button delegation — confirm via dialog before moving to deprecated
   document.addEventListener('click',function(e){
     var btn=e.target.closest('.del-btn');if(!btn)return;
     var rk=btn.dataset.rk;if(!rk)return;
+    if(!confirm('确定要将 '+rk+' 标记为已移除吗？'))return;
     var r1=document.querySelector('tr.r1[data-key="'+rk+'"]');if(!r1)return;
     var r2=r1.nextElementSibling;var has2=r2&&r2.classList.contains('r2');
     var oldSec=r1.closest('[data-sec]');

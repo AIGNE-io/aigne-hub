@@ -271,11 +271,11 @@ export function hasBelowCost(m, threshold) {
   )
     return true;
   // Cache write: cost exists but sell is missing or below cost
-  const cw = m.officialCacheWrite ?? m.litellmCacheWrite;
+  const cw = m.bestCostCacheWrite;
   const sw = m.dbCacheWrite;
   if (cw > 0 && (!sw || ((sw - cw) / cw) * 100 < -threshold)) return true;
   // Cache read: cost exists but sell is missing or below cost
-  const cr = m.officialCacheRead ?? m.litellmCacheRead;
+  const cr = m.bestCostCacheRead;
   const sr = m.dbCacheRead;
   if (cr > 0 && (!sr || ((sr - cr) / cr) * 100 < -threshold)) return true;
   return false;
@@ -291,12 +291,12 @@ export function hasDrift(m, threshold) {
   const outputOff = m.outputMargin != null && Math.abs(m.outputMargin) > threshold;
   if (inputOff || outputOff) return true;
   if (m.cacheTierWriteDrift > 0 || m.cacheTierReadDrift > 0) return true;
-  // Cache read/write: DB value vs external reference (bidirectional)
-  const cw = m.officialCacheWrite ?? m.litellmCacheWrite;
+  // Cache read/write: DB value vs best source reference (bidirectional)
+  const cw = m.bestCostCacheWrite;
   if (cw > 0 && m.dbCacheWrite > 0) {
     if (Math.abs(((m.dbCacheWrite - cw) / cw) * 100) > threshold) return true;
   }
-  const cr = m.officialCacheRead ?? m.litellmCacheRead;
+  const cr = m.bestCostCacheRead;
   if (cr > 0 && m.dbCacheRead > 0) {
     if (Math.abs(((m.dbCacheRead - cr) / cr) * 100) > threshold) return true;
   }
@@ -317,8 +317,8 @@ export function hasNotHighestTier(m) {
     const maxCost = Math.max(...m.resolutionTiers.map((t) => t.costPerImage));
     if (!aboveOrClose(sO, maxCost)) return true;
   }
-  if (m.officialCacheTiers?.length) {
-    const writeTiers = m.officialCacheTiers.filter((t) => t.label.includes('write'));
+  if (m.bestCostCacheTiers?.length) {
+    const writeTiers = m.bestCostCacheTiers.filter((t) => t.label.includes('write'));
     if (writeTiers.length > 1) {
       const maxWrite = Math.max(...writeTiers.map((t) => t.costPerToken));
       const dbCW = m.dbCacheWrite ?? 0;
@@ -454,7 +454,7 @@ export function classifyFromEntryAndRate(entry, rate, isNoOfficial) {
   const wt = ct.filter(function (t) {
     return t.label.indexOf('write') >= 0;
   });
-  const rc = entry.officialCacheRead || entry.litellmCacheRead || entry.cachedInputCostPerToken || 0;
+  const rc = entry.cachedInputCostPerToken || 0;
   const mwc = wt.length
     ? Math.max(
         ...wt.map(function (t) {
@@ -650,84 +650,118 @@ export function lookupOfficialPricing(cache, lookupKey, fallbackKeys, dbType) {
 
 /**
  * Select the best cost source and calculate margins.
+ * Single Data Source Principle: all fields (input, output, cache write, cache read)
+ * come from the SAME source. Priority: Official > LiteLLM > OpenRouter.
  * Mutates `result` in place.
  */
 export function pickBestCost(result) {
-  if (result.pricingUnit === 'per-image' || result.pricingUnit === 'per-second') {
-    if (result.pricingUnit === 'per-image' && result.resolutionTiers?.length) {
-      result.bestCostOutput = Math.max(...result.resolutionTiers.map((t) => t.costPerImage));
-    } else if (result.pricingUnit === 'per-image' && result.litellmOutputPerImage !== undefined) {
-      result.bestCostOutput = result.litellmOutputPerImage;
-    } else if (result.pricingUnit === 'per-second' && result.litellmOutputPerSecond !== undefined) {
-      result.bestCostOutput = result.litellmOutputPerSecond;
-    }
+  var isPerUnit = result.pricingUnit === 'per-image' || result.pricingUnit === 'per-second';
 
-    if (result.pricingUnit === 'per-image' && result.providerPageOutput !== undefined && !result.bestCostOutput) {
-      result.bestCostOutput = result.providerPageOutput;
-      result.bestCostSource = 'provider-page';
-      result.bestCostSourceLabel = '官方';
-      result.bestCostUrl = result.providerPageUrl;
-    } else if (
-      result.pricingUnit === 'per-second' &&
-      result.providerPageOutput !== undefined &&
-      !result.bestCostOutput
-    ) {
-      result.bestCostOutput = result.providerPageOutput;
-      result.bestCostSource = 'provider-page';
-      result.bestCostSourceLabel = '官方';
-      result.bestCostUrl = result.providerPageUrl;
-    }
+  // Determine which sources have data
+  var hasOfficial = result.providerPageInput !== undefined || result.providerPageOutput !== undefined;
+  var hasLiteLLM =
+    result.litellmInput !== undefined ||
+    result.litellmOutput !== undefined ||
+    result.litellmOutputPerImage !== undefined ||
+    result.litellmOutputPerSecond !== undefined;
+  var hasOpenRouter = result.openrouterInput !== undefined && result.openrouterOutput !== undefined;
 
-    if (result.pricingUnit === 'per-image' && result.litellmInputPerImage !== undefined) {
-      result.bestCostInput = result.litellmInputPerImage;
-      if (!result.bestCostSource) {
-        result.bestCostSource = 'litellm';
-        result.bestCostSourceLabel = 'LiteLLM';
-      }
-    } else if (result.providerPageInput !== undefined) {
+  // Pre-compute resolution tier max cost (source-agnostic structural data)
+  var resMax = 0;
+  if (result.pricingUnit === 'per-image' && result.resolutionTiers?.length) {
+    resMax = Math.max(
+      ...result.resolutionTiers.map(function (t) {
+        return t.costPerImage;
+      })
+    );
+  }
+
+  if (isPerUnit) {
+    // Per-unit (image/video): Official > LiteLLM > OpenRouter
+    if (hasOfficial && result.providerPageOutput !== undefined) {
+      result.bestCostOutput = resMax || result.providerPageOutput;
       result.bestCostInput = result.providerPageInput;
       result.bestCostSource = 'provider-page';
       result.bestCostSourceLabel = '官方';
       result.bestCostUrl = result.providerPageUrl;
-    } else if (result.openrouterInput !== undefined) {
+    } else if (result.pricingUnit === 'per-image' && hasLiteLLM && result.litellmOutputPerImage !== undefined) {
+      result.bestCostOutput = resMax || result.litellmOutputPerImage;
+      result.bestCostInput = result.litellmInputPerImage ?? result.litellmInput;
+      result.bestCostSource = 'litellm';
+      result.bestCostSourceLabel = 'LiteLLM';
+    } else if (result.pricingUnit === 'per-second' && hasLiteLLM && result.litellmOutputPerSecond !== undefined) {
+      result.bestCostOutput = result.litellmOutputPerSecond;
+      result.bestCostInput = result.litellmInput;
+      result.bestCostSource = 'litellm';
+      result.bestCostSourceLabel = 'LiteLLM';
+    } else if (hasOpenRouter) {
       result.bestCostInput = result.openrouterInput;
+      result.bestCostOutput = result.openrouterOutput;
       result.bestCostSource = 'openrouter';
       result.bestCostSourceLabel = 'OpenRouter';
-    } else if (result.litellmInput !== undefined) {
+    } else if (hasLiteLLM && result.litellmInput !== undefined) {
       result.bestCostInput = result.litellmInput;
       result.bestCostSource = 'litellm';
       result.bestCostSourceLabel = 'LiteLLM';
     }
-    if (result.bestCostOutput !== undefined && !result.bestCostSource) {
-      result.bestCostSource = 'litellm';
-      result.bestCostSourceLabel = 'LiteLLM';
-    }
   } else {
+    // Per-token: Official > LiteLLM > OpenRouter (require both input+output)
     if (result.providerPageInput !== undefined && result.providerPageOutput !== undefined) {
       result.bestCostInput = result.providerPageInput;
       result.bestCostOutput = result.providerPageOutput;
       result.bestCostSource = 'provider-page';
       result.bestCostSourceLabel = '官方';
       result.bestCostUrl = result.providerPageUrl;
-    } else if (result.openrouterInput !== undefined && result.openrouterOutput !== undefined) {
-      result.bestCostInput = result.openrouterInput;
-      result.bestCostOutput = result.openrouterOutput;
-      result.bestCostSource = 'openrouter';
-      result.bestCostSourceLabel = 'OpenRouter';
     } else if (result.litellmInput !== undefined && result.litellmOutput !== undefined) {
       result.bestCostInput = result.litellmInput;
       result.bestCostOutput = result.litellmOutput;
       result.bestCostSource = 'litellm';
       result.bestCostSourceLabel = 'LiteLLM';
+    } else if (hasOpenRouter) {
+      result.bestCostInput = result.openrouterInput;
+      result.bestCostOutput = result.openrouterOutput;
+      result.bestCostSource = 'openrouter';
+      result.bestCostSourceLabel = 'OpenRouter';
     }
   }
 
+  // Cache from the SAME winning source (single data source principle)
+  if (result.bestCostSource === 'provider-page') {
+    result.bestCostCacheWrite = result.officialCacheWrite ?? null;
+    result.bestCostCacheRead = result.officialCacheRead ?? null;
+    result.bestCostCacheTiers = result.officialCacheTiers ?? null;
+  } else if (result.bestCostSource === 'litellm') {
+    result.bestCostCacheWrite = result.litellmCacheWrite ?? null;
+    result.bestCostCacheRead = result.litellmCacheRead ?? null;
+    result.bestCostCacheTiers = null;
+  } else {
+    result.bestCostCacheWrite = null;
+    result.bestCostCacheRead = null;
+    result.bestCostCacheTiers = null;
+  }
+
+  // Calculate margins
   if (result.bestCostInput !== undefined && result.inputRate !== undefined && result.bestCostInput > 0) {
     result.inputMargin = ((result.inputRate - result.bestCostInput) / result.bestCostInput) * 100;
   }
   if (result.bestCostOutput !== undefined && result.outputRate !== undefined && result.bestCostOutput > 0) {
     result.outputMargin = ((result.outputRate - result.bestCostOutput) / result.bestCostOutput) * 100;
   }
+}
+
+/**
+ * Compute maxDrift from the single best source only.
+ */
+export function singleSourceMaxDrift(result) {
+  var ssd = 0;
+  if (result.bestCostSource === 'provider-page') {
+    ssd = Math.max(result.providerPageDrift ?? 0, result.cacheTierWriteDrift ?? 0, result.cacheTierReadDrift ?? 0);
+  } else if (result.bestCostSource === 'litellm') {
+    ssd = Math.max(result.litellmDrift ?? 0, result.cacheDrift ?? 0);
+  } else if (result.bestCostSource === 'openrouter') {
+    ssd = result.openrouterDrift ?? 0;
+  }
+  return ssd;
 }
 
 // ─── Core Compare Engine ─────────────────────────────────────────────────────
@@ -1002,9 +1036,6 @@ export function compare(dbRates, litellm, openrouter, providerPages, threshold) 
       }
     }
 
-    result.maxDrift = maxDrift;
-    result.exceedsThreshold = maxDrift > threshold;
-
     if (rate.unitCosts && (rate.inputRate || rate.outputRate)) {
       const unitInputCost = Number(rate.unitCosts.input);
       const unitOutputCost = Number(rate.unitCosts.output);
@@ -1047,18 +1078,12 @@ export function compare(dbRates, litellm, openrouter, providerPages, threshold) 
         // Recalculate margin against highest tier
         if (hi.input > 0) result.inputMargin = ((sI - hi.input) / hi.input) * 100;
         if (hi.output > 0) result.outputMargin = ((sO - hi.output) / hi.output) * 100;
-        // Recalculate maxDrift excluding tier-inflated values
-        result.maxDrift = Math.max(
-          result.litellmDrift ?? 0,
-          result.openrouterDrift ?? 0,
-          result.providerPageDrift ?? 0,
-          result.cacheDrift ?? 0,
-          result.cacheTierWriteDrift ?? 0,
-          result.cacheTierReadDrift ?? 0
-        );
-        result.exceedsThreshold = result.maxDrift > threshold;
       }
     }
+
+    // Single Data Source: maxDrift only reflects the winning source
+    result.maxDrift = singleSourceMaxDrift(result);
+    result.exceedsThreshold = result.maxDrift > threshold;
 
     results.push(result);
   }
