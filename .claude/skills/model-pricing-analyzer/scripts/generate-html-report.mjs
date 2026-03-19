@@ -863,16 +863,17 @@ async function doSync(isDryRun){
   if(!url){showStatus('请输入 API 地址','#feebc8','#c05621');return}
   if(!token){showStatus('请输入 Access Token','#feebc8','#c05621');return}
   var checkedKeys=getSyncSelected();
-  var selectedEntries=__allEntries.filter(function(e){return checkedKeys.has(e.provider+'/'+e.modelId)}).map(function(e){
+  // Collect models marked for deletion first — they take priority over sync selection
+  var delKeys=getDelSelected();
+  var delEntries=[];delKeys.forEach(function(k){var e=__entryMap.get(k);if(e)delEntries.push(Object.assign({},e,{deprecated:true}))});
+  // Sync entries exclude models marked for deletion
+  var selectedEntries=__allEntries.filter(function(e){var k=e.provider+'/'+e.modelId;return checkedKeys.has(k)&&!delKeys.has(k)}).map(function(e){
     var inp=e.inputCostPerToken,out=e.outputCostPerToken;
     if(e.tieredPricing&&e.tieredPricing.length){var hi=e.tieredPricing[e.tieredPricing.length-1];if(hi.input&&hi.input>inp)inp=hi.input;if(hi.output&&hi.output>out)out=hi.output}
     if(e.resolutionTiers&&e.resolutionTiers.length){var maxCPI=0;e.resolutionTiers.forEach(function(t){if(t.costPerImage>maxCPI)maxCPI=t.costPerImage});if(maxCPI&&maxCPI>out)out=maxCPI}
     return Object.assign({},e,{inputCostPerToken:inp,outputCostPerToken:out});
   });
   var umKeys=getUmSelected();var selectedUm=__umEntries.filter(function(e){return umKeys.has(e.provider+'/'+e.modelId)});
-  // Collect models marked for deletion — add as deprecated entries to the same payload
-  var delKeys=getDelSelected();
-  var delEntries=[];delKeys.forEach(function(k){var e=__entryMap.get(k);if(e)delEntries.push(Object.assign({},e,{deprecated:true}))});
   var allSelected=[...selectedEntries,...selectedUm,...delEntries];
   if(!allSelected.length){showStatus('请先勾选要同步的模型或标记要删除的模型','#feebc8','#c05621');return}
   var isPartial=selectedEntries.length<__allEntries.length;var safeDeprecate=deprecate&&!isPartial;

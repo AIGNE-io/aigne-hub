@@ -1566,6 +1566,25 @@ async function handleSyncMode(req: Request, res: Response, value: any) {
 
     const providerName = (match as any).providerName || match.providerId;
 
+    // Per-entry deprecation: soft-delete this specific model (check before cost comparison)
+    if (update.deprecated) {
+      if (!(match as any).deprecated) {
+        const depData: any = {
+          deprecated: true,
+          deprecatedAt: new Date(),
+          deprecatedReason: 'Manually marked for removal via pricing report',
+        };
+        if (!dryRun) {
+          await (match as any).update(depData, {
+            changeType: 'bulk_sync',
+            source: update.source || 'manual-deprecation',
+          });
+        }
+        deprecated.push({ id: match.id, model: match.model, provider: providerName });
+      }
+      continue;
+    }
+
     const costsChanged = unitCostsChanged(match.unitCosts, update.unitCosts);
 
     // Check if caching data changed
@@ -1601,25 +1620,6 @@ async function handleSyncMode(req: Request, res: Response, value: any) {
       if (update.caching) {
         // Merge with existing caching to avoid losing fields not in the update
         updateData.caching = { ...((match as any).caching || {}), ...update.caching };
-      }
-
-      // Per-entry deprecation: soft-delete this specific model
-      if (update.deprecated) {
-        if (!(match as any).deprecated) {
-          const depData: any = {
-            deprecated: true,
-            deprecatedAt: new Date(),
-            deprecatedReason: 'Manually marked for removal via pricing report',
-          };
-          if (!dryRun) {
-            await (match as any).update(depData, {
-              changeType: 'bulk_sync',
-              source: update.source || 'manual-deprecation',
-            });
-          }
-          deprecated.push({ id: match.id, model: match.model, provider: providerName });
-        }
-        continue;
       }
 
       // Clear deprecated flag if model reappears in official pricing
