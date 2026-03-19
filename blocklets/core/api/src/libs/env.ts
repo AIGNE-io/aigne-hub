@@ -43,6 +43,9 @@ export const MODEL_CALL_MONTHLY_STATS_CRON_TIME = process.env.MODEL_CALL_MONTHLY
 export const CHECK_MODEL_STATUS_CRON_TIME = process.env.CHECK_MODEL_STATUS_CRON_TIME || '0 0 0 * * *'; // every day at 00:00:00
 export const ARCHIVE_MODEL_DATA_CRON_TIME = process.env.ARCHIVE_MODEL_DATA_CRON_TIME || '0 0 2 * * *'; // every day at 02:00:00
 export const ENABLE_ARCHIVE_MODEL_DATA_CRON = process.env.ENABLE_ARCHIVE_MODEL_DATA_CRON !== 'false';
+export const RATE_SOURCE_DRIFT_THRESHOLD = +(process.env.RATE_SOURCE_DRIFT_THRESHOLD || 0.1);
+export const MODEL_RATE_CHECK_CRON_TIME = process.env.MODEL_RATE_CHECK_CRON_TIME || '0 30 */6 * * *';
+export const ENABLE_AUTO_RATE_UPDATE = process.env.ENABLE_AUTO_RATE_UPDATE === 'true';
 
 // Data retention period (months)
 export const RETENTION_MODEL_CALL_MONTHS = +(process.env.RETENTION_MODEL_CALL_MONTHS || 3);

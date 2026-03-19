@@ -268,7 +268,14 @@ export default class ModelCallStat extends Model<
       timestamp: number;
       byProject: Record<
         string,
-        { totalUsage: number; totalCredits: number; totalCalls: number; successCalls: number; avgDuration: number }
+        {
+          totalUsage: number;
+          totalCredits: number;
+          totalCalls: number;
+          successCalls: number;
+          avgDuration: number;
+          avgTtfb: number;
+        }
       >;
     }>;
     granularity: 'hour' | 'day';
@@ -312,7 +319,14 @@ export default class ModelCallStat extends Model<
     const trends = trendBuckets.map(({ timestamp, byProject }) => {
       const normalizedByProject: Record<
         string,
-        { totalUsage: number; totalCredits: number; totalCalls: number; successCalls: number; avgDuration: number }
+        {
+          totalUsage: number;
+          totalCredits: number;
+          totalCalls: number;
+          successCalls: number;
+          avgDuration: number;
+          avgTtfb: number;
+        }
       > = {};
 
       Object.entries(byProject).forEach(([appDidKey, stats]) => {
@@ -322,6 +336,7 @@ export default class ModelCallStat extends Model<
           totalCalls: stats.totalCalls,
           successCalls: stats.successCalls,
           avgDuration: stats.avgDuration || 0,
+          avgTtfb: stats.avgTtfb ? Math.round((stats.avgTtfb / 1000) * 10) / 10 : 0,
         };
       });
 
@@ -356,6 +371,33 @@ export default class ModelCallStat extends Model<
         [fn('SUM', literal('CASE WHEN "status" = \'success\' THEN 1 ELSE 0 END')), 'successCalls'],
         [fn('SUM', literal('CASE WHEN "status" = \'success\' THEN "duration" ELSE 0 END')), 'totalDuration'],
         [fn('AVG', literal('CASE WHEN "status" = \'success\' THEN "duration" ELSE NULL END')), 'avgDuration'],
+        [
+          fn('SUM', literal('CASE WHEN "status" = \'success\' AND "ttfb" IS NOT NULL THEN "ttfb" ELSE 0 END')),
+          'totalTtfb',
+        ],
+        [fn('SUM', literal('CASE WHEN "status" = \'success\' AND "ttfb" IS NOT NULL THEN 1 ELSE 0 END')), 'ttfbCount'],
+        [
+          fn('AVG', literal('CASE WHEN "status" = \'success\' AND "ttfb" IS NOT NULL THEN "ttfb" ELSE NULL END')),
+          'avgTtfb',
+        ],
+        [
+          fn(
+            'SUM',
+            literal('CASE WHEN "status" = \'success\' AND "providerTtfb" IS NOT NULL THEN "providerTtfb" ELSE 0 END')
+          ),
+          'totalProviderTtfb',
+        ],
+        [
+          fn('SUM', literal('CASE WHEN "status" = \'success\' AND "providerTtfb" IS NOT NULL THEN 1 ELSE 0 END')),
+          'providerTtfbCount',
+        ],
+        [
+          fn(
+            'AVG',
+            literal('CASE WHEN "status" = \'success\' AND "providerTtfb" IS NOT NULL THEN "providerTtfb" ELSE NULL END')
+          ),
+          'avgProviderTtfb',
+        ],
       ],
       where: {
         callTime: { [Op.between]: [startTime, endTime] },
@@ -371,6 +413,12 @@ export default class ModelCallStat extends Model<
       successCalls: string | number;
       totalDuration: string | number;
       avgDuration: string | number;
+      totalTtfb: string | number;
+      ttfbCount: string | number;
+      avgTtfb: string | number;
+      totalProviderTtfb: string | number;
+      providerTtfbCount: string | number;
+      avgProviderTtfb: string | number;
     }>;
 
     const statsMap = new Map<number, DailyStats>();
@@ -403,11 +451,20 @@ export default class ModelCallStat extends Model<
       successCalls: stats.successCalls || 0,
       totalDuration: stats.totalDuration || 0,
       avgDuration: stats.avgDuration || 0,
+      totalTtfb: stats.totalTtfb || 0,
+      ttfbCount: stats.ttfbCount || 0,
+      avgTtfb: stats.avgTtfb || 0,
+      totalProviderTtfb: stats.totalProviderTtfb || 0,
+      providerTtfbCount: stats.providerTtfbCount || 0,
+      avgProviderTtfb: stats.avgProviderTtfb || 0,
       byType: {},
     };
   }
 
   private static mergeTrendStats(target: DailyStats, source: DailyStats): DailyStats {
+    const mergedTtfbCount = (target.ttfbCount || 0) + (source.ttfbCount || 0);
+    const mergedProviderTtfbCount = (target.providerTtfbCount || 0) + (source.providerTtfbCount || 0);
+
     const merged: DailyStats = {
       totalUsage: target.totalUsage + source.totalUsage,
       totalCredits: target.totalCredits + source.totalCredits,
@@ -415,11 +472,23 @@ export default class ModelCallStat extends Model<
       successCalls: target.successCalls + source.successCalls,
       totalDuration: (target.totalDuration || 0) + (source.totalDuration || 0),
       avgDuration: 0,
+      totalTtfb: (target.totalTtfb || 0) + (source.totalTtfb || 0),
+      ttfbCount: mergedTtfbCount,
+      totalProviderTtfb: (target.totalProviderTtfb || 0) + (source.totalProviderTtfb || 0),
+      providerTtfbCount: mergedProviderTtfbCount,
       byType: {},
     };
 
     if (merged.successCalls > 0 && merged.totalDuration) {
       merged.avgDuration = Math.round((merged.totalDuration / merged.successCalls) * 10) / 10;
+    }
+
+    if (mergedTtfbCount > 0 && merged.totalTtfb) {
+      merged.avgTtfb = Math.round((merged.totalTtfb / mergedTtfbCount) * 10) / 10;
+    }
+
+    if (mergedProviderTtfbCount > 0 && merged.totalProviderTtfb) {
+      merged.avgProviderTtfb = Math.round((merged.totalProviderTtfb / mergedProviderTtfbCount) * 10) / 10;
     }
 
     return merged;
@@ -467,6 +536,33 @@ export default class ModelCallStat extends Model<
         [fn('SUM', literal('CASE WHEN "status" = \'success\' THEN 1 ELSE 0 END')), 'successCalls'],
         [fn('SUM', literal('CASE WHEN "status" = \'success\' THEN "duration" ELSE 0 END')), 'totalDuration'],
         [fn('AVG', literal('CASE WHEN "status" = \'success\' THEN "duration" ELSE NULL END')), 'avgDuration'],
+        [
+          fn('SUM', literal('CASE WHEN "status" = \'success\' AND "ttfb" IS NOT NULL THEN "ttfb" ELSE 0 END')),
+          'totalTtfb',
+        ],
+        [fn('SUM', literal('CASE WHEN "status" = \'success\' AND "ttfb" IS NOT NULL THEN 1 ELSE 0 END')), 'ttfbCount'],
+        [
+          fn('AVG', literal('CASE WHEN "status" = \'success\' AND "ttfb" IS NOT NULL THEN "ttfb" ELSE NULL END')),
+          'avgTtfb',
+        ],
+        [
+          fn(
+            'SUM',
+            literal('CASE WHEN "status" = \'success\' AND "providerTtfb" IS NOT NULL THEN "providerTtfb" ELSE 0 END')
+          ),
+          'totalProviderTtfb',
+        ],
+        [
+          fn('SUM', literal('CASE WHEN "status" = \'success\' AND "providerTtfb" IS NOT NULL THEN 1 ELSE 0 END')),
+          'providerTtfbCount',
+        ],
+        [
+          fn(
+            'AVG',
+            literal('CASE WHEN "status" = \'success\' AND "providerTtfb" IS NOT NULL THEN "providerTtfb" ELSE NULL END')
+          ),
+          'avgProviderTtfb',
+        ],
       ],
       where: whereClause,
       group: [bucketExpr as any, 'appDid'],
@@ -481,6 +577,10 @@ export default class ModelCallStat extends Model<
       successCalls: string | number;
       totalDuration: string | number;
       avgDuration: string | number;
+      totalTtfb: string | number;
+      avgTtfb: string | number;
+      totalProviderTtfb: string | number;
+      avgProviderTtfb: string | number;
     }>;
 
     const result = new Map<number, Record<string, DailyStats>>();
@@ -887,6 +987,12 @@ export default class ModelCallStat extends Model<
       successCalls: 0,
       totalDuration: 0,
       avgDuration: 0,
+      totalTtfb: 0,
+      ttfbCount: 0,
+      avgTtfb: 0,
+      totalProviderTtfb: 0,
+      providerTtfbCount: 0,
+      avgProviderTtfb: 0,
       byType: {},
     };
   }
@@ -917,13 +1023,48 @@ export default class ModelCallStat extends Model<
         [fn('SUM', literal('CASE WHEN "status" = \'success\' THEN 1 ELSE 0 END')), 'successCalls'],
         [fn('SUM', literal('CASE WHEN "status" = \'success\' THEN "duration" ELSE 0 END')), 'totalDuration'],
         [fn('AVG', literal('CASE WHEN "status" = \'success\' THEN "duration" ELSE NULL END')), 'avgDuration'],
+        [
+          fn('SUM', literal('CASE WHEN "status" = \'success\' AND "ttfb" IS NOT NULL THEN "ttfb" ELSE 0 END')),
+          'totalTtfb',
+        ],
+        [fn('SUM', literal('CASE WHEN "status" = \'success\' AND "ttfb" IS NOT NULL THEN 1 ELSE 0 END')), 'ttfbCount'],
+        [
+          fn('AVG', literal('CASE WHEN "status" = \'success\' AND "ttfb" IS NOT NULL THEN "ttfb" ELSE NULL END')),
+          'avgTtfb',
+        ],
+        [
+          fn(
+            'SUM',
+            literal('CASE WHEN "status" = \'success\' AND "providerTtfb" IS NOT NULL THEN "providerTtfb" ELSE 0 END')
+          ),
+          'totalProviderTtfb',
+        ],
+        [
+          fn('SUM', literal('CASE WHEN "status" = \'success\' AND "providerTtfb" IS NOT NULL THEN 1 ELSE 0 END')),
+          'providerTtfbCount',
+        ],
+        [
+          fn(
+            'AVG',
+            literal('CASE WHEN "status" = \'success\' AND "providerTtfb" IS NOT NULL THEN "providerTtfb" ELSE NULL END')
+          ),
+          'avgProviderTtfb',
+        ],
       ],
       where: whereClause,
       raw: true,
     })) as any[];
 
     const totalRow = totalRows[0] || {};
-    return ModelCallStat.buildStatsFromAggregateRow(totalRow);
+    const stats = ModelCallStat.buildStatsFromAggregateRow(totalRow);
+
+    // Compute TTFB percentiles from individual rows (SQLite lacks PERCENTILE_CONT)
+    if (stats.avgTtfb || stats.avgProviderTtfb) {
+      const percentiles = await ModelCallStat.getTtfbPercentiles(whereClause);
+      Object.assign(stats, percentiles);
+    }
+
+    return stats;
   }
 
   private static getTimezoneOffsetSeconds(timezoneOffset?: number): number {
@@ -963,6 +1104,12 @@ export default class ModelCallStat extends Model<
     successCalls?: string | number;
     totalDuration?: string | number;
     avgDuration?: string | number;
+    totalTtfb?: string | number;
+    ttfbCount?: string | number;
+    avgTtfb?: string | number;
+    totalProviderTtfb?: string | number;
+    providerTtfbCount?: string | number;
+    avgProviderTtfb?: string | number;
   }): DailyStats {
     const totalUsage = parseInt(String(row.totalUsage ?? '0'), 10);
     const totalCredits = new BigNumber(row.totalCredits || '0').toNumber();
@@ -977,6 +1124,26 @@ export default class ModelCallStat extends Model<
       avgDuration = Math.round((totalDuration / successCalls) * 10) / 10;
     }
 
+    const totalTtfb = row.totalTtfb === undefined ? undefined : parseFloat(String(row.totalTtfb ?? '0'));
+    const ttfbCount = row.ttfbCount === undefined ? undefined : parseInt(String(row.ttfbCount ?? '0'), 10);
+    let avgTtfb: number | undefined;
+    if (row.avgTtfb !== undefined && row.avgTtfb !== null) {
+      avgTtfb = Math.round(parseFloat(String(row.avgTtfb ?? '0')) * 10) / 10;
+    } else if (ttfbCount && ttfbCount > 0 && totalTtfb) {
+      avgTtfb = Math.round((totalTtfb / ttfbCount) * 10) / 10;
+    }
+
+    const totalProviderTtfb =
+      row.totalProviderTtfb === undefined ? undefined : parseFloat(String(row.totalProviderTtfb ?? '0'));
+    const providerTtfbCount =
+      row.providerTtfbCount === undefined ? undefined : parseInt(String(row.providerTtfbCount ?? '0'), 10);
+    let avgProviderTtfb: number | undefined;
+    if (row.avgProviderTtfb !== undefined && row.avgProviderTtfb !== null) {
+      avgProviderTtfb = Math.round(parseFloat(String(row.avgProviderTtfb ?? '0')) * 10) / 10;
+    } else if (providerTtfbCount && providerTtfbCount > 0 && totalProviderTtfb) {
+      avgProviderTtfb = Math.round((totalProviderTtfb / providerTtfbCount) * 10) / 10;
+    }
+
     return {
       totalUsage,
       totalCredits,
@@ -984,8 +1151,66 @@ export default class ModelCallStat extends Model<
       successCalls,
       totalDuration,
       avgDuration,
+      totalTtfb,
+      ttfbCount,
+      avgTtfb,
+      totalProviderTtfb,
+      providerTtfbCount,
+      avgProviderTtfb,
       byType: {},
     };
+  }
+
+  private static async getTtfbPercentiles(
+    whereClause: any
+  ): Promise<{ p50Ttfb?: number; p95Ttfb?: number; p50ProviderTtfb?: number; p95ProviderTtfb?: number }> {
+    // Count once per column, then compute both percentiles using the shared count
+    const [ttfbResult, providerResult] = await Promise.all([
+      ModelCallStat.getPercentilesForColumn(whereClause, 'ttfb', [50, 95]),
+      ModelCallStat.getPercentilesForColumn(whereClause, 'providerTtfb', [50, 95]),
+    ]);
+    return {
+      p50Ttfb: ttfbResult[0],
+      p95Ttfb: ttfbResult[1],
+      p50ProviderTtfb: providerResult[0],
+      p95ProviderTtfb: providerResult[1],
+    };
+  }
+
+  /** Compute multiple percentiles for a single column with one COUNT query. */
+  private static async getPercentilesForColumn(
+    whereClause: any,
+    column: string,
+    percentiles: number[]
+  ): Promise<Array<number | undefined>> {
+    const countResult = (await ModelCall.count({
+      where: { ...whereClause, status: 'success', [column]: { [Op.not]: null } },
+    })) as number;
+    if (countResult === 0) return percentiles.map(() => undefined);
+
+    // Fetch all needed percentile values in parallel using the shared count
+    return Promise.all(
+      percentiles.map(async (pct) => {
+        const index = Math.floor((pct / 100) * (countResult - 1));
+        const rows = (await ModelCall.findAll({
+          attributes: [column],
+          where: { ...whereClause, status: 'success', [column]: { [Op.not]: null } },
+          order: [[column, 'ASC']],
+          offset: index,
+          limit: 2,
+          raw: true,
+        })) as unknown as Array<Record<string, number | null>>;
+
+        if (rows.length === 0) return undefined;
+        const lower = rows[0]![column] as number;
+        if (rows.length === 1 || index === countResult - 1) return Math.round(lower * 10) / 10;
+
+        const exactIndex = (pct / 100) * (countResult - 1);
+        const weight = exactIndex - index;
+        const upper = rows[1]![column] as number;
+        return Math.round((lower * (1 - weight) + upper * weight) * 10) / 10;
+      })
+    );
   }
 
   private static buildProjectTrendBuckets(

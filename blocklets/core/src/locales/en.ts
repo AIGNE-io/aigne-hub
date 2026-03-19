@@ -560,6 +560,7 @@ export default flatten({
     projectStats: 'Project Statistics',
     selectProjectToView: 'Select a project to view details',
     avgDuration: 'Avg Duration',
+    avgTtfb: 'Avg TTFB',
     p95Duration: 'P95 Duration',
     callsTrend: 'Calls',
     durationTrend: 'Duration',

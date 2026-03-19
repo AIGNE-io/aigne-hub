@@ -1,3 +1,17 @@
+## 0.9.12 (2026-3-19)
+
+- fix: resolve TS2532/TS2345 type errors in provider-pricing-pages
+- feat(pricing-analyzer): support image/video pricing comparison, tiered cost display, and automated pricing analysis
+- fix(pricing-analyzer): unify drift formula and fix classification issues
+- feat: expose TTFB metrics in API, frontend charts, and call history (table + detail drawer)
+- feat: add TTFB monitoring and model rate history tracking
+- fix: pass provider baseURL and region to credential validation; improve debugging and performance monitoring
+- chore: remove duplicate pricing scripts, add helper scripts, and cleanup old skill file
+- chore: update .gitignore and add project-specific skill
+- feat: add model pricing analyzer skill with multi-unit and cache support
+- docs: add Payment Kit integration guide and implementation plan
+- feat: pause usage report and flush on startup (#529)
+
 ## 0.9.11 (2026-3-13)
 
 - fix: use rounding instead of truncation for credit formatting

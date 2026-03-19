@@ -49,6 +49,12 @@ export default class AiModelRate extends Model<InferAttributes<AiModelRate>, Inf
 
   declare modelMetadata?: ModelMetadata;
 
+  declare deprecated: CreationOptional<boolean>;
+
+  declare deprecatedAt: Date | null;
+
+  declare deprecatedReason: string | null;
+
   public static readonly GENESIS_ATTRIBUTES = {
     id: {
       type: DataTypes.STRING,
@@ -104,6 +110,19 @@ export default class AiModelRate extends Model<InferAttributes<AiModelRate>, Inf
     },
     modelMetadata: {
       type: DataTypes.JSON,
+      allowNull: true,
+    },
+    deprecated: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    deprecatedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    deprecatedReason: {
+      type: DataTypes.STRING(100),
       allowNull: true,
     },
   };

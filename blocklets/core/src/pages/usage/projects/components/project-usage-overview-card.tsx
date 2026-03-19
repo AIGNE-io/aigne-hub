@@ -3,7 +3,7 @@ import type { DailyStats, UsageChartMetric } from '@app/components/analytics';
 import { UsageOverviewSkeleton, toUTCTimestamp, useSmartLoading } from '@app/components/analytics/skeleton';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import { formatNumber } from '@blocklet/aigne-hub/utils/util';
-import { AttachMoney, QueryStats, Speed } from '@mui/icons-material';
+import { AttachMoney, QueryStats, Speed, Timer } from '@mui/icons-material';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import { Avatar, Box, ButtonBase, Card, Stack, Tooltip, Typography } from '@mui/material';
 import { alpha, useTheme } from '@mui/material/styles';
@@ -67,6 +67,7 @@ const toDailyStats = (trends?: ProjectTrend[]): DailyStats[] => {
     totalCalls: trend.calls || 0,
     totalUsage: trend.totalUsage || 0,
     avgDuration: trend.avgDuration || 0,
+    avgTtfb: trend.avgTtfb || 0,
   }));
 };
 
@@ -129,6 +130,8 @@ export function ProjectUsageOverviewCard({
       totalUsage: 0,
       totalSuccessCalls: 0,
       totalDuration: 0,
+      totalTtfb: 0,
+      ttfbCount: 0,
     };
 
     (trendsData?.trends || []).forEach((trend) => {
@@ -138,6 +141,10 @@ export function ProjectUsageOverviewCard({
       const successCalls = trend.successCalls ?? trend.calls ?? 0;
       totals.totalSuccessCalls += successCalls;
       totals.totalDuration += (trend.avgDuration || 0) * successCalls;
+      if (trend.avgTtfb && successCalls > 0) {
+        totals.totalTtfb += (trend.avgTtfb || 0) * successCalls;
+        totals.ttfbCount += successCalls;
+      }
     });
 
     return totals;
@@ -150,6 +157,8 @@ export function ProjectUsageOverviewCard({
       totalUsage: 0,
       totalSuccessCalls: 0,
       totalDuration: 0,
+      totalTtfb: 0,
+      ttfbCount: 0,
     };
     (previousTrendsData?.trends || []).forEach((trend) => {
       totals.totalCalls += trend.calls || 0;
@@ -158,6 +167,10 @@ export function ProjectUsageOverviewCard({
       const successCalls = trend.successCalls ?? trend.calls ?? 0;
       totals.totalSuccessCalls += successCalls;
       totals.totalDuration += (trend.avgDuration || 0) * successCalls;
+      if (trend.avgTtfb && successCalls > 0) {
+        totals.totalTtfb += (trend.avgTtfb || 0) * successCalls;
+        totals.ttfbCount += successCalls;
+      }
     });
     return totals;
   }, [previousTrendsData]);
@@ -171,6 +184,9 @@ export function ProjectUsageOverviewCard({
       : undefined;
   const previousAvgDuration =
     previousTotals.totalSuccessCalls > 0 ? previousTotals.totalDuration / previousTotals.totalSuccessCalls : 0;
+  const avgTtfb =
+    currentTotals.ttfbCount > 0 ? Math.round((currentTotals.totalTtfb / currentTotals.ttfbCount) * 10) / 10 : undefined;
+  const previousAvgTtfb = previousTotals.ttfbCount > 0 ? previousTotals.totalTtfb / previousTotals.ttfbCount : 0;
   const successRate = totalCalls > 0 ? (currentTotals.totalSuccessCalls / totalCalls) * 100 : 0;
   const resolvedProjectMeta = projectMeta ?? trendsData?.project ?? null;
   const projectName = resolvedProjectMeta?.appName || appDid;
@@ -202,9 +218,20 @@ export function ProjectUsageOverviewCard({
         creditsGrowth: computeGrowth(current.totalCredits, previous.totalCredits),
         callsGrowth: computeGrowth(current.totalCalls, previous.totalCalls),
         avgDurationGrowth: computeGrowth(avgDuration ?? 0, previousAvgDuration),
+        avgTtfbGrowth: computeGrowth(avgTtfb ?? 0, previousAvgTtfb),
       },
     };
-  }, [avgDuration, previousAvgDuration, previousTotals, previousTrendsData, totalCalls, totalCredits, totalUsage]);
+  }, [
+    avgDuration,
+    avgTtfb,
+    previousAvgDuration,
+    previousAvgTtfb,
+    previousTotals,
+    previousTrendsData,
+    totalCalls,
+    totalCredits,
+    totalUsage,
+  ]);
 
   const metrics = useMemo(
     () => [
@@ -254,11 +281,22 @@ export function ProjectUsageOverviewCard({
         subLabel: totalCalls > 0 ? `${t('successRate')} ${successRate.toFixed(1)}%` : '-',
         accent: theme.palette.info.main,
       },
+      {
+        key: 'avgTtfb' as const,
+        title: t('analytics.avgTtfb'),
+        icon: Timer,
+        value: formatDuration(avgTtfb),
+        trend: trendComparison ? formatTrend(trendComparison.growth.avgTtfbGrowth) : undefined,
+        trendTooltip: trendComparison ? getTrendDescription(periodDays, t) : undefined,
+        subLabel: totalCalls > 0 ? `${t('successRate')} ${successRate.toFixed(1)}%` : '-',
+        accent: theme.palette.secondary.main,
+      },
     ],
     [
       avgRequestsPerHour,
       avgUsagePerHour,
       avgDuration,
+      avgTtfb,
       creditPrefix,
       creditsPer1k,
       periodDays,
@@ -270,6 +308,7 @@ export function ProjectUsageOverviewCard({
       trendComparison,
       theme.palette.primary.main,
       theme.palette.info.main,
+      theme.palette.secondary.main,
       theme.palette.success.main,
       theme.palette.warning.main,
     ]
@@ -345,7 +384,9 @@ export function ProjectUsageOverviewCard({
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
             {metrics.map((metric) => {
               const isActive = metric.key === selectedMetric;
-              const trendColor = getTrendColor(metric.trend, theme, { invert: metric.key === 'avgDuration' });
+              const trendColor = getTrendColor(metric.trend, theme, {
+                invert: metric.key === 'avgDuration' || metric.key === 'avgTtfb',
+              });
               const backgroundColor = theme.palette.action.hover;
               const MetricIcon = metric.icon;
 

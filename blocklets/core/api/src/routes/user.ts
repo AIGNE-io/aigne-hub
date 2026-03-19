@@ -419,6 +419,9 @@ router.get(
         if (result.duration !== undefined && result.duration !== null) {
           result.duration = Number(result.duration);
         }
+        if (result.ttfb !== undefined && result.ttfb !== null) {
+          result.ttfb = Number(result.ttfb);
+        }
 
         if (call.appDid && isValidDid(call.appDid)) {
           result.appInfo = appNameMap.get(call.appDid);

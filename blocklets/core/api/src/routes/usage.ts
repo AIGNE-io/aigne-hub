@@ -253,6 +253,7 @@ router.get('/trends', user, async (req, res) => {
         successCalls: t.stats.successCalls,
         successRate: t.stats.totalCalls > 0 ? (t.stats.successCalls / t.stats.totalCalls) * 100 : 0,
         avgDuration: t.stats.avgDuration || 0,
+        avgTtfb: t.stats.avgTtfb ? Math.round((t.stats.avgTtfb / 1000) * 10) / 10 : 0,
         totalCredits: t.stats.totalCredits,
         totalUsage: t.stats.totalUsage,
       })),
@@ -369,6 +370,7 @@ router.get('/projects/trends', user, async (req, res) => {
         calls: t.stats.totalCalls,
         successCalls: t.stats.successCalls,
         avgDuration: t.stats.avgDuration || 0,
+        avgTtfb: t.stats.avgTtfb ? Math.round((t.stats.avgTtfb / 1000) * 10) / 10 : 0,
         totalCredits: t.stats.totalCredits,
         totalUsage: t.stats.totalUsage,
       })),
@@ -460,6 +462,7 @@ router.get('/projects/calls', user, async (req, res) => {
         'errorReason',
         'appDid',
         'userDid',
+        'ttfb',
       ],
     });
 
@@ -480,6 +483,7 @@ router.get('/projects/calls', user, async (req, res) => {
         errorReason: call.errorReason,
         appDid: call.appDid,
         userDid: call.userDid,
+        ttfb: call.ttfb !== undefined && call.ttfb !== null ? Number(call.ttfb) : null,
       })),
       count: calls.count,
       page,

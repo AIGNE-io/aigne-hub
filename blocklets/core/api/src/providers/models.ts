@@ -322,14 +322,16 @@ export const getImageModel = async (
 };
 
 const getModelByProviderName = async (provider: string) => {
+  // Normalize provider name to lowercase for matching
+  const normalizedProvider = provider.toLowerCase().replace(/-/g, '');
   const models = availableChatModels();
 
   const m = models.find((m) => {
     if (typeof m.name === 'string') {
-      return m.name.toLowerCase().includes(provider);
+      return m.name.toLowerCase().includes(normalizedProvider);
     }
 
-    return m.name.some((n) => n.toLowerCase().includes(provider));
+    return m.name.some((n) => n.toLowerCase().includes(normalizedProvider));
   });
 
   return m;
@@ -374,10 +376,12 @@ export const checkModelIsValid = async (
 
   if (m) {
     const testModel = customTestModel || CREDENTIAL_TEST_MODELS[providerName];
-    const model = m.create(testModel ? { ...params, model: testModel } : params);
+
+    const createParams = testModel ? { ...params, model: testModel } : params;
+    const model = m.create(createParams);
+
+    await model.invoke({ messages: [{ role: 'user', content: 'Hello, world!' }] });
     logger.info('check chat model is valid model:', model.name);
-    const res = await model.invoke({ messages: [{ role: 'user', content: 'Hello, world!' }] });
-    logger.info('check chat model is valid result:', res);
 
     return;
   }

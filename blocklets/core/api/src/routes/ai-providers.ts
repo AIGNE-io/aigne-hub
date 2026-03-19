@@ -9,6 +9,7 @@ import { createListParamSchema, getWhereFromKvQuery } from '@api/libs/validate';
 import { checkModelIsValid, getDefaultTestModels } from '@api/providers/models';
 import AiCredential, { CredentialValue } from '@api/store/models/ai-credential';
 import AiModelRate from '@api/store/models/ai-model-rate';
+import AiModelRateHistory from '@api/store/models/ai-model-rate-history';
 import AiModelStatus from '@api/store/models/ai-model-status';
 import AiProvider from '@api/store/models/ai-provider';
 import { formatError } from '@blocklet/error';
@@ -20,6 +21,15 @@ import pick from 'lodash/pick';
 import pAll from 'p-all';
 import { Op } from 'sequelize';
 
+import {
+  CreatedEntry,
+  SyncUpdate,
+  buildSyncResult,
+  matchUpdateToDbRate,
+  officialPricingToSyncUpdates,
+  propagateToTier2,
+  unitCostsChanged,
+} from '../libs/bulk-rate-sync';
 import { getFormatModelType, modelStatusQueue, typeFilterMap } from '../libs/status';
 
 const testModelsRateLimit = new Map<string, { count: number; startTime: number }>();
@@ -55,6 +65,30 @@ const rateLimitMiddleware = (req: Request, res: Response, next: NextFunction): v
 
   next();
 };
+
+function extractCredentialParams(
+  rawValue: { value: any; credentialType: string },
+  provider: { baseUrl?: string; region?: string }
+): { apiKey?: string; baseURL?: string; accessKeyId?: string; secretAccessKey?: string; region?: string } {
+  const params: { apiKey?: string; baseURL?: string; accessKeyId?: string; secretAccessKey?: string; region?: string } =
+    {};
+
+  if (rawValue.credentialType === 'api_key') {
+    if (typeof rawValue.value === 'string') {
+      params.apiKey = rawValue.value;
+    } else if (typeof rawValue.value === 'object' && rawValue.value.api_key) {
+      params.apiKey = rawValue.value.api_key;
+    }
+  } else if (rawValue.credentialType === 'access_key_pair' && typeof rawValue.value === 'object') {
+    params.accessKeyId = rawValue.value.access_key_id;
+    params.secretAccessKey = rawValue.value.secret_access_key;
+  }
+
+  if (provider.baseUrl) params.baseURL = provider.baseUrl;
+  if (provider.region) params.region = provider.region;
+
+  return params;
+}
 
 const router = Router();
 
@@ -176,8 +210,68 @@ const modelRatesListSchema = createListParamSchema<{
 });
 
 const bulkRateUpdateSchema = Joi.object({
-  profitMargin: Joi.number().min(0).required(),
-  creditPrice: Joi.number().min(0).required(),
+  mode: Joi.string().valid('margin', 'sync').default('margin'),
+
+  // margin mode fields (required when mode=margin)
+  profitMargin: Joi.number()
+    .min(0)
+    .when('mode', {
+      is: 'margin',
+      then: Joi.required(),
+      otherwise: Joi.when('applyRates', { is: true, then: Joi.required(), otherwise: Joi.optional() }),
+    }),
+  creditPrice: Joi.number()
+    .positive()
+    .when('mode', {
+      is: 'margin',
+      then: Joi.required(),
+      otherwise: Joi.when('applyRates', { is: true, then: Joi.required(), otherwise: Joi.optional() }),
+    }),
+
+  // sync mode fields
+  updates: Joi.array()
+    .items(
+      Joi.object({
+        providerId: Joi.string().required(),
+        model: Joi.string().required(),
+        unitCosts: Joi.object({
+          input: Joi.number().min(0).required(),
+          output: Joi.number().min(0).required(),
+        }).required(),
+        caching: Joi.object({
+          readRate: Joi.number().min(0),
+          writeRate: Joi.number().min(0),
+        }).optional(),
+        source: Joi.string().optional(),
+        isNew: Joi.boolean().optional(),
+        modelType: Joi.string().optional(),
+      })
+    )
+    .when('mode', { is: 'sync', then: Joi.optional() }),
+
+  // sync mode: also accepts raw OfficialPricingEntry[] array (either updates or entries required)
+  entries: Joi.array()
+    .items(
+      Joi.object({
+        provider: Joi.string().required(),
+        modelId: Joi.string().required(),
+        inputCostPerToken: Joi.number().allow(null),
+        outputCostPerToken: Joi.number().allow(null),
+        cachedInputCostPerToken: Joi.number().allow(null),
+        cacheTiers: Joi.array().items(Joi.object({ label: Joi.string(), costPerToken: Joi.number() })),
+        modelType: Joi.string(),
+        isNew: Joi.boolean(),
+      }).unknown(true)
+    )
+    .when('mode', { is: 'sync', then: Joi.optional() }),
+
+  applyRates: Joi.boolean().default(false),
+
+  // sync mode: soft-delete tier1 models not found in official pricing data
+  deprecateUnmatched: Joi.boolean().default(false),
+
+  // sync mode: dry run — return preview without executing any changes
+  dryRun: Joi.boolean().default(false),
 });
 
 interface BulkUpdateSummary {
@@ -190,12 +284,14 @@ interface BulkUpdateSummary {
   newOutputRate: number;
 }
 
+// toFixed(10): per-token costs can be as small as 1e-8 (e.g. $0.01/MTok);
+// toFixed(6) truncates these to 0, causing free-model misclassification.
 const calculateRate = (unitCost: number, profitMargin: number, creditPrice: number): number => {
   return Number(
     new BigNumber(unitCost)
       .multipliedBy(1 + profitMargin / 100)
       .dividedBy(creditPrice)
-      .toFixed(6)
+      .toFixed(10)
   );
 };
 
@@ -349,16 +445,8 @@ router.post('/:providerId/credentials', ensureAdmin, async (req, res) => {
       return res.status(404).json({ error: 'Provider not found' });
     }
 
-    await checkModelIsValid(
-      provider.name,
-      {
-        apiKey: rawValue.credentialType === 'api_key' ? rawValue.value : undefined,
-        accessKeyId: rawValue.credentialType === 'access_key_pair' ? rawValue.value.access_key_id : undefined,
-        secretAccessKey: rawValue.credentialType === 'access_key_pair' ? rawValue.value.secret_access_key : undefined,
-        region: provider.region || undefined,
-      },
-      rawValue.testModel
-    );
+    const params = extractCredentialParams(rawValue, provider);
+    await checkModelIsValid(provider.name, params, rawValue.testModel);
 
     // 处理凭证值
     let credentialValue: CredentialValue;
@@ -423,16 +511,8 @@ router.put('/:providerId/credentials/:credentialId', ensureAdmin, async (req, re
       return res.status(404).json({ error: 'Provider not found' });
     }
 
-    await checkModelIsValid(
-      provider.name,
-      {
-        apiKey: value.credentialType === 'api_key' ? value.value : undefined,
-        accessKeyId: value.credentialType === 'access_key_pair' ? value.value.access_key_id : undefined,
-        secretAccessKey: value.credentialType === 'access_key_pair' ? value.value.secret_access_key : undefined,
-        region: provider.region || undefined,
-      },
-      value.testModel
-    );
+    const params = extractCredentialParams(value, provider);
+    await checkModelIsValid(provider.name, params, value.testModel);
 
     // 处理凭证值
     let credentialValue: CredentialValue;
@@ -512,23 +592,7 @@ router.post('/:providerId/credentials/test', ensureAdmin, rateLimitMiddleware, a
       return res.status(400).json({ error: 'Credential value is required' });
     }
 
-    const params: {
-      apiKey?: string;
-      accessKeyId?: string;
-      secretAccessKey?: string;
-      region?: string;
-    } = {};
-
-    if (credentialType === 'api_key' && typeof value === 'string') {
-      params.apiKey = value;
-    } else if (credentialType === 'access_key_pair' && typeof value === 'object') {
-      params.accessKeyId = value.access_key_id;
-      params.secretAccessKey = value.secret_access_key;
-      if (provider.region) {
-        params.region = provider.region;
-      }
-    }
-
+    const params = extractCredentialParams({ value, credentialType }, provider);
     await checkModelIsValid(provider.name, params, testModel);
     return res.json({ success: true });
   } catch (err) {
@@ -569,8 +633,13 @@ router.get('/:providerId/model-rates', user, async (req, res) => {
       });
     }
 
+    const rateWhere: any = { providerId: req.params.providerId };
+    if (req.query.includeDeprecated !== 'true') {
+      rateWhere[Op.or] = [{ deprecated: false }, { deprecated: null }];
+    }
+
     const modelRates = await AiModelRate.findAll({
-      where: { providerId: req.params.providerId },
+      where: rateWhere,
       order: [
         ['model', 'ASC'],
         ['type', 'ASC'],
@@ -942,7 +1011,9 @@ router.get('/chat/models', user, async (req, res) => {
       return res.json(defaultModels);
     }
 
-    const where: any = {};
+    const where: any = {
+      [Op.or]: [{ deprecated: false }, { deprecated: null }],
+    };
     if (req.query.type) {
       const requestedType = req.query.type as string;
       const mappedType = typeFilterMap[requestedType] || requestedType;
@@ -1013,7 +1084,13 @@ router.get('/chat/models', user, async (req, res) => {
 router.get('/model-rates', user, async (req, res) => {
   try {
     const { page, pageSize, ...query } = await modelRatesListSchema.validateAsync(req.query, { stripUnknown: true });
-    const where = getWhereFromKvQuery(query.q);
+    const where: any = getWhereFromKvQuery(query.q);
+
+    // Filter deprecated models unless explicitly requested
+    if (req.query.includeDeprecated !== 'true') {
+      where[Op.and] = [...(where[Op.and] || []), { [Op.or]: [{ deprecated: false }, { deprecated: null }] }];
+    }
+
     if (query.providerId) {
       where.providerId = {
         [Op.in]: Array.isArray(query.providerId) ? query.providerId : query.providerId.split(','),
@@ -1066,7 +1143,9 @@ router.get('/model-rates', user, async (req, res) => {
 // get available models in LiteLLM format (public endpoint)
 router.get('/models', async (req, res) => {
   try {
-    const where: any = {};
+    const where: any = {
+      [Op.or]: [{ deprecated: false }, { deprecated: null }],
+    };
 
     if (req.query.type) {
       const requestedType = req.query.type as string;
@@ -1260,7 +1339,7 @@ router.get('/test-models', user, ensureAdmin, rateLimitMiddleware, async (req, r
   }
 });
 
-router.post('/bulk-rate-update', ensureAdmin, async (req, res) => {
+router.post('/bulk-rate-update', user, ensureAdmin, async (req, res) => {
   try {
     const { error, value } = bulkRateUpdateSchema.validate(req.body);
     if (error) {
@@ -1269,6 +1348,11 @@ router.post('/bulk-rate-update', ensureAdmin, async (req, res) => {
       });
     }
 
+    if (value.mode === 'sync') {
+      return await handleSyncMode(req, res, value);
+    }
+
+    // ── Existing margin mode ──
     const { profitMargin, creditPrice } = value;
 
     const modelRates = await AiModelRate.findAll({
@@ -1343,6 +1427,408 @@ router.post('/bulk-rate-update', ensureAdmin, async (req, res) => {
   }
 });
 
+/**
+ * Sync mode handler for bulk-rate-update.
+ * Accepts either pre-formatted `updates[]` (SyncUpdate) or raw `entries[]` (OfficialPricingEntry).
+ * Matches to DB models, updates unitCosts, optionally recalculates rates, propagates to tier2.
+ */
+async function handleSyncMode(req: Request, res: Response, value: any) {
+  const { applyRates, profitMargin, creditPrice, dryRun } = value;
+  const operatedBy = req.user?.did || 'system';
+
+  // Accept either pre-formatted updates or raw OfficialPricingEntry[]
+  let syncUpdates: SyncUpdate[];
+  if (value.updates) {
+    syncUpdates = value.updates;
+  } else if (value.entries) {
+    syncUpdates = officialPricingToSyncUpdates(value.entries);
+  } else {
+    return res.status(400).json({ error: 'sync mode requires either "updates" or "entries" array' });
+  }
+
+  const rawDbRates = await AiModelRate.findAll({
+    include: [{ model: AiProvider, as: 'provider', attributes: ['id', 'name', 'displayName'] }],
+  });
+
+  // Enrich DB rates with providerName for name-based matching.
+  // Sync entries use provider names ("openai"), but DB stores FK IDs (snowflake).
+  const dbRates = rawDbRates.map((r: any) => {
+    r.providerName = r.provider?.name?.toLowerCase() || '';
+    return r;
+  });
+
+  const updated: any[] = [];
+  const unchanged: any[] = [];
+  const unmatched: any[] = [];
+  const created: CreatedEntry[] = [];
+  const errors: any[] = [];
+  const tier1Updates = new Map<string, { input: number; output: number }>();
+
+  // Pre-fetch all AiProviders to build name→id map (avoid N+1 queries)
+  const allProviders = await AiProvider.findAll();
+  const providerNameToId = new Map<string, string>();
+  for (const p of allProviders) {
+    providerNameToId.set(p.name.toLowerCase(), p.id);
+  }
+
+  // DB ENUM: only these types can be created
+  const SUPPORTED_TYPES = new Set(['chatCompletion', 'embedding', 'imageGeneration', 'video']);
+
+  for (const update of syncUpdates) {
+    const match = matchUpdateToDbRate(dbRates as any[], update.providerId, update.model);
+
+    if (!match) {
+      if (update.isNew) {
+        // --- Create new model rate ---
+        const dbProviderId = providerNameToId.get(update.providerId.toLowerCase());
+        if (!dbProviderId) {
+          unmatched.push({
+            model: update.model,
+            provider: update.providerId,
+            source: update.source,
+            reason: 'provider not configured',
+          });
+          continue;
+        }
+
+        const modelType = update.modelType || 'chatCompletion';
+        if (!SUPPORTED_TYPES.has(modelType)) {
+          unmatched.push({
+            model: update.model,
+            provider: update.providerId,
+            source: update.source,
+            reason: `unsupported type: ${modelType}`,
+          });
+          continue;
+        }
+
+        // Check for duplicates using in-memory data (avoid N+1 DB queries)
+        const existing = dbRates.find(
+          (r) => r.providerId === dbProviderId && r.model === update.model && r.type === modelType
+        );
+        if (existing) {
+          unchanged.push({ id: existing.id, model: existing.model, provider: update.providerId });
+          continue;
+        }
+
+        // Calculate rates if applyRates is enabled
+        let newInputRate: number | undefined;
+        let newOutputRate: number | undefined;
+        if (applyRates && profitMargin != null && creditPrice != null) {
+          newInputRate = calculateRate(Number(update.unitCosts.input), profitMargin, creditPrice);
+          newOutputRate = calculateRate(Number(update.unitCosts.output), profitMargin, creditPrice);
+        }
+
+        try {
+          const modelDisplay = update.modelDisplay || AiModelRate.getDefaultModelDisplay(update.model);
+          const createData: any = {
+            providerId: dbProviderId,
+            model: update.model,
+            modelDisplay,
+            type: modelType,
+            unitCosts: update.unitCosts,
+            inputRate: newInputRate ?? 0,
+            outputRate: newOutputRate ?? 0,
+          };
+          if (update.caching) createData.caching = update.caching;
+
+          if (!dryRun) {
+            const record = await AiModelRate.create(createData);
+            created.push({
+              id: record.id,
+              model: update.model,
+              provider: update.providerId,
+              type: modelType,
+              unitCosts: update.unitCosts,
+              ...(applyRates ? { rates: { inputRate: newInputRate!, outputRate: newOutputRate! } } : {}),
+              ...(update.caching ? { caching: update.caching } : {}),
+            });
+          } else {
+            created.push({
+              id: `new-${update.providerId}-${update.model}`,
+              model: update.model,
+              provider: update.providerId,
+              type: modelType,
+              unitCosts: update.unitCosts,
+              ...(applyRates ? { rates: { inputRate: newInputRate!, outputRate: newOutputRate! } } : {}),
+              ...(update.caching ? { caching: update.caching } : {}),
+            });
+          }
+        } catch (err: any) {
+          errors.push({ model: update.model, provider: update.providerId, error: `create failed: ${err.message}` });
+        }
+      } else {
+        unmatched.push({ model: update.model, provider: update.providerId, source: update.source });
+      }
+      continue;
+    }
+
+    const providerName = (match as any).providerName || match.providerId;
+
+    const costsChanged = unitCostsChanged(match.unitCosts, update.unitCosts);
+
+    // Check if caching data changed
+    const oldCaching = (match as any).caching || {};
+    const cachingChanged =
+      update.caching &&
+      (Math.abs(Number(oldCaching.readRate || 0) - Number(update.caching.readRate || 0)) > 1e-15 ||
+        Math.abs(Number(oldCaching.writeRate || 0) - Number(update.caching.writeRate || 0)) > 1e-15);
+
+    // When applyRates is enabled, also check if rates need recalculation
+    let ratesNeedUpdate = false;
+    let newInputRate: number | undefined;
+    let newOutputRate: number | undefined;
+    if (applyRates && profitMargin != null && creditPrice != null) {
+      newInputRate = calculateRate(Number(update.unitCosts.input), profitMargin, creditPrice);
+      newOutputRate = calculateRate(Number(update.unitCosts.output), profitMargin, creditPrice);
+      const tolerance = 1e-15;
+      ratesNeedUpdate =
+        Math.abs(Number(match.inputRate) - newInputRate) > tolerance ||
+        Math.abs(Number(match.outputRate) - newOutputRate) > tolerance;
+    }
+
+    if (!costsChanged && !ratesNeedUpdate && !cachingChanged) {
+      unchanged.push({ id: match.id, model: match.model, provider: providerName });
+      continue;
+    }
+
+    try {
+      const updateData: any = {};
+      if (costsChanged) {
+        updateData.unitCosts = update.unitCosts;
+      }
+      if (update.caching) {
+        // Merge with existing caching to avoid losing fields not in the update
+        updateData.caching = { ...((match as any).caching || {}), ...update.caching };
+      }
+
+      // Clear deprecated flag if model reappears in official pricing
+      if ((match as any).deprecated) {
+        updateData.deprecated = false;
+        updateData.deprecatedAt = null;
+        updateData.deprecatedReason = null;
+      }
+
+      if (applyRates && newInputRate != null && newOutputRate != null) {
+        updateData.inputRate = newInputRate;
+        updateData.outputRate = newOutputRate;
+      }
+
+      const oldUnitCosts = match.unitCosts || null;
+      const oldRates = { inputRate: Number(match.inputRate), outputRate: Number(match.outputRate) };
+
+      if (!dryRun) {
+        await (match as any).update(updateData, {
+          changeType: 'bulk_sync',
+          source: update.source || 'official-pricing-catalog',
+        });
+      }
+
+      updated.push({
+        id: match.id,
+        model: match.model,
+        provider: providerName,
+        oldUnitCosts,
+        newUnitCosts: update.unitCosts,
+        oldRates,
+        newRates: applyRates ? { inputRate: newInputRate, outputRate: newOutputRate } : oldRates,
+        oldCaching: oldCaching.readRate != null || oldCaching.writeRate != null ? oldCaching : null,
+        newCaching: update.caching || null,
+      });
+
+      // Track tier1 updates for propagation (keyed by provider NAME, not FK ID)
+      tier1Updates.set(`${providerName}:${match.model}`, update.unitCosts);
+    } catch (err: any) {
+      errors.push({ model: match.model, provider: providerName, error: err.message });
+    }
+  }
+
+  // Propagate to tier2 providers
+  const tier2Updates = propagateToTier2(dbRates as any[], tier1Updates);
+  for (const t2 of tier2Updates) {
+    // propagateToTier2 returns the original providerId (FK ID) for DB matching
+    const match = dbRates.find((r) => r.providerId === t2.providerId && r.model === t2.model);
+    if (!match) continue;
+
+    const t2CostsChanged = unitCostsChanged(match.unitCosts, t2.unitCosts);
+    let t2RatesNeedUpdate = false;
+    let t2NewInputRate: number | undefined;
+    let t2NewOutputRate: number | undefined;
+    if (applyRates && profitMargin != null && creditPrice != null) {
+      t2NewInputRate = calculateRate(Number(t2.unitCosts.input), profitMargin, creditPrice);
+      t2NewOutputRate = calculateRate(Number(t2.unitCosts.output), profitMargin, creditPrice);
+      const tolerance = 1e-15;
+      t2RatesNeedUpdate =
+        Math.abs(Number(match.inputRate) - t2NewInputRate) > tolerance ||
+        Math.abs(Number(match.outputRate) - t2NewOutputRate) > tolerance;
+    }
+    if (!t2CostsChanged && !t2RatesNeedUpdate) continue;
+
+    const t2ProviderName = (match as any).providerName || match.providerId;
+    try {
+      const updateData: any = {};
+      if (t2CostsChanged) updateData.unitCosts = t2.unitCosts;
+      if (applyRates && t2NewInputRate != null && t2NewOutputRate != null) {
+        updateData.inputRate = t2NewInputRate;
+        updateData.outputRate = t2NewOutputRate;
+      }
+      if (!dryRun) {
+        await (match as any).update(updateData);
+      }
+      const oldRates = { inputRate: Number(match.inputRate), outputRate: Number(match.outputRate) };
+      const t2OldCaching = (match as any).caching || {};
+      updated.push({
+        id: match.id,
+        model: match.model,
+        provider: t2ProviderName,
+        oldUnitCosts: match.unitCosts || null,
+        newUnitCosts: t2.unitCosts,
+        oldRates,
+        newRates: applyRates ? { inputRate: t2NewInputRate, outputRate: t2NewOutputRate } : oldRates,
+        oldCaching: t2OldCaching.readRate != null || t2OldCaching.writeRate != null ? t2OldCaching : null,
+        source: t2.source,
+      });
+    } catch (err: any) {
+      errors.push({ model: match.model, provider: t2ProviderName, error: err.message });
+    }
+  }
+
+  // Soft-delete: mark tier1 DB models not found in official pricing as deprecated
+  const deprecated: any[] = [];
+  if (value.deprecateUnmatched) {
+    const tier1Providers = new Set(['openai', 'anthropic', 'google', 'xai', 'deepseek', 'doubao']);
+    const matchedKeys = new Set<string>();
+    for (const u of [...updated, ...unchanged]) {
+      matchedKeys.add(`${u.provider}:${u.model}`);
+    }
+
+    // Use providerName (not FK ID) for tier classification
+    const tier1DbRates = dbRates.filter(
+      (r) => tier1Providers.has((r as any).providerName || '') && !r.deprecated && r.type === 'chatCompletion'
+    );
+
+    for (const rate of tier1DbRates) {
+      const rateName = (rate as any).providerName || rate.providerId;
+      if (!matchedKeys.has(`${rateName}:${rate.model}`)) {
+        if (!dryRun) {
+          try {
+            await rate.update({
+              deprecated: true,
+              deprecatedAt: new Date(),
+              deprecatedReason: 'Model not found in official pricing data',
+            });
+          } catch (err: any) {
+            errors.push({ model: rate.model, provider: rateName, error: `deprecate failed: ${err.message}` });
+            continue;
+          }
+        }
+        deprecated.push({ id: rate.id, model: rate.model, provider: rateName });
+      }
+    }
+  }
+
+  // Write history records (skip in dryRun)
+  if (!dryRun) {
+    if (updated.length > 0) {
+      try {
+        await AiModelRateHistory.create({
+          providerId: 'system',
+          model: '_bulk_sync',
+          type: 'system',
+          changeType: 'bulk_update',
+          source: 'official-pricing-catalog',
+          previousUnitCosts: null,
+          currentUnitCosts: null,
+          previousRates: null,
+          currentRates: null,
+          driftPercent: null,
+          detectedAt: Math.floor(Date.now() / 1000),
+          metadata: {
+            operatedBy,
+            totalUpdated: updated.length,
+            totalUnchanged: unchanged.length,
+            totalUnmatched: unmatched.length,
+            totalCreated: created.length,
+            totalErrors: errors.length,
+            totalDeprecated: deprecated.length,
+            updates: updated.map((u: any) => ({
+              model: u.model,
+              provider: u.provider,
+              oldInput: u.oldUnitCosts?.input,
+              newInput: u.newUnitCosts.input,
+              oldOutput: u.oldUnitCosts?.output,
+              newOutput: u.newUnitCosts.output,
+            })),
+          },
+        });
+      } catch (histErr) {
+        logger.error('Failed to create bulk_update history record:', histErr);
+      }
+    }
+
+    if (created.length > 0) {
+      try {
+        await AiModelRateHistory.create({
+          providerId: 'system',
+          model: '_bulk_create',
+          type: 'system',
+          changeType: 'bulk_create',
+          source: 'official-pricing-catalog',
+          previousUnitCosts: null,
+          currentUnitCosts: null,
+          previousRates: null,
+          currentRates: null,
+          driftPercent: null,
+          detectedAt: Math.floor(Date.now() / 1000),
+          metadata: {
+            operatedBy,
+            action: 'create',
+            totalCreated: created.length,
+            models: created.map((c) => ({ model: c.model, provider: c.provider, type: c.type })),
+          },
+        });
+      } catch (histErr) {
+        logger.error('Failed to create bulk_create history record:', histErr);
+      }
+    }
+
+    if (deprecated.length > 0) {
+      try {
+        await AiModelRateHistory.create({
+          providerId: 'system',
+          model: '_bulk_deprecate',
+          type: 'system',
+          changeType: 'bulk_update',
+          source: 'official-pricing-catalog',
+          previousUnitCosts: null,
+          currentUnitCosts: null,
+          previousRates: null,
+          currentRates: null,
+          driftPercent: null,
+          detectedAt: Math.floor(Date.now() / 1000),
+          metadata: {
+            operatedBy,
+            action: 'deprecate',
+            totalDeprecated: deprecated.length,
+            models: deprecated.map((d: any) => ({ model: d.model, provider: d.provider })),
+          },
+        });
+      } catch (histErr) {
+        logger.error('Failed to create deprecation history record:', histErr);
+      }
+    }
+  }
+
+  const result = buildSyncResult({ updated, unchanged, unmatched, created, errors });
+
+  return res.json({
+    message: `${dryRun ? '[DRY RUN] ' : ''}Sync completed: ${result.summary.updated} updated, ${result.summary.created} created, ${result.summary.unchanged} unchanged, ${result.summary.unmatched} unmatched, ${deprecated.length} deprecated`,
+    dryRun: !!dryRun,
+    ...result,
+    deprecated,
+  });
+}
+
 router.get('/health', async (_req, res) => {
   const credentials = (await AiCredential.findAll({
     attributes: ['id', 'name', 'active', 'providerId'],
@@ -1366,6 +1852,14 @@ router.get('/health', async (_req, res) => {
     providers,
     timestamp: new Date().toISOString(),
   });
+});
+
+// ─── Manual Rate Check Trigger (admin only) ─────────────────────────────────
+router.post('/trigger-rate-check', user, ensureAdmin, async (_req, res) => {
+  const { executeRateCheck } = await import('@api/crons/model-rate-check');
+  // Run in background, return immediately
+  executeRateCheck().catch((err) => logger.error('Manual rate check failed', { error: err }));
+  res.json({ message: 'Rate check triggered', timestamp: new Date().toISOString() });
 });
 
 export default router;
