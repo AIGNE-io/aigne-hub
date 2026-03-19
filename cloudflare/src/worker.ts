@@ -7,6 +7,8 @@ import { cors } from 'hono/cors';
 import * as schema from './db/schema';
 // API routes
 import aiProviderRoutes from './routes/ai-providers';
+import usageRoutes from './routes/usage';
+import userRoutes from './routes/user';
 import v1Routes from './routes/v1';
 import v2Routes from './routes/v2';
 
@@ -56,6 +58,9 @@ app.get('/api/health', async (c) => {
 app.route('/api/ai-providers', aiProviderRoutes);
 app.route('/api/v1', v1Routes);
 app.route('/api/v2', v2Routes);
+app.route('/api/usage', usageRoutes);
+app.route('/api/user', userRoutes);
+app.route('/api', userRoutes); // /api/app/status
 
 // Auth routes - mounted dynamically based on env
 app.all('/auth/*', async (c) => {
