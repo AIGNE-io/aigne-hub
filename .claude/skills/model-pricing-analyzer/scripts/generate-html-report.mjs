@@ -1005,8 +1005,13 @@ async function doRefreshDb(){
     try{litellm=await fetchLiteLLMBrowser();setStep('ll','done',litellm.size+' 条')}
     catch(e){setStep('ll','error');__warnings.push('LiteLLM 数据加载失败: '+e.message)}
 
-    // 3. Official pricing (includes OpenRouter data) — fetch remote first, fallback to embedded
+    // 3. Fetch OpenRouter
+    setStep('or','active');
     var openrouter=new Map();
+    try{openrouter=await fetchOpenRouterBrowser();setStep('or','done',openrouter.size+' 条')}
+    catch(e){setStep('or','error');__warnings.push('OpenRouter 数据加载失败 (可能 CORS): '+e.message)}
+
+    // 4. Official pricing (tier1 providers) — fetch remote first, fallback to embedded
     setStep('op','active');
     var officialMap=new Map();
     var usedFallback=false;
@@ -1018,7 +1023,7 @@ async function doRefreshDb(){
           var remoteJson=await remoteResp.json();
           if(remoteJson&&remoteJson.providers){
             var remoteEntries=[];
-            var MAIN_PROVS=['openai','anthropic','google','xai','deepseek','openrouter'];
+            var MAIN_PROVS=['openai','anthropic','google','xai','deepseek'];
             for(var pk of MAIN_PROVS){var pd=remoteJson.providers[pk];if(!pd)continue;for(var[rk,rv]of Object.entries(pd)){var pts=rk.split('::');var mid=pts[0].replace(/(\d+)\.(\d+)$/g,'$1-$2');var mt=rv.modelType||pts[1]||'chatCompletion';var re={provider:pk,modelId:mid,displayName:rv.displayName||mid,pricingUnit:rv.pricingUnit||'per-token',modelType:mt,sourceUrl:rv.sourceUrl||'',extractionMethod:rv.extractionMethod||'remote-catalog'};if(rv.inputCostPerToken!=null)re.inputCostPerToken=rv.inputCostPerToken;if(rv.outputCostPerToken!=null)re.outputCostPerToken=rv.outputCostPerToken;if(rv.caching&&typeof rv.caching==='object'){var ct=[];for(var[cl,cv]of Object.entries(rv.caching))ct.push({label:cl,costPerToken:cv});if(ct.length>0)re.cacheTiers=ct;if(rv.caching.read!=null)re.cachedInputCostPerToken=rv.caching.read}if(rv.contextTiers?.length>0)re.contextTiers=rv.contextTiers;if(rv.costPerImage!=null)re.costPerImage=rv.costPerImage;if(rv.costPerSecond!=null)re.costPerSecond=rv.costPerSecond;if(rv.deprecated)re.deprecated=true;remoteEntries.push(re)}}
             officialMap=buildOfficialPricingMap(remoteEntries);
             setStep('op','done',officialMap.size+' 条 (远程)');
