@@ -12,7 +12,7 @@
     "build": "run-s clean bundle:client bundle:api",
     "bundle": "run-s clean bundle:*",
     "bundle:client": "vite build",
-    "bundle:api": "tsc -p tsconfig.api.json && tsc-alias -p tsconfig.api.json",
+    "bundle:api": "tsc -p tsconfig.api.json && tsc-alias -p tsconfig.api.json && cp api/src/libs/pricing-core.mjs api/dist/libs/pricing-core.mjs",
     "bundle:blocklet": "blocklet bundle --compact --external 'sqlite3,@dqbd/tiktoken,@aigne/aigne-hub,@aigne/anthropic,@aigne/bedrock,@aigne/deepseek,@aigne/doubao,@aigne/gemini,@aigne/ideogram,@aigne/model-base,@aigne/observability-api,@aigne/ollama,@aigne/open-router,@aigne/openai,@aigne/poe,@aigne/sqlite,@aigne/uuid,@aigne/xai' --create-release",
     "deploy": "npm run bundle && blocklet deploy .blocklet/bundle",
     "upload": "npm run bundle && blocklet upload .blocklet/release/blocklet.json",
