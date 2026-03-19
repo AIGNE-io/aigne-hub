@@ -372,50 +372,16 @@ export const checkModelIsValid = async (
   },
   customTestModel?: string
 ) => {
-  logger.debug('=== checkModelIsValid START ===');
-  logger.debug('Provider name:', providerName);
-  logger.debug('Has API key:', !!params.apiKey);
-  logger.debug('Has base URL:', !!params.baseURL);
-  logger.debug('Custom test model:', customTestModel || '(using default)');
-  logger.debug('Has access key pair:', !!(params.accessKeyId && params.secretAccessKey));
-  logger.debug('Region:', params.region || '(not set)');
-
   const m = await getModelByProviderName(providerName);
 
   if (m) {
     const testModel = customTestModel || CREDENTIAL_TEST_MODELS[providerName];
-    logger.debug('Matched model factory:', typeof m.name === 'string' ? m.name : m.name.join(', '));
-    logger.debug('Test model to use:', testModel);
 
     const createParams = testModel ? { ...params, model: testModel } : params;
-    logger.debug('Creating model with params:', {
-      hasApiKey: !!createParams.apiKey,
-      hasBaseURL: !!createParams.baseURL,
-      model: (createParams as any).model || '(not set)',
-    });
-
     const model = m.create(createParams);
-    logger.debug('Created model instance:', model.name);
 
-    // Verify model credential is accessible
-    try {
-      // eslint-disable-next-line prefer-destructuring
-      const credential = (model as any).credential;
-      if (credential) {
-        logger.debug('Model credential config:', {
-          hasUrl: !!credential.url,
-          hasApiKey: !!credential.apiKey,
-          model: credential.model || '(not set)',
-        });
-      }
-    } catch (e) {
-      logger.debug('Could not access model credential:', e);
-    }
-
-    logger.debug('Invoking model with test message...');
     await model.invoke({ messages: [{ role: 'user', content: 'Hello, world!' }] });
     logger.info('check chat model is valid model:', model.name);
-    logger.debug('=== checkModelIsValid END ===');
 
     return;
   }

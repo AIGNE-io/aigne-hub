@@ -284,6 +284,8 @@ interface BulkUpdateSummary {
   newOutputRate: number;
 }
 
+// toFixed(10): per-token costs can be as small as 1e-8 (e.g. $0.01/MTok);
+// toFixed(6) truncates these to 0, causing free-model misclassification.
 const calculateRate = (unitCost: number, profitMargin: number, creditPrice: number): number => {
   return Number(
     new BigNumber(unitCost)
