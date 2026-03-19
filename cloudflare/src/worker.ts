@@ -4,9 +4,14 @@ import { drizzle } from 'drizzle-orm/d1';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 
+// Cron handlers
+import { archiveOldRecords } from './crons/archive';
+import { aggregateModelCallStats } from './crons/model-call-stats';
 import * as schema from './db/schema';
 // API routes
 import aiProviderRoutes from './routes/ai-providers';
+import eventsRoutes from './routes/events';
+import paymentRoutes from './routes/payment';
 import usageRoutes from './routes/usage';
 import userRoutes from './routes/user';
 import v1Routes from './routes/v1';
@@ -61,6 +66,8 @@ app.route('/api/v2', v2Routes);
 app.route('/api/usage', usageRoutes);
 app.route('/api/user', userRoutes);
 app.route('/api', userRoutes); // /api/app/status
+app.route('/api', eventsRoutes); // /api/events
+app.route('/api/payment', paymentRoutes);
 
 // Auth routes - mounted dynamically based on env
 app.all('/auth/*', async (c) => {
@@ -79,18 +86,17 @@ app.onError((_err, c) => c.json({ error: 'Internal Server Error' }, 500));
 // Scheduled handler for cron triggers
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function scheduled(event: ScheduledEvent, env: Env, _ctx: ExecutionContext) {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const db = drizzle(env.DB, { schema });
 
   switch (event.cron) {
     case '0 * * * *':
-      // TODO: model-call-stats aggregation (hourly)
+      await aggregateModelCallStats(db);
       break;
     case '*/30 * * * *':
-      // TODO: model-rate-check (every 30 min)
+      // TODO: model-rate-check (fetch pricing from provider sources)
       break;
     case '0 2 * * *':
-      // TODO: archive (daily at 2am)
+      await archiveOldRecords(db);
       break;
     default:
       break;
