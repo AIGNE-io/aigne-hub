@@ -153,6 +153,8 @@ table.mt th{padding:11px 14px;text-align:left;font-weight:600;color:#4a5568;font
 
 .ck-col{text-align:center;vertical-align:middle !important}
 .rchk{display:inline-flex;align-items:center;cursor:pointer;vertical-align:middle;flex-shrink:0}
+.del-btn{background:none;border:none;cursor:pointer;font-size:14px;padding:2px 4px;opacity:0.4;transition:opacity 0.15s;vertical-align:middle}
+.del-btn:hover{opacity:1}
 .rchk input[type="checkbox"]{position:absolute;opacity:0;pointer-events:none}
 .rchk-box{width:18px;height:18px;border:2px solid #cbd5e0;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
 .rchk-box::after{content:'';display:none;width:5px;height:9px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg);margin-top:-1px}
@@ -512,7 +514,7 @@ function buildSection(models){
       if(m.officialCacheTiers&&m.officialCacheTiers.length>0){pop+='<div class="pcache"><span class="pcache-h">官方 Cache Tiers</span>';for(var tier of m.officialCacheTiers)pop+='<span class="pcache-item"><span class="pcache-lbl">'+tier.label+'</span><span class="mono">'+fmt(tier.costPerToken,'per-token')+'</span></span>';pop+='</div>'}
       pop+='</div>';
       var modelHtml='<span class="ti">'+icon+'</span><code class="mname" title="'+m.provider+'/'+m.model+'"><strong>'+m.model+'</strong></code>'+(unit?'<span class="utag">'+unit+'</span>':'');
-      var checkHtml='<label class="rchk" title="选中同步"><input type="checkbox" class="rchk-in" data-rk="'+mKey+'"/><span class="rchk-box"></span></label>';
+      var checkHtml='<label class="rchk" title="选中同步"><input type="checkbox" class="rchk-in" data-rk="'+mKey+'"/><span class="rchk-box"></span></label><button class="del-btn" title="标记移除" data-rk="'+mKey+'">🗑</button>';
       var sourcesHtml='<div class="sarea" data-popover="pop-'+id+'">'+badges+'</div>'+pop;
       if(hasMultiCost){
         var matchIdx_=-1;
@@ -770,6 +772,22 @@ function initEventHandlers(){
 
   var markDepBtn=document.getElementById('mark-deprecated');
   if(markDepBtn)markDepBtn.addEventListener('click',doMarkDeprecated);
+
+  // Delete button delegation — click trash icon to move single row to deprecated
+  document.addEventListener('click',function(e){
+    var btn=e.target.closest('.del-btn');if(!btn)return;
+    var rk=btn.dataset.rk;if(!rk)return;
+    var r1=document.querySelector('tr.r1[data-key="'+rk+'"]');if(!r1)return;
+    var r2=r1.nextElementSibling;var has2=r2&&r2.classList.contains('r2');
+    var oldSec=r1.closest('[data-sec]');
+    var secCfgDep={cls:'sec-deprecated',title:'已移除',cnt:'deprecated',sub:'已标记为停用的模型，不再对外提供服务'};
+    var ts=document.querySelector('[data-sec="deprecated"]');
+    if(!ts){var theadH='';var et=document.querySelector('.sec table.mt thead');if(et)theadH=et.outerHTML;var d=document.createElement('div');d.className='sec sec-deprecated';d.dataset.sec='deprecated';d.innerHTML='<div class="sec-h"><h2>'+secCfgDep.title+'</h2><span class="cnt deprecated sec-cnt">0</span><span class="sec-sub">'+secCfgDep.sub+'</span><span class="chevron">▼</span></div><div class="sec-body"><table class="mt">'+theadH+'<tbody></tbody></table></div>';var sp=document.getElementById('sync-panel');if(sp)sp.parentNode.insertBefore(d,sp);else document.getElementById('sections').appendChild(d);ts=d;d.querySelector('.sec-h').addEventListener('click',function(){d.classList.toggle('collapsed')})}
+    var ttb=ts.querySelector('.sec-body tbody');var emp=ttb.querySelector('.empty');if(emp)emp.closest('tr').remove();
+    r1.dataset.status='deprecated';ttb.appendChild(r1);if(has2)ttb.appendChild(r2);
+    if(oldSec){rebuildSec(oldSec);var hasM=oldSec.querySelector('.sec-body tbody .r1');if(!hasM&&oldSec.dataset.sec!=='normal')oldSec.style.display='none'}
+    rebuildSec(ts);ts.style.display='';go();
+  });
 
   // Token persistence
   (function(){var urlEl=document.getElementById('sync-url');var tokEl=document.getElementById('sync-token');try{var domain=new URL(urlEl.value).hostname;var saved=localStorage.getItem('aigne-sync-token:'+domain);if(saved)tokEl.value=saved}catch(e){}tokEl.addEventListener('input',function(){try{var domain=new URL(urlEl.value).hostname;if(tokEl.value)localStorage.setItem('aigne-sync-token:'+domain,tokEl.value);else localStorage.removeItem('aigne-sync-token:'+domain)}catch(e){}})})();
