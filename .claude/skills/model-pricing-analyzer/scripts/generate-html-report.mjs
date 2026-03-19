@@ -87,7 +87,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Noto
 .hdr h1{font-size:1.65rem;font-weight:700;margin-bottom:6px}
 .hdr .meta{font-size:.9rem;opacity:.78}
 
-.summary{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-bottom:20px}
+.summary{display:grid;grid-template-columns:repeat(7,1fr);gap:14px;margin-bottom:20px}
 .st{background:#fff;padding:20px;border-radius:12px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.05);border:1px solid #e2e8f0}
 .st .n{font-size:1.85rem;font-weight:700;margin-bottom:2px}
 .st .l{color:#718096;font-size:.88rem}
@@ -126,6 +126,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Noto
 .sec-drift .sec-h{border-color:#feb2b2}
 .sec-nomatch{background:#fffff0;border-color:#fefcbf}
 .sec-nomatch .sec-h{border-color:#fefcbf}
+.sec-deprecated{background:#f7f7f8;border-color:#d1d5db}
+.sec-deprecated .sec-h{border-color:#d1d5db}
+.cnt.deprecated{background:#e5e7eb;color:#6b7280}
 .sec-ok{background:#f0fff4;border-color:#c6f6d5}
 .sec-ok .sec-h{border-color:#c6f6d5}
 
@@ -617,6 +620,7 @@ function renderReport(results,groups,unmatchedModels){
     tieredPricing:m.tieredPricing?.length?m.tieredPricing:undefined,
     resolutionTiers:m.resolutionTiers?.length?m.resolutionTiers:undefined,
     initialMaxDrift:m.maxDrift??0,
+    deprecated:m.deprecated||false,
     modelType:m.type}});
   __entryMap=new Map(__allEntries.map(function(e){return[e.provider+'/'+e.modelId,e]}));
   __umEntries=unmatchedModels.map(function(m){return{
@@ -635,6 +639,7 @@ function renderReport(results,groups,unmatchedModels){
     '<div class="st danger" data-f="drift"><div class="n" id="sum-drift">'+groups.drift.length+'</div><div class="l">漂移量过大</div></div>'+
     '<div class="st miss" data-f="no-match"><div class="n" id="sum-nomatch">'+groups.noMatch.length+'</div><div class="l">未找到官方数据</div></div>'+
     '<div class="st ok" data-f="normal"><div class="n" id="sum-ok">'+groups.normal.length+'</div><div class="l">定价正常</div></div>'+
+    '<div class="st" data-f="deprecated"><div class="n" id="sum-deprecated">'+groups.deprecated.length+'</div><div class="l">已移除</div></div>'+
     '<div class="st info" data-f="unmatched"><div class="n" id="sum-unmatched">'+unmatchedModels.length+'</div><div class="l">官方未录入</div></div>'+
     '<div class="st" data-f="all"><div class="n" id="sum-total">'+results.length+'</div><div class="l">总计</div></div>';
 
@@ -643,6 +648,7 @@ function renderReport(results,groups,unmatchedModels){
   tbHtml+='<button class="fb tier-btn" id="tier-toggle" title="展开/折叠所有分层定价">展开变体</button>';
   tbHtml+='<button class="fb" id="read-filter">隐藏已选</button>';
   tbHtml+='<button class="fb" id="read-clear" title="清除所有同步选中标记" style="font-size:11px;color:#a0aec0">清除选中</button>';
+  tbHtml+='<button class="fb" id="mark-deprecated" title="将已选中的模型移动到「已移除」分区" style="font-size:11px;color:#6b7280">标记移除</button>';
   tbHtml+='<span class="tb-sep"></span>';
   tbHtml+='<button class="fb quick-prov" id="quick-prov" title="快速选中 Anthropic, Google, OpenAI, xAI, OpenRouter">主要厂商</button>';
   for(var p of allProviders)tbHtml+='<button class="pb" data-p="'+p+'">'+provName(p)+'</button>';
@@ -657,6 +663,7 @@ function renderReport(results,groups,unmatchedModels){
   secHtml+=secBlock('below-cost','sec-belowcost','高风险成本亏损','critical','售价低于成本，存在亏损风险',groups.belowCost,buildSection);
   secHtml+=secBlock('drift','sec-drift','漂移量过大','danger','DB 售价与外部数据源偏差超过阈值，或未对标最高定价层',groups.drift,buildSection);
   secHtml+=secBlock('no-match','sec-nomatch','未找到对应的官方输入输出','miss','未匹配到官方或外部数据源，需人工确认',groups.noMatch,buildSection);
+  secHtml+=secBlock('deprecated','sec-deprecated','已移除','deprecated','已标记为停用的模型，不再对外提供服务',groups.deprecated,buildSection);
   // Normal always shows
   secHtml+='<div class="sec sec-ok" data-sec="normal"><div class="sec-h"><h2>定价正常</h2><span class="cnt ok sec-cnt">'+groups.normal.length+'</span><span class="sec-sub">定价在合理范围内</span><span class="sec-right"><span class="sec-sel-bar" onclick="event.stopPropagation()"><span class="sec-sel-label">全选</span><label class="rchk" style="vertical-align:middle"><input type="checkbox" class="sec-chk-all" onchange="toggleSecSync(\\'normal\\',this.checked)"/><span class="rchk-box"></span></label></span><span class="chevron">▼</span></span></div><div class="sec-body"><table class="mt">'+THEAD+'<tbody>'+buildSection(groups.normal)+'</tbody></table></div></div>';
   // Unmatched
@@ -761,6 +768,9 @@ function initEventHandlers(){
   var readClear=document.getElementById('read-clear');
   if(readClear)readClear.addEventListener('click',function(){readSet.clear();localStorage.removeItem(LS_KEY);document.querySelectorAll('.rchk-in').forEach(function(cb){cb.checked=false});document.querySelectorAll('.read-done').forEach(function(el){el.classList.remove('read-done')});go()});
 
+  var markDepBtn=document.getElementById('mark-deprecated');
+  if(markDepBtn)markDepBtn.addEventListener('click',doMarkDeprecated);
+
   // Token persistence
   (function(){var urlEl=document.getElementById('sync-url');var tokEl=document.getElementById('sync-token');try{var domain=new URL(urlEl.value).hostname;var saved=localStorage.getItem('aigne-sync-token:'+domain);if(saved)tokEl.value=saved}catch(e){}tokEl.addEventListener('input',function(){try{var domain=new URL(urlEl.value).hostname;if(tokEl.value)localStorage.setItem('aigne-sync-token:'+domain,tokEl.value);else localStorage.removeItem('aigne-sync-token:'+domain)}catch(e){}})})();
 
@@ -788,7 +798,7 @@ function updSecChkAll(){document.querySelectorAll('.sec-chk-all').forEach(functi
 
 function go(){
   var si=document.getElementById('si');var q=si?si.value.toLowerCase().trim():'';
-  var counts={'below-cost':0,drift:0,'no-match':0,normal:0,total:0,unmatched:0};
+  var counts={'below-cost':0,drift:0,'no-match':0,normal:0,deprecated:0,total:0,unmatched:0};
   document.querySelectorAll('.r1').forEach(function(r1){
     var s=r1.dataset.search.toLowerCase();var st=r1.dataset.status;var k=r1.dataset.key;var prov=s.split('/')[0];var isRead=readSet.has(k);
     var vis=(!q||s.includes(q))&&(cf==='all'||st===cf)&&(cpSet.size===0||cpSet.has(prov))&&(!hideRead||!isRead);
@@ -802,7 +812,7 @@ function go(){
   });
   document.querySelectorAll('.prow').forEach(function(p){var n=p.nextElementSibling,v=false;while(n&&!n.classList.contains('prow')){if((n.classList.contains('r1')||n.classList.contains('um-row'))&&!n.classList.contains('hidden')){v=true;break}n=n.nextElementSibling}p.classList.toggle('hidden',!v)});
   var el=function(id){return document.getElementById(id)};
-  el('sum-belowcost').textContent=counts['below-cost'];el('sum-drift').textContent=counts.drift;el('sum-nomatch').textContent=counts['no-match'];el('sum-ok').textContent=counts.normal;el('sum-unmatched').textContent=counts.unmatched;el('sum-total').textContent=counts.total;
+  el('sum-belowcost').textContent=counts['below-cost'];el('sum-drift').textContent=counts.drift;el('sum-nomatch').textContent=counts['no-match'];el('sum-ok').textContent=counts.normal;el('sum-deprecated').textContent=counts.deprecated;el('sum-unmatched').textContent=counts.unmatched;el('sum-total').textContent=counts.total;
   document.querySelectorAll('.sec').forEach(function(sec){var secType=sec.dataset.sec;var cnt=sec.querySelector('.sec-cnt');if(cnt&&secType)cnt.textContent=counts[secType]||0});
   updUmCnt();
 }
@@ -916,7 +926,7 @@ async function fetchLiveDbRates(){
   try{
     var all=[];var page=1;
     var apiBase=await buildApiUrlBrowser(hubUrl,'/api/ai-providers/model-rates');
-    while(true){var resp=await fetch(apiBase+'?pageSize=100&page='+page,{headers:headers});if(!resp.ok)throw new Error('HTTP '+resp.status);var data=await resp.json();var list=data.list||[];all.push(...list);if(list.length<100)break;page++}
+    while(true){var resp=await fetch(apiBase+'?pageSize=100&page='+page+'&includeDeprecated=true',{headers:headers});if(!resp.ok)throw new Error('HTTP '+resp.status);var data=await resp.json();var list=data.list||[];all.push(...list);if(list.length<100)break;page++}
     var map=new Map();for(var r of all){var pName=r.provider?.name||'';var key=pName+'/'+r.model;map.set(key,{inputRate:Number(r.inputRate)||0,outputRate:Number(r.outputRate)||0,unitCosts:{input:Number(r.unitCosts?.input)||0,output:Number(r.unitCosts?.output)||0},cacheWriteRate:Number(r.caching?.writeRate)||0,cacheReadRate:Number(r.caching?.readRate)||0,type:r.type||''})}
     return map;
   }catch(e){console.error('fetchLiveDbRates failed:',e);return null}
@@ -938,7 +948,7 @@ function refreshSellDisplay(rateMap){
   return updated;
 }
 function recategorizeRows(rateMap){
-  var secCfg={'below-cost':{cls:'sec-belowcost',title:'高风险成本亏损',cnt:'critical',sub:'售价低于成本，存在亏损风险'},'drift':{cls:'sec-drift',title:'漂移量过大',cnt:'danger',sub:'DB 售价与外部数据源偏差超过阈值'},'no-match':{cls:'sec-nomatch',title:'未找到对应的官方输入输出',cnt:'miss',sub:'未匹配到官方或外部数据源，需人工确认'},'normal':{cls:'sec-ok',title:'定价正常',cnt:'ok',sub:'定价在合理范围内'}};
+  var secCfg={'below-cost':{cls:'sec-belowcost',title:'高风险成本亏损',cnt:'critical',sub:'售价低于成本，存在亏损风险'},'drift':{cls:'sec-drift',title:'漂移量过大',cnt:'danger',sub:'DB 售价与外部数据源偏差超过阈值'},'no-match':{cls:'sec-nomatch',title:'未找到对应的官方输入输出',cnt:'miss',sub:'未匹配到官方或外部数据源，需人工确认'},'deprecated':{cls:'sec-deprecated',title:'已移除',cnt:'deprecated',sub:'已标记为停用的模型，不再对外提供服务'},'normal':{cls:'sec-ok',title:'定价正常',cnt:'ok',sub:'定价在合理范围内'}};
   var moved=0,affected=new Set();
   var theadH='';var et=document.querySelector('.sec table.mt thead');if(et)theadH=et.outerHTML;
   document.querySelectorAll('tr.r1[data-key]').forEach(function(r1){
@@ -948,7 +958,7 @@ function recategorizeRows(rateMap){
     var oldSec=r1.closest('[data-sec]');if(oldSec)affected.add(oldSec.dataset.sec);affected.add(ns);
     r1.dataset.status=ns;var r2=r1.nextElementSibling;var has2=r2&&r2.classList.contains('r2');
     var ts=document.querySelector('[data-sec="'+ns+'"]');
-    if(!ts){var c=secCfg[ns];if(!c)return;var d=document.createElement('div');d.className='sec '+c.cls;d.dataset.sec=ns;d.innerHTML='<div class="sec-h"><h2>'+c.title+'</h2><span class="cnt '+c.cnt+' sec-cnt">0</span><span class="sec-sub">'+c.sub+'</span><span class="chevron">▼</span></div><div class="sec-body"><table class="mt">'+theadH+'<tbody></tbody></table></div>';var order=['below-cost','drift','no-match','normal','unmatched'];var ti=order.indexOf(ns),ins=false;for(var i=ti+1;i<order.length;i++){var nx=document.querySelector('[data-sec="'+order[i]+'"]');if(nx){nx.parentNode.insertBefore(d,nx);ins=true;break}}if(!ins){var sp=document.getElementById('sync-panel');if(sp)sp.parentNode.insertBefore(d,sp)}ts=d;d.querySelector('.sec-h').addEventListener('click',function(){d.classList.toggle('collapsed')})}
+    if(!ts){var c=secCfg[ns];if(!c)return;var d=document.createElement('div');d.className='sec '+c.cls;d.dataset.sec=ns;d.innerHTML='<div class="sec-h"><h2>'+c.title+'</h2><span class="cnt '+c.cnt+' sec-cnt">0</span><span class="sec-sub">'+c.sub+'</span><span class="chevron">▼</span></div><div class="sec-body"><table class="mt">'+theadH+'<tbody></tbody></table></div>';var order=['below-cost','drift','no-match','deprecated','normal','unmatched'];var ti=order.indexOf(ns),ins=false;for(var i=ti+1;i<order.length;i++){var nx=document.querySelector('[data-sec="'+order[i]+'"]');if(nx){nx.parentNode.insertBefore(d,nx);ins=true;break}}if(!ins){var sp=document.getElementById('sync-panel');if(sp)sp.parentNode.insertBefore(d,sp)}ts=d;d.querySelector('.sec-h').addEventListener('click',function(){d.classList.toggle('collapsed')})}
     var ttb=ts.querySelector('.sec-body tbody');var emp=ttb.querySelector('.empty');if(emp)emp.closest('tr').remove();
     ttb.appendChild(r1);if(has2)ttb.appendChild(r2);moved++;
   });
@@ -956,6 +966,22 @@ function recategorizeRows(rateMap){
   return moved;
 }
 function rebuildSec(secEl){var tb=secEl.querySelector('.sec-body tbody');if(!tb)return;var pairs=[];Array.from(tb.querySelectorAll('.r1')).forEach(function(r1){var r2=r1.nextElementSibling;pairs.push({r1:r1,r2:r2&&r2.classList.contains('r2')?r2:null,prov:r1.dataset.provider||r1.dataset.key.split('/')[0]})});while(tb.firstChild)tb.removeChild(tb.firstChild);if(!pairs.length){tb.innerHTML='<tr><td colspan="'+COLS+'" class="empty">无</td></tr>';return}var g={};pairs.forEach(function(p){(g[p.prov]=g[p.prov]||[]).push(p)});Object.keys(g).sort().forEach(function(pv){var pr=document.createElement('tr');pr.className='prow';pr.dataset.provider=pv;pr.innerHTML='<td colspan="'+COLS+'"><strong>'+provName(pv)+'</strong><span class="pcnt">'+g[pv].length+'</span></td>';tb.appendChild(pr);g[pv].forEach(function(p){tb.appendChild(p.r1);if(p.r2)tb.appendChild(p.r2)})})}
+function doMarkDeprecated(){
+  var secCfgDep={cls:'sec-deprecated',title:'已移除',cnt:'deprecated',sub:'已标记为停用的模型，不再对外提供服务'};
+  var checked=document.querySelectorAll('.rchk-in:checked');if(!checked.length)return;
+  var theadH='';var et=document.querySelector('.sec table.mt thead');if(et)theadH=et.outerHTML;
+  var affected=new Set();var moved=0;
+  checked.forEach(function(cb){
+    var r1=cb.closest('.r1');if(!r1||r1.dataset.status==='deprecated')return;
+    var k=r1.dataset.key;var oldSec=r1.closest('[data-sec]');if(oldSec)affected.add(oldSec.dataset.sec);affected.add('deprecated');
+    r1.dataset.status='deprecated';var entry=__entryMap.get(k);if(entry)entry.deprecated=true;
+    var r2=r1.nextElementSibling;var has2=r2&&r2.classList.contains('r2');
+    var ts=document.querySelector('[data-sec="deprecated"]');
+    if(!ts){var d=document.createElement('div');d.className='sec sec-deprecated';d.dataset.sec='deprecated';d.innerHTML='<div class="sec-h"><h2>'+secCfgDep.title+'</h2><span class="cnt '+secCfgDep.cnt+' sec-cnt">0</span><span class="sec-sub">'+secCfgDep.sub+'</span><span class="sec-right"><span class="sec-sel-bar" onclick="event.stopPropagation()"><span class="sec-sel-label">全选</span><label class="rchk" style="vertical-align:middle"><input type="checkbox" class="sec-chk-all" onchange="toggleSecSync(\\'deprecated\\',this.checked)"/><span class="rchk-box"></span></label></span><span class="chevron">▼</span></span></div><div class="sec-body"><table class="mt">'+theadH+'<tbody></tbody></table></div>';var nx=document.querySelector('[data-sec="normal"]');if(nx)nx.parentNode.insertBefore(d,nx);else{var sp=document.getElementById('sync-panel');if(sp)sp.parentNode.insertBefore(d,sp)}ts=d;d.querySelector('.sec-h').addEventListener('click',function(){d.classList.toggle('collapsed')})}
+    var ttb=ts.querySelector('.sec-body tbody');ttb.appendChild(r1);if(has2)ttb.appendChild(r2);moved++;
+  });
+  if(moved>0){affected.forEach(function(sn){var s=document.querySelector('[data-sec="'+sn+'"]');if(!s)return;rebuildSec(s);var hasM=s.querySelector('.sec-body tbody .r1');if(!hasM&&sn!=='normal'&&sn!=='deprecated')s.style.display='none';else s.style.display=''});go();showDbStatus(moved+' 个模型已移至「已移除」分区','#e5e7eb','#6b7280')}
+}
 function showDbStatus(msg,bg,fg){var el=document.getElementById('db-status');el.style.display='block';el.style.background=bg;el.style.color=fg;el.textContent=msg}
 async function doRefreshDb(){
   showDbStatus('正在从 Hub API 获取最新售价数据...','#ebf8ff','#2b6cb0');

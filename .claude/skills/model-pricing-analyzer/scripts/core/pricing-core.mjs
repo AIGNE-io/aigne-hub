@@ -349,9 +349,10 @@ export function hasNoOfficial(m) {
 }
 
 /**
- * Classify a model into one of: 'below-cost' | 'drift' | 'no-match' | 'normal'.
+ * Classify a model into one of: 'deprecated' | 'below-cost' | 'drift' | 'no-match' | 'normal'.
  */
 export function classifyModel(m) {
+  if (m.deprecated) return 'deprecated';
   if (hasBelowCost(m) || hasNotHighestTier(m)) return 'below-cost';
   if (hasDrift(m)) return 'drift';
   if (hasNoOfficial(m) || hasNoData(m)) return 'no-match';
@@ -363,6 +364,8 @@ export function classifyModel(m) {
  * Returns { belowCost, drift, noMatch, normal } arrays.
  */
 export function classifyAndGroup(models) {
+  const deprecated = [];
+  const deprecatedKeys = new Set();
   const belowCost = [];
   const drift = [];
   const noMatch = [];
@@ -370,17 +373,25 @@ export function classifyAndGroup(models) {
   const belowCostKeys = new Set();
   const driftKeys = new Set();
 
+  // Pass 0: deprecated (highest priority — already removed from service)
+  for (const m of models) {
+    if (m.deprecated) {
+      deprecated.push(m);
+      deprecatedKeys.add(`${m.provider}/${m.model}`);
+    }
+  }
   // Pass 1: below-cost
   for (const m of models) {
-    if (hasBelowCost(m) || hasNotHighestTier(m)) {
+    const key = `${m.provider}/${m.model}`;
+    if (!deprecatedKeys.has(key) && (hasBelowCost(m) || hasNotHighestTier(m))) {
       belowCost.push(m);
-      belowCostKeys.add(`${m.provider}/${m.model}`);
+      belowCostKeys.add(key);
     }
   }
   // Pass 2: drift
   for (const m of models) {
     const key = `${m.provider}/${m.model}`;
-    if (!belowCostKeys.has(key) && hasDrift(m)) {
+    if (!deprecatedKeys.has(key) && !belowCostKeys.has(key) && hasDrift(m)) {
       drift.push(m);
       driftKeys.add(key);
     }
@@ -388,19 +399,29 @@ export function classifyAndGroup(models) {
   // Pass 3: no-match
   for (const m of models) {
     const key = `${m.provider}/${m.model}`;
-    if (!belowCostKeys.has(key) && !driftKeys.has(key) && (hasNoOfficial(m) || hasNoData(m))) {
+    if (
+      !deprecatedKeys.has(key) &&
+      !belowCostKeys.has(key) &&
+      !driftKeys.has(key) &&
+      (hasNoOfficial(m) || hasNoData(m))
+    ) {
       noMatch.push(m);
     }
   }
   // Pass 4: normal (everything else)
-  const usedKeys = new Set([...belowCostKeys, ...driftKeys, ...noMatch.map((m) => `${m.provider}/${m.model}`)]);
+  const usedKeys = new Set([
+    ...deprecatedKeys,
+    ...belowCostKeys,
+    ...driftKeys,
+    ...noMatch.map((m) => `${m.provider}/${m.model}`),
+  ]);
   for (const m of models) {
     if (!usedKeys.has(`${m.provider}/${m.model}`)) {
       normal.push(m);
     }
   }
 
-  return { belowCost, drift, noMatch, normal };
+  return { deprecated, belowCost, drift, noMatch, normal };
 }
 
 /**
@@ -408,6 +429,7 @@ export function classifyAndGroup(models) {
  * Used by client-side recategorization after DB refresh.
  */
 export function classifyFromEntryAndRate(entry, rate, isNoOfficial) {
+  if (entry.deprecated) return 'deprecated';
   const isUnit = entry.modelType === 'imageGeneration' || entry.modelType === 'video';
   const sI = rate.inputRate,
     sO = rate.outputRate;
@@ -1005,6 +1027,8 @@ export function compare(dbRates, litellm, openrouter, providerPages, threshold) 
     }
 
     pickBestCost(result);
+
+    result.deprecated = !!rate.deprecated;
 
     // When sell price matches the highest tier, drift against base price is expected — not an error.
     // Recalculate drift and margin against the highest tier values.

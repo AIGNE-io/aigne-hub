@@ -68,7 +68,7 @@ export async function fetchDbRatesBrowser(hubUrl, token) {
   let page = 1;
   const apiBase = await buildApiUrlBrowser(hubUrl, '/api/ai-providers/model-rates');
   while (true) {
-    const resp = await fetch(apiBase + '?pageSize=100&page=' + page, { headers });
+    const resp = await fetch(apiBase + '?pageSize=100&page=' + page + '&includeDeprecated=true', { headers });
     if (!resp.ok) {
       const txt = await resp.text().catch(function () {
         return resp.statusText;
