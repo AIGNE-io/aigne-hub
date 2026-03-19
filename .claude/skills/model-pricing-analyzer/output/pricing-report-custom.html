@@ -79,8 +79,12 @@ table.mt th{padding:11px 14px;text-align:left;font-weight:600;color:#4a5568;font
 
 .ck-col{text-align:center;vertical-align:middle !important}
 .rchk{display:inline-flex;align-items:center;cursor:pointer;vertical-align:middle;flex-shrink:0}
-.del-btn{background:none;border:none;cursor:pointer;font-size:14px;padding:2px 4px;opacity:0.4;transition:opacity 0.15s;vertical-align:middle}
+.del-btn{background:none;border:none;cursor:pointer;font-size:14px;padding:2px 4px;opacity:0.4;transition:all 0.15s;vertical-align:middle;border-radius:4px}
 .del-btn:hover{opacity:1}
+.del-btn.del-active{opacity:1;background:#fed7d7}
+.mrow.del-marked td{background:rgba(229,62,62,.06) !important;text-decoration:line-through;color:#a0aec0}
+.mrow.del-marked .mcol,.mrow.del-marked .scol,.mrow.del-marked .ck-col{text-decoration:none;color:inherit}
+.mrow.del-marked .mono{color:#a0aec0}
 .rchk input[type="checkbox"]{position:absolute;opacity:0;pointer-events:none}
 .rchk-box{width:18px;height:18px;border:2px solid #cbd5e0;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
 .rchk-box::after{content:'';display:none;width:5px;height:9px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg);margin-top:-1px}
@@ -221,7 +225,7 @@ table.mt th{padding:11px 14px;text-align:left;font-weight:600;color:#4a5568;font
 <div class="wrap">
   <div class="hdr">
     <h1>AIGNE Hub 定价报告</h1>
-    <div class="meta">生成时间：2026/3/20 00:50:41 &nbsp;|&nbsp; 成本优先级：官方 → LiteLLM → OpenRouter &nbsp;|&nbsp; 单一数据来源 &nbsp;|&nbsp; $/1M tokens &nbsp;|&nbsp; 图片 $/张 &nbsp;|&nbsp; 视频 $/sec</div>
+    <div class="meta">生成时间：2026/3/20 01:03:58 &nbsp;|&nbsp; 成本优先级：官方 → LiteLLM → OpenRouter &nbsp;|&nbsp; 单一数据来源 &nbsp;|&nbsp; $/1M tokens &nbsp;|&nbsp; 图片 $/张 &nbsp;|&nbsp; 视频 $/sec</div>
   </div>
 
   <div id="loading-area" class="loading-wrap">
@@ -274,7 +278,7 @@ table.mt th{padding:11px 14px;text-align:left;font-weight:600;color:#4a5568;font
           </label>
         </div>
         <div style="display:flex;gap:10px;margin-bottom:20px;align-items:center">
-          <span style="font-size:13px;color:#4a5568">已录入 <strong id="sync-sel-cnt">0</strong> 个 &nbsp;|&nbsp; 未录入 <strong id="sync-um-cnt" style="color:#3182ce">0</strong> 个<span style="font-size:11px;color:#a0aec0;margin-left:2px">(新增)</span></span>
+          <span style="font-size:13px;color:#4a5568">已录入 <strong id="sync-sel-cnt">0</strong> 个 &nbsp;|&nbsp; 未录入 <strong id="sync-um-cnt" style="color:#3182ce">0</strong> 个<span style="font-size:11px;color:#a0aec0;margin-left:2px">(新增)</span> &nbsp;|&nbsp; 待删除 <strong id="sync-del-cnt" style="color:#e53e3e">0</strong> 个</span>
           <button onclick="toggleSyncAll(true)" style="padding:4px 12px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;cursor:pointer;font-size:12px;color:#4a5568">全选已录入</button>
           <button onclick="toggleSyncAll(false)" style="padding:4px 12px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;cursor:pointer;font-size:12px;color:#4a5568">取消全选</button>
           <button onclick="doRefreshDb()" style="padding:6px 14px;background:#ebf8ff;color:#2b6cb0;border:1px solid #bee3f8;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;white-space:nowrap">刷新 DB 数据</button>
@@ -6258,14 +6262,21 @@ function pickBestCost(result) {
 
   // Determine which sources have data
   var hasOfficial = result.providerPageInput !== undefined || result.providerPageOutput !== undefined;
-  var hasLiteLLM = result.litellmInput !== undefined || result.litellmOutput !== undefined ||
-    result.litellmOutputPerImage !== undefined || result.litellmOutputPerSecond !== undefined;
+  var hasLiteLLM =
+    result.litellmInput !== undefined ||
+    result.litellmOutput !== undefined ||
+    result.litellmOutputPerImage !== undefined ||
+    result.litellmOutputPerSecond !== undefined;
   var hasOpenRouter = result.openrouterInput !== undefined && result.openrouterOutput !== undefined;
 
   // Pre-compute resolution tier max cost (source-agnostic structural data)
   var resMax = 0;
   if (result.pricingUnit === 'per-image' && result.resolutionTiers?.length) {
-    resMax = Math.max(...result.resolutionTiers.map(function (t) { return t.costPerImage; }));
+    resMax = Math.max(
+      ...result.resolutionTiers.map(function (t) {
+        return t.costPerImage;
+      })
+    );
   }
 
   if (isPerUnit) {
@@ -7368,12 +7379,14 @@ function renderReport(results,groups,unmatchedModels){
 // ─── Event Handlers ──────────────────────────────────────────────────────────
 var LS_KEY='aigne-pricing-read';
 var UM_LS='aigne-pricing-um-sel';
-var readSet,umSelSet,hideRead=false,cf='all',cpSet=new Set();
+var DEL_LS='aigne-pricing-del';
+var readSet,umSelSet,delSet,hideRead=false,cf='all',cpSet=new Set();
 var op=null;
 
 function initEventHandlers(){
   readSet=new Set(JSON.parse(localStorage.getItem(LS_KEY)||'[]'));
   umSelSet=new Set(JSON.parse(localStorage.getItem(UM_LS)||'[]'));
+  delSet=new Set(JSON.parse(localStorage.getItem(DEL_LS)||'[]'));
 
   // Init read checkboxes
   document.querySelectorAll('.rchk-in').forEach(function(cb){
@@ -7450,24 +7463,20 @@ function initEventHandlers(){
   var readClear=document.getElementById('read-clear');
   if(readClear)readClear.addEventListener('click',function(){readSet.clear();localStorage.removeItem(LS_KEY);document.querySelectorAll('.rchk-in').forEach(function(cb){cb.checked=false});document.querySelectorAll('.read-done').forEach(function(el){el.classList.remove('read-done')});go()});
 
-  var markDepBtn=document.getElementById('mark-deprecated');
-  if(markDepBtn)markDepBtn.addEventListener('click',doMarkDeprecated);
+  // mark-deprecated toolbar button removed — deletion now via per-row toggle + sync
 
-  // Delete button delegation — confirm via dialog before moving to deprecated
+  // Init delete buttons — restore saved state
+  document.querySelectorAll('.del-btn').forEach(function(btn){
+    var k=btn.dataset.rk;
+    if(delSet.has(k)){btn.classList.add('del-active');btn.innerHTML='❌';btn.title='取消删除';applyDelStyle(k,true)}
+  });
+
+  // Delete button delegation — toggle mark-for-deletion (like checkbox)
   document.addEventListener('click',function(e){
     var btn=e.target.closest('.del-btn');if(!btn)return;
     var rk=btn.dataset.rk;if(!rk)return;
-    if(!confirm('确定要将 '+rk+' 标记为已移除吗？'))return;
-    var r1=document.querySelector('tr.r1[data-key="'+rk+'"]');if(!r1)return;
-    var r2=r1.nextElementSibling;var has2=r2&&r2.classList.contains('r2');
-    var oldSec=r1.closest('[data-sec]');
-    var secCfgDep={cls:'sec-deprecated',title:'已移除',cnt:'deprecated',sub:'已标记为停用的模型，不再对外提供服务'};
-    var ts=document.querySelector('[data-sec="deprecated"]');
-    if(!ts){var theadH='';var et=document.querySelector('.sec table.mt thead');if(et)theadH=et.outerHTML;var d=document.createElement('div');d.className='sec sec-deprecated';d.dataset.sec='deprecated';d.innerHTML='<div class="sec-h"><h2>'+secCfgDep.title+'</h2><span class="cnt deprecated sec-cnt">0</span><span class="sec-sub">'+secCfgDep.sub+'</span><span class="chevron">▼</span></div><div class="sec-body"><table class="mt">'+theadH+'<tbody></tbody></table></div>';var sp=document.getElementById('sync-panel');if(sp)sp.parentNode.insertBefore(d,sp);else document.getElementById('sections').appendChild(d);ts=d;d.querySelector('.sec-h').addEventListener('click',function(){d.classList.toggle('collapsed')})}
-    var ttb=ts.querySelector('.sec-body tbody');var emp=ttb.querySelector('.empty');if(emp)emp.closest('tr').remove();
-    r1.dataset.status='deprecated';ttb.appendChild(r1);if(has2)ttb.appendChild(r2);
-    if(oldSec){rebuildSec(oldSec);var hasM=oldSec.querySelector('.sec-body tbody .r1');if(!hasM&&oldSec.dataset.sec!=='normal')oldSec.style.display='none'}
-    rebuildSec(ts);ts.style.display='';go();
+    var marking=!delSet.has(rk);
+    applyDel(rk,marking);
   });
 
   // Token persistence
@@ -7476,6 +7485,7 @@ function initEventHandlers(){
   updSecChkAll();
   updSelCnt();
   updUmCnt();
+  updDelCnt();
 }
 
 function positionPop(trigger,pop){var r=trigger.getBoundingClientRect();var pw=Math.min(520,window.innerWidth-32);var left=r.right-pw;if(left<16)left=16;var arrowRight=r.right-left-r.width/2-5;var arr=pop.querySelector('.parr');if(arr){arr.style.right=Math.max(8,Math.min(arrowRight,pw-16))+'px'}var spaceBelow=window.innerHeight-r.bottom;if(spaceBelow<300&&r.top>300){pop.style.bottom=(window.innerHeight-r.top+6)+'px';pop.style.top='';if(arr){arr.style.top='';arr.style.bottom='-6px';arr.style.transform='rotate(225deg)'}}else{pop.style.top=(r.bottom+6)+'px';pop.style.bottom='';if(arr){arr.style.top='-6px';arr.style.bottom='';arr.style.transform='rotate(45deg)'}}pop.style.left=left+'px'}
@@ -7491,6 +7501,10 @@ function toggleUmQuick(){var btn=document.querySelector('.um-btn-quick');var isA
 
 function getSyncSelected(){var keys=new Set();document.querySelectorAll('.rchk-in:checked').forEach(function(cb){keys.add(cb.dataset.rk)});return keys}
 function updSelCnt(){var el=document.getElementById('sync-sel-cnt');if(el)el.textContent=getSyncSelected().size}
+function getDelSelected(){return new Set(delSet)}
+function applyDelStyle(key,on){document.querySelectorAll('tr.r1[data-key="'+key+'"]').forEach(function(r1){r1.classList.toggle('del-marked',on);var r2=r1.nextElementSibling;if(r2&&r2.classList.contains('r2'))r2.classList.toggle('del-marked',on)});document.querySelectorAll('.del-btn[data-rk="'+key+'"]').forEach(function(btn){if(on){btn.classList.add('del-active');btn.innerHTML='❌';btn.title='取消删除'}else{btn.classList.remove('del-active');btn.innerHTML='🗑';btn.title='标记删除'}})}
+function applyDel(key,on){if(on)delSet.add(key);else delSet.delete(key);localStorage.setItem(DEL_LS,JSON.stringify([...delSet]));applyDelStyle(key,on);updDelCnt()}
+function updDelCnt(){var el=document.getElementById('sync-del-cnt');if(el)el.textContent=delSet.size}
 function toggleSyncAll(on){document.querySelectorAll('.mrow:not(.hidden) .rchk-in').forEach(function(cb){cb.checked=on;applyRead(cb.dataset.rk,on)});updSecChkAll();updSelCnt()}
 function toggleSecSync(secName,on){var sec=document.querySelector('[data-sec="'+secName+'"]');if(!sec)return;sec.querySelectorAll('.mrow:not(.hidden) .rchk-in').forEach(function(cb){cb.checked=on;applyRead(cb.dataset.rk,on)});updSecChkAll();updSelCnt()}
 function updSecChkAll(){document.querySelectorAll('.sec-chk-all').forEach(function(chk){var sec=chk.closest('[data-sec]');if(!sec)return;var all=sec.querySelectorAll('.mrow:not(.hidden) .rchk-in');var checked=0;all.forEach(function(cb){if(cb.checked)checked++});var isAll=all.length>0&&checked===all.length;chk.checked=isAll;chk.indeterminate=checked>0&&checked<all.length;var lbl=sec.querySelector('.sec-sel-label');if(lbl)lbl.textContent=isAll?'取消全选':'全选'})}
@@ -7538,11 +7552,14 @@ async function doSync(isDryRun){
     return Object.assign({},e,{inputCostPerToken:inp,outputCostPerToken:out});
   });
   var umKeys=getUmSelected();var selectedUm=__umEntries.filter(function(e){return umKeys.has(e.provider+'/'+e.modelId)});
-  var allSelected=[...selectedEntries,...selectedUm];
-  if(!allSelected.length){showStatus('请先勾选要同步的模型','#feebc8','#c05621');return}
+  // Collect models marked for deletion — add as deprecated entries to the same payload
+  var delKeys=getDelSelected();
+  var delEntries=[];delKeys.forEach(function(k){var e=__entryMap.get(k);if(e)delEntries.push(Object.assign({},e,{deprecated:true}))});
+  var allSelected=[...selectedEntries,...selectedUm,...delEntries];
+  if(!allSelected.length){showStatus('请先勾选要同步的模型或标记要删除的模型','#feebc8','#c05621');return}
   var isPartial=selectedEntries.length<__allEntries.length;var safeDeprecate=deprecate&&!isPartial;
-  var cntMsg=selectedEntries.length+(selectedUm.length?' + '+selectedUm.length+' 新增':'');
-  showStatus(isDryRun?'正在预览 '+cntMsg+' 个模型...':'正在执行同步...','#ebf8ff','#2b6cb0');
+  var cntMsg=selectedEntries.length+(selectedUm.length?' + '+selectedUm.length+' 新增':'')+(delEntries.length?' + '+delEntries.length+' 删除':'');
+  showStatus(isDryRun?'正在预览 '+cntMsg+' ...':'正在执行同步...','#ebf8ff','#2b6cb0');
   execBtn.style.display='none';
   try{
     var body={mode:'sync',entries:allSelected,dryRun:isDryRun,deprecateUnmatched:safeDeprecate,applyRates:applyRates,profitMargin:applyRates?profitMargin:undefined,creditPrice:applyRates?creditPrice:undefined};

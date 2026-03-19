@@ -1462,6 +1462,7 @@ async function handleSyncMode(req: Request, res: Response, value: any) {
   const unmatched: any[] = [];
   const created: CreatedEntry[] = [];
   const errors: any[] = [];
+  const deprecated: any[] = [];
   const tier1Updates = new Map<string, { input: number; output: number }>();
 
   // Pre-fetch all AiProviders to build name→id map (avoid N+1 queries)
@@ -1602,6 +1603,25 @@ async function handleSyncMode(req: Request, res: Response, value: any) {
         updateData.caching = { ...((match as any).caching || {}), ...update.caching };
       }
 
+      // Per-entry deprecation: soft-delete this specific model
+      if (update.deprecated) {
+        if (!(match as any).deprecated) {
+          const depData: any = {
+            deprecated: true,
+            deprecatedAt: new Date(),
+            deprecatedReason: 'Manually marked for removal via pricing report',
+          };
+          if (!dryRun) {
+            await (match as any).update(depData, {
+              changeType: 'bulk_sync',
+              source: update.source || 'manual-deprecation',
+            });
+          }
+          deprecated.push({ id: match.id, model: match.model, provider: providerName });
+        }
+        continue;
+      }
+
       // Clear deprecated flag if model reappears in official pricing
       if ((match as any).deprecated) {
         updateData.deprecated = false;
@@ -1694,7 +1714,6 @@ async function handleSyncMode(req: Request, res: Response, value: any) {
   }
 
   // Soft-delete: mark tier1 DB models not found in official pricing as deprecated
-  const deprecated: any[] = [];
   if (value.deprecateUnmatched) {
     const tier1Providers = new Set(['openai', 'anthropic', 'google', 'xai', 'deepseek', 'doubao']);
     const matchedKeys = new Set<string>();

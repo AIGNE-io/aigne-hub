@@ -110,6 +110,7 @@ export interface SyncUpdate {
   isNew?: boolean;
   modelType?: string;
   modelDisplay?: string;
+  deprecated?: boolean;
 }
 
 interface DbRateLike {
@@ -286,6 +287,7 @@ export function officialPricingToSyncUpdates(
     cacheTiers?: Array<{ label: string; costPerToken: number }>;
     modelType?: string;
     isNew?: boolean;
+    deprecated?: boolean;
   }>
 ): SyncUpdate[] {
   const updates: SyncUpdate[] = [];
@@ -308,6 +310,7 @@ export function officialPricingToSyncUpdates(
 
     if (entry.isNew) update.isNew = true;
     if (entry.modelType) update.modelType = entry.modelType;
+    if (entry.deprecated) update.deprecated = true;
 
     // Map caching info
     const readRate = entry.cachedInputCostPerToken;
