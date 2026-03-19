@@ -73,14 +73,15 @@ assert_json "app status" "$BASE_URL/api/app/status" "d['status']" "running"
 # ─── 5. Provider CRUD ───
 bold "5. Provider CRUD"
 # Create
+TEST_PROVIDER="test-provider-$$"
 assert_status "create provider (no auth) → 403" POST "$BASE_URL/api/ai-providers" 403 \
-  -H "Content-Type: application/json" -d '{"name":"test-openai","displayName":"Test OpenAI"}'
+  -H "Content-Type: application/json" -d "{\"name\":\"$TEST_PROVIDER\",\"displayName\":\"Test\"}"
 assert_status "create provider (admin) → 201" POST "$BASE_URL/api/ai-providers" 201 \
   -H "Content-Type: application/json" -H "x-user-did: $ADMIN_DID" -H "x-user-role: admin" \
-  -d '{"name":"test-openai","displayName":"Test OpenAI","baseUrl":"https://api.openai.com/v1"}'
+  -d "{\"name\":\"$TEST_PROVIDER\",\"displayName\":\"Test Provider\",\"baseUrl\":\"https://api.test.com/v1\"}"
 assert_status "create duplicate → 409" POST "$BASE_URL/api/ai-providers" 409 \
   -H "Content-Type: application/json" -H "x-user-did: $ADMIN_DID" -H "x-user-role: admin" \
-  -d '{"name":"test-openai","displayName":"Test OpenAI"}'
+  -d "{\"name\":\"$TEST_PROVIDER\",\"displayName\":\"Test Provider\"}"
 # List
 assert_status "list providers → 200" GET "$BASE_URL/api/ai-providers" 200 \
   -H "x-user-did: $ADMIN_DID" -H "x-user-role: admin"
