@@ -475,32 +475,39 @@ export function classifyFromEntryAndRate(entry, rate, isNoOfficial) {
 
   if (bc || nht) return 'below-cost';
 
+  // When sell price matches highest tier, drift against base price is expected — skip margin/cost drift.
+  var sellMatchesTier = false;
+  if (!nht && entry.tieredPricing && entry.tieredPricing.length > 0) {
+    var hi = entry.tieredPricing[entry.tieredPricing.length - 1];
+    if (aboveOrClose(sI, hi.input) && aboveOrClose(sO, hi.output)) sellMatchesTier = true;
+  }
+
   // Drift check — sell margin drift
   var dr = false;
-  if (!isUnit && mI != null && Math.abs(mI) > DTH) dr = true;
-  if (mO != null && Math.abs(mO) > DTH) dr = true;
+  if (!sellMatchesTier) {
+    if (!isUnit && mI != null && Math.abs(mI) > DTH) dr = true;
+    if (mO != null && Math.abs(mO) > DTH) dr = true;
+  }
   if (mwc > 0 && sCW > 0 && Math.abs(((sCW - mwc) / mwc) * 100) > DTH) dr = true;
   if (rc > 0 && sCR > 0 && Math.abs(((sCR - rc) / rc) * 100) > DTH) dr = true;
 
   // Cost drift check — DB unitCosts vs base official/external price
-  if (!isUnit && baseCostI && dbUcI > 0) {
-    var ucDriftI = Math.abs((dbUcI - baseCostI) / baseCostI) * 100;
-    if (ucDriftI > 10) dr = true;
-  }
-  if (baseCostO && dbUcO > 0) {
-    var ucDriftO = Math.abs((dbUcO - baseCostO) / baseCostO) * 100;
-    if (ucDriftO > 10) dr = true;
+  if (!sellMatchesTier) {
+    if (!isUnit && baseCostI && dbUcI > 0) {
+      var ucDriftI = Math.abs((dbUcI - baseCostI) / baseCostI) * 100;
+      if (ucDriftI > 10) dr = true;
+    }
+    if (baseCostO && dbUcO > 0) {
+      var ucDriftO = Math.abs((dbUcO - baseCostO) / baseCostO) * 100;
+      if (ucDriftO > 10) dr = true;
+    }
   }
 
   // Preserve initial drift classification from multi-source comparison (LiteLLM/OpenRouter/official).
-  // The recategorization only has sell+cost data, not all external sources,
-  // so trust the initial maxDrift when unitCosts haven't changed.
-  if (!dr && entry.initialMaxDrift > 0.1) {
-    // Only preserve if DB unitCosts still match what was originally analyzed
+  if (!dr && !sellMatchesTier && entry.initialMaxDrift > 0.1) {
     var ucUnchanged = true;
     if (baseCostI && dbUcI > 0 && Math.abs((dbUcI - baseCostI) / baseCostI) > 0.001) ucUnchanged = false;
     if (baseCostO && dbUcO > 0 && Math.abs((dbUcO - baseCostO) / baseCostO) > 0.001) ucUnchanged = false;
-    // If unitCosts match original but initial comparison found drift from other sources, keep it
     if (ucUnchanged) dr = true;
   }
 
@@ -998,6 +1005,37 @@ export function compare(dbRates, litellm, openrouter, providerPages, threshold) 
     }
 
     pickBestCost(result);
+
+    // When sell price matches the highest tier, drift against base price is expected — not an error.
+    // Recalculate drift and margin against the highest tier values.
+    if (result.tieredPricing?.length && pricingUnit === 'per-token') {
+      const hi = result.tieredPricing[result.tieredPricing.length - 1];
+      const sI = result.inputRate ?? dbInput;
+      const sO = result.outputRate ?? dbOutput;
+      if (aboveOrClose(sI, hi.input) && aboveOrClose(sO, hi.output)) {
+        // Recalculate source drift against highest tier
+        if (result.litellmInput !== undefined)
+          result.litellmDrift = Math.max(calcDrift(sI, hi.input), calcDrift(sO, hi.output));
+        if (result.providerPageInput !== undefined)
+          result.providerPageDrift = Math.max(calcDrift(sI, hi.input), calcDrift(sO, hi.output));
+        if (result.openrouterInput !== undefined)
+          result.openrouterDrift = Math.max(calcDrift(sI, hi.input), calcDrift(sO, hi.output));
+        // Recalculate margin against highest tier
+        if (hi.input > 0) result.inputMargin = ((sI - hi.input) / hi.input) * 100;
+        if (hi.output > 0) result.outputMargin = ((sO - hi.output) / hi.output) * 100;
+        // Recalculate maxDrift excluding tier-inflated values
+        result.maxDrift = Math.max(
+          result.litellmDrift ?? 0,
+          result.openrouterDrift ?? 0,
+          result.providerPageDrift ?? 0,
+          result.cacheDrift ?? 0,
+          result.cacheTierWriteDrift ?? 0,
+          result.cacheTierReadDrift ?? 0
+        );
+        result.exceedsThreshold = result.maxDrift > threshold;
+      }
+    }
+
     results.push(result);
   }
 
