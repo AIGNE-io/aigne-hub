@@ -52,21 +52,25 @@ export function loadUser(env: Env) {
     // 1. Try API Key auth (Authorization: Bearer aigne_xxx)
     const authHeader = c.req.header('Authorization');
     if (authHeader?.startsWith('Bearer aigne_')) {
-      const apiKey = authHeader.slice(7); // Remove "Bearer "
-      const db = c.get('db') || drizzle(env.DB, { schema });
-      const app = await validateApiKey(db, apiKey);
-      if (app) {
-        c.set('user', {
-          id: app.id,
-          email: '',
-          name: app.id,
-          provider: 'google',
-          providerId: app.id,
-          role: 'member',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        } as AuthUser);
-        return next();
+      try {
+        const apiKey = authHeader.slice(7); // Remove "Bearer "
+        const db = c.get('db') || drizzle(env.DB, { schema });
+        const app = await validateApiKey(db, apiKey);
+        if (app) {
+          c.set('user', {
+            id: app.id,
+            email: '',
+            name: app.id,
+            provider: 'google',
+            providerId: app.id,
+            role: 'member',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          } as AuthUser);
+          return await next();
+        }
+      } catch {
+        // API key validation failed (e.g. table missing), fall through to other auth methods
       }
     }
 
@@ -90,6 +94,20 @@ export function loadUser(env: Env) {
         provider: 'google',
         providerId: did,
         role: (c.req.header('x-user-role') as 'admin' | 'member') || 'member',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      } as AuthUser);
+    }
+
+    // 4. Dev fallback: auto-inject mock admin when no auth is present
+    if (!c.get('user') && env.ENVIRONMENT !== 'production') {
+      c.set('user', {
+        id: 'dev:admin',
+        email: 'admin@dev.local',
+        name: 'Dev Admin',
+        provider: 'google',
+        providerId: 'dev-admin',
+        role: 'admin',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       } as AuthUser);

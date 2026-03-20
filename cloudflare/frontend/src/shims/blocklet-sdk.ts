@@ -29,7 +29,7 @@ if (typeof window !== 'undefined' && !window.blocklet) {
     navigation: [],
     preferences: {
       creditBasedBillingEnabled: true,
-      guestPlaygroundEnabled: false,
+      guestPlaygroundEnabled: true,
     },
   };
 }

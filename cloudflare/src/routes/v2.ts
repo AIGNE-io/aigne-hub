@@ -34,6 +34,7 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
   // Parse request body
   const body = await c.req.json<{
     model: string;
+    prompt?: string;
     messages: Array<{ role: string; content: string }>;
     stream?: boolean;
     temperature?: number;
@@ -45,6 +46,12 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
   if (!body.model) {
     return c.json({ error: { message: 'model is required' } }, 400);
   }
+
+  // Support `prompt` field (legacy) — convert to `messages` format
+  if (!body.messages?.length && (body as { prompt?: string }).prompt) {
+    body.messages = [{ role: 'user', content: (body as { prompt?: string }).prompt! }];
+  }
+
   if (!body.messages?.length) {
     return c.json({ error: { message: 'messages is required' } }, 400);
   }
@@ -106,13 +113,14 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
       providerTtfb = Date.now() - providerStartTime;
 
       return stream(c, async (writable) => {
-        c.header('Content-Type', 'text/event-stream');
+        c.header('Content-Type', 'text/plain; charset=utf-8');
         c.header('Cache-Control', 'no-cache');
         c.header('X-Accel-Buffering', 'no');
 
         const reader = upstreamResponse.body!.getReader();
         const decoder = new TextDecoder();
         let usageData: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } | null = null;
+        let sseBuffer = '';
 
         try {
           // eslint-disable-next-line no-constant-condition
@@ -122,17 +130,25 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
             if (done) break;
 
             const chunk = decoder.decode(value, { stream: true });
-            // eslint-disable-next-line no-await-in-loop
-            await writable.write(chunk);
+            sseBuffer += chunk;
 
-            // Try to extract usage from chunks
-            const lines = chunk.split('\n');
-            for (const line of lines) {
+            // Process complete SSE lines from buffer
+            const parts = sseBuffer.split('\n');
+            // Keep the last incomplete line in the buffer
+            sseBuffer = parts.pop() || '';
+
+            for (const line of parts) {
               if (line.startsWith('data: ') && line !== 'data: [DONE]') {
                 try {
                   const data = JSON.parse(line.slice(6));
                   if (data.usage) {
                     usageData = data.usage;
+                  }
+                  // Extract text content from SSE and write as plain text
+                  const content = data.choices?.[0]?.delta?.content;
+                  if (content) {
+                    // eslint-disable-next-line no-await-in-loop
+                    await writable.write(content);
                   }
                 } catch {
                   // ignore parse errors in stream
