@@ -651,11 +651,14 @@ export function lookupOfficialPricing(cache, lookupKey, fallbackKeys, dbType) {
 /**
  * Select the best cost source and calculate margins.
  * Single Data Source Principle: all fields (input, output, cache write, cache read)
- * come from the SAME source. Priority: Official > LiteLLM > OpenRouter.
+ * come from the SAME source.
+ * Priority: Official > LiteLLM > OpenRouter (for tier1 providers).
+ * For OpenRouter provider: OpenRouter > LiteLLM (OpenRouter IS the official source).
  * Mutates `result` in place.
  */
 export function pickBestCost(result) {
   var isPerUnit = result.pricingUnit === 'per-image' || result.pricingUnit === 'per-second';
+  var isOR = result.provider === 'openrouter';
 
   // Determine which sources have data
   var hasOfficial = result.providerPageInput !== undefined || result.providerPageOutput !== undefined;
@@ -676,7 +679,28 @@ export function pickBestCost(result) {
     );
   }
 
-  if (isPerUnit) {
+  // OpenRouter provider: OpenRouter data IS the official source
+  if (isOR && hasOpenRouter) {
+    result.bestCostInput = result.openrouterInput;
+    result.bestCostOutput = result.openrouterOutput;
+    result.bestCostSource = 'openrouter';
+    result.bestCostSourceLabel = 'OpenRouter';
+  } else if (isOR && hasLiteLLM) {
+    if (isPerUnit) {
+      if (result.pricingUnit === 'per-image' && result.litellmOutputPerImage !== undefined) {
+        result.bestCostOutput = resMax || result.litellmOutputPerImage;
+        result.bestCostInput = result.litellmInputPerImage ?? result.litellmInput;
+      } else if (result.pricingUnit === 'per-second' && result.litellmOutputPerSecond !== undefined) {
+        result.bestCostOutput = result.litellmOutputPerSecond;
+        result.bestCostInput = result.litellmInput;
+      }
+    } else if (result.litellmInput !== undefined && result.litellmOutput !== undefined) {
+      result.bestCostInput = result.litellmInput;
+      result.bestCostOutput = result.litellmOutput;
+    }
+    result.bestCostSource = 'litellm';
+    result.bestCostSourceLabel = 'LiteLLM';
+  } else if (isPerUnit) {
     // Per-unit (image/video): Official > LiteLLM > OpenRouter
     if (hasOfficial && result.providerPageOutput !== undefined) {
       result.bestCostOutput = resMax || result.providerPageOutput;
