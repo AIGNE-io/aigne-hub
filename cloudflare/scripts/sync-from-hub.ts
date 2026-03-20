@@ -47,9 +47,14 @@ function escapeSQL(value: unknown): string {
   return `'${String(value).replace(/'/g, "''")}'`;
 }
 
-function d1Execute(sql: string) {
+let syncTarget = 'local'; // 'local' | 'staging' | 'production'
+
+function d1ExecuteForTarget(sql: string) {
+  const remoteFlag = syncTarget === 'local' ? '--local' : '--remote';
+  const envFlag = syncTarget !== 'local' ? `--env ${syncTarget}` : '';
+  const dbName = syncTarget === 'local' ? 'aigne-hub-dev' : `aigne-hub-${syncTarget}`;
   try {
-    execSync(`npx wrangler d1 execute aigne-hub-dev --local --command="${sql.replace(/"/g, '\\"')}"`, {
+    execSync(`npx wrangler d1 execute ${dbName} ${remoteFlag} ${envFlag} --command="${sql.replace(/"/g, '\\"')}"`, {
       encoding: 'utf-8',
       stdio: 'pipe',
     });
@@ -66,17 +71,21 @@ async function main() {
 
   for (const arg of args) {
     if (arg.startsWith('--hub=')) hubUrl = arg.split('=')[1].replace(/\/$/, '');
+    if (arg.startsWith('--target=')) syncTarget = arg.split('=')[1];
     if (arg.startsWith('--admin-did=')) adminDid = arg.split('=')[1];
     if (arg.startsWith('--admin-role=')) adminRole = arg.split('=')[1];
   }
 
   if (!hubUrl) {
-    console.error('Usage: npx tsx scripts/sync-from-hub.ts --hub=https://your-hub-url');
+    console.error(
+      'Usage: npx tsx scripts/sync-from-hub.ts --hub=https://your-hub-url [--target=local|staging|production]'
+    );
     process.exit(1);
   }
 
   console.log(`\n=== Sync from AIGNE Hub ===`);
-  console.log(`Hub URL: ${hubUrl}\n`);
+  console.log(`Hub URL: ${hubUrl}`);
+  console.log(`Target:  D1 (${syncTarget})\n`);
 
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (adminDid) {
@@ -147,14 +156,14 @@ async function main() {
 
   // 4. Clear existing data
   console.log('\n[D1] Clearing existing data...');
-  d1Execute('DELETE FROM AiModelStatuses');
-  d1Execute('DELETE FROM AiModelRates');
-  d1Execute('DELETE FROM AiProviders');
+  d1ExecuteForTarget('DELETE FROM AiModelStatuses');
+  d1ExecuteForTarget('DELETE FROM AiModelRates');
+  d1ExecuteForTarget('DELETE FROM AiProviders');
 
   // 5. Insert providers
   console.log(`[D1] Inserting ${providers.length} providers...`);
   for (const p of providers) {
-    d1Execute(
+    d1ExecuteForTarget(
       `INSERT OR REPLACE INTO AiProviders (id, name, displayName, baseUrl, region, enabled, config, createdAt, updatedAt) VALUES (${escapeSQL(p.id)}, ${escapeSQL(p.name)}, ${escapeSQL(p.displayName)}, ${escapeSQL(p.baseUrl)}, ${escapeSQL(p.region)}, ${escapeSQL(p.enabled)}, ${escapeSQL(p.config)}, datetime('now'), datetime('now'))`
     );
   }
@@ -163,7 +172,7 @@ async function main() {
   console.log(`[D1] Inserting ${rates.length} model rates...`);
   let inserted = 0;
   for (const r of rates) {
-    d1Execute(
+    d1ExecuteForTarget(
       `INSERT OR REPLACE INTO AiModelRates (id, providerId, model, modelDisplay, description, type, inputRate, outputRate, unitCosts, caching, modelMetadata, deprecated, createdAt, updatedAt) VALUES (${escapeSQL(r.id)}, ${escapeSQL(r.providerId)}, ${escapeSQL(r.model)}, ${escapeSQL(r.modelDisplay)}, ${escapeSQL(r.description)}, ${escapeSQL(r.type)}, ${escapeSQL(r.inputRate)}, ${escapeSQL(r.outputRate)}, ${escapeSQL(r.unitCosts)}, ${escapeSQL(r.caching)}, ${escapeSQL(r.modelMetadata)}, ${escapeSQL(r.deprecated)}, datetime('now'), datetime('now'))`
     );
     inserted++;
@@ -175,7 +184,7 @@ async function main() {
   let statusCount = 0;
   for (const r of rates) {
     if (r.status) {
-      d1Execute(
+      d1ExecuteForTarget(
         `INSERT OR REPLACE INTO AiModelStatuses (id, providerId, model, type, available, error, lastChecked, createdAt, updatedAt) VALUES (${escapeSQL(`s-${r.id}`)}, ${escapeSQL(r.providerId)}, ${escapeSQL(r.model)}, ${escapeSQL(r.type)}, ${escapeSQL(r.status.available)}, ${escapeSQL(r.status.error)}, datetime('now'), datetime('now'), datetime('now'))`
       );
       statusCount++;
