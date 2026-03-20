@@ -1,7 +1,43 @@
 import axios from 'axios';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
+const API_KEY_STORAGE = 'aigne_api_key';
+
 const api = axios.create({ baseURL: window?.blocklet?.prefix || '/', timeout: 30000 });
+
+// Auto-attach API Key from localStorage to every request
+api.interceptors.request.use((config) => {
+  const key = localStorage.getItem(API_KEY_STORAGE);
+  if (key) {
+    config.headers.Authorization = `Bearer ${key}`;
+  }
+  return config;
+});
+
+/**
+ * Get or create an API key for the current session.
+ * Creates one automatically on first use (dev convenience).
+ */
+async function ensureApiKey(): Promise<string> {
+  const existing = localStorage.getItem(API_KEY_STORAGE);
+  if (existing) return existing;
+
+  try {
+    const res = await axios.post(
+      '/api/api-keys',
+      { name: 'frontend-auto' },
+      { headers: { 'x-user-did': 'admin', 'x-user-role': 'admin' } }
+    );
+    const key = res.data?.apiKey;
+    if (key) {
+      localStorage.setItem(API_KEY_STORAGE, key);
+      return key;
+    }
+  } catch {
+    // API key creation failed, continue without
+  }
+  return '';
+}
 
 interface SessionUser {
   did: string;
@@ -76,8 +112,17 @@ function SessionProvider({ children }: { children: React.ReactNode }) {
     // Skip auth for local dev — always use mock admin
     const isDev = window.location.hostname === 'localhost';
     if (isDev) {
-      setUser({ did: 'dev:admin', email: 'admin@dev.local', fullName: 'Dev Admin', role: 'owner', avatar: undefined });
-      setLoading(false);
+      // Auto-create API key for frontend requests
+      ensureApiKey().then(() => {
+        setUser({
+          did: 'dev:admin',
+          email: 'admin@dev.local',
+          fullName: 'Dev Admin',
+          role: 'owner',
+          avatar: undefined,
+        });
+        setLoading(false);
+      });
       return;
     }
 
