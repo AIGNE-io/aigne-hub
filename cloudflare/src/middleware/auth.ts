@@ -1,7 +1,10 @@
 import { getSession, getTokenFromRequest } from '@aigne/cf-auth';
 import type { AuthConfig, AuthUser } from '@aigne/cf-auth';
+import { drizzle } from 'drizzle-orm/d1';
 import type { Context, Next } from 'hono';
 
+import * as schema from '../db/schema';
+import { validateApiKey } from '../routes/api-keys';
 import type { Env, HonoEnv } from '../worker';
 
 /**
@@ -46,7 +49,28 @@ export function loadUser(env: Env) {
   const config = buildAuthConfig(env);
 
   return async (c: Context<HonoEnv>, next: Next) => {
-    // Try real auth first
+    // 1. Try API Key auth (Authorization: Bearer aigne_xxx)
+    const authHeader = c.req.header('Authorization');
+    if (authHeader?.startsWith('Bearer aigne_')) {
+      const apiKey = authHeader.slice(7); // Remove "Bearer "
+      const db = c.get('db') || drizzle(env.DB, { schema });
+      const app = await validateApiKey(db, apiKey);
+      if (app) {
+        c.set('user', {
+          id: app.id,
+          email: '',
+          name: app.id,
+          provider: 'google',
+          providerId: app.id,
+          role: 'member',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        } as AuthUser);
+        return next();
+      }
+    }
+
+    // 2. Try session cookie auth
     const token = getTokenFromRequest(c.req.raw);
     if (token) {
       const user = await getSession(token, config);
@@ -56,7 +80,7 @@ export function loadUser(env: Env) {
       }
     }
 
-    // Fallback: dev header-based auth (x-user-did + x-user-role)
+    // 3. Fallback: dev header-based auth (x-user-did + x-user-role)
     const did = c.req.header('x-user-did');
     if (did) {
       c.set('user', {

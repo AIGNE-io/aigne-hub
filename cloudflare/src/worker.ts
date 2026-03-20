@@ -12,6 +12,7 @@ import * as schema from './db/schema';
 import { buildAuthConfig, loadUser } from './middleware/auth';
 // API routes
 import aiProviderRoutes from './routes/ai-providers';
+import apiKeyRoutes from './routes/api-keys';
 import eventsRoutes from './routes/events';
 import paymentRoutes from './routes/payment';
 import usageRoutes from './routes/usage';
@@ -101,6 +102,9 @@ app.get('/auth/dev-login', async (c) => {
 app.route('/api/ai-providers', aiProviderRoutes); // models/model-rates are public, admin routes check internally
 app.route('/api', eventsRoutes); // /api/events
 app.route('/api', userRoutes); // /api/app/status (public)
+
+// --- API Key management ---
+app.route('/api/api-keys', apiKeyRoutes);
 
 // --- Authenticated routes ---
 app.route('/api/v1', v1Routes);
