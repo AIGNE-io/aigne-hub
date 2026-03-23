@@ -32,11 +32,13 @@ export type Env = {
   ADMIN_EMAILS?: string;
   BASE_URL: string;
   BLOCKLET_SERVER_ORIGIN?: string;
+  PAYMENT_WEBHOOK_SECRET?: string;
 };
 
 export type Variables = {
   db: ReturnType<typeof drizzle<typeof schema>>;
   user?: AuthUser;
+  executionCtx?: ExecutionContext;
 };
 
 export type HonoEnv = { Bindings: Env; Variables: Variables };
@@ -44,11 +46,19 @@ export type HonoEnv = { Bindings: Env; Variables: Variables };
 const app = new Hono<HonoEnv>();
 
 // Global middleware
-app.use('*', cors());
+app.use('*', async (c, next) => {
+  const origin = c.env.BASE_URL || 'http://localhost:5173';
+  const middleware = cors({
+    origin: [origin, 'http://localhost:5173', 'http://localhost:8787'],
+    credentials: true,
+  });
+  return middleware(c, next);
+});
 
-// D1 + Drizzle setup per request
+// D1 + Drizzle setup per request + expose executionCtx for waitUntil
 app.use('*', async (c, next) => {
   c.set('db', drizzle(c.env.DB, { schema }));
+  c.set('executionCtx', c.executionCtx);
   await next();
 });
 
@@ -120,8 +130,27 @@ app.all('/auth/*', async (c) => {
   return authApp.fetch(c.req.raw, c.env);
 });
 
-// SPA fallback (for frontend routing)
-app.notFound((c) => c.json({ error: 'Not Found' }, 404));
+// SPA fallback: serve index.html for non-API routes (client-side routing)
+app.notFound(async (c) => {
+  // API routes return JSON 404
+  if (c.req.path.startsWith('/api/') || c.req.path.startsWith('/auth/')) {
+    return c.json({ error: 'Not Found' }, 404);
+  }
+  // For non-API routes, try serving as SPA (requires Workers Sites or ASSETS binding)
+  try {
+    const env = c.env as Env & { ASSETS?: { fetch: (req: Request | string) => Promise<Response> } };
+    if (env.ASSETS) {
+      const asset = await env.ASSETS.fetch(new Request(new URL('/index.html', c.req.url)));
+      return new Response(asset.body, {
+        status: 200,
+        headers: { 'content-type': 'text/html; charset=utf-8' },
+      });
+    }
+  } catch {
+    // ASSETS not available
+  }
+  return c.json({ error: 'Not Found' }, 404);
+});
 
 // Error handler
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -148,6 +177,8 @@ async function scheduled(event: ScheduledEvent, env: Env, _ctx: ExecutionContext
 }
 
 export default {
-  fetch: app.fetch,
+  fetch(request: Request, env: Env, ctx: ExecutionContext) {
+    return app.fetch(request, env, ctx);
+  },
   scheduled,
 };

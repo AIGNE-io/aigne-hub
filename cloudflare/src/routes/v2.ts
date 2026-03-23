@@ -25,8 +25,14 @@ routes.get('/status', async (c) => {
 routes.post('/chat/completions', (c) => handleChatCompletion(c));
 routes.post('/completions', (c) => handleChatCompletion(c));
 
+function getWaitUntil(c: Context<HonoEnv>): ((p: Promise<unknown>) => void) | null {
+  const ctx = c.get('executionCtx');
+  return ctx ? (p: Promise<unknown>) => ctx.waitUntil(p) : null;
+}
+
 async function handleChatCompletion(c: Context<HonoEnv>) {
   const db = c.get('db');
+  const waitUntil = getWaitUntil(c);
   const startTime = Date.now();
   const userDid = (c.get('user') as { id?: string } | undefined)?.id || c.req.header('x-user-did') || '';
   const appDid = c.req.header('x-aigne-hub-client-did') || '';
@@ -86,8 +92,8 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
       const errorBody = await upstreamResponse.text();
       const duration = ((Date.now() - startTime) / 1000).toFixed(1);
 
-      // Record failed call
-      recordModelCall(db, {
+      // Record failed call via waitUntil
+      const failPromise = recordModelCall(db, {
         providerId: provider.providerId,
         model: provider.modelName,
         credentialId: provider.credentialId,
@@ -102,6 +108,7 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
         requestId,
         callTime: Math.floor(startTime / 1000),
       });
+      if (waitUntil) waitUntil(failPromise);
 
       return c.json(
         { error: { message: `Provider error: ${upstreamResponse.status}`, status: upstreamResponse.status } },
@@ -172,38 +179,40 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
           completionTokens,
         });
 
-        // Fire-and-forget: record call + usage
-        recordModelCall(db, {
-          providerId: provider.providerId,
-          model: provider.modelName,
-          credentialId: provider.credentialId,
-          type: 'chatCompletion',
-          status: 'success',
-          totalUsage,
-          usageMetrics: { promptTokens, completionTokens },
-          credits: credits.toFixed(10),
-          duration,
-          userDid,
-          appDid,
-          requestId,
-          callTime: Math.floor(startTime / 1000),
-          ttfb: providerTtfb?.toFixed(1),
-          providerTtfb: providerTtfb?.toFixed(1),
-        });
+        // Record call + usage via waitUntil (survives after response)
+        const recordPromise = Promise.all([
+          recordModelCall(db, {
+            providerId: provider.providerId,
+            model: provider.modelName,
+            credentialId: provider.credentialId,
+            type: 'chatCompletion',
+            status: 'success',
+            totalUsage,
+            usageMetrics: { promptTokens, completionTokens },
+            credits: credits.toFixed(10),
+            duration,
+            userDid,
+            appDid,
+            requestId,
+            callTime: Math.floor(startTime / 1000),
+            ttfb: providerTtfb?.toFixed(1),
+            providerTtfb: providerTtfb?.toFixed(1),
+          }),
+          recordUsage(db, {
+            promptTokens,
+            completionTokens,
+            type: 'chatCompletion',
+            model: provider.modelName,
+            userDid,
+            appId: appDid,
+            usedCredits: credits.toFixed(10),
+          }),
+        ]);
+        if (waitUntil) waitUntil(recordPromise);
 
-        recordUsage(db, {
-          promptTokens,
-          completionTokens,
-          type: 'chatCompletion',
-          model: provider.modelName,
-          userDid,
-          appId: appDid,
-          usedCredits: credits.toFixed(10),
-        });
-
-        // Deduct credits from user account
+        // Deduct credits - must await for atomicity
         if (userDid && credits > 0) {
-          deductCredits(db, userDid, credits, { model: provider.modelName });
+          await deductCredits(db, userDid, credits, { model: provider.modelName });
         }
       });
     }
@@ -226,38 +235,40 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
       completionTokens,
     });
 
-    // Fire-and-forget
-    recordModelCall(db, {
-      providerId: provider.providerId,
-      model: provider.modelName,
-      credentialId: provider.credentialId,
-      type: 'chatCompletion',
-      status: 'success',
-      totalUsage,
-      usageMetrics: { promptTokens, completionTokens },
-      credits: credits.toFixed(10),
-      duration,
-      userDid,
-      appDid,
-      requestId,
-      callTime: Math.floor(startTime / 1000),
-      ttfb: providerTtfb?.toFixed(1),
-      providerTtfb: providerTtfb?.toFixed(1),
-    });
+    // Record call + usage via waitUntil
+    const recordPromise = Promise.all([
+      recordModelCall(db, {
+        providerId: provider.providerId,
+        model: provider.modelName,
+        credentialId: provider.credentialId,
+        type: 'chatCompletion',
+        status: 'success',
+        totalUsage,
+        usageMetrics: { promptTokens, completionTokens },
+        credits: credits.toFixed(10),
+        duration,
+        userDid,
+        appDid,
+        requestId,
+        callTime: Math.floor(startTime / 1000),
+        ttfb: providerTtfb?.toFixed(1),
+        providerTtfb: providerTtfb?.toFixed(1),
+      }),
+      recordUsage(db, {
+        promptTokens,
+        completionTokens,
+        type: 'chatCompletion',
+        model: provider.modelName,
+        userDid,
+        appId: appDid,
+        usedCredits: credits.toFixed(10),
+      }),
+    ]);
+    if (waitUntil) waitUntil(recordPromise);
 
-    recordUsage(db, {
-      promptTokens,
-      completionTokens,
-      type: 'chatCompletion',
-      model: provider.modelName,
-      userDid,
-      appId: appDid,
-      usedCredits: credits.toFixed(10),
-    });
-
-    // Deduct credits from user account
+    // Deduct credits - must await for atomicity
     if (userDid && credits > 0) {
-      deductCredits(db, userDid, credits, { model: provider.modelName });
+      await deductCredits(db, userDid, credits, { model: provider.modelName });
     }
 
     return c.json({
@@ -268,7 +279,7 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
     const duration = ((Date.now() - startTime) / 1000).toFixed(1);
     const message = err instanceof Error ? err.message : 'Internal proxy error';
 
-    recordModelCall(db, {
+    const errPromise = recordModelCall(db, {
       providerId: provider.providerId,
       model: provider.modelName,
       credentialId: provider.credentialId,
@@ -283,6 +294,7 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
       requestId,
       callTime: Math.floor(startTime / 1000),
     });
+    if (waitUntil) waitUntil(errPromise);
 
     return c.json({ error: { message } }, 502);
   }
@@ -326,7 +338,8 @@ routes.post('/embeddings', async (c) => {
 
   const { credits } = await calculateCredits(db, provider.providerId, provider.modelName, { promptTokens });
 
-  recordModelCall(db, {
+  const ctx = c.get('executionCtx');
+  const p = recordModelCall(db, {
     providerId: provider.providerId,
     model: provider.modelName,
     credentialId: provider.credentialId,
@@ -338,6 +351,11 @@ routes.post('/embeddings', async (c) => {
     userDid,
     callTime: Math.floor(startTime / 1000),
   });
+  if (ctx) ctx.waitUntil(p);
+
+  if (userDid && credits > 0) {
+    await deductCredits(db, userDid, credits, { model: provider.modelName });
+  }
 
   return c.json(data);
 });
@@ -379,7 +397,8 @@ routes.post('/images/generations', async (c) => {
     numberOfImageGeneration: numImages,
   });
 
-  recordModelCall(db, {
+  const ctx = c.get('executionCtx');
+  const p = recordModelCall(db, {
     providerId: provider.providerId,
     model: provider.modelName,
     credentialId: provider.credentialId,
@@ -392,6 +411,11 @@ routes.post('/images/generations', async (c) => {
     userDid,
     callTime: Math.floor(startTime / 1000),
   });
+  if (ctx) ctx.waitUntil(p);
+
+  if (userDid && credits > 0) {
+    await deductCredits(db, userDid, credits, { model: provider.modelName });
+  }
 
   return c.json(data);
 });
@@ -427,7 +451,8 @@ routes.post('/video/generations', async (c) => {
   const data = await response.json();
   const duration = ((Date.now() - startTime) / 1000).toFixed(1);
 
-  recordModelCall(db, {
+  const ctx = c.get('executionCtx');
+  const p = recordModelCall(db, {
     providerId: provider.providerId,
     model: provider.modelName,
     credentialId: provider.credentialId,
@@ -439,6 +464,7 @@ routes.post('/video/generations', async (c) => {
     userDid,
     callTime: Math.floor(startTime / 1000),
   });
+  if (ctx) ctx.waitUntil(p);
 
   return c.json(data);
 });

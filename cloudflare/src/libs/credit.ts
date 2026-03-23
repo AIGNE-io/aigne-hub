@@ -55,6 +55,7 @@ export async function getCreditBalance(db: DB, userDid: string) {
 
 /**
  * Deduct credits for a model call.
+ * Uses atomic SQL UPDATE with WHERE balance >= amount to prevent race conditions.
  * Returns true if deduction succeeded, false if insufficient balance.
  */
 export async function deductCredits(
@@ -63,25 +64,32 @@ export async function deductCredits(
   amount: number,
   meta: { modelCallId?: string; model?: string; description?: string }
 ): Promise<{ success: boolean; balance: number }> {
-  const account = await getOrCreateAccount(db, userDid);
-  const currentBalance = parseFloat(account.balance);
+  // Ensure account exists
+  await getOrCreateAccount(db, userDid);
 
-  if (currentBalance < amount) {
-    return { success: false, balance: currentBalance };
+  // Atomic deduction: UPDATE only succeeds if balance >= amount
+  const now = new Date().toISOString();
+  const result = await db.run(sql`
+    UPDATE ${creditAccounts}
+    SET balance = CAST(CAST(balance AS REAL) - ${amount} AS TEXT),
+        totalUsed = CAST(CAST(totalUsed AS REAL) + ${amount} AS TEXT),
+        updatedAt = ${now}
+    WHERE userDid = ${userDid}
+      AND CAST(balance AS REAL) >= ${amount}
+  `);
+
+  const rowsAffected = (result as { rowsWritten?: number; meta?: { changes?: number } }).rowsWritten ?? (result as { meta?: { changes?: number } }).meta?.changes ?? 0;
+  if (rowsAffected === 0) {
+    // Insufficient balance — read current balance for response
+    const [account] = await db.select().from(creditAccounts).where(eq(creditAccounts.userDid, userDid)).limit(1);
+    return { success: false, balance: account ? parseFloat(account.balance) : 0 };
   }
 
-  const newBalance = currentBalance - amount;
-  const newTotalUsed = parseFloat(account.totalUsed) + amount;
+  // Read new balance for transaction record
+  const [updated] = await db.select().from(creditAccounts).where(eq(creditAccounts.userDid, userDid)).limit(1);
+  const newBalance = updated ? parseFloat(updated.balance) : 0;
 
-  await db
-    .update(creditAccounts)
-    .set({
-      balance: newBalance.toFixed(10),
-      totalUsed: newTotalUsed.toFixed(10),
-      updatedAt: new Date().toISOString(),
-    })
-    .where(eq(creditAccounts.userDid, userDid));
-
+  // Record transaction (non-critical, can be async)
   await db.insert(creditTransactions).values({
     userDid,
     type: 'usage',
@@ -97,6 +105,7 @@ export async function deductCredits(
 
 /**
  * Grant credits to a user (admin operation or payment callback).
+ * Uses atomic SQL UPDATE to prevent race conditions.
  */
 export async function grantCredits(
   db: DB,
@@ -104,18 +113,22 @@ export async function grantCredits(
   amount: number,
   meta: { source: string; paymentId?: string; description?: string }
 ): Promise<{ balance: number }> {
-  const account = await getOrCreateAccount(db, userDid);
-  const newBalance = parseFloat(account.balance) + amount;
-  const newTotalGranted = parseFloat(account.totalGranted) + amount;
+  // Ensure account exists
+  await getOrCreateAccount(db, userDid);
 
-  await db
-    .update(creditAccounts)
-    .set({
-      balance: newBalance.toFixed(10),
-      totalGranted: newTotalGranted.toFixed(10),
-      updatedAt: new Date().toISOString(),
-    })
-    .where(eq(creditAccounts.userDid, userDid));
+  // Atomic grant
+  const now = new Date().toISOString();
+  await db.run(sql`
+    UPDATE ${creditAccounts}
+    SET balance = CAST(CAST(balance AS REAL) + ${amount} AS TEXT),
+        totalGranted = CAST(CAST(totalGranted AS REAL) + ${amount} AS TEXT),
+        updatedAt = ${now}
+    WHERE userDid = ${userDid}
+  `);
+
+  // Read new balance
+  const [updated] = await db.select().from(creditAccounts).where(eq(creditAccounts.userDid, userDid)).limit(1);
+  const newBalance = updated ? parseFloat(updated.balance) : 0;
 
   await db.insert(creditTransactions).values({
     userDid,
@@ -140,13 +153,6 @@ export async function getTransactions(
 ) {
   const page = options.page || 1;
   const pageSize = Math.min(options.pageSize || 20, 100);
-
-  const conditions = [eq(creditTransactions.userDid, userDid)];
-  if (options.type) {
-    conditions.push(eq(creditTransactions.type, options.type as 'grant' | 'usage' | 'refund' | 'adjustment'));
-  }
-
-  const whereClause = conditions.length > 1 ? sql`${creditTransactions.userDid} = ${userDid} AND ${creditTransactions.type} = ${options.type}` : eq(creditTransactions.userDid, userDid);
 
   const [rows, countResult] = await Promise.all([
     db
