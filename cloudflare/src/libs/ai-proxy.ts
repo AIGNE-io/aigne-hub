@@ -73,14 +73,11 @@ export async function resolveProvider(db: DB, model: string): Promise<ResolvedPr
 
   // Decrypt credential (TODO: proper encryption)
   let apiKey = '';
-  try {
-    const credValue =
-      typeof selectedCred.credentialValue === 'string'
-        ? JSON.parse(selectedCred.credentialValue)
-        : selectedCred.credentialValue;
-    apiKey = (credValue as { api_key?: string }).api_key || '';
-  } catch {
-    apiKey = String(selectedCred.credentialValue);
+  const credValue = selectedCred.credentialValue as Record<string, string> | string;
+  if (typeof credValue === 'object' && credValue !== null) {
+    apiKey = credValue.api_key || '';
+  } else {
+    apiKey = String(credValue);
   }
 
   return {

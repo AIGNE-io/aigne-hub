@@ -51,6 +51,181 @@ function getDefaultTestModel(providerName: string): string {
 }
 
 // ============================================================
+// MODEL STATUS TESTING
+// ============================================================
+
+// GET /api/ai-providers/test-models - Test model availability
+routes.get('/test-models', async (c) => {
+  const adminCheck = ensureAdmin(c);
+  if (adminCheck) return adminCheck;
+
+  const db = c.get('db');
+  const filterProvider = c.req.query('providerId');
+  const filterModel = c.req.query('model');
+  const filterType = c.req.query('type');
+
+  // Get all model rates (optionally filtered) to know which models to test
+  let conditions = undefined as ReturnType<typeof and>;
+  const condParts = [];
+  if (filterProvider) condParts.push(eq(aiModelRates.providerId, filterProvider));
+  if (filterModel) condParts.push(eq(aiModelRates.model, filterModel));
+  if (filterType) condParts.push(eq(aiModelRates.type, filterType as ModelRateType));
+  if (condParts.length > 0) conditions = condParts.length === 1 ? condParts[0] : and(...condParts);
+
+  const rates = await db
+    .select({
+      providerId: aiModelRates.providerId,
+      model: aiModelRates.model,
+      type: aiModelRates.type,
+      providerName: aiProviders.name,
+      baseUrl: aiProviders.baseUrl,
+    })
+    .from(aiModelRates)
+    .leftJoin(aiProviders, eq(aiModelRates.providerId, aiProviders.id))
+    .where(conditions);
+
+  if (rates.length === 0) {
+    return c.json({ message: 'No models to test', tested: 0 });
+  }
+
+  // Get credentials for the providers we need to test
+  const providerIds = [...new Set(rates.map((r) => r.providerId))];
+  const allCreds = await db.select().from(aiCredentials).where(eq(aiCredentials.active, true));
+  const credsByProvider = new Map<string, (typeof allCreds)[0]>();
+  for (const cred of allCreds) {
+    if (providerIds.includes(cred.providerId) && !credsByProvider.has(cred.providerId)) {
+      credsByProvider.set(cred.providerId, cred);
+    }
+  }
+
+  // Deduplicate: only test each provider+model combo once (prefer chatCompletion type)
+  const seen = new Set<string>();
+  const toTest = rates.filter((r) => {
+    const key = `${r.providerId}:${r.model}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  // Test each model concurrently (with a concurrency limit)
+  const CONCURRENCY = 5;
+  const results: Array<{ provider: string; model: string; type: string | null; available: boolean; error: unknown }> =
+    [];
+
+  for (let i = 0; i < toTest.length; i += CONCURRENCY) {
+    const batch = toTest.slice(i, i + CONCURRENCY);
+    const batchResults = await Promise.allSettled(
+      batch.map(async (rate) => {
+        const cred = credsByProvider.get(rate.providerId);
+        if (!cred) {
+          return { ...rate, available: false, error: { code: 'NO_CREDENTIAL', message: 'No active credential' } };
+        }
+
+        const credValue = cred.credentialValue as Record<string, string> | string;
+        const apiKey = typeof credValue === 'object' && credValue !== null ? credValue.api_key || '' : String(credValue);
+
+        if (!apiKey) {
+          return { ...rate, available: false, error: { code: 'NO_API_KEY', message: 'Credential has no api_key' } };
+        }
+
+        const providerName = rate.providerName || '';
+        const baseUrl = rate.baseUrl || getDefaultBaseUrl(providerName);
+        const testModel = rate.model;
+
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        let testUrl: string;
+        let testBody: string;
+
+        if (rate.type === 'embedding') {
+          headers.Authorization = `Bearer ${apiKey}`;
+          testUrl = `${baseUrl}/embeddings`;
+          testBody = JSON.stringify({ model: testModel, input: 'test' });
+        } else if (providerName === 'anthropic') {
+          headers['x-api-key'] = apiKey;
+          headers['anthropic-version'] = '2023-06-01';
+          testUrl = `${baseUrl}/messages`;
+          testBody = JSON.stringify({ model: testModel, max_tokens: 5, messages: [{ role: 'user', content: 'hi' }] });
+        } else {
+          headers.Authorization = `Bearer ${apiKey}`;
+          testUrl = `${baseUrl}/chat/completions`;
+          testBody = JSON.stringify({ model: testModel, max_tokens: 5, messages: [{ role: 'user', content: 'hi' }] });
+        }
+
+        const startTime = Date.now();
+        try {
+          const res = await fetch(testUrl, { method: 'POST', headers, body: testBody, signal: AbortSignal.timeout(15000) });
+          const responseTime = Date.now() - startTime;
+
+          if (!res.ok) {
+            const text = await res.text();
+            let detail = `Provider returned ${res.status}`;
+            try {
+              const err = JSON.parse(text);
+              detail = err.error?.message || err.message || detail;
+            } catch {
+              /* use default */
+            }
+            return { ...rate, available: false, error: { code: 'API_ERROR', message: detail }, responseTime };
+          }
+
+          return { ...rate, available: true, error: null, responseTime };
+        } catch (err) {
+          const responseTime = Date.now() - startTime;
+          const message = err instanceof Error ? err.message : 'Connection failed';
+          return { ...rate, available: false, error: { code: 'CONNECTION_ERROR', message }, responseTime };
+        }
+      })
+    );
+
+    for (const result of batchResults) {
+      if (result.status === 'fulfilled') {
+        const r = result.value;
+        results.push({
+          provider: r.providerName || '',
+          model: r.model,
+          type: r.type,
+          available: r.available,
+          error: r.error,
+        });
+
+        // Upsert status into aiModelStatuses
+        const now = new Date().toISOString();
+        const existing = await db
+          .select()
+          .from(aiModelStatuses)
+          .where(and(eq(aiModelStatuses.providerId, r.providerId), eq(aiModelStatuses.model, r.model)))
+          .limit(1);
+
+        if (existing.length > 0) {
+          await db
+            .update(aiModelStatuses)
+            .set({
+              available: r.available,
+              error: r.error,
+              responseTime: (r as { responseTime?: number }).responseTime || null,
+              lastChecked: now,
+              updatedAt: now,
+            })
+            .where(eq(aiModelStatuses.id, existing[0].id));
+        } else {
+          await db.insert(aiModelStatuses).values({
+            providerId: r.providerId,
+            model: r.model,
+            type: r.type,
+            available: r.available,
+            error: r.error,
+            responseTime: (r as { responseTime?: number }).responseTime || null,
+            lastChecked: now,
+          });
+        }
+      }
+    }
+  }
+
+  return c.json({ tested: results.length, results });
+});
+
+// ============================================================
 // PROVIDER CRUD
 // ============================================================
 
@@ -291,7 +466,7 @@ routes.post('/:providerId/credentials', async (c) => {
     .values({
       providerId,
       name: body.name,
-      credentialValue: JSON.stringify(body.value),
+      credentialValue: body.value,
       credentialType: (body.credentialType as 'api_key' | 'access_key_pair' | 'custom') || 'api_key',
     })
     .returning();
@@ -320,7 +495,7 @@ routes.put('/:providerId/credentials/:credentialId', async (c) => {
 
   const updates: Record<string, unknown> = { updatedAt: new Date().toISOString() };
   if (body.name !== undefined) updates.name = body.name;
-  if (body.value !== undefined) updates.credentialValue = JSON.stringify(body.value);
+  if (body.value !== undefined) updates.credentialValue = body.value;
   if (body.active !== undefined) updates.active = body.active;
   if (body.weight !== undefined) updates.weight = body.weight;
 

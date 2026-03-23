@@ -28,17 +28,33 @@ export class WsClient {
       // Silently handle connection errors - SSE will auto-reconnect
       this.eventSource?.close();
       this.eventSource = null;
+      // Auto-reconnect after a delay
+      setTimeout(() => this.connect(), 3000);
     };
-    this.eventSource.onmessage = (event) => {
+    // Listen for named SSE events that match registered listeners
+    this.rebindListeners();
+  }
+
+  private rebindListeners() {
+    if (!this.eventSource) return;
+    for (const [event] of this.listeners) {
+      this.addSSEListener(event);
+    }
+  }
+
+  private boundEvents = new Set<string>();
+
+  private addSSEListener(event: string) {
+    if (!this.eventSource || this.boundEvents.has(event)) return;
+    this.boundEvents.add(event);
+    this.eventSource.addEventListener(event, (e: MessageEvent) => {
       try {
-        const data = JSON.parse(event.data);
-        if (data.event && this.listeners.has(data.event)) {
-          this.listeners.get(data.event)?.forEach((cb) => cb(data.payload));
-        }
+        const data = JSON.parse(e.data);
+        this.listeners.get(event)?.forEach((cb) => cb(data));
       } catch {
         // ignore parse errors
       }
-    };
+    });
   }
 
   on(event: string, callback: EventCallback) {
@@ -46,7 +62,12 @@ export class WsClient {
       this.listeners.set(event, new Set());
     }
     this.listeners.get(event)?.add(callback);
-    if (!this.eventSource) this.connect();
+    if (!this.eventSource) {
+      this.connect();
+    } else {
+      // Bind listener for this new event type if not already bound
+      this.addSSEListener(event);
+    }
   }
 
   off(event: string, callback: EventCallback) {
@@ -56,6 +77,7 @@ export class WsClient {
   close() {
     this.eventSource?.close();
     this.eventSource = null;
+    this.boundEvents.clear();
   }
 }
 
