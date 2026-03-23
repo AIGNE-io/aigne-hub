@@ -2,7 +2,7 @@ import { and, desc, eq, gte, like, lte, or, sql } from 'drizzle-orm';
 import type { Context } from 'hono';
 import { Hono } from 'hono';
 
-import { aiProviders, modelCalls } from '../db/schema';
+import { aiProviders, creditAccounts, modelCalls } from '../db/schema';
 import { getCreditBalance, getTransactions } from '../libs/credit';
 import type { HonoEnv } from '../worker';
 
@@ -310,17 +310,92 @@ routes.get('/credit/balance', async (c) => {
 
 // POST /api/user/admin/user-info - Batch fetch user info
 routes.post('/admin/user-info', async (c) => {
-  const body = await c.req.json<{ userDids: string[] }>().catch(() => ({ userDids: [] }));
-  const dids = [...new Set((body.userDids || []).filter(Boolean).slice(0, 200))];
+  const body = await c.req
+    .json<{ userDids?: string[]; userDid?: string; email?: string }>()
+    .catch(() => ({} as { userDids?: string[]; userDid?: string; email?: string }));
 
-  // In CF mode, no user store — return stubs
+  // Support single-user lookup by userDid or email
+  let dids: string[] = [];
+  if (body.userDids) {
+    dids = [...new Set(body.userDids.filter(Boolean).slice(0, 200))];
+  } else if (body.userDid) {
+    dids = [body.userDid];
+  }
+
+  // Lookup by email if no DIDs provided
+  if (dids.length === 0 && body.email) {
+    try {
+      const row = await c.env.DB.prepare('SELECT id FROM AuthUsers WHERE email = ? LIMIT 1')
+        .bind(body.email)
+        .first<{ id: string }>();
+      if (row) dids = [row.id];
+    } catch {
+      // AuthUsers table may not exist yet
+    }
+  }
+
+  if (dids.length === 0) {
+    return c.json({ users: [] });
+  }
+
+  // Batch-fetch user profiles from AuthUsers table
+  type AuthRow = { id: string; name: string | null; email: string | null; avatar: string | null };
+  const authMap = new Map<string, AuthRow>();
+  try {
+    // D1 doesn't support array binding, so batch in groups
+    const batchSize = 50;
+    for (let i = 0; i < dids.length; i += batchSize) {
+      const batch = dids.slice(i, i + batchSize);
+      const placeholders = batch.map(() => '?').join(',');
+      const rows = await c.env.DB.prepare(`SELECT id, name, email, avatar FROM AuthUsers WHERE id IN (${placeholders})`)
+        .bind(...batch)
+        .all<AuthRow>();
+      for (const row of rows.results || []) {
+        authMap.set(row.id, row);
+      }
+    }
+  } catch {
+    // AuthUsers table may not exist yet — fall through to stubs
+  }
+
+  // Batch-fetch credit balances
+  const db = c.get('db');
+  const balanceMap = new Map<string, { balance: string; totalGranted: string; totalUsed: string }>();
+  try {
+    const accounts = await db
+      .select({
+        userDid: creditAccounts.userDid,
+        balance: creditAccounts.balance,
+        totalGranted: creditAccounts.totalGranted,
+        totalUsed: creditAccounts.totalUsed,
+      })
+      .from(creditAccounts)
+      .where(or(...dids.map((did) => eq(creditAccounts.userDid, did))));
+    for (const acct of accounts) {
+      balanceMap.set(acct.userDid, acct);
+    }
+  } catch {
+    // credit table may not exist yet
+  }
+
   return c.json({
-    users: dids.map((did) => ({
-      did,
-      fullName: did.startsWith('dev:') ? `Dev ${did.split(':')[1]}` : did.slice(0, 12),
-      email: '',
-      avatar: '',
-    })),
+    users: dids.map((did) => {
+      const auth = authMap.get(did);
+      const credit = balanceMap.get(did);
+      return {
+        did,
+        fullName: auth?.name || (did.startsWith('dev:') ? `Dev ${did.split(':')[1]}` : did.slice(0, 12)),
+        email: auth?.email || '',
+        avatar: auth?.avatar || '',
+        creditBalance: credit
+          ? {
+              balance: parseFloat(credit.balance),
+              total: parseFloat(credit.totalGranted),
+              used: parseFloat(credit.totalUsed),
+            }
+          : null,
+      };
+    }),
   });
 });
 

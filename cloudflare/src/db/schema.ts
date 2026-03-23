@@ -28,7 +28,7 @@ export const aiProviders = sqliteTable('AiProviders', {
   region: text('region', { length: 50 }),
   enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
   config: text('config', { mode: 'json' }),
-  apiFormat: text('apiFormat', { enum: ['openai', 'anthropic', 'gemini'] }).notNull().default('openai'),
+  apiFormat: text('apiFormat', { enum: ['openai', 'anthropic', 'gemini', 'bedrock'] }).notNull().default('openai'),
   createdAt: text('createdAt')
     .notNull()
     .default(sql`(datetime('now'))`),

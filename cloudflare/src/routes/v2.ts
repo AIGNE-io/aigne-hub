@@ -75,6 +75,11 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
     return c.json({ error: { message: `No available provider for model: ${body.model}` } }, 404);
   }
 
+  // Bedrock requires SigV4 signing — not yet implemented
+  if (provider.apiFormat === 'bedrock') {
+    return c.json({ error: { message: 'AWS Bedrock requires SigV4 signing which is not yet implemented. Use an OpenAI-compatible proxy like LiteLLM instead.' } }, 501);
+  }
+
   // Pre-deduct estimated credits
   let holdAmount = 0;
   if (userDid) {

@@ -35,6 +35,8 @@ function getDefaultBaseUrl(providerName: string): string {
     deepseek: 'https://api.deepseek.com/v1',
     xai: 'https://api.x.ai/v1',
     openrouter: 'https://openrouter.ai/api/v1',
+    doubao: 'https://ark.cn-beijing.volces.com/api/v3',
+    bedrock: 'https://bedrock-runtime.us-east-1.amazonaws.com',
   };
   return defaults[providerName] || 'https://api.openai.com/v1';
 }
@@ -43,6 +45,7 @@ function getDefaultApiFormat(providerName: string): string {
   const formats: Record<string, string> = {
     anthropic: 'anthropic',
     google: 'gemini',
+    bedrock: 'bedrock',
   };
   return formats[providerName] || 'openai';
 }
@@ -55,6 +58,7 @@ function getDefaultTestModel(providerName: string): string {
     deepseek: 'deepseek-chat',
     xai: 'grok-3-mini-fast',
     openrouter: 'openai/gpt-4.1-nano',
+    doubao: 'doubao-1.5-pro-32k',
   };
   return defaults[providerName] || 'gpt-4.1-nano';
 }

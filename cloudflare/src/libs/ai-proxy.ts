@@ -17,7 +17,7 @@ export interface ResolvedProvider {
   credentialId: string;
   apiKey: string;
   baseUrl: string;
-  apiFormat: string; // 'openai' | 'anthropic' | 'gemini'
+  apiFormat: string; // 'openai' | 'anthropic' | 'gemini' | 'bedrock'
 }
 
 /**
@@ -110,6 +110,8 @@ function getDefaultBaseUrl(providerName: string): string {
     google: 'https://generativelanguage.googleapis.com/v1beta',
     deepseek: 'https://api.deepseek.com/v1',
     xai: 'https://api.x.ai/v1',
+    doubao: 'https://ark.cn-beijing.volces.com/api/v3',
+    bedrock: 'https://bedrock-runtime.us-east-1.amazonaws.com',
   };
   return defaults[providerName] || 'https://api.openai.com/v1';
 }
@@ -118,6 +120,7 @@ function getDefaultApiFormat(providerName: string): string {
   const formats: Record<string, string> = {
     anthropic: 'anthropic',
     google: 'gemini',
+    bedrock: 'bedrock',
   };
   return formats[providerName] || 'openai';
 }
@@ -130,7 +133,11 @@ export function buildProviderHeaders(provider: ResolvedProvider): Record<string,
     'Content-Type': 'application/json',
   };
 
-  if (provider.apiFormat === 'anthropic') {
+  if (provider.apiFormat === 'bedrock') {
+    // Bedrock uses SigV4 signing — headers are set in the request builder
+    // For now, return minimal headers
+    return headers;
+  } else if (provider.apiFormat === 'anthropic') {
     headers['x-api-key'] = provider.apiKey;
     headers['anthropic-version'] = '2023-06-01';
   } else if (provider.apiFormat === 'gemini') {
@@ -151,6 +158,16 @@ export function buildUpstreamUrl(
   options?: { stream?: boolean }
 ): string {
   const { baseUrl } = provider;
+
+  if (provider.apiFormat === 'bedrock') {
+    // Bedrock URL format: https://bedrock-runtime.{region}.amazonaws.com/model/{modelId}/invoke
+    const region = provider.baseUrl.match(/bedrock-runtime\.([^.]+)\./)?.[1] || 'us-east-1';
+    const base = `https://bedrock-runtime.${region}.amazonaws.com`;
+    if (options?.stream) {
+      return `${base}/model/${provider.modelName}/invoke-with-response-stream`;
+    }
+    return `${base}/model/${provider.modelName}/invoke`;
+  }
 
   if (provider.apiFormat === 'anthropic') {
     return `${baseUrl}/messages`;

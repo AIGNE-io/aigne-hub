@@ -9,28 +9,8 @@ const shimsDir = path.resolve(__dirname, 'src/shims');
 const coreDir = path.resolve(__dirname, '../../blocklets/core');
 const packagesDir = path.resolve(__dirname, '../../packages');
 
-// Redirect SVG imports from blocklets/core/src/icons/ to local copies
-// Redirect SVG imports from blocklets/core/src/icons/ to local copies so svgr processes them
-function svgRedirectPlugin() {
-  const coreIconsDir = path.join(coreDir, 'src/icons');
-  const localIconsDir = path.resolve(__dirname, 'src/icons');
-  return {
-    name: 'svg-redirect',
-    enforce: 'pre' as const,
-    resolveId(source: string, importer: string | undefined) {
-      if (!importer || !source.endsWith('.svg')) return null;
-      const resolved = path.resolve(path.dirname(importer), source);
-      if (resolved.startsWith(coreIconsDir)) {
-        return resolved.replace(coreIconsDir, localIconsDir);
-      }
-      return null;
-    },
-  };
-}
-
 export default defineConfig({
   plugins: [
-    svgRedirectPlugin(),
     react(),
     svgr({
       svgrOptions: {
@@ -39,7 +19,7 @@ export default defineConfig({
         svgo: false,
         titleProp: true,
       },
-      include: ['**/*.svg', '**/*.svg?import'],
+      include: ['**/*.svg'],
     }),
   ],
   resolve: {
