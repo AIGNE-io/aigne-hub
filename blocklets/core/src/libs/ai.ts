@@ -78,6 +78,69 @@ export const videoGenerationsV2 = async (input: { prompt: string; model: string 
   return response.data;
 };
 
+// Gemini native API — transparent proxy to Google's Gemini format
+export const geminiStreamCompletion = async (
+  model: string,
+  messages: Array<{ role: string; content: string }>
+): Promise<ReadableStream> => {
+  // Strip provider prefix (e.g. "google/gemini-3-flash-preview" → "gemini-3-flash-preview")
+  const modelName = model.includes('/') ? model.split('/').slice(1).join('/') : model;
+
+  const geminiContents = messages.map((m) => ({
+    role: m.role === 'assistant' ? 'model' : 'user',
+    parts: [{ text: m.content }],
+  }));
+
+  const response = await fetch(`/api/v2/models/${modelName}:streamGenerateContent`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: geminiContents,
+      generationConfig: { maxOutputTokens: 8192 },
+    }),
+  });
+
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`Gemini API error: ${response.status} ${err}`);
+  }
+
+  // Parse SSE stream → extract text from Gemini format
+  const reader = response.body!.getReader();
+  const decoder = new TextDecoder();
+
+  return new ReadableStream({
+    async pull(controller) {
+      let buffer = '';
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        // eslint-disable-next-line no-await-in-loop
+        const { done, value } = await reader.read();
+        if (done) {
+          controller.close();
+          return;
+        }
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+              if (text) {
+                controller.enqueue(text);
+              }
+            } catch {
+              // ignore
+            }
+          }
+        }
+      }
+    },
+  });
+};
+
 // Embeddings API using /api/v2/embeddings endpoint
 export const embeddingsV2Direct = async (
   input: string | Array<string>,

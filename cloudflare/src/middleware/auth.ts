@@ -102,19 +102,8 @@ export function loadUser(env: Env) {
       }
     }
 
-    // 4. Dev fallback: auto-inject mock admin when no auth is present
-    if (!c.get('user') && env.ENVIRONMENT !== 'production') {
-      c.set('user', {
-        id: 'dev:admin',
-        email: 'admin@dev.local',
-        name: 'Dev Admin',
-        provider: 'google',
-        providerId: 'dev-admin',
-        role: 'admin',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      } as AuthUser);
-    }
+    // 4. No auto-inject: unauthenticated requests stay unauthenticated
+    // Users must login via /auth/dev-login (member) or /auth/dev-login?token=SECRET (admin)
 
     return next();
   };

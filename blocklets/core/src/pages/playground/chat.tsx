@@ -18,7 +18,13 @@ import { joinURL } from 'ufo';
 
 import ModelSelector from '../../components/model-selector';
 import { useIsRole, useSessionContext } from '../../contexts/session';
-import { embeddingsV2Direct, imageGenerationsV2Image, textCompletionsV2, videoGenerationsV2 } from '../../libs/ai';
+import {
+  embeddingsV2Direct,
+  geminiStreamCompletion,
+  imageGenerationsV2Image,
+  textCompletionsV2,
+  videoGenerationsV2,
+} from '../../libs/ai';
 
 interface ApiModel {
   model: string;
@@ -382,7 +388,17 @@ export default function Chat() {
         });
       }
 
-      // Default to chat completion
+      // Use Gemini native API for Google models
+      const isGoogleModel = model.startsWith('google/') || model.startsWith('gemini');
+      if (isGoogleModel) {
+        const msgs =
+          typeof prompt === 'string'
+            ? [{ role: 'user', content: prompt }]
+            : (prompt as Array<{ role: string; content: string }>);
+        return geminiStreamCompletion(model, msgs);
+      }
+
+      // Default to OpenAI-compatible chat completion
       return textCompletionsV2({
         ...(typeof prompt === 'string' ? { prompt } : { messages: prompt }),
         stream: true,
