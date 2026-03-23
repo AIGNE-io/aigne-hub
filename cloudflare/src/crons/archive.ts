@@ -10,7 +10,7 @@ const RETENTION_DAYS = 90;
 
 /**
  * Archive old model_calls records beyond retention period.
- * Deletes records older than RETENTION_DAYS days.
+ * Uses batch DELETE (subquery) instead of 1-by-1 deletion.
  */
 export async function archiveOldRecords(db: DB) {
   const startTime = Date.now();
@@ -29,23 +29,23 @@ export async function archiveOldRecords(db: DB) {
       return { archived: 0, message: 'No records to archive' };
     }
 
-    // Delete in batches of 1000
+    // Delete in batches using subquery (O(batches) instead of O(rows))
     let totalDeleted = 0;
     const batchSize = 1000;
 
     while (totalDeleted < count) {
-      const idsToDelete = await db
-        .select({ id: modelCalls.id })
-        .from(modelCalls)
-        .where(lt(modelCalls.callTime, cutoffTime))
-        .limit(batchSize);
+      const result = await db.run(sql`
+        DELETE FROM ModelCalls
+        WHERE id IN (
+          SELECT id FROM ModelCalls
+          WHERE callTime < ${cutoffTime}
+          LIMIT ${batchSize}
+        )
+      `);
 
-      if (idsToDelete.length === 0) break;
-
-      for (const { id } of idsToDelete) {
-        await db.delete(modelCalls).where(sql`${modelCalls.id} = ${id}`);
-      }
-      totalDeleted += idsToDelete.length;
+      const deleted = (result as { rowsWritten?: number; meta?: { changes?: number } }).rowsWritten ?? (result as { meta?: { changes?: number } }).meta?.changes ?? 0;
+      if (deleted === 0) break;
+      totalDeleted += deleted;
     }
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(3);

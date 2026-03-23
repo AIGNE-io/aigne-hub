@@ -1,14 +1,15 @@
-import { and, eq, gte, lt, sql } from 'drizzle-orm';
+import { and, gte, lt, sql } from 'drizzle-orm';
 import type { drizzle } from 'drizzle-orm/d1';
 
-import { modelCallStats, modelCalls } from '../db/schema';
+import { modelCalls } from '../db/schema';
 import * as schema from '../db/schema';
 
 type DB = ReturnType<typeof drizzle<typeof schema>>;
 
 /**
  * Hourly aggregation of model_calls → model_call_stats.
- * Groups by userDid + appDid for the current hour bucket.
+ * Groups by userDid + appDid for the previous hour bucket.
+ * Uses INSERT ... ON CONFLICT upsert (requires unique index from 0003_add_indexes.sql).
  */
 export async function aggregateModelCallStats(db: DB) {
   const now = Math.floor(Date.now() / 1000);
@@ -30,44 +31,27 @@ export async function aggregateModelCallStats(db: DB) {
     .where(and(gte(modelCalls.callTime, prevHourBucket), lt(modelCalls.callTime, hourBucket)))
     .groupBy(modelCalls.userDid, modelCalls.appDid);
 
+  // Upsert each aggregation row using ON CONFLICT (single SQL per row, no SELECT needed)
+  const nowIso = new Date().toISOString();
   for (const row of results) {
-    const stats = {
+    const stats = JSON.stringify({
       totalUsage: row.totalUsage,
       totalCredits: parseFloat(row.totalCredits || '0'),
       totalCalls: row.totalCalls,
       successCalls: row.successCalls,
       totalDuration: parseFloat(row.totalDuration || '0'),
       avgDuration: row.totalCalls > 0 ? parseFloat(row.totalDuration || '0') / row.totalCalls : 0,
-    };
+    });
 
-    // Upsert: check if stat already exists for this bucket
-    const existing = await db
-      .select()
-      .from(modelCallStats)
-      .where(
-        and(
-          eq(modelCallStats.userDid, row.userDid || ''),
-          eq(modelCallStats.appDid, row.appDid || ''),
-          eq(modelCallStats.timestamp, prevHourBucket),
-          eq(modelCallStats.timeType, 'hour')
-        )
-      )
-      .limit(1);
+    const userDid = row.userDid || '';
+    const appDid = row.appDid || '';
 
-    if (existing.length > 0) {
-      await db
-        .update(modelCallStats)
-        .set({ stats: JSON.stringify(stats), updatedAt: new Date().toISOString() })
-        .where(eq(modelCallStats.id, existing[0].id));
-    } else {
-      await db.insert(modelCallStats).values({
-        userDid: row.userDid,
-        appDid: row.appDid,
-        timestamp: prevHourBucket,
-        timeType: 'hour',
-        stats: JSON.stringify(stats),
-      });
-    }
+    await db.run(sql`
+      INSERT INTO ModelCallStats (id, userDid, appDid, timestamp, timeType, stats, createdAt, updatedAt)
+      VALUES (${crypto.randomUUID()}, ${userDid}, ${appDid}, ${prevHourBucket}, 'hour', ${stats}, ${nowIso}, ${nowIso})
+      ON CONFLICT (userDid, appDid, timestamp, timeType)
+      DO UPDATE SET stats = excluded.stats, updatedAt = excluded.updatedAt
+    `);
   }
 
   return { aggregated: results.length, bucket: prevHourBucket };
