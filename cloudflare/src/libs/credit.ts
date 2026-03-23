@@ -144,6 +144,119 @@ export async function grantCredits(
 }
 
 /**
+ * Pre-deduct estimated credits before a model call starts.
+ * Uses a conservative estimate based on max_tokens * outputRate.
+ * Returns a hold ID that must be settled after the call completes.
+ */
+export async function preDeductCredits(
+  db: DB,
+  userDid: string,
+  estimatedAmount: number,
+  meta: { model?: string }
+): Promise<{ success: boolean; holdAmount: number; balance: number }> {
+  // Ensure account exists
+  await getOrCreateAccount(db, userDid);
+
+  // Atomic deduction
+  const now = new Date().toISOString();
+  const result = await db.run(sql`
+    UPDATE ${creditAccounts}
+    SET balance = CAST(CAST(balance AS REAL) - ${estimatedAmount} AS TEXT),
+        totalUsed = CAST(CAST(totalUsed AS REAL) + ${estimatedAmount} AS TEXT),
+        updatedAt = ${now}
+    WHERE userDid = ${userDid}
+      AND CAST(balance AS REAL) >= ${estimatedAmount}
+  `);
+
+  const rowsAffected =
+    (result as { rowsWritten?: number; meta?: { changes?: number } }).rowsWritten ??
+    (result as { meta?: { changes?: number } }).meta?.changes ??
+    0;
+  if (rowsAffected === 0) {
+    const [account] = await db.select().from(creditAccounts).where(eq(creditAccounts.userDid, userDid)).limit(1);
+    return { success: false, holdAmount: 0, balance: account ? parseFloat(account.balance) : 0 };
+  }
+
+  const [updated] = await db.select().from(creditAccounts).where(eq(creditAccounts.userDid, userDid)).limit(1);
+  console.log(`[credit] pre-deduct ${estimatedAmount.toFixed(6)} for ${meta.model || 'unknown'} (user=${userDid})`);
+  return { success: true, holdAmount: estimatedAmount, balance: updated ? parseFloat(updated.balance) : 0 };
+}
+
+/**
+ * Settle a pre-deducted hold. Refunds the difference between estimated and actual usage.
+ * If actual > estimated (shouldn't normally happen), deducts the extra.
+ */
+export async function settleCredits(
+  db: DB,
+  userDid: string,
+  holdAmount: number,
+  actualAmount: number,
+  meta: { modelCallId?: string; model?: string }
+): Promise<{ balance: number }> {
+  const diff = holdAmount - actualAmount; // positive = refund, negative = extra charge
+
+  if (Math.abs(diff) > 0.000001) {
+    const now = new Date().toISOString();
+    if (diff > 0) {
+      // Refund excess
+      await db.run(sql`
+        UPDATE ${creditAccounts}
+        SET balance = CAST(CAST(balance AS REAL) + ${diff} AS TEXT),
+            totalUsed = CAST(CAST(totalUsed AS REAL) - ${diff} AS TEXT),
+            updatedAt = ${now}
+        WHERE userDid = ${userDid}
+      `);
+    } else {
+      // Extra charge (rare: actual exceeded estimate)
+      const extra = Math.abs(diff);
+      await db.run(sql`
+        UPDATE ${creditAccounts}
+        SET balance = CAST(CAST(balance AS REAL) - ${extra} AS TEXT),
+            totalUsed = CAST(CAST(totalUsed AS REAL) + ${extra} AS TEXT),
+            updatedAt = ${now}
+        WHERE userDid = ${userDid}
+      `);
+    }
+  }
+
+  // Read new balance for transaction record
+  const [updated] = await db.select().from(creditAccounts).where(eq(creditAccounts.userDid, userDid)).limit(1);
+  const newBalance = updated ? parseFloat(updated.balance) : 0;
+
+  // Record the actual usage transaction
+  await db.insert(creditTransactions).values({
+    userDid,
+    type: 'usage',
+    amount: (-actualAmount).toFixed(10),
+    balance: newBalance.toFixed(10),
+    description: `Model call: ${meta.model || 'unknown'}`,
+    modelCallId: meta.modelCallId,
+    model: meta.model,
+  });
+
+  console.log(
+    `[credit] settle hold=${holdAmount.toFixed(6)} actual=${actualAmount.toFixed(6)} diff=${diff.toFixed(6)} (user=${userDid})`
+  );
+  return { balance: newBalance };
+}
+
+/**
+ * Refund a pre-deducted hold entirely (call failed before any usage).
+ */
+export async function refundHold(db: DB, userDid: string, holdAmount: number): Promise<void> {
+  if (holdAmount <= 0) return;
+  const now = new Date().toISOString();
+  await db.run(sql`
+    UPDATE ${creditAccounts}
+    SET balance = CAST(CAST(balance AS REAL) + ${holdAmount} AS TEXT),
+        totalUsed = CAST(CAST(totalUsed AS REAL) - ${holdAmount} AS TEXT),
+        updatedAt = ${now}
+    WHERE userDid = ${userDid}
+  `);
+  console.log(`[credit] refund hold=${holdAmount.toFixed(6)} (user=${userDid})`);
+}
+
+/**
  * Get credit transactions for a user (paginated).
  */
 export async function getTransactions(

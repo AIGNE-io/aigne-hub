@@ -6,13 +6,16 @@ import {
   buildProviderHeaders,
   buildUpstreamUrl,
   calculateCredits,
+  estimateMaxCredits,
+  fromAnthropicResponse,
   fromGeminiResponse,
   recordModelCall,
   recordUsage,
   resolveProvider,
+  toAnthropicRequestBody,
   toGeminiRequestBody,
 } from '../libs/ai-proxy';
-import { deductCredits } from '../libs/credit';
+import { deductCredits, preDeductCredits, refundHold, settleCredits } from '../libs/credit';
 import type { HonoEnv } from '../worker';
 
 const routes = new Hono<HonoEnv>();
@@ -72,17 +75,46 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
     return c.json({ error: { message: `No available provider for model: ${body.model}` } }, 404);
   }
 
+  // Pre-deduct estimated credits
+  let holdAmount = 0;
+  if (userDid) {
+    // Rough estimate: ~4 chars per token for input, use max_tokens for output
+    const estimatedInputTokens = Math.ceil(JSON.stringify(body.messages).length / 4);
+    const maxOutputTokens = body.max_tokens || 4096;
+    const estimatedCredits = await estimateMaxCredits(db, provider.providerId, provider.modelName, {
+      estimatedInputTokens,
+      maxOutputTokens,
+    });
+
+    if (estimatedCredits > 0) {
+      const hold = await preDeductCredits(db, userDid, estimatedCredits, { model: provider.modelName });
+      if (!hold.success) {
+        return c.json({ error: { message: 'Insufficient credits', balance: hold.balance } }, 402);
+      }
+      holdAmount = hold.holdAmount;
+    }
+  }
+
   const isGoogle = provider.providerName === 'google';
+  const isAnthropic = provider.providerName === 'anthropic';
   const upstreamUrl = buildUpstreamUrl(provider, 'chat', { stream: body.stream });
   const headers = buildProviderHeaders(provider);
 
-  // Build upstream request body (Google Gemini uses different format)
+  // Build upstream request body (provider-specific formats)
   let upstreamBody: Record<string, unknown>;
   if (isGoogle) {
     upstreamBody = toGeminiRequestBody(body.messages, {
       maxTokens: body.max_tokens,
       temperature: body.temperature,
       topP: body.top_p,
+    });
+  } else if (isAnthropic) {
+    upstreamBody = toAnthropicRequestBody(body.messages, {
+      model: provider.modelName,
+      maxTokens: body.max_tokens,
+      temperature: body.temperature,
+      topP: body.top_p,
+      stream: body.stream,
     });
   } else {
     // OpenAI newer models (o-series, gpt-5) require max_completion_tokens instead of max_tokens
@@ -122,8 +154,15 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
         appDid,
         requestId,
         callTime: Math.floor(startTime / 1000),
-      });
+      }, c.env.AUTH_KV);
       if (waitUntil) waitUntil(failPromise);
+
+      // Refund pre-deducted credits on upstream error
+      if (userDid && holdAmount > 0) {
+        const refundPromise = refundHold(db, userDid, holdAmount);
+        if (waitUntil) waitUntil(refundPromise);
+        else await refundPromise;
+      }
 
       // Return upstream error detail for debugging
       let errorDetail = `Provider error: ${upstreamResponse.status}`;
@@ -152,6 +191,7 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
         const decoder = new TextDecoder();
         let usageData: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } | null = null;
         let sseBuffer = '';
+        let currentEvent = '';
 
         try {
           // eslint-disable-next-line no-constant-condition
@@ -174,6 +214,14 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
             sseBuffer = parts.pop() || '';
 
             for (const line of parts) {
+              // Track SSE event type (Anthropic uses event: lines before data: lines)
+              if (line.startsWith('event: ')) {
+                currentEvent = line.slice(7).trim();
+                // Anthropic: message_stop signals end of stream
+                if (isAnthropic && currentEvent === 'message_stop') break;
+                continue;
+              }
+
               if (line.startsWith('data: ') && line !== 'data: [DONE]') {
                 try {
                   const data = JSON.parse(line.slice(6));
@@ -191,6 +239,26 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
                         total_tokens: data.usageMetadata.totalTokenCount || 0,
                       };
                     }
+                  } else if (isAnthropic) {
+                    // Anthropic SSE: event-typed data lines
+                    if (currentEvent === 'content_block_delta' && data.delta?.text) {
+                      // eslint-disable-next-line no-await-in-loop
+                      await writable.write(data.delta.text);
+                    }
+                    if (currentEvent === 'message_start' && data.message?.usage) {
+                      usageData = {
+                        prompt_tokens: data.message.usage.input_tokens || 0,
+                        completion_tokens: 0,
+                        total_tokens: 0,
+                      };
+                    }
+                    if (currentEvent === 'message_delta' && data.usage) {
+                      usageData = {
+                        ...usageData,
+                        completion_tokens: data.usage.output_tokens || 0,
+                        total_tokens: (usageData?.prompt_tokens || 0) + (data.usage.output_tokens || 0),
+                      };
+                    }
                   } else {
                     // OpenAI SSE: choices[].delta.content
                     if (data.usage) {
@@ -202,6 +270,7 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
                       await writable.write(content);
                     }
                   }
+                  currentEvent = '';
                 } catch {
                   // ignore parse errors in stream
                 }
@@ -241,7 +310,7 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
             callTime: Math.floor(startTime / 1000),
             ttfb: providerTtfb?.toFixed(1),
             providerTtfb: providerTtfb?.toFixed(1),
-          }),
+          }, c.env.AUTH_KV),
           recordUsage(db, {
             promptTokens,
             completionTokens,
@@ -250,13 +319,17 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
             userDid,
             appId: appDid,
             usedCredits: credits.toFixed(10),
-          }),
+          }, c.env.AUTH_KV),
         ]);
         if (waitUntil) waitUntil(recordPromise);
 
-        // Deduct credits - must await for atomicity
-        if (userDid && credits > 0) {
-          await deductCredits(db, userDid, credits, { model: provider.modelName });
+        // Settle pre-deducted credits (refund difference)
+        if (userDid && holdAmount > 0) {
+          const settlePromise = settleCredits(db, userDid, holdAmount, credits, {
+            model: provider.modelName,
+          });
+          if (waitUntil) waitUntil(settlePromise);
+          else await settlePromise;
         }
       });
     }
@@ -264,14 +337,16 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
     // Non-streaming response
     providerTtfb = Date.now() - providerStartTime;
     const rawResponse = await upstreamResponse.json<Record<string, unknown>>();
-    // Convert Google Gemini response to OpenAI format
+    // Convert provider-specific response to OpenAI format
     const responseData = isGoogle
       ? fromGeminiResponse(rawResponse, provider.modelName)
-      : (rawResponse as {
-          choices?: Array<{ message?: { content?: string } }>;
-          usage?: { prompt_tokens?: number; completion_tokens?: number };
-          [key: string]: unknown;
-        });
+      : isAnthropic
+        ? fromAnthropicResponse(rawResponse, provider.modelName)
+        : (rawResponse as {
+            choices?: Array<{ message?: { content?: string } }>;
+            usage?: { prompt_tokens?: number; completion_tokens?: number };
+            [key: string]: unknown;
+          });
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(1);
     const promptTokens = responseData.usage?.prompt_tokens || 0;
@@ -301,7 +376,7 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
         callTime: Math.floor(startTime / 1000),
         ttfb: providerTtfb?.toFixed(1),
         providerTtfb: providerTtfb?.toFixed(1),
-      }),
+      }, c.env.AUTH_KV),
       recordUsage(db, {
         promptTokens,
         completionTokens,
@@ -310,13 +385,17 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
         userDid,
         appId: appDid,
         usedCredits: credits.toFixed(10),
-      }),
+      }, c.env.AUTH_KV),
     ]);
     if (waitUntil) waitUntil(recordPromise);
 
-    // Deduct credits - must await for atomicity
-    if (userDid && credits > 0) {
-      await deductCredits(db, userDid, credits, { model: provider.modelName });
+    // Settle pre-deducted credits (refund difference)
+    if (userDid && holdAmount > 0) {
+      const settlePromise = settleCredits(db, userDid, holdAmount, credits, {
+        model: provider.modelName,
+      });
+      if (waitUntil) waitUntil(settlePromise);
+      else await settlePromise;
     }
 
     return c.json({
@@ -341,8 +420,15 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
       appDid,
       requestId,
       callTime: Math.floor(startTime / 1000),
-    });
+    }, c.env.AUTH_KV);
     if (waitUntil) waitUntil(errPromise);
+
+    // Refund pre-deducted credits on error
+    if (userDid && holdAmount > 0) {
+      const refundPromise = refundHold(db, userDid, holdAmount);
+      if (waitUntil) waitUntil(refundPromise);
+      else await refundPromise;
+    }
 
     return c.json({ error: { message } }, 502);
   }
@@ -398,7 +484,7 @@ routes.post('/embeddings', async (c) => {
     duration,
     userDid,
     callTime: Math.floor(startTime / 1000),
-  });
+  }, c.env.AUTH_KV);
   if (ctx) ctx.waitUntil(p);
 
   if (userDid && credits > 0) {
@@ -458,7 +544,7 @@ routes.post('/images/generations', async (c) => {
     duration,
     userDid,
     callTime: Math.floor(startTime / 1000),
-  });
+  }, c.env.AUTH_KV);
   if (ctx) ctx.waitUntil(p);
 
   if (userDid && credits > 0) {
@@ -511,7 +597,7 @@ routes.post('/video/generations', async (c) => {
     duration,
     userDid,
     callTime: Math.floor(startTime / 1000),
-  });
+  }, c.env.AUTH_KV);
   if (ctx) ctx.waitUntil(p);
 
   return c.json(data);
@@ -585,7 +671,7 @@ routes.post('/models/:modelAndMethod', async (c) => {
       duration,
       userDid,
       callTime: Math.floor(startTime / 1000),
-    });
+    }, c.env.AUTH_KV);
     if (waitUntil) waitUntil(recordP);
 
     // Streaming: pipe through directly

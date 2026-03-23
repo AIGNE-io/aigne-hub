@@ -4,6 +4,7 @@ import type { drizzle } from 'drizzle-orm/d1';
 import { aiCredentials, aiModelRates, aiProviders, modelCalls, usages } from '../db/schema';
 import * as schema from '../db/schema';
 import { decryptCredential, isEncrypted } from './crypto';
+import { enqueueFailedWrite } from './retry-queue';
 
 // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
 type DB = ReturnType<typeof drizzle<typeof schema>> | ReturnType<typeof drizzle>;
@@ -227,7 +228,95 @@ export function fromGeminiResponse(geminiData: Record<string, unknown>, model: s
 }
 
 /**
+ * Convert OpenAI-format messages to Anthropic Messages API format.
+ * Key differences: system message must be a separate field, not in messages array.
+ */
+export function toAnthropicRequestBody(
+  messages: Array<{ role: string; content: string }>,
+  options: { model: string; maxTokens?: number; temperature?: number; topP?: number; stream?: boolean }
+) {
+  const systemMessages = messages.filter((m) => m.role === 'system');
+  const nonSystemMessages = messages.filter((m) => m.role !== 'system');
+
+  const body: Record<string, unknown> = {
+    model: options.model,
+    messages: nonSystemMessages.map((m) => ({ role: m.role, content: m.content })),
+    max_tokens: options.maxTokens || 4096,
+  };
+
+  if (systemMessages.length > 0) {
+    body.system = systemMessages.map((m) => m.content).join('\n');
+  }
+  if (options.temperature !== undefined) body.temperature = options.temperature;
+  if (options.topP !== undefined) body.top_p = options.topP;
+  if (options.stream) body.stream = true;
+
+  return body;
+}
+
+/**
+ * Convert Anthropic Messages API response to OpenAI-compatible format.
+ */
+export function fromAnthropicResponse(anthropicData: Record<string, unknown>, model: string) {
+  const content = anthropicData.content as Array<{ type: string; text?: string }> | undefined;
+  const text =
+    content
+      ?.filter((c) => c.type === 'text')
+      .map((c) => c.text || '')
+      .join('') || '';
+  const usage = anthropicData.usage as { input_tokens?: number; output_tokens?: number } | undefined;
+
+  return {
+    id: (anthropicData.id as string) || `anthropic-${Date.now()}`,
+    object: 'chat.completion',
+    created: Math.floor(Date.now() / 1000),
+    model,
+    choices: [
+      {
+        index: 0,
+        message: { role: 'assistant', content: text },
+        finish_reason: anthropicData.stop_reason === 'max_tokens' ? 'length' : 'stop',
+      },
+    ],
+    usage: {
+      prompt_tokens: usage?.input_tokens || 0,
+      completion_tokens: usage?.output_tokens || 0,
+      total_tokens: (usage?.input_tokens || 0) + (usage?.output_tokens || 0),
+    },
+  };
+}
+
+/**
+ * Estimate maximum credits for a model call (for pre-deduction).
+ * Uses inputRate * estimated input tokens + outputRate * max_tokens.
+ */
+export async function estimateMaxCredits(
+  db: DB,
+  providerId: string,
+  modelName: string,
+  params: { estimatedInputTokens?: number; maxOutputTokens?: number }
+): Promise<number> {
+  const [rate] = await db
+    .select()
+    .from(aiModelRates)
+    .where(and(eq(aiModelRates.providerId, providerId), eq(aiModelRates.model, modelName)))
+    .limit(1);
+
+  if (!rate) return 0;
+
+  const inputRate = parseFloat(rate.inputRate);
+  const outputRate = parseFloat(rate.outputRate);
+
+  // Estimate: input tokens from message length + max output tokens
+  const inputTokens = params.estimatedInputTokens || 1000;
+  const outputTokens = params.maxOutputTokens || 4096;
+
+  return inputTokens * inputRate + outputTokens * outputRate;
+}
+
+/**
  * Record a model call in D1 (fire-and-forget pattern).
+ * If kv is provided and the D1 write fails, the payload is stored in KV for later retry.
  */
 export async function recordModelCall(
   db: DB,
@@ -250,7 +339,8 @@ export async function recordModelCall(
     providerTtfb?: string;
     metadata?: unknown;
     traceId?: string;
-  }
+  },
+  kv?: KVNamespace
 ) {
   try {
     await db.insert(modelCalls).values({
@@ -260,8 +350,41 @@ export async function recordModelCall(
       metadata: data.metadata ? JSON.stringify(data.metadata) : null,
     });
   } catch (err) {
-    // Fire-and-forget: log but don't throw
     console.error('Failed to record model call:', err);
+    if (kv) {
+      try {
+        await enqueueFailedWrite(kv, {
+          table: 'ModelCalls',
+          operation: 'insert',
+          values: {
+            id: crypto.randomUUID(),
+            providerId: data.providerId,
+            model: data.model,
+            credentialId: data.credentialId,
+            type: data.type,
+            status: data.status,
+            totalUsage: data.totalUsage,
+            usageMetrics: data.usageMetrics ? JSON.stringify(data.usageMetrics) : null,
+            credits: data.credits,
+            duration: data.duration,
+            errorReason: data.errorReason || null,
+            userDid: data.userDid || null,
+            appDid: data.appDid || null,
+            requestId: data.requestId || null,
+            callTime: data.callTime,
+            ttfb: data.ttfb || null,
+            providerTtfb: data.providerTtfb || null,
+            metadata: data.metadata ? JSON.stringify(data.metadata) : null,
+            traceId: data.traceId || null,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+          lastError: err instanceof Error ? err.message : String(err),
+        });
+      } catch (kvErr) {
+        console.error('KV enqueue also failed:', kvErr);
+      }
+    }
   }
 }
 
@@ -316,6 +439,7 @@ export async function calculateCredits(
 
 /**
  * Record usage in the legacy Usages table.
+ * If kv is provided and the D1 write fails, the payload is stored in KV for later retry.
  */
 export async function recordUsage(
   db: DB,
@@ -330,11 +454,38 @@ export async function recordUsage(
     userDid?: string;
     appId?: string;
     usedCredits?: string;
-  }
+  },
+  kv?: KVNamespace
 ) {
   try {
     await db.insert(usages).values(data);
   } catch (err) {
     console.error('Failed to record usage:', err);
+    if (kv) {
+      try {
+        await enqueueFailedWrite(kv, {
+          table: 'Usages',
+          operation: 'insert',
+          values: {
+            id: crypto.randomUUID(),
+            promptTokens: data.promptTokens,
+            completionTokens: data.completionTokens,
+            cacheCreationInputTokens: data.cacheCreationInputTokens || 0,
+            cacheReadInputTokens: data.cacheReadInputTokens || 0,
+            numberOfImageGeneration: data.numberOfImageGeneration || 0,
+            type: data.type || null,
+            model: data.model || null,
+            userDid: data.userDid || null,
+            appId: data.appId || null,
+            usedCredits: data.usedCredits || null,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+          lastError: err instanceof Error ? err.message : String(err),
+        });
+      } catch (kvErr) {
+        console.error('KV enqueue also failed:', kvErr);
+      }
+    }
   }
 }

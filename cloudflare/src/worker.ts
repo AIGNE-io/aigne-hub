@@ -7,6 +7,7 @@ import { cors } from 'hono/cors';
 // Cron handlers
 import { archiveOldRecords } from './crons/archive';
 import { aggregateModelCallStats } from './crons/model-call-stats';
+import { processRetryQueue } from './libs/retry-queue';
 import * as schema from './db/schema';
 // Auth middleware
 import { buildAuthConfig, loadUser } from './middleware/auth';
@@ -169,9 +170,14 @@ async function scheduled(event: ScheduledEvent, env: Env, _ctx: ExecutionContext
     case '0 * * * *':
       await aggregateModelCallStats(db);
       break;
-    case '*/30 * * * *':
-      // TODO: model-rate-check (fetch pricing from provider sources)
+    case '*/30 * * * *': {
+      // Process retry queue for failed D1 writes
+      const stats = await processRetryQueue(env.AUTH_KV, env.DB);
+      if (stats.processed > 0) {
+        console.log('Retry queue processed:', stats);
+      }
       break;
+    }
     case '0 2 * * *':
       await archiveOldRecords(db);
       break;
