@@ -3,6 +3,7 @@ import type { Context } from 'hono';
 import { Hono } from 'hono';
 
 import { aiCredentials, aiModelRateHistories, aiModelRates, aiModelStatuses, aiProviders } from '../db/schema';
+import { decryptCredential, encryptCredential, isEncrypted } from '../libs/crypto';
 import type { HonoEnv } from '../worker';
 
 type ModelRateType = 'chatCompletion' | 'embedding' | 'imageGeneration' | 'video';
@@ -122,7 +123,14 @@ routes.get('/test-models', async (c) => {
         }
 
         const credValue = cred.credentialValue as Record<string, string> | string;
-        const apiKey = typeof credValue === 'object' && credValue !== null ? credValue.api_key || '' : String(credValue);
+        const encryptionKey = c.env.CREDENTIAL_ENCRYPTION_KEY;
+        let apiKey: string;
+        if (encryptionKey && typeof credValue === 'string' && isEncrypted(credValue)) {
+          const decrypted = (await decryptCredential(credValue, encryptionKey)) as Record<string, string> | string;
+          apiKey = typeof decrypted === 'object' && decrypted !== null ? decrypted.api_key || '' : String(decrypted);
+        } else {
+          apiKey = typeof credValue === 'object' && credValue !== null ? credValue.api_key || '' : String(credValue);
+        }
 
         if (!apiKey) {
           return { ...rate, available: false, error: { code: 'NO_API_KEY', message: 'Credential has no api_key' } };
@@ -460,13 +468,16 @@ routes.post('/:providerId/credentials', async (c) => {
     return c.json({ error: 'Provider not found' }, 404);
   }
 
-  // TODO: encrypt credentialValue before storing
+  // Encrypt credential before storing
+  const encryptionKey = c.env.CREDENTIAL_ENCRYPTION_KEY;
+  const valueToStore = encryptionKey ? await encryptCredential(body.value, encryptionKey) : body.value;
+
   const [credential] = await db
     .insert(aiCredentials)
     .values({
       providerId,
       name: body.name,
-      credentialValue: body.value,
+      credentialValue: valueToStore,
       credentialType: (body.credentialType as 'api_key' | 'access_key_pair' | 'custom') || 'api_key',
     })
     .returning();
@@ -495,7 +506,10 @@ routes.put('/:providerId/credentials/:credentialId', async (c) => {
 
   const updates: Record<string, unknown> = { updatedAt: new Date().toISOString() };
   if (body.name !== undefined) updates.name = body.name;
-  if (body.value !== undefined) updates.credentialValue = body.value;
+  if (body.value !== undefined) {
+    const encryptionKey = c.env.CREDENTIAL_ENCRYPTION_KEY;
+    updates.credentialValue = encryptionKey ? await encryptCredential(body.value, encryptionKey) : body.value;
+  }
   if (body.active !== undefined) updates.active = body.active;
   if (body.weight !== undefined) updates.weight = body.weight;
 

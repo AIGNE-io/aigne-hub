@@ -15,6 +15,7 @@ id = "local"
 [vars]
 ENVIRONMENT = "development"
 BASE_URL = "http://localhost:8787"
+# CREDENTIAL_ENCRYPTION_KEY must be set via: wrangler secret put CREDENTIAL_ENCRYPTION_KEY
 
 [triggers]
 crons = [
@@ -30,10 +31,20 @@ name = "aigne-hub-staging"
 [[env.staging.d1_databases]]
 binding = "DB"
 database_name = "aigne-hub-staging"
-database_id = "TODO"
+database_id = "5d0d4eb5-d31f-4e08-acac-721a022198f3"
+
+[[env.staging.kv_namespaces]]
+binding = "AUTH_KV"
+id = "5ddf33756351411db3ef31294b8b3db3"
+
+[env.staging.assets]
+directory = "frontend/dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
 
 [env.staging.vars]
 ENVIRONMENT = "staging"
+BASE_URL = "https://aigne-hub-staging.zhuzhuyule-779.workers.dev"
 
 # --- Production ---
 [env.production]
@@ -42,7 +53,17 @@ name = "aigne-hub-production"
 [[env.production.d1_databases]]
 binding = "DB"
 database_name = "aigne-hub-production"
-database_id = "TODO"
+database_id = "624c2a67-39d3-49b7-be41-1d9a59de3645"
+
+[[env.production.kv_namespaces]]
+binding = "AUTH_KV"
+id = "7ea86243a879402aa703f6c35e4ade0a"
+
+[env.production.assets]
+directory = "frontend/dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
 
 [env.production.vars]
 ENVIRONMENT = "production"
+BASE_URL = "https://aigne-hub.arcblock.io"

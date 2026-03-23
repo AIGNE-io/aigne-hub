@@ -33,6 +33,8 @@ export type Env = {
   BASE_URL: string;
   BLOCKLET_SERVER_ORIGIN?: string;
   PAYMENT_WEBHOOK_SECRET?: string;
+  CREDENTIAL_ENCRYPTION_KEY?: string;
+  ASSETS?: { fetch: (req: Request) => Promise<Response> };
 };
 
 export type Variables = {
@@ -80,12 +82,15 @@ app.get('/api/health', async (c) => {
 });
 
 // Dev-only: mock login endpoint (creates a session cookie without OAuth)
+// Admin requires ?token=AUTH_SECRET; without token defaults to member
 app.get('/auth/dev-login', async (c) => {
   if (c.env.ENVIRONMENT === 'production') {
     return c.json({ error: 'Not available in production' }, 403);
   }
   const authConfig = buildAuthConfig(c.env);
-  const role = (c.req.query('role') as 'admin' | 'member') || 'admin';
+  const adminToken = c.req.query('token');
+  const isAdmin = adminToken && adminToken === c.env.AUTH_SECRET;
+  const role = isAdmin ? 'admin' : 'member';
   const token = await createSession(
     {
       id: `dev:${role}`,
@@ -136,18 +141,17 @@ app.notFound(async (c) => {
   if (c.req.path.startsWith('/api/') || c.req.path.startsWith('/auth/')) {
     return c.json({ error: 'Not Found' }, 404);
   }
-  // For non-API routes, try serving as SPA (requires Workers Sites or ASSETS binding)
-  try {
-    const env = c.env as Env & { ASSETS?: { fetch: (req: Request | string) => Promise<Response> } };
-    if (env.ASSETS) {
-      const asset = await env.ASSETS.fetch(new Request(new URL('/index.html', c.req.url)));
+  // For non-API routes, serve SPA index.html via ASSETS binding
+  if (c.env.ASSETS) {
+    try {
+      const asset = await c.env.ASSETS.fetch(new Request(new URL('/index.html', c.req.url)));
       return new Response(asset.body, {
         status: 200,
         headers: { 'content-type': 'text/html; charset=utf-8' },
       });
+    } catch {
+      // ASSETS fetch failed
     }
-  } catch {
-    // ASSETS not available
   }
   return c.json({ error: 'Not Found' }, 404);
 });

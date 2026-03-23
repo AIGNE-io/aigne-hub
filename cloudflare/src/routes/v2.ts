@@ -6,9 +6,11 @@ import {
   buildProviderHeaders,
   buildUpstreamUrl,
   calculateCredits,
+  fromGeminiResponse,
   recordModelCall,
   recordUsage,
   resolveProvider,
+  toGeminiRequestBody,
 } from '../libs/ai-proxy';
 import { deductCredits } from '../libs/credit';
 import type { HonoEnv } from '../worker';
@@ -57,6 +59,7 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
   // Support `prompt` field (legacy) — convert to `messages` format
   if (!body.messages?.length && (body as { prompt?: string }).prompt) {
     body.messages = [{ role: 'user', content: (body as { prompt?: string }).prompt! }];
+    delete (body as { prompt?: string }).prompt; // Remove legacy field before forwarding
   }
 
   if (!body.messages?.length) {
@@ -64,19 +67,31 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
   }
 
   // Resolve provider
-  const provider = await resolveProvider(db, body.model);
+  const provider = await resolveProvider(db, body.model, c.env.CREDENTIAL_ENCRYPTION_KEY);
   if (!provider) {
     return c.json({ error: { message: `No available provider for model: ${body.model}` } }, 404);
   }
 
-  const upstreamUrl = buildUpstreamUrl(provider, 'chat');
+  const isGoogle = provider.providerName === 'google';
+  const upstreamUrl = buildUpstreamUrl(provider, 'chat', { stream: body.stream });
   const headers = buildProviderHeaders(provider);
 
-  // Build upstream request body
-  const upstreamBody = {
-    ...body,
-    model: provider.modelName,
-  };
+  // Build upstream request body (Google Gemini uses different format)
+  let upstreamBody: Record<string, unknown>;
+  if (isGoogle) {
+    upstreamBody = toGeminiRequestBody(body.messages, {
+      maxTokens: body.max_tokens,
+      temperature: body.temperature,
+      topP: body.top_p,
+    });
+  } else {
+    // OpenAI newer models (o-series, gpt-5) require max_completion_tokens instead of max_tokens
+    const { max_tokens, ...rest } = body;
+    upstreamBody = { ...rest, model: provider.modelName };
+    if (max_tokens) {
+      upstreamBody.max_completion_tokens = max_tokens;
+    }
+  }
 
   let providerTtfb: number | undefined;
   const providerStartTime = Date.now();
@@ -110,8 +125,16 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
       });
       if (waitUntil) waitUntil(failPromise);
 
+      // Return upstream error detail for debugging
+      let errorDetail = `Provider error: ${upstreamResponse.status}`;
+      try {
+        const parsed = JSON.parse(errorBody);
+        errorDetail = parsed.error?.message || parsed.message || errorDetail;
+      } catch {
+        errorDetail = errorBody.substring(0, 500) || errorDetail;
+      }
       return c.json(
-        { error: { message: `Provider error: ${upstreamResponse.status}`, status: upstreamResponse.status } },
+        { error: { message: errorDetail, status: upstreamResponse.status, upstream: upstreamUrl } },
         upstreamResponse.status as 400
       );
     }
@@ -140,6 +163,11 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
             const chunk = decoder.decode(value, { stream: true });
             sseBuffer += chunk;
 
+            // Guard against unbounded buffer growth (e.g. upstream sends no newlines)
+            if (sseBuffer.length > 1_000_000) {
+              sseBuffer = sseBuffer.slice(-10_000);
+            }
+
             // Process complete SSE lines from buffer
             const parts = sseBuffer.split('\n');
             // Keep the last incomplete line in the buffer
@@ -149,14 +177,30 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
               if (line.startsWith('data: ') && line !== 'data: [DONE]') {
                 try {
                   const data = JSON.parse(line.slice(6));
-                  if (data.usage) {
-                    usageData = data.usage;
-                  }
-                  // Extract text content from SSE and write as plain text
-                  const content = data.choices?.[0]?.delta?.content;
-                  if (content) {
-                    // eslint-disable-next-line no-await-in-loop
-                    await writable.write(content);
+                  if (isGoogle) {
+                    // Google Gemini SSE: candidates[].content.parts[].text
+                    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (text) {
+                      // eslint-disable-next-line no-await-in-loop
+                      await writable.write(text);
+                    }
+                    if (data.usageMetadata) {
+                      usageData = {
+                        prompt_tokens: data.usageMetadata.promptTokenCount || 0,
+                        completion_tokens: data.usageMetadata.candidatesTokenCount || 0,
+                        total_tokens: data.usageMetadata.totalTokenCount || 0,
+                      };
+                    }
+                  } else {
+                    // OpenAI SSE: choices[].delta.content
+                    if (data.usage) {
+                      usageData = data.usage;
+                    }
+                    const content = data.choices?.[0]?.delta?.content;
+                    if (content) {
+                      // eslint-disable-next-line no-await-in-loop
+                      await writable.write(content);
+                    }
                   }
                 } catch {
                   // ignore parse errors in stream
@@ -219,11 +263,15 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
 
     // Non-streaming response
     providerTtfb = Date.now() - providerStartTime;
-    const responseData = await upstreamResponse.json<{
-      choices?: Array<{ message?: { content?: string } }>;
-      usage?: { prompt_tokens?: number; completion_tokens?: number };
-      [key: string]: unknown;
-    }>();
+    const rawResponse = await upstreamResponse.json<Record<string, unknown>>();
+    // Convert Google Gemini response to OpenAI format
+    const responseData = isGoogle
+      ? fromGeminiResponse(rawResponse, provider.modelName)
+      : (rawResponse as {
+          choices?: Array<{ message?: { content?: string } }>;
+          usage?: { prompt_tokens?: number; completion_tokens?: number };
+          [key: string]: unknown;
+        });
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(1);
     const promptTokens = responseData.usage?.prompt_tokens || 0;
@@ -311,7 +359,7 @@ routes.post('/embeddings', async (c) => {
     return c.json({ error: { message: 'model and input are required' } }, 400);
   }
 
-  const provider = await resolveProvider(db, body.model);
+  const provider = await resolveProvider(db, body.model, c.env.CREDENTIAL_ENCRYPTION_KEY);
   if (!provider) {
     return c.json({ error: { message: `No available provider for model: ${body.model}` } }, 404);
   }
@@ -371,7 +419,7 @@ routes.post('/images/generations', async (c) => {
     return c.json({ error: { message: 'model and prompt are required' } }, 400);
   }
 
-  const provider = await resolveProvider(db, body.model);
+  const provider = await resolveProvider(db, body.model, c.env.CREDENTIAL_ENCRYPTION_KEY);
   if (!provider) {
     return c.json({ error: { message: `No available provider for model: ${body.model}` } }, 404);
   }
@@ -431,7 +479,7 @@ routes.post('/video/generations', async (c) => {
     return c.json({ error: { message: 'model and prompt are required' } }, 400);
   }
 
-  const provider = await resolveProvider(db, body.model);
+  const provider = await resolveProvider(db, body.model, c.env.CREDENTIAL_ENCRYPTION_KEY);
   if (!provider) {
     return c.json({ error: { message: `No available provider for model: ${body.model}` } }, 404);
   }
@@ -467,6 +515,101 @@ routes.post('/video/generations', async (c) => {
   if (ctx) ctx.waitUntil(p);
 
   return c.json(data);
+});
+
+// ============================================================
+// Gemini Native API — transparent proxy (no format conversion)
+// POST /api/v2/models/:model::method (e.g. :generateContent, :streamGenerateContent)
+// ============================================================
+routes.post('/models/:modelAndMethod', async (c) => {
+  const db = c.get('db');
+  const waitUntil = getWaitUntil(c);
+  const startTime = Date.now();
+  const userDid = (c.get('user') as { id?: string } | undefined)?.id || '';
+
+  // Parse "gemini-3-flash-preview:generateContent" or "gemini-3-flash-preview:streamGenerateContent"
+  const param = c.req.param('modelAndMethod');
+  const colonIdx = param.lastIndexOf(':');
+  if (colonIdx === -1) {
+    return c.json({ error: { message: 'Invalid format. Use /models/{model}:{method}' } }, 400);
+  }
+  const modelName = param.substring(0, colonIdx);
+  const method = param.substring(colonIdx + 1);
+  const isStream = method === 'streamGenerateContent';
+
+  // Resolve provider (must be google)
+  const provider = await resolveProvider(db, modelName, c.env.CREDENTIAL_ENCRYPTION_KEY);
+  if (!provider) {
+    return c.json({ error: { message: `No available provider for model: ${modelName}` } }, 404);
+  }
+
+  if (provider.providerName !== 'google') {
+    return c.json({ error: { message: 'Gemini API only supports Google models' } }, 400);
+  }
+
+  // Build Google API URL
+  const baseUrl = provider.baseUrl.replace(/\/+$/, '');
+  const queryParams = isStream
+    ? `alt=sse&key=${provider.apiKey}`
+    : `key=${provider.apiKey}`;
+  const upstreamUrl = `${baseUrl}/models/${provider.modelName}:${method}?${queryParams}`;
+
+  // Forward request body as-is (Gemini native format)
+  const body = await c.req.text();
+
+  try {
+    const upstreamResponse = await fetch(upstreamUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+    });
+
+    if (!upstreamResponse.ok) {
+      const errorText = await upstreamResponse.text();
+      return new Response(errorText, {
+        status: upstreamResponse.status,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Record call
+    const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+    const recordP = recordModelCall(db, {
+      providerId: provider.providerId,
+      model: provider.modelName,
+      credentialId: provider.credentialId,
+      type: 'chatCompletion',
+      status: 'success',
+      totalUsage: 0,
+      credits: '0',
+      duration,
+      userDid,
+      callTime: Math.floor(startTime / 1000),
+    });
+    if (waitUntil) waitUntil(recordP);
+
+    // Streaming: pipe through directly
+    if (isStream && upstreamResponse.body) {
+      return new Response(upstreamResponse.body, {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          Connection: 'keep-alive',
+        },
+      });
+    }
+
+    // Non-streaming: return as-is
+    const responseBody = await upstreamResponse.text();
+    return new Response(responseBody, {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Proxy error';
+    return c.json({ error: { message } }, 502);
+  }
 });
 
 export default routes;

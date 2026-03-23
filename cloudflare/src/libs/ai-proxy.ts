@@ -3,6 +3,7 @@ import type { drizzle } from 'drizzle-orm/d1';
 
 import { aiCredentials, aiModelRates, aiProviders, modelCalls, usages } from '../db/schema';
 import * as schema from '../db/schema';
+import { decryptCredential, isEncrypted } from './crypto';
 
 // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
 type DB = ReturnType<typeof drizzle<typeof schema>> | ReturnType<typeof drizzle>;
@@ -20,7 +21,7 @@ export interface ResolvedProvider {
  * Resolve provider + credential for a given model name.
  * Model format: "provider/model" or just "model" (picks first available provider).
  */
-export async function resolveProvider(db: DB, model: string): Promise<ResolvedProvider | null> {
+export async function resolveProvider(db: DB, model: string, encryptionKey?: string): Promise<ResolvedProvider | null> {
   // Try to parse provider/model format
   const parts = model.split('/');
   let providerName: string | undefined;
@@ -71,10 +72,18 @@ export async function resolveProvider(db: DB, model: string): Promise<ResolvedPr
     }
   }
 
-  // Decrypt credential (TODO: proper encryption)
+  // Decrypt credential
   let apiKey = '';
   const credValue = selectedCred.credentialValue as Record<string, string> | string;
-  if (typeof credValue === 'object' && credValue !== null) {
+  if (encryptionKey && typeof credValue === 'string' && isEncrypted(credValue)) {
+    // Encrypted credential
+    const decrypted = (await decryptCredential(credValue, encryptionKey)) as Record<string, string> | string;
+    if (typeof decrypted === 'object' && decrypted !== null) {
+      apiKey = decrypted.api_key || '';
+    } else {
+      apiKey = String(decrypted);
+    }
+  } else if (typeof credValue === 'object' && credValue !== null) {
     apiKey = credValue.api_key || '';
   } else {
     apiKey = String(credValue);
@@ -112,6 +121,8 @@ export function buildProviderHeaders(provider: ResolvedProvider): Record<string,
   if (provider.providerName === 'anthropic') {
     headers['x-api-key'] = provider.apiKey;
     headers['anthropic-version'] = '2023-06-01';
+  } else if (provider.providerName === 'google') {
+    // Google Gemini native API uses key in URL query, no auth header needed
   } else {
     headers.Authorization = `Bearer ${provider.apiKey}`;
   }
@@ -122,12 +133,27 @@ export function buildProviderHeaders(provider: ResolvedProvider): Record<string,
 /**
  * Build the upstream API URL for a given call type.
  */
-export function buildUpstreamUrl(provider: ResolvedProvider, callType: string): string {
+export function buildUpstreamUrl(
+  provider: ResolvedProvider,
+  callType: string,
+  options?: { stream?: boolean }
+): string {
   const { baseUrl } = provider;
 
   if (provider.providerName === 'anthropic') {
-    if (callType === 'chat') return `${baseUrl}/messages`;
     return `${baseUrl}/messages`;
+  }
+
+  if (provider.providerName === 'google') {
+    const base = baseUrl.replace(/\/+$/, '');
+    const method = options?.stream ? 'streamGenerateContent' : 'generateContent';
+    const params = options?.stream
+      ? `alt=sse&key=${provider.apiKey}`
+      : `key=${provider.apiKey}`;
+    if (callType === 'embedding') {
+      return `${base}/models/${provider.modelName}:embedContent?key=${provider.apiKey}`;
+    }
+    return `${base}/models/${provider.modelName}:${method}?${params}`;
   }
 
   switch (callType) {
@@ -140,6 +166,64 @@ export function buildUpstreamUrl(provider: ResolvedProvider, callType: string): 
     default:
       return `${baseUrl}/chat/completions`;
   }
+}
+
+/**
+ * Convert OpenAI-format messages to Google Gemini format.
+ */
+export function toGeminiRequestBody(
+  messages: Array<{ role: string; content: string }>,
+  options: { maxTokens?: number; temperature?: number; topP?: number }
+) {
+  const contents = messages.map((m) => ({
+    role: m.role === 'assistant' ? 'model' : 'user',
+    parts: [{ text: m.content }],
+  }));
+
+  const body: Record<string, unknown> = { contents };
+  const generationConfig: Record<string, unknown> = {};
+  if (options.maxTokens) generationConfig.maxOutputTokens = options.maxTokens;
+  if (options.temperature !== undefined) generationConfig.temperature = options.temperature;
+  if (options.topP !== undefined) generationConfig.topP = options.topP;
+  if (Object.keys(generationConfig).length > 0) body.generationConfig = generationConfig;
+
+  return body;
+}
+
+/**
+ * Convert Google Gemini response to OpenAI-compatible format.
+ */
+export function fromGeminiResponse(geminiData: Record<string, unknown>, model: string) {
+  const candidates = geminiData.candidates as Array<{
+    content?: { parts?: Array<{ text?: string }> };
+    finishReason?: string;
+  }> | undefined;
+
+  const text = candidates?.[0]?.content?.parts?.map((p) => p.text || '').join('') || '';
+  const usage = geminiData.usageMetadata as {
+    promptTokenCount?: number;
+    candidatesTokenCount?: number;
+    totalTokenCount?: number;
+  } | undefined;
+
+  return {
+    id: (geminiData.responseId as string) || `gemini-${Date.now()}`,
+    object: 'chat.completion',
+    created: Math.floor(Date.now() / 1000),
+    model,
+    choices: [
+      {
+        index: 0,
+        message: { role: 'assistant', content: text },
+        finish_reason: candidates?.[0]?.finishReason === 'MAX_TOKENS' ? 'length' : 'stop',
+      },
+    ],
+    usage: {
+      prompt_tokens: usage?.promptTokenCount || 0,
+      completion_tokens: usage?.candidatesTokenCount || 0,
+      total_tokens: usage?.totalTokenCount || 0,
+    },
+  };
 }
 
 /**
