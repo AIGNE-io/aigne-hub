@@ -10,6 +10,7 @@ import {
   recordUsage,
   resolveProvider,
 } from '../libs/ai-proxy';
+import { deductCredits } from '../libs/credit';
 import type { HonoEnv } from '../worker';
 
 const routes = new Hono<HonoEnv>();
@@ -199,6 +200,11 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
           appId: appDid,
           usedCredits: credits.toFixed(10),
         });
+
+        // Deduct credits from user account
+        if (userDid && credits > 0) {
+          deductCredits(db, userDid, credits, { model: provider.modelName });
+        }
       });
     }
 
@@ -248,6 +254,11 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
       appId: appDid,
       usedCredits: credits.toFixed(10),
     });
+
+    // Deduct credits from user account
+    if (userDid && credits > 0) {
+      deductCredits(db, userDid, credits, { model: provider.modelName });
+    }
 
     return c.json({
       ...responseData,

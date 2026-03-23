@@ -316,3 +316,48 @@ export const archiveExecutionLogs = sqliteTable('ArchiveExecutionLogs', {
     .notNull()
     .default(sql`(datetime('now'))`),
 });
+
+// ============================================================
+// 12. CreditAccounts - User credit balance
+// ============================================================
+export const creditAccounts = sqliteTable('CreditAccounts', {
+  userDid: text('userDid').primaryKey(),
+  balance: text('balance').notNull().default('0'), // text for DECIMAL precision
+  totalGranted: text('totalGranted').notNull().default('0'),
+  totalUsed: text('totalUsed').notNull().default('0'),
+  createdAt: text('createdAt')
+    .notNull()
+    .default(sql`(datetime('now'))`),
+  updatedAt: text('updatedAt')
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
+// ============================================================
+// 13. CreditTransactions - Credit usage/grant ledger
+// ============================================================
+export const creditTransactions = sqliteTable(
+  'CreditTransactions',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userDid: text('userDid').notNull(),
+    type: text('type', { enum: ['grant', 'usage', 'refund', 'adjustment'] }).notNull(),
+    amount: text('amount').notNull(), // positive for grant, negative for usage
+    balance: text('balance').notNull(), // balance after this transaction
+    description: text('description'),
+    modelCallId: text('modelCallId'),
+    model: text('model'),
+    grantSource: text('grantSource'), // 'admin', 'payment', 'promotion'
+    paymentId: text('paymentId'),
+    createdAt: text('createdAt')
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (table) => [
+    index('idx_credit_tx_user').on(table.userDid),
+    index('idx_credit_tx_type').on(table.type),
+    index('idx_credit_tx_created').on(table.createdAt),
+  ]
+);
