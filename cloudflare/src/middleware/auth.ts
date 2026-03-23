@@ -31,7 +31,7 @@ export function buildAuthConfig(env: Env): AuthConfig {
     providers,
     session: {
       kvBinding: env.AUTH_KV,
-      secret: env.AUTH_SECRET || 'dev-secret-change-me',
+      secret: env.AUTH_SECRET || (env.ENVIRONMENT === 'production' ? (() => { throw new Error('AUTH_SECRET must be set in production'); })() : 'dev-secret-change-me'),
       maxAge: 7 * 24 * 60 * 60,
     },
     d1Binding: env.DB,
@@ -85,18 +85,21 @@ export function loadUser(env: Env) {
     }
 
     // 3. Fallback: dev header-based auth (x-user-did + x-user-role)
-    const did = c.req.header('x-user-did');
-    if (did) {
-      c.set('user', {
-        id: did,
-        email: '',
-        name: did,
-        provider: 'google',
-        providerId: did,
-        role: (c.req.header('x-user-role') as 'admin' | 'member') || 'member',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      } as AuthUser);
+    // SECURITY: only allow in non-production environments
+    if (env.ENVIRONMENT !== 'production') {
+      const did = c.req.header('x-user-did');
+      if (did) {
+        c.set('user', {
+          id: did,
+          email: '',
+          name: did,
+          provider: 'google',
+          providerId: did,
+          role: (c.req.header('x-user-role') as 'admin' | 'member') || 'member',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        } as AuthUser);
+      }
     }
 
     // 4. Dev fallback: auto-inject mock admin when no auth is present

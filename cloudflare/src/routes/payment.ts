@@ -38,16 +38,45 @@ routes.post('/grant', async (c) => {
   return c.json({ success: true, balance: result.balance });
 });
 
-// POST /api/payment/webhook - Payment Kit webhook (mock)
-// In production, this would validate Stripe/Payment Kit signatures
+// POST /api/payment/webhook - Payment Kit webhook
+// Validates webhook signature via HMAC-SHA256 shared secret
 routes.post('/webhook', async (c) => {
+  // Verify webhook signature in production
+  const webhookSecret = c.env.PAYMENT_WEBHOOK_SECRET;
+  if (c.env.ENVIRONMENT === 'production') {
+    if (!webhookSecret) {
+      return c.json({ error: 'Webhook not configured' }, 503);
+    }
+    const signature = c.req.header('x-webhook-signature');
+    if (!signature) {
+      return c.json({ error: 'Missing signature' }, 401);
+    }
+    const rawBody = await c.req.text();
+    const encoder = new TextEncoder();
+    const key = await crypto.subtle.importKey('raw', encoder.encode(webhookSecret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    const sig = await crypto.subtle.sign('HMAC', key, encoder.encode(rawBody));
+    const expected = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('');
+    if (signature !== expected) {
+      return c.json({ error: 'Invalid signature' }, 401);
+    }
+    // Re-parse body from raw text
+    const body = JSON.parse(rawBody);
+    if (body.event === 'payment.completed' && body.data) {
+      const db = c.get('db');
+      await grantCredits(db, body.data.userDid, body.data.amount, {
+        source: 'payment',
+        paymentId: body.data.paymentId,
+        description: `Payment: ${body.data.amount} credits`,
+      });
+      return c.json({ received: true });
+    }
+    return c.json({ received: true, ignored: true });
+  }
+
+  // Non-production: accept without signature
   const body = await c.req.json<{
     event: string;
-    data: {
-      userDid: string;
-      amount: number;
-      paymentId: string;
-    };
+    data: { userDid: string; amount: number; paymentId: string };
   }>();
 
   if (body.event === 'payment.completed' && body.data) {
@@ -81,6 +110,7 @@ routes.all('/*', async (c) => {
       method: c.req.method,
       headers,
       body: c.req.method !== 'GET' && c.req.method !== 'HEAD' ? c.req.raw.body : undefined,
+      signal: AbortSignal.timeout(15000),
     });
 
     const responseHeaders = new Headers(response.headers);
