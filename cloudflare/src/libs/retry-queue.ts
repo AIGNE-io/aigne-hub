@@ -4,6 +4,8 @@
  * A cron job periodically retries these failed writes.
  */
 
+import { logger } from './logger';
+
 export interface FailedWrite {
   table: string;
   operation: 'insert';
@@ -63,7 +65,7 @@ export async function processRetryQueue(
     }
 
     if (entry.retryCount >= MAX_RETRIES) {
-      console.error(`Abandoning failed write after ${MAX_RETRIES} retries:`, entry);
+      logger.error(`Abandoning failed write after ${MAX_RETRIES} retries`, { table: entry.table, lastError: entry.lastError });
       await kv.delete(key.name);
       stats.abandoned++;
       continue;

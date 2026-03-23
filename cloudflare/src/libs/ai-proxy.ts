@@ -4,6 +4,7 @@ import type { drizzle } from 'drizzle-orm/d1';
 import { aiCredentials, aiModelRates, aiProviders, modelCalls, usages } from '../db/schema';
 import * as schema from '../db/schema';
 import { decryptCredential, isEncrypted } from './crypto';
+import { logger } from './logger';
 import { enqueueFailedWrite } from './retry-queue';
 
 // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
@@ -16,6 +17,7 @@ export interface ResolvedProvider {
   credentialId: string;
   apiKey: string;
   baseUrl: string;
+  apiFormat: string; // 'openai' | 'anthropic' | 'gemini'
 }
 
 /**
@@ -97,6 +99,7 @@ export async function resolveProvider(db: DB, model: string, encryptionKey?: str
     credentialId: selectedCred.id,
     apiKey,
     baseUrl: selected.provider.baseUrl || getDefaultBaseUrl(selected.provider.name),
+    apiFormat: selected.provider.apiFormat || getDefaultApiFormat(selected.provider.name),
   };
 }
 
@@ -111,6 +114,14 @@ function getDefaultBaseUrl(providerName: string): string {
   return defaults[providerName] || 'https://api.openai.com/v1';
 }
 
+function getDefaultApiFormat(providerName: string): string {
+  const formats: Record<string, string> = {
+    anthropic: 'anthropic',
+    google: 'gemini',
+  };
+  return formats[providerName] || 'openai';
+}
+
 /**
  * Build provider-specific request headers.
  */
@@ -119,10 +130,10 @@ export function buildProviderHeaders(provider: ResolvedProvider): Record<string,
     'Content-Type': 'application/json',
   };
 
-  if (provider.providerName === 'anthropic') {
+  if (provider.apiFormat === 'anthropic') {
     headers['x-api-key'] = provider.apiKey;
     headers['anthropic-version'] = '2023-06-01';
-  } else if (provider.providerName === 'google') {
+  } else if (provider.apiFormat === 'gemini') {
     // Google Gemini native API uses key in URL query, no auth header needed
   } else {
     headers.Authorization = `Bearer ${provider.apiKey}`;
@@ -141,11 +152,11 @@ export function buildUpstreamUrl(
 ): string {
   const { baseUrl } = provider;
 
-  if (provider.providerName === 'anthropic') {
+  if (provider.apiFormat === 'anthropic') {
     return `${baseUrl}/messages`;
   }
 
-  if (provider.providerName === 'google') {
+  if (provider.apiFormat === 'gemini') {
     const base = baseUrl.replace(/\/+$/, '');
     const method = options?.stream ? 'streamGenerateContent' : 'generateContent';
     const params = options?.stream
@@ -350,7 +361,7 @@ export async function recordModelCall(
       metadata: data.metadata ? JSON.stringify(data.metadata) : null,
     });
   } catch (err) {
-    console.error('Failed to record model call:', err);
+    logger.error('Failed to record model call', { error: err instanceof Error ? err.message : String(err) });
     if (kv) {
       try {
         await enqueueFailedWrite(kv, {
@@ -382,7 +393,7 @@ export async function recordModelCall(
           lastError: err instanceof Error ? err.message : String(err),
         });
       } catch (kvErr) {
-        console.error('KV enqueue also failed:', kvErr);
+        logger.error('KV enqueue failed for model call', { error: kvErr instanceof Error ? kvErr.message : String(kvErr) });
       }
     }
   }
@@ -460,7 +471,7 @@ export async function recordUsage(
   try {
     await db.insert(usages).values(data);
   } catch (err) {
-    console.error('Failed to record usage:', err);
+    logger.error('Failed to record usage', { error: err instanceof Error ? err.message : String(err) });
     if (kv) {
       try {
         await enqueueFailedWrite(kv, {
@@ -484,7 +495,7 @@ export async function recordUsage(
           lastError: err instanceof Error ? err.message : String(err),
         });
       } catch (kvErr) {
-        console.error('KV enqueue also failed:', kvErr);
+        logger.error('KV enqueue failed for usage', { error: kvErr instanceof Error ? kvErr.message : String(kvErr) });
       }
     }
   }

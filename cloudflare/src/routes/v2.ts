@@ -95,8 +95,8 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
     }
   }
 
-  const isGoogle = provider.providerName === 'google';
-  const isAnthropic = provider.providerName === 'anthropic';
+  const isGoogle = provider.apiFormat === 'gemini';
+  const isAnthropic = provider.apiFormat === 'anthropic';
   const upstreamUrl = buildUpstreamUrl(provider, 'chat', { stream: body.stream });
   const headers = buildProviderHeaders(provider);
 
@@ -629,8 +629,8 @@ routes.post('/models/:modelAndMethod', async (c) => {
     return c.json({ error: { message: `No available provider for model: ${modelName}` } }, 404);
   }
 
-  if (provider.providerName !== 'google') {
-    return c.json({ error: { message: 'Gemini API only supports Google models' } }, 400);
+  if (provider.apiFormat !== 'gemini') {
+    return c.json({ error: { message: 'Gemini API only supports Google/Gemini-format models' } }, 400);
   }
 
   // Build Google API URL

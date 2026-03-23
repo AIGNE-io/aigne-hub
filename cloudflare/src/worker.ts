@@ -6,7 +6,10 @@ import { cors } from 'hono/cors';
 
 // Cron handlers
 import { archiveOldRecords } from './crons/archive';
+import { checkModelHealth } from './crons/model-health';
 import { aggregateModelCallStats } from './crons/model-call-stats';
+import { reconcileCredits } from './crons/reconcile';
+import { logger } from './libs/logger';
 import { processRetryQueue } from './libs/retry-queue';
 import * as schema from './db/schema';
 // Auth middleware
@@ -56,6 +59,23 @@ app.use('*', async (c, next) => {
     credentials: true,
   });
   return middleware(c, next);
+});
+
+// Request logging
+app.use('*', async (c, next) => {
+  const start = Date.now();
+  await next();
+  const duration = Date.now() - start;
+  // Only log API requests, not static assets
+  if (c.req.path.startsWith('/api/') || c.req.path.startsWith('/auth/')) {
+    logger.info('request', {
+      method: c.req.method,
+      path: c.req.path,
+      status: c.res.status,
+      duration,
+      userAgent: c.req.header('user-agent')?.substring(0, 100),
+    });
+  }
 });
 
 // D1 + Drizzle setup per request + expose executionCtx for waitUntil
@@ -174,12 +194,14 @@ async function scheduled(event: ScheduledEvent, env: Env, _ctx: ExecutionContext
       // Process retry queue for failed D1 writes
       const stats = await processRetryQueue(env.AUTH_KV, env.DB);
       if (stats.processed > 0) {
-        console.log('Retry queue processed:', stats);
+        logger.info('Retry queue processed', stats as unknown as Record<string, unknown>);
       }
       break;
     }
     case '0 2 * * *':
       await archiveOldRecords(db);
+      await reconcileCredits(db);
+      await checkModelHealth(db);
       break;
     default:
       break;

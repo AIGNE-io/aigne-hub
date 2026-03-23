@@ -39,6 +39,14 @@ function getDefaultBaseUrl(providerName: string): string {
   return defaults[providerName] || 'https://api.openai.com/v1';
 }
 
+function getDefaultApiFormat(providerName: string): string {
+  const formats: Record<string, string> = {
+    anthropic: 'anthropic',
+    google: 'gemini',
+  };
+  return formats[providerName] || 'openai';
+}
+
 function getDefaultTestModel(providerName: string): string {
   const defaults: Record<string, string> = {
     openai: 'gpt-4.1-nano',
@@ -80,6 +88,7 @@ routes.get('/test-models', async (c) => {
       type: aiModelRates.type,
       providerName: aiProviders.name,
       baseUrl: aiProviders.baseUrl,
+      apiFormat: aiProviders.apiFormat,
     })
     .from(aiModelRates)
     .leftJoin(aiProviders, eq(aiModelRates.providerId, aiProviders.id))
@@ -144,11 +153,13 @@ routes.get('/test-models', async (c) => {
         let testUrl: string;
         let testBody: string;
 
+        const apiFormat = rate.apiFormat || getDefaultApiFormat(providerName);
+
         if (rate.type === 'embedding') {
           headers.Authorization = `Bearer ${apiKey}`;
           testUrl = `${baseUrl}/embeddings`;
           testBody = JSON.stringify({ model: testModel, input: 'test' });
-        } else if (providerName === 'anthropic') {
+        } else if (apiFormat === 'anthropic') {
           headers['x-api-key'] = apiKey;
           headers['anthropic-version'] = '2023-06-01';
           testUrl = `${baseUrl}/messages`;
@@ -278,6 +289,7 @@ routes.post('/', async (c) => {
     region?: string;
     enabled?: boolean;
     config?: unknown;
+    apiFormat?: 'openai' | 'anthropic' | 'gemini';
   }>();
 
   if (!body.name || !body.displayName) {
@@ -301,6 +313,7 @@ routes.post('/', async (c) => {
       region: body.region || null,
       enabled: body.enabled ?? true,
       config: body.config ? JSON.stringify(body.config) : null,
+      apiFormat: body.apiFormat || 'openai',
     })
     .returning();
 
@@ -319,6 +332,7 @@ routes.put('/:id', async (c) => {
     baseUrl?: string;
     region?: string;
     enabled?: boolean;
+    apiFormat?: 'openai' | 'anthropic' | 'gemini';
   }>();
 
   const db = c.get('db');
@@ -333,6 +347,7 @@ routes.put('/:id', async (c) => {
   if (body.baseUrl !== undefined) updates.baseUrl = body.baseUrl;
   if (body.region !== undefined) updates.region = body.region;
   if (body.enabled !== undefined) updates.enabled = body.enabled;
+  if (body.apiFormat !== undefined) updates.apiFormat = body.apiFormat;
 
   const [updated] = await db.update(aiProviders).set(updates).where(eq(aiProviders.id, id)).returning();
   return c.json(updated);
@@ -398,7 +413,9 @@ routes.post('/:providerId/credentials/test', async (c) => {
   let testUrl: string;
   let testBody: string;
 
-  if (provider.name === 'anthropic') {
+  const apiFormat = provider.apiFormat || getDefaultApiFormat(provider.name);
+
+  if (apiFormat === 'anthropic') {
     headers['x-api-key'] = apiKey;
     headers['anthropic-version'] = '2023-06-01';
     testUrl = `${baseUrl}/messages`;
@@ -561,6 +578,116 @@ routes.get('/:providerId/model-rates', async (c) => {
     .orderBy(asc(aiModelRates.model), asc(aiModelRates.type));
 
   return c.json(rates);
+});
+
+// POST /api/ai-providers/:providerId/model-rates/validate - Validate a model before adding
+routes.post('/:providerId/model-rates/validate', async (c) => {
+  const adminCheck = ensureAdmin(c);
+  if (adminCheck) return adminCheck;
+
+  const { providerId } = c.req.param();
+  const body = await c.req.json<{ model: string; type?: string }>();
+  if (!body.model) {
+    return c.json({ error: 'model is required' }, 400);
+  }
+
+  const db = c.get('db');
+
+  // Get provider and credential
+  const [provider] = await db.select().from(aiProviders).where(eq(aiProviders.id, providerId)).limit(1);
+  if (!provider) {
+    return c.json({ error: 'Provider not found' }, 404);
+  }
+
+  const creds = await db
+    .select()
+    .from(aiCredentials)
+    .where(and(eq(aiCredentials.providerId, providerId), eq(aiCredentials.active, true)))
+    .limit(1);
+
+  if (creds.length === 0) {
+    return c.json({ valid: false, error: 'No active credential for this provider' });
+  }
+
+  const cred = creds[0];
+  const encryptionKey = c.env.CREDENTIAL_ENCRYPTION_KEY;
+
+  const credValue = cred.credentialValue as Record<string, string> | string;
+  let apiKey: string;
+  if (encryptionKey && typeof credValue === 'string' && isEncrypted(credValue)) {
+    const decrypted = (await decryptCredential(credValue, encryptionKey)) as Record<string, string> | string;
+    apiKey = typeof decrypted === 'object' && decrypted !== null ? decrypted.api_key || '' : String(decrypted);
+  } else if (typeof credValue === 'object' && credValue !== null) {
+    apiKey = credValue.api_key || '';
+  } else {
+    apiKey = String(credValue);
+  }
+
+  if (!apiKey) {
+    return c.json({ valid: false, error: 'Credential has no api_key' });
+  }
+
+  // Try a minimal request to test the model
+  const baseUrl = provider.baseUrl || getDefaultBaseUrl(provider.name);
+  const providerName = provider.name.toLowerCase();
+
+  try {
+    let testUrl: string;
+    const testHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+    let testBody: string;
+
+    if (providerName === 'google' || provider.apiFormat === 'gemini') {
+      testUrl = `${baseUrl.replace(/\/+$/, '')}/models/${body.model}:generateContent?key=${apiKey}`;
+      testBody = JSON.stringify({
+        contents: [{ role: 'user', parts: [{ text: 'Hi' }] }],
+        generationConfig: { maxOutputTokens: 1 },
+      });
+    } else if (providerName === 'anthropic' || provider.apiFormat === 'anthropic') {
+      testUrl = `${baseUrl.replace(/\/+$/, '')}/messages`;
+      testHeaders['x-api-key'] = apiKey;
+      testHeaders['anthropic-version'] = '2023-06-01';
+      testBody = JSON.stringify({
+        model: body.model,
+        max_tokens: 1,
+        messages: [{ role: 'user', content: 'Hi' }],
+      });
+    } else {
+      testUrl = `${baseUrl.replace(/\/+$/, '')}/chat/completions`;
+      testHeaders['Authorization'] = `Bearer ${apiKey}`;
+      testBody = JSON.stringify({
+        model: body.model,
+        max_tokens: 1,
+        messages: [{ role: 'user', content: 'Hi' }],
+      });
+    }
+
+    const response = await fetch(testUrl, {
+      method: 'POST',
+      headers: testHeaders,
+      body: testBody,
+    });
+
+    if (response.ok) {
+      return c.json({ valid: true, model: body.model, status: response.status });
+    }
+
+    const errorText = await response.text();
+    let errorMessage = `HTTP ${response.status}`;
+    try {
+      const parsed = JSON.parse(errorText);
+      errorMessage = parsed.error?.message || parsed.message || errorMessage;
+    } catch {
+      errorMessage = errorText.substring(0, 200) || errorMessage;
+    }
+
+    return c.json({ valid: false, model: body.model, error: errorMessage, status: response.status });
+  } catch (err) {
+    return c.json({
+      valid: false,
+      model: body.model,
+      error: err instanceof Error ? err.message : 'Connection failed',
+    });
+  }
 });
 
 // POST /api/ai-providers/:providerId/model-rates
