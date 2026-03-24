@@ -126,6 +126,7 @@ export default flatten({
       // Actions
       actions: {
         add: '添加模型费率',
+        import: '导入',
         edit: '编辑模型费率',
         delete: '删除',
         save: '保存',

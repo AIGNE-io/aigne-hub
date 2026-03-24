@@ -138,6 +138,7 @@ export default flatten({
       // Actions
       actions: {
         add: 'Add Model Rate',
+        import: 'Import',
         edit: 'Edit Model Rate',
         delete: 'Delete',
         save: 'Save',
