@@ -28,6 +28,7 @@ import {
   MenuItem,
   Select,
   Stack,
+  Switch,
   TextField,
   Tooltip,
   Typography,
@@ -367,6 +368,7 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
       modelMetadata: {
         maxTokens: rate?.modelMetadata?.maxTokens,
         features: rate?.modelMetadata?.features || [],
+        useGateway: rate?.modelMetadata?.useGateway ?? true, // default: enabled
         imageGeneration: {
           max: rate?.modelMetadata?.imageGeneration?.max,
           quality: rate?.modelMetadata?.imageGeneration?.quality || [],
@@ -563,6 +565,7 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
       modelMetadata: {
         maxTokens: data.modelMetadata?.maxTokens || undefined,
         features: data.modelMetadata?.features || [],
+        useGateway: data.modelMetadata?.useGateway ?? true,
         imageGeneration: {
           max: data.modelMetadata?.imageGeneration?.max || undefined,
           quality: data.modelMetadata?.imageGeneration?.quality || [],
@@ -797,6 +800,25 @@ export default function ModelRateForm({ rate = null, onSubmit, onCancel }: Props
                   disabled
                 />
               )}
+
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={watch('modelMetadata.useGateway') ?? true}
+                    onChange={(e) => setValue('modelMetadata.useGateway', e.target.checked)}
+                    size="small"
+                  />
+                }
+                label={
+                  <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+                    <Typography variant="body2">AI Gateway</Typography>
+                    <Tooltip title="Enable to route requests through Cloudflare AI Gateway. When enabled, no provider credentials are needed — Gateway handles API keys. When disabled, provider credentials are required.">
+                      <InfoOutlined sx={{ fontSize: 16, color: 'text.secondary' }} />
+                    </Tooltip>
+                  </Stack>
+                }
+                sx={{ ml: 0, mt: -0.5, mb: 1 }}
+              />
 
               <Box
                 sx={{

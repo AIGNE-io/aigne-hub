@@ -3,6 +3,7 @@ import type { drizzle } from 'drizzle-orm/d1';
 
 import { aiCredentials, aiModelRates, aiProviders, modelCalls, usages } from '../db/schema';
 import * as schema from '../db/schema';
+import { buildGatewayUrl, type GatewayConfig } from './ai-gateway';
 import { decryptCredential, isEncrypted } from './crypto';
 import { logger } from './logger';
 import { enqueueFailedWrite } from './retry-queue';
@@ -18,6 +19,8 @@ export interface ResolvedProvider {
   apiKey: string;
   baseUrl: string;
   apiFormat: string; // 'openai' | 'anthropic' | 'gemini' | 'bedrock'
+  providerConfig?: Record<string, unknown> | string | null;
+  modelMetadata?: Record<string, unknown> | string | null;
 }
 
 /**
@@ -61,7 +64,20 @@ export async function resolveProvider(db: DB, model: string, encryptionKey?: str
     .from(aiCredentials)
     .where(and(eq(aiCredentials.providerId, selected.provider.id), eq(aiCredentials.active, true)));
 
-  if (creds.length === 0) return null;
+  // No credentials — still return provider info (Gateway compat mode may not need credentials)
+  if (creds.length === 0) {
+    return {
+      providerId: selected.provider.id,
+      providerName: selected.provider.name,
+      modelName,
+      credentialId: '',
+      apiKey: '',
+      baseUrl: selected.provider.baseUrl || getDefaultBaseUrl(selected.provider.name),
+      apiFormat: selected.provider.apiFormat || getDefaultApiFormat(selected.provider.name),
+      providerConfig: selected.provider.config as Record<string, unknown> | string | null,
+      modelMetadata: selected.rate.modelMetadata as Record<string, unknown> | string | null,
+    };
+  }
 
   // Simple weighted selection
   const totalWeight = creds.reduce((sum, c) => sum + c.weight, 0);
@@ -100,6 +116,8 @@ export async function resolveProvider(db: DB, model: string, encryptionKey?: str
     apiKey,
     baseUrl: selected.provider.baseUrl || getDefaultBaseUrl(selected.provider.name),
     apiFormat: selected.provider.apiFormat || getDefaultApiFormat(selected.provider.name),
+    providerConfig: selected.provider.config as Record<string, unknown> | string | null,
+    modelMetadata: selected.rate.modelMetadata as Record<string, unknown> | string | null,
   };
 }
 
@@ -127,8 +145,12 @@ function getDefaultApiFormat(providerName: string): string {
 
 /**
  * Build provider-specific request headers.
+ * When viaGateway is true, Gemini auth uses x-goog-api-key header instead of URL query.
  */
-export function buildProviderHeaders(provider: ResolvedProvider): Record<string, string> {
+export function buildProviderHeaders(
+  provider: ResolvedProvider,
+  options?: { viaGateway?: boolean; gatewayAuthToken?: string }
+): Record<string, string> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
@@ -141,9 +163,18 @@ export function buildProviderHeaders(provider: ResolvedProvider): Record<string,
     headers['x-api-key'] = provider.apiKey;
     headers['anthropic-version'] = '2023-06-01';
   } else if (provider.apiFormat === 'gemini') {
-    // Google Gemini native API uses key in URL query, no auth header needed
+    if (options?.viaGateway) {
+      // Gateway mode: key in header (Gateway strips query params)
+      headers['x-goog-api-key'] = provider.apiKey;
+    }
+    // Direct mode: key is in URL query, no auth header needed
   } else {
     headers.Authorization = `Bearer ${provider.apiKey}`;
+  }
+
+  // Gateway auth header (if gateway requires authentication)
+  if (options?.viaGateway && options.gatewayAuthToken) {
+    headers['cf-aig-authorization'] = `Bearer ${options.gatewayAuthToken}`;
   }
 
   return headers;
@@ -151,12 +182,24 @@ export function buildProviderHeaders(provider: ResolvedProvider): Record<string,
 
 /**
  * Build the upstream API URL for a given call type.
+ * When gateway config is provided, routes through CF AI Gateway for supported providers.
+ * Unsupported providers (doubao, bedrock) automatically fall back to direct connection.
  */
 export function buildUpstreamUrl(
   provider: ResolvedProvider,
   callType: string,
-  options?: { stream?: boolean }
+  options?: { stream?: boolean; gateway?: GatewayConfig }
 ): string {
+  // Try Gateway route first
+  if (options?.gateway) {
+    const gwUrl = buildGatewayUrl(options.gateway, provider.providerName, provider.apiFormat, callType, {
+      modelName: provider.modelName,
+      stream: options.stream,
+    });
+    if (gwUrl) return gwUrl;
+    // Fall through to direct if provider not supported by Gateway
+  }
+
   const { baseUrl } = provider;
 
   if (provider.apiFormat === 'bedrock') {

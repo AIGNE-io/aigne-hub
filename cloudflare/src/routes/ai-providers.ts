@@ -3,6 +3,13 @@ import type { Context } from 'hono';
 import { Hono } from 'hono';
 
 import { aiCredentials, aiModelRateHistories, aiModelRates, aiModelStatuses, aiProviders } from '../db/schema';
+import {
+  getGatewaySettings,
+  getSupportedGatewaySlugs,
+  getGatewaySlug,
+  saveGatewaySettings,
+  type GatewaySettings,
+} from '../libs/ai-gateway';
 import { decryptCredential, encryptCredential, isEncrypted } from '../libs/crypto';
 import type { HonoEnv } from '../worker';
 
@@ -246,6 +253,83 @@ routes.get('/test-models', async (c) => {
   }
 
   return c.json({ tested: results.length, results });
+});
+
+// ============================================================
+// PROVIDER CRUD
+// ============================================================
+
+// ============================================================
+// AI GATEWAY SETTINGS (Admin) — must be before /:id routes
+// ============================================================
+
+// GET /api/ai-providers/gateway-settings
+routes.get('/gateway-settings', async (c) => {
+  const adminCheck = ensureAdmin(c);
+  if (adminCheck) return adminCheck;
+
+  const settings = await getGatewaySettings(c.env.AUTH_KV);
+  const envFallback = {
+    accountId: c.env.AI_GATEWAY_ACCOUNT_ID || '',
+    gatewayId: c.env.AI_GATEWAY_ID || '',
+  };
+
+  const slugs = getSupportedGatewaySlugs();
+  const db = c.get('db');
+  const providers = await db.select({ name: aiProviders.name, config: aiProviders.config }).from(aiProviders);
+
+  const providerStatus = providers.map((p) => {
+    const slug = getGatewaySlug(p.name);
+    let optedOut = false;
+    if (p.config) {
+      try {
+        const cfg = typeof p.config === 'string' ? JSON.parse(p.config) : p.config;
+        if ((cfg as Record<string, unknown>).useGateway === false) optedOut = true;
+      } catch { /* ignore */ }
+    }
+    return {
+      name: p.name,
+      gatewaySlug: slug,
+      supported: !!slug,
+      optedOut,
+      route: slug && !optedOut ? 'gateway' : 'direct',
+    };
+  });
+
+  return c.json({
+    settings: settings || { enabled: false, accountId: '', gatewayId: '' },
+    envFallback,
+    activeSource: settings ? 'admin' : envFallback.accountId ? 'env' : 'none',
+    supportedSlugs: slugs,
+    providers: providerStatus,
+  });
+});
+
+// PUT /api/ai-providers/gateway-settings
+routes.put('/gateway-settings', async (c) => {
+  const adminCheck = ensureAdmin(c);
+  if (adminCheck) return adminCheck;
+
+  const body = await c.req.json<{
+    enabled: boolean;
+    accountId?: string;
+    gatewayId?: string;
+    authToken?: string;
+  }>();
+
+  if (body.enabled && (!body.accountId || !body.gatewayId)) {
+    return c.json({ error: 'accountId and gatewayId are required when enabling gateway' }, 400);
+  }
+
+  const settings: GatewaySettings = {
+    enabled: body.enabled,
+    accountId: body.accountId || '',
+    gatewayId: body.gatewayId || '',
+    authToken: body.authToken,
+  };
+
+  await saveGatewaySettings(c.env.AUTH_KV, settings);
+  return c.json({ message: 'Gateway settings updated', settings });
 });
 
 // ============================================================
@@ -745,9 +829,9 @@ routes.post('/:providerId/model-rates', async (c) => {
       inputRate: body.inputRate || '0',
       outputRate: body.outputRate || '0',
       description: body.description || null,
-      unitCosts: body.unitCosts ? JSON.stringify(body.unitCosts) : null,
-      caching: body.caching ? JSON.stringify(body.caching) : null,
-      modelMetadata: body.modelMetadata ? JSON.stringify(body.modelMetadata) : null,
+      unitCosts: body.unitCosts || null,
+      caching: body.caching || null,
+      modelMetadata: body.modelMetadata || null,
     })
     .returning();
 
@@ -778,10 +862,10 @@ routes.put('/:providerId/model-rates/:rateId', async (c) => {
   for (const field of allowedFields) {
     if (body[field] !== undefined) updates[field] = body[field];
   }
-  // JSON fields
-  if (body.unitCosts !== undefined) updates.unitCosts = JSON.stringify(body.unitCosts);
-  if (body.caching !== undefined) updates.caching = JSON.stringify(body.caching);
-  if (body.modelMetadata !== undefined) updates.modelMetadata = JSON.stringify(body.modelMetadata);
+  // JSON fields (Drizzle handles stringify via mode: 'json')
+  if (body.unitCosts !== undefined) updates.unitCosts = body.unitCosts;
+  if (body.caching !== undefined) updates.caching = body.caching;
+  if (body.modelMetadata !== undefined) updates.modelMetadata = body.modelMetadata;
 
   const [updated] = await db.update(aiModelRates).set(updates).where(eq(aiModelRates.id, rateId)).returning();
   return c.json(updated);
@@ -973,6 +1057,155 @@ routes.get('/model-status', async (c) => {
     .leftJoin(aiProviders, eq(aiModelStatuses.providerId, aiProviders.id));
 
   return c.json(statuses);
+});
+
+// ============================================================
+// MODEL CATALOG (Quick Import)
+// ============================================================
+
+import modelCatalog from '../data/model-catalog.json';
+
+type CatalogEntry = {
+  provider: string;
+  model: string;
+  displayName: string;
+  type: string;
+  inputCostPerToken: number;
+  outputCostPerToken: number;
+  cachedInputCostPerToken?: number;
+};
+
+// GET /api/ai-providers/model-catalog - Browse available models with auto-pricing
+routes.get('/model-catalog', async (c) => {
+  const adminCheck = ensureAdmin(c);
+  if (adminCheck) return adminCheck;
+
+  const db = c.get('db');
+  const providerFilter = c.req.query('provider');
+  const search = c.req.query('q')?.toLowerCase();
+
+  // Get existing model rates to mark already-added models
+  const existingRates = await db
+    .select({ model: aiModelRates.model, providerId: aiModelRates.providerId })
+    .from(aiModelRates);
+  const existingModels = new Set(existingRates.map((r) => r.model));
+
+  // Get DB providers for matching
+  const dbProviders = await db.select({ id: aiProviders.id, name: aiProviders.name }).from(aiProviders);
+  const providerIdMap = new Map(dbProviders.map((p) => [p.name, p.id]));
+
+  let entries = modelCatalog as CatalogEntry[];
+  if (providerFilter) entries = entries.filter((e) => e.provider === providerFilter);
+  if (search) entries = entries.filter((e) => e.model.toLowerCase().includes(search) || e.displayName.toLowerCase().includes(search));
+
+  // Group by provider
+  const grouped: Record<string, Array<CatalogEntry & { alreadyAdded: boolean; dbProviderId: string | null }>> = {};
+  for (const entry of entries) {
+    if (!grouped[entry.provider]) grouped[entry.provider] = [];
+    grouped[entry.provider].push({
+      ...entry,
+      alreadyAdded: existingModels.has(entry.model),
+      dbProviderId: providerIdMap.get(entry.provider) || null,
+    });
+  }
+
+  return c.json({
+    totalModels: entries.length,
+    providers: Object.keys(grouped),
+    groups: grouped,
+  });
+});
+
+// POST /api/ai-providers/import-from-catalog - Batch import selected models
+routes.post('/import-from-catalog', async (c) => {
+  const adminCheck = ensureAdmin(c);
+  if (adminCheck) return adminCheck;
+
+  const body = await c.req.json<{
+    models: Array<{
+      provider: string;
+      model: string;
+      type?: string;
+    }>;
+    useGateway?: boolean;
+  }>();
+
+  if (!body.models?.length) {
+    return c.json({ error: 'models[] is required' }, 400);
+  }
+
+  const db = c.get('db');
+  const catalog = modelCatalog as CatalogEntry[];
+  const catalogMap = new Map(catalog.map((e) => [`${e.provider}/${e.model}`, e]));
+
+  // Get DB providers
+  const dbProviders = await db.select().from(aiProviders);
+  const providerMap = new Map(dbProviders.map((p) => [p.name, p]));
+
+  const results = { created: 0, skipped: 0, errors: [] as string[] };
+
+  for (const req of body.models) {
+    const catalogEntry = catalogMap.get(`${req.provider}/${req.model}`);
+    if (!catalogEntry) {
+      results.errors.push(`${req.provider}/${req.model}: not found in catalog`);
+      continue;
+    }
+
+    let dbProvider = providerMap.get(req.provider);
+
+    // Auto-create provider if it doesn't exist
+    if (!dbProvider) {
+      try {
+        const [created] = await db
+          .insert(aiProviders)
+          .values({
+            name: req.provider,
+            displayName: req.provider.charAt(0).toUpperCase() + req.provider.slice(1),
+            apiFormat: req.provider === 'anthropic' ? 'anthropic' : req.provider === 'google' ? 'gemini' : 'openai',
+          })
+          .returning();
+        dbProvider = created;
+        providerMap.set(req.provider, dbProvider);
+      } catch {
+        results.errors.push(`${req.provider}: failed to create provider`);
+        continue;
+      }
+    }
+
+    // Check if rate already exists
+    const type = (req.type || catalogEntry.type || 'chatCompletion') as ModelRateType;
+    const existing = await db
+      .select()
+      .from(aiModelRates)
+      .where(and(eq(aiModelRates.providerId, dbProvider.id), eq(aiModelRates.model, req.model), eq(aiModelRates.type, type)))
+      .limit(1);
+
+    if (existing.length > 0) {
+      results.skipped++;
+      continue;
+    }
+
+    try {
+      await db.insert(aiModelRates).values({
+        providerId: dbProvider.id,
+        model: req.model,
+        modelDisplay: catalogEntry.displayName,
+        type,
+        inputRate: catalogEntry.inputCostPerToken.toPrecision(10),
+        outputRate: catalogEntry.outputCostPerToken.toPrecision(10),
+        unitCosts: { input: catalogEntry.inputCostPerToken * 1e6, output: catalogEntry.outputCostPerToken * 1e6 },
+        caching: catalogEntry.cachedInputCostPerToken
+          ? { readRate: catalogEntry.cachedInputCostPerToken.toPrecision(10) }
+          : null,
+        modelMetadata: { useGateway: body.useGateway ?? true },
+      });
+      results.created++;
+    } catch (err) {
+      results.errors.push(`${req.model}: ${err instanceof Error ? err.message : 'insert failed'}`);
+    }
+  }
+
+  return c.json(results, 201);
 });
 
 // ============================================================

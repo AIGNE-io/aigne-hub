@@ -12,7 +12,7 @@ import Toast from '@arcblock/ux/lib/Toast';
 import { Table } from '@blocklet/aigne-hub/components';
 import { formatError } from '@blocklet/error';
 import styled from '@emotion/styled';
-import { Add as AddIcon, Clear as ClearIcon, InfoOutlined } from '@mui/icons-material';
+import { Add as AddIcon, Clear as ClearIcon, CloudQueue as GatewayIcon, FileDownload as ImportIcon, InfoOutlined } from '@mui/icons-material';
 import {
   Avatar,
   Box,
@@ -36,6 +36,7 @@ import BigNumber from 'bignumber.js';
 import { useEffect, useState } from 'react';
 import { joinURL } from 'ufo';
 
+import ImportCatalogDialog from './import-catalog-dialog';
 import ModelRateForm from './model-rate-form';
 import { ModelRate, ModelRateFormData, ModelRatesQuery, Provider } from './types';
 
@@ -47,6 +48,7 @@ export default function AIModelRates() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [showForm, setShowForm] = useState(false);
+  const [showImportDialog, setShowImportDialog] = useState(false);
   const [editingRate, setEditingRate] = useState<ModelRate | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [rateToDelete, setRateToDelete] = useState<ModelRate | null>(null);
@@ -302,6 +304,7 @@ export default function AIModelRates() {
           const rate = modelRates[tableMeta.rowIndex];
           if (!rate) return null;
 
+          const useGateway = rate.modelMetadata?.useGateway ?? true;
           return (
             <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
               <Avatar
@@ -310,6 +313,11 @@ export default function AIModelRates() {
                 alt={rate.provider.displayName}
               />
               <Typography variant="body2">{rate.provider.displayName}</Typography>
+              {useGateway && (
+                <Tooltip title="AI Gateway">
+                  <GatewayIcon sx={{ fontSize: 16, color: 'primary.main' }} />
+                </Tooltip>
+              )}
             </Stack>
           );
         },
@@ -832,6 +840,15 @@ export default function AIModelRates() {
           )}
 
           <Button
+            variant="outlined"
+            sx={{
+              alignSelf: { xs: 'flex-end', sm: 'auto' },
+            }}
+            startIcon={<ImportIcon />}
+            onClick={() => setShowImportDialog(true)}>
+            {t('config.modelRates.actions.import', 'Import')}
+          </Button>
+          <Button
             variant="contained"
             sx={{
               alignSelf: { xs: 'flex-end', sm: 'auto' },
@@ -935,6 +952,12 @@ export default function AIModelRates() {
         }>
         <Typography variant="body1">{t('config.modelRates.deleteDialog.message')}</Typography>
       </Dialog>
+
+      <ImportCatalogDialog
+        open={showImportDialog}
+        onClose={() => setShowImportDialog(false)}
+        onImported={() => refresh()}
+      />
     </Box>
   );
 }

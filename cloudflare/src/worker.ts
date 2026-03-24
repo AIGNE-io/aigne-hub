@@ -38,6 +38,8 @@ export type Env = {
   BLOCKLET_SERVER_ORIGIN?: string;
   PAYMENT_WEBHOOK_SECRET?: string;
   CREDENTIAL_ENCRYPTION_KEY?: string;
+  AI_GATEWAY_ACCOUNT_ID?: string;
+  AI_GATEWAY_ID?: string;
   ASSETS?: { fetch: (req: Request) => Promise<Response> };
 };
 
@@ -178,8 +180,10 @@ app.notFound(async (c) => {
 });
 
 // Error handler
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-app.onError((_err, c) => c.json({ error: 'Internal Server Error' }, 500));
+app.onError((err, c) => {
+  logger.error('Unhandled error', { error: err.message, stack: err.stack?.substring(0, 500) });
+  return c.json({ error: err.message || 'Internal Server Error' }, 500);
+});
 
 // Scheduled handler for cron triggers
 // eslint-disable-next-line @typescript-eslint/no-unused-vars

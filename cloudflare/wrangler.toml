@@ -16,6 +16,9 @@ id = "local"
 ENVIRONMENT = "development"
 BASE_URL = "http://localhost:8787"
 # CREDENTIAL_ENCRYPTION_KEY must be set via: wrangler secret put CREDENTIAL_ENCRYPTION_KEY
+# AI Gateway: set these to route provider calls through CF AI Gateway
+# AI_GATEWAY_ACCOUNT_ID = ""
+# AI_GATEWAY_ID = ""
 
 [triggers]
 crons = [

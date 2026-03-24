@@ -109,10 +109,11 @@ routes.get('/projects', async (c) => {
 
   return c.json({
     projects: paged.map((s) => {
-      const meta = s.appDid ? metaMap.get(s.appDid) : undefined;
+      const validAppDid = s.appDid && s.appDid !== 'undefined' && s.appDid.trim() !== '' ? s.appDid : null;
+      const meta = validAppDid ? metaMap.get(validAppDid) : undefined;
       return {
-        appDid: s.appDid,
-        appName: meta?.appName || s.appDid || 'Direct API',
+        appDid: validAppDid,
+        appName: meta?.appName || (validAppDid ? validAppDid : 'Direct API'),
         appLogo: meta?.appLogo,
         appUrl: meta?.appUrl,
         totalCalls: s.totalCalls,

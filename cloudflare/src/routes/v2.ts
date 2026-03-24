@@ -2,6 +2,7 @@ import type { Context } from 'hono';
 import { Hono } from 'hono';
 import { stream } from 'hono/streaming';
 
+import { resolveGatewayConfig, shouldUseGateway, buildGatewayCompatUrl, buildGatewayCompatHeaders } from '../libs/ai-gateway';
 import {
   buildProviderHeaders,
   buildUpstreamUrl,
@@ -40,7 +41,8 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
   const waitUntil = getWaitUntil(c);
   const startTime = Date.now();
   const userDid = (c.get('user') as { id?: string } | undefined)?.id || c.req.header('x-user-did') || '';
-  const appDid = c.req.header('x-aigne-hub-client-did') || '';
+  const rawAppDid = c.req.header('x-aigne-hub-client-did') || '';
+  const appDid = rawAppDid && rawAppDid !== 'undefined' ? rawAppDid : '';
   const requestId = c.req.header('x-request-id') || crypto.randomUUID();
 
   // Parse request body
@@ -102,8 +104,11 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
 
   const isGoogle = provider.apiFormat === 'gemini';
   const isAnthropic = provider.apiFormat === 'anthropic';
-  const upstreamUrl = buildUpstreamUrl(provider, 'chat', { stream: body.stream });
-  const headers = buildProviderHeaders(provider);
+  const gateway = await resolveGatewayConfig(c.env.AUTH_KV, c.env);
+  // Gateway compat mode: enabled + provider supported + not opted out + model-level useGateway
+  const modelMeta = typeof provider.modelMetadata === 'string' ? JSON.parse(provider.modelMetadata) : provider.modelMetadata;
+  const modelUseGateway = modelMeta?.useGateway ?? true; // default: enabled
+  const useGatewayCompat = !!gateway && modelUseGateway && shouldUseGateway(provider.providerName, provider.providerConfig);
 
   // Build upstream request body (provider-specific formats)
   let upstreamBody: Record<string, unknown>;
@@ -122,7 +127,6 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
       stream: body.stream,
     });
   } else {
-    // OpenAI newer models (o-series, gpt-5) require max_completion_tokens instead of max_tokens
     const { max_tokens, ...rest } = body;
     upstreamBody = { ...rest, model: provider.modelName };
     if (max_tokens) {
@@ -133,12 +137,54 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
   let providerTtfb: number | undefined;
   const providerStartTime = Date.now();
 
+  // Build Gateway compat request (OpenAI format with provider/model)
+  const gatewayCompatBody = (() => {
+    const { max_tokens, ...rest } = body;
+    const b: Record<string, unknown> = { ...rest, model: `${provider.providerName}/${provider.modelName}` };
+    if (max_tokens) b.max_completion_tokens = max_tokens;
+    return b;
+  })();
+
+  // Strategy: Gateway compat first → fallback to direct provider
+  let upstreamUrl: string;
+  let upstreamHeaders: Record<string, string>;
+  let usedGateway = false;
+
+  if (useGatewayCompat && gateway) {
+    upstreamUrl = buildGatewayCompatUrl(gateway, 'chat');
+    upstreamHeaders = buildGatewayCompatHeaders(gateway);
+    usedGateway = true;
+  } else {
+    upstreamUrl = buildUpstreamUrl(provider, 'chat', { stream: body.stream });
+    upstreamHeaders = buildProviderHeaders(provider);
+  }
+
   try {
-    const upstreamResponse = await fetch(upstreamUrl, {
+    let upstreamResponse = await fetch(upstreamUrl, {
       method: 'POST',
-      headers,
-      body: JSON.stringify(upstreamBody),
+      headers: upstreamHeaders,
+      body: JSON.stringify(usedGateway ? gatewayCompatBody : upstreamBody),
     });
+
+    // Gateway failed → fallback to direct provider (if we have credentials)
+    if (usedGateway && !upstreamResponse.ok && provider.apiKey) {
+      const directUrl = buildUpstreamUrl(provider, 'chat', { stream: body.stream });
+      const directHeaders = buildProviderHeaders(provider);
+      upstreamResponse = await fetch(directUrl, {
+        method: 'POST',
+        headers: directHeaders,
+        body: JSON.stringify(upstreamBody),
+      });
+      usedGateway = false;
+    }
+
+    // Capture Gateway metadata from response headers
+    const gatewayMeta = usedGateway
+      ? {
+          cacheStatus: upstreamResponse.headers.get('cf-aig-cache-status'),
+          step: upstreamResponse.headers.get('cf-aig-step'),
+        }
+      : undefined;
 
     if (!upstreamResponse.ok) {
       const errorBody = await upstreamResponse.text();
@@ -406,6 +452,7 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
     return c.json({
       ...responseData,
       modelWithProvider: `${provider.providerName}/${provider.modelName}`,
+      ...(gatewayMeta?.cacheStatus && { _gateway: gatewayMeta }),
     });
   } catch (err) {
     const duration = ((Date.now() - startTime) / 1000).toFixed(1);
@@ -455,14 +502,32 @@ routes.post('/embeddings', async (c) => {
     return c.json({ error: { message: `No available provider for model: ${body.model}` } }, 404);
   }
 
-  const upstreamUrl = buildUpstreamUrl(provider, 'embedding');
-  const headers = buildProviderHeaders(provider);
+  const gwConfig = await resolveGatewayConfig(c.env.AUTH_KV, c.env);
+  const useGw = !!gwConfig && shouldUseGateway(provider.providerName, provider.providerConfig);
 
-  const response = await fetch(upstreamUrl, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({ ...body, model: provider.modelName }),
-  });
+  let response: Response;
+  if (useGw && gwConfig) {
+    // Gateway compat first
+    response = await fetch(buildGatewayCompatUrl(gwConfig, 'embedding'), {
+      method: 'POST',
+      headers: buildGatewayCompatHeaders(gwConfig),
+      body: JSON.stringify({ ...body, model: `${provider.providerName}/${provider.modelName}` }),
+    });
+    // Fallback to direct if gateway fails and we have credentials
+    if (!response.ok && provider.apiKey) {
+      response = await fetch(buildUpstreamUrl(provider, 'embedding'), {
+        method: 'POST',
+        headers: buildProviderHeaders(provider),
+        body: JSON.stringify({ ...body, model: provider.modelName }),
+      });
+    }
+  } else {
+    response = await fetch(buildUpstreamUrl(provider, 'embedding'), {
+      method: 'POST',
+      headers: buildProviderHeaders(provider),
+      body: JSON.stringify({ ...body, model: provider.modelName }),
+    });
+  }
 
   if (!response.ok) {
     return c.json({ error: { message: `Provider error: ${response.status}` } }, response.status as 400);
@@ -515,14 +580,30 @@ routes.post('/images/generations', async (c) => {
     return c.json({ error: { message: `No available provider for model: ${body.model}` } }, 404);
   }
 
-  const upstreamUrl = buildUpstreamUrl(provider, 'image');
-  const headers = buildProviderHeaders(provider);
+  const gwConfig = await resolveGatewayConfig(c.env.AUTH_KV, c.env);
+  const useGwImg = !!gwConfig && shouldUseGateway(provider.providerName, provider.providerConfig);
 
-  const response = await fetch(upstreamUrl, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({ ...body, model: provider.modelName }),
-  });
+  let response: Response;
+  if (useGwImg && gwConfig) {
+    response = await fetch(buildGatewayCompatUrl(gwConfig, 'image'), {
+      method: 'POST',
+      headers: buildGatewayCompatHeaders(gwConfig),
+      body: JSON.stringify({ ...body, model: `${provider.providerName}/${provider.modelName}` }),
+    });
+    if (!response.ok && provider.apiKey) {
+      response = await fetch(buildUpstreamUrl(provider, 'image'), {
+        method: 'POST',
+        headers: buildProviderHeaders(provider),
+        body: JSON.stringify({ ...body, model: provider.modelName }),
+      });
+    }
+  } else {
+    response = await fetch(buildUpstreamUrl(provider, 'image'), {
+      method: 'POST',
+      headers: buildProviderHeaders(provider),
+      body: JSON.stringify({ ...body, model: provider.modelName }),
+    });
+  }
 
   if (!response.ok) {
     return c.json({ error: { message: `Provider error: ${response.status}` } }, response.status as 400);
@@ -638,12 +719,24 @@ routes.post('/models/:modelAndMethod', async (c) => {
     return c.json({ error: { message: 'Gemini API only supports Google/Gemini-format models' } }, 400);
   }
 
-  // Build Google API URL
-  const baseUrl = provider.baseUrl.replace(/\/+$/, '');
-  const queryParams = isStream
-    ? `alt=sse&key=${provider.apiKey}`
-    : `key=${provider.apiKey}`;
-  const upstreamUrl = `${baseUrl}/models/${provider.modelName}:${method}?${queryParams}`;
+  // Build Google API URL (direct or via Gateway)
+  const gwConfig = await resolveGatewayConfig(c.env.AUTH_KV, c.env);
+  const gwActive = !!gwConfig && shouldUseGateway(provider.providerName, provider.providerConfig);
+  let upstreamUrl: string;
+  let fetchHeaders: Record<string, string>;
+  if (gwActive && gwConfig) {
+    const gwBase = `https://gateway.ai.cloudflare.com/v1/${gwConfig.accountId}/${gwConfig.gatewayId}/google-ai-studio`;
+    const apiVersion = provider.modelName.includes('preview') ? 'v1beta' : 'v1';
+    const qs = isStream ? '?alt=sse' : '';
+    upstreamUrl = `${gwBase}/${apiVersion}/models/${provider.modelName}:${method}${qs}`;
+    fetchHeaders = { 'Content-Type': 'application/json', 'x-goog-api-key': provider.apiKey };
+    if (gwConfig?.authToken) fetchHeaders['cf-aig-authorization'] = `Bearer ${gwConfig.authToken}`;
+  } else {
+    const baseUrl = provider.baseUrl.replace(/\/+$/, '');
+    const queryParams = isStream ? `alt=sse&key=${provider.apiKey}` : `key=${provider.apiKey}`;
+    upstreamUrl = `${baseUrl}/models/${provider.modelName}:${method}?${queryParams}`;
+    fetchHeaders = { 'Content-Type': 'application/json' };
+  }
 
   // Forward request body as-is (Gemini native format)
   const body = await c.req.text();
@@ -651,7 +744,7 @@ routes.post('/models/:modelAndMethod', async (c) => {
   try {
     const upstreamResponse = await fetch(upstreamUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: fetchHeaders,
       body,
     });
 

@@ -201,14 +201,13 @@ export function ProjectList({
   };
 
   const handleViewProject = (appDid: string | null) => {
-    if (!appDid) return;
-    navigate(`${basePath}/${encodeURIComponent(appDid)}`);
+    const id = appDid || '__direct__';
+    navigate(`${basePath}/${encodeURIComponent(id)}`);
   };
 
   const handleSelectProject = (appDid: string | null) => {
-    if (!appDid) return;
     if (onProjectSelect) {
-      onProjectSelect(appDid);
+      onProjectSelect(appDid || '__direct__');
       return;
     }
     handleViewProject(appDid);
