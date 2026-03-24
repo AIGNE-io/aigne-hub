@@ -169,7 +169,18 @@ function Layout({ children }: { children: ReactNode }) {
         addons={(exists: ReactNode[]) => [<CreditButton />, ...exists]}
       />
 
-      {children}
+      <Box
+        component="main"
+        sx={{
+          flex: 1,
+          maxWidth: 1200,
+          mx: 'auto',
+          width: '100%',
+          px: { xs: 2, sm: 3, md: 4 },
+          py: { xs: 2, md: 3 },
+        }}>
+        {children}
+      </Box>
 
       <Footer
         // FIXME: remove following undefined props after issue https://github.com/ArcBlock/ux/issues/1136 solved
