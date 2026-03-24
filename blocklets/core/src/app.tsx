@@ -173,11 +173,8 @@ function Layout({ children }: { children: ReactNode }) {
         component="main"
         sx={{
           flex: 1,
-          maxWidth: 1200,
-          mx: 'auto',
-          width: '100%',
-          px: { xs: 2, sm: 3, md: 4 },
-          py: { xs: 2, md: 3 },
+          px: 2,
+          py: 2,
         }}>
         {children}
       </Box>
