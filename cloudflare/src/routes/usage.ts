@@ -169,7 +169,7 @@ routes.get('/projects/group-trends', async (c) => {
 
   for (const row of rows) {
     const ts = row.bucket as number;
-    const appDid = row.appDid || 'direct';
+    const appDid = (row.appDid && row.appDid !== 'undefined' && row.appDid.trim() !== '') ? row.appDid : 'direct';
     projectSet.add(appDid);
 
     if (!trendMap.has(ts)) trendMap.set(ts, {});
@@ -212,7 +212,7 @@ routes.get('/projects/group-trends', async (c) => {
 routes.get('/projects/trends', async (c) => {
   const db = c.get('db');
   const userDid = getUserDid(c);
-  const appDid = c.req.query('appDid');
+  const rawAppDid = c.req.query('appDid');
   const { startTime, endTime } = getTimeRange(c);
   const allUsers = c.req.query('allUsers') === 'true';
   const timezoneOffset = parseInt(c.req.query('timezoneOffset') || '0', 10);
@@ -224,7 +224,13 @@ routes.get('/projects/trends', async (c) => {
 
   const conditions = [gte(modelCalls.callTime, startTime), lte(modelCalls.callTime, endTime)];
   if (!allUsers && userDid) conditions.push(eq(modelCalls.userDid, userDid));
-  if (appDid) conditions.push(eq(modelCalls.appDid, appDid));
+  if (rawAppDid === '__direct__') {
+    conditions.push(
+      sql`(${modelCalls.appDid} IS NULL OR ${modelCalls.appDid} = '' OR ${modelCalls.appDid} = 'undefined')`
+    );
+  } else if (rawAppDid) {
+    conditions.push(eq(modelCalls.appDid, rawAppDid));
+  }
 
   const bucketExpr = sql`CAST((${modelCalls.callTime} - ${offsetSeconds}) / ${bucketSize} AS INTEGER) * ${bucketSize} + ${offsetSeconds}`;
 
@@ -245,8 +251,10 @@ routes.get('/projects/trends', async (c) => {
 
   // Get project metadata
   let project = null;
-  if (appDid) {
-    const [meta] = await db.select().from(projects).where(eq(projects.appDid, appDid)).limit(1);
+  if (rawAppDid === '__direct__') {
+    project = { appDid: null, appName: 'Direct API', appLogo: null, appUrl: null };
+  } else if (rawAppDid) {
+    const [meta] = await db.select().from(projects).where(eq(projects.appDid, rawAppDid)).limit(1);
     if (meta) project = { appDid: meta.appDid, appName: meta.appName, appLogo: meta.appLogo, appUrl: meta.appUrl };
   }
 
