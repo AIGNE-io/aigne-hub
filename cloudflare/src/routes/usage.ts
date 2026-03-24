@@ -8,6 +8,16 @@ import type { HonoEnv } from '../worker';
 
 const routes = new Hono<HonoEnv>();
 
+/** Check if appDid represents "no project" (direct API call) */
+function isDirectAppDid(appDid: string | null | undefined): boolean {
+  return !appDid || appDid === '__direct__' || appDid === 'direct' || appDid === 'undefined' || appDid.trim() === '';
+}
+
+/** SQL condition for matching direct (no-project) calls */
+function directAppDidCondition() {
+  return sql`(${modelCalls.appDid} IS NULL OR ${modelCalls.appDid} = '' OR ${modelCalls.appDid} = 'undefined')`;
+}
+
 function getUserDid(c: Context<HonoEnv>): string {
   return (c.get('user') as { id?: string } | undefined)?.id || c.req.header('x-user-did') || '';
 }
@@ -109,7 +119,7 @@ routes.get('/projects', async (c) => {
 
   return c.json({
     projects: paged.map((s) => {
-      const validAppDid = s.appDid && s.appDid !== 'undefined' && s.appDid.trim() !== '' ? s.appDid : null;
+      const validAppDid = isDirectAppDid(s.appDid) ? null : s.appDid;
       const meta = validAppDid ? metaMap.get(validAppDid) : undefined;
       return {
         appDid: validAppDid,
@@ -169,7 +179,7 @@ routes.get('/projects/group-trends', async (c) => {
 
   for (const row of rows) {
     const ts = row.bucket as number;
-    const appDid = (row.appDid && row.appDid !== 'undefined' && row.appDid.trim() !== '') ? row.appDid : 'direct';
+    const appDid = isDirectAppDid(row.appDid) ? '__direct__' : row.appDid!;
     projectSet.add(appDid);
 
     if (!trendMap.has(ts)) trendMap.set(ts, {});
@@ -185,7 +195,7 @@ routes.get('/projects/group-trends', async (c) => {
   }
 
   // Enrich project metadata
-  const appDids = [...projectSet].filter((d) => d !== 'direct');
+  const appDids = [...projectSet].filter((d) => d !== '__direct__');
   let projectMeta: Array<typeof projects.$inferSelect> = [];
   if (appDids.length > 0) {
     const allProjects = await db.select().from(projects);
@@ -197,8 +207,8 @@ routes.get('/projects/group-trends', async (c) => {
     projects: [...projectSet].map((appDid) => {
       const meta = metaMap.get(appDid);
       return {
-        appDid: appDid === 'direct' ? null : appDid,
-        appName: meta?.appName || (appDid === 'direct' ? 'Direct API' : appDid),
+        appDid: appDid === '__direct__' ? null : appDid,
+        appName: meta?.appName || (appDid === '__direct__' ? 'Direct API' : appDid),
         appLogo: meta?.appLogo,
         appUrl: meta?.appUrl,
       };
@@ -224,10 +234,8 @@ routes.get('/projects/trends', async (c) => {
 
   const conditions = [gte(modelCalls.callTime, startTime), lte(modelCalls.callTime, endTime)];
   if (!allUsers && userDid) conditions.push(eq(modelCalls.userDid, userDid));
-  if (rawAppDid === '__direct__') {
-    conditions.push(
-      sql`(${modelCalls.appDid} IS NULL OR ${modelCalls.appDid} = '' OR ${modelCalls.appDid} = 'undefined')`
-    );
+  if (isDirectAppDid(rawAppDid)) {
+    conditions.push(directAppDidCondition());
   } else if (rawAppDid) {
     conditions.push(eq(modelCalls.appDid, rawAppDid));
   }
@@ -251,7 +259,7 @@ routes.get('/projects/trends', async (c) => {
 
   // Get project metadata
   let project = null;
-  if (rawAppDid === '__direct__') {
+  if (isDirectAppDid(rawAppDid)) {
     project = { appDid: null, appName: 'Direct API', appLogo: null, appUrl: null };
   } else if (rawAppDid) {
     const [meta] = await db.select().from(projects).where(eq(projects.appDid, rawAppDid)).limit(1);
@@ -399,10 +407,8 @@ routes.get('/projects/calls', async (c) => {
   if (!allUsers && userDid) conditions.push(eq(modelCalls.userDid, userDid));
 
   // Handle __direct__ = calls without a project (null or empty appDid)
-  if (rawAppDid === '__direct__') {
-    conditions.push(
-      sql`(${modelCalls.appDid} IS NULL OR ${modelCalls.appDid} = '' OR ${modelCalls.appDid} = 'undefined')`
-    );
+  if (isDirectAppDid(rawAppDid)) {
+    conditions.push(directAppDidCondition());
   } else if (rawAppDid) {
     conditions.push(eq(modelCalls.appDid, rawAppDid));
   }
