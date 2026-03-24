@@ -99,18 +99,18 @@ function AppRoutes({ basename }: { basename: string }) {
           key="credit-board"
           path="/credit-usage"
           element={
-            <UserLayout>
+            <Layout>
               <CreditBoardPage />
-            </UserLayout>
+            </Layout>
           }
         />
         <Route
           key="project"
           path="/usage/projects/:appDid"
           element={
-            <UserLayout>
+            <Layout>
               <ProjectPage isAdmin={false} />
-            </UserLayout>
+            </Layout>
           }
         />
         <Route key="pricing" path="/pricing" element={<PricingPage />} />
