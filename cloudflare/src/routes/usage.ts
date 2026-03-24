@@ -373,6 +373,67 @@ routes.get('/recent', async (c) => {
   return c.json(calls);
 });
 
+// GET /api/usage/projects/calls - Call history for a specific project
+routes.get('/projects/calls', async (c) => {
+  const db = c.get('db');
+  const userDid = getUserDid(c);
+  const { startTime, endTime } = getTimeRange(c);
+  const page = Math.max(1, parseInt(c.req.query('page') || '1', 10));
+  const pageSize = Math.min(100, parseInt(c.req.query('pageSize') || '20', 10));
+  const allUsers = c.req.query('allUsers') === 'true';
+  const rawAppDid = c.req.query('appDid') || '';
+  const search = c.req.query('search');
+  const status = c.req.query('status');
+  const type = c.req.query('type');
+  const minDurationSeconds = c.req.query('minDurationSeconds');
+
+  const conditions = [gte(modelCalls.callTime, startTime), lte(modelCalls.callTime, endTime)];
+  if (!allUsers && userDid) conditions.push(eq(modelCalls.userDid, userDid));
+
+  // Handle __direct__ = calls without a project (null or empty appDid)
+  if (rawAppDid === '__direct__') {
+    conditions.push(
+      sql`(${modelCalls.appDid} IS NULL OR ${modelCalls.appDid} = '' OR ${modelCalls.appDid} = 'undefined')`
+    );
+  } else if (rawAppDid) {
+    conditions.push(eq(modelCalls.appDid, rawAppDid));
+  }
+
+  if (status) conditions.push(eq(modelCalls.status, status as 'success' | 'failed'));
+  if (type) conditions.push(eq(modelCalls.type, type as 'chatCompletion' | 'embedding' | 'imageGeneration' | 'video'));
+  if (search) {
+    conditions.push(
+      sql`(${modelCalls.model} LIKE ${'%' + search + '%'} OR ${modelCalls.requestId} LIKE ${'%' + search + '%'})`
+    );
+  }
+  if (minDurationSeconds) {
+    conditions.push(sql`CAST(${modelCalls.duration} AS REAL) >= ${parseFloat(minDurationSeconds)}`);
+  }
+
+  const whereClause = and(...conditions);
+
+  const [calls, countResult] = await Promise.all([
+    db
+      .select()
+      .from(modelCalls)
+      .where(whereClause)
+      .orderBy(desc(modelCalls.callTime))
+      .limit(pageSize)
+      .offset((page - 1) * pageSize),
+    db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(modelCalls)
+      .where(whereClause),
+  ]);
+
+  return c.json({
+    list: calls,
+    count: countResult[0]?.count || 0,
+    page,
+    pageSize,
+  });
+});
+
 // GET /api/usage/by-model
 routes.get('/by-model', async (c) => {
   const db = c.get('db');
