@@ -426,8 +426,15 @@ routes.get('/projects/calls', async (c) => {
       .where(whereClause),
   ]);
 
+  // Sanitize invalid DID values to prevent frontend DID parsing errors
+  const sanitized = calls.map((call) => ({
+    ...call,
+    userDid: call.userDid && !call.userDid.startsWith('did:') ? null : call.userDid,
+    appDid: call.appDid && (call.appDid === 'undefined' || call.appDid.trim() === '') ? null : call.appDid,
+  }));
+
   return c.json({
-    list: calls,
+    list: sanitized,
     count: countResult[0]?.count || 0,
     page,
     pageSize,
