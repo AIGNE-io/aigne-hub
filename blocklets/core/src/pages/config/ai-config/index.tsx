@@ -8,6 +8,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 const pages = {
   providers: React.lazy(() => import('./ai-providers')),
   models: React.lazy(() => import('./ai-model-rates')),
+  gateway: React.lazy(() => import('./ai-gateway')),
 };
 
 export default function AIConfig() {
@@ -21,6 +22,7 @@ export default function AIConfig() {
   const tabs = [
     { label: t('providerName'), value: 'providers' },
     { label: t('config.modelRates.title'), value: 'models' },
+    { label: 'AI Gateway', value: 'gateway' },
   ];
 
   return (
