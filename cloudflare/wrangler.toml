@@ -70,3 +70,10 @@ not_found_handling = "single-page-application"
 [env.production.vars]
 ENVIRONMENT = "production"
 BASE_URL = "https://aigne-hub.arcblock.io"
+
+# Production crons: merged to stay within free plan 5-cron limit (staging uses 3)
+[env.production.triggers]
+crons = [
+  "0 * * * *",    # hourly: stats aggregation + retry queue
+  "0 2 * * *",    # daily: archive + reconcile + health check
+]

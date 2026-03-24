@@ -191,11 +191,17 @@ async function scheduled(event: ScheduledEvent, env: Env, _ctx: ExecutionContext
   const db = drizzle(env.DB, { schema });
 
   switch (event.cron) {
-    case '0 * * * *':
+    case '0 * * * *': {
       await aggregateModelCallStats(db);
+      // Also process retry queue (merged for production cron limit)
+      const retryStats = await processRetryQueue(env.AUTH_KV, env.DB);
+      if (retryStats.processed > 0) {
+        logger.info('Retry queue processed', retryStats as unknown as Record<string, unknown>);
+      }
       break;
+    }
     case '*/30 * * * *': {
-      // Process retry queue for failed D1 writes
+      // Process retry queue for failed D1 writes (staging only, merged into hourly for production)
       const stats = await processRetryQueue(env.AUTH_KV, env.DB);
       if (stats.processed > 0) {
         logger.info('Retry queue processed', stats as unknown as Record<string, unknown>);

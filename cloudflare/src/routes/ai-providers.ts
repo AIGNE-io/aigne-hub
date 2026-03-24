@@ -573,8 +573,11 @@ routes.post('/:providerId/credentials', async (c) => {
     return c.json({ error: 'Provider not found' }, 404);
   }
 
-  // Encrypt credential before storing
+  // Encrypt credential before storing (required in production)
   const encryptionKey = c.env.CREDENTIAL_ENCRYPTION_KEY;
+  if (!encryptionKey && c.env.ENVIRONMENT === 'production') {
+    return c.json({ error: 'CREDENTIAL_ENCRYPTION_KEY must be configured in production' }, 500);
+  }
   const valueToStore = encryptionKey ? await encryptCredential(body.value, encryptionKey) : body.value;
 
   const [credential] = await db
@@ -613,6 +616,9 @@ routes.put('/:providerId/credentials/:credentialId', async (c) => {
   if (body.name !== undefined) updates.name = body.name;
   if (body.value !== undefined) {
     const encryptionKey = c.env.CREDENTIAL_ENCRYPTION_KEY;
+    if (!encryptionKey && c.env.ENVIRONMENT === 'production') {
+      return c.json({ error: 'CREDENTIAL_ENCRYPTION_KEY must be configured in production' }, 500);
+    }
     updates.credentialValue = encryptionKey ? await encryptCredential(body.value, encryptionKey) : body.value;
   }
   if (body.active !== undefined) updates.active = body.active;
