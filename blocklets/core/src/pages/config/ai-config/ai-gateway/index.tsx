@@ -3,9 +3,7 @@ import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import Toast from '@arcblock/ux/lib/Toast';
 import {
   CloudQueue as GatewayIcon,
-  CheckCircle,
   Cancel,
-  OpenInNew,
   Visibility,
   VisibilityOff,
 } from '@mui/icons-material';
@@ -66,11 +64,7 @@ export default function AIGatewayConfig() {
     authToken: '',
   });
 
-  const {
-    data,
-    loading,
-    refresh,
-  } = useRequest<GatewayData, []>(async () => {
+  const { data, loading, refresh } = useRequest<GatewayData, []>(async () => {
     const res = await api.get('/api/ai-providers/gateway-settings');
     return res.data;
   });
@@ -88,21 +82,21 @@ export default function AIGatewayConfig() {
 
   const handleSave = useCallback(async () => {
     if (form.enabled && (!form.accountId || !form.gatewayId)) {
-      Toast.error('Account ID and Gateway ID are required');
+      Toast.error(t('gateway.accountId') + ' & ' + t('gateway.gatewayId') + ' required');
       return;
     }
     setSaving(true);
     try {
       await api.put('/api/ai-providers/gateway-settings', form);
-      Toast.success('Gateway settings saved');
+      Toast.success(t('gateway.saved'));
       setEditing(false);
       refresh();
     } catch (err: any) {
-      Toast.error(err.response?.data?.error || err.message || 'Failed to save');
+      Toast.error(err.response?.data?.error || err.message);
     } finally {
       setSaving(false);
     }
-  }, [form, refresh]);
+  }, [form, refresh, t]);
 
   const handleToggle = useCallback(
     async (enabled: boolean) => {
@@ -111,15 +105,15 @@ export default function AIGatewayConfig() {
         const newForm = { ...form, enabled };
         await api.put('/api/ai-providers/gateway-settings', newForm);
         setForm(newForm);
-        Toast.success(enabled ? 'Gateway enabled' : 'Gateway disabled');
+        Toast.success(enabled ? t('gateway.enabled') : t('gateway.disabled'));
         refresh();
       } catch (err: any) {
-        Toast.error(err.message || 'Failed to update');
+        Toast.error(err.message);
       } finally {
         setSaving(false);
       }
     },
-    [form, refresh]
+    [form, refresh, t]
   );
 
   if (loading) {
@@ -141,14 +135,14 @@ export default function AIGatewayConfig() {
         <GatewayIcon sx={{ fontSize: 32, color: gatewayActive ? 'primary.main' : 'text.disabled' }} />
         <Box sx={{ flex: 1 }}>
           <Typography variant="h5" sx={{ fontWeight: 600 }}>
-            AI Gateway
+            {t('gateway.title')}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Route AI requests through Cloudflare AI Gateway for caching, analytics, and reliability
+            {t('gateway.description')}
           </Typography>
         </Box>
         <Chip
-          label={gatewayActive ? 'Active' : 'Inactive'}
+          label={gatewayActive ? t('gateway.active') : t('gateway.inactive')}
           color={gatewayActive ? 'success' : 'default'}
           size="small"
         />
@@ -162,10 +156,10 @@ export default function AIGatewayConfig() {
             <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
               <Box>
                 <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                  Enable Gateway
+                  {t('gateway.enable')}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  When enabled, supported models route through Gateway first with automatic fallback
+                  {t('gateway.enableDesc')}
                 </Typography>
               </Box>
               <Switch
@@ -187,11 +181,11 @@ export default function AIGatewayConfig() {
             <Box>
               <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
                 <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                  Connection
+                  {t('gateway.connection')}
                 </Typography>
                 {!editing ? (
                   <Button size="small" onClick={() => setEditing(true)}>
-                    Edit
+                    {t('gateway.edit')}
                   </Button>
                 ) : (
                   <Stack direction="row" spacing={1}>
@@ -208,10 +202,10 @@ export default function AIGatewayConfig() {
                           });
                         }
                       }}>
-                      Cancel
+                      {t('gateway.cancel')}
                     </Button>
                     <Button size="small" variant="contained" onClick={handleSave} disabled={saving}>
-                      {saving ? <CircularProgress size={16} /> : 'Save'}
+                      {saving ? <CircularProgress size={16} /> : t('gateway.save')}
                     </Button>
                   </Stack>
                 )}
@@ -219,42 +213,38 @@ export default function AIGatewayConfig() {
 
               <Stack spacing={2}>
                 <TextField
-                  label="Account ID"
+                  label={t('gateway.accountId')}
                   size="small"
                   fullWidth
                   value={form.accountId}
                   onChange={(e) => setForm((f) => ({ ...f, accountId: e.target.value }))}
                   disabled={!editing}
                   placeholder="e.g. 7790d6810b003f5dd01c4a62db02f391"
-                  helperText={
-                    !editing && data?.activeSource === 'env'
-                      ? 'Using value from environment variable'
-                      : undefined
-                  }
+                  helperText={!editing && data?.activeSource === 'env' ? t('gateway.envSource') : undefined}
                 />
                 <TextField
-                  label="Gateway ID"
+                  label={t('gateway.gatewayId')}
                   size="small"
                   fullWidth
                   value={form.gatewayId}
                   onChange={(e) => setForm((f) => ({ ...f, gatewayId: e.target.value }))}
                   disabled={!editing}
-                  placeholder="e.g. ai-gatway"
+                  placeholder="e.g. aigne-hub"
                 />
                 <TextField
-                  label="Auth Token"
+                  label={t('gateway.authToken')}
                   size="small"
                   fullWidth
                   type={showToken ? 'text' : 'password'}
                   value={form.authToken}
                   onChange={(e) => setForm((f) => ({ ...f, authToken: e.target.value }))}
                   disabled={!editing}
-                  placeholder="cf-aig-authorization token (optional)"
-                  helperText="Required if your Gateway has authentication enabled"
+                  placeholder="cf-aig-authorization token"
+                  helperText={t('gateway.authTokenHelp')}
                   slotProps={{
                     input: {
                       endAdornment: (
-                        <Tooltip title={showToken ? 'Hide' : 'Show'}>
+                        <Tooltip title={showToken ? t('gateway.hide') : t('gateway.show')}>
                           <Box
                             component="span"
                             sx={{ cursor: 'pointer', display: 'flex' }}
@@ -278,7 +268,7 @@ export default function AIGatewayConfig() {
                 <Divider />
                 <Box>
                   <Typography variant="caption" color="text.secondary">
-                    Gateway URL
+                    {t('gateway.gatewayUrl')}
                   </Typography>
                   <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: 12, mt: 0.5 }}>
                     https://gateway.ai.cloudflare.com/v1/{form.accountId}/{form.gatewayId}/compat/...
@@ -295,23 +285,27 @@ export default function AIGatewayConfig() {
         <CardContent>
           <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
             <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-              Provider Routing
+              {t('gateway.providerRouting')}
             </Typography>
             <Stack direction="row" spacing={1}>
               <Chip
                 icon={<GatewayIcon sx={{ fontSize: 14 }} />}
-                label={`${supportedCount} Gateway`}
+                label={t('gateway.countGateway', { count: supportedCount })}
                 size="small"
                 color="primary"
                 variant="outlined"
               />
-              <Chip label={`${directCount} Direct`} size="small" variant="outlined" />
+              <Chip
+                label={t('gateway.countDirect', { count: directCount })}
+                size="small"
+                variant="outlined"
+              />
             </Stack>
           </Stack>
 
           {!gatewayActive && (
             <Alert severity="info" sx={{ mb: 2 }}>
-              Enable Gateway to route supported providers through Cloudflare AI Gateway
+              {t('gateway.enableHint')}
             </Alert>
           )}
 
@@ -344,24 +338,19 @@ export default function AIGatewayConfig() {
                   {provider.name}
                 </Typography>
                 {provider.supported && !provider.optedOut ? (
-                  <Tooltip title={gatewayActive ? `Gateway (${provider.gatewaySlug})` : 'Gateway supported'}>
+                  <Tooltip title={gatewayActive ? t('gateway.supported', { slug: provider.gatewaySlug }) : ''}>
                     <GatewayIcon
-                      sx={{
-                        fontSize: 16,
-                        color: gatewayActive ? 'primary.main' : 'text.disabled',
-                      }}
+                      sx={{ fontSize: 16, color: gatewayActive ? 'primary.main' : 'text.disabled' }}
                     />
                   </Tooltip>
                 ) : provider.optedOut ? (
-                  <Tooltip title="Opted out (uses own credentials)">
+                  <Tooltip title={t('gateway.optedOut')}>
                     <Cancel sx={{ fontSize: 16, color: 'text.disabled' }} />
                   </Tooltip>
                 ) : (
-                  <Tooltip title="Not supported by Gateway">
-                    <Typography variant="caption" color="text.secondary">
-                      Direct
-                    </Typography>
-                  </Tooltip>
+                  <Typography variant="caption" color="text.secondary">
+                    {t('gateway.notSupported')}
+                  </Typography>
                 )}
               </Stack>
             ))}

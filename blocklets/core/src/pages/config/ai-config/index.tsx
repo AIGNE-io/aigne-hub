@@ -22,7 +22,7 @@ export default function AIConfig() {
   const tabs = [
     { label: t('providerName'), value: 'providers' },
     { label: t('config.modelRates.title'), value: 'models' },
-    { label: 'AI Gateway', value: 'gateway' },
+    { label: t('gateway.title'), value: 'gateway' },
   ];
 
   return (
