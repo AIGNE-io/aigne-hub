@@ -25,7 +25,12 @@ const GATEWAY_SLUG: Record<string, string> = {
   perplexity: 'perplexity',
 };
 
-export function getGatewaySlug(providerName: string): string | null {
+/**
+ * Resolve gateway slug for a provider.
+ * Priority: DB gatewaySlug field > hardcoded GATEWAY_SLUG mapping.
+ */
+export function getGatewaySlug(providerName: string, dbGatewaySlug?: string | null): string | null {
+  if (dbGatewaySlug) return dbGatewaySlug;
   return GATEWAY_SLUG[providerName] ?? null;
 }
 
@@ -71,9 +76,10 @@ export function getGatewayConfig(env: {
 
 export function shouldUseGateway(
   providerName: string,
-  providerConfig?: Record<string, unknown> | string | null
+  providerConfig?: Record<string, unknown> | string | null,
+  dbGatewaySlug?: string | null
 ): boolean {
-  if (!getGatewaySlug(providerName)) return false;
+  if (!getGatewaySlug(providerName, dbGatewaySlug)) return false;
   if (providerConfig) {
     const cfg = typeof providerConfig === 'string' ? JSON.parse(providerConfig) : providerConfig;
     if (cfg.useGateway === false) return false;
@@ -126,9 +132,9 @@ export function buildGatewayUrl(
   providerName: string,
   apiFormat: string,
   callType: string,
-  options: { modelName?: string; stream?: boolean }
+  options: { modelName?: string; stream?: boolean; dbGatewaySlug?: string | null }
 ): string | null {
-  const slug = getGatewaySlug(providerName);
+  const slug = getGatewaySlug(providerName, options.dbGatewaySlug);
   if (!slug) return null;
 
   const base = `https://gateway.ai.cloudflare.com/v1/${gw.accountId}/${gw.gatewayId}/${slug}`;

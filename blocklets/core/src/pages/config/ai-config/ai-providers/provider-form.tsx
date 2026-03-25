@@ -50,9 +50,13 @@ export interface ProviderFormData {
   baseUrl?: string;
   region?: string;
   enabled: boolean;
+  providerType?: 'builtin' | 'custom';
+  gatewaySlug?: string;
   config?: Record<string, any>;
   credentials?: CredentialData[];
 }
+
+const CUSTOM_PROVIDER_VALUE = '__custom__';
 
 const PROVIDER_OPTIONS = [
   { value: 'openai', label: 'OpenAI', baseUrl: 'https://api.openai.com/v1' },
@@ -97,6 +101,7 @@ export default function ProviderForm({ loading, provider = null, onSubmit, onCan
   );
   const [showPasswordMap, setShowPasswordMap] = useState<Record<string, boolean>>({});
   const [expandedSection, setExpandedSection] = useState<'provider' | 'credentials'>('provider');
+  const [isCustomMode, setIsCustomMode] = useState(provider?.providerType === 'custom');
 
   const methods = useForm<ProviderFormData>({
     defaultValues: {
@@ -105,6 +110,8 @@ export default function ProviderForm({ loading, provider = null, onSubmit, onCan
       baseUrl: provider?.baseUrl || '',
       region: provider?.region || '',
       enabled: provider?.enabled ?? true,
+      providerType: provider?.providerType || 'builtin',
+      gatewaySlug: provider?.gatewaySlug || '',
       config: provider?.config || {},
     },
   });
@@ -114,6 +121,21 @@ export default function ProviderForm({ loading, provider = null, onSubmit, onCan
 
   // 当选择provider时，自动设置displayName
   const handleProviderNameChange = (value: string) => {
+    if (value === CUSTOM_PROVIDER_VALUE) {
+      setIsCustomMode(true);
+      setValue('name', '');
+      setValue('displayName', '');
+      setValue('baseUrl', '');
+      setValue('region', '');
+      setValue('providerType', 'custom');
+      setValue('gatewaySlug', '');
+      return;
+    }
+
+    setIsCustomMode(false);
+    setValue('providerType', 'builtin');
+    setValue('gatewaySlug', '');
+
     const selectedProvider = PROVIDER_OPTIONS.find((option) => option.value === value);
     if (selectedProvider && !provider) {
       setValue('displayName', selectedProvider.label);
@@ -238,6 +260,44 @@ export default function ProviderForm({ loading, provider = null, onSubmit, onCan
   };
 
   function renderProviderInfo() {
+    // Custom mode: show editable name, displayName, gatewaySlug, optional baseUrl
+    if (isCustomMode) {
+      return (
+        <Stack spacing={2}>
+          {!provider && (
+            <Box>
+              <Button variant="text" size="small" onClick={() => { setIsCustomMode(false); setValue('providerType', 'builtin'); }}>
+                &larr; {t('backToBuiltin')}
+              </Button>
+            </Box>
+          )}
+          <FormInput
+            name="name"
+            label={t('providerIdentifier')}
+            placeholder="my-vps"
+            required
+            disabled={!!provider}
+            rules={{ required: t('providerNameRequired'), pattern: { value: /^[a-z0-9-]+$/, message: t('providerIdentifierHint') } }}
+          />
+          <FormInput name="displayName" label={t('displayName')} placeholder="My VPS Provider" required rules={{ required: t('displayNameRequired') }} />
+          <FormInput
+            name="gatewaySlug"
+            label={t('gatewaySlug')}
+            placeholder="custom-vps"
+            required
+            rules={{
+              required: t('gatewaySlugRequired'),
+              pattern: { value: /^custom-/, message: t('gatewaySlugPrefix') },
+            }}
+          />
+          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+            {t('gatewaySlugHint')}
+          </Typography>
+          <FormInput name="baseUrl" label={t('baseUrl')} placeholder="https://..." />
+        </Stack>
+      );
+    }
+
     return (
       <Stack spacing={2}>
         <FormInput
@@ -252,9 +312,15 @@ export default function ProviderForm({ loading, provider = null, onSubmit, onCan
                 {...field}
                 size="small"
                 disabled={!!provider}
+                value={field.value || ''}
                 onChange={(e) => {
-                  field.onChange(e);
-                  handleProviderNameChange(e.target.value as string);
+                  const val = e.target.value as string;
+                  if (val === CUSTOM_PROVIDER_VALUE) {
+                    handleProviderNameChange(val);
+                  } else {
+                    field.onChange(e);
+                    handleProviderNameChange(val);
+                  }
                 }}>
                 {PROVIDER_OPTIONS.map((option) => (
                   <MenuItem key={option.value} value={option.value}>
@@ -268,6 +334,12 @@ export default function ProviderForm({ loading, provider = null, onSubmit, onCan
                     </Stack>
                   </MenuItem>
                 ))}
+                <MenuItem value={CUSTOM_PROVIDER_VALUE}>
+                  <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                    <AddIcon sx={{ fontSize: 20, color: 'text.secondary' }} />
+                    <Typography variant="body2">{t('customProvider')}</Typography>
+                  </Stack>
+                </MenuItem>
               </Select>
               {hasError && <FormHelperText>{error}</FormHelperText>}
             </FormControl>

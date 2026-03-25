@@ -276,10 +276,15 @@ routes.get('/gateway-settings', async (c) => {
 
   const slugs = getSupportedGatewaySlugs();
   const db = c.get('db');
-  const providers = await db.select({ name: aiProviders.name, config: aiProviders.config }).from(aiProviders);
+  const providers = await db.select({
+    name: aiProviders.name,
+    config: aiProviders.config,
+    providerType: aiProviders.providerType,
+    gatewaySlug: aiProviders.gatewaySlug,
+  }).from(aiProviders);
 
   const providerStatus = providers.map((p) => {
-    const slug = getGatewaySlug(p.name);
+    const slug = getGatewaySlug(p.name, p.gatewaySlug);
     let optedOut = false;
     if (p.config) {
       try {
@@ -289,6 +294,7 @@ routes.get('/gateway-settings', async (c) => {
     }
     return {
       name: p.name,
+      providerType: p.providerType || 'builtin',
       gatewaySlug: slug,
       supported: !!slug,
       optedOut,
@@ -378,10 +384,22 @@ routes.post('/', async (c) => {
     enabled?: boolean;
     config?: unknown;
     apiFormat?: 'openai' | 'anthropic' | 'gemini';
+    providerType?: 'builtin' | 'custom';
+    gatewaySlug?: string;
   }>();
 
   if (!body.name || !body.displayName) {
     return c.json({ error: 'name and displayName are required' }, 400);
+  }
+
+  // Custom provider requires gatewaySlug with "custom-" prefix
+  if (body.providerType === 'custom') {
+    if (!body.gatewaySlug) {
+      return c.json({ error: 'gatewaySlug is required for custom providers' }, 400);
+    }
+    if (!body.gatewaySlug.startsWith('custom-')) {
+      return c.json({ error: 'gatewaySlug must start with "custom-" for custom providers (e.g. custom-vps)' }, 400);
+    }
   }
 
   const db = c.get('db');
@@ -402,6 +420,8 @@ routes.post('/', async (c) => {
       enabled: body.enabled ?? true,
       config: body.config ? JSON.stringify(body.config) : null,
       apiFormat: body.apiFormat || 'openai',
+      providerType: body.providerType || 'builtin',
+      gatewaySlug: body.gatewaySlug || null,
     })
     .returning();
 
@@ -421,6 +441,8 @@ routes.put('/:id', async (c) => {
     region?: string;
     enabled?: boolean;
     apiFormat?: 'openai' | 'anthropic' | 'gemini';
+    providerType?: 'builtin' | 'custom';
+    gatewaySlug?: string | null;
   }>();
 
   const db = c.get('db');
@@ -436,6 +458,8 @@ routes.put('/:id', async (c) => {
   if (body.region !== undefined) updates.region = body.region;
   if (body.enabled !== undefined) updates.enabled = body.enabled;
   if (body.apiFormat !== undefined) updates.apiFormat = body.apiFormat;
+  if (body.providerType !== undefined) updates.providerType = body.providerType;
+  if (body.gatewaySlug !== undefined) updates.gatewaySlug = body.gatewaySlug;
 
   const [updated] = await db.update(aiProviders).set(updates).where(eq(aiProviders.id, id)).returning();
   return c.json(updated);

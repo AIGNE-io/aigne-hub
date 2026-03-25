@@ -146,3 +146,48 @@ describe('getSupportedGatewaySlugs', () => {
     expect(slugs.doubao).toBeUndefined();
   });
 });
+
+describe('custom provider support', () => {
+  it('getGatewaySlug prefers dbGatewaySlug over hardcoded mapping', () => {
+    expect(getGatewaySlug('openai', 'custom-openai')).toBe('custom-openai');
+  });
+
+  it('getGatewaySlug falls back to hardcoded when dbGatewaySlug is null', () => {
+    expect(getGatewaySlug('openai', null)).toBe('openai');
+    expect(getGatewaySlug('openai', undefined)).toBe('openai');
+  });
+
+  it('getGatewaySlug returns dbGatewaySlug for unknown providers', () => {
+    expect(getGatewaySlug('my-vps', 'custom-vps')).toBe('custom-vps');
+    expect(getGatewaySlug('my-vps')).toBeNull();
+  });
+
+  it('shouldUseGateway returns true for custom provider with dbGatewaySlug', () => {
+    expect(shouldUseGateway('my-vps', null, 'custom-vps')).toBe(true);
+  });
+
+  it('shouldUseGateway returns false for custom provider without dbGatewaySlug', () => {
+    expect(shouldUseGateway('my-vps', null, null)).toBe(false);
+  });
+
+  it('buildGatewayUrl uses dbGatewaySlug for custom providers', () => {
+    const gw = { accountId: 'acc', gatewayId: 'gw' };
+    expect(buildGatewayUrl(gw, 'my-vps', 'openai', 'chat', { dbGatewaySlug: 'custom-vps' })).toBe(
+      'https://gateway.ai.cloudflare.com/v1/acc/gw/custom-vps/chat/completions'
+    );
+  });
+
+  it('buildGatewayUrl uses dbGatewaySlug for embedding endpoint', () => {
+    const gw = { accountId: 'acc', gatewayId: 'gw' };
+    expect(buildGatewayUrl(gw, 'my-vps', 'openai', 'embedding', { dbGatewaySlug: 'custom-vps' })).toBe(
+      'https://gateway.ai.cloudflare.com/v1/acc/gw/custom-vps/embeddings'
+    );
+  });
+
+  it('buildGatewayUrl uses dbGatewaySlug for image endpoint', () => {
+    const gw = { accountId: 'acc', gatewayId: 'gw' };
+    expect(buildGatewayUrl(gw, 'my-vps', 'openai', 'image', { dbGatewaySlug: 'custom-vps' })).toBe(
+      'https://gateway.ai.cloudflare.com/v1/acc/gw/custom-vps/images/generations'
+    );
+  });
+});

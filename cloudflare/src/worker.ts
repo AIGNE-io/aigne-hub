@@ -63,6 +63,18 @@ app.use('*', async (c, next) => {
   return middleware(c, next);
 });
 
+// Strip trailing slash for API routes (Hono doesn't match "/api/foo/" against "/api/foo")
+app.use('/api/*', async (c, next) => {
+  const path = c.req.path;
+  if (path !== '/' && path.endsWith('/')) {
+    const url = new URL(c.req.url);
+    url.pathname = path.replace(/\/+$/, '');
+    const newReq = new Request(url.toString(), c.req.raw);
+    return app.fetch(newReq, c.env, c.executionCtx);
+  }
+  return next();
+});
+
 // Request logging
 app.use('*', async (c, next) => {
   const start = Date.now();

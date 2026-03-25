@@ -23,6 +23,8 @@ export interface Provider {
   baseUrl?: string;
   region?: string;
   enabled: boolean;
+  providerType?: 'builtin' | 'custom';
+  gatewaySlug?: string;
   config?: Record<string, any>;
   credentials?: Credential[];
   createdAt: string;
@@ -37,6 +39,7 @@ export default function AIProviders() {
   const [showForm, setShowForm] = useState(false);
   const [editingProvider, setEditingProvider] = useState<Provider | null>(null);
   const [credentialsProvider, setCredentialsProvider] = useState<Provider | null>(null);
+  const [deletingProvider, setDeletingProvider] = useState<Provider | null>(null);
   const [loadingCredentials, setLoadingCredentials] = useState(false);
 
   // 获取AI Provider列表
@@ -88,6 +91,8 @@ export default function AIProviders() {
         region: data.region,
         enabled: data.enabled,
         config: data.config,
+        providerType: data.providerType,
+        gatewaySlug: data.gatewaySlug,
       });
 
       const providerId = response.data.id;
@@ -150,6 +155,8 @@ export default function AIProviders() {
         region: data.region,
         enabled: data.enabled,
         config: data.config,
+        providerType: data.providerType,
+        gatewaySlug: data.gatewaySlug,
       });
       await fetchProviders();
       setEditingProvider(null);
@@ -174,6 +181,20 @@ export default function AIProviders() {
     }
   };
 
+  // 删除Provider
+  const handleDeleteProvider = async () => {
+    if (!deletingProvider) return;
+    try {
+      await api.delete(`/api/ai-providers/${deletingProvider.id}`);
+      await fetchProviders();
+      Toast.success(t('providerDeleted'));
+    } catch (error: any) {
+      Toast.error(formatError(error) || t('deleteProviderFailed'));
+    } finally {
+      setDeletingProvider(null);
+    }
+  };
+
   // 编辑Provider
   const handleEditProvider = (provider: Provider) => {
     setEditingProvider(provider);
@@ -191,6 +212,7 @@ export default function AIProviders() {
           const provider = providers[tableMeta.rowIndex];
           if (!provider) return null;
 
+          const isCustom = provider.providerType === 'custom';
           return (
             <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
               <Avatar
@@ -199,6 +221,20 @@ export default function AIProviders() {
                 alt={provider.displayName}
               />
               <Typography variant="body2">{provider.displayName}</Typography>
+              {isCustom && (
+                <Typography
+                  variant="caption"
+                  sx={{
+                    px: 0.75,
+                    py: 0.25,
+                    borderRadius: 1,
+                    backgroundColor: 'action.selected',
+                    color: 'text.secondary',
+                    fontSize: '0.7rem',
+                  }}>
+                  {t('custom')}
+                </Typography>
+              )}
             </Stack>
           );
         },
@@ -313,7 +349,8 @@ export default function AIProviders() {
           const credentials = provider.credentials || [];
           const total = credentials.length;
           const errorCount = credentials.filter((credential: Credential) => credential.active === false).length;
-          const isConnected = provider.enabled && total > 0;
+          const isCustomGateway = provider.providerType === 'custom' && !!provider.gatewaySlug;
+          const isConnected = provider.enabled && (total > 0 || isCustomGateway);
 
           return (
             <Stack
@@ -380,6 +417,11 @@ export default function AIProviders() {
                   label: provider.baseUrl ? t('editEndpointTip') : t('editRegionTip'),
                   handler: () => handleEditProvider(provider),
                   color: 'text.secondary',
+                },
+                {
+                  label: t('deleteProvider'),
+                  handler: () => setDeletingProvider(provider),
+                  color: 'error.main',
                 },
               ]}
             />
@@ -451,6 +493,25 @@ export default function AIProviders() {
           onCredentialChange={handleCredentialChange}
         />
       )}
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={!!deletingProvider}
+        onClose={() => setDeletingProvider(null)}
+        title={t('deleteProvider')}
+        maxWidth="sm"
+        PaperProps={{ style: { minHeight: 'auto' } }}
+        actions={
+          <Stack direction="row" spacing={2} sx={{ justifyContent: 'flex-end' }}>
+            <Button onClick={() => setDeletingProvider(null)}>{t('cancel')}</Button>
+            <Button variant="contained" color="error" onClick={handleDeleteProvider}>
+              {t('confirm')}
+            </Button>
+          </Stack>
+        }>
+        <Typography variant="body1">
+          {t('deleteProviderConfirm', { name: deletingProvider?.displayName })}
+        </Typography>
+      </Dialog>
     </Box>
   );
 }

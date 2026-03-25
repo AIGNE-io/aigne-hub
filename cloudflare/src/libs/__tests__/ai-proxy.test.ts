@@ -11,6 +11,7 @@ const openaiProvider: ResolvedProvider = {
   apiKey: 'sk-xxx',
   baseUrl: 'https://api.openai.com/v1',
   apiFormat: 'openai',
+  providerType: 'builtin',
 };
 
 const anthropicProvider: ResolvedProvider = {
@@ -21,6 +22,7 @@ const anthropicProvider: ResolvedProvider = {
   apiKey: 'sk-ant-xxx',
   baseUrl: 'https://api.anthropic.com/v1',
   apiFormat: 'anthropic',
+  providerType: 'builtin',
 };
 
 const geminiProvider: ResolvedProvider = {
@@ -31,6 +33,7 @@ const geminiProvider: ResolvedProvider = {
   apiKey: 'AIza-xxx',
   baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
   apiFormat: 'gemini',
+  providerType: 'builtin',
 };
 
 const doubaoProvider: ResolvedProvider = {
@@ -41,6 +44,7 @@ const doubaoProvider: ResolvedProvider = {
   apiKey: 'sk-dou',
   baseUrl: 'https://ark.cn-beijing.volces.com/api/v3',
   apiFormat: 'openai',
+  providerType: 'builtin',
 };
 
 const gw = { accountId: 'acc', gatewayId: 'gw' };

@@ -16,6 +16,8 @@ import logger from './logger';
 import { classifyModel, compare } from './pricing-core.mjs';
 import { fetchRemoteCatalog } from './remote-pricing-catalog';
 
+const OFFICIAL_LITELLM_URL =
+  'https://raw.githubusercontent.com/blocklet/model-pricing-data/main/data/pricing-litellm.json';
 const LITELLM_RAW_URL = 'https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json';
 
 // Re-export the core functions for consumers
@@ -33,63 +35,98 @@ export type ComparisonResult = Record<string, any> & {
 };
 
 /**
- * Fetch LiteLLM raw data and build the same Map format that pricing-core.mjs expects.
- * Includes tiered pricing (≥200K), cache costs, resolution tiers — everything.
+ * Parse LiteLLM-format JSON into a Map keyed by "provider/model".
+ * Works with both our official pricing-litellm.json and the upstream LiteLLM file.
  */
-async function fetchLiteLLMMap(): Promise<Map<string, any>> {
+function parseLiteLLMData(data: Record<string, any>): Map<string, any> {
   const map = new Map<string, any>();
+  for (const [key, val] of Object.entries(data)) {
+    if (key === 'sample_spec' || !val.litellm_provider) continue;
+    const provider = val.litellm_provider;
+    const modelName = key.includes('/') ? key.split('/').slice(1).join('/') : key;
+
+    const entry: Record<string, any> = {
+      inputCostPerToken: val.input_cost_per_token,
+      outputCostPerToken: val.output_cost_per_token,
+      cacheWriteCostPerToken: val.cache_creation_input_token_cost,
+      cacheReadCostPerToken: val.cache_read_input_token_cost,
+      outputCostPerImage: val.output_cost_per_image,
+      inputCostPerImage: val.input_cost_per_image,
+      outputCostPerImageToken: val.output_cost_per_image_token,
+      outputCostPerVideoPerSecond: val.output_cost_per_video_per_second,
+    };
+
+    // Tiered pricing (≥200K context)
+    const above200kInput = val.input_cost_per_token_above_200k_tokens;
+    const above200kOutput = val.output_cost_per_token_above_200k_tokens;
+    if (above200kInput != null || above200kOutput != null) {
+      entry.tieredPricing = [
+        {
+          threshold: '>200K',
+          input: above200kInput ?? val.input_cost_per_token,
+          output: above200kOutput ?? val.output_cost_per_token,
+        },
+      ];
+    }
+
+    // Context tier (above 128K for some models)
+    const above128kInput = val.input_cost_per_token_above_128k_tokens;
+    const above128kOutput = val.output_cost_per_token_above_128k_tokens;
+    if (above128kInput != null || above128kOutput != null) {
+      if (!entry.tieredPricing) entry.tieredPricing = [];
+      entry.tieredPricing.push({
+        threshold: '>128K',
+        input: above128kInput ?? val.input_cost_per_token,
+        output: above128kOutput ?? val.output_cost_per_token,
+      });
+    }
+
+    map.set(`${provider}/${modelName}`, entry);
+  }
+  return map;
+}
+
+/**
+ * Fetch pricing data: official catalog first, then merge LiteLLM for any missing models.
+ */
+async function fetchPricingMap(): Promise<Map<string, any>> {
+  // 1. Try official catalog first (our maintained data)
+  let officialMap = new Map<string, any>();
+  try {
+    const { data } = await axios.get(OFFICIAL_LITELLM_URL, { timeout: 30000 });
+    officialMap = parseLiteLLMData(data as Record<string, any>);
+    logger.info('Official pricing fetched', { count: officialMap.size });
+  } catch (err) {
+    logger.warn('Failed to fetch official pricing, will use LiteLLM only', {
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+
+  // 2. Fetch LiteLLM as fallback for models not in our catalog
+  let litellmMap = new Map<string, any>();
   try {
     const { data } = await axios.get(LITELLM_RAW_URL, { timeout: 30000 });
-    for (const [key, val] of Object.entries(data as Record<string, any>)) {
-      if (key === 'sample_spec' || !val.litellm_provider) continue;
-      const provider = val.litellm_provider;
-      const modelName = key.includes('/') ? key.split('/').slice(1).join('/') : key;
-
-      const entry: Record<string, any> = {
-        inputCostPerToken: val.input_cost_per_token,
-        outputCostPerToken: val.output_cost_per_token,
-        cacheWriteCostPerToken: val.cache_creation_input_token_cost,
-        cacheReadCostPerToken: val.cache_read_input_token_cost,
-        outputCostPerImage: val.output_cost_per_image,
-        inputCostPerImage: val.input_cost_per_image,
-        outputCostPerImageToken: val.output_cost_per_image_token,
-        outputCostPerVideoPerSecond: val.output_cost_per_video_per_second,
-      };
-
-      // Tiered pricing (≥200K context)
-      const above200kInput = val.input_cost_per_token_above_200k_tokens;
-      const above200kOutput = val.output_cost_per_token_above_200k_tokens;
-      if (above200kInput != null || above200kOutput != null) {
-        entry.tieredPricing = [
-          {
-            threshold: '>200K',
-            input: above200kInput ?? val.input_cost_per_token,
-            output: above200kOutput ?? val.output_cost_per_token,
-          },
-        ];
-      }
-
-      // Context tier (above 128K for some models)
-      const above128kInput = val.input_cost_per_token_above_128k_tokens;
-      const above128kOutput = val.output_cost_per_token_above_128k_tokens;
-      if (above128kInput != null || above128kOutput != null) {
-        if (!entry.tieredPricing) entry.tieredPricing = [];
-        entry.tieredPricing.push({
-          threshold: '>128K',
-          input: above128kInput ?? val.input_cost_per_token,
-          output: above128kOutput ?? val.output_cost_per_token,
-        });
-      }
-
-      map.set(`${provider}/${modelName}`, entry);
-    }
-    logger.info('LiteLLM fetched', { count: map.size });
+    litellmMap = parseLiteLLMData(data as Record<string, any>);
+    logger.info('LiteLLM fetched (fallback)', { count: litellmMap.size });
   } catch (err) {
     logger.warn('Failed to fetch LiteLLM', {
       error: err instanceof Error ? err.message : String(err),
     });
   }
-  return map;
+
+  // 3. Merge: official takes priority, LiteLLM fills gaps
+  const merged = new Map(litellmMap);
+  for (const [key, val] of officialMap) {
+    merged.set(key, val);
+  }
+
+  logger.info('Pricing map merged', {
+    official: officialMap.size,
+    litellm: litellmMap.size,
+    merged: merged.size,
+  });
+
+  return merged;
 }
 
 export async function compareAgainstDbRates(
@@ -99,7 +136,7 @@ export async function compareAgainstDbRates(
 ): Promise<ComparisonResult[]> {
   // Fetch all sources + DB in parallel
   const [litellmMap, officialCatalog, dbRates, providers] = await Promise.all([
-    fetchLiteLLMMap(),
+    fetchPricingMap(),
     fetchRemoteCatalog().catch((err) => {
       logger.warn('Failed to fetch remote catalog', { error: err });
       return new Map();
@@ -138,7 +175,7 @@ export async function compareAgainstDbRates(
     totalChecked: dbRates.length,
     ...grouped,
     threshold,
-    sources: { litellm: litellmMap.size, officialCatalog: officialCatalog.size },
+    sources: { pricingMap: litellmMap.size, officialCatalog: officialCatalog.size },
   });
 
   return results;

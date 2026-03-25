@@ -19,6 +19,8 @@ export interface ResolvedProvider {
   apiKey: string;
   baseUrl: string;
   apiFormat: string; // 'openai' | 'anthropic' | 'gemini' | 'bedrock'
+  providerType: string; // 'builtin' | 'custom'
+  gatewaySlug?: string | null;
   providerConfig?: Record<string, unknown> | string | null;
   modelMetadata?: Record<string, unknown> | string | null;
 }
@@ -56,7 +58,16 @@ export async function resolveProvider(db: DB, model: string, encryptionKey?: str
 
   if (matchingRates.length === 0) return null;
 
-  const selected = matchingRates[0];
+  // Prefer builtin providers when no explicit provider name given (avoid custom shadowing builtin models)
+  const sorted = providerName
+    ? matchingRates
+    : [...matchingRates].sort((a, b) => {
+        const aBuiltin = (a.provider.providerType || 'builtin') === 'builtin' ? 0 : 1;
+        const bBuiltin = (b.provider.providerType || 'builtin') === 'builtin' ? 0 : 1;
+        return aBuiltin - bBuiltin;
+      });
+
+  const selected = sorted[0];
 
   // Get active credential for this provider (weighted random)
   const creds = await db
@@ -74,6 +85,8 @@ export async function resolveProvider(db: DB, model: string, encryptionKey?: str
       apiKey: '',
       baseUrl: selected.provider.baseUrl || getDefaultBaseUrl(selected.provider.name),
       apiFormat: selected.provider.apiFormat || getDefaultApiFormat(selected.provider.name),
+      providerType: selected.provider.providerType || 'builtin',
+      gatewaySlug: selected.provider.gatewaySlug,
       providerConfig: selected.provider.config as Record<string, unknown> | string | null,
       modelMetadata: selected.rate.modelMetadata as Record<string, unknown> | string | null,
     };
@@ -116,6 +129,8 @@ export async function resolveProvider(db: DB, model: string, encryptionKey?: str
     apiKey,
     baseUrl: selected.provider.baseUrl || getDefaultBaseUrl(selected.provider.name),
     apiFormat: selected.provider.apiFormat || getDefaultApiFormat(selected.provider.name),
+    providerType: selected.provider.providerType || 'builtin',
+    gatewaySlug: selected.provider.gatewaySlug,
     providerConfig: selected.provider.config as Record<string, unknown> | string | null,
     modelMetadata: selected.rate.modelMetadata as Record<string, unknown> | string | null,
   };
@@ -195,6 +210,7 @@ export function buildUpstreamUrl(
     const gwUrl = buildGatewayUrl(options.gateway, provider.providerName, provider.apiFormat, callType, {
       modelName: provider.modelName,
       stream: options.stream,
+      dbGatewaySlug: provider.gatewaySlug,
     });
     if (gwUrl) return gwUrl;
     // Fall through to direct if provider not supported by Gateway
