@@ -573,7 +573,7 @@ export default function Chat() {
         title={t('chat.clearHistory')}
         fullScreen={false}
         PaperProps={{ style: { minHeight: '100px' } }}
-        slotProps={{ content: { style: { paddintTop: 0 } } }}
+        slotProps={{ content: { style: { paddingTop: 0 } } }}
         actions={
           <Stack direction="row" spacing={2}>
             <Button onClick={handleCancelClear}>{t('cancel')}</Button>

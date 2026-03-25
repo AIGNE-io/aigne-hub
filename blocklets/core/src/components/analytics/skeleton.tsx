@@ -94,8 +94,8 @@ export function UsageOverviewSkeleton() {
 export function ModelUsageStatsSkeleton() {
   return (
     <Card sx={{ p: 2, height: '100%' }}>
-      <Stack spacing={0}>
-        <Stack spacing={0} sx={{ mb: '24px !important' }}>
+      <Stack>
+        <Stack sx={{ mb: 3 }}>
           <Skeleton variant="text" width="60%" height={27} sx={{ mb: 0.1 }} />
           <Skeleton variant="text" width="80%" height={24} sx={{ mb: 1 }} />
         </Stack>

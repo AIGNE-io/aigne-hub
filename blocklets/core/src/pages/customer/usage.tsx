@@ -10,6 +10,7 @@ import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import { UserInfoResult } from '@blocklet/aigne-hub/api/types/user';
 import { getPrefix } from '@blocklet/aigne-hub/api/utils/util';
 import { formatError } from '@blocklet/error';
+import { WavingHandOutlined } from '@mui/icons-material';
 import { Alert, Box, Button, Link, Stack, Typography } from '@mui/material';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -93,7 +94,7 @@ function CreditBoard() {
           {shouldShowWelcomeGuide && (
             <Alert
               severity="info"
-              icon={<span style={{ fontSize: '18px' }}>👋</span>}
+              icon={<WavingHandOutlined sx={{ fontSize: 18 }} />}
               sx={{
                 borderRadius: 2,
                 alignItems: 'flex-start',
