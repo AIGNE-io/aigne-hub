@@ -25,6 +25,7 @@ const ConfigUsagePage = lazy(() => import('./pages/admin/usage'));
 const CreditBoardPage = lazy(() => import('./pages/customer/usage'));
 const PricingPage = lazy(() => import('./pages/pricing'));
 const ProjectPage = lazy(() => import('./pages/usage/projects/project-page'));
+const ApiKeysPage = lazy(() => import('./pages/api-keys/index'));
 
 export default function App() {
   const basename = window.blocklet?.prefix || '/';
@@ -98,6 +99,15 @@ function AppRoutes({ basename }: { basename: string }) {
           element={
             <PageLayout>
               <CreditBoardPage />
+            </PageLayout>
+          }
+        />
+        <Route
+          key="api-keys"
+          path="/api-keys"
+          element={
+            <PageLayout>
+              <ApiKeysPage />
             </PageLayout>
           }
         />
