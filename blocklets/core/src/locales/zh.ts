@@ -415,6 +415,8 @@ export default flatten({
     '可以前往 “AI配置 - 模型费率” 页面配置不同 AI 模型和提供商的定价费率，您可以为每个模型设置不同的费率，并选择不同的提供商。',
 
   // Home page
+  directApi: '直接 API',
+  directApiDesc: '未关联项目的直接 API 调用用量',
   homeSubtitle: '为 blocklets 提供的去中心化 AI 接入解决方案',
   creditBillingInfo: 'AIGNE Hub 已启用基于 Credit 的计费功能，您可以选择充值或前往账单管理自己的 Credits 额度。',
   loginToAccess: '登录',

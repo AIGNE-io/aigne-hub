@@ -421,6 +421,8 @@ export default flatten({
   submitFailed: 'Submit failed',
 
   // Home page
+  directApi: 'Direct API',
+  directApiDesc: 'Usage from direct API calls without a project',
   homeSubtitle: 'A decentralized AI access solution for blocklets',
   creditBillingInfo:
     'AIGNE Hub has enabled credit-based billing. You can purchase credits or manage your credit balance.',

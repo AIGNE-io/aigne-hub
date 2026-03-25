@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, like } from 'drizzle-orm';
 import type { drizzle } from 'drizzle-orm/d1';
 
 import { aiCredentials, aiModelRates, aiProviders, modelCalls, usages } from '../db/schema';
@@ -42,19 +42,29 @@ export async function resolveProvider(db: DB, model: string, encryptionKey?: str
     modelName = model;
   }
 
-  // Find matching rate
-  const rateConditions = providerName
-    ? and(eq(aiModelRates.model, modelName), eq(aiModelRates.deprecated, false))
-    : and(eq(aiModelRates.model, modelName), eq(aiModelRates.deprecated, false));
+  // Find matching rate (exact match first)
+  const baseCondition = eq(aiModelRates.deprecated, false);
 
-  const rates = await db
+  let rates = await db
     .select({ rate: aiModelRates, provider: aiProviders })
     .from(aiModelRates)
     .innerJoin(aiProviders, eq(aiModelRates.providerId, aiProviders.id))
-    .where(and(rateConditions, eq(aiProviders.enabled, true)));
+    .where(and(eq(aiModelRates.model, modelName), baseCondition, eq(aiProviders.enabled, true)));
 
   // Filter by provider name if specified
-  const matchingRates = providerName ? rates.filter((r) => r.provider.name === providerName) : rates;
+  let matchingRates = providerName ? rates.filter((r) => r.provider.name === providerName) : rates;
+
+  // Fallback: if no exact match, try suffix match for vendor-prefixed models (e.g. "gpt-4o" → "openai/gpt-4o")
+  if (matchingRates.length === 0 && !modelName.includes('/')) {
+    const suffixPattern = `%/${modelName}`;
+    const fallbackRates = await db
+      .select({ rate: aiModelRates, provider: aiProviders })
+      .from(aiModelRates)
+      .innerJoin(aiProviders, eq(aiModelRates.providerId, aiProviders.id))
+      .where(and(like(aiModelRates.model, suffixPattern), baseCondition, eq(aiProviders.enabled, true)));
+
+    matchingRates = providerName ? fallbackRates.filter((r) => r.provider.name === providerName) : fallbackRates;
+  }
 
   if (matchingRates.length === 0) return null;
 

@@ -221,7 +221,8 @@ export function ProjectList({
         customBodyRender: (_value: any, tableMeta: any) => {
           const project = projects[tableMeta.rowIndex];
           if (!project) return null;
-          const displayName = project.appName || truncateAppDid(project.appDid) || unknownProjectLabel;
+          const isDirectApi = project.appDid === '__direct__' || project.appDid === 'direct';
+          const displayName = project.appName || (isDirectApi ? t('directApi') : truncateAppDid(project.appDid)) || unknownProjectLabel;
           const tooltipText =
             project.appDid && project.appName && project.appName !== project.appDid ? project.appDid : '';
           const avatarSrc = project.appUrl && project.appLogo ? `${project.appUrl}${project.appLogo}` : undefined;

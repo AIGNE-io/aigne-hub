@@ -189,7 +189,8 @@ export function ProjectUsageOverviewCard({
   const previousAvgTtfb = previousTotals.ttfbCount > 0 ? previousTotals.totalTtfb / previousTotals.ttfbCount : 0;
   const successRate = totalCalls > 0 ? (currentTotals.totalSuccessCalls / totalCalls) * 100 : 0;
   const resolvedProjectMeta = projectMeta ?? trendsData?.project ?? null;
-  const projectName = resolvedProjectMeta?.appName || appDid;
+  const isDirectApi = appDid === '__direct__' || appDid === 'direct';
+  const projectName = resolvedProjectMeta?.appName || (isDirectApi ? t('directApi') : appDid);
   const projectLogo =
     resolvedProjectMeta?.appUrl && resolvedProjectMeta?.appLogo
       ? `${resolvedProjectMeta.appUrl}${resolvedProjectMeta.appLogo}`
@@ -362,7 +363,7 @@ export function ProjectUsageOverviewCard({
                     fontFamily: 'monospace',
                     wordBreak: 'break-all',
                   }}>
-                  {appDid}
+                  {isDirectApi ? t('directApiDesc') : appDid}
                 </Typography>
               </Stack>
             </Stack>
