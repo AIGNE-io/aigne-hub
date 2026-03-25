@@ -197,8 +197,8 @@ print(data['choices'][0]['message']['content'])`,
         </Tabs>
         <Box sx={{ p: 0 }}>
           <CodeSnippet
-            code={snippets[tab].code}
-            onCopy={() => handleCopy(snippets[tab].code)}
+            code={snippets[tab]?.code ?? ''}
+            onCopy={() => handleCopy(snippets[tab]?.code ?? '')}
           />
         </Box>
       </Paper>
