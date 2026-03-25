@@ -621,4 +621,23 @@ export default flatten({
   'gateway.save': '保存',
   'gateway.show': '显示',
   'gateway.hide': '隐藏',
+
+  // API Keys 页面
+  apiKeys: {
+    title: 'API 密钥',
+    description: '创建和管理用于访问 AIGNE Hub 的 API 密钥。',
+    createKey: '创建密钥',
+    keyName: '密钥名称',
+    keyNamePlaceholder: '例如 my-app',
+    createSuccess: 'API 密钥创建成功',
+    saveWarning: '请立即保存此密钥，它将不会再次显示。',
+    deleteConfirm: '确定要撤销此 API 密钥吗？使用该密钥的集成将停止工作。',
+    deleteSuccess: 'API 密钥已撤销',
+    noKeys: '暂无 API 密钥，创建一个即可开始使用。',
+    integration: '集成示例',
+    baseUrl: '基础地址',
+    copied: '已复制',
+    maxKeysReached: '每个账户最多 5 个密钥。',
+    keyCreated: '你的 API 密钥',
+  },
 });

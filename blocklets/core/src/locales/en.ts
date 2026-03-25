@@ -630,4 +630,23 @@ export default flatten({
   'gateway.save': 'Save',
   'gateway.show': 'Show',
   'gateway.hide': 'Hide',
+
+  // API Keys page
+  apiKeys: {
+    title: 'API Keys',
+    description: 'Create and manage API keys for programmatic access to AIGNE Hub.',
+    createKey: 'Create New Key',
+    keyName: 'Key Name',
+    keyNamePlaceholder: 'e.g. my-app',
+    createSuccess: 'API key created successfully',
+    saveWarning: 'Save this key now. It will not be shown again.',
+    deleteConfirm: 'Are you sure you want to revoke this API key? Any integrations using it will stop working.',
+    deleteSuccess: 'API key revoked',
+    noKeys: 'No API keys yet. Create one to get started.',
+    integration: 'Integration Examples',
+    baseUrl: 'Base URL',
+    copied: 'Copied!',
+    maxKeysReached: 'Maximum 5 keys per account.',
+    keyCreated: 'Your API Key',
+  },
 });
