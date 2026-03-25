@@ -46,7 +46,7 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
   const waitUntil = getWaitUntil(c);
   const startTime = Date.now();
   const userDid = (c.get('user') as { id?: string } | undefined)?.id || c.req.header('x-user-did') || '';
-  const rawAppDid = c.req.header('x-aigne-hub-client-did') || '';
+  const rawAppDid = (c as any).get('apiKeyAppDid') || c.req.header('x-aigne-hub-client-did') || '';
   const appDid = rawAppDid && rawAppDid !== 'undefined' ? rawAppDid : '';
   const requestId = c.req.header('x-request-id') || crypto.randomUUID();
 

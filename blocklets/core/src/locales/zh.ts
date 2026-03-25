@@ -133,6 +133,9 @@ export default flatten({
         cancel: '取消',
       },
 
+      copyModelId: '复制模型 ID',
+      modelIdCopied: '模型 ID 已复制',
+
       // Fields
       fields: {
         modelName: '模型名称',
@@ -337,6 +340,11 @@ export default flatten({
   disabled: '已禁用',
   connected: '已连接',
   disconnected: '未连接',
+  statusGateway: '云端',
+  statusGatewayTip: '通过 Cloudflare AI Gateway 路由',
+  statusDirect: '直连',
+  statusDirectTip: '使用存储的凭证直接连接',
+  credentialError: '{{count}} 个凭证异常',
   status: '状态',
   enableStatus: '启用',
   actions: '操作',
@@ -385,6 +393,7 @@ export default flatten({
   gatewaySlug: 'Gateway Slug',
   gatewaySlugRequired: '自定义供应商需要填写 Gateway Slug',
   gatewaySlugPrefix: '必须以 "custom-" 开头（如 custom-vps）',
+  gatewaySlugAuto: 'AI Gateway slug（自动生成，需在 Gateway 中配置此值）：',
   gatewaySlugHint: '必须以 "custom-" 开头以匹配 AI Gateway 的自定义供应商路由（如 custom-vps）',
   backToBuiltin: '返回内置供应商',
   deleteProvider: '删除',
@@ -641,5 +650,7 @@ export default flatten({
     copied: '已复制',
     maxKeysReached: '每个账户最多 5 个密钥。',
     keyCreated: '你的 API 密钥',
+    modelFormat: '模型格式',
+    modelFormatRecommended: '推荐使用 provider/model 格式以精确路由到指定供应商',
   },
 });

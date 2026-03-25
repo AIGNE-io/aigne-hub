@@ -12,7 +12,7 @@ import Toast from '@arcblock/ux/lib/Toast';
 import { Table } from '@blocklet/aigne-hub/components';
 import { formatError } from '@blocklet/error';
 import styled from '@emotion/styled';
-import { Add as AddIcon, Clear as ClearIcon, CloudQueue as GatewayIcon, FileDownload as ImportIcon, InfoOutlined } from '@mui/icons-material';
+import { Add as AddIcon, Clear as ClearIcon, CloudQueue as GatewayIcon, ContentCopy as CopyIcon, FileDownload as ImportIcon, InfoOutlined } from '@mui/icons-material';
 import {
   Avatar,
   Box,
@@ -284,14 +284,33 @@ export default function AIModelRates() {
           const rate = modelRates[tableMeta.rowIndex];
           if (!rate) return null;
 
+          const providerName = rate.provider?.name || '';
+          const callableId = providerName ? `${providerName}/${rate.model}` : rate.model;
+
           return (
-            <Typography
-              variant="body2"
-              sx={{
-                fontWeight: 'medium',
-              }}>
-              {rate.modelDisplay || rate.model}
-            </Typography>
+            <Box>
+              <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+                {rate.modelDisplay || rate.model}
+              </Typography>
+              <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', mt: 0.25 }}>
+                <Typography
+                  variant="caption"
+                  sx={{ fontFamily: 'monospace', color: 'text.secondary', fontSize: '0.7rem' }}>
+                  {callableId}
+                </Typography>
+                <Tooltip title={t('config.modelRates.copyModelId')} placement="top">
+                  <IconButton
+                    size="small"
+                    sx={{ p: 0.25 }}
+                    onClick={() => {
+                      navigator.clipboard.writeText(callableId);
+                      Toast.success(t('config.modelRates.modelIdCopied'));
+                    }}>
+                    <CopyIcon sx={{ fontSize: 12, color: 'text.disabled' }} />
+                  </IconButton>
+                </Tooltip>
+              </Stack>
+            </Box>
           );
         },
       },

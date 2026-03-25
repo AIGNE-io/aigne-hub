@@ -124,8 +124,19 @@ export const formatModelPrice = (
   rateType: 'input' | 'output' = 'output',
   precision: number = 2
 ): { value: number; unit: ModelPriceUnit } => {
-  // Input always uses mtokens, output uses appropriate unit based on model type
-  const unit = rateType === 'input' ? 'mtokens' : getModelPriceUnit(modelType);
+  // Input always uses mtokens
+  let unit: ModelPriceUnit;
+  if (rateType === 'input') {
+    unit = 'mtokens';
+  } else {
+    unit = getModelPriceUnit(modelType);
+    // Heuristic: per-image/video rates are >= 0.001 (e.g. $0.02/image).
+    // Per-token rates are tiny (e.g. 0.000003). If unit is image/second
+    // but rate looks like per-token, display as mtokens instead.
+    if ((unit === 'image' || unit === 'second') && price > 0 && price < 0.001) {
+      unit = 'mtokens';
+    }
+  }
   const value = formatPriceByUnit(price, unit, precision);
   return { value, unit };
 };

@@ -128,7 +128,7 @@ export default function ProviderForm({ loading, provider = null, onSubmit, onCan
       setValue('baseUrl', '');
       setValue('region', '');
       setValue('providerType', 'custom');
-      setValue('gatewaySlug', '');
+      setValue('gatewaySlug', ''); // will be auto-set on submit
       return;
     }
 
@@ -155,6 +155,10 @@ export default function ProviderForm({ loading, provider = null, onSubmit, onCan
   };
 
   const handleFormSubmit = (data: ProviderFormData) => {
+    // Auto-generate gatewaySlug for custom providers
+    if (data.providerType === 'custom' && data.name) {
+      data.gatewaySlug = `custom-${data.name}`;
+    }
     const formData = {
       ...data,
       credentials: credentials.filter((cred) => {
@@ -274,25 +278,20 @@ export default function ProviderForm({ loading, provider = null, onSubmit, onCan
           <FormInput
             name="name"
             label={t('providerIdentifier')}
-            placeholder="my-vps"
+            placeholder="vps"
             required
             disabled={!!provider}
             rules={{ required: t('providerNameRequired'), pattern: { value: /^[a-z0-9-]+$/, message: t('providerIdentifierHint') } }}
           />
           <FormInput name="displayName" label={t('displayName')} placeholder="My VPS Provider" required rules={{ required: t('displayNameRequired') }} />
-          <FormInput
-            name="gatewaySlug"
-            label={t('gatewaySlug')}
-            placeholder="custom-vps"
-            required
-            rules={{
-              required: t('gatewaySlugRequired'),
-              pattern: { value: /^custom-/, message: t('gatewaySlugPrefix') },
-            }}
-          />
-          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-            {t('gatewaySlugHint')}
-          </Typography>
+          {watchedName && (
+            <Box sx={{ px: 1.5, py: 1, bgcolor: 'action.hover', borderRadius: 1 }}>
+              <Typography variant="caption" color="text.secondary">{t('gatewaySlugAuto')}</Typography>
+              <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 500 }}>
+                custom-{watchedName}
+              </Typography>
+            </Box>
+          )}
           <FormInput name="baseUrl" label={t('baseUrl')} placeholder="https://..." />
         </Stack>
       );

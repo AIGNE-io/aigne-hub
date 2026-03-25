@@ -8,10 +8,11 @@ import { Link, useLocation } from 'react-router-dom';
 
 const NAV_ITEMS = [
   { id: 'home', label: '首页', link: '/' },
-  { id: 'settings', label: '控制台', link: '/config' },
-  { id: 'playground', label: '沙盒', link: '/config/playground' },
+  { id: 'config', label: '配置', link: '/config' },
+  { id: 'usage', label: '用量', link: '/usage' },
+  { id: 'playground', label: '沙盒', link: '/playground' },
   { id: 'pricing', label: '定价', link: '/pricing' },
-  { id: 'creditUsage', label: '额度分析', link: '/credit-usage' },
+  { id: 'apiKeys', label: 'API Keys', link: '/api-keys' },
 ];
 
 interface HeaderProps {

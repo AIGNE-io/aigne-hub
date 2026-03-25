@@ -19,7 +19,7 @@ export default function AIConfig() {
   const { startTransition } = useTransitionContext();
 
   // @ts-ignore
-  const TabComponent = pages[page] || pages.products;
+  const TabComponent = pages[page] || pages.providers;
   const tabs = [
     { label: t('providerName'), value: 'providers' },
     { label: t('config.modelRates.title'), value: 'models' },
@@ -43,7 +43,11 @@ export default function AIConfig() {
           // @ts-ignore
           current={page}
           // @ts-ignore
-          onChange={(newTab: string) => startTransition(() => navigate(`/config/ai-config/${newTab}`))}
+          onChange={(newTab: string) => {
+            const isCfMode = !window.blocklet?.appId;
+            const basePath = isCfMode ? '/config' : '/config/ai-config';
+            startTransition(() => navigate(`${basePath}/${newTab}`));
+          }}
           scrollButtons="auto"
           variant="scrollable"
           sx={{
@@ -53,7 +57,9 @@ export default function AIConfig() {
           }}
         />
       </Stack>
-      {isValidElement(TabComponent) ? TabComponent : <TabComponent />}
+      <div style={{ padding: '16px 0' }}>
+        {isValidElement(TabComponent) ? TabComponent : <TabComponent />}
+      </div>
     </>
   );
 }

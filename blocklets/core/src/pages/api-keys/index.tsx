@@ -123,11 +123,13 @@ function IntegrationExamples({ keyPreview }: { keyPreview: string }) {
   const snippets = [
     {
       label: 'curl',
-      code: `curl ${baseUrl}/api/v2/chat/completions \\
+      code: `# Model format: provider/model (recommended)
+# Examples: openai/gpt-4, google/gemini-2.5-flash, openrouter/anthropic/claude-sonnet-4
+curl ${baseUrl}/api/v2/chat/completions \\
   -H "Authorization: Bearer ${apiKeyPlaceholder}" \\
   -H "Content-Type: application/json" \\
   -d '{
-    "model": "gpt-4o",
+    "model": "openai/gpt-4",
     "messages": [
       {"role": "user", "content": "Hello!"}
     ]
@@ -135,14 +137,16 @@ function IntegrationExamples({ keyPreview }: { keyPreview: string }) {
     },
     {
       label: 'JavaScript',
-      code: `const response = await fetch('${baseUrl}/api/v2/chat/completions', {
+      code: `// Model format: "provider/model" (recommended)
+// Examples: "openai/gpt-4", "google/gemini-2.5-flash"
+const response = await fetch('${baseUrl}/api/v2/chat/completions', {
   method: 'POST',
   headers: {
     'Authorization': 'Bearer ${apiKeyPlaceholder}',
     'Content-Type': 'application/json',
   },
   body: JSON.stringify({
-    model: 'gpt-4o',
+    model: 'openai/gpt-4',
     messages: [
       { role: 'user', content: 'Hello!' }
     ],
@@ -153,25 +157,23 @@ const data = await response.json();
 console.log(data.choices[0].message.content);`,
     },
     {
-      label: 'Python',
-      code: `import requests
+      label: 'Python (OpenAI SDK)',
+      code: `from openai import OpenAI
 
-response = requests.post(
-    '${baseUrl}/api/v2/chat/completions',
-    headers={
-        'Authorization': 'Bearer ${apiKeyPlaceholder}',
-        'Content-Type': 'application/json',
-    },
-    json={
-        'model': 'gpt-4o',
-        'messages': [
-            {'role': 'user', 'content': 'Hello!'}
-        ],
-    },
+# Compatible with OpenAI SDK - just change base_url
+client = OpenAI(
+    api_key="${apiKeyPlaceholder}",
+    base_url="${baseUrl}/api/v2",
 )
 
-data = response.json()
-print(data['choices'][0]['message']['content'])`,
+# Model format: "provider/model" (recommended)
+response = client.chat.completions.create(
+    model="openai/gpt-4",
+    messages=[
+        {"role": "user", "content": "Hello!"}
+    ],
+)
+print(response.choices[0].message.content)`,
     },
   ];
 
@@ -207,6 +209,15 @@ print(data['choices'][0]['message']['content'])`,
           {t('apiKeys.copied')}
         </Typography>
       )}
+      <Box sx={{ mt: 2, p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
+        <Typography variant="subtitle2" sx={{ mb: 1 }}>{t('apiKeys.modelFormat')}</Typography>
+        <Typography variant="body2" color="text.secondary" component="div">
+          <code>provider/model</code> — {t('apiKeys.modelFormatRecommended')}<br />
+          <Box component="span" sx={{ fontFamily: 'monospace', fontSize: '0.8rem', display: 'block', mt: 0.5, lineHeight: 1.8 }}>
+            openai/gpt-4 &nbsp;&nbsp; google/gemini-2.5-flash &nbsp;&nbsp; openrouter/anthropic/claude-sonnet-4
+          </Box>
+        </Typography>
+      </Box>
     </Box>
   );
 }

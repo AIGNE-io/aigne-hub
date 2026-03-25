@@ -49,8 +49,10 @@ export default function UsageStatsBoard() {
 
   const showStatsSkeleton = statsLoading;
 
+  const isCfMode = !window.blocklet?.appId;
   const handleProjectSelect = (appDid: string) => {
-    startTransition(() => navigate(`/config/projects/${encodeURIComponent(appDid)}`));
+    const basePath = isCfMode ? '/usage/projects' : '/config/projects';
+    startTransition(() => navigate(`${basePath}/${encodeURIComponent(appDid)}`));
   };
 
   return (

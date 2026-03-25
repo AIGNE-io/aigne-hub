@@ -21,7 +21,8 @@ export default function ProjectPage({ appDid: appDidProp, emptyStateText, isAdmi
   const { appDid: appDidParam, page } = useParams<{ appDid?: string; page?: string }>();
   const appDid = appDidProp || appDidParam || page;
   const { t } = useLocaleContext();
-  const usagePath = isAdmin ? '/config/usage' : '/credit-usage';
+  const isCfMode = !window.blocklet?.appId;
+  const usagePath = isCfMode ? '/usage' : isAdmin ? '/config/usage' : '/credit-usage';
   const resolvedEmptyStateText = emptyStateText ?? (isAdmin ? t('analytics.selectProjectToView') : undefined);
   const sessionKey = isAdmin ? 'usage:date-range:admin' : 'usage:date-range:customer';
   const [storedRange] = useDateRange(sessionKey, 29);

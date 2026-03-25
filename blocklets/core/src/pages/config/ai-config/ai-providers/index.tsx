@@ -7,7 +7,7 @@ import Toast from '@arcblock/ux/lib/Toast';
 import { Switch, Table } from '@blocklet/aigne-hub/components';
 import { formatError } from '@blocklet/error';
 import styled from '@emotion/styled';
-import { Add as AddIcon, InfoOutlined, Settings as SettingsIcon } from '@mui/icons-material';
+import { Add as AddIcon, Cloud as CloudIcon, InfoOutlined, Lan as DirectIcon, Settings as SettingsIcon } from '@mui/icons-material';
 import { Avatar, Box, Button, Stack, Tooltip, Typography } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { joinURL } from 'ufo';
@@ -41,13 +41,18 @@ export default function AIProviders() {
   const [credentialsProvider, setCredentialsProvider] = useState<Provider | null>(null);
   const [deletingProvider, setDeletingProvider] = useState<Provider | null>(null);
   const [loadingCredentials, setLoadingCredentials] = useState(false);
+  const [gatewayEnabled, setGatewayEnabled] = useState(false);
 
   // 获取AI Provider列表
   const fetchProviders = async () => {
     setLoading(true);
     try {
-      const response = await api.get('/api/ai-providers');
-      setProviders(response.data || []);
+      const [provRes, gwRes] = await Promise.all([
+        api.get('/api/ai-providers'),
+        api.get('/api/ai-providers/gateway-settings').catch(() => ({ data: null })),
+      ]);
+      setProviders(provRes.data || []);
+      setGatewayEnabled(gwRes.data?.settings?.enabled && !!gwRes.data?.settings?.accountId);
     } catch (error: any) {
       Toast.error(formatError(error) || t('fetchProvidersFailed'));
     } finally {
@@ -342,41 +347,43 @@ export default function AIProviders() {
           const provider = providers[tableMeta.rowIndex];
           if (!provider) return null;
 
-          const errorCredential = provider.credentials
-            ? provider.credentials.find((credential: Credential) => credential.active === false)
-            : null;
-
           const credentials = provider.credentials || [];
           const total = credentials.length;
-          const errorCount = credentials.filter((credential: Credential) => credential.active === false).length;
-          const isCustomGateway = provider.providerType === 'custom' && !!provider.gatewaySlug;
-          const isConnected = provider.enabled && (total > 0 || isCustomGateway);
+          const supportsGateway = !!provider.gatewaySlug || ['openai', 'anthropic', 'google', 'deepseek', 'xai', 'openrouter', 'groq', 'mistral', 'perplexity'].includes(provider.name);
+          const gwActive = supportsGateway && gatewayEnabled;
+          const hasCredentials = total > 0;
+          const errorCount = credentials.filter((c: Credential) => c.active === false).length;
+
+          if (!provider.enabled) {
+            return (
+              <Typography variant="body2" color="text.disabled">{t('disabled')}</Typography>
+            );
+          }
+
+          if (!gwActive && !hasCredentials) {
+            return (
+              <Typography variant="body2" color="error.main">{t('disconnected')}</Typography>
+            );
+          }
 
           return (
-            <Stack
-              direction="row"
-              spacing={1}
-              sx={{
-                alignItems: 'center',
-              }}>
-              <Box
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1,
-                  width: 8,
-                  height: 8,
-                  borderRadius: '50%',
-                  backgroundColor: isConnected ? (errorCredential ? 'warning.main' : 'success.main') : 'error.main',
-                }}
-              />
-              <Typography variant="body2" sx={{ color: errorCredential ? 'warning.main' : 'text.secondary' }}>
-                {isConnected
-                  ? errorCredential
-                    ? t('errorConnected', { errorCount, total })
-                    : t('connected')
-                  : t('disconnected')}
-              </Typography>
+            <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+              {gwActive && (
+                <Tooltip title={t('statusGatewayTip')}>
+                  <Stack direction="row" spacing={0.25} sx={{ alignItems: 'center' }}>
+                    <CloudIcon sx={{ fontSize: 16, color: 'primary.main' }} />
+                    <Typography variant="caption" color="primary.main">{t('statusGateway')}</Typography>
+                  </Stack>
+                </Tooltip>
+              )}
+              {hasCredentials && (
+                <Tooltip title={errorCount > 0 ? t('credentialError', { count: errorCount }) : t('statusDirectTip')}>
+                  <Stack direction="row" spacing={0.25} sx={{ alignItems: 'center' }}>
+                    <DirectIcon sx={{ fontSize: 14, color: errorCount > 0 ? 'warning.main' : 'success.main' }} />
+                    <Typography variant="caption" sx={{ color: errorCount > 0 ? 'warning.main' : 'success.main' }}>{t('statusDirect')}</Typography>
+                  </Stack>
+                </Tooltip>
+              )}
             </Stack>
           );
         },

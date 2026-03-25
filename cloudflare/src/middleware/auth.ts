@@ -57,50 +57,52 @@ export function loadUser(env: Env) {
         const apiKey = authHeader.slice(7); // Remove "Bearer "
         const db = c.get('db') || drizzle(env.DB, { schema });
         const appRecord = await validateApiKey(db, apiKey);
-        if (appRecord) {
-          // Rate limit API key requests
-          const rl = await checkRateLimit(env.AUTH_KV, appRecord.id);
-          if (!rl.allowed) {
-            return c.json(
-              { error: { message: 'Rate limit exceeded', limit: rl.limit, remaining: 0, resetAt: rl.resetAt } },
-              429
-            );
-          }
-          c.header('X-RateLimit-Limit', String(rl.limit));
-          c.header('X-RateLimit-Remaining', String(rl.remaining));
-          c.header('X-RateLimit-Reset', String(rl.resetAt));
-
-          if (appRecord.userDid) {
-            // New key with userDid: use real user identity for billing
-            c.set('user', {
-              id: appRecord.userDid,
-              email: '',
-              name: appRecord.name || appRecord.id,
-              provider: 'google' as const, // AuthUser type requires 'google'|'github'; API key auth uses 'google' as placeholder
-              providerId: appRecord.id,
-              role: 'member',
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            } as AuthUser);
-            // Inject appDid so v2 routes track usage per key
-            c.req.raw.headers.set('x-aigne-hub-client-did', appRecord.id);
-          } else {
-            // Legacy key without userDid: preserve current behavior
-            c.set('user', {
-              id: appRecord.id,
-              email: '',
-              name: appRecord.id,
-              provider: 'google',
-              providerId: appRecord.id,
-              role: 'member',
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            } as AuthUser);
-          }
-          return await next();
+        if (!appRecord) {
+          return c.json({ error: { message: 'Invalid API key' } }, 401);
         }
+
+        // Rate limit API key requests
+        const rl = await checkRateLimit(env.AUTH_KV, appRecord.id);
+        if (!rl.allowed) {
+          return c.json(
+            { error: { message: 'Rate limit exceeded', limit: rl.limit, remaining: 0, resetAt: rl.resetAt } },
+            429
+          );
+        }
+        c.header('X-RateLimit-Limit', String(rl.limit));
+        c.header('X-RateLimit-Remaining', String(rl.remaining));
+        c.header('X-RateLimit-Reset', String(rl.resetAt));
+
+        if (appRecord.userDid) {
+          // New key with userDid: use real user identity for billing
+          c.set('user', {
+            id: appRecord.userDid,
+            email: '',
+            name: appRecord.name || appRecord.id,
+            provider: 'google' as const,
+            providerId: appRecord.id,
+            role: 'member',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          } as AuthUser);
+          // Pass appDid via Hono context (CF Workers request headers are immutable)
+          (c as any).set('apiKeyAppDid', appRecord.id);
+        } else {
+          // Legacy key without userDid
+          c.set('user', {
+            id: appRecord.id,
+            email: '',
+            name: appRecord.id,
+            provider: 'google',
+            providerId: appRecord.id,
+            role: 'member',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          } as AuthUser);
+        }
+        return await next();
       } catch {
-        // API key validation failed, fall through to other auth methods
+        return c.json({ error: { message: 'API key validation failed' } }, 401);
       }
     }
 

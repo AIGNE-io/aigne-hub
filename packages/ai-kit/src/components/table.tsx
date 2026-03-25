@@ -71,6 +71,7 @@ interface TableProps {
 }
 
 const Wrapped = styled(Datatable)`
+  padding: 1px;
   ${(props: any) =>
     props?.hasRowLink
       ? `.MuiTableCell-root {

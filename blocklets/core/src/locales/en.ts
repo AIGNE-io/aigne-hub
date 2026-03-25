@@ -145,6 +145,9 @@ export default flatten({
         cancel: 'Cancel',
       },
 
+      copyModelId: 'Copy model ID',
+      modelIdCopied: 'Model ID copied',
+
       // Fields
       fields: {
         modelName: 'Model',
@@ -351,6 +354,11 @@ export default flatten({
   disabled: 'Disabled',
   connected: 'Connected',
   disconnected: 'Disconnected',
+  statusGateway: 'Gateway',
+  statusGatewayTip: 'Routed via Cloudflare AI Gateway',
+  statusDirect: 'Direct',
+  statusDirectTip: 'Direct connection with stored credentials',
+  credentialError: '{{count}} credential error',
   status: 'Status',
   enableStatus: 'Enable',
   actions: 'Actions',
@@ -399,6 +407,7 @@ export default flatten({
   gatewaySlug: 'Gateway Slug',
   gatewaySlugRequired: 'Gateway slug is required for custom providers',
   gatewaySlugPrefix: 'Must start with "custom-" (e.g. custom-vps)',
+  gatewaySlugAuto: 'AI Gateway slug (auto-generated, configure this in your Gateway):',
   gatewaySlugHint: 'Must start with "custom-" to match AI Gateway custom provider routing (e.g. custom-vps)',
   backToBuiltin: 'Back to built-in providers',
   deleteProvider: 'Delete',
@@ -650,5 +659,7 @@ export default flatten({
     copied: 'Copied!',
     maxKeysReached: 'Maximum 5 keys per account.',
     keyCreated: 'Your API Key',
+    modelFormat: 'Model Format',
+    modelFormatRecommended: 'Always use provider/model format for precise routing',
   },
 });

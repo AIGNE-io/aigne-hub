@@ -83,6 +83,14 @@ const TYPE_MAPPING: Record<string, string> = {
   audio_transcription: 'audioTranscription',
   video: 'video',
 };
+
+// Reverse mapping + identity for filter matching (supports both blocklet and CF API formats)
+const TYPE_FILTER_KEYS: Record<string, string[]> = {
+  chat: ['chat', 'chatCompletion', 'completion'],
+  image_generation: ['image_generation', 'imageGeneration'],
+  embedding: ['embedding'],
+  video: ['video'],
+};
 const listKey = 'pricing-models';
 export default function PricingPage() {
   const { t } = useLocaleContext();
@@ -120,7 +128,26 @@ export default function PricingPage() {
     async () => {
       const url = '/api/ai-providers/models';
       const response = await api.get(url);
-      return response.data || [];
+      const raw = response.data || [];
+
+      // CF API returns { model, rates: [{ type, inputRate, outputRate, provider }] }
+      // Flatten to the format pricing page expects: { model, type, provider, input_credits_per_token, ... }
+      if (raw.length > 0 && raw[0].rates) {
+        return raw.flatMap((entry: any) =>
+          entry.rates.map((rate: any) => ({
+            key: `${rate.provider?.name}/${entry.model}/${rate.type}`,
+            model: entry.modelDisplay || entry.model,
+            type: rate.type,
+            provider: rate.provider?.name || entry.providers?.[0]?.name || '',
+            providerDisplayName: rate.provider?.displayName || entry.providers?.[0]?.displayName || '',
+            input_credits_per_token: parseFloat(rate.inputRate) || 0,
+            output_credits_per_token: parseFloat(rate.outputRate) || 0,
+            active: true,
+            modelMetadata: rate.modelMetadata || entry.modelMetadata,
+          }))
+        );
+      }
+      return raw;
     },
     {
       onError: (error) => {
@@ -171,7 +198,8 @@ export default function PricingPage() {
     }
 
     if (search?.type && search.type !== 'all') {
-      filtered = filtered.filter((item) => item.type === search.type);
+      const matchKeys = TYPE_FILTER_KEYS[search.type] || [search.type];
+      filtered = filtered.filter((item) => matchKeys.includes(item.type));
     }
 
     // Apply sorting
@@ -226,26 +254,31 @@ export default function PricingPage() {
   const typeCategories = [
     {
       key: 'all',
+      keys: ['all'],
       label: t('pricing.filters.allModels'),
       icon: <AllInclusiveOutlined />,
     },
     {
       key: 'chat',
+      keys: ['chat', 'chatCompletion', 'completion'],
       label: t('modelTypes.chatCompletion'),
       icon: <ChatIcon viewBox="0 0 12 12" />,
     },
     {
       key: 'image_generation',
+      keys: ['image_generation', 'imageGeneration'],
       label: t('modelTypes.imageGeneration'),
       icon: <ImageIcon viewBox="0 0 12 12" />,
     },
     {
       key: 'embedding',
+      keys: ['embedding'],
       label: t('modelTypes.embedding'),
       icon: <EmbeddingIcon viewBox="0 0 12 12" />,
     },
     {
       key: 'video',
+      keys: ['video'],
       label: t('modelTypes.video'),
       icon: <VideoIcon viewBox="0 0 12 12" />,
     },
@@ -315,7 +348,7 @@ export default function PricingPage() {
         customBodyRender: (_value: any, tableMeta: any) => {
           const model = filteredData.list[tableMeta.rowIndex];
           if (!model) return null;
-          const icon = typeCategories.find((category) => category.key === model.type)?.icon;
+          const icon = typeCategories.find((category) => category.keys?.includes(model.type))?.icon;
           return (
             <Box display="flex" alignItems="center" justifyContent="flex-start">
               <Box

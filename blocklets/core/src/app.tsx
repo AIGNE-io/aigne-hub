@@ -27,6 +27,8 @@ const PricingPage = lazy(() => import('./pages/pricing'));
 const ProjectPage = lazy(() => import('./pages/usage/projects/project-page'));
 const ApiKeysPage = lazy(() => import('./pages/api-keys/index'));
 
+const isCfMode = !window.blocklet?.appId;
+
 export default function App() {
   const basename = window.blocklet?.prefix || '/';
 
@@ -80,70 +82,141 @@ function ConfigProjectRoute() {
 function AppRoutes({ basename }: { basename: string }) {
   const router = createBrowserRouter(
     createRoutesFromElements(
-      <Route>
-        <Route index element={<HomeLazy />} />
-        <Route path="/config" element={<ConfigLayout />}>
-          <Route index element={<Navigate to="overview" replace />} />
-          <Route path="overview" element={<ConfigOverviewPage />} />
-          <Route path="ai-config" element={<ConfigAIConfigPage />} />
-          <Route path="ai-config/:page" element={<ConfigAIConfigPage />} />
-          <Route path="usage" element={<ConfigUsagePage />} />
-          <Route path="projects" element={<ConfigProjectRoute />} />
-          <Route path="projects/:appDid" element={<ConfigProjectRoute />} />
-          <Route path="playground" element={<ChatLazy />} />
-          <Route path="*" element={<Navigate to="overview" replace />} />
+      isCfMode ? (
+        // CF mode: flat navigation, no Dashboard wrapper
+        <Route>
+          <Route index element={<HomeLazy />} />
+          <Route
+            path="/config"
+            element={
+              <PageLayout>
+                <ConfigAIConfigPage />
+              </PageLayout>
+            }
+          />
+          <Route
+            path="/config/:page"
+            element={
+              <PageLayout>
+                <ConfigAIConfigPage />
+              </PageLayout>
+            }
+          />
+          <Route
+            path="/usage"
+            element={
+              <PageLayout>
+                <ConfigUsagePage />
+              </PageLayout>
+            }
+          />
+          <Route
+            path="/usage/projects/:appDid"
+            element={
+              <PageLayout>
+                <ProjectPage isAdmin />
+              </PageLayout>
+            }
+          />
+          <Route
+            path="/api-keys"
+            element={
+              <PageLayout>
+                <ApiKeysPage />
+              </PageLayout>
+            }
+          />
+          <Route key="pricing" path="/pricing" element={<PricingPage />} />
+          <Route
+            path="/playground"
+            element={
+              <PageLayout fullHeight showFooter={false}>
+                <Box sx={{ pt: 4, flex: 1, display: 'flex', flexDirection: 'column' }}>
+                  <ChatLazy />
+                </Box>
+              </PageLayout>
+            }
+          />
+          {/* Redirect legacy paths */}
+          <Route path="/credit-usage" element={<Navigate to="/usage" replace />} />
+          <Route path="/config/ai-config" element={<Navigate to="/config" replace />} />
+          <Route path="/config/ai-config/:page" element={<Navigate to="/config/:page" replace />} />
+          <Route path="/config/usage" element={<Navigate to="/usage" replace />} />
+          <Route path="/config/playground" element={<Navigate to="/playground" replace />} />
+          <Route path="/config/projects/:appDid" element={<Navigate to="/usage/projects/:appDid" replace />} />
+          <Route
+            path="*"
+            element={
+              <PageLayout>
+                <Box sx={{ flex: 1 }}>
+                  <NotFoundView />
+                </Box>
+              </PageLayout>
+            }
+          />
         </Route>
-        <Route
-          key="credit-board"
-          path="/credit-usage"
-          element={
-            <PageLayout>
-              <CreditBoardPage />
-            </PageLayout>
-          }
-        />
-        <Route
-          key="api-keys"
-          path="/api-keys"
-          element={
-            <PageLayout>
-              <ApiKeysPage />
-            </PageLayout>
-          }
-        />
-        <Route
-          key="project"
-          path="/usage/projects/:appDid"
-          element={
-            <PageLayout>
-              <ProjectPage isAdmin={false} />
-            </PageLayout>
-          }
-        />
-        <Route key="pricing" path="/pricing" element={<PricingPage />} />
-        <Route
-          key="playground"
-          path="/playground"
-          element={
-            <PageLayout fullHeight showFooter={false}>
-              <Box sx={{ pt: 4, flex: 1, display: 'flex', flexDirection: 'column' }}>
-                <ChatLazy />
-              </Box>
-            </PageLayout>
-          }
-        />
-        {/* <Route path="billing/*" element={<BillingRoutes />} /> */}
-        <Route
-          path="*"
-          element={
-            <PageLayout>
-              <Box sx={{ flex: 1 }}>
-                <NotFoundView />
-              </Box>
-            </PageLayout>
-          }
-        />
-      </Route>
+      ) : (
+        // Blocklet mode: original Dashboard layout
+        <Route>
+          <Route index element={<HomeLazy />} />
+          <Route path="/config" element={<ConfigLayout />}>
+            <Route index element={<Navigate to="overview" replace />} />
+            <Route path="overview" element={<ConfigOverviewPage />} />
+            <Route path="ai-config" element={<ConfigAIConfigPage />} />
+            <Route path="ai-config/:page" element={<ConfigAIConfigPage />} />
+            <Route path="usage" element={<ConfigUsagePage />} />
+            <Route path="projects" element={<ConfigProjectRoute />} />
+            <Route path="projects/:appDid" element={<ConfigProjectRoute />} />
+            <Route path="playground" element={<ChatLazy />} />
+            <Route path="*" element={<Navigate to="overview" replace />} />
+          </Route>
+          <Route
+            path="/credit-usage"
+            element={
+              <PageLayout>
+                <CreditBoardPage />
+              </PageLayout>
+            }
+          />
+          <Route
+            path="/api-keys"
+            element={
+              <PageLayout>
+                <ApiKeysPage />
+              </PageLayout>
+            }
+          />
+          <Route
+            path="/usage/projects/:appDid"
+            element={
+              <PageLayout>
+                <ProjectPage isAdmin={false} />
+              </PageLayout>
+            }
+          />
+          <Route key="pricing" path="/pricing" element={<PricingPage />} />
+          <Route
+            path="/playground"
+            element={
+              <PageLayout fullHeight showFooter={false}>
+                <Box sx={{ pt: 4, flex: 1, display: 'flex', flexDirection: 'column' }}>
+                  <ChatLazy />
+                </Box>
+              </PageLayout>
+            }
+          />
+          <Route
+            path="*"
+            element={
+              <PageLayout>
+                <Box sx={{ flex: 1 }}>
+                  <NotFoundView />
+                </Box>
+              </PageLayout>
+            }
+          />
+        </Route>
+      )
     ),
     { basename }
   );
