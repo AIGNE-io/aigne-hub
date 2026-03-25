@@ -279,6 +279,7 @@ routes.get('/gateway-settings', async (c) => {
   const slugs = getSupportedGatewaySlugs();
   const db = c.get('db');
   const providers = await db.select({
+    id: aiProviders.id,
     name: aiProviders.name,
     config: aiProviders.config,
     providerType: aiProviders.providerType,
@@ -295,6 +296,7 @@ routes.get('/gateway-settings', async (c) => {
       } catch { /* ignore */ }
     }
     return {
+      id: p.id,
       name: p.name,
       providerType: p.providerType || 'builtin',
       gatewaySlug: slug,
@@ -395,6 +397,70 @@ routes.delete('/gateway-configs/:id', async (c) => {
 
   await saveGatewayConfigs(c.env.AUTH_KV, filtered);
   return c.json({ message: 'Gateway config deleted' });
+});
+
+// POST /api/ai-providers/gateway-test - Test gateway connectivity
+routes.post('/gateway-test', async (c) => {
+  const adminCheck = ensureAdmin(c);
+  if (adminCheck) return adminCheck;
+
+  const body = await c.req.json<{ accountId: string; gatewayId: string; authToken?: string }>();
+  if (!body.accountId || !body.gatewayId) {
+    return c.json({ error: 'accountId and gatewayId are required' }, 400);
+  }
+
+  const testUrl = `https://gateway.ai.cloudflare.com/v1/${body.accountId}/${body.gatewayId}/compat/chat/completions`;
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (body.authToken) headers['cf-aig-authorization'] = `Bearer ${body.authToken}`;
+
+  try {
+    const start = Date.now();
+    const response = await fetch(testUrl, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ model: 'openai/gpt-4.1-nano', messages: [{ role: 'user', content: 'hi' }], max_tokens: 1 }),
+    });
+    const latency = Date.now() - start;
+    const ok = response.status !== 403 && response.status !== 404;
+    return c.json({
+      success: ok,
+      status: response.status,
+      latency,
+      message: ok ? 'Gateway is reachable' : `Gateway returned ${response.status}`,
+    });
+  } catch (err) {
+    return c.json({
+      success: false,
+      status: 0,
+      latency: 0,
+      message: err instanceof Error ? err.message : 'Connection failed',
+    });
+  }
+});
+
+// PUT /api/ai-providers/:id/gateway-opt - Toggle provider gateway opt-in/out
+routes.put('/:id/gateway-opt', async (c) => {
+  const adminCheck = ensureAdmin(c);
+  if (adminCheck) return adminCheck;
+
+  const { id } = c.req.param();
+  const body = await c.req.json<{ useGateway: boolean }>();
+  const db = c.get('db');
+
+  const existing = await db.select().from(aiProviders).where(eq(aiProviders.id, id)).limit(1);
+  if (existing.length === 0) return c.json({ error: 'Provider not found' }, 404);
+
+  const currentConfig = existing[0].config
+    ? typeof existing[0].config === 'string' ? JSON.parse(existing[0].config) : existing[0].config
+    : {};
+  const updatedConfig = { ...(currentConfig as Record<string, unknown>), useGateway: body.useGateway };
+
+  await db.update(aiProviders).set({
+    config: JSON.stringify(updatedConfig),
+    updatedAt: new Date().toISOString(),
+  }).where(eq(aiProviders.id, id));
+
+  return c.json({ message: `Provider gateway ${body.useGateway ? 'enabled' : 'disabled'}`, useGateway: body.useGateway });
 });
 
 // ============================================================

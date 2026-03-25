@@ -4,6 +4,7 @@ import Toast from '@arcblock/ux/lib/Toast';
 import {
   CloudQueue as GatewayIcon,
   Cancel,
+  NetworkCheck,
   Visibility,
   VisibilityOff,
 } from '@mui/icons-material';
@@ -37,7 +38,9 @@ interface GatewaySettings {
 }
 
 interface ProviderStatus {
+  id?: string;
   name: string;
+  providerType?: string;
   gatewaySlug: string | null;
   supported: boolean;
   optedOut: boolean;
@@ -63,6 +66,9 @@ export default function AIGatewayConfig() {
     gatewayId: '',
     authToken: '',
   });
+
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string; latency?: number } | null>(null);
 
   const { data, loading, refresh } = useRequest<GatewayData, []>(async () => {
     const res = await api.get('/api/ai-providers/gateway-settings');
@@ -115,6 +121,32 @@ export default function AIGatewayConfig() {
     },
     [form, refresh, t]
   );
+
+  const handleTestConnection = useCallback(async () => {
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const res = await api.post('/api/ai-providers/gateway-test', {
+        accountId: form.accountId,
+        gatewayId: form.gatewayId,
+        authToken: form.authToken,
+      });
+      setTestResult(res.data);
+    } catch (err: any) {
+      setTestResult({ success: false, message: err.message || 'Test failed' });
+    } finally {
+      setTesting(false);
+    }
+  }, [form]);
+
+  const handleToggleProviderGateway = useCallback(async (providerId: string, currentOptedOut: boolean) => {
+    try {
+      await api.put(`/api/ai-providers/${providerId}/gateway-opt`, { useGateway: currentOptedOut });
+      refresh();
+    } catch (err: any) {
+      Toast.error(err.response?.data?.error || err.message);
+    }
+  }, [refresh]);
 
   if (loading) {
     return (
@@ -274,6 +306,21 @@ export default function AIGatewayConfig() {
                     https://gateway.ai.cloudflare.com/v1/{form.accountId}/{form.gatewayId}/compat/...
                   </Typography>
                 </Box>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  startIcon={testing ? <CircularProgress size={14} /> : <NetworkCheck />}
+                  onClick={handleTestConnection}
+                  disabled={testing || !form.accountId || !form.gatewayId}
+                  sx={{ alignSelf: 'flex-start' }}>
+                  {t('gateway.testConnection')}
+                </Button>
+                {testResult && (
+                  <Alert severity={testResult.success ? 'success' : 'error'} sx={{ py: 0.5 }}>
+                    {testResult.message}
+                    {testResult.latency ? ` (${testResult.latency}ms)` : ''}
+                  </Alert>
+                )}
               </>
             )}
           </Stack>
@@ -315,45 +362,51 @@ export default function AIGatewayConfig() {
               gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
               gap: 1,
             }}>
-            {data?.providers.map((provider) => (
-              <Stack
-                key={provider.name}
-                direction="row"
-                spacing={1}
-                sx={{
-                  alignItems: 'center',
-                  px: 1.5,
-                  py: 1,
-                  borderRadius: 1,
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  bgcolor: gatewayActive && provider.route === 'gateway' ? 'primary.50' : 'transparent',
-                }}>
-                <Avatar
-                  src={joinURL(getPrefix(), `/logo/${provider.name}.png`)}
-                  sx={{ width: 24, height: 24 }}
-                  alt={provider.name}
-                />
-                <Typography variant="body2" sx={{ flex: 1, textTransform: 'capitalize' }}>
-                  {provider.name}
-                </Typography>
-                {provider.supported && !provider.optedOut ? (
-                  <Tooltip title={gatewayActive ? t('gateway.supported', { slug: provider.gatewaySlug }) : ''}>
-                    <GatewayIcon
-                      sx={{ fontSize: 16, color: gatewayActive ? 'primary.main' : 'text.disabled' }}
-                    />
-                  </Tooltip>
-                ) : provider.optedOut ? (
-                  <Tooltip title={t('gateway.optedOut')}>
-                    <Cancel sx={{ fontSize: 16, color: 'text.disabled' }} />
-                  </Tooltip>
-                ) : (
-                  <Typography variant="caption" color="text.secondary">
-                    {t('gateway.notSupported')}
+            {data?.providers.map((provider) => {
+              const canToggle = provider.supported && !!provider.id;
+              return (
+                <Stack
+                  key={provider.name}
+                  direction="row"
+                  spacing={1}
+                  sx={{
+                    alignItems: 'center',
+                    px: 1.5,
+                    py: 1,
+                    borderRadius: 1,
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    bgcolor: gatewayActive && provider.route === 'gateway' ? 'primary.50' : 'transparent',
+                    cursor: canToggle ? 'pointer' : 'default',
+                    '&:hover': canToggle ? { borderColor: 'primary.main', opacity: 0.9 } : {},
+                  }}
+                  onClick={canToggle ? () => handleToggleProviderGateway(provider.id!, provider.optedOut) : undefined}>
+                  <Avatar
+                    src={joinURL(getPrefix(), `/logo/${provider.name}.png`)}
+                    sx={{ width: 24, height: 24 }}
+                    alt={provider.name}
+                  />
+                  <Typography variant="body2" sx={{ flex: 1, textTransform: 'capitalize' }}>
+                    {provider.name}
                   </Typography>
-                )}
-              </Stack>
-            ))}
+                  {provider.supported && !provider.optedOut ? (
+                    <Tooltip title={gatewayActive ? t('gateway.supported', { slug: provider.gatewaySlug }) : ''}>
+                      <GatewayIcon
+                        sx={{ fontSize: 16, color: gatewayActive ? 'primary.main' : 'text.disabled' }}
+                      />
+                    </Tooltip>
+                  ) : provider.optedOut ? (
+                    <Tooltip title={t('gateway.clickToEnable')}>
+                      <Cancel sx={{ fontSize: 16, color: 'text.disabled' }} />
+                    </Tooltip>
+                  ) : (
+                    <Typography variant="caption" color="text.secondary">
+                      {t('gateway.notSupported')}
+                    </Typography>
+                  )}
+                </Stack>
+              );
+            })}
           </Box>
         </CardContent>
       </Card>

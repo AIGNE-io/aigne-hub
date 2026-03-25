@@ -630,6 +630,8 @@ export default flatten({
   'gateway.save': 'Save',
   'gateway.show': 'Show',
   'gateway.hide': 'Hide',
+  'gateway.testConnection': 'Test Connection',
+  'gateway.clickToEnable': 'Click to enable gateway routing',
 
   // API Keys page
   apiKeys: {

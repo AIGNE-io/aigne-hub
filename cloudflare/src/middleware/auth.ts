@@ -76,7 +76,7 @@ export function loadUser(env: Env) {
               id: appRecord.userDid,
               email: '',
               name: appRecord.name || appRecord.id,
-              provider: 'api_key',
+              provider: 'google' as const, // AuthUser type requires 'google'|'github'; API key auth uses 'google' as placeholder
               providerId: appRecord.id,
               role: 'member',
               createdAt: new Date().toISOString(),

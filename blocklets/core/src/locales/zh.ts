@@ -621,6 +621,8 @@ export default flatten({
   'gateway.save': '保存',
   'gateway.show': '显示',
   'gateway.hide': '隐藏',
+  'gateway.testConnection': '测试连接',
+  'gateway.clickToEnable': '点击启用 Gateway 路由',
 
   // API Keys 页面
   apiKeys: {

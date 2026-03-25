@@ -1,5 +1,6 @@
 import { createAuthRoutes, createSession, getSessionCookie } from '@aigne/cf-auth';
 import type { AuthUser } from '@aigne/cf-auth';
+import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
@@ -146,6 +147,33 @@ app.get('/auth/dev-login', async (c) => {
       'Set-Cookie': getSessionCookie(token, authConfig),
     },
   });
+});
+
+// --- Health check (public, for external monitoring) ---
+app.get('/api/health', async (c) => {
+  const checks: Record<string, { ok: boolean; latency?: number; error?: string }> = {};
+
+  // D1 check
+  try {
+    const start = Date.now();
+    const db = c.get('db');
+    await db.run(sql`SELECT 1`);
+    checks.d1 = { ok: true, latency: Date.now() - start };
+  } catch (err) {
+    checks.d1 = { ok: false, error: err instanceof Error ? err.message : 'D1 unreachable' };
+  }
+
+  // KV check
+  try {
+    const start = Date.now();
+    await c.env.AUTH_KV.get('__health__');
+    checks.kv = { ok: true, latency: Date.now() - start };
+  } catch (err) {
+    checks.kv = { ok: false, error: err instanceof Error ? err.message : 'KV unreachable' };
+  }
+
+  const allOk = Object.values(checks).every((ch) => ch.ok);
+  return c.json({ status: allOk ? 'healthy' : 'degraded', checks, timestamp: new Date().toISOString() }, allOk ? 200 : 503);
 });
 
 // --- Public routes (no auth required) ---
