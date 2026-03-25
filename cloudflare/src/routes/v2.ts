@@ -11,7 +11,6 @@ import {
   fromAnthropicResponse,
   fromGeminiResponse,
   recordModelCall,
-  recordUsage,
   resolveProvider,
   toAnthropicRequestBody,
   toGeminiRequestBody,
@@ -362,34 +361,23 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
         });
 
         // Record call + usage via waitUntil (survives after response)
-        const recordPromise = Promise.all([
-          recordModelCall(db, {
-            providerId: provider.providerId,
-            model: provider.modelName,
-            credentialId: provider.credentialId,
-            type: 'chatCompletion',
-            status: 'success',
-            totalUsage,
-            usageMetrics: { promptTokens, completionTokens },
-            credits: credits.toFixed(10),
-            duration,
-            userDid,
-            appDid,
-            requestId,
-            callTime: Math.floor(startTime / 1000),
-            ttfb: providerTtfb?.toFixed(1),
-            providerTtfb: providerTtfb?.toFixed(1),
-          }, c.env.AUTH_KV),
-          recordUsage(db, {
-            promptTokens,
-            completionTokens,
-            type: 'chatCompletion',
-            model: provider.modelName,
-            userDid,
-            appId: appDid,
-            usedCredits: credits.toFixed(10),
-          }, c.env.AUTH_KV),
-        ]);
+        const recordPromise = recordModelCall(db, {
+          providerId: provider.providerId,
+          model: provider.modelName,
+          credentialId: provider.credentialId,
+          type: 'chatCompletion',
+          status: 'success',
+          totalUsage,
+          usageMetrics: { promptTokens, completionTokens },
+          credits: credits.toFixed(10),
+          duration,
+          userDid,
+          appDid,
+          requestId,
+          callTime: Math.floor(startTime / 1000),
+          ttfb: providerTtfb?.toFixed(1),
+          providerTtfb: providerTtfb?.toFixed(1),
+        }, c.env.AUTH_KV);
         if (waitUntil) waitUntil(recordPromise);
 
         // Settle pre-deducted credits (refund difference)
@@ -428,34 +416,23 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
     });
 
     // Record call + usage via waitUntil
-    const recordPromise = Promise.all([
-      recordModelCall(db, {
-        providerId: provider.providerId,
-        model: provider.modelName,
-        credentialId: provider.credentialId,
-        type: 'chatCompletion',
-        status: 'success',
-        totalUsage,
-        usageMetrics: { promptTokens, completionTokens },
-        credits: credits.toFixed(10),
-        duration,
-        userDid,
-        appDid,
-        requestId,
-        callTime: Math.floor(startTime / 1000),
-        ttfb: providerTtfb?.toFixed(1),
-        providerTtfb: providerTtfb?.toFixed(1),
-      }, c.env.AUTH_KV),
-      recordUsage(db, {
-        promptTokens,
-        completionTokens,
-        type: 'chatCompletion',
-        model: provider.modelName,
-        userDid,
-        appId: appDid,
-        usedCredits: credits.toFixed(10),
-      }, c.env.AUTH_KV),
-    ]);
+    const recordPromise = recordModelCall(db, {
+      providerId: provider.providerId,
+      model: provider.modelName,
+      credentialId: provider.credentialId,
+      type: 'chatCompletion',
+      status: 'success',
+      totalUsage,
+      usageMetrics: { promptTokens, completionTokens },
+      credits: credits.toFixed(10),
+      duration,
+      userDid,
+      appDid,
+      requestId,
+      callTime: Math.floor(startTime / 1000),
+      ttfb: providerTtfb?.toFixed(1),
+      providerTtfb: providerTtfb?.toFixed(1),
+    }, c.env.AUTH_KV);
     if (waitUntil) waitUntil(recordPromise);
 
     // Settle pre-deducted credits (refund difference)

@@ -2,7 +2,7 @@ import { and, desc, eq, gte, lte, sql } from 'drizzle-orm';
 import type { Context } from 'hono';
 import { Hono } from 'hono';
 
-import { modelCallStats, modelCalls, projects, usages } from '../db/schema';
+import { modelCallStats, modelCalls, projects } from '../db/schema';
 import { getCreditBalance } from '../libs/credit';
 import type { HonoEnv } from '../worker';
 
@@ -44,14 +44,6 @@ function getTimeRange(c: Context<HonoEnv>): { startTime: number; endTime: number
 routes.get('/quota', async (c) => {
   const db = c.get('db');
   const userDid = getUserDid(c);
-
-  const [result] = await db
-    .select({
-      totalCredits: sql<string>`COALESCE(SUM(CAST(${usages.usedCredits} AS REAL)), 0)`,
-      totalCalls: sql<number>`COUNT(*)`,
-    })
-    .from(usages)
-    .where(userDid ? eq(usages.userDid, userDid) : undefined);
 
   const creditBalance = await getCreditBalance(db, userDid || 'anonymous');
   const used = creditBalance.used;
@@ -360,11 +352,11 @@ routes.get('/credits', async (c) => {
 
   const [result] = await db
     .select({
-      totalCredits: sql<string>`COALESCE(SUM(CAST(${usages.usedCredits} AS REAL)), 0)`,
+      totalCredits: sql<string>`COALESCE(SUM(CAST(${modelCalls.credits} AS REAL)), 0)`,
       totalCalls: sql<number>`COUNT(*)`,
     })
-    .from(usages)
-    .where(eq(usages.userDid, userDid));
+    .from(modelCalls)
+    .where(and(eq(modelCalls.userDid, userDid), eq(modelCalls.status, 'success')));
 
   return c.json({
     userDid,

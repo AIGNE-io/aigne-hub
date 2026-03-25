@@ -4,6 +4,7 @@ import { drizzle } from 'drizzle-orm/d1';
 import type { Context, Next } from 'hono';
 
 import * as schema from '../db/schema';
+import { checkRateLimit } from '../libs/rate-limit';
 import { validateApiKey } from '../routes/api-keys';
 import type { Env, HonoEnv } from '../worker';
 
@@ -57,6 +58,18 @@ export function loadUser(env: Env) {
         const db = c.get('db') || drizzle(env.DB, { schema });
         const app = await validateApiKey(db, apiKey);
         if (app) {
+          // Rate limit API key requests
+          const rl = await checkRateLimit(env.AUTH_KV, app.id);
+          if (!rl.allowed) {
+            return c.json(
+              { error: { message: 'Rate limit exceeded', limit: rl.limit, remaining: 0, resetAt: rl.resetAt } },
+              429
+            );
+          }
+          c.header('X-RateLimit-Limit', String(rl.limit));
+          c.header('X-RateLimit-Remaining', String(rl.remaining));
+          c.header('X-RateLimit-Reset', String(rl.resetAt));
+
           c.set('user', {
             id: app.id,
             email: '',
