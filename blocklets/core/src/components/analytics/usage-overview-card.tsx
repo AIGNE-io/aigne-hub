@@ -289,7 +289,6 @@ export function UsageOverviewCard({
       <Box sx={{ p: 2, pb: 0 }}>
         <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
           <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-            {/* <LeaderboardIcon /> */}
             <Typography variant="h4" sx={{ fontWeight: 700 }}>
               {title || t('analytics.creditOverview')}
             </Typography>
@@ -380,7 +379,6 @@ export function UsageOverviewCard({
                     borderRadius: 2,
                     border: '1px solid',
                     borderColor: isActive ? metric.accent : 'divider',
-                    // backgroundColor: isActive ? backgroundColor : 'background.paper',
                     transition: 'all 0.2s ease',
                     '&:hover': {
                       backgroundColor,

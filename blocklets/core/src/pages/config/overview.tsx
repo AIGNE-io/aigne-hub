@@ -27,13 +27,13 @@ export default function Overview() {
     {
       title: 'aiProviderSettings',
       description: 'aiProviderSettingsDesc',
-      icon: <SmartToyOutlined sx={{ fontSize: 32, color: (theme) => theme.palette.grey[400] }} />,
+      icon: <SmartToyOutlined sx={{ fontSize: 32, color: 'grey.400' }} />,
       path: '/config/ai-config/providers',
     },
     {
       title: 'enableCredits',
       description: 'enableCreditsDesc',
-      icon: <CreditCard sx={{ fontSize: 32, color: (theme) => theme.palette.grey[400] }} />,
+      icon: <CreditCard sx={{ fontSize: 32, color: 'grey.400' }} />,
       path: '/.well-known/service/admin/overview/components',
       external: true,
       showDialog: true,
@@ -45,7 +45,7 @@ export default function Overview() {
     basicFeatures.push({
       title: 'usageAnalytics',
       description: 'usageAnalyticsDesc',
-      icon: <AnalyticsOutlined sx={{ fontSize: 32, color: (theme) => theme.palette.grey[400] }} />,
+      icon: <AnalyticsOutlined sx={{ fontSize: 32, color: 'grey.400' }} />,
       path: getObservabilityUrl(),
       external: true,
     });
@@ -107,12 +107,13 @@ export default function Overview() {
               sx={{
                 height: '100%',
                 cursor: 'pointer',
-                padding: '20px',
-                borderRadius: (theme) => `${1.5 * (theme.shape.borderRadius as number)}px`,
-                background: (theme) => theme.palette.background.default,
+                p: 2.5,
+                borderRadius: 2,
+                bgcolor: 'background.default',
                 border: '1px solid',
-                borderColor: (theme) => theme.palette.divider,
-                boxShadow: (theme) => theme.shadows[1],
+                borderColor: 'divider',
+                boxShadow: 1,
+                transition: 'box-shadow 0.2s ease',
                 '&:hover': {
                   boxShadow: 2,
                 },
@@ -159,65 +160,45 @@ export default function Overview() {
           </Stack>
         }
         title={window.blocklet?.preferences?.creditBasedBillingEnabled ? t('configCredits') : t('enableCredits')}>
-        <Box sx={{ mb: 2 }}>
-          <Typography variant="body1" sx={{ mb: 2 }}>
-            {t('creditsConfigDesc')}
-          </Typography>
-          <Box
-            sx={{
-              mb: 3,
-              p: 2,
-              bgcolor: 'background.paper',
-              borderRadius: 1,
-              border: '1px solid',
-              borderColor: 'divider',
-            }}>
-            <Typography variant="h6" sx={{ mb: 1, color: 'primary.main' }}>
-              {t('installPaymentKit')}
-            </Typography>
-            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              {t('installPaymentKitDesc')}
-            </Typography>
-          </Box>
-          <Box
-            sx={{
-              mb: 3,
-              p: 2,
-              bgcolor: 'background.paper',
-              borderRadius: 1,
-              border: '1px solid',
-              borderColor: 'divider',
-            }}>
-            <Typography variant="h6" sx={{ mb: 1, color: 'primary.main' }}>
-              {t('updatePreferences')}
-            </Typography>
+        <Stack spacing={3}>
+          <Typography variant="body1">{t('creditsConfigDesc')}</Typography>
+          {[
+            {
+              title: t('installPaymentKit'),
+              content: <Typography variant="body2" sx={{ color: 'text.secondary' }}>{t('installPaymentKitDesc')}</Typography>,
+            },
+            {
+              title: t('updatePreferences'),
+              content: (
+                <Box
+                  component="img"
+                  src={joinURL(getPrefix(), '/credit-config/step.png')}
+                  alt="Credits configuration steps"
+                  sx={{ width: '100%', height: 'auto' }}
+                />
+              ),
+            },
+            {
+              title: t('configModelRates'),
+              content: <Typography variant="body2" sx={{ color: 'text.secondary' }}>{t('configModelRatesDesc')}</Typography>,
+            },
+          ].map((section) => (
             <Box
-              component="img"
-              src={joinURL(getPrefix(), '/credit-config/step.png')}
-              alt="Credits configuration steps"
+              key={section.title}
               sx={{
-                width: '100%',
-                height: 'auto',
-              }}
-            />
-          </Box>
-          <Box
-            sx={{
-              mb: 3,
-              p: 2,
-              bgcolor: 'background.paper',
-              borderRadius: 1,
-              border: '1px solid',
-              borderColor: 'divider',
-            }}>
-            <Typography variant="h6" sx={{ mb: 1, color: 'primary.main' }}>
-              {t('configModelRates')}
-            </Typography>
-            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              {t('configModelRatesDesc')}
-            </Typography>
-          </Box>
-        </Box>
+                p: 2,
+                bgcolor: 'background.paper',
+                borderRadius: 2,
+                border: '1px solid',
+                borderColor: 'divider',
+              }}>
+              <Typography variant="h6" sx={{ mb: 1, color: 'primary.main' }}>
+                {section.title}
+              </Typography>
+              {section.content}
+            </Box>
+          ))}
+        </Stack>
       </Dialog>
     </Box>
   );

@@ -4,13 +4,13 @@ import Dialog from '@arcblock/ux/lib/Dialog';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import Toast from '@arcblock/ux/lib/Toast';
 import { CreditButton } from '@blocklet/aigne-hub/components';
-import Footer from '@blocklet/ui-react/lib/Footer';
-import Header from '@blocklet/ui-react/lib/Header';
 import { Assessment, AttachMoney, Code, ContentCopy } from '@mui/icons-material';
 import { Box, Button, IconButton, Stack, Typography } from '@mui/material';
-import { ReactNode, useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { joinURL } from 'ufo';
+
+import PageLayout from '../../components/layout/page-layout';
 
 export default function Home() {
   const { session } = useSessionContext();
@@ -93,16 +93,10 @@ const result = await model.invoke({
   };
 
   return (
-    <>
-      <Header
-        // @ts-ignore
-        maxWidth={null}
-        addons={(exists: ReactNode[]) => [<CreditButton />, ...exists]}
-      />
+    <PageLayout padding={{ px: { xs: 2, md: 3 }, py: 0 }}>
       <Box
         sx={{
           flexGrow: 1,
-          mx: 2,
         }}>
         <Box
           sx={{
@@ -226,7 +220,6 @@ const result = await model.invoke({
           <code>{codeExample}</code>
         </Box>
       </Dialog>
-      <Footer meta={undefined} theme={undefined} />
-    </>
+    </PageLayout>
   );
 }

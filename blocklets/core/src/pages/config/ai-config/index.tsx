@@ -1,4 +1,5 @@
 import { useTransitionContext } from '@app/components/loading/progress-bar';
+import { secondaryTabSx } from '@app/components/tabs/tab-styles';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import Tabs from '@arcblock/ux/lib/Tabs';
 import { Stack } from '@mui/material';
@@ -47,24 +48,8 @@ export default function AIConfig() {
           variant="scrollable"
           sx={{
             flex: '1 0 auto',
-
             maxWidth: '100%',
-            '.MuiTab-root': {
-              color: 'text.lighter',
-            },
-            '.MuiTabs-indicator': {
-              display: 'none',
-            },
-            '.Mui-selected': {
-              fontSize: '1.175rem !important',
-              color: 'text.primary',
-            },
-            '.MuiTabs-hideScrollbar': {
-              border: 'none !important',
-            },
-            '.MuiTouchRipple-root': {
-              display: 'none',
-            },
+            ...secondaryTabSx,
           }}
         />
       </Stack>

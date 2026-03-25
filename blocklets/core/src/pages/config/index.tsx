@@ -7,6 +7,7 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 
 import Layout from '../../components/layout/admin';
 import ProgressBar, { useTransitionContext } from '../../components/loading/progress-bar';
+import { primaryTabSx } from '../../components/tabs/tab-styles';
 import { useIsRole, useSessionContext } from '../../contexts/session';
 
 type TabConfig = {
@@ -98,17 +99,7 @@ function Integrations() {
             pb: 2,
             flex: '1 0 auto',
             maxWidth: '100%',
-            '.MuiTab-root': {
-              marginBottom: '12px',
-              fontWeight: '500',
-              color: 'text.lighter',
-              '&.Mui-selected': {
-                color: 'primary.main',
-              },
-            },
-            '.MuiTouchRipple-root': {
-              display: 'none',
-            },
+            ...primaryTabSx,
           }}
         />
       </Stack>

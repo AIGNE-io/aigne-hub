@@ -7,7 +7,6 @@ import Toast from '@arcblock/ux/lib/Toast';
 import { Table } from '@blocklet/aigne-hub/components';
 import { formatNumber } from '@blocklet/aigne-hub/utils/util';
 import { formatError } from '@blocklet/error';
-import Header from '@blocklet/ui-react/lib/Header';
 import styled from '@emotion/styled';
 import { AllInclusiveOutlined, ArrowDropDown, ArrowDropUp, Search as SearchIcon } from '@mui/icons-material';
 import {
@@ -29,6 +28,8 @@ import { debounce } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { joinURL } from 'ufo';
 
+import AppFooter from '../../components/layout/app-footer';
+import AppHeader from '../../components/layout/app-header';
 import { useSessionContext } from '../../contexts/session';
 import { ReactComponent as EmbeddingIcon } from '../../icons/icon-embedding.svg';
 import { ReactComponent as ImageIcon } from '../../icons/icon-image.svg';
@@ -488,16 +489,7 @@ export default function PricingPage() {
 
   return (
     <>
-      <Header
-        meta={undefined}
-        addons={undefined}
-        sessionManagerProps={undefined}
-        homeLink={undefined}
-        theme={undefined}
-        hideNavMenu={undefined}
-        maxWidth={false}
-        sx={{ borderBottom: '1px solid', borderColor: 'divider' }}
-      />
+      <AppHeader borderBottom showCreditButton={false} />
 
       <Container
         maxWidth="lg"
@@ -679,6 +671,8 @@ export default function PricingPage() {
           />
         </Root>
       </Container>
+
+      <AppFooter />
     </>
   );
 }

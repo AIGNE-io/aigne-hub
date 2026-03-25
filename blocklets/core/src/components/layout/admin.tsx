@@ -21,20 +21,6 @@ const Root = styled(Dashboard)<{ padding: string }>`
       display: flex;
       flex-direction: column;
 
-      .MuiTab-root {
-        padding: 0;
-        margin-right: 24px;
-        min-height: 32px;
-        min-width: auto;
-        font-size: 0.875rem;
-      }
-      .page-content .MuiTab-root {
-        font-size: 0.875rem;
-        &.Mui-selected {
-          font-size: 1.125rem;
-        }
-      }
-
       .MuiTabs-scroller {
         border-bottom: 1px solid ${({ theme }) => theme.palette.divider};
       }

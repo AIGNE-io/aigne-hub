@@ -1,4 +1,5 @@
 import { toUTCTimestamp } from '@app/components/analytics/skeleton';
+import { useDateRange } from '@app/hooks/use-date-range';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import { ArrowBack } from '@mui/icons-material';
 import { Alert, Box, Link, Stack, Typography } from '@mui/material';
@@ -9,22 +10,6 @@ import dayjs from '../../../libs/dayjs';
 import { useProjectTrends } from '../../customer/hooks';
 import { ProjectCallHistory } from './components/project-call-history';
 import { ProjectUsageOverviewCard } from './components/project-usage-overview-card';
-
-const ADMIN_USAGE_DATE_RANGE_SESSION_KEY = 'usage:date-range:admin';
-const CUSTOMER_USAGE_DATE_RANGE_SESSION_KEY = 'usage:date-range:customer';
-
-const readUsageDateRangeFromSession = (isAdmin: boolean) => {
-  if (typeof window === 'undefined') return null;
-  try {
-    const storageKey = isAdmin ? ADMIN_USAGE_DATE_RANGE_SESSION_KEY : CUSTOMER_USAGE_DATE_RANGE_SESSION_KEY;
-    const raw = sessionStorage.getItem(storageKey);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    return { start: dayjs(parsed.start), end: dayjs(parsed.end) };
-  } catch {
-    return null;
-  }
-};
 
 interface ProjectPageProps {
   appDid?: string;
@@ -38,16 +23,12 @@ export default function ProjectPage({ appDid: appDidProp, emptyStateText, isAdmi
   const { t } = useLocaleContext();
   const usagePath = isAdmin ? '/config/usage' : '/credit-usage';
   const resolvedEmptyStateText = emptyStateText ?? (isAdmin ? t('analytics.selectProjectToView') : undefined);
-  const [dateRange, setDateRange] = useState(() => {
-    const fallbackRange = {
-      from: toUTCTimestamp(dayjs().subtract(29, 'day')),
-      to: toUTCTimestamp(dayjs(), true),
-    };
-    const storedRange = readUsageDateRangeFromSession(isAdmin);
-    return storedRange
-      ? { from: toUTCTimestamp(storedRange.start), to: toUTCTimestamp(storedRange.end, true) }
-      : fallbackRange;
-  });
+  const sessionKey = isAdmin ? 'usage:date-range:admin' : 'usage:date-range:customer';
+  const [storedRange] = useDateRange(sessionKey, 29);
+  const [dateRange, setDateRange] = useState(() => ({
+    from: toUTCTimestamp(storedRange.start),
+    to: toUTCTimestamp(storedRange.end, true),
+  }));
   const rangeStart = dayjs.unix(dateRange.from).local().startOf('day');
   const rangeEnd = dayjs.unix(dateRange.to).local().endOf('day');
   const rangeDays = Math.max(1, rangeEnd.diff(rangeStart, 'day') + 1);

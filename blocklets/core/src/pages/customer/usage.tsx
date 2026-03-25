@@ -5,6 +5,7 @@ import {
   toUTCTimestamp,
   useSmartLoading,
 } from '@app/components/analytics/skeleton';
+import { useDateRange } from '@app/hooks/use-date-range';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import { UserInfoResult } from '@blocklet/aigne-hub/api/types/user';
 import { getPrefix } from '@blocklet/aigne-hub/api/utils/util';
@@ -12,10 +13,9 @@ import { formatError } from '@blocklet/error';
 import { Alert, Box, Button, Link, Stack, Typography } from '@mui/material';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { SetStateAction, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { joinURL } from 'ufo';
 
-import dayjs from '../../libs/dayjs';
 import { CreditsBalance } from './credits-balance';
 import {
   useCreditBalance,
@@ -28,47 +28,10 @@ import {
 
 const INTRO_ARTICLE_URL = 'https://www.arcblock.io/content/tags/en/ai-kit';
 const AIGNE_WEBSITE_URL = 'https://www.aigne.io/';
-const USAGE_DATE_RANGE_SESSION_KEY = 'usage:date-range:customer';
-
-const readUsageDateRangeFromSession = () => {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = sessionStorage.getItem(USAGE_DATE_RANGE_SESSION_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    return { start: dayjs(parsed.start), end: dayjs(parsed.end) };
-  } catch {
-    return null;
-  }
-};
-
-const persistUsageDateRangeToSession = (range: { start: dayjs.Dayjs; end: dayjs.Dayjs }) => {
-  sessionStorage.setItem(
-    USAGE_DATE_RANGE_SESSION_KEY,
-    JSON.stringify({
-      start: range.start.format('YYYY-MM-DD'),
-      end: range.end.format('YYYY-MM-DD'),
-    })
-  );
-};
 
 function CreditBoard() {
   const { t } = useLocaleContext();
-  const [dateRange, setDateRange] = useState(() => {
-    const storedRange = readUsageDateRangeFromSession();
-    if (storedRange) return storedRange;
-    return {
-      start: dayjs().subtract(6, 'day'),
-      end: dayjs(),
-    };
-  });
-  const handleDateRangeChange = (updater: SetStateAction<{ start: dayjs.Dayjs; end: dayjs.Dayjs }>) => {
-    setDateRange((prev) => {
-      const next = typeof updater === 'function' ? updater(prev) : updater;
-      persistUsageDateRangeToSession(next);
-      return next;
-    });
-  };
+  const [dateRange, handleDateRangeChange] = useDateRange('usage:date-range:customer');
   const rangeStart = dateRange.start.startOf('day');
   const rangeEnd = dateRange.end.endOf('day');
   const rangeDays = Math.max(1, rangeEnd.diff(rangeStart, 'day') + 1);

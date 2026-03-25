@@ -1,61 +1,21 @@
 import { ModelUsageStats, ProjectList, UsageOverviewCard } from '@app/components/analytics';
 import { ModelUsageStatsSkeleton, toUTCTimestamp } from '@app/components/analytics/skeleton';
 import { useTransitionContext } from '@app/components/loading/progress-bar';
+import { useDateRange } from '@app/hooks/use-date-range';
 import { useLocaleContext } from '@arcblock/ux/lib/Locale/context';
 import { formatError } from '@blocklet/error';
 import { Alert, Box, Stack } from '@mui/material';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { SetStateAction, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import dayjs from '../../libs/dayjs';
 import { useUsageStats, useUsageTrends } from '../customer/hooks';
-
-const USAGE_DATE_RANGE_SESSION_KEY = 'usage:date-range:admin';
-
-const readUsageDateRangeFromSession = () => {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = sessionStorage.getItem(USAGE_DATE_RANGE_SESSION_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    return { start: dayjs(parsed.start), end: dayjs(parsed.end) };
-  } catch {
-    return null;
-  }
-};
-
-const persistUsageDateRangeToSession = (range: { start: dayjs.Dayjs; end: dayjs.Dayjs }) => {
-  if (typeof window === 'undefined') return;
-  sessionStorage.setItem(
-    USAGE_DATE_RANGE_SESSION_KEY,
-    JSON.stringify({
-      start: range.start.format('YYYY-MM-DD'),
-      end: range.end.format('YYYY-MM-DD'),
-    })
-  );
-};
 
 export default function UsageStatsBoard() {
   const { t } = useLocaleContext();
   const navigate = useNavigate();
   const { startTransition } = useTransitionContext();
-  const [dateRange, setDateRange] = useState(() => {
-    const storedRange = readUsageDateRangeFromSession();
-    if (storedRange) return storedRange;
-    return {
-      start: dayjs().subtract(6, 'day'),
-      end: dayjs(),
-    };
-  });
-  const handleDateRangeChange = (updater: SetStateAction<{ start: dayjs.Dayjs; end: dayjs.Dayjs }>) => {
-    setDateRange((prev) => {
-      const next = typeof updater === 'function' ? updater(prev) : updater;
-      persistUsageDateRangeToSession(next);
-      return next;
-    });
-  };
+  const [dateRange, handleDateRangeChange] = useDateRange('usage:date-range:admin');
   const rangeFrom = toUTCTimestamp(dateRange.start);
   const rangeTo = toUTCTimestamp(dateRange.end, true);
   const rangeStart = dateRange.start.startOf('day');
@@ -97,27 +57,6 @@ export default function UsageStatsBoard() {
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <Box sx={{ bgcolor: 'background.default' }}>
         <Stack spacing={3} sx={{ pb: 4 }}>
-          {/* <Stack
-            direction={{ xs: 'column', md: 'row' }}
-            spacing={2}
-            sx={{
-              justifyContent: 'space-between',
-              alignItems: { xs: 'flex-start', md: 'center' },
-            }}>
-            <Stack>
-              <Typography variant="h3">{t('analytics.creditUsage')}</Typography>
-              <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mt: 0.5 }}>
-                <Typography
-                  variant="body2"
-                  sx={{
-                    color: 'text.secondary',
-                  }}>
-                  {t('analytics.creditBoardDescription')}
-                </Typography>
-              </Stack>
-            </Stack>
-          </Stack> */}
-
           {statsError && (
             <Alert severity="error" sx={{ borderRadius: 2 }}>
               {formatError(statsError)}

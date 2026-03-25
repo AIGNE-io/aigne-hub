@@ -3,17 +3,14 @@ import { ErrorFallback } from '@arcblock/ux/lib/ErrorBoundary';
 import { LocaleProvider } from '@arcblock/ux/lib/Locale/context';
 import { ThemeProvider } from '@arcblock/ux/lib/Theme';
 import { ToastProvider } from '@arcblock/ux/lib/Toast';
-import { CreditButton } from '@blocklet/aigne-hub/components';
-import Footer from '@blocklet/ui-react/lib/Footer';
-import Header from '@blocklet/ui-react/lib/Header';
 import { Global, css } from '@emotion/react';
 import { Box, CircularProgress, CssBaseline } from '@mui/material';
-import { ReactNode, Suspense, lazy } from 'react';
+import { Suspense, lazy } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 import { Navigate, Route, RouterProvider, createBrowserRouter, createRoutesFromElements } from 'react-router-dom';
 
 import NotFoundView from './components/error/not-found';
-import UserLayout from './components/layout/user';
+import PageLayout from './components/layout/page-layout';
 import Loading from './components/loading';
 import { TransitionProvider } from './components/loading/progress-bar';
 import { SessionProvider, useIsRole } from './contexts/session';
@@ -99,18 +96,18 @@ function AppRoutes({ basename }: { basename: string }) {
           key="credit-board"
           path="/credit-usage"
           element={
-            <Layout>
+            <PageLayout>
               <CreditBoardPage />
-            </Layout>
+            </PageLayout>
           }
         />
         <Route
           key="project"
           path="/usage/projects/:appDid"
           element={
-            <Layout>
+            <PageLayout>
               <ProjectPage isAdmin={false} />
-            </Layout>
+            </PageLayout>
           }
         />
         <Route key="pricing" path="/pricing" element={<PricingPage />} />
@@ -118,38 +115,22 @@ function AppRoutes({ basename }: { basename: string }) {
           key="playground"
           path="/playground"
           element={
-            <Box
-              component="main"
-              sx={{
-                overflow: 'hidden',
-                height: '100vh',
-                display: 'flex',
-                flexDirection: 'column',
-                pb: { xs: 0.5, md: 2 },
-              }}>
-              <Header
-                // @ts-ignore
-                maxWidth={null}
-                addons={(exists: ReactNode[]) => [<CreditButton />, ...exists]}
-              />
-              <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'auto', pt: 4 }}>
+            <PageLayout fullHeight showFooter={false}>
+              <Box sx={{ pt: 4, flex: 1, display: 'flex', flexDirection: 'column' }}>
                 <ChatLazy />
               </Box>
-            </Box>
+            </PageLayout>
           }
         />
         {/* <Route path="billing/*" element={<BillingRoutes />} /> */}
         <Route
           path="*"
           element={
-            <Layout>
-              <Box
-                sx={{
-                  flex: 1,
-                }}>
+            <PageLayout>
+              <Box sx={{ flex: 1 }}>
                 <NotFoundView />
               </Box>
-            </Layout>
+            </PageLayout>
           }
         />
       </Route>
@@ -160,30 +141,3 @@ function AppRoutes({ basename }: { basename: string }) {
   return <RouterProvider router={router} />;
 }
 
-function Layout({ children }: { children: ReactNode }) {
-  return (
-    <>
-      <Header
-        // @ts-ignore
-        maxWidth={null}
-        addons={(exists: ReactNode[]) => [<CreditButton />, ...exists]}
-      />
-
-      <Box
-        component="main"
-        sx={{
-          flex: 1,
-          px: 2,
-          py: 2,
-        }}>
-        {children}
-      </Box>
-
-      <Footer
-        // FIXME: remove following undefined props after issue https://github.com/ArcBlock/ux/issues/1136 solved
-        meta={undefined}
-        theme={undefined}
-      />
-    </>
-  );
-}
