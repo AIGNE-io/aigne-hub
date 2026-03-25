@@ -355,11 +355,12 @@ export function toAnthropicRequestBody(
  * Convert Anthropic Messages API response to OpenAI-compatible format.
  */
 export function fromAnthropicResponse(anthropicData: Record<string, unknown>, model: string) {
-  const content = anthropicData.content as Array<{ type: string; text?: string }> | undefined;
+  const content = anthropicData.content as Array<{ type: string; text?: string; thinking?: string }> | undefined;
+  // Extract text from both 'text' and 'thinking' content blocks
   const text =
     content
-      ?.filter((c) => c.type === 'text')
-      .map((c) => c.text || '')
+      ?.filter((c) => c.type === 'text' || c.type === 'thinking')
+      .map((c) => c.text || c.thinking || '')
       .join('') || '';
   const usage = anthropicData.usage as { input_tokens?: number; output_tokens?: number } | undefined;
 

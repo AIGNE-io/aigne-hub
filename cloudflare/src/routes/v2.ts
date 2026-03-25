@@ -286,23 +286,32 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
                   const data = JSON.parse(line.slice(6));
                   if (isGoogle) {
                     // Google Gemini SSE: candidates[].content.parts[].text
-                    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-                    if (text) {
-                      // eslint-disable-next-line no-await-in-loop
-                      await writable.write(text);
+                    // Thinking models may use "thought" field in parts
+                    const parts = data.candidates?.[0]?.content?.parts as Array<{ text?: string; thought?: boolean }> | undefined;
+                    if (parts) {
+                      for (const part of parts) {
+                        if (part.text) {
+                          // eslint-disable-next-line no-await-in-loop
+                          await writable.write(part.text);
+                        }
+                      }
                     }
                     if (data.usageMetadata) {
                       usageData = {
                         prompt_tokens: data.usageMetadata.promptTokenCount || 0,
-                        completion_tokens: data.usageMetadata.candidatesTokenCount || 0,
+                        completion_tokens: (data.usageMetadata.candidatesTokenCount || 0) + (data.usageMetadata.thoughtsTokenCount || 0),
                         total_tokens: data.usageMetadata.totalTokenCount || 0,
                       };
                     }
                   } else if (isAnthropic) {
                     // Anthropic SSE: event-typed data lines
-                    if (currentEvent === 'content_block_delta' && data.delta?.text) {
-                      // eslint-disable-next-line no-await-in-loop
-                      await writable.write(data.delta.text);
+                    // Supports both text and thinking content blocks
+                    if (currentEvent === 'content_block_delta') {
+                      const text = data.delta?.text ?? data.delta?.thinking ?? '';
+                      if (text) {
+                        // eslint-disable-next-line no-await-in-loop
+                        await writable.write(text);
+                      }
                     }
                     if (currentEvent === 'message_start' && data.message?.usage) {
                       usageData = {
@@ -319,11 +328,12 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
                       };
                     }
                   } else {
-                    // OpenAI SSE: choices[].delta.content
+                    // OpenAI SSE: choices[].delta.content + reasoning_content (thinking models)
                     if (data.usage) {
                       usageData = data.usage;
                     }
-                    const content = data.choices?.[0]?.delta?.content;
+                    const delta = data.choices?.[0]?.delta;
+                    const content = delta?.content ?? delta?.reasoning_content ?? '';
                     if (content) {
                       // eslint-disable-next-line no-await-in-loop
                       await writable.write(content);
