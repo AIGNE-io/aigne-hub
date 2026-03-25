@@ -7,6 +7,8 @@ import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 export const apps = sqliteTable('Apps', {
   id: text('id').primaryKey(), // App/Blocklet DID
   publicKey: text('publicKey'),
+  name: text('name'),
+  userDid: text('userDid'),
   createdAt: text('createdAt')
     .notNull()
     .default(sql`(datetime('now'))`),
