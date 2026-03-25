@@ -5,6 +5,8 @@ export interface GatewayConfig {
 }
 
 export interface GatewaySettings {
+  id?: string; // unique ID for multi-gateway support (omitted = default/legacy)
+  name?: string; // display name
   enabled: boolean;
   accountId: string;
   gatewayId: string;
@@ -12,6 +14,7 @@ export interface GatewaySettings {
 }
 
 const KV_KEY = 'gateway-settings';
+const KV_CONFIGS_KEY = 'gateway-configs'; // array of GatewaySettings for multi-gateway
 
 const GATEWAY_SLUG: Record<string, string> = {
   openai: 'openai',
@@ -40,12 +43,25 @@ export function getSupportedGatewaySlugs(): Record<string, string> {
 
 /**
  * Resolve gateway config from KV (admin-configured) or env vars (fallback).
+ * Supports multi-gateway: if gatewayConfigId is provided, looks up from gateway-configs array.
  */
 export async function resolveGatewayConfig(
   kv: KVNamespace,
-  env: { AI_GATEWAY_ACCOUNT_ID?: string; AI_GATEWAY_ID?: string }
+  env: { AI_GATEWAY_ACCOUNT_ID?: string; AI_GATEWAY_ID?: string },
+  gatewayConfigId?: string | null
 ): Promise<GatewayConfig | undefined> {
   try {
+    // Multi-gateway: look up specific config by ID
+    if (gatewayConfigId) {
+      const configs = await getGatewayConfigs(kv);
+      const match = configs.find((c) => c.id === gatewayConfigId && c.enabled);
+      if (match) {
+        return { accountId: match.accountId, gatewayId: match.gatewayId, authToken: match.authToken };
+      }
+      // Fall through to default if specific config not found
+    }
+
+    // Default: single gateway from legacy KV key
     const raw = await kv.get(KV_KEY);
     if (raw) {
       const settings = JSON.parse(raw) as GatewaySettings;
@@ -100,6 +116,21 @@ export async function getGatewaySettings(kv: KVNamespace): Promise<GatewaySettin
 
 export async function saveGatewaySettings(kv: KVNamespace, settings: GatewaySettings): Promise<void> {
   await kv.put(KV_KEY, JSON.stringify(settings));
+}
+
+// --- Multi-gateway configs ---
+
+export async function getGatewayConfigs(kv: KVNamespace): Promise<GatewaySettings[]> {
+  try {
+    const raw = await kv.get(KV_CONFIGS_KEY);
+    return raw ? (JSON.parse(raw) as GatewaySettings[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function saveGatewayConfigs(kv: KVNamespace, configs: GatewaySettings[]): Promise<void> {
+  await kv.put(KV_CONFIGS_KEY, JSON.stringify(configs));
 }
 
 // --- URL builders ---

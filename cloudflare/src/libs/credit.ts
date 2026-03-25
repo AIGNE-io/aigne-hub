@@ -3,8 +3,12 @@ import type { drizzle } from 'drizzle-orm/d1';
 
 import { creditAccounts, creditTransactions } from '../db/schema';
 import * as schema from '../db/schema';
+import { logger } from './logger';
 
 type DB = ReturnType<typeof drizzle<typeof schema>> | ReturnType<typeof drizzle>;
+
+const KV_HOLD_PREFIX = 'credit-hold:';
+const HOLD_TTL = 300; // 5 min — holds auto-expire if never settled
 
 /**
  * Get or create a credit account for a user.
@@ -41,15 +45,31 @@ export async function getOrCreateAccount(db: DB, userDid: string) {
 
 /**
  * Get credit balance for a user.
+ * If KV is provided, includes pending hold amounts in the response.
  */
-export async function getCreditBalance(db: DB, userDid: string) {
+export async function getCreditBalance(db: DB, userDid: string, kv?: KVNamespace) {
   const account = await getOrCreateAccount(db, userDid);
+  let pendingHolds = 0;
+
+  if (kv) {
+    try {
+      const raw = await kv.get(`${KV_HOLD_PREFIX}${userDid}`);
+      if (raw) {
+        const holds = JSON.parse(raw) as Array<{ amount: number; ts: number }>;
+        const now = Date.now();
+        pendingHolds = holds
+          .filter((h) => now - h.ts < HOLD_TTL * 1000)
+          .reduce((sum, h) => sum + h.amount, 0);
+      }
+    } catch { /* ignore KV errors */ }
+  }
+
   return {
     balance: parseFloat(account.balance),
     total: parseFloat(account.totalGranted),
     used: parseFloat(account.totalUsed),
-    grantCount: 0, // TODO: count grants
-    pendingCredit: 0,
+    grantCount: 0,
+    pendingCredit: pendingHolds,
   };
 }
 
@@ -152,12 +172,13 @@ export async function preDeductCredits(
   db: DB,
   userDid: string,
   estimatedAmount: number,
-  meta: { model?: string }
+  meta: { model?: string },
+  kv?: KVNamespace
 ): Promise<{ success: boolean; holdAmount: number; balance: number }> {
   // Ensure account exists
   await getOrCreateAccount(db, userDid);
 
-  // Atomic deduction
+  // Atomic deduction — single statement is race-safe in D1/SQLite
   const now = new Date().toISOString();
   const result = await db.run(sql`
     UPDATE ${creditAccounts}
@@ -177,9 +198,19 @@ export async function preDeductCredits(
     return { success: false, holdAmount: 0, balance: account ? parseFloat(account.balance) : 0 };
   }
 
-  const [updated] = await db.select().from(creditAccounts).where(eq(creditAccounts.userDid, userDid)).limit(1);
-  console.log(`[credit] pre-deduct ${estimatedAmount.toFixed(6)} for ${meta.model || 'unknown'} (user=${userDid})`);
-  return { success: true, holdAmount: estimatedAmount, balance: updated ? parseFloat(updated.balance) : 0 };
+  // Track hold in KV for getCreditBalance visibility
+  if (kv) {
+    try {
+      const kvKey = `${KV_HOLD_PREFIX}${userDid}`;
+      const raw = await kv.get(kvKey);
+      const holds = raw ? (JSON.parse(raw) as Array<{ amount: number; ts: number }>) : [];
+      holds.push({ amount: estimatedAmount, ts: Date.now() });
+      await kv.put(kvKey, JSON.stringify(holds), { expirationTtl: HOLD_TTL });
+    } catch { /* KV failure is non-critical */ }
+  }
+
+  logger.info('credit pre-deduct', { amount: estimatedAmount, model: meta.model, userDid });
+  return { success: true, holdAmount: estimatedAmount, balance: -1 }; // balance not read to save D1 round-trip
 }
 
 /**
@@ -191,14 +222,14 @@ export async function settleCredits(
   userDid: string,
   holdAmount: number,
   actualAmount: number,
-  meta: { modelCallId?: string; model?: string }
+  meta: { modelCallId?: string; model?: string },
+  kv?: KVNamespace
 ): Promise<{ balance: number }> {
   const diff = holdAmount - actualAmount; // positive = refund, negative = extra charge
 
   if (Math.abs(diff) > 0.000001) {
     const now = new Date().toISOString();
     if (diff > 0) {
-      // Refund excess
       await db.run(sql`
         UPDATE ${creditAccounts}
         SET balance = CAST(CAST(balance AS REAL) + ${diff} AS TEXT),
@@ -207,7 +238,6 @@ export async function settleCredits(
         WHERE userDid = ${userDid}
       `);
     } else {
-      // Extra charge (rare: actual exceeded estimate)
       const extra = Math.abs(diff);
       await db.run(sql`
         UPDATE ${creditAccounts}
@@ -219,31 +249,49 @@ export async function settleCredits(
     }
   }
 
-  // Read new balance for transaction record
-  const [updated] = await db.select().from(creditAccounts).where(eq(creditAccounts.userDid, userDid)).limit(1);
-  const newBalance = updated ? parseFloat(updated.balance) : 0;
+  // Clear KV hold for this user (remove oldest hold matching amount)
+  if (kv) {
+    try {
+      const kvKey = `${KV_HOLD_PREFIX}${userDid}`;
+      const raw = await kv.get(kvKey);
+      if (raw) {
+        const holds = JSON.parse(raw) as Array<{ amount: number; ts: number }>;
+        const idx = holds.findIndex((h) => Math.abs(h.amount - holdAmount) < 0.001);
+        if (idx >= 0) holds.splice(idx, 1);
+        if (holds.length > 0) {
+          await kv.put(kvKey, JSON.stringify(holds), { expirationTtl: HOLD_TTL });
+        } else {
+          await kv.delete(kvKey);
+        }
+      }
+    } catch { /* KV failure is non-critical */ }
+  }
 
-  // Record the actual usage transaction
-  await db.insert(creditTransactions).values({
-    userDid,
-    type: 'usage',
-    amount: (-actualAmount).toFixed(10),
-    balance: newBalance.toFixed(10),
-    description: `Model call: ${meta.model || 'unknown'}`,
-    modelCallId: meta.modelCallId,
-    model: meta.model,
-  });
-
-  console.log(
-    `[credit] settle hold=${holdAmount.toFixed(6)} actual=${actualAmount.toFixed(6)} diff=${diff.toFixed(6)} (user=${userDid})`
-  );
-  return { balance: newBalance };
+  // Record transaction asynchronously — don't block settle response
+  try {
+    const [updated] = await db.select().from(creditAccounts).where(eq(creditAccounts.userDid, userDid)).limit(1);
+    const newBalance = updated ? parseFloat(updated.balance) : 0;
+    await db.insert(creditTransactions).values({
+      userDid,
+      type: 'usage',
+      amount: (-actualAmount).toFixed(10),
+      balance: newBalance.toFixed(10),
+      description: `Model call: ${meta.model || 'unknown'}`,
+      modelCallId: meta.modelCallId,
+      model: meta.model,
+    });
+    logger.info('credit settle', { hold: holdAmount, actual: actualAmount, diff, userDid });
+    return { balance: newBalance };
+  } catch (err) {
+    logger.error('Failed to record credit transaction', { error: err instanceof Error ? err.message : String(err) });
+    return { balance: -1 };
+  }
 }
 
 /**
  * Refund a pre-deducted hold entirely (call failed before any usage).
  */
-export async function refundHold(db: DB, userDid: string, holdAmount: number): Promise<void> {
+export async function refundHold(db: DB, userDid: string, holdAmount: number, kv?: KVNamespace): Promise<void> {
   if (holdAmount <= 0) return;
   const now = new Date().toISOString();
   await db.run(sql`
@@ -253,7 +301,26 @@ export async function refundHold(db: DB, userDid: string, holdAmount: number): P
         updatedAt = ${now}
     WHERE userDid = ${userDid}
   `);
-  console.log(`[credit] refund hold=${holdAmount.toFixed(6)} (user=${userDid})`);
+
+  // Clear KV hold
+  if (kv) {
+    try {
+      const kvKey = `${KV_HOLD_PREFIX}${userDid}`;
+      const raw = await kv.get(kvKey);
+      if (raw) {
+        const holds = JSON.parse(raw) as Array<{ amount: number; ts: number }>;
+        const idx = holds.findIndex((h) => Math.abs(h.amount - holdAmount) < 0.001);
+        if (idx >= 0) holds.splice(idx, 1);
+        if (holds.length > 0) {
+          await kv.put(kvKey, JSON.stringify(holds), { expirationTtl: HOLD_TTL });
+        } else {
+          await kv.delete(kvKey);
+        }
+      }
+    } catch { /* KV failure is non-critical */ }
+  }
+
+  logger.info('credit refund', { hold: holdAmount, userDid });
 }
 
 /**

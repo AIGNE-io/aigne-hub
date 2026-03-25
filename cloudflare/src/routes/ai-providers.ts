@@ -5,6 +5,8 @@ import { Hono } from 'hono';
 import { aiCredentials, aiModelRateHistories, aiModelRates, aiModelStatuses, aiProviders } from '../db/schema';
 import {
   getGatewaySettings,
+  getGatewayConfigs,
+  saveGatewayConfigs,
   getSupportedGatewaySlugs,
   getGatewaySlug,
   saveGatewaySettings,
@@ -302,8 +304,11 @@ routes.get('/gateway-settings', async (c) => {
     };
   });
 
+  const configs = await getGatewayConfigs(c.env.AUTH_KV);
+
   return c.json({
     settings: settings || { enabled: false, accountId: '', gatewayId: '' },
+    configs,
     envFallback,
     activeSource: settings ? 'admin' : envFallback.accountId ? 'env' : 'none',
     supportedSlugs: slugs,
@@ -336,6 +341,60 @@ routes.put('/gateway-settings', async (c) => {
 
   await saveGatewaySettings(c.env.AUTH_KV, settings);
   return c.json({ message: 'Gateway settings updated', settings });
+});
+
+// POST /api/ai-providers/gateway-configs - Add a gateway config
+routes.post('/gateway-configs', async (c) => {
+  const adminCheck = ensureAdmin(c);
+  if (adminCheck) return adminCheck;
+
+  const body = await c.req.json<{ name: string; accountId: string; gatewayId: string; authToken?: string; enabled?: boolean }>();
+  if (!body.name || !body.accountId || !body.gatewayId) {
+    return c.json({ error: 'name, accountId, and gatewayId are required' }, 400);
+  }
+
+  const configs = await getGatewayConfigs(c.env.AUTH_KV);
+  const newConfig: GatewaySettings = {
+    id: crypto.randomUUID(),
+    name: body.name,
+    enabled: body.enabled ?? true,
+    accountId: body.accountId,
+    gatewayId: body.gatewayId,
+    authToken: body.authToken,
+  };
+  configs.push(newConfig);
+  await saveGatewayConfigs(c.env.AUTH_KV, configs);
+  return c.json(newConfig, 201);
+});
+
+// PUT /api/ai-providers/gateway-configs/:id - Update a gateway config
+routes.put('/gateway-configs/:id', async (c) => {
+  const adminCheck = ensureAdmin(c);
+  if (adminCheck) return adminCheck;
+
+  const { id } = c.req.param();
+  const body = await c.req.json<Partial<GatewaySettings>>();
+  const configs = await getGatewayConfigs(c.env.AUTH_KV);
+  const idx = configs.findIndex((cfg) => cfg.id === id);
+  if (idx === -1) return c.json({ error: 'Gateway config not found' }, 404);
+
+  configs[idx] = { ...configs[idx], ...body, id }; // preserve id
+  await saveGatewayConfigs(c.env.AUTH_KV, configs);
+  return c.json(configs[idx]);
+});
+
+// DELETE /api/ai-providers/gateway-configs/:id - Remove a gateway config
+routes.delete('/gateway-configs/:id', async (c) => {
+  const adminCheck = ensureAdmin(c);
+  if (adminCheck) return adminCheck;
+
+  const { id } = c.req.param();
+  const configs = await getGatewayConfigs(c.env.AUTH_KV);
+  const filtered = configs.filter((cfg) => cfg.id !== id);
+  if (filtered.length === configs.length) return c.json({ error: 'Gateway config not found' }, 404);
+
+  await saveGatewayConfigs(c.env.AUTH_KV, filtered);
+  return c.json({ message: 'Gateway config deleted' });
 });
 
 // ============================================================

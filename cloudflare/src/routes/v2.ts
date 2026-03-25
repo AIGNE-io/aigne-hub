@@ -20,6 +20,12 @@ import type { HonoEnv } from '../worker';
 
 const routes = new Hono<HonoEnv>();
 
+function getProviderGatewayConfigId(providerConfig?: Record<string, unknown> | string | null): string | undefined {
+  if (!providerConfig) return undefined;
+  const cfg = typeof providerConfig === 'string' ? JSON.parse(providerConfig) : providerConfig;
+  return cfg?.gatewayConfigId as string | undefined;
+}
+
 // GET /api/v2/status - Health check with credit info
 routes.get('/status', async (c) => {
   return c.json({ status: 'ok', creditBasedBilling: true });
@@ -93,7 +99,7 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
     });
 
     if (estimatedCredits > 0) {
-      const hold = await preDeductCredits(db, userDid, estimatedCredits, { model: provider.modelName });
+      const hold = await preDeductCredits(db, userDid, estimatedCredits, { model: provider.modelName }, c.env.AUTH_KV);
       if (!hold.success) {
         return c.json({ error: { message: 'Insufficient credits', balance: hold.balance } }, 402);
       }
@@ -103,7 +109,7 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
 
   const isGoogle = provider.apiFormat === 'gemini';
   const isAnthropic = provider.apiFormat === 'anthropic';
-  const gateway = await resolveGatewayConfig(c.env.AUTH_KV, c.env);
+  const gateway = await resolveGatewayConfig(c.env.AUTH_KV, c.env, getProviderGatewayConfigId(provider.providerConfig));
   // Gateway compat mode: enabled + provider supported + not opted out + model-level useGateway
   const modelMeta = typeof provider.modelMetadata === 'string' ? JSON.parse(provider.modelMetadata) : provider.modelMetadata;
   const modelUseGateway = modelMeta?.useGateway ?? true; // default: enabled
@@ -158,7 +164,7 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
   } else if (provider.providerType === 'custom' && !provider.apiKey) {
     // Custom provider without Gateway and without credentials — cannot route
     if (holdAmount > 0 && userDid) {
-      waitUntil?.(refundHold(db, userDid, holdAmount));
+      waitUntil?.(refundHold(db, userDid, holdAmount, c.env.AUTH_KV));
     }
     return c.json({ error: { message: 'Custom provider requires AI Gateway to be enabled, or a credential to be configured.' } }, 503);
   } else {
@@ -217,7 +223,7 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
 
       // Refund pre-deducted credits on upstream error
       if (userDid && holdAmount > 0) {
-        const refundPromise = refundHold(db, userDid, holdAmount);
+        const refundPromise = refundHold(db, userDid, holdAmount, c.env.AUTH_KV);
         if (waitUntil) waitUntil(refundPromise);
         else await refundPromise;
       }
@@ -384,7 +390,7 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
         if (userDid && holdAmount > 0) {
           const settlePromise = settleCredits(db, userDid, holdAmount, credits, {
             model: provider.modelName,
-          });
+          }, c.env.AUTH_KV);
           if (waitUntil) waitUntil(settlePromise);
           else await settlePromise;
         }
@@ -439,7 +445,7 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
     if (userDid && holdAmount > 0) {
       const settlePromise = settleCredits(db, userDid, holdAmount, credits, {
         model: provider.modelName,
-      });
+      }, c.env.AUTH_KV);
       if (waitUntil) waitUntil(settlePromise);
       else await settlePromise;
     }
@@ -472,7 +478,7 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
 
     // Refund pre-deducted credits on error
     if (userDid && holdAmount > 0) {
-      const refundPromise = refundHold(db, userDid, holdAmount);
+      const refundPromise = refundHold(db, userDid, holdAmount, c.env.AUTH_KV);
       if (waitUntil) waitUntil(refundPromise);
       else await refundPromise;
     }
@@ -497,7 +503,7 @@ routes.post('/embeddings', async (c) => {
     return c.json({ error: { message: `No available provider for model: ${body.model}` } }, 404);
   }
 
-  const gwConfig = await resolveGatewayConfig(c.env.AUTH_KV, c.env);
+  const gwConfig = await resolveGatewayConfig(c.env.AUTH_KV, c.env, getProviderGatewayConfigId(provider.providerConfig));
   const useGw = !!gwConfig && shouldUseGateway(provider.providerName, provider.providerConfig, provider.gatewaySlug);
 
   let response: Response;
@@ -576,7 +582,7 @@ routes.post('/images/generations', async (c) => {
     return c.json({ error: { message: `No available provider for model: ${body.model}` } }, 404);
   }
 
-  const gwConfig = await resolveGatewayConfig(c.env.AUTH_KV, c.env);
+  const gwConfig = await resolveGatewayConfig(c.env.AUTH_KV, c.env, getProviderGatewayConfigId(provider.providerConfig));
   const useGwImg = !!gwConfig && shouldUseGateway(provider.providerName, provider.providerConfig, provider.gatewaySlug);
 
   let response: Response;
@@ -717,7 +723,7 @@ routes.post('/models/:modelAndMethod', async (c) => {
   }
 
   // Build Google API URL (direct or via Gateway)
-  const gwConfig = await resolveGatewayConfig(c.env.AUTH_KV, c.env);
+  const gwConfig = await resolveGatewayConfig(c.env.AUTH_KV, c.env, getProviderGatewayConfigId(provider.providerConfig));
   const gwActive = !!gwConfig && shouldUseGateway(provider.providerName, provider.providerConfig, provider.gatewaySlug);
   let upstreamUrl: string;
   let fetchHeaders: Record<string, string>;
