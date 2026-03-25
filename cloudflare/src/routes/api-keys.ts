@@ -94,7 +94,7 @@ routes.delete('/:id', async (c: Context<HonoEnv>) => {
 export async function validateApiKey(
   db: ReturnType<typeof import('drizzle-orm/d1').drizzle>,
   apiKey: string
-): Promise<{ id: string } | null> {
+): Promise<{ id: string; publicKey: string | null; name: string | null; userDid: string | null; createdAt: string; updatedAt: string } | null> {
   const results = await db.select().from(apps).where(eq(apps.publicKey, apiKey)).limit(1);
   return results.length > 0 ? results[0] : null;
 }

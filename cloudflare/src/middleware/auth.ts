@@ -56,10 +56,10 @@ export function loadUser(env: Env) {
       try {
         const apiKey = authHeader.slice(7); // Remove "Bearer "
         const db = c.get('db') || drizzle(env.DB, { schema });
-        const app = await validateApiKey(db, apiKey);
-        if (app) {
+        const appRecord = await validateApiKey(db, apiKey);
+        if (appRecord) {
           // Rate limit API key requests
-          const rl = await checkRateLimit(env.AUTH_KV, app.id);
+          const rl = await checkRateLimit(env.AUTH_KV, appRecord.id);
           if (!rl.allowed) {
             return c.json(
               { error: { message: 'Rate limit exceeded', limit: rl.limit, remaining: 0, resetAt: rl.resetAt } },
@@ -70,20 +70,37 @@ export function loadUser(env: Env) {
           c.header('X-RateLimit-Remaining', String(rl.remaining));
           c.header('X-RateLimit-Reset', String(rl.resetAt));
 
-          c.set('user', {
-            id: app.id,
-            email: '',
-            name: app.id,
-            provider: 'google',
-            providerId: app.id,
-            role: 'member',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          } as AuthUser);
+          if (appRecord.userDid) {
+            // New key with userDid: use real user identity for billing
+            c.set('user', {
+              id: appRecord.userDid,
+              email: '',
+              name: appRecord.name || appRecord.id,
+              provider: 'api_key',
+              providerId: appRecord.id,
+              role: 'member',
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            } as AuthUser);
+            // Inject appDid so v2 routes track usage per key
+            c.req.raw.headers.set('x-aigne-hub-client-did', appRecord.id);
+          } else {
+            // Legacy key without userDid: preserve current behavior
+            c.set('user', {
+              id: appRecord.id,
+              email: '',
+              name: appRecord.id,
+              provider: 'google',
+              providerId: appRecord.id,
+              role: 'member',
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            } as AuthUser);
+          }
           return await next();
         }
       } catch {
-        // API key validation failed (e.g. table missing), fall through to other auth methods
+        // API key validation failed, fall through to other auth methods
       }
     }
 
