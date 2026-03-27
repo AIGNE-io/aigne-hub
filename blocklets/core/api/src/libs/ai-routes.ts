@@ -286,12 +286,39 @@ export async function processChatCompletion(
 
   const isEventStream = req.accepts().some((i) => i.startsWith('text/event-stream'));
 
-  req.timings?.start('modelSetup');
-  const result = await chatCompletionByFrameworkModel(input, req.user?.did, { ...options, req });
-  req.timings?.end('modelSetup');
-
+  // Wrap onEnd to inject tiktoken-estimated usage when provider doesn't return usage data in streaming mode.
+  // The original onEnd runs before the tiktoken fallback at the end of this function, so without this wrapper,
+  // ModelCall records would be created with 0 tokens when the provider omits usage chunks.
   let content = '';
   const toolCalls: NonNullable<ChatCompletionChunk['delta']['toolCalls']> = [];
+  const wrappedOptions = options?.onEnd
+    ? {
+        ...options,
+        onEnd: async (data: any) => {
+          if (data?.output && !data.output.usage) {
+            const enc = get_encoding('cl100k_base');
+            try {
+              const promptTokens = enc.encode(JSON.stringify(input.messages)).length;
+              const completionTokens = enc.encode(JSON.stringify({ content, toolCalls })).length;
+              data.output.usage = {
+                inputTokens: promptTokens,
+                outputTokens: completionTokens,
+                totalTokens: promptTokens + completionTokens,
+              };
+              logger.info('Injected tiktoken-estimated usage for model call', { promptTokens, completionTokens });
+            } finally {
+              enc.free();
+            }
+          }
+          return options.onEnd!(data);
+        },
+      }
+    : options;
+
+  req.timings?.start('modelSetup');
+  const result = await chatCompletionByFrameworkModel(input, req.user?.did, { ...wrappedOptions, req });
+  req.timings?.end('modelSetup');
+
   let firstChunkReceived = false;
 
   const emitEventStreamChunk = (chunk: ChatCompletionResponse) => {

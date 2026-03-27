@@ -25,6 +25,8 @@ import proxy from 'express-http-proxy';
 import Joi from 'joi';
 import lodashPick from 'lodash/pick';
 
+import { get_encoding } from '@dqbd/tiktoken';
+
 import { DEFAULT_IMAGE_MODEL, DEFAULT_MODEL, DEFAULT_VIDEO_MODEL } from '../libs/constants';
 import onError from '../libs/on-error';
 import { requestTimingMiddleware } from '../libs/request-timing';
@@ -351,6 +353,28 @@ router.post(
             req.timings?.end('aiCall');
             req.timings?.start('usage');
             const usageData: ChatModelOutput = data.output;
+
+            // Estimate usage with tiktoken when provider doesn't return usage data in streaming mode
+            if (usageData && !usageData.usage) {
+              const enc = get_encoding('cl100k_base');
+              try {
+                const inputMessages = value.input?.messages || req.body?.input?.messages || [];
+                const outputText = usageData.text || '';
+                const promptTokens = enc.encode(JSON.stringify(inputMessages)).length;
+                const completionTokens = enc.encode(outputText).length;
+                usageData.usage = {
+                  inputTokens: promptTokens,
+                  outputTokens: completionTokens,
+                };
+                logger.info('Injected tiktoken-estimated usage for /v2/chat model call', {
+                  promptTokens,
+                  completionTokens,
+                });
+              } finally {
+                enc.free();
+              }
+            }
+
             if (usageData) {
               const usage = await createUsageAndCompleteModelCall({
                 req,
