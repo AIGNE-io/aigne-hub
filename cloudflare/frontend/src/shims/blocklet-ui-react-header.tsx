@@ -1,18 +1,14 @@
-import AppBar from '@mui/material/AppBar';
-import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
-import Toolbar from '@mui/material/Toolbar';
-import Typography from '@mui/material/Typography';
 import type { ReactNode } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const NAV_ITEMS = [
-  { id: 'home', label: '首页', link: '/' },
-  { id: 'config', label: '配置', link: '/config' },
-  { id: 'usage', label: '用量', link: '/usage' },
-  { id: 'playground', label: '沙盒', link: '/playground' },
-  { id: 'pricing', label: '定价', link: '/pricing' },
-  { id: 'apiKeys', label: 'API Keys', link: '/api-keys' },
+  { label: '首页', link: '/' },
+  { label: '配置', link: '/config' },
+  { label: '用量', link: '/usage' },
+  { label: '沙盒', link: '/playground' },
+  { label: '定价', link: '/pricing' },
+  { label: 'API Keys', link: '/api-keys' },
 ];
 
 interface HeaderProps {
@@ -23,10 +19,23 @@ interface HeaderProps {
   [key: string]: unknown;
 }
 
+// Load <blocklet-header> Web Component from blocklet-service
+let headerScriptLoaded = false;
+function ensureHeaderScript() {
+  if (headerScriptLoaded) return;
+  headerScriptLoaded = true;
+  const script = document.createElement('script');
+  script.src = '/.well-known/service/components/header.js';
+  document.head.appendChild(script);
+}
+
 // eslint-disable-next-line react/prop-types
-export default function Header({ title, brand, children, addons, ...allProps }: HeaderProps) {
+export default function Header({ title, children, addons, ...allProps }: HeaderProps) {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { maxWidth, homeLink, sessionManagerProps, hideNavMenu, ...rest } = allProps;
+  const { maxWidth, homeLink, sessionManagerProps, hideNavMenu, brand, ...rest } = allProps;
+  const headerRef = useRef<HTMLElement>(null);
+  const navigate = useNavigate();
+
   let location: { pathname: string };
   try {
     // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -35,49 +44,51 @@ export default function Header({ title, brand, children, addons, ...allProps }: 
     location = { pathname: '/' };
   }
 
+  useEffect(() => {
+    ensureHeaderScript();
+  }, []);
+
+  // Sync React Router with Web Component SPA nav
+  useEffect(() => {
+    const onPopState = () => {
+      // When blocklet-header pushes state, sync React Router
+      const newPath = window.location.pathname;
+      if (newPath !== location.pathname) {
+        navigate(newPath);
+      }
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [location.pathname, navigate]);
+
   const extra = addons ? addons([]) : [];
 
   return (
-    <AppBar position="static" color="default" elevation={1} sx={{ bgcolor: 'background.paper' }} {...rest}>
-      <Toolbar sx={{ gap: 0.5 }}>
-        {brand || (
-          <Typography
-            component={Link}
-            to="/"
-            variant="h6"
-            sx={{ fontWeight: 700, color: 'text.primary', textDecoration: 'none', mr: 2 }}>
-            {title || 'AIGNE Hub'}
-          </Typography>
-        )}
-
-        {NAV_ITEMS.map((item) => {
-          const isActive = item.link === '/' ? location.pathname === '/' : location.pathname.startsWith(item.link);
-          return (
-            <Button
-              key={item.id}
-              component={Link}
-              to={item.link}
-              size="small"
-              sx={{
-                color: isActive ? 'primary.main' : 'text.secondary',
-                fontWeight: isActive ? 600 : 400,
-                borderBottom: '2px solid',
-                borderColor: isActive ? 'primary.main' : 'transparent',
-                borderRadius: 0,
-                px: 1.5,
-                py: 1,
-                minWidth: 'auto',
-                fontSize: '0.875rem',
-              }}>
-              {item.label}
-            </Button>
-          );
-        })}
-
-        <Box sx={{ flex: 1 }} />
-        {extra}
-        {children}
-      </Toolbar>
-    </AppBar>
+    <div ref={headerRef} {...(rest as Record<string, unknown>)}>
+      <blocklet-header
+        app-name={title || 'AIGNE Hub'}
+        app-logo=""
+        nav-items={JSON.stringify(NAV_ITEMS)}
+      />
+      {extra}
+      {children}
+    </div>
   );
+}
+
+// TypeScript: declare the custom element
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
+  namespace JSX {
+    interface IntrinsicElements {
+      'blocklet-header': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement> & {
+        'app-name'?: string;
+        'app-logo'?: string;
+        'nav-items'?: string;
+        theme?: string;
+        'login-url'?: string;
+        'team-url'?: string;
+      }, HTMLElement>;
+    }
+  }
 }

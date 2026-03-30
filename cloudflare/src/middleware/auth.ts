@@ -1,16 +1,20 @@
+// [DEPRECATED] cf-auth — kept for legacy session cookie fallback. Remove after full DID auth migration.
 import { getSession, getTokenFromRequest } from '@aigne/cf-auth';
-import type { AuthConfig, AuthUser } from '@aigne/cf-auth';
+import type { AuthConfig } from '@aigne/cf-auth';
+import { createBlockletServiceClient } from '@arcblock/did-connect-cloudflare/client';
 import { drizzle } from 'drizzle-orm/d1';
 import type { Context, Next } from 'hono';
 
 import * as schema from '../db/schema';
 import { checkRateLimit } from '../libs/rate-limit';
 import { validateApiKey } from '../routes/api-keys';
+import type { AppUser } from '../types/user';
 import type { Env, HonoEnv } from '../worker';
 
 /**
  * Build AuthConfig from Worker env bindings.
  */
+/** [DEPRECATED] Build cf-auth config — only used for legacy session validation. */
 export function buildAuthConfig(env: Env): AuthConfig {
   const providers: AuthConfig['providers'] = {};
 
@@ -74,18 +78,27 @@ export function loadUser(env: Env) {
         c.header('X-RateLimit-Reset', String(rl.resetAt));
 
         if (appRecord.userDid) {
-          // New key with userDid: use real user identity for billing
+          // New key with userDid: enrich with blocklet-service profile if available
+          let email = '';
+          let name = appRecord.name || appRecord.id;
+          if (env.BLOCKLET_SERVICE) {
+            const bsClient = createBlockletServiceClient(env.BLOCKLET_SERVICE);
+            const profile = await bsClient.getUserProfile(appRecord.userDid);
+            if (profile) {
+              email = profile.email || '';
+              name = profile.fullName || name;
+            }
+          }
           c.set('user', {
             id: appRecord.userDid,
-            email: '',
-            name: appRecord.name || appRecord.id,
-            provider: 'google' as const,
+            email,
+            name,
+            provider: 'api-key',
             providerId: appRecord.id,
             role: 'member',
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
-          } as AuthUser);
-          // Pass appDid via Hono context (CF Workers request headers are immutable)
+          } satisfies AppUser);
           (c as any).set('apiKeyAppDid', appRecord.id);
         } else {
           // Legacy key without userDid
@@ -93,12 +106,12 @@ export function loadUser(env: Env) {
             id: appRecord.id,
             email: '',
             name: appRecord.id,
-            provider: 'google',
+            provider: 'api-key',
             providerId: appRecord.id,
             role: 'member',
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
-          } as AuthUser);
+          } satisfies AppUser);
         }
         return await next();
       } catch {
@@ -106,17 +119,53 @@ export function loadUser(env: Env) {
       }
     }
 
-    // 2. Try session cookie auth
+    // 2. Try blocklet-service DID auth (login_token cookie from DID Connect)
+    if (env.BLOCKLET_SERVICE) {
+      try {
+        const client = createBlockletServiceClient(env.BLOCKLET_SERVICE);
+        const caller = await client.verifyFull(c.req.raw);
+        if (caller) {
+          // Fetch full profile for email/avatar (verifyFull returns DB-enriched identity)
+          const profile = await client.getUserProfile(caller.did);
+          c.set('user', {
+            id: caller.did,
+            email: profile?.email || '',
+            name: caller.displayName || caller.did,
+            avatar: profile?.avatar || caller.avatar,
+            provider: 'did',
+            providerId: caller.did,
+            role: caller.role === 'owner' || caller.role === 'admin' ? 'admin' : 'member',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          } satisfies AppUser);
+          return next();
+        }
+      } catch {
+        // blocklet-service auth failed, try next method
+      }
+    }
+
+    // 3. Try session cookie auth (legacy @aigne/cf-auth)
     const token = getTokenFromRequest(c.req.raw);
     if (token) {
-      const user = await getSession(token, config);
-      if (user) {
-        c.set('user', user);
+      const cfUser = await getSession(token, config);
+      if (cfUser) {
+        c.set('user', {
+          id: cfUser.id,
+          email: cfUser.email,
+          name: cfUser.name,
+          avatar: cfUser.avatar,
+          provider: cfUser.provider as AppUser['provider'],
+          providerId: cfUser.providerId,
+          role: cfUser.role as AppUser['role'],
+          createdAt: cfUser.createdAt,
+          updatedAt: cfUser.updatedAt,
+        } satisfies AppUser);
         return next();
       }
     }
 
-    // 3. Fallback: dev header-based auth (x-user-did + x-user-role)
+    // 4. Fallback: dev header-based auth (x-user-did + x-user-role)
     // SECURITY: only allow in non-production environments
     if (env.ENVIRONMENT !== 'production') {
       const did = c.req.header('x-user-did');
@@ -125,12 +174,12 @@ export function loadUser(env: Env) {
           id: did,
           email: '',
           name: did,
-          provider: 'google',
+          provider: 'dev',
           providerId: did,
           role: (c.req.header('x-user-role') as 'admin' | 'member') || 'member',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
-        } as AuthUser);
+        } satisfies AppUser);
       }
     }
 
@@ -159,7 +208,7 @@ export function requireAuth() {
  */
 export function requireAdmin() {
   return async (c: Context<HonoEnv>, next: Next) => {
-    const user = c.get('user') as AuthUser | undefined;
+    const user = c.get('user') as AppUser | undefined;
     if (!user) {
       return c.json({ error: 'Authentication required' }, 401);
     }

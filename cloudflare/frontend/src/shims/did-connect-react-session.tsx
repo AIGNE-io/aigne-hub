@@ -23,10 +23,11 @@ async function ensureApiKey(): Promise<string> {
   if (existing) return existing;
 
   try {
+    // Relies on login_token cookie for auth (no hardcoded dev headers)
     const res = await axios.post(
       '/api/api-keys',
       { name: 'frontend-auto' },
-      { headers: { 'x-user-did': 'admin', 'x-user-role': 'admin' } }
+      { withCredentials: true }
     );
     const key = res.data?.apiKey;
     if (key) {
@@ -108,35 +109,18 @@ function SessionProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // TODO: restore real auth when CF Auth SDK is ready
-    // Skip auth for local dev — always use mock admin
-    const isDev = window.location.hostname === 'localhost';
-    if (isDev) {
-      // Auto-create API key for frontend requests
-      ensureApiKey().then(() => {
-        setUser({
-          did: 'dev:admin',
-          email: 'admin@dev.local',
-          fullName: 'Dev Admin',
-          role: 'owner',
-          avatar: undefined,
-        });
-        setLoading(false);
-      });
-      return;
-    }
-
-    fetch('/auth/session', { credentials: 'include' })
+    // Check DID Connect session via blocklet-service
+    fetch('/.well-known/service/api/did/session', { credentials: 'include' })
       .then((res) => {
         if (res.ok) return res.json();
-        return { user: null };
+        return { authenticated: false, user: null };
       })
-      .then((data: { user?: { id: string; email?: string; name?: string; role?: string; avatar?: string } }) => {
-        if (data.user) {
+      .then((data: { authenticated?: boolean; user?: { did: string; displayName?: string; role?: string; avatar?: string; email?: string } }) => {
+        if (data.authenticated && data.user) {
           setUser({
-            did: data.user.id,
+            did: data.user.did,
             email: data.user.email,
-            fullName: data.user.name,
+            fullName: data.user.displayName,
             role: data.user.role || 'member',
             avatar: data.user.avatar,
           });
@@ -146,23 +130,15 @@ function SessionProvider({ children }: { children: React.ReactNode }) {
       .finally(() => setLoading(false));
   }, []);
 
-  const login = useCallback((...args: unknown[]) => {
-    // In dev mode, use dev-login endpoint for instant admin session
-    const isDev = window.location.hostname === 'localhost';
-    const opts = (args[1] || {}) as { redirect?: string };
-    const redirect = opts.redirect || window.location.href;
-    if (isDev) {
-      window.location.href = `/auth/dev-login?role=admin&redirect=${encodeURIComponent(redirect)}`;
-    } else {
-      window.location.href = '/auth/login/google';
-    }
+  const login = useCallback(() => {
+    // Redirect to DID Connect login page (Passkey / DID Wallet / OAuth)
+    window.location.href = '/.well-known/service/login';
   }, []);
 
   const logout = useCallback(() => {
-    fetch('/auth/logout', { method: 'POST', credentials: 'include' }).finally(() => {
-      setUser(null);
-      window.location.href = '/';
-    });
+    // DID Connect logout — redirect-based (clears login_token cookie)
+    setUser(null);
+    window.location.href = '/.well-known/service/api/did/logout';
   }, []);
 
   const value = useMemo<SessionContextValue>(

@@ -1,5 +1,8 @@
+// [DEPRECATED] cf-auth — kept for legacy session fallback and dev-login. Remove after full DID auth migration.
 import { createAuthRoutes, createSession, getSessionCookie } from '@aigne/cf-auth';
-import type { AuthUser } from '@aigne/cf-auth';
+import type { BlockletServiceRPCInterface } from '@arcblock/did-connect-cloudflare/rpc-types';
+import type { AppUser } from './types/user';
+import { createBlockletServiceClient } from '@arcblock/did-connect-cloudflare/client';
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
 import { Hono } from 'hono';
@@ -28,6 +31,9 @@ import v2Routes from './routes/v2';
 export type Env = {
   DB: D1Database;
   AUTH_KV: KVNamespace;
+  BLOCKLET_SERVICE: Service & BlockletServiceRPCInterface;
+  APP_SK: string;
+  INSTANCE_NAME?: string;
   ENVIRONMENT: string;
   AUTH_SECRET: string;
   GOOGLE_CLIENT_ID?: string;
@@ -44,9 +50,41 @@ export type Env = {
   ASSETS?: { fetch: (req: Request) => Promise<Response> };
 };
 
+// Cached instanceDid after registerApp()
+let cachedInstanceDid: string | null = null;
+
+/** Register this app as an instance in blocklet-service (idempotent). */
+async function ensureRegistered(env: Env): Promise<string> {
+  if (cachedInstanceDid) return cachedInstanceDid;
+  if (!env.APP_SK || !env.BLOCKLET_SERVICE) return '';
+
+  const result = await env.BLOCKLET_SERVICE.registerApp({
+    instanceDid: 'auto',
+    appSk: env.APP_SK,
+    appName: env.INSTANCE_NAME || 'AIGNE Hub',
+    appDescription: 'AIGNE Hub — AI Agent marketplace',
+  });
+
+  cachedInstanceDid = result.instanceDid;
+  console.log(`[aigne-hub] Registered as instance: ${cachedInstanceDid}`);
+  return cachedInstanceDid;
+}
+
+/** Clone request with X-Instance-Did header injected. */
+function withInstanceHeader(request: Request, instanceDid: string): Request {
+  const headers = new Headers(request.headers);
+  headers.set('X-Instance-Did', instanceDid);
+  return new Request(request.url, {
+    method: request.method,
+    headers,
+    body: request.body,
+    redirect: 'manual',
+  });
+}
+
 export type Variables = {
   db: ReturnType<typeof drizzle<typeof schema>>;
-  user?: AuthUser;
+  user?: AppUser;
   executionCtx?: ExecutionContext;
 };
 
@@ -93,6 +131,28 @@ app.use('*', async (c, next) => {
   }
 });
 
+// Register with blocklet-service on first request + forward auth pages
+app.use('*', async (c, next) => {
+  if (c.env.BLOCKLET_SERVICE && c.env.APP_SK) {
+    await ensureRegistered(c.env);
+  }
+  return next();
+});
+
+// Forward /.well-known/service/* and /favicon.ico to blocklet-service
+app.all('/.well-known/service/*', async (c) => {
+  if (!c.env.BLOCKLET_SERVICE || !cachedInstanceDid) {
+    return c.json({ error: 'Blocklet service not configured' }, 503);
+  }
+  return c.env.BLOCKLET_SERVICE.fetch(withInstanceHeader(c.req.raw, cachedInstanceDid));
+});
+app.get('/__blocklet__/*', async (c) => {
+  if (!c.env.BLOCKLET_SERVICE || !cachedInstanceDid) {
+    return c.json({ error: 'Blocklet service not configured' }, 503);
+  }
+  return c.env.BLOCKLET_SERVICE.fetch(withInstanceHeader(c.req.raw, cachedInstanceDid));
+});
+
 // D1 + Drizzle setup per request + expose executionCtx for waitUntil
 app.use('*', async (c, next) => {
   c.set('db', drizzle(c.env.DB, { schema }));
@@ -117,8 +177,8 @@ app.get('/api/health', async (c) => {
   }
 });
 
-// Dev-only: mock login endpoint (creates a session cookie without OAuth)
-// Admin requires ?token=AUTH_SECRET; without token defaults to member
+// [DEPRECATED] Dev-only mock login — prefer /.well-known/service/login (DID auth)
+// Kept for local dev when blocklet-service is not running.
 app.get('/auth/dev-login', async (c) => {
   if (c.env.ENVIRONMENT === 'production') {
     return c.json({ error: 'Not available in production' }, 403);
@@ -191,7 +251,34 @@ app.route('/api/usage', usageRoutes);
 app.route('/api/user', userRoutes);
 app.route('/api/payment', paymentRoutes);
 
-// Auth routes (login/callback/logout/session)
+// Bridge /auth/session to blocklet-service DID session (backward compat for frontend)
+app.get('/auth/session', async (c) => {
+  if (c.env.BLOCKLET_SERVICE) {
+    const client = createBlockletServiceClient(c.env.BLOCKLET_SERVICE);
+    const caller = await client.verifyFull(c.req.raw);
+    if (caller) {
+      const profile = await client.getUserProfile(caller.did);
+      return c.json({
+        user: {
+          id: caller.did,
+          email: profile?.email || '',
+          name: caller.displayName || caller.did,
+          role: caller.role === 'owner' || caller.role === 'admin' ? 'admin' : 'member',
+          avatar: profile?.avatar || caller.avatar,
+        },
+      });
+    }
+    return c.json({ user: null }, 401);
+  }
+  // Fallback to cf-auth if no blocklet-service binding
+  const authConfig = buildAuthConfig(c.env);
+  const authApp = createAuthRoutes(authConfig);
+  return authApp.fetch(c.req.raw, c.env);
+});
+
+// [DEPRECATED] Legacy cf-auth routes (Google/GitHub OAuth login/callback/logout)
+// All new auth flows go through /.well-known/service/* (blocklet-service DID auth).
+// Remove this block once all users have migrated to DID auth.
 app.all('/auth/*', async (c) => {
   const authConfig = buildAuthConfig(c.env);
   const authApp = createAuthRoutes(authConfig);

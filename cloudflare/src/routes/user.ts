@@ -1,3 +1,4 @@
+import { createBlockletServiceClient } from '@arcblock/did-connect-cloudflare/client';
 import { and, desc, eq, gte, like, lte, or, sql } from 'drizzle-orm';
 import type { Context } from 'hono';
 import { Hono } from 'hono';
@@ -322,40 +323,35 @@ routes.post('/admin/user-info', async (c) => {
     dids = [body.userDid];
   }
 
-  // Lookup by email if no DIDs provided
-  if (dids.length === 0 && body.email) {
-    try {
-      const row = await c.env.DB.prepare('SELECT id FROM AuthUsers WHERE email = ? LIMIT 1')
-        .bind(body.email)
-        .first<{ id: string }>();
-      if (row) dids = [row.id];
-    } catch {
-      // AuthUsers table may not exist yet
-    }
+  // Lookup by email via blocklet-service
+  if (dids.length === 0 && body.email && c.env.BLOCKLET_SERVICE) {
+    const bsClient = createBlockletServiceClient(c.env.BLOCKLET_SERVICE);
+    const user = await bsClient.getUserByEmail(body.email);
+    if (user) dids = [user.did];
   }
 
   if (dids.length === 0) {
     return c.json({ users: [] });
   }
 
-  // Batch-fetch user profiles from AuthUsers table
-  type AuthRow = { id: string; name: string | null; email: string | null; avatar: string | null };
-  const authMap = new Map<string, AuthRow>();
-  try {
-    // D1 doesn't support array binding, so batch in groups
-    const batchSize = 50;
-    for (let i = 0; i < dids.length; i += batchSize) {
-      const batch = dids.slice(i, i + batchSize);
-      const placeholders = batch.map(() => '?').join(',');
-      const rows = await c.env.DB.prepare(`SELECT id, name, email, avatar FROM AuthUsers WHERE id IN (${placeholders})`)
-        .bind(...batch)
-        .all<AuthRow>();
-      for (const row of rows.results || []) {
-        authMap.set(row.id, row);
+  // Batch-fetch user profiles from blocklet-service
+  type ProfileInfo = { id: string; name: string | null; email: string | null; avatar: string | null };
+  const profileMap = new Map<string, ProfileInfo>();
+  if (c.env.BLOCKLET_SERVICE) {
+    const bsClient = createBlockletServiceClient(c.env.BLOCKLET_SERVICE);
+    // Parallel fetch, capped at 200 DIDs (already sliced above)
+    const results = await Promise.allSettled(dids.map((did) => bsClient.getUserProfile(did)));
+    for (let i = 0; i < results.length; i++) {
+      const r = results[i]!;
+      if (r.status === 'fulfilled' && r.value) {
+        profileMap.set(dids[i]!, {
+          id: r.value.did,
+          name: r.value.fullName ?? null,
+          email: r.value.email ?? null,
+          avatar: r.value.avatar ?? null,
+        });
       }
     }
-  } catch {
-    // AuthUsers table may not exist yet — fall through to stubs
   }
 
   // Batch-fetch credit balances
@@ -380,13 +376,13 @@ routes.post('/admin/user-info', async (c) => {
 
   return c.json({
     users: dids.map((did) => {
-      const auth = authMap.get(did);
+      const profile = profileMap.get(did);
       const credit = balanceMap.get(did);
       return {
         did,
-        fullName: auth?.name || (did.startsWith('dev:') ? `Dev ${did.split(':')[1]}` : did.slice(0, 12)),
-        email: auth?.email || '',
-        avatar: auth?.avatar || '',
+        fullName: profile?.name || (did.startsWith('dev:') ? `Dev ${did.split(':')[1]}` : did.slice(0, 12)),
+        email: profile?.email || '',
+        avatar: profile?.avatar || '',
         creditBalance: credit
           ? {
               balance: parseFloat(credit.balance),

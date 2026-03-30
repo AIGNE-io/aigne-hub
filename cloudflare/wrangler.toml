@@ -12,9 +12,20 @@ database_id = "local"
 binding = "AUTH_KV"
 id = "local"
 
+[[services]]
+binding = "BLOCKLET_SERVICE"
+service = "blocklet-service"
+entrypoint = "BlockletServiceRPC"
+
+[assets]
+directory = "frontend/dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+
 [vars]
 ENVIRONMENT = "development"
-BASE_URL = "http://localhost:8787"
+BASE_URL = "http://aigne.localhost:8092"
+INSTANCE_NAME = "AIGNE Hub"
 # CREDENTIAL_ENCRYPTION_KEY must be set via: wrangler secret put CREDENTIAL_ENCRYPTION_KEY
 # AI Gateway: set these to route provider calls through CF AI Gateway
 # AI_GATEWAY_ACCOUNT_ID = ""

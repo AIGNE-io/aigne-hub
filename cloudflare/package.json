@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@aigne/cf-auth": "workspace:*",
+    "@arcblock/did-connect-cloudflare": "4.0.0-beta.5",
     "drizzle-orm": "^0.39.0",
     "hono": "^4.7.0"
   },
