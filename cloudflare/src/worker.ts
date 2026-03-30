@@ -53,6 +53,11 @@ export type Env = {
 // Cached instanceDid after registerApp()
 let cachedInstanceDid: string | null = null;
 
+/** Get the cached instanceDid (set after ensureRegistered). */
+export function getInstanceDid(): string | null {
+  return cachedInstanceDid;
+}
+
 /** Register this app as an instance in blocklet-service (idempotent). */
 async function ensureRegistered(env: Env): Promise<string> {
   if (cachedInstanceDid) return cachedInstanceDid;

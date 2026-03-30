@@ -11,6 +11,9 @@ import { validateApiKey } from '../routes/api-keys';
 import type { AppUser } from '../types/user';
 import type { Env, HonoEnv } from '../worker';
 
+// Import cachedInstanceDid from worker — set after ensureRegistered()
+import { getInstanceDid } from '../worker';
+
 /**
  * Build AuthConfig from Worker env bindings.
  */
@@ -127,6 +130,25 @@ export function loadUser(env: Env) {
         if (caller) {
           // Fetch full profile for email/avatar (verifyFull returns DB-enriched identity)
           const profile = await client.getUserProfile(caller.did);
+
+          // Auto-ensure membership for this instance (idempotent)
+          const instanceDid = getInstanceDid();
+          let effectiveRole = caller.role;
+          if (instanceDid) {
+            const membership = await env.BLOCKLET_SERVICE.getMembership(caller.did, instanceDid);
+            if (!membership) {
+              // Check if instance has any members — first global owner/admin becomes instance owner
+              const existingMembers = await env.BLOCKLET_SERVICE.listMemberships(instanceDid);
+              const hasOwner = existingMembers?.some((m: { role: string }) => m.role === 'owner');
+              const isGlobalAdmin = caller.role === 'owner' || caller.role === 'admin';
+              const role = !hasOwner && isGlobalAdmin ? 'owner' : isGlobalAdmin ? 'admin' : 'member';
+              await env.BLOCKLET_SERVICE.createMembership(caller.did, instanceDid, role);
+              effectiveRole = role;
+            } else {
+              effectiveRole = membership.role as typeof caller.role;
+            }
+          }
+
           c.set('user', {
             id: caller.did,
             email: profile?.email || '',
@@ -134,7 +156,7 @@ export function loadUser(env: Env) {
             avatar: profile?.avatar || caller.avatar,
             provider: 'did',
             providerId: caller.did,
-            role: caller.role === 'owner' || caller.role === 'admin' ? 'admin' : 'member',
+            role: effectiveRole === 'owner' || effectiveRole === 'admin' ? 'admin' : 'member',
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           } satisfies AppUser);
