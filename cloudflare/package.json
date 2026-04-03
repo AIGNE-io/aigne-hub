@@ -7,7 +7,7 @@
     "dev": "wrangler dev",
     "build": "wrangler deploy --dry-run --outdir=dist",
     "deploy": "wrangler deploy",
-    "deploy:staging": "wrangler deploy --env staging",
+    "deploy:local": "wrangler deploy -c wrangler.local.toml",
     "db:generate": "drizzle-kit generate",
     "db:migrate:local": "wrangler d1 execute aigne-hub-dev --local --file=migrations/0001_initial.sql",
     "db:seed": "wrangler d1 execute aigne-hub-dev --local --file=scripts/seed-data.sql",
@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "@aigne/cf-auth": "workspace:*",
-    "@arcblock/did-connect-cloudflare": "4.0.0-beta.5",
+    "@arcblock/did-connect-cloudflare": "4.0.0-beta.6",
     "drizzle-orm": "^0.39.0",
     "hono": "^4.7.0"
   },

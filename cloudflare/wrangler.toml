@@ -20,7 +20,7 @@ entrypoint = "BlockletServiceRPC"
 [assets]
 directory = "frontend/dist"
 binding = "ASSETS"
-not_found_handling = "single-page-application"
+not_found_handling = "none"
 
 [vars]
 ENVIRONMENT = "development"
@@ -38,28 +38,6 @@ crons = [
   "0 2 * * *",
 ]
 
-# --- Staging ---
-[env.staging]
-name = "aigne-hub-staging"
-
-[[env.staging.d1_databases]]
-binding = "DB"
-database_name = "aigne-hub-staging"
-database_id = "5d0d4eb5-d31f-4e08-acac-721a022198f3"
-
-[[env.staging.kv_namespaces]]
-binding = "AUTH_KV"
-id = "5ddf33756351411db3ef31294b8b3db3"
-
-[env.staging.assets]
-directory = "frontend/dist"
-binding = "ASSETS"
-not_found_handling = "single-page-application"
-
-[env.staging.vars]
-ENVIRONMENT = "staging"
-BASE_URL = "https://aigne-hub-staging.zhuzhuyule-779.workers.dev"
-
 # --- Production ---
 [env.production]
 name = "aigne-hub-production"
@@ -76,7 +54,7 @@ id = "7ea86243a879402aa703f6c35e4ade0a"
 [env.production.assets]
 directory = "frontend/dist"
 binding = "ASSETS"
-not_found_handling = "single-page-application"
+not_found_handling = "none"
 
 [env.production.vars]
 ENVIRONMENT = "production"
