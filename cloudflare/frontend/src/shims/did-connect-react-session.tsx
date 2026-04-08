@@ -117,16 +117,22 @@ function SessionProvider({ children }: { children: React.ReactNode }) {
       })
       .then((data: { authenticated?: boolean; user?: { did: string; displayName?: string; role?: string; avatar?: string; email?: string } }) => {
         if (data.authenticated && data.user) {
-          setUser({
+          const u: SessionUser = {
             did: data.user.did,
             email: data.user.email,
             fullName: data.user.displayName,
             role: data.user.role || 'member',
             avatar: data.user.avatar,
-          });
+          };
+          setUser(u);
+          // Auto-create API key for authenticated users so subsequent API calls have Bearer token
+          ensureApiKey();
+          events.emit('LOGIN', u);
         }
       })
-      .catch(() => {})
+      .catch((err) => {
+        console.warn('[session] Failed to fetch DID session:', err?.message || err);
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -138,6 +144,8 @@ function SessionProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(() => {
     // DID Connect logout — redirect-based (clears login_token cookie)
     setUser(null);
+    localStorage.removeItem(API_KEY_STORAGE);
+    events.emit('LOGOUT');
     window.location.href = '/.well-known/service/api/did/logout';
   }, []);
 
