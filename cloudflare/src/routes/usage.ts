@@ -54,9 +54,11 @@ routes.get('/quota', async (c) => {
       const meter = await ensureMeter(payment);
       const summary = await payment.getCreditSummary(customer.id);
       const currencyId = meter?.currency_id;
+      const decimal = meter?.paymentCurrency?.decimal || 10;
+      const divisor = Math.pow(10, decimal);
       creditBalance = {
-        balance: parseFloat(summary?.[currencyId]?.remainingAmount ?? '0'),
-        total: parseFloat(summary?.[currencyId]?.totalAmount ?? '0'),
+        balance: parseFloat(summary?.[currencyId]?.remainingAmount ?? '0') / divisor,
+        total: parseFloat(summary?.[currencyId]?.totalAmount ?? '0') / divisor,
         used: 0,
         grantCount: 0,
         pendingCredit: 0,

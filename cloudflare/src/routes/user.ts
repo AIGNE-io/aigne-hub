@@ -40,11 +40,13 @@ routes.get('/info', async (c) => {
       const customer = await payment.ensureCustomer(did);
       const meter = await ensureMeter(payment);
       if (meter?.paymentCurrency) currency = meter.paymentCurrency;
+      const decimal = currency.decimal || 10;
+      const divisor = Math.pow(10, decimal);
       const summary = await payment.getCreditSummary(customer.id);
       const currencyId = meter?.currency_id;
       creditBalance = {
-        balance: parseFloat(summary?.[currencyId]?.remainingAmount ?? '0'),
-        total: parseFloat(summary?.[currencyId]?.totalAmount ?? '0'),
+        balance: parseFloat(summary?.[currencyId]?.remainingAmount ?? '0') / divisor,
+        total: parseFloat(summary?.[currencyId]?.totalAmount ?? '0') / divisor,
         used: 0,
         grantCount: summary?.[currencyId]?.grantCount ?? 0,
         pendingCredit: 0,
@@ -374,8 +376,10 @@ routes.get('/credit/balance', async (c) => {
         payment.getPendingAmount(customer.id),
       ]);
       const currencyId = meter?.currency_id;
-      const remainingAmount = parseFloat(summary?.[currencyId]?.remainingAmount ?? '0');
-      const pendingAmount = parseFloat(pending?.[currencyId] ?? '0');
+      const decimal = meter?.paymentCurrency?.decimal || 10;
+      const divisor = Math.pow(10, decimal);
+      const remainingAmount = parseFloat(summary?.[currencyId]?.remainingAmount ?? '0') / divisor;
+      const pendingAmount = parseFloat(pending?.[currencyId] ?? '0') / divisor;
       return c.json({ balance: Math.max(0, remainingAmount - pendingAmount) });
     } catch { /* fall through to local */ }
   }
