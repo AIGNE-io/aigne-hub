@@ -34,10 +34,12 @@ routes.get('/info', async (c) => {
   const prefs = await getPreferences(c.env.AUTH_KV);
   const payment = c.get('payment') as PaymentClient | undefined;
   let creditBalance;
+  let currency: any = { decimal: 10 };
   if (payment) {
     try {
       const customer = await payment.ensureCustomer(did);
       const meter = await ensureMeter(payment);
+      if (meter?.paymentCurrency) currency = meter.paymentCurrency;
       const summary = await payment.getCreditSummary(customer.id);
       const currencyId = meter?.currency_id;
       creditBalance = {
@@ -68,7 +70,7 @@ routes.get('/info', async (c) => {
       pendingCredit: creditBalance.pendingCredit,
     },
     paymentLink: payment ? '/payment/customer' : null,
-    currency: { decimal: 6 },
+    currency,
     enableCredit: prefs.creditBasedBillingEnabled ?? true,
     profileLink: null,
     creditPrefix: prefs.creditPrefix || '',
