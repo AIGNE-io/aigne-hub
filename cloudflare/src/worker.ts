@@ -51,6 +51,7 @@ export type Env = {
   AI_GATEWAY_ID?: string;
   ASSETS?: { fetch: (req: Request) => Promise<Response> };
   PAYMENT_KIT?: { fetch: (req: Request | string) => Promise<Response> };
+  PAYMENT_LIVEMODE?: string;
 };
 
 // Cached instanceDid after registerApp()
@@ -292,7 +293,7 @@ app.use('*', async (c, next) => {
 // Inject PaymentClient for API routes when PAYMENT_KIT binding is available
 app.use('/api/*', async (c, next) => {
   if (c.env.PAYMENT_KIT) {
-    c.set('payment', createPaymentClient(c.env.PAYMENT_KIT, c.req));
+    c.set('payment', createPaymentClient(c.env.PAYMENT_KIT, c.req, c.env));
   }
   await next();
 });

@@ -3,10 +3,15 @@ import { logger } from './logger';
 type PaymentKitBinding = { fetch: (req: Request | string) => Promise<Response> };
 
 export class PaymentClient {
+  private livemode: boolean;
+
   constructor(
     private service: PaymentKitBinding,
-    private authHeaders: Headers
-  ) {}
+    private authHeaders: Headers,
+    livemode = true
+  ) {
+    this.livemode = livemode;
+  }
 
   private async request(path: string, init?: RequestInit): Promise<any> {
     const headers = new Headers(this.authHeaders);
@@ -36,7 +41,7 @@ export class PaymentClient {
   // --- Meters ---
 
   async getMeter(eventName: string) {
-    return this.get(`/api/meters/${encodeURIComponent(eventName)}?livemode=true`);
+    return this.get(`/api/meters/${encodeURIComponent(eventName)}?livemode=${this.livemode}`);
   }
 
   async createMeter(data: {
@@ -46,17 +51,17 @@ export class PaymentClient {
     aggregation_method: string;
     metadata?: Record<string, unknown>;
   }) {
-    return this.post('/api/meters', { ...data, livemode: true });
+    return this.post('/api/meters', { ...data, livemode: this.livemode });
   }
 
   async updateMeter(id: string, data: Record<string, unknown>) {
-    return this.put(`/api/meters/${encodeURIComponent(id)}`, { ...data, livemode: true });
+    return this.put(`/api/meters/${encodeURIComponent(id)}`, { ...data, livemode: this.livemode });
   }
 
   // --- Customers ---
 
   async ensureCustomer(did: string) {
-    return this.get(`/api/customers/${encodeURIComponent(did)}?create=true&livemode=true`);
+    return this.get(`/api/customers/${encodeURIComponent(did)}?create=true&livemode=${this.livemode}`);
   }
 
   // --- Meter Events ---
@@ -69,28 +74,28 @@ export class PaymentClient {
     metadata?: Record<string, unknown>;
     source_data?: Record<string, unknown>;
   }) {
-    return this.post('/api/meter-events', { ...payload, livemode: true });
+    return this.post('/api/meter-events', { ...payload, livemode: this.livemode });
   }
 
   async getPendingAmount(customerId: string) {
-    return this.get(`/api/meter-events/pending-amount?customer_id=${encodeURIComponent(customerId)}&livemode=true`);
+    return this.get(`/api/meter-events/pending-amount?customer_id=${encodeURIComponent(customerId)}&livemode=${this.livemode}`);
   }
 
   // --- Credit Grants ---
 
   async getCreditSummary(customerId: string) {
-    return this.get(`/api/credit-grants/summary?customer_id=${encodeURIComponent(customerId)}&livemode=true`);
+    return this.get(`/api/credit-grants/summary?customer_id=${encodeURIComponent(customerId)}&livemode=${this.livemode}`);
   }
 
   async verifyAvailability(params: { customer_id: string; currency_id: string; pending_amount?: string }) {
-    const qs = new URLSearchParams({ ...params, livemode: 'true' } as Record<string, string>).toString();
+    const qs = new URLSearchParams({ ...params, livemode: String(this.livemode) } as Record<string, string>).toString();
     return this.get(`/api/credit-grants/verify-availability?${qs}`);
   }
 
   async getCreditGrants(params: { customer_id: string; currency_id?: string; page?: number; pageSize?: number }) {
     const qs = new URLSearchParams(
       Object.fromEntries(
-        Object.entries({ ...params, livemode: true })
+        Object.entries({ ...params, livemode: this.livemode })
           .filter(([, v]) => v != null)
           .map(([k, v]) => [k, String(v)])
       )
@@ -103,7 +108,7 @@ export class PaymentClient {
   async getCreditTransactions(params: { customer_id: string; meter_id?: string; page?: number; pageSize?: number }) {
     const qs = new URLSearchParams(
       Object.fromEntries(
-        Object.entries({ ...params, livemode: true })
+        Object.entries({ ...params, livemode: this.livemode })
           .filter(([, v]) => v != null)
           .map(([k, v]) => [k, String(v)])
       )
@@ -114,56 +119,56 @@ export class PaymentClient {
   // --- Payment Currencies ---
 
   async getPaymentCurrencies() {
-    return this.get('/api/payment-currencies?livemode=true');
+    return this.get(`/api/payment-currencies?livemode=${this.livemode}`);
   }
 
   async updatePaymentCurrency(id: string, data: Record<string, unknown>) {
-    return this.put(`/api/payment-currencies/${encodeURIComponent(id)}`, { ...data, livemode: true });
+    return this.put(`/api/payment-currencies/${encodeURIComponent(id)}`, { ...data, livemode: this.livemode });
   }
 
   async getRechargeConfig(currencyId: string) {
-    return this.get(`/api/payment-currencies/${encodeURIComponent(currencyId)}/recharge-config?livemode=true`);
+    return this.get(`/api/payment-currencies/${encodeURIComponent(currencyId)}/recharge-config?livemode=${this.livemode}`);
   }
 
   async updateRechargeConfig(currencyId: string, data: Record<string, unknown>) {
     return this.put(`/api/payment-currencies/${encodeURIComponent(currencyId)}/recharge-config`, {
       ...data,
-      livemode: true,
+      livemode: this.livemode,
     });
   }
 
   // --- Products & Prices ---
 
   async createProduct(data: Record<string, unknown>) {
-    return this.post('/api/products', { ...data, livemode: true });
+    return this.post('/api/products', { ...data, livemode: this.livemode });
   }
 
   async getPrice(lookupKey: string) {
-    return this.get(`/api/prices/${encodeURIComponent(lookupKey)}?livemode=true`);
+    return this.get(`/api/prices/${encodeURIComponent(lookupKey)}?livemode=${this.livemode}`);
   }
 
   // --- Payment Links ---
 
   async createPaymentLink(data: Record<string, unknown>) {
-    return this.post('/api/payment-links', { ...data, livemode: true });
+    return this.post('/api/payment-links', { ...data, livemode: this.livemode });
   }
 
   async getPaymentLink(lookupKey: string) {
-    return this.get(`/api/payment-links/${encodeURIComponent(lookupKey)}?livemode=true`);
+    return this.get(`/api/payment-links/${encodeURIComponent(lookupKey)}?livemode=${this.livemode}`);
   }
 
   // --- Settings ---
 
   async getSettings(mountLocation: string) {
-    return this.get(`/api/settings/${encodeURIComponent(mountLocation)}?livemode=true`);
+    return this.get(`/api/settings/${encodeURIComponent(mountLocation)}?livemode=${this.livemode}`);
   }
 
   async createSettings(data: Record<string, unknown>) {
-    return this.post('/api/settings', { ...data, livemode: true });
+    return this.post('/api/settings', { ...data, livemode: this.livemode });
   }
 
   async updateSettings(id: string, data: Record<string, unknown>) {
-    return this.put(`/api/settings/${encodeURIComponent(id)}`, { ...data, livemode: true });
+    return this.put(`/api/settings/${encodeURIComponent(id)}`, { ...data, livemode: this.livemode });
   }
 }
 
@@ -410,12 +415,14 @@ export class CreditError extends Error {
  */
 export function createPaymentClient(
   service: PaymentKitBinding,
-  req: { header: (name: string) => string | undefined }
+  req: { header: (name: string) => string | undefined },
+  env?: { PAYMENT_LIVEMODE?: string }
 ): PaymentClient {
   const headers = new Headers();
   const cookie = req.header('Cookie');
   if (cookie) headers.set('Cookie', cookie);
   const auth = req.header('Authorization');
   if (auth) headers.set('Authorization', auth);
-  return new PaymentClient(service, headers);
+  const livemode = env?.PAYMENT_LIVEMODE !== undefined ? env.PAYMENT_LIVEMODE === 'true' : true;
+  return new PaymentClient(service, headers, livemode);
 }
