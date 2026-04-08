@@ -225,6 +225,18 @@ app.get('/__blocklet__.js', async (c) => {
   });
 });
 
+// --- Payment Kit DID Connect: /api/did/payment/* -> PAYMENT_KIT ---
+// Payment Kit checkout pages request /api/did/payment/auth without mount prefix
+app.all('/api/did/payment/*', async (c) => {
+  if (!c.env.PAYMENT_KIT) return c.json({ error: 'PAYMENT_KIT not configured' }, 503);
+  const resp = await c.env.PAYMENT_KIT.fetch(c.req.raw);
+  return new Response(resp.body, {
+    status: resp.status,
+    statusText: resp.statusText,
+    headers: new Headers(resp.headers),
+  });
+});
+
 // --- Payment Kit gateway: /payment/* -> PAYMENT_KIT (strip prefix + HTML rewrite) ---
 app.all('/payment/*', async (c) => {
   if (!c.env.PAYMENT_KIT) return c.json({ error: 'PAYMENT_KIT not configured' }, 503);
