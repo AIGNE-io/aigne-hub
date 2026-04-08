@@ -18,6 +18,7 @@ import { processRetryQueue } from './libs/retry-queue';
 import * as schema from './db/schema';
 // Auth middleware
 import { PaymentClient, createPaymentClient } from './libs/payment';
+import { getPreferences, setPreferences } from './libs/preferences';
 import { buildAuthConfig, loadUser } from './middleware/auth';
 // API routes
 import aiProviderRoutes from './routes/ai-providers';
@@ -174,11 +175,53 @@ app.all('/.well-known/service/*', async (c) => {
 
   return c.env.BLOCKLET_SERVICE.fetch(req);
 });
-app.get('/__blocklet__/*', async (c) => {
-  if (!c.env.BLOCKLET_SERVICE || !cachedInstanceDid) {
-    return c.json({ error: 'Blocklet service not configured' }, 503);
+app.get('/__blocklet__.js', async (c) => {
+  const isJson = new URL(c.req.url).searchParams.get('type') === 'json';
+  const preferences = await getPreferences(c.env.AUTH_KV);
+
+  // Try to get base config from blocklet-service
+  let baseConfig: Record<string, unknown> = {
+    appName: c.env.INSTANCE_NAME || 'AIGNE Hub',
+    appUrl: c.env.BASE_URL || new URL(c.req.url).origin,
+    appPid: cachedInstanceDid || '',
+    prefix: '/',
+    groupPrefix: '/',
+    theme: { prefer: 'light' },
+  };
+
+  if (c.env.BLOCKLET_SERVICE && cachedInstanceDid) {
+    try {
+      const url = new URL(c.req.url);
+      url.searchParams.set('type', 'json');
+      const req = withInstanceHeader(new Request(url.toString(), c.req.raw), cachedInstanceDid);
+      const resp = await c.env.BLOCKLET_SERVICE.fetch(req);
+      if (resp.ok) {
+        baseConfig = { ...baseConfig, ...(await resp.json() as Record<string, unknown>) };
+      }
+    } catch { /* use defaults */ }
   }
-  return c.env.BLOCKLET_SERVICE.fetch(withInstanceHeader(c.req.raw, cachedInstanceDid));
+
+  // Inject preferences and Payment Kit mount point
+  baseConfig.preferences = preferences;
+  if (c.env.PAYMENT_KIT) {
+    const mounts = Array.isArray(baseConfig.componentMountPoints) ? baseConfig.componentMountPoints as any[] : [];
+    if (!mounts.some((m: any) => m.did === 'z2qaCNvKMv5GjouKdcDWexv6WqtHbpNPQDnAk')) {
+      mounts.push({
+        did: 'z2qaCNvKMv5GjouKdcDWexv6WqtHbpNPQDnAk',
+        title: 'Payment Kit',
+        name: 'payment-kit',
+        mountPoint: '/payment',
+      });
+    }
+    baseConfig.componentMountPoints = mounts;
+  }
+
+  if (isJson) {
+    return c.json(baseConfig, 200, { 'Cache-Control': 'private, no-store' });
+  }
+  return new Response(`window.blocklet = ${JSON.stringify(baseConfig)};`, {
+    headers: { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'private, no-store' },
+  });
 });
 
 // --- Payment Kit gateway: /payment/* -> PAYMENT_KIT (strip prefix + HTML rewrite) ---
@@ -387,11 +430,23 @@ app.notFound(async (c) => {
   if (c.req.path.startsWith('/api/') || c.req.path.startsWith('/auth/')) {
     return c.json({ error: 'Not Found' }, 404);
   }
-  // For non-API routes, serve SPA index.html via ASSETS binding
+  // Try serving the exact static asset first (run_worker_first mode)
   if (c.env.ASSETS) {
     try {
-      const asset = await c.env.ASSETS.fetch(new Request(new URL('/index.html', c.req.url)));
-      return new Response(asset.body, {
+      const asset = await c.env.ASSETS.fetch(new Request(new URL(c.req.path, c.req.url)));
+      if (asset.status !== 404) {
+        return new Response(asset.body, {
+          status: asset.status,
+          headers: asset.headers,
+        });
+      }
+    } catch {
+      // ASSETS fetch failed, fall through to SPA
+    }
+    // No matching static file — serve SPA index.html
+    try {
+      const index = await c.env.ASSETS.fetch(new Request(new URL('/index.html', c.req.url)));
+      return new Response(index.body, {
         status: 200,
         headers: { 'content-type': 'text/html; charset=utf-8' },
       });

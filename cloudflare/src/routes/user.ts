@@ -6,6 +6,7 @@ import { Hono } from 'hono';
 import { aiProviders, creditAccounts, modelCalls } from '../db/schema';
 import { getCreditBalance, getTransactions } from '../libs/credit';
 import { ensureMeter, getCreditPaymentLink, type PaymentClient } from '../libs/payment';
+import { getPreferences, setPreferences } from '../libs/preferences';
 import type { HonoEnv } from '../worker';
 
 const routes = new Hono<HonoEnv>();
@@ -30,6 +31,7 @@ routes.get('/info', async (c) => {
   }
 
   const db = c.get('db');
+  const prefs = await getPreferences(c.env.AUTH_KV);
   const payment = c.get('payment') as PaymentClient | undefined;
   let creditBalance;
   if (payment) {
@@ -67,9 +69,9 @@ routes.get('/info', async (c) => {
     },
     paymentLink: payment ? '/payment/customer' : null,
     currency: { decimal: 6 },
-    enableCredit: true,
+    enableCredit: prefs.creditBasedBillingEnabled ?? true,
     profileLink: null,
-    creditPrefix: '',
+    creditPrefix: prefs.creditPrefix || '',
   });
 });
 
@@ -371,6 +373,20 @@ routes.get('/credit/balance', async (c) => {
   }
   const balance = await getCreditBalance(db, userDid);
   return c.json({ balance: balance.balance });
+});
+
+// GET /api/user/admin/preferences - Get app preferences
+routes.get('/admin/preferences', async (c) => {
+  if (!isAdminUser(c)) return c.json({ error: 'Admin access required' }, 403);
+  return c.json(await getPreferences(c.env.AUTH_KV));
+});
+
+// PUT /api/user/admin/preferences - Update app preferences
+routes.put('/admin/preferences', async (c) => {
+  if (!isAdminUser(c)) return c.json({ error: 'Admin access required' }, 403);
+  const updates = await c.req.json<Record<string, unknown>>();
+  const result = await setPreferences(c.env.AUTH_KV, updates);
+  return c.json(result);
 });
 
 // POST /api/user/admin/user-info - Batch fetch user info
