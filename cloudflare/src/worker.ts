@@ -150,13 +150,85 @@ app.all('/.well-known/service/*', async (c) => {
   if (!c.env.BLOCKLET_SERVICE || !cachedInstanceDid) {
     return c.json({ error: 'Blocklet service not configured' }, 503);
   }
-  return c.env.BLOCKLET_SERVICE.fetch(withInstanceHeader(c.req.raw, cachedInstanceDid));
+  const req = withInstanceHeader(c.req.raw, cachedInstanceDid);
+
+  // Inject billing tab into DID admin/user pages when Payment Kit is available
+  if (c.env.PAYMENT_KIT) {
+    const path = new URL(c.req.url).pathname;
+    if (path === '/.well-known/service/user' || path === '/.well-known/service/admin') {
+      const locale = (c.req.header('Accept-Language') || '').startsWith('zh') ? 'zh' : 'en';
+      const headers = new Headers(req.headers);
+      headers.set(
+        'X-External-Tabs',
+        JSON.stringify([
+          { id: 'billing', label: locale === 'zh' ? '账单' : 'Billing', url: `/payment/customer?locale=${locale}` },
+        ])
+      );
+      return c.env.BLOCKLET_SERVICE.fetch(
+        new Request(req.url, { method: req.method, headers, body: req.body, redirect: 'manual' })
+      );
+    }
+  }
+
+  return c.env.BLOCKLET_SERVICE.fetch(req);
 });
 app.get('/__blocklet__/*', async (c) => {
   if (!c.env.BLOCKLET_SERVICE || !cachedInstanceDid) {
     return c.json({ error: 'Blocklet service not configured' }, 503);
   }
   return c.env.BLOCKLET_SERVICE.fetch(withInstanceHeader(c.req.raw, cachedInstanceDid));
+});
+
+// --- Payment Kit gateway: /payment/* -> PAYMENT_KIT (strip prefix + HTML rewrite) ---
+app.all('/payment/*', async (c) => {
+  if (!c.env.PAYMENT_KIT) return c.json({ error: 'PAYMENT_KIT not configured' }, 503);
+
+  const url = new URL(c.req.url);
+  const path = url.pathname;
+  const targetPath = path.slice('/payment'.length) || '/';
+  const targetUrl = new URL(targetPath + url.search, url.origin);
+
+  const headers = new Headers(c.req.raw.headers);
+  headers.set('X-Mount-Prefix', '/payment/');
+
+  const resp = await c.env.PAYMENT_KIT.fetch(
+    new Request(targetUrl.href, {
+      method: c.req.method,
+      headers,
+      body: ['GET', 'HEAD'].includes(c.req.method) ? undefined : c.req.raw.body,
+    })
+  );
+
+  const contentType = resp.headers.get('content-type') || '';
+  if (contentType.includes('text/html')) {
+    let html = await resp.text();
+    html = html.replace(/(src=["'])\/assets\//g, '$1/payment/assets/');
+    html = html.replace(/(href=["'])\/assets\//g, '$1/payment/assets/');
+    html = html.replace('src="/__blocklet__.js"', 'src="/payment/__blocklet__.js"');
+    html = html.replace(/prefix:\s*'\/'/g, "prefix: '/payment/'");
+    return new Response(html, {
+      status: resp.status,
+      headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' },
+    });
+  }
+
+  return new Response(resp.body, {
+    status: resp.status,
+    statusText: resp.statusText,
+    headers: new Headers(resp.headers),
+  });
+});
+app.get('/payment', (c) => c.redirect('/payment/', 302));
+
+// --- Media Kit passthrough: /media-kit/* -> PAYMENT_KIT ---
+app.all('/media-kit/*', async (c) => {
+  if (!c.env.PAYMENT_KIT) return c.json({ error: 'PAYMENT_KIT not configured' }, 503);
+  const resp = await c.env.PAYMENT_KIT.fetch(c.req.raw);
+  return new Response(resp.body, {
+    status: resp.status,
+    statusText: resp.statusText,
+    headers: new Headers(resp.headers),
+  });
 });
 
 // D1 + Drizzle setup per request + expose executionCtx for waitUntil
@@ -293,6 +365,14 @@ app.all('/auth/*', async (c) => {
 
 // SPA fallback: serve index.html for non-API routes (client-side routing)
 app.notFound(async (c) => {
+  // Redirect lost Payment Kit prefixes (e.g. /customer -> /payment/customer)
+  const PAYMENT_KIT_ROUTES = ['/admin', '/customer', '/integrations', '/checkout'];
+  const path = new URL(c.req.url).pathname;
+  if (c.env.PAYMENT_KIT && PAYMENT_KIT_ROUTES.some((r) => path.startsWith(r))) {
+    const url = new URL(c.req.url);
+    return c.redirect(`/payment${path}${url.search}`, 302);
+  }
+
   // API routes return JSON 404
   if (c.req.path.startsWith('/api/') || c.req.path.startsWith('/auth/')) {
     return c.json({ error: 'Not Found' }, 404);
