@@ -46,14 +46,23 @@ interface SessionUser {
   fullName?: string;
   role: string;
   avatar?: string;
+  [key: string]: unknown;
 }
 
 interface Session {
   user: SessionUser | null;
   token: string;
   loading: boolean;
-  login: () => void;
+  initialized: boolean;
+  // Required by @blocklet/ui-react Header → SessionUser → un-login.js
+  login: (...args: unknown[]) => void;
   logout: () => void;
+  // Required by @blocklet/ui-react Header → SessionUser → un-login.js (quick login)
+  getUserSessions: () => Promise<unknown[]>;
+  loginUserSession: (session: unknown) => Promise<void>;
+  // Required by @blocklet/ui-react Header → SessionUser → logged-in.js
+  switchDid: (...args: unknown[]) => void;
+  switchProfile: (...args: unknown[]) => void;
 }
 
 // Simple EventEmitter stub for session events
@@ -87,7 +96,7 @@ class SimpleEvents {
 const events = new SimpleEvents();
 
 interface SessionContextValue {
-  session: Session & { initialized: boolean };
+  session: Session;
   api: typeof api;
   events: SimpleEvents;
   login: (...args: unknown[]) => void;
@@ -96,7 +105,18 @@ interface SessionContextValue {
 }
 
 const SessionContext = createContext<SessionContextValue>({
-  session: { user: null, token: '', loading: true, initialized: false, login: () => {}, logout: () => {} },
+  session: {
+    user: null,
+    token: '',
+    loading: true,
+    initialized: false,
+    login: () => {},
+    logout: () => {},
+    getUserSessions: async () => [],
+    loginUserSession: async () => {},
+    switchDid: () => {},
+    switchProfile: () => {},
+  },
   api,
   events,
   login: () => {},
@@ -136,17 +156,31 @@ function SessionProvider({ children }: { children: React.ReactNode }) {
       .finally(() => setLoading(false));
   }, []);
 
-  const login = useCallback(() => {
-    // Redirect to DID Connect login page (Passkey / DID Wallet / OAuth)
+  const login = useCallback((..._args: unknown[]) => {
+    // DID Connect login — redirect to blocklet-service login page
+    // The real session.login(callback, {openMode}) opens a DID Connect dialog,
+    // but in CF mode we redirect to blocklet-service's built-in login page which
+    // supports Passkey / DID Wallet / OAuth.
     window.location.href = '/.well-known/service/login';
   }, []);
 
   const logout = useCallback(() => {
-    // DID Connect logout — redirect-based (clears login_token cookie)
     setUser(null);
     localStorage.removeItem(API_KEY_STORAGE);
     events.emit('LOGOUT');
     window.location.href = '/.well-known/service/api/did/logout';
+  }, []);
+
+  // Quick login: return empty — blocklet-service doesn't expose user sessions to CF workers
+  const getUserSessions = useCallback(async () => [], []);
+  const loginUserSession = useCallback(async () => {}, []);
+
+  // switchDid / switchProfile: redirect to blocklet-service profile page
+  const switchDid = useCallback((..._args: unknown[]) => {
+    window.location.href = '/.well-known/service/admin#profile';
+  }, []);
+  const switchProfile = useCallback((..._args: unknown[]) => {
+    window.location.href = '/.well-known/service/admin#profile';
   }, []);
 
   const value = useMemo<SessionContextValue>(
@@ -158,6 +192,10 @@ function SessionProvider({ children }: { children: React.ReactNode }) {
         initialized: !loading,
         login,
         logout,
+        getUserSessions,
+        loginUserSession,
+        switchDid,
+        switchProfile,
       },
       events,
       api,
@@ -165,7 +203,7 @@ function SessionProvider({ children }: { children: React.ReactNode }) {
       logout,
       connectApi: null,
     }),
-    [user, loading, login, logout]
+    [user, loading, login, logout, getUserSessions, loginUserSession, switchDid, switchProfile]
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

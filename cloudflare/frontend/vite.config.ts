@@ -28,10 +28,12 @@ export default defineConfig({
       '@blocklet/js-sdk': path.join(shimsDir, 'blocklet-js-sdk.ts'),
       '@blocklet/sdk': path.join(shimsDir, 'blocklet-sdk.ts'),
       '@blocklet/ui-react/lib/Dashboard': path.join(shimsDir, 'blocklet-ui-react-dashboard.tsx'),
-      '@blocklet/ui-react/lib/Header': path.join(shimsDir, 'blocklet-ui-react-header.tsx'),
+      // Header: use REAL @blocklet/ui-react Header (with DID Connect SessionUser)
+      // Footer/UserCenter: still shimmed (they need blocklet-server runtime)
       '@blocklet/ui-react/lib/Footer': path.join(shimsDir, 'blocklet-ui-react-footer.tsx'),
       '@blocklet/ui-react/lib/UserCenter': path.join(shimsDir, 'blocklet-ui-react-usercenter.tsx'),
-      '@blocklet/ui-react': path.join(shimsDir, 'blocklet-ui-react-dashboard.tsx'),
+      // Only alias the bare import (for Dashboard default export), not sub-paths like /lib/Header
+      '@blocklet/ui-react/index': path.join(shimsDir, 'blocklet-ui-react-dashboard.tsx'),
       '@blocklet/payment-react': path.join(shimsDir, 'blocklet-payment-react.tsx'),
       '@blocklet/payment-js': path.join(shimsDir, 'blocklet-payment-js.ts'),
       '@blocklet/error': path.join(shimsDir, 'blocklet-error.ts'),
