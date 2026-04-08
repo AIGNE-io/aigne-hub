@@ -5,7 +5,7 @@ import { Hono } from 'hono';
 
 import { aiProviders, creditAccounts, modelCalls } from '../db/schema';
 import { getCreditBalance, getTransactions } from '../libs/credit';
-import { ensureMeter, type PaymentClient } from '../libs/payment';
+import { ensureMeter, getCreditPaymentLink, type PaymentClient } from '../libs/payment';
 import type { HonoEnv } from '../worker';
 
 const routes = new Hono<HonoEnv>();
@@ -299,6 +299,18 @@ routes.get('/model-calls/export', async (c) => {
       'Content-Disposition': `attachment; filename="model-calls-${Date.now()}.csv"`,
     },
   });
+});
+
+// GET /api/user/credit/payment-link - Get credit purchase link (under /payment/ mount point)
+routes.get('/credit/payment-link', async (c) => {
+  const payment = c.get('payment') as PaymentClient | undefined;
+  if (!payment) return c.json(null);
+  try {
+    const link = await getCreditPaymentLink(payment);
+    return c.json(link);
+  } catch (err) {
+    return c.json({ error: err instanceof Error ? err.message : 'Failed to get payment link' }, 500);
+  }
 });
 
 // GET /api/user/credit/grants - Credit grants
