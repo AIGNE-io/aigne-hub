@@ -168,7 +168,7 @@ export class PaymentClient {
 // --- Constants ---
 
 const AIGNE_HUB_DID = 'z8ia3xzq2tMq8CRHfaXj1BTYJyYnEcHbqP8cJ';
-const METER_NAME = 'agent-hub-ai-meter';
+const METER_NAME = 'agent-hub-ai-meter-v2';
 const METER_UNIT = 'AIGNE Hub Credits';
 const CREDIT_PRICE_KEY = 'DEFAULT_CREDIT_UNIT_PRICE';
 const CREDIT_PAYMENT_LINK_KEY = 'DEFAULT_CREDIT_PAYMENT_LINK';
