@@ -305,6 +305,12 @@ routes.get('/model-calls/export', async (c) => {
 
 // GET /api/user/credit/payment-link - Get credit purchase link (under /payment/ mount point)
 routes.get('/credit/payment-link', async (c) => {
+  // Use configured payment link from preferences first
+  const prefs = await getPreferences(c.env.AUTH_KV);
+  if (prefs.creditPaymentLink) {
+    return c.json(prefs.creditPaymentLink);
+  }
+  // Fallback: auto-create via Payment Kit API
   const payment = c.get('payment') as PaymentClient | undefined;
   if (!payment) return c.json(null);
   try {

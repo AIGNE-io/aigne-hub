@@ -17,6 +17,7 @@ import {
 import { getCreditBalance } from '../libs/credit';
 import { logger } from '../libs/logger';
 import { CreditError, checkUserCreditBalance, ensureMeter, type PaymentClient } from '../libs/payment';
+import { getPreferences } from '../libs/preferences';
 import type { HonoEnv } from '../worker';
 
 const routes = new Hono<HonoEnv>();
@@ -54,7 +55,10 @@ async function checkCredits(
       return { ok: true };
     } catch (err) {
       if (err instanceof CreditError) {
-        return { ok: false, balance: 0, paymentLink: err.paymentLink };
+        // Prefer configured payment link from preferences
+        const prefs = await getPreferences(c.env.AUTH_KV);
+        const link = (prefs.creditPaymentLink as string) || err.paymentLink;
+        return { ok: false, balance: 0, paymentLink: link };
       }
       logger.error('Payment Kit credit check failed, allowing request', {
         error: err instanceof Error ? err.message : String(err),
