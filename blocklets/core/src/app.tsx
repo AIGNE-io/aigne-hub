@@ -137,8 +137,14 @@ function AppRoutes({ basename }: { basename: string }) {
               </PageLayout>
             }
           />
-          {/* Redirect legacy paths */}
-          <Route path="/credit-usage" element={<Navigate to="/usage" replace />} />
+          <Route
+            path="/credit-usage"
+            element={
+              <PageLayout>
+                <CreditBoardPage />
+              </PageLayout>
+            }
+          />
           <Route path="/config/ai-config" element={<Navigate to="/config" replace />} />
           <Route path="/config/ai-config/:page" element={<Navigate to="/config/:page" replace />} />
           <Route path="/config/usage" element={<Navigate to="/usage" replace />} />
