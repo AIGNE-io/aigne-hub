@@ -17,6 +17,7 @@ import { logger } from './libs/logger';
 import { processRetryQueue } from './libs/retry-queue';
 import * as schema from './db/schema';
 // Auth middleware
+import { PaymentClient, createPaymentClient } from './libs/payment';
 import { buildAuthConfig, loadUser } from './middleware/auth';
 // API routes
 import aiProviderRoutes from './routes/ai-providers';
@@ -92,6 +93,7 @@ export type Variables = {
   db: ReturnType<typeof drizzle<typeof schema>>;
   user?: AppUser;
   executionCtx?: ExecutionContext;
+  payment?: PaymentClient;
 };
 
 export type HonoEnv = { Bindings: Env; Variables: Variables };
@@ -242,6 +244,14 @@ app.use('*', async (c, next) => {
 app.use('*', async (c, next) => {
   const middleware = loadUser(c.env);
   return middleware(c, next);
+});
+
+// Inject PaymentClient for API routes when PAYMENT_KIT binding is available
+app.use('/api/*', async (c, next) => {
+  if (c.env.PAYMENT_KIT) {
+    c.set('payment', createPaymentClient(c.env.PAYMENT_KIT, c.req));
+  }
+  await next();
 });
 
 // Health check (public, no auth)
