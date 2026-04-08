@@ -77,6 +77,10 @@ const CF_NAVIGATION = [
 if (typeof window !== 'undefined') {
   const wb = (window as unknown as { blocklet: WindowBlocklet }).blocklet || {};
 
+  // Mark CF mode — the shim only runs in the cloudflare/frontend build,
+  // so this flag reliably distinguishes CF mode from blocklet mode.
+  wb.__cfMode = true;
+
   // Ensure essential fields exist
   if (!wb.appName) wb.appName = 'AIGNE Hub';
   if (!wb.prefix) wb.prefix = '/';

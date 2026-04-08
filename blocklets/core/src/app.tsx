@@ -27,7 +27,7 @@ const PricingPage = lazy(() => import('./pages/pricing'));
 const ProjectPage = lazy(() => import('./pages/usage/projects/project-page'));
 const ApiKeysPage = lazy(() => import('./pages/api-keys/index'));
 
-const isCfMode = !window.blocklet?.appId;
+const isCfMode = !!(window.blocklet as any)?.__cfMode;
 
 export default function App() {
   const basename = window.blocklet?.prefix || '/';
