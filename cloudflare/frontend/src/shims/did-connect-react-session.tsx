@@ -49,6 +49,22 @@ interface SessionUser {
   [key: string]: unknown;
 }
 
+// Stubs for OAuth/Passkey hooks that the real @arcblock/ux SessionUser components call
+const oauthStub = {
+  bindOAuth: async () => {},
+  unbindOAuth: async () => {},
+  switchOAuthPassport: async () => {},
+  getOAuthConfigs: async () => [],
+  setBaseUrl: () => {},
+  baseUrl: '',
+};
+
+const passkeyStub = {
+  disconnectPasskey: async () => {},
+  switchPassport: async () => {},
+  setTargetAppPid: () => {},
+};
+
 interface Session {
   user: SessionUser | null;
   token: string;
@@ -63,6 +79,10 @@ interface Session {
   // Required by @blocklet/ui-react Header → SessionUser → logged-in.js
   switchDid: (...args: unknown[]) => void;
   switchProfile: (...args: unknown[]) => void;
+  switchPassport: (...args: unknown[]) => void;
+  // Required by @arcblock/ux/lib/SessionUser → logged-in.js / third-party-login
+  useOAuth: () => typeof oauthStub;
+  usePasskey: () => typeof passkeyStub;
 }
 
 // Simple EventEmitter stub for session events
@@ -116,6 +136,9 @@ const SessionContext = createContext<SessionContextValue>({
     loginUserSession: async () => {},
     switchDid: () => {},
     switchProfile: () => {},
+    switchPassport: () => {},
+    useOAuth: () => oauthStub,
+    usePasskey: () => passkeyStub,
   },
   api,
   events,
@@ -175,11 +198,14 @@ function SessionProvider({ children }: { children: React.ReactNode }) {
   const getUserSessions = useCallback(async () => [], []);
   const loginUserSession = useCallback(async () => {}, []);
 
-  // switchDid / switchProfile: redirect to blocklet-service profile page
+  // switchDid / switchProfile / switchPassport: redirect to blocklet-service profile page
   const switchDid = useCallback((..._args: unknown[]) => {
     window.location.href = '/.well-known/service/admin#profile';
   }, []);
   const switchProfile = useCallback((..._args: unknown[]) => {
+    window.location.href = '/.well-known/service/admin#profile';
+  }, []);
+  const switchPassport = useCallback((..._args: unknown[]) => {
     window.location.href = '/.well-known/service/admin#profile';
   }, []);
 
@@ -196,6 +222,9 @@ function SessionProvider({ children }: { children: React.ReactNode }) {
         loginUserSession,
         switchDid,
         switchProfile,
+        switchPassport,
+        useOAuth: () => oauthStub,
+        usePasskey: () => passkeyStub,
       },
       events,
       api,
@@ -203,7 +232,7 @@ function SessionProvider({ children }: { children: React.ReactNode }) {
       logout,
       connectApi: null,
     }),
-    [user, loading, login, logout, getUserSessions, loginUserSession, switchDid, switchProfile]
+    [user, loading, login, logout, getUserSessions, loginUserSession, switchDid, switchProfile, switchPassport]
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
