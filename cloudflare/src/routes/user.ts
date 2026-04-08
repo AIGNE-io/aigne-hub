@@ -5,6 +5,7 @@ import { Hono } from 'hono';
 
 import { aiProviders, creditAccounts, modelCalls } from '../db/schema';
 import { getCreditBalance, getTransactions } from '../libs/credit';
+import { ensureMeter, type PaymentClient } from '../libs/payment';
 import type { HonoEnv } from '../worker';
 
 const routes = new Hono<HonoEnv>();
@@ -29,7 +30,27 @@ routes.get('/info', async (c) => {
   }
 
   const db = c.get('db');
-  const creditBalance = await getCreditBalance(db, did);
+  const payment = c.get('payment') as PaymentClient | undefined;
+  let creditBalance;
+  if (payment) {
+    try {
+      const customer = await payment.ensureCustomer(did);
+      const meter = await ensureMeter(payment);
+      const summary = await payment.getCreditSummary(customer.id);
+      const currencyId = meter?.currency_id;
+      creditBalance = {
+        balance: parseFloat(summary?.[currencyId]?.remainingAmount ?? '0'),
+        total: parseFloat(summary?.[currencyId]?.totalAmount ?? '0'),
+        used: 0,
+        grantCount: summary?.[currencyId]?.grantCount ?? 0,
+        pendingCredit: 0,
+      };
+    } catch {
+      creditBalance = await getCreditBalance(db, did);
+    }
+  } else {
+    creditBalance = await getCreditBalance(db, did);
+  }
 
   return c.json({
     user: {
@@ -44,7 +65,7 @@ routes.get('/info', async (c) => {
       grantCount: creditBalance.grantCount,
       pendingCredit: creditBalance.pendingCredit,
     },
-    paymentLink: null, // TODO: Payment Kit integration
+    paymentLink: payment ? '/payment/customer' : null,
     currency: { decimal: 6 },
     enableCredit: true,
     profileLink: null,
@@ -287,6 +308,14 @@ routes.get('/credit/grants', async (c) => {
   if (!userDid) return c.json({ error: 'Authentication required' }, 401);
   const page = parseInt(c.req.query('page') || '1', 10);
   const pageSize = parseInt(c.req.query('pageSize') || '10', 10);
+  const payment = c.get('payment') as PaymentClient | undefined;
+  if (payment) {
+    try {
+      const customer = await payment.ensureCustomer(userDid);
+      const meter = await ensureMeter(payment);
+      return c.json(await payment.getCreditGrants({ customer_id: customer.id, currency_id: meter?.currency_id, page, pageSize }));
+    } catch { /* fall through to local */ }
+  }
   return c.json(await getTransactions(db, userDid, { page, pageSize, type: 'grant' }));
 });
 
@@ -297,6 +326,14 @@ routes.get('/credit/transactions', async (c) => {
   if (!userDid) return c.json({ error: 'Authentication required' }, 401);
   const page = parseInt(c.req.query('page') || '1', 10);
   const pageSize = parseInt(c.req.query('pageSize') || '10', 10);
+  const payment = c.get('payment') as PaymentClient | undefined;
+  if (payment) {
+    try {
+      const customer = await payment.ensureCustomer(userDid);
+      const meter = await ensureMeter(payment);
+      return c.json(await payment.getCreditTransactions({ customer_id: customer.id, meter_id: meter?.id, page, pageSize }));
+    } catch { /* fall through to local */ }
+  }
   return c.json(await getTransactions(db, userDid, { page, pageSize }));
 });
 
@@ -305,6 +342,21 @@ routes.get('/credit/balance', async (c) => {
   const db = c.get('db');
   const userDid = getUserDid(c);
   if (!userDid) return c.json({ error: 'Authentication required' }, 401);
+  const payment = c.get('payment') as PaymentClient | undefined;
+  if (payment) {
+    try {
+      const meter = await ensureMeter(payment);
+      const customer = await payment.ensureCustomer(userDid);
+      const [summary, pending] = await Promise.all([
+        payment.getCreditSummary(customer.id),
+        payment.getPendingAmount(customer.id),
+      ]);
+      const currencyId = meter?.currency_id;
+      const remainingAmount = parseFloat(summary?.[currencyId]?.remainingAmount ?? '0');
+      const pendingAmount = parseFloat(pending?.[currencyId] ?? '0');
+      return c.json({ balance: Math.max(0, remainingAmount - pendingAmount) });
+    } catch { /* fall through to local */ }
+  }
   const balance = await getCreditBalance(db, userDid);
   return c.json({ balance: balance.balance });
 });

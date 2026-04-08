@@ -4,6 +4,7 @@ import { Hono } from 'hono';
 
 import { modelCallStats, modelCalls, projects } from '../db/schema';
 import { getCreditBalance } from '../libs/credit';
+import { ensureMeter, type PaymentClient } from '../libs/payment';
 import type { HonoEnv } from '../worker';
 
 const routes = new Hono<HonoEnv>();
@@ -45,7 +46,27 @@ routes.get('/quota', async (c) => {
   const db = c.get('db');
   const userDid = getUserDid(c);
 
-  const creditBalance = await getCreditBalance(db, userDid || 'anonymous');
+  const payment = c.get('payment') as PaymentClient | undefined;
+  let creditBalance;
+  if (payment) {
+    try {
+      const customer = await payment.ensureCustomer(userDid || 'anonymous');
+      const meter = await ensureMeter(payment);
+      const summary = await payment.getCreditSummary(customer.id);
+      const currencyId = meter?.currency_id;
+      creditBalance = {
+        balance: parseFloat(summary?.[currencyId]?.remainingAmount ?? '0'),
+        total: parseFloat(summary?.[currencyId]?.totalAmount ?? '0'),
+        used: 0,
+        grantCount: 0,
+        pendingCredit: 0,
+      };
+    } catch {
+      creditBalance = await getCreditBalance(db, userDid || 'anonymous');
+    }
+  } else {
+    creditBalance = await getCreditBalance(db, userDid || 'anonymous');
+  }
   const used = creditBalance.used;
   const total = creditBalance.total;
   const remaining = creditBalance.balance;
