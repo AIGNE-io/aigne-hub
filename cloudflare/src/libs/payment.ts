@@ -167,12 +167,18 @@ export class PaymentClient {
   }
 }
 
-// --- Meter cache (module-level, 24h TTL like blocklet version) ---
+// --- Constants ---
 
+const AIGNE_HUB_DID = 'z8ia3xzq2tMq8CRHfaXj1BTYJyYnEcHbqP8cJ';
 const METER_NAME = 'agent-hub-ai-meter';
 const METER_UNIT = 'AIGNE Hub Credits';
-const METER_CACHE_TTL = 24 * 60 * 60 * 1000;
+const CREDIT_PRICE_KEY = 'DEFAULT_CREDIT_UNIT_PRICE';
+const CREDIT_PAYMENT_LINK_KEY = 'DEFAULT_CREDIT_PAYMENT_LINK';
+const NOTIFICATION_EVENTS = ['customer.credit_grant.granted', 'checkout.session.completed'];
 
+// --- Meter cache (module-level, 24h TTL like blocklet version) ---
+
+const METER_CACHE_TTL = 24 * 60 * 60 * 1000;
 let meterCache: { meter: any; timestamp: number } | null = null;
 
 export function clearMeterCache() {
@@ -200,6 +206,201 @@ export async function ensureMeter(payment: PaymentClient): Promise<any> {
     });
     meterCache = { meter, timestamp: Date.now() };
     return meter;
+  }
+}
+
+// --- Notification settings ---
+
+let notificationSettingsEnsured = false;
+
+async function ensureNotificationSettings(payment: PaymentClient): Promise<any> {
+  if (notificationSettingsEnsured) return;
+  try {
+    const settings = await payment.getSettings(AIGNE_HUB_DID);
+    if (settings) {
+      const existing = settings.settings?.include_events || [];
+      const missing = NOTIFICATION_EVENTS.filter((e) => !existing.includes(e));
+      if (missing.length > 0) {
+        await payment.updateSettings(settings.id, {
+          settings: { ...settings.settings, include_events: NOTIFICATION_EVENTS },
+        });
+      }
+    } else {
+      await payment.createSettings({
+        type: 'notification',
+        mountLocation: AIGNE_HUB_DID,
+        description: 'AIGNE Hub Notification Settings',
+        settings: { self_handle: true, include_events: NOTIFICATION_EVENTS },
+      });
+    }
+    notificationSettingsEnsured = true;
+  } catch (err) {
+    logger.error('Failed to ensure notification settings', { error: err instanceof Error ? err.message : String(err) });
+  }
+}
+
+// --- Credit price & payment link (for purchasing credits) ---
+
+let creditPaymentLinkCache: string | null = null;
+
+/**
+ * Ensure default credit price exists in Payment Kit.
+ * Creates product + price if not found.
+ */
+async function ensureDefaultCreditPrice(payment: PaymentClient): Promise<any> {
+  try {
+    return await payment.getPrice(CREDIT_PRICE_KEY);
+  } catch {
+    const currencies = await payment.getPaymentCurrencies();
+    const currencyList = currencies?.list || currencies || [];
+    if (currencyList.length === 0) {
+      logger.error('No payment currencies found');
+      return null;
+    }
+    const meter = await ensureMeter(payment);
+    if (!meter) return null;
+
+    await payment.createProduct({
+      name: 'Basic AIGNE Hub Credit Packs',
+      description: `Basic pack of ${METER_UNIT} credits.`,
+      type: 'credit',
+      prices: [
+        {
+          type: 'one_time',
+          unit_amount: '1',
+          currency_id: currencyList[0].id,
+          currency_options: currencyList.map((c: any) => ({ currency_id: c.id, unit_amount: '1' })),
+          lookup_key: CREDIT_PRICE_KEY,
+          nickname: 'Per Unit Credit For AIGNE Hub',
+          metadata: {
+            credit_config: {
+              priority: 50,
+              valid_duration_value: 0,
+              valid_duration_unit: 'days',
+              currency_id: meter.currency_id,
+              credit_amount: '1',
+            },
+            meter_id: meter.id,
+          },
+        },
+      ],
+    });
+    return await payment.getPrice(CREDIT_PRICE_KEY);
+  }
+}
+
+/**
+ * Get or create a payment link for credit purchasing.
+ * Returns a URL path like `/payment/checkout/pay/plink_xxx`.
+ */
+export async function getCreditPaymentLink(payment: PaymentClient): Promise<string | null> {
+  if (creditPaymentLinkCache) return creditPaymentLinkCache;
+
+  try {
+    await ensureNotificationSettings(payment);
+    const price = await ensureDefaultCreditPrice(payment);
+    if (!price) return null;
+
+    let paymentLink: any;
+    try {
+      paymentLink = await payment.getPaymentLink(CREDIT_PAYMENT_LINK_KEY);
+    } catch {
+      // Create new payment link
+      paymentLink = await payment.createPaymentLink({
+        name: price.product?.name || 'AIGNE Hub Credits',
+        lookup_key: CREDIT_PAYMENT_LINK_KEY,
+        line_items: [
+          {
+            price_id: price.id,
+            quantity: 1,
+            adjustable_quantity: { enabled: true, minimum: 1, maximum: 100000000 },
+          },
+        ],
+        metadata: {
+          notification_settings: { include_events: NOTIFICATION_EVENTS, self_handle: true },
+        },
+      });
+    }
+
+    if (paymentLink) {
+      // Update recharge config so Payment Kit knows about the payment link
+      try {
+        const currencyId = price.metadata?.credit_config?.currency_id || meterCache?.meter?.currency_id;
+        if (!currencyId) throw new Error('no currency_id');
+        await payment.updateRechargeConfig(currencyId, {
+          base_price_id: price.id,
+          payment_link_id: paymentLink.id,
+          checkout_url: `/payment/checkout/pay/${paymentLink.id}`,
+        });
+      } catch { /* non-critical */ }
+
+      creditPaymentLinkCache = `/payment/checkout/pay/${paymentLink.id}`;
+      return creditPaymentLinkCache;
+    }
+    return null;
+  } catch (err) {
+    logger.error('Failed to get credit payment link', { error: err instanceof Error ? err.message : String(err) });
+    return null;
+  }
+}
+
+/**
+ * Check user credit balance and throw 402 with payment link if insufficient.
+ */
+export async function checkUserCreditBalance(
+  payment: PaymentClient,
+  userDid: string
+): Promise<void> {
+  const meter = await ensureMeter(payment);
+  if (!meter) return; // No meter = no billing
+
+  const customer = await payment.ensureCustomer(userDid);
+  const [summary, pending] = await Promise.all([
+    payment.getCreditSummary(customer.id),
+    payment.getPendingAmount(customer.id),
+  ]);
+
+  const currencyId = meter.currency_id;
+  const balance = parseFloat(summary?.[currencyId]?.remainingAmount ?? '0');
+  const pendingAmount = parseFloat(pending?.[currencyId] ?? '0');
+  const netBalance = Math.max(0, balance - pendingAmount);
+
+  if (netBalance > 0) return;
+
+  // Check auto-recharge
+  try {
+    const result = await payment.verifyAvailability({
+      customer_id: customer.id,
+      currency_id: currencyId,
+      pending_amount: String(pendingAmount),
+    });
+    if (result.can_continue) return;
+  } catch { /* treat as insufficient */ }
+
+  // Get payment link for 402 response
+  const paymentLink = await getCreditPaymentLink(payment);
+
+  throw new CreditError(paymentLink);
+}
+
+/**
+ * Error thrown when user has insufficient credits.
+ * Contains payment link for the frontend to redirect to.
+ */
+export class CreditError extends Error {
+  public status = 402;
+  public paymentLink: string | null;
+
+  constructor(paymentLink: string | null) {
+    super('Insufficient credits');
+    this.name = 'CreditError';
+    this.paymentLink = paymentLink;
+  }
+
+  toJSON() {
+    return {
+      error: { message: this.message, type: 'CREDIT_NOT_ENOUGH', paymentLink: this.paymentLink },
+    };
   }
 }
 

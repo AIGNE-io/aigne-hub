@@ -16,7 +16,7 @@ import {
 } from '../libs/ai-proxy';
 import { getCreditBalance } from '../libs/credit';
 import { logger } from '../libs/logger';
-import { ensureMeter, type PaymentClient } from '../libs/payment';
+import { CreditError, checkUserCreditBalance, ensureMeter, type PaymentClient } from '../libs/payment';
 import type { HonoEnv } from '../worker';
 
 const routes = new Hono<HonoEnv>();
@@ -46,40 +46,23 @@ function getWaitUntil(c: Context<HonoEnv>): ((p: Promise<unknown>) => void) | nu
 async function checkCredits(
   c: Context<HonoEnv>,
   userDid: string
-): Promise<{ ok: true } | { ok: false; balance: number }> {
+): Promise<{ ok: true } | { ok: false; balance: number; paymentLink?: string | null }> {
   const payment = c.get('payment') as PaymentClient | undefined;
   if (payment) {
     try {
-      const meter = await ensureMeter(payment);
-      if (!meter) return { ok: true };
-      const customer = await payment.ensureCustomer(userDid);
-      const [summary, pending] = await Promise.all([
-        payment.getCreditSummary(customer.id),
-        payment.getPendingAmount(customer.id),
-      ]);
-      const currencyId = meter.currency_id;
-      const balance = parseFloat(summary?.[currencyId]?.remainingAmount ?? '0');
-      const pendingAmount = parseFloat(pending?.[currencyId] ?? '0');
-      const netBalance = Math.max(0, balance - pendingAmount);
-      if (netBalance <= 0) {
-        try {
-          const result = await payment.verifyAvailability({
-            customer_id: customer.id,
-            currency_id: currencyId,
-            pending_amount: String(pendingAmount),
-          });
-          if (result.can_continue) return { ok: true };
-        } catch { /* treat as insufficient */ }
-        return { ok: false, balance: netBalance };
-      }
+      await checkUserCreditBalance(payment, userDid);
       return { ok: true };
     } catch (err) {
+      if (err instanceof CreditError) {
+        return { ok: false, balance: 0, paymentLink: err.paymentLink };
+      }
       logger.error('Payment Kit credit check failed, allowing request', {
         error: err instanceof Error ? err.message : String(err),
       });
-      return { ok: true };
+      return { ok: true }; // Fail open
     }
   }
+  // Fallback: local D1 credit check
   const db = c.get('db');
   const local = await getCreditBalance(db, userDid);
   if (local.balance <= 0) return { ok: false, balance: local.balance };
@@ -163,7 +146,14 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
   if (userDid) {
     const creditCheck = await checkCredits(c, userDid);
     if (!creditCheck.ok) {
-      return c.json({ error: { message: 'Insufficient credits', balance: creditCheck.balance } }, 402);
+      return c.json({
+        error: {
+          message: 'Insufficient credits',
+          type: 'CREDIT_NOT_ENOUGH',
+          balance: creditCheck.balance,
+          paymentLink: creditCheck.paymentLink || null,
+        },
+      }, 402);
     }
   }
 
