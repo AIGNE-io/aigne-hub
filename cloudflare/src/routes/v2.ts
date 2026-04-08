@@ -7,7 +7,6 @@ import {
   buildProviderHeaders,
   buildUpstreamUrl,
   calculateCredits,
-  estimateMaxCredits,
   fromAnthropicResponse,
   fromGeminiResponse,
   recordModelCall,
@@ -15,7 +14,9 @@ import {
   toAnthropicRequestBody,
   toGeminiRequestBody,
 } from '../libs/ai-proxy';
-import { deductCredits, preDeductCredits, refundHold, settleCredits } from '../libs/credit';
+import { getCreditBalance } from '../libs/credit';
+import { logger } from '../libs/logger';
+import { ensureMeter, type PaymentClient } from '../libs/payment';
 import type { HonoEnv } from '../worker';
 
 const routes = new Hono<HonoEnv>();
@@ -39,6 +40,77 @@ routes.post('/completions', (c) => handleChatCompletion(c));
 function getWaitUntil(c: Context<HonoEnv>): ((p: Promise<unknown>) => void) | null {
   const ctx = c.get('executionCtx');
   return ctx ? (p: Promise<unknown>) => ctx.waitUntil(p) : null;
+}
+
+/** Check if user has sufficient credits via Payment Kit, with D1 fallback. */
+async function checkCredits(
+  c: Context<HonoEnv>,
+  userDid: string
+): Promise<{ ok: true } | { ok: false; balance: number }> {
+  const payment = c.get('payment') as PaymentClient | undefined;
+  if (payment) {
+    try {
+      const meter = await ensureMeter(payment);
+      if (!meter) return { ok: true };
+      const customer = await payment.ensureCustomer(userDid);
+      const [summary, pending] = await Promise.all([
+        payment.getCreditSummary(customer.id),
+        payment.getPendingAmount(customer.id),
+      ]);
+      const currencyId = meter.currency_id;
+      const balance = parseFloat(summary?.[currencyId]?.remainingAmount ?? '0');
+      const pendingAmount = parseFloat(pending?.[currencyId] ?? '0');
+      const netBalance = Math.max(0, balance - pendingAmount);
+      if (netBalance <= 0) {
+        try {
+          const result = await payment.verifyAvailability({
+            customer_id: customer.id,
+            currency_id: currencyId,
+            pending_amount: String(pendingAmount),
+          });
+          if (result.can_continue) return { ok: true };
+        } catch { /* treat as insufficient */ }
+        return { ok: false, balance: netBalance };
+      }
+      return { ok: true };
+    } catch (err) {
+      logger.error('Payment Kit credit check failed, allowing request', {
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return { ok: true };
+    }
+  }
+  const db = c.get('db');
+  const local = await getCreditBalance(db, userDid);
+  if (local.balance <= 0) return { ok: false, balance: local.balance };
+  return { ok: true };
+}
+
+/** Record usage via Payment Kit meter event (fire-and-forget). */
+async function recordCreditUsage(
+  payment: PaymentClient,
+  userDid: string,
+  credits: number,
+  meta: { model: string; requestId?: string }
+): Promise<void> {
+  if (credits <= 0) return;
+  try {
+    const meter = await ensureMeter(payment);
+    if (!meter) return;
+    await payment.createMeterEvent({
+      event_name: meter.event_name,
+      timestamp: Math.floor(Date.now() / 1000),
+      payload: { customer_id: userDid, value: String(credits) },
+      identifier: `${userDid}-${meter.event_name}-${Date.now()}`,
+      metadata: { model: meta.model, requestId: meta.requestId },
+    });
+  } catch (err) {
+    logger.error('Failed to record meter event', {
+      error: err instanceof Error ? err.message : String(err),
+      userDid,
+      credits,
+    });
+  }
 }
 
 async function handleChatCompletion(c: Context<HonoEnv>) {
@@ -87,23 +159,11 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
     return c.json({ error: { message: 'AWS Bedrock requires SigV4 signing which is not yet implemented. Use an OpenAI-compatible proxy like LiteLLM instead.' } }, 501);
   }
 
-  // Pre-deduct estimated credits
-  let holdAmount = 0;
+  // Check credits before making the call
   if (userDid) {
-    // Rough estimate: ~4 chars per token for input, use max_tokens for output
-    const estimatedInputTokens = Math.ceil(JSON.stringify(body.messages).length / 4);
-    const maxOutputTokens = body.max_tokens || 4096;
-    const estimatedCredits = await estimateMaxCredits(db, provider.providerId, provider.modelName, {
-      estimatedInputTokens,
-      maxOutputTokens,
-    });
-
-    if (estimatedCredits > 0) {
-      const hold = await preDeductCredits(db, userDid, estimatedCredits, { model: provider.modelName }, c.env.AUTH_KV);
-      if (!hold.success) {
-        return c.json({ error: { message: 'Insufficient credits', balance: hold.balance } }, 402);
-      }
-      holdAmount = hold.holdAmount;
+    const creditCheck = await checkCredits(c, userDid);
+    if (!creditCheck.ok) {
+      return c.json({ error: { message: 'Insufficient credits', balance: creditCheck.balance } }, 402);
     }
   }
 
@@ -163,9 +223,6 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
     usedGateway = true;
   } else if (provider.providerType === 'custom' && !provider.apiKey) {
     // Custom provider without Gateway and without credentials — cannot route
-    if (holdAmount > 0 && userDid) {
-      waitUntil?.(refundHold(db, userDid, holdAmount, c.env.AUTH_KV));
-    }
     return c.json({ error: { message: 'Custom provider requires AI Gateway to be enabled, or a credential to be configured.' } }, 503);
   } else {
     upstreamUrl = buildUpstreamUrl(provider, 'chat', { stream: body.stream });
@@ -221,12 +278,7 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
       }, c.env.AUTH_KV);
       if (waitUntil) waitUntil(failPromise);
 
-      // Refund pre-deducted credits on upstream error
-      if (userDid && holdAmount > 0) {
-        const refundPromise = refundHold(db, userDid, holdAmount, c.env.AUTH_KV);
-        if (waitUntil) waitUntil(refundPromise);
-        else await refundPromise;
-      }
+      // No refund needed — meter event only created on success
 
       // Return upstream error detail for debugging
       let errorDetail = `Provider error: ${upstreamResponse.status}`;
@@ -386,13 +438,14 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
         }, c.env.AUTH_KV);
         if (waitUntil) waitUntil(recordPromise);
 
-        // Settle pre-deducted credits (refund difference)
-        if (userDid && holdAmount > 0) {
-          const settlePromise = settleCredits(db, userDid, holdAmount, credits, {
-            model: provider.modelName,
-          }, c.env.AUTH_KV);
-          if (waitUntil) waitUntil(settlePromise);
-          else await settlePromise;
+        // Record actual usage via Payment Kit meter event
+        if (userDid && credits > 0) {
+          const payment = c.get('payment') as PaymentClient | undefined;
+          if (payment) {
+            const meterPromise = recordCreditUsage(payment, userDid, credits, { model: provider.modelName, requestId });
+            if (waitUntil) waitUntil(meterPromise);
+            else await meterPromise;
+          }
         }
       });
     }
@@ -441,13 +494,14 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
     }, c.env.AUTH_KV);
     if (waitUntil) waitUntil(recordPromise);
 
-    // Settle pre-deducted credits (refund difference)
-    if (userDid && holdAmount > 0) {
-      const settlePromise = settleCredits(db, userDid, holdAmount, credits, {
-        model: provider.modelName,
-      }, c.env.AUTH_KV);
-      if (waitUntil) waitUntil(settlePromise);
-      else await settlePromise;
+    // Record actual usage via Payment Kit meter event
+    if (userDid && credits > 0) {
+      const payment = c.get('payment') as PaymentClient | undefined;
+      if (payment) {
+        const meterPromise = recordCreditUsage(payment, userDid, credits, { model: provider.modelName, requestId });
+        if (waitUntil) waitUntil(meterPromise);
+        else await meterPromise;
+      }
     }
 
     return c.json({
@@ -476,12 +530,7 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
     }, c.env.AUTH_KV);
     if (waitUntil) waitUntil(errPromise);
 
-    // Refund pre-deducted credits on error
-    if (userDid && holdAmount > 0) {
-      const refundPromise = refundHold(db, userDid, holdAmount, c.env.AUTH_KV);
-      if (waitUntil) waitUntil(refundPromise);
-      else await refundPromise;
-    }
+    // No refund needed — meter event only created on success
 
     return c.json({ error: { message } }, 502);
   }
@@ -560,7 +609,10 @@ routes.post('/embeddings', async (c) => {
   if (ctx) ctx.waitUntil(p);
 
   if (userDid && credits > 0) {
-    await deductCredits(db, userDid, credits, { model: provider.modelName });
+    const payment = c.get('payment') as PaymentClient | undefined;
+    if (payment) {
+      await recordCreditUsage(payment, userDid, credits, { model: provider.modelName });
+    }
   }
 
   return c.json(data);
@@ -637,7 +689,10 @@ routes.post('/images/generations', async (c) => {
   if (ctx) ctx.waitUntil(p);
 
   if (userDid && credits > 0) {
-    await deductCredits(db, userDid, credits, { model: provider.modelName });
+    const payment = c.get('payment') as PaymentClient | undefined;
+    if (payment) {
+      await recordCreditUsage(payment, userDid, credits, { model: provider.modelName });
+    }
   }
 
   return c.json(data);
