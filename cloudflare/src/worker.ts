@@ -246,6 +246,24 @@ app.all('/payment/*', async (c) => {
   );
 
   const contentType = resp.headers.get('content-type') || '';
+
+  // __blocklet__.js: inject livemode from env
+  if (targetPath.includes('__blocklet__')) {
+    const isJson = new URL(c.req.url).searchParams.get('type') === 'json';
+    const livemode = c.env.PAYMENT_LIVEMODE !== 'false';
+    if (isJson) {
+      const data = await resp.json() as Record<string, unknown>;
+      data.livemode = livemode;
+      return c.json(data, 200, { 'Cache-Control': 'private, no-store' });
+    }
+    let js = await resp.text();
+    // Inject livemode into window.blocklet
+    js = js.replace('};', `,livemode:${livemode}};`);
+    return new Response(js, {
+      headers: { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'private, no-store' },
+    });
+  }
+
   if (contentType.includes('text/html')) {
     let html = await resp.text();
     html = html.replace(/(src=["'])\/assets\//g, '$1/payment/assets/');
