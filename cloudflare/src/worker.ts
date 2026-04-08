@@ -48,6 +48,7 @@ export type Env = {
   AI_GATEWAY_ACCOUNT_ID?: string;
   AI_GATEWAY_ID?: string;
   ASSETS?: { fetch: (req: Request) => Promise<Response> };
+  PAYMENT_KIT?: { fetch: (req: Request | string) => Promise<Response> };
 };
 
 // Cached instanceDid after registerApp()

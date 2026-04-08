@@ -17,6 +17,10 @@ binding = "BLOCKLET_SERVICE"
 service = "blocklet-service"
 entrypoint = "BlockletServiceRPC"
 
+[[services]]
+binding = "PAYMENT_KIT"
+service = "payment-kit-staging"
+
 [assets]
 directory = "frontend/dist"
 binding = "ASSETS"
