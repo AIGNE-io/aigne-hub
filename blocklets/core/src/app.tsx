@@ -7,7 +7,7 @@ import { Global, css } from '@emotion/react';
 import { Box, CircularProgress, CssBaseline } from '@mui/material';
 import { Suspense, lazy } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
-import { Navigate, Route, RouterProvider, createBrowserRouter, createRoutesFromElements } from 'react-router-dom';
+import { Navigate, Route, RouterProvider, createBrowserRouter, createRoutesFromElements, useParams } from 'react-router-dom';
 
 import NotFoundView from './components/error/not-found';
 import PageLayout from './components/layout/page-layout';
@@ -28,6 +28,18 @@ const ProjectPage = lazy(() => import('./pages/usage/projects/project-page'));
 const ApiKeysPage = lazy(() => import('./pages/api-keys/index'));
 
 const isCfMode = !!(window.blocklet as any)?.__cfMode;
+
+function RedirectWithParams({ to }: { to: string }) {
+  const params = useParams();
+  const path = to.replace(/:(\w+)/g, (_, key) => params[key] || `:${key}`);
+  return <Navigate to={path} replace />;
+}
+
+/** Redirect to an external URL (outside React Router). */
+function ExternalRedirect({ to }: { to: string }) {
+  window.location.href = to;
+  return null;
+}
 
 export default function App() {
   const basename = window.blocklet?.prefix || '/';
@@ -90,12 +102,12 @@ function AppRoutes({ basename }: { basename: string }) {
             path="/config"
             element={
               <PageLayout>
-                <ConfigAIConfigPage />
+                <ConfigOverviewPage />
               </PageLayout>
             }
           />
           <Route
-            path="/config/:page"
+            path="/config/ai-config"
             element={
               <PageLayout>
                 <ConfigAIConfigPage />
@@ -103,13 +115,14 @@ function AppRoutes({ basename }: { basename: string }) {
             }
           />
           <Route
-            path="/usage"
+            path="/config/ai-config/:page"
             element={
               <PageLayout>
-                <ConfigUsagePage />
+                <ConfigAIConfigPage />
               </PageLayout>
             }
           />
+          <Route path="/usage" element={<Navigate to="/credit-usage" replace />} />
           <Route
             path="/usage/projects/:appDid"
             element={
@@ -118,14 +131,7 @@ function AppRoutes({ basename }: { basename: string }) {
               </PageLayout>
             }
           />
-          <Route
-            path="/api-keys"
-            element={
-              <PageLayout>
-                <ApiKeysPage />
-              </PageLayout>
-            }
-          />
+          <Route path="/api-keys" element={<ExternalRedirect to="/.well-known/service/admin#access-keys" />} />
           <Route key="pricing" path="/pricing" element={<PricingPage />} />
           <Route
             path="/playground"
@@ -145,11 +151,9 @@ function AppRoutes({ basename }: { basename: string }) {
               </PageLayout>
             }
           />
-          <Route path="/config/ai-config" element={<Navigate to="/config" replace />} />
-          <Route path="/config/ai-config/:page" element={<Navigate to="/config/:page" replace />} />
-          <Route path="/config/usage" element={<Navigate to="/usage" replace />} />
+          <Route path="/config/usage" element={<Navigate to="/credit-usage" replace />} />
           <Route path="/config/playground" element={<Navigate to="/playground" replace />} />
-          <Route path="/config/projects/:appDid" element={<Navigate to="/usage/projects/:appDid" replace />} />
+          <Route path="/config/projects/:appDid" element={<RedirectWithParams to="/usage/projects/:appDid" />} />
           <Route
             path="*"
             element={

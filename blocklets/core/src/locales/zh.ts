@@ -481,6 +481,8 @@ export default flatten({
     creditOverview: '数据总览',
     allCreditBoardDescription: '实时监控团队成员的模型使用情况，统一管理 AIGNE Hub Credits',
     creditBoardDescription: '监控您的模型使用情况并管理 AIGNE Hub Credits 额度',
+    myUsage: '我的用量',
+    allUsage: '全平台',
     welcomeTitle: '欢迎来到 AIGNE Hub',
     welcomeMessage:
       'AIGNE Hub 是 [AIGNE] 生态系统的统一 AI 服务中心，为所有 AIGNE 应用提供模型、生成与内容处理等 AI 能力。你已获得体验额度，可用于试用各类 AI 模型。',

@@ -339,7 +339,7 @@ export function CreditsBalance({
             startIcon={<Add />}
             onClick={() => {
               if (paymentLink) {
-                const url = new URL(paymentLink);
+                const url = new URL(paymentLink, window.location.origin);
                 url.searchParams.set('redirect', window.location.href);
                 window.open(url.toString(), '_self');
               }

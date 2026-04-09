@@ -490,6 +490,8 @@ export default flatten({
     creditBoardDescription: 'Monitor your model usage and manage AIGNE Hub Credits',
     allCreditsUsage: 'All Credits Usage',
     allCreditBoardDescription: 'Monitor all users model usage and manage AIGNE Hub Credits',
+    myUsage: 'My Usage',
+    allUsage: 'Platform',
     welcomeTitle: 'Welcome to AIGNE Hub',
     welcomeMessage:
       'AIGNE Hub is the AI service center for the [AIGNE] ecosystem, powering all AIGNE applications with models, generation, and content processing capabilities. You now have starter credits to explore various AI models.',
