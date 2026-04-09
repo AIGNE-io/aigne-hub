@@ -12,12 +12,14 @@ import { cors } from 'hono/cors';
 import { archiveOldRecords } from './crons/archive';
 import { checkModelHealth } from './crons/model-health';
 import { aggregateModelCallStats } from './crons/model-call-stats';
+import { checkModelRates } from './crons/model-rate-check';
 import { reconcileCredits } from './crons/reconcile';
 import { logger } from './libs/logger';
+import { flushMeterEvents } from './libs/meter-buffer';
 import { processRetryQueue } from './libs/retry-queue';
 import * as schema from './db/schema';
 // Auth middleware
-import { PaymentClient, createPaymentClient } from './libs/payment';
+import { PaymentClient, createPaymentClient, createInternalPaymentClient } from './libs/payment';
 import { getPreferences, setPreferences } from './libs/preferences';
 import { buildAuthConfig, loadUser } from './middleware/auth';
 // API routes
@@ -52,6 +54,7 @@ export type Env = {
   ASSETS?: { fetch: (req: Request) => Promise<Response> };
   PAYMENT_KIT?: { fetch: (req: Request | string) => Promise<Response> };
   PAYMENT_LIVEMODE?: string;
+  ENABLE_AUTO_RATE_UPDATE?: string;
 };
 
 // Cached instanceDid after registerApp()
@@ -328,17 +331,6 @@ app.use('/api/*', async (c, next) => {
   await next();
 });
 
-// Health check (public, no auth)
-app.get('/api/health', async (c) => {
-  try {
-    const result = await c.env.DB.prepare('SELECT 1 as ok').first();
-    if (!result) throw new Error('D1 query failed');
-    return c.json({ status: 'ok', db: 'connected', env: c.env.ENVIRONMENT });
-  } catch {
-    return c.json({ status: 'error', db: 'not connected' }, 500);
-  }
-});
-
 // [DEPRECATED] Dev-only mock login — prefer /.well-known/service/login (DID auth)
 // Kept for local dev when blocklet-service is not running.
 app.get('/auth/dev-login', async (c) => {
@@ -412,6 +404,27 @@ app.route('/api/v2', v2Routes);
 app.route('/api/usage', usageRoutes);
 app.route('/api/user', userRoutes);
 app.route('/api/payment', paymentRoutes);
+
+// --- Debug: manual meter flush (staging only) ---
+app.post('/api/__debug/flush-meters', async (c) => {
+  if (c.env.ENVIRONMENT === 'production') return c.json({ error: 'not available' }, 404);
+  if (!c.env.PAYMENT_KIT || !cachedInstanceDid) return c.json({ error: 'PAYMENT_KIT or instanceDid not configured' }, 503);
+  const payment = createInternalPaymentClient(c.env.PAYMENT_KIT, cachedInstanceDid, c.env);
+  const stats = await flushMeterEvents(c.env.AUTH_KV, payment);
+  return c.json(stats);
+});
+
+// --- Debug: list pending meter events (staging only) ---
+app.get('/api/__debug/pending-meters', async (c) => {
+  if (c.env.ENVIRONMENT === 'production') return c.json({ error: 'not available' }, 404);
+  const list = await c.env.AUTH_KV.list({ prefix: 'meter-pending:', limit: 100 });
+  const entries = [];
+  for (const { name } of list.keys) {
+    const raw = await c.env.AUTH_KV.get(name);
+    entries.push({ key: name, value: raw ? JSON.parse(raw) : null });
+  }
+  return c.json({ count: entries.length, entries });
+});
 
 // Bridge /auth/session to blocklet-service DID session (backward compat for frontend)
 app.get('/auth/session', async (c) => {
@@ -499,28 +512,43 @@ app.onError((err, c) => {
 async function scheduled(event: ScheduledEvent, env: Env, _ctx: ExecutionContext) {
   const db = drizzle(env.DB, { schema });
 
+  // Ensure instanceDid is available (cron may cold-start without prior HTTP request)
+  if (env.BLOCKLET_SERVICE && !cachedInstanceDid) {
+    try {
+      await ensureRegistered(env);
+    } catch (err) {
+      logger.error('ensureRegistered failed in cron', { error: err instanceof Error ? err.message : String(err) });
+    }
+  }
+
+  // Flush buffered meter events to Payment Kit (runs on every cron trigger)
+  if (env.PAYMENT_KIT && cachedInstanceDid) {
+    try {
+      const payment = createInternalPaymentClient(env.PAYMENT_KIT, cachedInstanceDid, env);
+      await flushMeterEvents(env.AUTH_KV, payment);
+    } catch (err) {
+      logger.error('Meter flush failed', { error: err instanceof Error ? err.message : String(err) });
+    }
+  }
+
   switch (event.cron) {
-    case '0 * * * *': {
-      await aggregateModelCallStats(db);
-      // Also process retry queue (merged for production cron limit)
+    case '* * * * *': {
+      // Every minute: process retry queue for failed D1 writes
       const retryStats = await processRetryQueue(env.AUTH_KV, env.DB);
       if (retryStats.processed > 0) {
         logger.info('Retry queue processed', retryStats as unknown as Record<string, unknown>);
       }
       break;
     }
-    case '*/30 * * * *': {
-      // Process retry queue for failed D1 writes (staging only, merged into hourly for production)
-      const stats = await processRetryQueue(env.AUTH_KV, env.DB);
-      if (stats.processed > 0) {
-        logger.info('Retry queue processed', stats as unknown as Record<string, unknown>);
-      }
+    case '0 * * * *': {
+      await aggregateModelCallStats(db);
       break;
     }
     case '0 2 * * *':
       await archiveOldRecords(db);
       await reconcileCredits(db);
       await checkModelHealth(db);
+      await checkModelRates(db, { autoUpdate: env.ENABLE_AUTO_RATE_UPDATE === 'true' });
       break;
     default:
       break;

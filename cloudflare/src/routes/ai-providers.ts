@@ -957,7 +957,7 @@ routes.post('/:providerId/model-rates', async (c) => {
 
   const db = c.get('db');
 
-  // Check duplicate
+  // Check duplicate (only among non-deprecated; if a deprecated one exists, reactivate it)
   const existing = await db
     .select()
     .from(aiModelRates)
@@ -971,6 +971,27 @@ routes.post('/:providerId/model-rates', async (c) => {
     .limit(1);
 
   if (existing.length > 0) {
+    if (existing[0].deprecated) {
+      // Reactivate the deprecated rate with new values
+      const [reactivated] = await db
+        .update(aiModelRates)
+        .set({
+          deprecated: false,
+          deprecatedAt: null,
+          deprecatedReason: null,
+          modelDisplay: body.modelDisplay || body.model,
+          inputRate: body.inputRate || existing[0].inputRate,
+          outputRate: body.outputRate || existing[0].outputRate,
+          description: body.description ?? existing[0].description,
+          unitCosts: body.unitCosts ?? existing[0].unitCosts,
+          caching: body.caching ?? existing[0].caching,
+          modelMetadata: body.modelMetadata ?? existing[0].modelMetadata,
+          updatedAt: new Date().toISOString(),
+        })
+        .where(eq(aiModelRates.id, existing[0].id))
+        .returning();
+      return c.json(reactivated, 201);
+    }
     return c.json({ error: `Rate for ${body.model} (${body.type}) already exists` }, 409);
   }
 
@@ -1327,7 +1348,7 @@ routes.post('/import-from-catalog', async (c) => {
       }
     }
 
-    // Check if rate already exists
+    // Check if rate already exists (reactivate if deprecated)
     const type = (req.type || catalogEntry.type || 'chatCompletion') as ModelRateType;
     const existing = await db
       .select()
@@ -1336,7 +1357,31 @@ routes.post('/import-from-catalog', async (c) => {
       .limit(1);
 
     if (existing.length > 0) {
-      results.skipped++;
+      if (existing[0].deprecated) {
+        // Reactivate deprecated rate with catalog pricing
+        try {
+          await db
+            .update(aiModelRates)
+            .set({
+              deprecated: false, deprecatedAt: null, deprecatedReason: null,
+              modelDisplay: catalogEntry.displayName,
+              inputRate: catalogEntry.inputCostPerToken.toPrecision(10),
+              outputRate: catalogEntry.outputCostPerToken.toPrecision(10),
+              unitCosts: { input: catalogEntry.inputCostPerToken * 1e6, output: catalogEntry.outputCostPerToken * 1e6 },
+              caching: catalogEntry.cachedInputCostPerToken
+                ? { readRate: catalogEntry.cachedInputCostPerToken.toPrecision(10) }
+                : null,
+              modelMetadata: { useGateway: body.useGateway ?? true },
+              updatedAt: new Date().toISOString(),
+            })
+            .where(eq(aiModelRates.id, existing[0].id));
+          results.created++;
+        } catch (err) {
+          results.errors.push(`${req.model}: ${err instanceof Error ? err.message : 'reactivate failed'}`);
+        }
+      } else {
+        results.skipped++;
+      }
       continue;
     }
 
@@ -1405,12 +1450,14 @@ routes.post('/model-rates', async (c) => {
     return c.json({ error: 'Some providers not found' }, 400);
   }
 
-  // Check for existing rates
+  // Check for existing rates (only active ones block creation)
   const existingRates = await db
     .select()
     .from(aiModelRates)
     .where(and(eq(aiModelRates.model, body.model), eq(aiModelRates.type, body.type as ModelRateType)));
-  const existingProviderIds = new Set(existingRates.map((r) => r.providerId));
+  const activeExisting = existingRates.filter((r) => !r.deprecated);
+  const deprecatedMap = new Map(existingRates.filter((r) => r.deprecated).map((r) => [r.providerId, r]));
+  const existingProviderIds = new Set(activeExisting.map((r) => r.providerId));
   const conflicts = body.providers.filter((p) => existingProviderIds.has(p));
   if (conflicts.length > 0) {
     return c.json({ error: 'Rates already exist for some providers', conflicts }, 409);
@@ -1418,22 +1465,43 @@ routes.post('/model-rates', async (c) => {
 
   const created = [];
   for (const providerId of body.providers) {
-    const [rate] = await db
-      .insert(aiModelRates)
-      .values({
-        providerId,
-        model: body.model,
-        modelDisplay: body.modelDisplay || body.model,
-        type: body.type as 'chatCompletion' | 'embedding' | 'imageGeneration' | 'video',
-        inputRate: body.inputRate || '0',
-        outputRate: body.outputRate || '0',
-        description: body.description || null,
-        unitCosts: body.unitCosts ? JSON.stringify(body.unitCosts) : null,
-        caching: body.caching ? JSON.stringify(body.caching) : null,
-        modelMetadata: body.modelMetadata ? JSON.stringify(body.modelMetadata) : null,
-      })
-      .returning();
-    created.push(rate);
+    const deprecated = deprecatedMap.get(providerId);
+    if (deprecated) {
+      // Reactivate deprecated rate
+      const [reactivated] = await db
+        .update(aiModelRates)
+        .set({
+          deprecated: false, deprecatedAt: null, deprecatedReason: null,
+          modelDisplay: body.modelDisplay || body.model,
+          inputRate: body.inputRate || '0',
+          outputRate: body.outputRate || '0',
+          description: body.description || null,
+          unitCosts: body.unitCosts ? JSON.stringify(body.unitCosts) : null,
+          caching: body.caching ? JSON.stringify(body.caching) : null,
+          modelMetadata: body.modelMetadata ? JSON.stringify(body.modelMetadata) : null,
+          updatedAt: new Date().toISOString(),
+        })
+        .where(eq(aiModelRates.id, deprecated.id))
+        .returning();
+      created.push(reactivated);
+    } else {
+      const [rate] = await db
+        .insert(aiModelRates)
+        .values({
+          providerId,
+          model: body.model,
+          modelDisplay: body.modelDisplay || body.model,
+          type: body.type as 'chatCompletion' | 'embedding' | 'imageGeneration' | 'video',
+          inputRate: body.inputRate || '0',
+          outputRate: body.outputRate || '0',
+          description: body.description || null,
+          unitCosts: body.unitCosts ? JSON.stringify(body.unitCosts) : null,
+          caching: body.caching ? JSON.stringify(body.caching) : null,
+          modelMetadata: body.modelMetadata ? JSON.stringify(body.modelMetadata) : null,
+        })
+        .returning();
+      created.push(rate);
+    }
   }
 
   return c.json({ count: created.length, rates: created }, 201);

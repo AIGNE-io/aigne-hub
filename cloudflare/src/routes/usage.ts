@@ -47,42 +47,54 @@ routes.get('/quota', async (c) => {
   const userDid = getUserDid(c);
 
   const payment = c.get('payment') as PaymentClient | undefined;
-  let creditBalance;
+  let remaining = 0;
+  let total = 0;
+  let used = 0;
+  let pendingCredit = 0;
+  let currency: { decimal: number } = { decimal: 10 };
+
   if (payment) {
     try {
       const customer = await payment.ensureCustomer(userDid || 'anonymous');
       const meter = await ensureMeter(payment);
-      const summary = await payment.getCreditSummary(customer.id);
-      const currencyId = meter?.currency_id;
       const decimal = meter?.paymentCurrency?.decimal || 10;
       const divisor = Math.pow(10, decimal);
-      creditBalance = {
-        balance: parseFloat(summary?.[currencyId]?.remainingAmount ?? '0') / divisor,
-        total: parseFloat(summary?.[currencyId]?.totalAmount ?? '0') / divisor,
-        used: 0,
-        grantCount: 0,
-        pendingCredit: 0,
-      };
+      currency = { decimal };
+      const currencyId = meter?.currency_id;
+      const [summary, pending] = await Promise.all([
+        payment.getCreditSummary(customer.id),
+        payment.getPendingAmount(customer.id),
+      ]);
+      const remainingAmount = parseFloat(summary?.[currencyId]?.remainingAmount ?? '0') / divisor;
+      const pendingAmount = parseFloat(pending?.[currencyId] ?? '0') / divisor;
+      total = parseFloat(summary?.[currencyId]?.totalAmount ?? '0') / divisor;
+      remaining = Math.max(0, remainingAmount - pendingAmount);
+      used = total - remainingAmount;
+      pendingCredit = pendingAmount;
     } catch {
-      creditBalance = await getCreditBalance(db, userDid || 'anonymous');
+      const creditBalance = await getCreditBalance(db, userDid || 'anonymous');
+      remaining = creditBalance.balance;
+      total = creditBalance.total;
+      used = creditBalance.used;
     }
   } else {
-    creditBalance = await getCreditBalance(db, userDid || 'anonymous');
+    const creditBalance = await getCreditBalance(db, userDid || 'anonymous');
+    remaining = creditBalance.balance;
+    total = creditBalance.total;
+    used = creditBalance.used;
   }
-  const used = creditBalance.used;
-  const total = creditBalance.total;
-  const remaining = creditBalance.balance;
-  const dailyAvgCredits = used / 30;
+
+  const dailyAvgCredits = used > 0 ? used / 30 : 0;
   const estimatedDaysRemaining = dailyAvgCredits > 0 ? Math.floor(remaining / dailyAvgCredits) : 999;
 
   return c.json({
     total,
     remaining,
     used,
-    pendingCredit: 0,
+    pendingCredit,
     estimatedDaysRemaining,
     dailyAvgCredits,
-    currency: { decimal: 6 },
+    currency,
   });
 });
 

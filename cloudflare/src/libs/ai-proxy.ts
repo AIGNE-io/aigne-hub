@@ -23,6 +23,12 @@ export interface ResolvedProvider {
   gatewaySlug?: string | null;
   providerConfig?: Record<string, unknown> | string | null;
   modelMetadata?: Record<string, unknown> | string | null;
+  /** Pre-resolved rate from resolveProvider, avoids duplicate D1 query in calculateCredits */
+  resolvedRate?: {
+    inputRate: string;
+    outputRate: string;
+    caching?: unknown;
+  } | null;
 }
 
 /**
@@ -85,6 +91,12 @@ export async function resolveProvider(db: DB, model: string, encryptionKey?: str
     .from(aiCredentials)
     .where(and(eq(aiCredentials.providerId, selected.provider.id), eq(aiCredentials.active, true)));
 
+  const resolvedRate = {
+    inputRate: selected.rate.inputRate,
+    outputRate: selected.rate.outputRate,
+    caching: selected.rate.caching,
+  };
+
   // No credentials — still return provider info (Gateway compat mode may not need credentials)
   if (creds.length === 0) {
     return {
@@ -99,6 +111,7 @@ export async function resolveProvider(db: DB, model: string, encryptionKey?: str
       gatewaySlug: selected.provider.gatewaySlug,
       providerConfig: selected.provider.config as Record<string, unknown> | string | null,
       modelMetadata: selected.rate.modelMetadata as Record<string, unknown> | string | null,
+      resolvedRate,
     };
   }
 
@@ -143,6 +156,7 @@ export async function resolveProvider(db: DB, model: string, encryptionKey?: str
     gatewaySlug: selected.provider.gatewaySlug,
     providerConfig: selected.provider.config as Record<string, unknown> | string | null,
     modelMetadata: selected.rate.modelMetadata as Record<string, unknown> | string | null,
+    resolvedRate,
   };
 }
 
@@ -488,6 +502,7 @@ export async function recordModelCall(
 
 /**
  * Calculate credits from usage metrics and model rate.
+ * When preResolvedRate is provided, skips the D1 query (rate was already fetched by resolveProvider).
  */
 export async function calculateCredits(
   db: DB,
@@ -499,31 +514,43 @@ export async function calculateCredits(
     cacheCreationInputTokens?: number;
     cacheReadInputTokens?: number;
     numberOfImageGeneration?: number;
-  }
+  },
+  preResolvedRate?: { inputRate: string; outputRate: string; caching?: unknown } | null
 ): Promise<{ credits: number; rate: typeof aiModelRates.$inferSelect | null }> {
-  const [rate] = await db
-    .select()
-    .from(aiModelRates)
-    .where(and(eq(aiModelRates.providerId, providerId), eq(aiModelRates.model, modelName)))
-    .limit(1);
+  let inputRate: number;
+  let outputRate: number;
+  let caching: unknown;
+  let fullRate: typeof aiModelRates.$inferSelect | null = null;
 
-  if (!rate) return { credits: 0, rate: null };
-
-  const inputRate = parseFloat(rate.inputRate);
-  const outputRate = parseFloat(rate.outputRate);
+  if (preResolvedRate) {
+    inputRate = parseFloat(preResolvedRate.inputRate);
+    outputRate = parseFloat(preResolvedRate.outputRate);
+    caching = preResolvedRate.caching;
+  } else {
+    const [rate] = await db
+      .select()
+      .from(aiModelRates)
+      .where(and(eq(aiModelRates.providerId, providerId), eq(aiModelRates.model, modelName)))
+      .limit(1);
+    if (!rate) return { credits: 0, rate: null };
+    fullRate = rate;
+    inputRate = parseFloat(rate.inputRate);
+    outputRate = parseFloat(rate.outputRate);
+    caching = rate.caching;
+  }
 
   let credits = 0;
   credits += (metrics.promptTokens || 0) * inputRate;
   credits += (metrics.completionTokens || 0) * outputRate;
 
   // Cache pricing
-  if (rate.caching) {
-    const caching = typeof rate.caching === 'string' ? JSON.parse(rate.caching) : rate.caching;
+  if (caching) {
+    const cachingObj = typeof caching === 'string' ? JSON.parse(caching) : caching;
     if (metrics.cacheCreationInputTokens) {
-      credits += metrics.cacheCreationInputTokens * ((caching as { writeRate?: number }).writeRate || inputRate);
+      credits += metrics.cacheCreationInputTokens * ((cachingObj as { writeRate?: number }).writeRate || inputRate);
     }
     if (metrics.cacheReadInputTokens) {
-      credits += metrics.cacheReadInputTokens * ((caching as { readRate?: number }).readRate || inputRate);
+      credits += metrics.cacheReadInputTokens * ((cachingObj as { readRate?: number }).readRate || inputRate);
     }
   }
 
@@ -532,7 +559,7 @@ export async function calculateCredits(
     credits = metrics.numberOfImageGeneration * outputRate;
   }
 
-  return { credits, rate };
+  return { credits, rate: fullRate };
 }
 
 /**

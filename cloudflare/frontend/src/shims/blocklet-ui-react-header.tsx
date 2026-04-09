@@ -62,7 +62,7 @@ function getNavItems(locale: string, role?: string, isLoggedIn?: boolean) {
     ...(isAdmin ? [{ label: locale === 'zh' ? '用量' : 'Usage', link: '/usage' }] : []),
     ...(isLoggedIn ? [{ label: locale === 'zh' ? '沙盒' : 'Playground', link: '/playground' }] : []),
     { label: locale === 'zh' ? '定价' : 'Pricing', link: '/pricing' },
-    ...(isLoggedIn ? [{ label: 'API Keys', link: '/api-keys' }] : []),
+    ...(isLoggedIn ? [{ label: 'API Keys', link: '/.well-known/service/admin#access-keys' }] : []),
   ];
 }
 
@@ -231,7 +231,7 @@ export default function Header({ title, children, addons, ...allProps }: HeaderP
   // - Web Component handles login/logout/user menu/theme internally
   // - nav-items are i18n + role-filtered from React SessionContext
   return (
-    <div ref={headerRef} {...(rest as Record<string, unknown>)}>
+    <div ref={headerRef} style={{ fontSize: 14 }} {...(rest as Record<string, unknown>)}>
       <blocklet-header app-name={appTitle} nav-items={JSON.stringify(navItems)} />
       {extra}
       {children}

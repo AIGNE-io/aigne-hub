@@ -1,44 +1,10 @@
 import axios from 'axios';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
-const API_KEY_STORAGE = 'aigne_api_key';
-
 const api = axios.create({ baseURL: window?.blocklet?.prefix || '/', timeout: 30000 });
 
-// Auto-attach API Key from localStorage to every request
-api.interceptors.request.use((config) => {
-  const key = localStorage.getItem(API_KEY_STORAGE);
-  if (key) {
-    config.headers.Authorization = `Bearer ${key}`;
-  }
-  return config;
-});
-
-/**
- * Get or create an API key for the current session.
- * Creates one automatically on first use (dev convenience).
- */
-async function ensureApiKey(): Promise<string> {
-  const existing = localStorage.getItem(API_KEY_STORAGE);
-  if (existing) return existing;
-
-  try {
-    // Relies on login_token cookie for auth (no hardcoded dev headers)
-    const res = await axios.post(
-      '/api/api-keys',
-      { name: 'frontend-auto' },
-      { withCredentials: true }
-    );
-    const key = res.data?.apiKey;
-    if (key) {
-      localStorage.setItem(API_KEY_STORAGE, key);
-      return key;
-    }
-  } catch {
-    // API key creation failed, continue without
-  }
-  return '';
-}
+// Frontend uses cookie-based auth (login_token) — no Bearer token needed.
+// API keys are managed via blocklet-service access keys for programmatic access.
 
 interface SessionUser {
   did: string;
@@ -168,8 +134,6 @@ function SessionProvider({ children }: { children: React.ReactNode }) {
             avatar: data.user.avatar,
           };
           setUser(u);
-          // Auto-create API key for authenticated users so subsequent API calls have Bearer token
-          ensureApiKey();
           events.emit('LOGIN', u);
         }
       })
@@ -189,7 +153,6 @@ function SessionProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(() => {
     setUser(null);
-    localStorage.removeItem(API_KEY_STORAGE);
     events.emit('LOGOUT');
     window.location.href = '/.well-known/service/api/did/logout';
   }, []);

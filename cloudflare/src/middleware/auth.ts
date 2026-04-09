@@ -2,12 +2,8 @@
 import { getSession, getTokenFromRequest } from '@aigne/cf-auth';
 import type { AuthConfig } from '@aigne/cf-auth';
 import { createBlockletServiceClient } from '@arcblock/did-connect-cloudflare/client';
-import { drizzle } from 'drizzle-orm/d1';
 import type { Context, Next } from 'hono';
 
-import * as schema from '../db/schema';
-import { checkRateLimit } from '../libs/rate-limit';
-import { validateApiKey } from '../routes/api-keys';
 import type { AppUser } from '../types/user';
 import type { Env, HonoEnv } from '../worker';
 
@@ -57,109 +53,38 @@ export function loadUser(env: Env) {
   const config = buildAuthConfig(env);
 
   return async (c: Context<HonoEnv>, next: Next) => {
-    // 1. Try API Key auth (Authorization: Bearer aigne_xxx)
-    const authHeader = c.req.header('Authorization');
-    if (authHeader?.startsWith('Bearer aigne_')) {
-      try {
-        const apiKey = authHeader.slice(7); // Remove "Bearer "
-        const db = c.get('db') || drizzle(env.DB, { schema });
-        const appRecord = await validateApiKey(db, apiKey);
-        if (!appRecord) {
-          return c.json({ error: { message: 'Invalid API key' } }, 401);
-        }
-
-        // Rate limit API key requests
-        const rl = await checkRateLimit(env.AUTH_KV, appRecord.id);
-        if (!rl.allowed) {
-          return c.json(
-            { error: { message: 'Rate limit exceeded', limit: rl.limit, remaining: 0, resetAt: rl.resetAt } },
-            429
-          );
-        }
-        c.header('X-RateLimit-Limit', String(rl.limit));
-        c.header('X-RateLimit-Remaining', String(rl.remaining));
-        c.header('X-RateLimit-Reset', String(rl.resetAt));
-
-        if (appRecord.userDid) {
-          // New key with userDid: enrich with blocklet-service profile if available
-          let email = '';
-          let name = appRecord.name || appRecord.id;
-          if (env.BLOCKLET_SERVICE) {
-            const bsClient = createBlockletServiceClient(env.BLOCKLET_SERVICE);
-            const profile = await bsClient.getUserProfile(appRecord.userDid);
-            if (profile) {
-              email = profile.email || '';
-              name = profile.fullName || name;
-            }
-          }
-          c.set('user', {
-            id: appRecord.userDid,
-            email,
-            name,
-            provider: 'api-key',
-            providerId: appRecord.id,
-            role: 'member',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          } satisfies AppUser);
-          (c as any).set('apiKeyAppDid', appRecord.id);
-        } else {
-          // Legacy key without userDid
-          c.set('user', {
-            id: appRecord.id,
-            email: '',
-            name: appRecord.id,
-            provider: 'api-key',
-            providerId: appRecord.id,
-            role: 'member',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          } satisfies AppUser);
-        }
-        return await next();
-      } catch {
-        return c.json({ error: { message: 'API key validation failed' } }, 401);
-      }
-    }
-
-    // 2. Try blocklet-service DID auth (login_token cookie from DID Connect)
+    // 1. Try blocklet-service auth: resolveIdentity handles Access Key (Bearer), JWT cookie, and passkey
     if (env.BLOCKLET_SERVICE) {
       try {
         const client = createBlockletServiceClient(env.BLOCKLET_SERVICE);
-        const caller = await client.verifyFull(c.req.raw);
+        const caller = await client.resolveIdentity(c.req.raw, getInstanceDid() || undefined);
         if (caller) {
-          // Fetch full profile for email/avatar (verifyFull returns DB-enriched identity)
-          const profile = await client.getUserProfile(caller.did);
-
-          // Auto-ensure membership for this instance (idempotent)
-          const instanceDid = getInstanceDid();
-          let effectiveRole = caller.role;
-          if (instanceDid) {
-            const membership = await env.BLOCKLET_SERVICE.getMembership(caller.did, instanceDid);
-            if (!membership) {
-              // Check if instance has any members — first global owner/admin becomes instance owner
-              const existingMembers = await env.BLOCKLET_SERVICE.listMemberships(instanceDid);
-              const hasOwner = existingMembers?.some((m: { role: string }) => m.role === 'owner');
-              const isGlobalAdmin = caller.role === 'owner' || caller.role === 'admin';
-              const role = !hasOwner && isGlobalAdmin ? 'owner' : isGlobalAdmin ? 'admin' : 'member';
-              await env.BLOCKLET_SERVICE.createMembership(caller.did, instanceDid, role);
-              effectiveRole = role;
-            } else {
-              effectiveRole = membership.role as typeof caller.role;
-            }
+          // Check KV cache for resolved auth (30s TTL, avoids repeated profile RPCs)
+          const authCacheKey = `auth-cache:${caller.did}`;
+          const cached = await env.AUTH_KV.get(authCacheKey);
+          if (cached) {
+            c.set('user', JSON.parse(cached) as AppUser);
+            return next();
           }
 
-          c.set('user', {
+          const profile = await client.getUserProfile(caller.did);
+
+          const user: AppUser = {
             id: caller.did,
             email: profile?.email || '',
             name: caller.displayName || caller.did,
             avatar: profile?.avatar || caller.avatar,
-            provider: 'did',
+            provider: (caller as any).authMethod === 'accessKey' ? 'api-key' : 'did',
             providerId: caller.did,
-            role: effectiveRole === 'owner' || effectiveRole === 'admin' ? 'admin' : 'member',
+            role: caller.role === 'owner' || caller.role === 'admin' ? 'admin' : 'member',
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
-          } satisfies AppUser);
+          };
+          c.set('user', user);
+
+          // Cache for 30s — profile/role changes take effect after TTL expires
+          env.AUTH_KV.put(authCacheKey, JSON.stringify(user), { expirationTtl: 30 })
+            .catch(() => {}); // fire-and-forget
           return next();
         }
       } catch {
@@ -167,7 +92,7 @@ export function loadUser(env: Env) {
       }
     }
 
-    // 3. Try session cookie auth (legacy @aigne/cf-auth)
+    // 2. Try session cookie auth (legacy @aigne/cf-auth)
     const token = getTokenFromRequest(c.req.raw);
     if (token) {
       const cfUser = await getSession(token, config);

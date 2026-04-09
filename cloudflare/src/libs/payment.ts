@@ -1,4 +1,5 @@
 import { logger } from './logger';
+import { addNotification, buildCreditGrantedNotification } from './notifications';
 
 type PaymentKitBinding = { fetch: (req: Request | string) => Promise<Response> };
 
@@ -39,8 +40,6 @@ export class PaymentClient {
   private async put(path: string, data: unknown): Promise<any> {
     return this.request(path, { method: 'PUT', body: JSON.stringify(data) });
   }
-
-  // --- Meters ---
 
   // --- Meters ---
 
@@ -86,6 +85,18 @@ export class PaymentClient {
   }
 
   // --- Credit Grants ---
+
+  async createCreditGrant(data: {
+    customer_id: string;
+    currency_id: string;
+    amount: string;
+    name: string;
+    expires_at?: number;
+    category?: string;
+    metadata?: Record<string, unknown>;
+  }) {
+    return this.post('/api/credit-grants', data);
+  }
 
   async getCreditSummary(customerId: string) {
     return this.get(`/api/credit-grants/summary?customer_id=${encodeURIComponent(customerId)}`);
@@ -344,15 +355,20 @@ export async function getCreditPaymentLink(payment: PaymentClient): Promise<stri
 
 /**
  * Check user credit balance and throw 402 with payment link if insufficient.
+ * Parallelizes Service Binding calls to minimize latency.
  */
 export async function checkUserCreditBalance(
   payment: PaymentClient,
   userDid: string
 ): Promise<void> {
-  const meter = await ensureMeter(payment);
+  // Phase 1: ensureMeter (cached 24h) + ensureCustomer in parallel
+  const [meter, customer] = await Promise.all([
+    ensureMeter(payment),
+    payment.ensureCustomer(userDid),
+  ]);
   if (!meter) return; // No meter = no billing
 
-  const customer = await payment.ensureCustomer(userDid);
+  // Phase 2: summary + pending in parallel (both need customer.id)
   const [summary, pending] = await Promise.all([
     payment.getCreditSummary(customer.id),
     payment.getPendingAmount(customer.id),
@@ -400,6 +416,89 @@ export class CreditError extends Error {
       error: { message: this.message, type: 'CREDIT_NOT_ENOUGH', paymentLink: this.paymentLink },
     };
   }
+}
+
+/**
+ * Grant welcome credits to a new user if enabled in preferences.
+ * Uses KV key `credit-granted:{did}` to prevent duplicate grants.
+ * Mirrors the Blocklet Server behavior from listeners/listen.ts.
+ */
+export async function grantNewUserCredits(
+  payment: PaymentClient,
+  userDid: string,
+  kv: KVNamespace,
+  preferences: Record<string, unknown>
+): Promise<boolean> {
+  if (!preferences.creditBasedBillingEnabled || !preferences.newUserCreditGrantEnabled) return false;
+
+  const creditAmount = Number(preferences.newUserCreditGrantAmount) || 0;
+  if (creditAmount <= 0) return false;
+
+  const kvKey = `credit-granted:${userDid}`;
+  const already = await kv.get(kvKey);
+  if (already) return false;
+
+  try {
+    const customer = await payment.ensureCustomer(userDid);
+    const meter = await ensureMeter(payment);
+    if (!meter?.currency_id) return false;
+
+    // Check if user already has grants (same safety check as original)
+    const summary = await payment.getCreditSummary(customer.id);
+    const currencyId = meter.currency_id;
+    if (parseFloat(summary?.[currencyId]?.totalAmount ?? '0') > 0) {
+      await kv.put(kvKey, '1');
+      return false;
+    }
+
+    const expirationDays = Number(preferences.creditExpirationDays) || 0;
+    const expiresAt = expirationDays > 0
+      ? Math.floor(Date.now() / 1000) + expirationDays * 24 * 60 * 60
+      : 0;
+
+    await payment.createCreditGrant({
+      customer_id: customer.id,
+      currency_id: currencyId,
+      amount: String(creditAmount),
+      name: 'New user bonus credit',
+      expires_at: expiresAt > 0 ? expiresAt : undefined,
+      category: 'promotional',
+      metadata: { welcomeCredit: true },
+    });
+
+    await kv.put(kvKey, '1');
+    await addNotification(kv, userDid, buildCreditGrantedNotification({
+      amount: creditAmount,
+      isWelcome: true,
+    }));
+    logger.info('Granted welcome credits', { userDid, amount: creditAmount });
+    return true;
+  } catch (err) {
+    logger.error('Failed to grant welcome credits', {
+      userDid,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return false;
+  }
+}
+
+/**
+ * Create an internal PaymentClient for cron/background tasks (no user session).
+ * Authenticates via x-user-did + x-user-role headers, which Payment Kit's
+ * CF shim trusts (AUTH_SERVICE.resolveIdentity is bypassed for header-injected identity).
+ */
+export function createInternalPaymentClient(
+  service: PaymentKitBinding,
+  instanceDid: string,
+  env?: { PAYMENT_LIVEMODE?: string }
+): PaymentClient {
+  const headers = new Headers();
+  headers.set('x-user-did', instanceDid);
+  headers.set('x-user-role', 'blocklet-owner');
+  headers.set('x-user-provider', 'wallet');
+  headers.set('x-user-fullname', 'system');
+  const livemode = env?.PAYMENT_LIVEMODE !== undefined ? env.PAYMENT_LIVEMODE === 'true' : true;
+  return new PaymentClient(service, headers, livemode);
 }
 
 /**

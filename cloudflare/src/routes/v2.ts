@@ -16,8 +16,10 @@ import {
 } from '../libs/ai-proxy';
 import { getCreditBalance } from '../libs/credit';
 import { logger } from '../libs/logger';
-import { CreditError, checkUserCreditBalance, ensureMeter, type PaymentClient } from '../libs/payment';
+import { bufferMeterEvent } from '../libs/meter-buffer';
+import { CreditError, checkUserCreditBalance, type PaymentClient } from '../libs/payment';
 import { getPreferences } from '../libs/preferences';
+import { buildCompletionResponse } from '../libs/response-adapter';
 import type { HonoEnv } from '../worker';
 
 const routes = new Hono<HonoEnv>();
@@ -73,31 +75,17 @@ async function checkCredits(
   return { ok: true };
 }
 
-/** Record usage via Payment Kit meter event (fire-and-forget). */
-async function recordCreditUsage(
-  payment: PaymentClient,
+/** Buffer usage for batch reporting to Payment Kit via cron. */
+function bufferUsage(
+  waitUntil: ((p: Promise<unknown>) => void) | null | undefined,
+  kv: KVNamespace,
   userDid: string,
   credits: number,
   meta: { model: string; requestId?: string }
-): Promise<void> {
-  if (credits <= 0) return;
-  try {
-    const meter = await ensureMeter(payment);
-    if (!meter) return;
-    await payment.createMeterEvent({
-      event_name: meter.event_name,
-      timestamp: Math.floor(Date.now() / 1000),
-      payload: { customer_id: userDid, value: String(credits) },
-      identifier: `${userDid}-${meter.event_name}-${Date.now()}`,
-      metadata: { model: meta.model, requestId: meta.requestId },
-    });
-  } catch (err) {
-    logger.error('Failed to record meter event', {
-      error: err instanceof Error ? err.message : String(err),
-      userDid,
-      credits,
-    });
-  }
+): void {
+  if (!userDid || credits <= 0) return;
+  const p = bufferMeterEvent(kv, userDid, credits, meta);
+  if (waitUntil) waitUntil(p);
 }
 
 async function handleChatCompletion(c: Context<HonoEnv>) {
@@ -165,9 +153,15 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
   const isAnthropic = provider.apiFormat === 'anthropic';
   const gateway = await resolveGatewayConfig(c.env.AUTH_KV, c.env, getProviderGatewayConfigId(provider.providerConfig));
   // Gateway compat mode: enabled + provider supported + not opted out + model-level useGateway
+  // Skip Gateway for streaming requests — cache hit is near zero for unique messages
   const modelMeta = typeof provider.modelMetadata === 'string' ? JSON.parse(provider.modelMetadata) : provider.modelMetadata;
   const modelUseGateway = modelMeta?.useGateway ?? true; // default: enabled
-  const useGatewayCompat = !!gateway && modelUseGateway && shouldUseGateway(provider.providerName, provider.providerConfig, provider.gatewaySlug);
+  // Skip Gateway for streaming when provider has its own credentials (can direct-connect).
+  // Custom providers without credentials MUST go through Gateway even for streaming.
+  const canDirectConnect = !!provider.apiKey;
+  const skipGatewayForStream = body.stream && canDirectConnect;
+  const useGatewayCompat = !!gateway && modelUseGateway && !skipGatewayForStream
+    && shouldUseGateway(provider.providerName, provider.providerConfig, provider.gatewaySlug);
 
   // Build upstream request body (provider-specific formats)
   let upstreamBody: Record<string, unknown>;
@@ -410,7 +404,7 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
         const { credits } = await calculateCredits(db, provider.providerId, provider.modelName, {
           promptTokens,
           completionTokens,
-        });
+        }, provider.resolvedRate);
 
         // Record call + usage via waitUntil (survives after response)
         const recordPromise = recordModelCall(db, {
@@ -432,15 +426,8 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
         }, c.env.AUTH_KV);
         if (waitUntil) waitUntil(recordPromise);
 
-        // Record actual usage via Payment Kit meter event
-        if (userDid && credits > 0) {
-          const payment = c.get('payment') as PaymentClient | undefined;
-          if (payment) {
-            const meterPromise = recordCreditUsage(payment, userDid, credits, { model: provider.modelName, requestId });
-            if (waitUntil) waitUntil(meterPromise);
-            else await meterPromise;
-          }
-        }
+        // Buffer usage for batch reporting to Payment Kit
+        bufferUsage(waitUntil, c.env.AUTH_KV, userDid, credits, { model: provider.modelName, requestId });
       });
     }
 
@@ -488,21 +475,19 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
     }, c.env.AUTH_KV);
     if (waitUntil) waitUntil(recordPromise);
 
-    // Record actual usage via Payment Kit meter event
-    if (userDid && credits > 0) {
-      const payment = c.get('payment') as PaymentClient | undefined;
-      if (payment) {
-        const meterPromise = recordCreditUsage(payment, userDid, credits, { model: provider.modelName, requestId });
-        if (waitUntil) waitUntil(meterPromise);
-        else await meterPromise;
-      }
-    }
+    // Buffer usage for batch reporting to Payment Kit
+    bufferUsage(waitUntil, c.env.AUTH_KV, userDid, credits, { model: provider.modelName, requestId });
 
-    return c.json({
-      ...responseData,
-      modelWithProvider: `${provider.providerName}/${provider.modelName}`,
-      ...(gatewayMeta?.cacheStatus && { _gateway: gatewayMeta }),
-    });
+    const prefs = await getPreferences(c.env.AUTH_KV);
+    return c.json(buildCompletionResponse({
+      content: responseData.choices?.[0]?.message?.content || '',
+      model: body.model,
+      promptTokens,
+      completionTokens,
+      credits,
+      creditPrefix: (prefs.creditPrefix as string) || '',
+      requestId,
+    }));
   } catch (err) {
     const duration = ((Date.now() - startTime) / 1000).toFixed(1);
     const message = err instanceof Error ? err.message : 'Internal proxy error';
@@ -585,7 +570,7 @@ routes.post('/embeddings', async (c) => {
   const duration = ((Date.now() - startTime) / 1000).toFixed(1);
   const promptTokens = data.usage?.prompt_tokens || 0;
 
-  const { credits } = await calculateCredits(db, provider.providerId, provider.modelName, { promptTokens });
+  const { credits } = await calculateCredits(db, provider.providerId, provider.modelName, { promptTokens }, provider.resolvedRate);
 
   const ctx = c.get('executionCtx');
   const p = recordModelCall(db, {
@@ -602,18 +587,119 @@ routes.post('/embeddings', async (c) => {
   }, c.env.AUTH_KV);
   if (ctx) ctx.waitUntil(p);
 
-  if (userDid && credits > 0) {
-    const payment = c.get('payment') as PaymentClient | undefined;
-    if (payment) {
-      await recordCreditUsage(payment, userDid, credits, { model: provider.modelName });
-    }
-  }
+  // Buffer usage for batch reporting to Payment Kit
+  const wuEmbed = ctx ? (p2: Promise<unknown>) => ctx.waitUntil(p2) : undefined;
+  bufferUsage(wuEmbed, c.env.AUTH_KV, userDid, credits, { model: provider.modelName });
 
   return c.json(data);
 });
 
-// POST /api/v2/images/generations
-routes.post('/images/generations', async (c) => {
+// POST /api/v2/image — AIGNE native image format (used by playground)
+routes.post('/image', async (c) => {
+  const db = c.get('db');
+  const waitUntil = getWaitUntil(c);
+  const startTime = Date.now();
+  const userDid = (c.get('user') as { id?: string } | undefined)?.id || c.req.header('x-user-did') || '';
+  const appDid = (c as any).get('apiKeyAppDid') || c.req.header('x-aigne-hub-client-did') || '';
+  const requestId = c.req.header('x-request-id') || crypto.randomUUID();
+
+  // Native format: {agent: "provider/model", input: {prompt, size, n, responseFormat, modelOptions}}
+  const body = await c.req.json<{
+    agent?: string;
+    model?: string;
+    input: { prompt: string; size?: string; n?: number; responseFormat?: string; outputFileType?: string; modelOptions?: Record<string, unknown> };
+  }>();
+  const model = body.agent || body.model || (body.input?.modelOptions?.model as string) || '';
+  const prompt = body.input?.prompt;
+  if (!model || !prompt) {
+    return c.json({ error: { message: 'agent/model and input.prompt are required' } }, 400);
+  }
+
+  const provider = await resolveProvider(db, model, c.env.CREDENTIAL_ENCRYPTION_KEY);
+  if (!provider) {
+    return c.json({ error: { message: `No available provider for model: ${model}` } }, 404);
+  }
+
+  if (userDid) {
+    const creditCheck = await checkCredits(c, userDid);
+    if (!creditCheck.ok) {
+      return c.json({
+        error: { message: 'Insufficient credits', type: 'CREDIT_NOT_ENOUGH', balance: creditCheck.balance, paymentLink: creditCheck.paymentLink || null },
+      }, 402);
+    }
+  }
+
+  // Build OpenAI-compatible request for upstream
+  const n = body.input.n || 1;
+  const size = body.input.size || '1024x1024';
+  const responseFormat = body.input.responseFormat || 'url';
+  const upstreamBody = {
+    model: provider.modelName,
+    prompt,
+    n,
+    size,
+    response_format: responseFormat,
+  };
+
+  const response = await fetch(buildUpstreamUrl(provider, 'image'), {
+    method: 'POST',
+    headers: buildProviderHeaders(provider),
+    body: JSON.stringify(upstreamBody),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+    const p = recordModelCall(db, {
+      providerId: provider.providerId, model: provider.modelName, credentialId: provider.credentialId,
+      type: 'imageGeneration', status: 'failed', totalUsage: 0, credits: '0', duration,
+      errorReason: errorBody.substring(0, 1000), userDid, appDid: appDid || undefined, requestId,
+      callTime: Math.floor(startTime / 1000),
+    }, c.env.AUTH_KV);
+    if (waitUntil) waitUntil(p);
+
+    let errorDetail = `Provider error: ${response.status}`;
+    try { const parsed = JSON.parse(errorBody); errorDetail = parsed.error?.message || errorDetail; } catch { /* */ }
+    return c.json({ error: { message: errorDetail, status: response.status } }, response.status as 400);
+  }
+
+  const data = await response.json<{ data?: Array<{ url?: string; b64_json?: string }> }>();
+  const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+  const numImages = data.data?.length || n;
+
+  const { credits } = await calculateCredits(db, provider.providerId, provider.modelName, {
+    numberOfImageGeneration: numImages,
+  }, provider.resolvedRate);
+
+  const p = recordModelCall(db, {
+    providerId: provider.providerId, model: provider.modelName, credentialId: provider.credentialId,
+    type: 'imageGeneration', status: 'success', totalUsage: numImages,
+    usageMetrics: { numberOfImageGeneration: numImages, imageSize: size },
+    credits: credits.toFixed(10), duration, userDid, appDid: appDid || undefined, requestId,
+    callTime: Math.floor(startTime / 1000),
+  }, c.env.AUTH_KV);
+  if (waitUntil) waitUntil(p);
+  bufferUsage(waitUntil, c.env.AUTH_KV, userDid, credits, { model: provider.modelName, requestId });
+
+  // Convert OpenAI response to AIGNE native format
+  // Frontend processMediaResponse expects {type: 'file', data: '<base64>', mimeType: '...'}
+  // for base64 images, or {type: 'url', url: '...'} for URL images
+  const images = (data.data || []).map((item) => {
+    if (item.b64_json) return { type: 'file' as const, data: item.b64_json, mimeType: 'image/png' };
+    if (item.url) return { type: 'url' as const, url: item.url };
+    return item;
+  });
+
+  return c.json({
+    images,
+    usage: { inputTokens: 0, outputTokens: 0 },
+    modelWithProvider: model,
+  });
+});
+
+// POST /api/v2/image/generations — OpenAI-compatible (original path)
+// POST /api/v2/images/generations — OpenAI-compatible (alias)
+const handleImageGenerations = async (c: Context<HonoEnv>) => {
   const db = c.get('db');
   const startTime = Date.now();
   const userDid = (c.get('user') as { id?: string } | undefined)?.id || c.req.header('x-user-did') || '';
@@ -664,7 +750,7 @@ routes.post('/images/generations', async (c) => {
 
   const { credits } = await calculateCredits(db, provider.providerId, provider.modelName, {
     numberOfImageGeneration: numImages,
-  });
+  }, provider.resolvedRate);
 
   const ctx = c.get('executionCtx');
   const p = recordModelCall(db, {
@@ -682,15 +768,14 @@ routes.post('/images/generations', async (c) => {
   }, c.env.AUTH_KV);
   if (ctx) ctx.waitUntil(p);
 
-  if (userDid && credits > 0) {
-    const payment = c.get('payment') as PaymentClient | undefined;
-    if (payment) {
-      await recordCreditUsage(payment, userDid, credits, { model: provider.modelName });
-    }
-  }
+  // Buffer usage for batch reporting to Payment Kit
+  const wuImg = ctx ? (p2: Promise<unknown>) => ctx.waitUntil(p2) : undefined;
+  bufferUsage(wuImg, c.env.AUTH_KV, userDid, credits, { model: provider.modelName });
 
   return c.json(data);
-});
+};
+routes.post('/image/generations', handleImageGenerations);
+routes.post('/images/generations', handleImageGenerations);
 
 // POST /api/v2/video/generations
 routes.post('/video/generations', async (c) => {
@@ -739,6 +824,146 @@ routes.post('/video/generations', async (c) => {
   if (ctx) ctx.waitUntil(p);
 
   return c.json(data);
+});
+
+// POST /api/v2/audio/transcriptions — proxy to OpenAI Whisper
+routes.post('/audio/transcriptions', async (c) => {
+  const db = c.get('db');
+  const startTime = Date.now();
+  const userDid = (c.get('user') as { id?: string } | undefined)?.id || c.req.header('x-user-did') || '';
+  const requestId = c.req.header('x-request-id') || crypto.randomUUID();
+
+  // Parse multipart form — contains audio file + model field
+  const formData = await c.req.formData();
+  const model = (formData.get('model') as string) || 'whisper-1';
+
+  const provider = await resolveProvider(db, model, c.env.CREDENTIAL_ENCRYPTION_KEY);
+  if (!provider) {
+    return c.json({ error: { message: `No available provider for model: ${model}` } }, 404);
+  }
+
+  if (userDid) {
+    const creditCheck = await checkCredits(c, userDid);
+    if (!creditCheck.ok) {
+      return c.json({
+        error: { message: 'Insufficient credits', type: 'CREDIT_NOT_ENOUGH', balance: creditCheck.balance, paymentLink: creditCheck.paymentLink || null },
+      }, 402);
+    }
+  }
+
+  // Forward multipart form directly to provider (preserves audio file)
+  const baseUrl = provider.baseUrl.replace(/\/+$/, '');
+  const response = await fetch(`${baseUrl}/audio/transcriptions`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${provider.apiKey}` },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+    const waitUntil = getWaitUntil(c);
+    const p = recordModelCall(db, {
+      providerId: provider.providerId, model: provider.modelName, credentialId: provider.credentialId,
+      type: 'audioGeneration', status: 'failed', totalUsage: 0, credits: '0', duration,
+      errorReason: errorBody.substring(0, 1000), userDid, requestId, callTime: Math.floor(startTime / 1000),
+    }, c.env.AUTH_KV);
+    if (waitUntil) waitUntil(p);
+    return c.json({ error: { message: `Provider error: ${response.status}` } }, response.status as 400);
+  }
+
+  const data = await response.json();
+  const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+
+  // Transcription: credit based on output rate (per-request, like image generation)
+  const { credits } = await calculateCredits(db, provider.providerId, provider.modelName, {
+    numberOfImageGeneration: 1, // treat as 1 unit
+  }, provider.resolvedRate);
+
+  const waitUntil = getWaitUntil(c);
+  const p = recordModelCall(db, {
+    providerId: provider.providerId, model: provider.modelName, credentialId: provider.credentialId,
+    type: 'audioGeneration', status: 'success', totalUsage: 1, credits: credits.toFixed(10), duration,
+    userDid, requestId, callTime: Math.floor(startTime / 1000),
+  }, c.env.AUTH_KV);
+  if (waitUntil) waitUntil(p);
+  bufferUsage(waitUntil, c.env.AUTH_KV, userDid, credits, { model: provider.modelName, requestId });
+
+  return c.json(data);
+});
+
+// POST /api/v2/audio/speech — proxy to OpenAI TTS, returns binary audio
+routes.post('/audio/speech', async (c) => {
+  const db = c.get('db');
+  const startTime = Date.now();
+  const userDid = (c.get('user') as { id?: string } | undefined)?.id || c.req.header('x-user-did') || '';
+  const requestId = c.req.header('x-request-id') || crypto.randomUUID();
+
+  const body = await c.req.json<{ model: string; input: string; voice?: string; [key: string]: unknown }>();
+  if (!body.model || !body.input) {
+    return c.json({ error: { message: 'model and input are required' } }, 400);
+  }
+
+  const provider = await resolveProvider(db, body.model, c.env.CREDENTIAL_ENCRYPTION_KEY);
+  if (!provider) {
+    return c.json({ error: { message: `No available provider for model: ${body.model}` } }, 404);
+  }
+
+  if (userDid) {
+    const creditCheck = await checkCredits(c, userDid);
+    if (!creditCheck.ok) {
+      return c.json({
+        error: { message: 'Insufficient credits', type: 'CREDIT_NOT_ENOUGH', balance: creditCheck.balance, paymentLink: creditCheck.paymentLink || null },
+      }, 402);
+    }
+  }
+
+  const baseUrl = provider.baseUrl.replace(/\/+$/, '');
+  const response = await fetch(`${baseUrl}/audio/speech`, {
+    method: 'POST',
+    headers: { ...buildProviderHeaders(provider) },
+    body: JSON.stringify({ ...body, model: provider.modelName }),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+    const waitUntil = getWaitUntil(c);
+    const p = recordModelCall(db, {
+      providerId: provider.providerId, model: provider.modelName, credentialId: provider.credentialId,
+      type: 'audioGeneration', status: 'failed', totalUsage: 0, credits: '0', duration,
+      errorReason: errorBody.substring(0, 1000), userDid, requestId, callTime: Math.floor(startTime / 1000),
+    }, c.env.AUTH_KV);
+    if (waitUntil) waitUntil(p);
+    return c.json({ error: { message: `Provider error: ${response.status}` } }, response.status as 400);
+  }
+
+  const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+
+  // TTS: credit based on input length (approximate token count from character count)
+  const estimatedTokens = Math.ceil(body.input.length / 4);
+  const { credits } = await calculateCredits(db, provider.providerId, provider.modelName, {
+    promptTokens: estimatedTokens,
+  }, provider.resolvedRate);
+
+  const waitUntil = getWaitUntil(c);
+  const p = recordModelCall(db, {
+    providerId: provider.providerId, model: provider.modelName, credentialId: provider.credentialId,
+    type: 'audioGeneration', status: 'success', totalUsage: estimatedTokens,
+    usageMetrics: { inputCharacters: body.input.length, estimatedTokens },
+    credits: credits.toFixed(10), duration, userDid, requestId, callTime: Math.floor(startTime / 1000),
+  }, c.env.AUTH_KV);
+  if (waitUntil) waitUntil(p);
+  bufferUsage(waitUntil, c.env.AUTH_KV, userDid, credits, { model: provider.modelName, requestId });
+
+  // Return binary audio stream with original content-type
+  return new Response(response.body, {
+    status: 200,
+    headers: {
+      'Content-Type': response.headers.get('Content-Type') || 'audio/mpeg',
+      'Transfer-Encoding': response.headers.get('Transfer-Encoding') || '',
+    },
+  });
 });
 
 // ============================================================

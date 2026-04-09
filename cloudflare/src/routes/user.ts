@@ -5,8 +5,10 @@ import { Hono } from 'hono';
 
 import { aiProviders, creditAccounts, modelCalls } from '../db/schema';
 import { getCreditBalance, getTransactions } from '../libs/credit';
-import { ensureMeter, getCreditPaymentLink, type PaymentClient } from '../libs/payment';
+import { getNotifications, markNotificationsRead } from '../libs/notifications';
+import { ensureMeter, getCreditPaymentLink, grantNewUserCredits, type PaymentClient } from '../libs/payment';
 import { getPreferences, setPreferences } from '../libs/preferences';
+import type { AppUser } from '../types/user';
 import type { HonoEnv } from '../worker';
 
 const routes = new Hono<HonoEnv>();
@@ -23,7 +25,7 @@ function isAdminUser(c: Context<HonoEnv>): boolean {
 
 // GET /api/user/info - User info + credit balance
 routes.get('/info', async (c) => {
-  const user = c.get('user') as { id?: string; email?: string; name?: string; role?: string } | undefined;
+  const user = c.get('user') as AppUser | undefined;
   const did = user?.id || c.req.header('x-user-did');
 
   if (!did) {
@@ -35,22 +37,35 @@ routes.get('/info', async (c) => {
   const payment = c.get('payment') as PaymentClient | undefined;
   let creditBalance;
   let currency: any = { decimal: 10 };
+  let profileLink: string | null = null;
+
   if (payment) {
+    // Try granting welcome credits for new users (fire-and-forget)
+    const ctx = c.get('executionCtx');
+    if (ctx) {
+      ctx.waitUntil(grantNewUserCredits(payment, did, c.env.AUTH_KV, prefs));
+    }
+
     try {
       const customer = await payment.ensureCustomer(did);
       const meter = await ensureMeter(payment);
       if (meter?.paymentCurrency) currency = meter.paymentCurrency;
       const decimal = currency.decimal || 10;
       const divisor = Math.pow(10, decimal);
-      const summary = await payment.getCreditSummary(customer.id);
       const currencyId = meter?.currency_id;
+      const [summary, pending] = await Promise.all([
+        payment.getCreditSummary(customer.id),
+        payment.getPendingAmount(customer.id),
+      ]);
+      const remainingAmount = parseFloat(summary?.[currencyId]?.remainingAmount ?? '0') / divisor;
+      const pendingAmount = parseFloat(pending?.[currencyId] ?? '0') / divisor;
       creditBalance = {
-        balance: parseFloat(summary?.[currencyId]?.remainingAmount ?? '0') / divisor,
+        balance: Math.max(0, remainingAmount - pendingAmount),
         total: parseFloat(summary?.[currencyId]?.totalAmount ?? '0') / divisor,
-        used: 0,
         grantCount: summary?.[currencyId]?.grantCount ?? 0,
-        pendingCredit: 0,
+        pendingCredit: pendingAmount,
       };
+      profileLink = '/payment/customer';
     } catch {
       creditBalance = await getCreditBalance(db, did);
     }
@@ -58,12 +73,17 @@ routes.get('/info', async (c) => {
     creditBalance = await getCreditBalance(db, did);
   }
 
+  // Prefer configured payment link from preferences
+  const paymentLink = payment
+    ? (prefs.creditPaymentLink as string) || (await getCreditPaymentLink(payment).catch(() => null)) || '/payment/customer'
+    : null;
+
   return c.json({
     user: {
       did,
       fullName: user?.name || did,
       email: user?.email || '',
-      avatar: '',
+      avatar: user?.avatar || '',
     },
     creditBalance: {
       balance: creditBalance.balance,
@@ -71,10 +91,10 @@ routes.get('/info', async (c) => {
       grantCount: creditBalance.grantCount,
       pendingCredit: creditBalance.pendingCredit,
     },
-    paymentLink: payment ? '/payment/customer' : null,
+    paymentLink,
     currency,
     enableCredit: prefs.creditBasedBillingEnabled ?? true,
-    profileLink: null,
+    profileLink,
     creditPrefix: prefs.creditPrefix || '',
   });
 });
@@ -485,6 +505,23 @@ routes.post('/admin/user-info', async (c) => {
       };
     }),
   });
+});
+
+// GET /api/user/notifications - Get user notifications
+routes.get('/notifications', async (c) => {
+  const did = getUserDid(c);
+  if (!did) return c.json({ error: 'Authentication required' }, 401);
+  const notifications = await getNotifications(c.env.AUTH_KV, did);
+  return c.json({ notifications });
+});
+
+// PUT /api/user/notifications/read - Mark notifications as read
+routes.put('/notifications/read', async (c) => {
+  const did = getUserDid(c);
+  if (!did) return c.json({ error: 'Authentication required' }, 401);
+  const body = await c.req.json<{ ids?: string[] }>().catch(() => ({}));
+  await markNotificationsRead(c.env.AUTH_KV, did, (body as { ids?: string[] }).ids);
+  return c.json({ success: true });
 });
 
 export default routes;

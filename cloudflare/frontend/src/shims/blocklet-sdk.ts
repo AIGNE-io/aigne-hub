@@ -33,7 +33,6 @@ const CF_NAVIGATION = [
   {
     id: 'settings',
     title: { en: 'Console', zh: '控制台' },
-    icon: 'ion:settings-outline',
     link: '/config',
     section: ['header'],
     role: ['admin', 'owner'],
@@ -41,7 +40,6 @@ const CF_NAVIGATION = [
   {
     id: 'usage',
     title: { en: 'Usage', zh: '用量' },
-    icon: 'ion:analytics-outline',
     link: '/usage',
     section: ['header'],
     role: ['admin', 'owner'],
@@ -49,7 +47,6 @@ const CF_NAVIGATION = [
   {
     id: 'playground',
     title: { en: 'Playground', zh: '沙盒' },
-    icon: 'carbon:run',
     link: '/playground',
     section: ['header'],
     role: ['owner', 'admin', 'member'],
@@ -57,7 +54,6 @@ const CF_NAVIGATION = [
   {
     id: 'pricing',
     title: { en: 'Pricing', zh: '定价' },
-    icon: 'ion:pricetag-outline',
     link: '/pricing',
     section: ['header'],
     role: ['owner', 'admin', 'member', 'guest'],
@@ -65,8 +61,7 @@ const CF_NAVIGATION = [
   {
     id: 'apiKeys',
     title: 'API Keys',
-    icon: 'ion:key-outline',
-    link: '/api-keys',
+    link: '/.well-known/service/admin#access-keys',
     section: ['header'],
     role: ['owner', 'admin', 'member'],
   },

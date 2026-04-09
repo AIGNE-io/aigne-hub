@@ -2,6 +2,7 @@ import type { Context } from 'hono';
 import { Hono } from 'hono';
 
 import { grantCredits } from '../libs/credit';
+import { addNotification, buildCreditGrantedNotification } from '../libs/notifications';
 import type { PaymentClient } from '../libs/payment';
 import type { HonoEnv } from '../worker';
 
@@ -42,6 +43,8 @@ routes.post('/grant', async (c) => {
 // POST /api/payment/webhook - Payment Kit webhook
 // Validates webhook signature via HMAC-SHA256 shared secret
 routes.post('/webhook', async (c) => {
+  let body: any;
+
   // Verify webhook signature in production
   const webhookSecret = c.env.PAYMENT_WEBHOOK_SECRET;
   if (c.env.ENVIRONMENT === 'production') {
@@ -60,32 +63,58 @@ routes.post('/webhook', async (c) => {
     if (signature !== expected) {
       return c.json({ error: 'Invalid signature' }, 401);
     }
-    // Re-parse body from raw text
-    const body = JSON.parse(rawBody);
-    if (body.event === 'payment.completed' && body.data) {
-      const db = c.get('db');
-      await grantCredits(db, body.data.userDid, body.data.amount, {
-        source: 'payment',
-        paymentId: body.data.paymentId,
-        description: `Payment: ${body.data.amount} credits`,
-      });
-      return c.json({ received: true });
-    }
-    return c.json({ received: true, ignored: true });
+    body = JSON.parse(rawBody);
+  } else {
+    body = await c.req.json();
   }
 
-  // Non-production: accept without signature
-  const body = await c.req.json<{
-    event: string;
-    data: { userDid: string; amount: number; paymentId: string };
-  }>();
+  const event = body.event as string;
+  const data = body.data;
+  if (!event || !data) return c.json({ received: true, ignored: true });
 
-  if (body.event === 'payment.completed' && body.data) {
+  const kv = c.env.AUTH_KV;
+
+  if (event === 'payment.completed' && data.userDid && data.amount) {
     const db = c.get('db');
-    await grantCredits(db, body.data.userDid, body.data.amount, {
+    await grantCredits(db, data.userDid, data.amount, {
       source: 'payment',
-      paymentId: body.data.paymentId,
-      description: `Payment: ${body.data.amount} credits`,
+      paymentId: data.paymentId,
+      description: `Payment: ${data.amount} credits`,
+    });
+    await addNotification(kv, data.userDid, buildCreditGrantedNotification({
+      amount: data.amount,
+    }));
+    return c.json({ received: true });
+  }
+
+  // For Payment Kit events, resolve the user DID from customer object or nested fields.
+  // Payment Kit's customer_id is an internal ID (cus_xxx), not the user DID.
+  // The webhook payload may include customer.did or customer_did depending on event type.
+  const resolveUserDid = (): string | null =>
+    data.customer?.did || data.customer_did || data.userDid || null;
+
+  if (event === 'customer.credit_grant.granted') {
+    const userDid = resolveUserDid();
+    if (!userDid) return c.json({ received: true, ignored: true, reason: 'no user DID' });
+    const amount = data.amount || data.credit_amount;
+    const isWelcome = data.metadata?.welcomeCredit === true;
+    if (amount) {
+      await addNotification(kv, userDid, buildCreditGrantedNotification({
+        amount,
+        isWelcome,
+      }));
+    }
+    return c.json({ received: true });
+  }
+
+  if (event === 'checkout.session.completed') {
+    const userDid = resolveUserDid();
+    if (!userDid) return c.json({ received: true, ignored: true, reason: 'no user DID' });
+    await addNotification(kv, userDid, {
+      type: 'payment_completed',
+      title: 'Payment successful',
+      message: 'Your payment has been processed. Credits will be added shortly.',
+      link: '/credit-usage',
     });
     return c.json({ received: true });
   }
