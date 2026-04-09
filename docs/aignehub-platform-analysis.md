@@ -1,51 +1,14 @@
-# AI 模型平台竞品分析报告
+# 外部模型平台调研报告
 
-> 生成日期：2026-04-09
-> 背景：基于 AIGNE Daily Sync 会议讨论，针对 Vertex AI、OpenRouter、Hugging Face 及其他主流平台进行深度对标分析
+> 2026-04-09 · 针对主流 AI 模型聚合平台和云服务商的能力对标，为 AIGNE Hub 重构方案（[`aignehub-refactor-plan.md`](./aignehub-refactor-plan.md)）和 Model Selector 方案（[`aignehub-model-selector-plan.md`](./aignehub-model-selector-plan.md)）提供依据。
 
----
+调研对象：Google Vertex AI、OpenRouter、Hugging Face、AWS Bedrock、Together AI、Fireworks AI、Groq、DeepInfra、Replicate。
 
-## 一、AIGNE Hub 现状概览
-
-### 架构
-
-AIGNE Hub 是基于 Blocklet 的 Node.js/Express 后端 + React 前端应用，核心代码位于 `blocklets/core`。
-
-**请求链路**：
-```
-用户请求 → Express API (/v1 或 /v2)
-  → resolveProviderMiddleware（解析 provider + model）
-  → 凭证获取 + 轮转
-  → 转发到上游 provider
-  → 用量记录 + 计费扣减
-  → 返回响应
-```
-
-### 当前能力
-
-| 维度 | 现状 |
-|------|------|
-| 支持 Provider | 11 个（openai, anthropic, bedrock, deepseek, google, ollama, openrouter, xai, doubao, poe, ideogram） |
-| 模型数量 | 取决于手动配置，实际可用约 20-30 个 |
-| API 兼容性 | V1 兼容 OpenAI 格式，V2 为 AIGNE 原生格式 |
-| 定价管理 | DB 存储 + LiteLLM 数据源 + 每 6 小时自动同步 |
-| 计费方式 | 基于 credit 的按用户计费（支持 USD 和自定义单位） |
-| 凭证管理 | 加密存储，支持多凭证轮转和故障追踪 |
-| 模型选择 | 基于 provider 优先级的简单轮转，无智能选择 |
-| 模型元数据 | 从 LiteLLM 获取基础信息（max_tokens, features），24h 缓存 |
-
-### Provider 优先级分层
-
-```
-Tier 1（直连）: openai, anthropic, google, deepseek, xai, doubao  → rank 1
-Tier 2（官方）: bedrock                                           → rank 2
-Tier 3（第三方）: openrouter, poe                                  → rank 3
-Tier 4（本地）: ollama                                            → rank 4
-```
+关注维度：模型数量、API 统一性、定价 API、按用户计费能力、模型上线自动化、路由与回退、元数据完整度。
 
 ---
 
-## 二、竞品平台深度分析
+## 一、平台深度分析
 
 ### 1. Google Vertex AI
 
@@ -313,7 +276,7 @@ Tier 4（本地）: ollama                                            → rank 4
 
 ---
 
-## 三、全景对比矩阵
+## 二、全景对比矩阵
 
 ### 核心能力对比
 
@@ -344,32 +307,42 @@ Tier 4（本地）: ollama                                            → rank 4
 
 ---
 
-## 四、关键洞察
+## 三、行业观察
 
-### 1. AIGNE Hub 的独特价值
+### 按用户计费是稀缺能力
 
-在所有竞品中，**按用户计费**是 AIGNE Hub 唯一真正差异化的核心能力。OpenRouter 虽然是最接近的竞品，但它的计费模型是"让用户用自己的账户"，而非"平台方代收代付"。Vertex AI 和 Bedrock 都不提供按终端用户计费的能力。
+调研的所有平台中，只有 AWS Bedrock 通过 IAM + Cost Allocation Tags 间接支持按终端用户成本分摊。OpenRouter 的 OAuth PKCE 模式让用户用自己的账户使用 OpenRouter，但这是"让用户自己付钱"而非"平台方代收代付"，对需要提供统一用户体验的应用并不适用。
 
-### 2. OpenRouter 是最值得学习的模型
+Vertex AI 和 Bedrock 都要求应用层自行实现用量追踪和计费逻辑。Together AI、Fireworks、Groq、DeepInfra、Replicate 均不提供任何按用户计费的原生机制。
 
-OpenRouter 的商业模式和技术架构与 AIGNE Hub 最相似，但做得更成熟：
-- **模型元数据 API**：公开、免费、实时更新——AIGNE Hub 可直接消费此 API
-- **零加价**：推理按供应商原价，平台费在充值环节收取
-- **智能路由**：多维度路由策略（价格/延迟/吞吐量/稳定性）
+这意味着"按终端用户授权计费"在当前的模型聚合/云服务市场上是一个真实的空白。
 
-### 3. 自动化是行业趋势
+### OpenAI API 兼容已成行业标准
 
-没有任何成功平台依赖人工逐个配置模型。模型上架方式的行业标准是：
-- **OpenRouter**：与实验室合作 + 自动化流程
-- **HuggingFace**：社区上传即可用
-- **LiteLLM**（开源）：社区维护的模型定价数据库
+Together AI、Fireworks AI、Groq、DeepInfra、OpenRouter 全部完全兼容 OpenAI Chat Completions API 格式，用户只需修改 base URL 即可迁移。Vertex AI 为 Gemini 模型提供了 OpenAI 兼容端点。AWS Bedrock 在 2025 年开始在部分区域提供实验性的 OpenAI 兼容端点。
 
-### 4. AIGNE Hub 已有的正确基础
+任何新的模型聚合层如果不兼容 OpenAI 格式，集成成本会显著高于竞品。
 
-- 已经接入 LiteLLM 数据源进行模型元数据和定价同步
-- 已经有 6 小时自动定价同步机制
-- 已经有 OpenRouter 定价数据作为参考源
-- 已经有凭证轮转和故障追踪
-- 已经有完整的 Usage tracking 和 Credit 计费体系
+### 模型上架全面自动化
 
-问题不在于架构方向，而在于**自动化程度不够、模型覆盖面小、运维成本高**。
+成功的平台都不依赖人工逐个配置模型。主流模式有三类：
+
+- **Hub 与实验室合作 + 自动化流水线**（OpenRouter）——新模型通常在发布当天上线
+- **社区自助上传**（HuggingFace、Replicate）——零门槛
+- **社区维护的元数据数据库**（LiteLLM）——作为数据源被广泛引用
+
+AIGNE Hub 当前的人工配置模式（确认 provider 支持 → 配置凭证 → 配置定价 → 测试可用性）是一个 O(n) 的人力流程，在每周数个新模型的行业节奏下已经不可持续。
+
+### 模型元数据 API 的缺失是行业痛点
+
+OpenRouter 的 `/api/v1/models` 是目前最好的模型元数据 API：公开、免费、实时、含多维度 pricing 和 supported parameters。这是其他平台都没有做到的事。
+
+Google Vertex AI 没有公开的定价 API，需要从 Cloud Billing Catalog API 手动映射到具体模型，或者从文档硬编码。AWS Bedrock 的定价信息散落在 SDK 和文档中。Hugging Face 的模型卡片是非结构化的 YAML + Markdown。
+
+这说明行业在"让模型可以被程序化地比较和选择"这件事上还非常早期，有空间去做更好的元数据聚合和 benchmark 服务（Cloud Arena 类第三方服务的兴起就是这个信号）。
+
+### 速度型平台正在硬件差异化
+
+Groq 通过自研 LPU 硬件在 Llama 等开源模型上达到 250-800 tokens/秒的吞吐，远高于 GPU 方案。Fireworks AI 通过 FireAttention 引擎和推测解码做软件优化。Together AI 用 vLLM 加自研优化做折衷。
+
+对于延迟敏感的场景（实时对话、交互式编码），这类平台的优势显著。聚合层如果要支持"按速度选模型"的 Policy，需要把这些平台的延迟和吞吐量化到 metadata 里。
