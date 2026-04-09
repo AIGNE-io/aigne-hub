@@ -1,0 +1,104 @@
+deployment:
+  env: "<required>"
+  cloudflare_account: "<required>"
+  mode: "full"
+
+repos:
+  aigne_hub_path: "/absolute/path/to/aigne-hub"
+  payment_kit_path: "/absolute/path/to/payment-kit"
+  aigne_hub_branch: "main"
+  payment_kit_branch: "main"
+
+services:
+  blocklet_service_name: "<required>"
+  payment_kit_service_name: "<required>"
+  hub_service_name: "<required>"
+  hub_base_url: "https://<required>"
+  payment_base_url: "https://<required>"
+
+hub_resources:
+  d1_name: "<required>"
+  d1_id: "<required>"
+  kv_name: "AUTH_KV"
+  kv_id: "<required>"
+  create_if_missing: false
+
+payment_resources:
+  d1_name: "<required>"
+  d1_id: "<required>"
+  kv_name: "<required>"
+  kv_id: "<required>"
+  create_if_missing: false
+
+hub_secrets:
+  app_sk: "<required>"
+  auth_secret: "<required>"
+  google_client_id: ""
+  google_client_secret: ""
+  github_client_id: ""
+  github_client_secret: ""
+  admin_emails: ""
+
+payment_secrets:
+  app_sk: "<required>"
+  app_pid: "<required_or_resolution_strategy>"
+  payment_livemode: false
+
+source_data:
+  hub_sqlite_path: "/absolute/path/to/aikit.db"
+  payment_sqlite_path: "/absolute/path/to/payment-kit.db"
+  source_host: ""
+  source_access_method: "local"
+  source_download_command: ""
+
+migration:
+  deploy_payment_first: true
+  hub_l1: true
+  hub_l2: true
+  hub_l3: false
+  hub_history_days: 90
+  migrate_ai_credentials: false
+  reconfigure_hub_credentials_manually: true
+  migrate_payment_customers: true
+  migrate_payment_currencies: true
+  migrate_payment_methods: true
+  migrate_payment_products_prices: true
+  migrate_payment_credit_grants: true
+  migrate_payment_meter_events: false
+  migrate_payment_subscriptions: false
+  migrate_payment_invoices: false
+  enable_credit_conversion_migration: false
+  base_credit_price: "1"
+
+memberships:
+  allow_ai_to_update_blocklet_memberships: false
+  payment_admins:
+    - user_did: "<required>"
+      role: "owner"
+  hub_admins:
+    - user_did: "<required>"
+      role: "owner"
+
+payment_config:
+  meter_name: "agent-hub-ai-meter-v2"
+  expected_currency_id: "<required_if_known>"
+  expected_currency_decimal: 10
+  expected_payment_link: ""
+  allow_ai_to_create_meter: true
+  allow_ai_to_create_product_price_link: true
+  write_link_to_hub_preferences: true
+
+validation:
+  verify_payment_health: true
+  verify_hub_health: true
+  verify_checkout_flow: true
+  verify_credit_topup_flow: true
+  verify_ai_usage_deduction: true
+  verify_migration_counts: true
+
+approvals:
+  allow_ai_to_run_wrangler_deploy: true
+  allow_ai_to_run_d1_imports: true
+  allow_ai_to_write_kv_preferences: true
+  allow_ai_to_modify_wrangler_configs: true
+  allow_ai_to_read_local_databases: true
