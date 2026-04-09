@@ -188,16 +188,17 @@ export function DateRangePicker({
 
   const renderContent = () => (
     <Box sx={{ p: isMobile ? 2.5 : 3 }}>
-      <Typography
-        variant="h6"
-        sx={{
-          mb: isMobile ? 1.25 : 2.5,
-          color: 'text.primary',
-          fontWeight: 600,
-          fontSize: isMobile ? '0.875rem' : '1rem',
-        }}>
-        {t('quickSelect')}
-      </Typography>
+      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: isMobile ? 1.25 : 2.5 }}>
+        <Typography
+          variant="h6"
+          sx={{
+            color: 'text.primary',
+            fontWeight: 600,
+            fontSize: isMobile ? '0.875rem' : '1rem',
+          }}>
+          {t('quickSelect')}
+        </Typography>
+      </Stack>
 
       <Box
         sx={{
@@ -329,16 +330,32 @@ export function DateRangePicker({
         sx={{
           justifyContent: 'space-between',
           minWidth: 200,
+          maxWidth: '100%',
           textTransform: 'none',
           bgcolor: 'background.paper',
           borderColor: 'divider',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          '& .MuiButton-startIcon, & .MuiButton-endIcon': {
+            flexShrink: 0,
+          },
           '&:hover': {
             borderColor: 'primary.main',
             bgcolor: 'action.hover',
           },
           ...sx,
         }}>
-        {formatDateRange()}
+        <Box
+          component="span"
+          sx={{
+            minWidth: 0,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}>
+          {formatDateRange()}
+        </Box>
       </Button>
 
       {isMobile ? (

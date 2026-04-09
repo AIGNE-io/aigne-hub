@@ -1,3 +1,120 @@
+## 0.9.13 (2026-3-19)
+
+- fix: copy pricing-core.mjs to dist during api build
+
+## 0.9.12 (2026-3-19)
+
+- fix: resolve TS2532/TS2345 type errors in provider-pricing-pages
+- feat(pricing-analyzer): support image/video pricing comparison, tiered cost display, and automated pricing analysis
+- fix(pricing-analyzer): unify drift formula and fix classification issues
+- feat: expose TTFB metrics in API, frontend charts, and call history (table + detail drawer)
+- feat: add TTFB monitoring and model rate history tracking
+- fix: pass provider baseURL and region to credential validation; improve debugging and performance monitoring
+- chore: remove duplicate pricing scripts, add helper scripts, and cleanup old skill file
+- chore: update .gitignore and add project-specific skill
+- feat: add model pricing analyzer skill with multi-unit and cache support
+- docs: add Payment Kit integration guide and implementation plan
+- feat: pause usage report and flush on startup (#529)
+
+## 0.9.11 (2026-3-13)
+
+- fix: use rounding instead of truncation for credit formatting
+- refactor: simplify flushPendingUsageReports startup call
+- feat: flush pending usage reports on startup
+- feat: add PAUSE_USAGE_REPORT env var to pause usage reporting
+
+## 0.9.10 (2026-3-11)
+
+- feat: add embedding model support to v2 API
+
+## 0.9.9 (2026-3-9)
+
+- fix: forward upstream API error status instead of always returning 500
+
+## 0.9.8 (2026-3-9)
+
+- chore: update aigne deps
+
+## 0.9.7 (2026-3-5)
+
+- chore: update aigne deps
+
+## 0.9.6 (2026-3-3)
+
+- fix: externalize all @aigne/* packages from compact bundle
+
+## 0.9.5 (2026-3-3)
+
+- fix: migrate from @aigne/core to @aigne/model-base
+
+## 0.9.4 (2026-2-27)
+
+- fix: pass testModel through credential create/update flow
+
+## 0.9.3 (2026-2-27)
+
+- fix: pass provider region to credential validation for Bedrock
+
+## 0.9.2 (2026-2-27)
+
+- feat: add credential test connection in form and fix doubao test model
+
+## 0.9.1 (2026-2-27)
+
+- fix: use maintained test models for credential validation
+
+## 0.9.0 (2026-2-26)
+
+- test: add v2 API integration tests and CI pipeline
+- feat: optimize v2 API request pipeline with fire-and-forget writes and LRU caching
+- feat: add benchmarks tools for performance tests
+
+## 0.8.5 (2026-2-6)
+
+- feat: use accessKeyId as appDid and enhance call detail metrics
+- chore: upgrade arcblock and blocklet dependencies
+
+## 0.8.4 (2026-2-4)
+
+- feat: update appDid handling and usage routes for improved clarity and functionality
+
+## 0.8.3 (2026-2-2)
+
+- feat: implement data retention
+
+## 0.8.2 (2026-2-2)
+
+- fix: should return 400 if request body invalid
+
+## 0.8.1 (2026-1-29)
+
+- feat: enhance project usage charts with comparison trends and improve data handling
+- feat: add type filtering and enhance project call history component
+
+## 0.8.0 (2026-1-26)
+
+- feat: add usage tracking and project analytics
+
+## 0.7.20 (2026-1-20)
+
+- fix(core): distinguish non-credential 403 errors from real credential failures
+
+## 0.7.19 (2026-1-17)
+
+- chore: upgrade aigne deps
+
+## 0.7.18 (2026-1-13)
+
+- chore: upgrade aigne deps
+
+## 0.7.17 (2026-1-12)
+
+- feat(core): optimize bundle size
+
+## 0.7.16 (2026-1-8)
+
+- feat(core): enhance status endpoint with detailed error handling
+
 ## 0.7.15 (2026-1-6)
 
 - chore: upgrade aigne deps

@@ -1,4 +1,5 @@
 import Usage from '@api/store/models/usage';
+import { blockletEnv } from '@blocklet/env';
 import config from '@blocklet/sdk/lib/config';
 import Joi from 'joi';
 
@@ -37,9 +38,31 @@ export const METER_UNIT = ENABLE_CREDIT_MIGRATION ? NEW_METER_UNIT : OLD_METER_U
 // Decimal places for credit calculations to avoid precision loss with small values
 export const CREDIT_DECIMAL_PLACES = 10;
 
-export const MODEL_CALL_STATS_CRON_TIME = process.env.MODEL_CALL_STATS_CRON_TIME || '0 1 * * * *'; // every hour at 1 minute past the hour
-export const CLEANUP_STALE_MODEL_CALLS_CRON_TIME = process.env.CLEANUP_STALE_MODEL_CALLS_CRON_TIME || '*/10 * * * *'; // every 10 minutes
+export const MODEL_CALL_STATS_CRON_TIME = process.env.MODEL_CALL_STATS_CRON_TIME || '0 1 * * * *'; // every hour at minute 01
+export const MODEL_CALL_MONTHLY_STATS_CRON_TIME = process.env.MODEL_CALL_MONTHLY_STATS_CRON_TIME || '0 10 1 1 * *'; // every month on day 1 at 01:10:00
 export const CHECK_MODEL_STATUS_CRON_TIME = process.env.CHECK_MODEL_STATUS_CRON_TIME || '0 0 0 * * *'; // every day at 00:00:00
+export const ARCHIVE_MODEL_DATA_CRON_TIME = process.env.ARCHIVE_MODEL_DATA_CRON_TIME || '0 0 2 * * *'; // every day at 02:00:00
+export const ENABLE_ARCHIVE_MODEL_DATA_CRON = process.env.ENABLE_ARCHIVE_MODEL_DATA_CRON !== 'false';
+export const RATE_SOURCE_DRIFT_THRESHOLD = +(process.env.RATE_SOURCE_DRIFT_THRESHOLD || 0.1);
+export const MODEL_RATE_CHECK_CRON_TIME = process.env.MODEL_RATE_CHECK_CRON_TIME || '0 30 */6 * * *';
+export const ENABLE_AUTO_RATE_UPDATE = process.env.ENABLE_AUTO_RATE_UPDATE === 'true';
+
+// Data retention period (months)
+export const RETENTION_MODEL_CALL_MONTHS = +(process.env.RETENTION_MODEL_CALL_MONTHS || 3);
+export const RETENTION_MODEL_CALL_STATS_MONTHS = +(process.env.RETENTION_MODEL_CALL_STATS_MONTHS || 6);
+export const RETENTION_USAGE_MONTHS = +(process.env.RETENTION_USAGE_MONTHS || 3);
+
+// Archive configuration
+export const ARCHIVE_RETENTION_QUARTERS = +(process.env.ARCHIVE_RETENTION_QUARTERS || 8);
+export const MIN_ARCHIVE_FREE_GB = +(process.env.MIN_ARCHIVE_FREE_GB || 2);
+
+export const BLOCKLET_APP_PID = blockletEnv.appPid;
+
+export function normalizeProjectAppDid(appDid?: string | null): string | null {
+  const trimmed = appDid?.trim();
+  if (trimmed && trimmed !== 'null') return trimmed;
+  return BLOCKLET_APP_PID || null;
+}
 
 export const MODEL_RATE_TYPE = {
   Text: 'text',
@@ -375,6 +398,10 @@ export const Config = {
     }
 
     return this._pricing;
+  },
+
+  get pauseUsageReport() {
+    return process.env.PAUSE_USAGE_REPORT === 'true' || process.env.PAUSE_USAGE_REPORT === '1';
   },
 
   get usageReportThrottleTime() {

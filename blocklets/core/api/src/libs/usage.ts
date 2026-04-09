@@ -1,5 +1,6 @@
+import { getCachedModelRates } from '@api/providers';
+import { getProviderWithCache } from '@api/providers/models';
 import AiModelRate from '@api/store/models/ai-model-rate';
-import AiProvider from '@api/store/models/ai-provider';
 import { CallType } from '@api/store/models/types';
 import Usage from '@api/store/models/usage';
 import { sequelize } from '@api/store/sequelize';
@@ -15,7 +16,8 @@ import { getModelNameWithProvider } from './ai-provider';
 import { wallet } from './auth';
 import { CREDIT_DECIMAL_PLACES, Config } from './env';
 import logger from './logger';
-import { createMeterEvent, getActiveSubscriptionOfApp, isPaymentRunning } from './payment';
+import shouldExecuteTask from './master-cluster';
+import { createMeterEvent, getActiveSubscriptionOfApp, invalidateCreditCache, isPaymentRunning } from './payment';
 
 export async function createAndReportUsage({
   type,
@@ -69,7 +71,7 @@ export async function createAndReportUsage({
   }
 }
 
-async function getModelRates(model: string): Promise<AiModelRate[]> {
+async function getModelRates(model: string, providerId?: string): Promise<AiModelRate[]> {
   if (!model) {
     throw new CustomError(400, 'Model is required');
   }
@@ -80,24 +82,17 @@ async function getModelRates(model: string): Promise<AiModelRate[]> {
     throw err;
   };
   const { providerName, modelName } = getModelNameWithProvider(model);
-  const where: { model?: string; providerId?: string } = {};
-  if (modelName) {
-    where.model = modelName;
-  }
-  if (providerName) {
-    const provider = await AiProvider.findOne({
-      where: {
-        name: providerName,
-      },
-    });
-    if (!provider) {
+
+  let resolvedProviderId = providerId;
+  if (!resolvedProviderId && providerName) {
+    const cachedProvider = await getProviderWithCache(providerName);
+    if (!cachedProvider) {
       return callback(new CustomError(404, `Provider ${providerName} not found`));
     }
-    where.providerId = provider!.id;
+    resolvedProviderId = cachedProvider.id;
   }
-  const modelRates = await AiModelRate.findAll({
-    where,
-  });
+
+  const modelRates = await getCachedModelRates(modelName, resolvedProviderId);
   if (modelRates.length === 0) {
     return callback(
       new CustomError(400, `Unsupported model ${modelName}${providerName ? ` for provider ${providerName}` : ''}`)
@@ -106,11 +101,11 @@ async function getModelRates(model: string): Promise<AiModelRate[]> {
   return modelRates;
 }
 
-async function getPrice(type: Usage['type'], model: string): Promise<AiModelRate | undefined> {
+async function getPrice(type: Usage['type'], model: string, providerId?: string): Promise<AiModelRate | undefined> {
   if (!model) {
     throw new CustomError(400, 'Model is required');
   }
-  const modelRates = await getModelRates(model);
+  const modelRates = await getModelRates(model, providerId);
   const { modelName } = getModelNameWithProvider(model);
   const price = modelRates.find((i) => i.type === type && i.model === modelName);
   return price;
@@ -145,6 +140,7 @@ export async function createAndReportUsageV2({
   appId = wallet.address,
   userDid,
   mediaDuration,
+  providerId,
 }: Required<Pick<Usage, 'type' | 'model'>> &
   Partial<
     Pick<
@@ -155,11 +151,12 @@ export async function createAndReportUsageV2({
     userDid: string;
     cacheCreationInputTokens?: number;
     cacheReadInputTokens?: number;
+    providerId?: string;
   }): Promise<number | undefined> {
   try {
     let usedCredits: number | undefined;
 
-    const price = await getPrice(type, model);
+    const price = await getPrice(type, model, providerId);
     if (price) {
       let creditsTotalBN = new BigNumber(0);
       if (type === 'imageGeneration') {
@@ -236,7 +233,15 @@ async function reportUsage({ appId }: { appId: string }) {
   tasks[appId] ??= throttle(
     async ({ appId }: { appId: string }) => {
       try {
-        if (!isPaymentRunning()) return;
+        if (Config.pauseUsageReport) {
+          logger.info('Usage report is paused by PAUSE_USAGE_REPORT, skipping', { appId });
+          return;
+        }
+
+        if (!isPaymentRunning()) {
+          logger.info('Payment is not running, skipping usage report', { appId });
+          return;
+        }
 
         const { pricing } = Config;
         if (!pricing) throw new CustomError(400, 'Missing required preference `pricing`');
@@ -302,6 +307,11 @@ async function reportUsageV2({ appId, userDid }: { appId: string; userDid: strin
 
 async function executeOriginalReportLogicWithProtection({ appId, userDid }: { appId: string; userDid: string }) {
   try {
+    if (Config.pauseUsageReport) {
+      logger.info('Usage report is paused by PAUSE_USAGE_REPORT, skipping', { appId, userDid });
+      return;
+    }
+
     if (!isPaymentRunning()) {
       logger.info('Payment is not running, skipping usage report', { appId, userDid });
       return;
@@ -450,6 +460,9 @@ async function executeOriginalReportLogicWithProtection({ appId, userDid }: { ap
           },
         }
       );
+
+      // Balance changed after meter event — invalidate cache so next request sees fresh balance
+      invalidateCreditCache(userDid);
     } catch (apiError) {
       // Reset entire range to null if API call fails, allowing retry
       await Usage.update(
@@ -496,6 +509,7 @@ export async function createUsageAndCompleteModelCall({
   creditBasedBillingEnabled = true,
   traceId,
   mediaDuration,
+  providerId,
 }: {
   req: Request;
   type: CallType;
@@ -513,12 +527,13 @@ export async function createUsageAndCompleteModelCall({
   creditBasedBillingEnabled?: boolean;
   traceId?: string;
   mediaDuration?: number;
+  providerId?: string;
 }): Promise<number | undefined> {
-  try {
-    let credits: number | undefined = 0;
+  let credits: number | undefined = 0;
 
-    // Only create usage record if credit-based billing is enabled
-    if (creditBasedBillingEnabled) {
+  // Usage.create stays synchronous — need the ID ordering to be stable
+  if (creditBasedBillingEnabled) {
+    try {
       credits = await createAndReportUsageV2({
         // @ts-ignore
         type,
@@ -532,18 +547,23 @@ export async function createUsageAndCompleteModelCall({
         appId,
         userDid,
         mediaDuration,
+        providerId,
       });
+    } catch (err) {
+      logger.error('Usage creation failed, ModelCall will still complete', { error: err });
     }
+  }
 
-    // Always complete ModelCall record regardless of billing mode
-    if (req.modelCallContext) {
-      const totalTokens = getTotalTokens({
-        inputTokens: promptTokens,
-        outputTokens: completionTokens,
-        cacheCreationInputTokens,
-        cacheReadInputTokens,
-      });
-      await req.modelCallContext.complete({
+  // ModelCall completion is fire-and-forget (already writes via ModelCall.create)
+  if (req.modelCallContext) {
+    const totalTokens = getTotalTokens({
+      inputTokens: promptTokens,
+      outputTokens: completionTokens,
+      cacheCreationInputTokens,
+      cacheReadInputTokens,
+    });
+    req.modelCallContext
+      .complete({
         promptTokens,
         completionTokens,
         numberOfImageGeneration,
@@ -562,32 +582,76 @@ export async function createUsageAndCompleteModelCall({
         },
         metadata,
         traceId,
+        ttfb: req.timings?.getAll()?.ttfb,
+        providerTtfb: req.timings?.getAll()?.providerTtfb,
+      })
+      .catch((err) => {
+        logger.error('Failed to complete model call record', { error: err });
       });
+  }
+
+  return credits;
+}
+
+/**
+ * Flush all pending (unreported) usage records on startup.
+ * - Only runs on the master cluster instance to avoid duplicate processing.
+ * - Only processes records created more than 1 minute ago to avoid racing with in-flight requests.
+ * - Reuses executeOriginalReportLogicWithProtection which has atomic claim logic built-in.
+ */
+export async function flushPendingUsageReports() {
+  if (!shouldExecuteTask('flushPendingUsageReports')) {
+    logger.info('Skipping flushPendingUsageReports: not master cluster');
+    return;
+  }
+
+  if (Config.pauseUsageReport) {
+    logger.info('flushPendingUsageReports: skipped because PAUSE_USAGE_REPORT is enabled');
+    return;
+  }
+
+  if (!isPaymentRunning()) {
+    logger.info('flushPendingUsageReports: skipped because payment is not running');
+    return;
+  }
+
+  try {
+    const oneMinuteAgo = new Date(Date.now() - 60000);
+
+    // Find all distinct (appId, userDid) pairs that have unreported usage older than 1 minute
+    const pendingGroups = (await Usage.findAll({
+      attributes: ['appId', 'userDid'],
+      where: {
+        usageReportStatus: null,
+        createdAt: { [Op.lt]: oneMinuteAgo },
+      },
+      group: ['appId', 'userDid'],
+      raw: true,
+    })) as unknown as { appId: string; userDid: string }[];
+
+    if (pendingGroups.length === 0) {
+      logger.info('flushPendingUsageReports: no pending usage records found');
+      return;
     }
 
-    return credits;
+    logger.info('flushPendingUsageReports: found pending groups', { count: pendingGroups.length });
+
+    // Process groups sequentially to avoid overwhelming payment API
+    // eslint-disable-next-line no-restricted-syntax
+    for (const { appId, userDid } of pendingGroups) {
+      if (!appId || !userDid) continue;
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        await executeOriginalReportLogicWithProtection({ appId, userDid });
+        logger.info('flushPendingUsageReports: reported for group', { appId, userDid });
+      } catch (error) {
+        logger.error('flushPendingUsageReports: failed for group', { appId, userDid, error });
+      }
+    }
+
+    logger.info('flushPendingUsageReports: completed');
   } catch (error) {
-    logger.error('Error in createUsageAndCompleteModelCall', { error });
-
-    // Always mark ModelCall as failed regardless of billing mode
-    if (req.modelCallContext) {
-      await req.modelCallContext.fail(error.message || 'Failed to create usage record', {
-        promptTokens,
-        completionTokens,
-        numberOfImageGeneration,
-        usageMetrics: {
-          inputTokens: promptTokens,
-          outputTokens: completionTokens,
-          cacheCreationInputTokens,
-          cacheReadInputTokens,
-          numberOfImageGeneration,
-          ...additionalMetrics,
-        },
-        metadata,
-      });
-    }
-
-    throw error;
+    logger.error('flushPendingUsageReports: unexpected error', { error });
   }
 }
 

@@ -1,7 +1,7 @@
 {
   "name": "ai-kit",
   "private": true,
-  "version": "0.7.15",
+  "version": "0.9.13",
   "workspaces": [
     "blocklets/*",
     "packages/*"
@@ -64,11 +64,9 @@
     "zx": "^8.1.4"
   },
   "resolutions": {
-    "@aigne/aigne-hub": "^0.10.16-beta.15",
-    "@aigne/core": "^1.72.0-beta.11",
-    "@aigne/observability-api": "^0.11.14-beta.1",
-    "@aigne/openai": "^0.16.16-beta.11",
-    "@aigne/transport": "^0.15.25-beta.13",
+    "@aigne/aigne-hub": "^1.74.0-beta.9",
+    "@aigne/observability-api": "^1.21.0-beta.8",
+    "@aigne/openai": "^1.74.0-beta.9",
     "@arcblock/did": "1.27.16",
     "@arcblock/did-connect-js": "1.27.16",
     "@arcblock/did-ext": "1.27.16",
@@ -77,10 +75,10 @@
     "@arcblock/jwt": "1.27.16",
     "@arcblock/validator": "1.27.16",
     "@arcblock/ws": "1.27.16",
-    "@blocklet/constant": "^1.17.7",
-    "@blocklet/js-sdk": "^1.17.7",
-    "@blocklet/logger": "^1.17.7",
-    "@blocklet/sdk": "^1.17.7",
+    "@blocklet/constant": "^1.17.8",
+    "@blocklet/js-sdk": "^1.17.8",
+    "@blocklet/logger": "^1.17.8",
+    "@blocklet/sdk": "^1.17.8",
     "@ocap/asset": "1.27.16",
     "@ocap/client": "1.27.16",
     "@ocap/types": "1.27.16",

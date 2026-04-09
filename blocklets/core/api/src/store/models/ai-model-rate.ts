@@ -49,6 +49,12 @@ export default class AiModelRate extends Model<InferAttributes<AiModelRate>, Inf
 
   declare modelMetadata?: ModelMetadata;
 
+  declare deprecated: CreationOptional<boolean>;
+
+  declare deprecatedAt: Date | null;
+
+  declare deprecatedReason: string | null;
+
   public static readonly GENESIS_ATTRIBUTES = {
     id: {
       type: DataTypes.STRING,
@@ -106,6 +112,19 @@ export default class AiModelRate extends Model<InferAttributes<AiModelRate>, Inf
       type: DataTypes.JSON,
       allowNull: true,
     },
+    deprecated: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    deprecatedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    deprecatedReason: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+    },
   };
 
   // Association method
@@ -146,6 +165,8 @@ export default class AiModelRate extends Model<InferAttributes<AiModelRate>, Inf
 
 AiModelRate.init(AiModelRate.GENESIS_ATTRIBUTES, {
   sequelize,
+  // Cache invalidation hooks are registered by providers/model-rate-cache.ts
+  // to avoid circular dependency (model ↔ cache).
   // Use getterMethods to avoid scientific notation (e.g., 8e-8) in JSON response
   getterMethods: {
     inputRate() {

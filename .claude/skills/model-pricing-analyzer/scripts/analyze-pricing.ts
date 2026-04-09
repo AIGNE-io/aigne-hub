@@ -1,0 +1,302 @@
+#!/usr/bin/env npx ts-node
+/**
+ * Model Pricing Analyzer — CLI Entry Point
+ *
+ * Fetches current model rates from AIGNE Hub API and compares them
+ * against LiteLLM, OpenRouter, and official pricing data.
+ *
+ * By default, fetches official pricing from the pre-built remote catalog
+ * (blocklet/model-pricing-data). Use --scrape to fall back to direct scraping.
+ *
+ * Usage:
+ *   npx ts-node scripts/analyze-pricing.ts [options]
+ *
+ * Options:
+ *   --env <env>         Environment: local, staging, production
+ *   --hub-url <url>     Hub API base URL (overrides env default)
+ *   --threshold <n>     Drift threshold as decimal (default: 0.1 = 10%)
+ *   --json              Output as JSON instead of table
+ *   --token <token>     Auth token (only needed for write operations, read is public)
+ *   --no-scrape         Skip official pricing fetch entirely, use existing cache
+ *   --remote [url]      Use remote pre-built pricing catalog (default)
+ *   --scrape            Scrape provider pages directly instead of using remote catalog
+ *
+ * Examples:
+ *   pnpm tsx scripts/analyze-pricing.ts --env staging
+ *   pnpm tsx scripts/analyze-pricing.ts --env production --json
+ *   pnpm tsx scripts/analyze-pricing.ts --env staging --scrape
+ *   pnpm tsx scripts/analyze-pricing.ts --env staging --no-scrape
+ */
+
+import { execFile } from 'child_process';
+import fs from 'fs/promises';
+import os from 'os';
+import path from 'path';
+import { promisify } from 'util';
+
+import { compare, printTable } from './compare';
+import { findUnmatchedOfficialModels as _findUnmatched } from './core/pricing-core.mjs';
+import {
+  fetchDbRates,
+  fetchLiteLLM,
+  fetchOpenRouter,
+  fetchRemoteOfficialPricing,
+  loadOfficialPricingCache,
+} from './fetch-sources';
+import type { OfficialPricingEntry } from './pricing-schema';
+
+/** Unmatched model entry enriched with LiteLLM cross-reference data */
+interface UnmatchedModelEntry extends OfficialPricingEntry {
+  litellmInput?: number;
+  litellmOutput?: number;
+  litellmCacheWrite?: number;
+  litellmCacheRead?: number;
+}
+
+const findUnmatchedOfficialModels = _findUnmatched as (
+  dbRates: any[],
+  officialCache: Map<string, OfficialPricingEntry>,
+  litellm: Map<string, any>
+) => UnmatchedModelEntry[];
+
+const execFileAsync = promisify(execFile);
+
+interface CliOptions {
+  env?: string;
+  hubUrl: string;
+  threshold: number;
+  json: boolean;
+  token?: string;
+  noScrape: boolean;
+  remote?: string;
+  scrape: boolean;
+}
+
+const ENV_URLS: Record<string, string> = {
+  local: '', // Must be provided via --hub-url (dynamic DID address)
+  staging: 'https://staging-hub.aigne.io',
+  production: 'https://hub.aigne.io',
+};
+
+async function loadStoredToken(env: string, hubUrl: string): Promise<string | null> {
+  try {
+    const storeFile = path.join(os.homedir(), '.aigne-hub', 'credentials.json');
+    const data = await fs.readFile(storeFile, 'utf-8');
+    const creds = JSON.parse(data);
+    const envKey = `${env}:${hubUrl}`;
+    return creds[envKey]?.token || null;
+  } catch (error) {
+    return null;
+  }
+}
+
+async function parseArgs(): Promise<CliOptions> {
+  const args = process.argv.slice(2);
+  const opts: CliOptions = {
+    hubUrl: process.env.HUB_URL || 'http://localhost:8090',
+    threshold: 0.1,
+    json: false,
+    noScrape: false,
+    scrape: false,
+    remote: 'https://raw.githubusercontent.com/blocklet/model-pricing-data/main/data/pricing.json',
+  };
+
+  for (let i = 0; i < args.length; i++) {
+    switch (args[i]) {
+      case '--env':
+        opts.env = args[++i];
+        break;
+      case '--hub-url':
+        opts.hubUrl = args[++i] || opts.hubUrl;
+        break;
+      case '--threshold':
+        opts.threshold = parseFloat(args[++i] || '0.1');
+        break;
+      case '--json':
+        opts.json = true;
+        break;
+      case '--token':
+        opts.token = args[++i];
+        break;
+      case '--no-scrape':
+        opts.noScrape = true;
+        break;
+      case '--remote': {
+        const next = args[i + 1];
+        if (next && !next.startsWith('--')) {
+          opts.remote = args[++i];
+        } else {
+          opts.remote = 'https://raw.githubusercontent.com/blocklet/model-pricing-data/main/data/pricing.json';
+        }
+        break;
+      }
+      case '--scrape':
+        opts.scrape = true;
+        opts.remote = undefined;
+        break;
+    }
+  }
+
+  // Apply environment defaults
+  if (opts.env && ENV_URLS[opts.env] && !args.includes('--hub-url')) {
+    opts.hubUrl = ENV_URLS[opts.env];
+  }
+
+  // Auto-load token from credentials store if env specified
+  // Note: model-rates API is publicly readable, token only needed for write operations (bulk-rate-update)
+  if (opts.env && !opts.token) {
+    const storedToken = await loadStoredToken(opts.env, opts.hubUrl);
+    if (storedToken) {
+      opts.token = storedToken;
+      console.error(`✅ Using stored credentials for ${opts.env}`);
+    }
+  }
+
+  return opts;
+}
+
+async function refreshOfficialPricing(log: (...args: any[]) => void, remoteUrl?: string): Promise<void> {
+  const scriptDir = new URL('.', import.meta.url).pathname;
+  const catalogScript = path.join(scriptDir, 'official-pricing-catalog.mjs');
+
+  const catalogArgs = ['--cache'];
+  if (remoteUrl) {
+    catalogArgs.push('--remote', remoteUrl);
+    log('🔄 Fetching official pricing from remote catalog...');
+  } else {
+    log('🔄 Scraping real-time official pricing data...');
+  }
+  try {
+    const { stderr } = await execFileAsync('node', [catalogScript, ...catalogArgs], {
+      timeout: 120000,
+    });
+    if (stderr) {
+      for (const line of stderr.split('\n').filter(Boolean)) {
+        log(`  ${line}`);
+      }
+    }
+  } catch (err: any) {
+    // execFile rejects on non-zero exit, but stderr may still contain useful output
+    if (err.stderr) {
+      for (const line of err.stderr.split('\n').filter(Boolean)) {
+        log(`  ${line}`);
+      }
+    }
+    console.error(`⚠️  Official pricing scrape had issues: ${err.message}`);
+  }
+}
+
+async function askGenerateHtml(): Promise<boolean> {
+  const readline = await import('readline');
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  return new Promise((resolve) => {
+    rl.question('\n📊 Generate HTML report? (y/N): ', (answer) => {
+      rl.close();
+      resolve(answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes');
+    });
+  });
+}
+
+async function main(): Promise<void> {
+  const opts = await parseArgs();
+  // Use stderr for info logs so --json output stays clean on stdout
+  const log = opts.json ? console.error.bind(console) : console.log.bind(console);
+  log(`AIGNE Hub Pricing Analyzer`);
+  log(`Hub URL: ${opts.hubUrl}`);
+  log(`Threshold: ${(opts.threshold * 100).toFixed(0)}%\n`);
+
+  // 1. Fetch ALL data sources in parallel
+  // When remote URL is set (default), fetch official pricing directly without subprocess
+  const officialPromise: Promise<Map<string, any> | null> = opts.noScrape
+    ? loadOfficialPricingCache()
+    : opts.remote
+      ? fetchRemoteOfficialPricing(opts.remote).then((map) => {
+          if (map)
+            log(
+              `✅ Official pricing: ${new Set([...map.keys()].filter((k) => !k.includes('::'))).size} models from remote catalog`
+            );
+          return map;
+        })
+      : refreshOfficialPricing(log).then(() => loadOfficialPricingCache());
+
+  const [officialCache, dbRates, litellm, openrouter] = await Promise.all([
+    officialPromise,
+    fetchDbRates(opts.hubUrl, opts.token),
+    fetchLiteLLM(),
+    fetchOpenRouter(),
+  ]);
+
+  if (!officialCache) {
+    console.error('⚠️  Official pricing data unavailable.');
+    if (opts.noScrape) {
+      console.error('   Hint: remove --no-scrape to auto-fetch official pricing.');
+    }
+  }
+
+  if (dbRates.length === 0) {
+    console.error('No DB rates found. Check Hub URL and authentication.');
+    process.exit(1);
+  }
+
+  log(`Fetched ${dbRates.length} rates from DB\n`);
+
+  // 3. Compare
+  const providerPages = officialCache ?? new Map();
+  const results = compare(dbRates, litellm, openrouter, providerPages, opts.threshold);
+
+  // 4. Find unmatched official models (reverse lookup, requires both official + LiteLLM confirmation)
+  const unmatchedModels = providerPages.size > 0 ? findUnmatchedOfficialModels(dbRates, providerPages, litellm) : [];
+  if (unmatchedModels.length > 0) {
+    log(`📋 官方未录入模型: ${unmatchedModels.length} 个`);
+  }
+
+  // 5. Output
+  const fullOutput = { results, unmatchedModels };
+  if (opts.json) {
+    console.log(JSON.stringify(fullOutput, null, 2));
+  } else {
+    printTable(results, opts.threshold);
+
+    // Ask if user wants to generate HTML report
+    const shouldGenerateHtml = await askGenerateHtml();
+    if (shouldGenerateHtml) {
+      const { execSync } = await import('child_process');
+      const scriptDir = new URL('.', import.meta.url).pathname;
+      const outputDir = path.join(scriptDir, '..', 'output');
+      await fs.mkdir(outputDir, { recursive: true });
+      const outputFile = path.join(outputDir, `pricing-report-${opts.env || 'local'}.html`);
+
+      // Save analysis JSON for reference (CLI output, not needed by HTML generator)
+      const tempFile = path.join(outputDir, 'pricing-analysis.json');
+      await fs.writeFile(tempFile, JSON.stringify(fullOutput, null, 2));
+
+      // Generate self-contained HTML report (fetches data at runtime)
+      const reportScript = path.join(scriptDir, 'generate-html-report.mjs');
+      const officialPricingPath = path.join(outputDir, 'aigne-official-pricing-all.json');
+
+      try {
+        console.log('\n📝 Generating HTML report...');
+        execSync(`node "${reportScript}" "${outputFile}" "${opts.hubUrl}" "${officialPricingPath}"`, {
+          stdio: 'inherit',
+        });
+
+        // Open in browser
+        console.log('\n🌐 Opening report in browser...');
+        const openCommand =
+          process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start' : 'xdg-open';
+        execSync(`${openCommand} "${outputFile}"`);
+      } catch (err) {
+        console.error('Failed to generate HTML report:', err);
+      }
+    }
+  }
+}
+
+main().catch((err) => {
+  console.error('Fatal error:', err);
+  process.exit(1);
+});

@@ -13,11 +13,7 @@ export interface ModelStats {
     displayName: string;
   };
   model: string;
-  type: string;
-  totalUsage: number;
   totalCalls: number;
-  totalCredits: number;
-  successRate: number;
 }
 
 interface ModelUsageStatsProps {
@@ -43,12 +39,12 @@ export function ModelUsageStats({
     <>
       {title && (
         <Box sx={{ mb: { xs: 2, sm: 3 } }}>
-          <Typography variant="h3" sx={{ fontWeight: 'bold' }}>
+          <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
             {title}
           </Typography>
           {subtitle && (
             <Typography
-              variant="body1"
+              variant="body2"
               sx={{
                 color: 'text.secondary',
                 mb: 1,
@@ -64,7 +60,7 @@ export function ModelUsageStats({
       ) : (
         <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
           <Stack spacing={1.5} sx={{ flex: 1, mb: 2 }}>
-            {displayStats.map((model, index) => {
+            {displayStats.map((model) => {
               return (
                 <Stack
                   key={`${model.providerId}-${model.model}`}
@@ -81,24 +77,6 @@ export function ModelUsageStats({
                       alignItems: 'center',
                       flex: 1,
                     }}>
-                    <Typography
-                      variant="body1"
-                      sx={{
-                        fontWeight: 'bold',
-                        color: 'text.secondary',
-                        minWidth: 20,
-                        p: 1,
-                        textAlign: 'center',
-                        backgroundColor: 'grey.100',
-                        borderRadius: '50%',
-                        height: 24,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}>
-                      {index + 1}
-                    </Typography>
-
                     {/* 头像 */}
                     <Avatar
                       src={joinURL(getPrefix(), `/logo/${model.provider.name}.png`)}

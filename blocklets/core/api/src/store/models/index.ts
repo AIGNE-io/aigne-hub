@@ -2,8 +2,10 @@ import AiCredential from './ai-credential';
 import AiModelRate from './ai-model-rate';
 import AiProvider from './ai-provider';
 import App from './app';
+import ArchiveExecutionLog from './archive-execution-log';
 import ModelCall from './model-call';
 import ModelCallStat from './model-call-stat';
+import Project from './project';
 import Usage from './usage';
 
 const models = {
@@ -11,12 +13,14 @@ const models = {
   AiModelRate,
   AiProvider,
   App,
+  ArchiveExecutionLog,
   ModelCall,
   ModelCallStat,
+  Project,
   Usage,
 };
 
-// 初始化模型关联
+// Initialize model associations
 export function initialize(sequelize: any) {
   Object.values(models).forEach((model) => {
     if ('initialize' in model) {

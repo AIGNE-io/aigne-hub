@@ -11,13 +11,7 @@ import {
 } from '@api/libs/payment';
 import { ensureAdmin } from '@api/libs/security';
 import { formatToShortUrl } from '@api/libs/url';
-import {
-  generateHourRangeFromTimestamps,
-  getAppName,
-  getTrendComparisonOptimized,
-  getUsageStatsHourlyOptimized,
-  getUsageStatsHourlyOptimizedAdmin,
-} from '@api/libs/user';
+import { getAppName } from '@api/libs/user';
 import ModelCall from '@api/store/models/model-call';
 import ModelCallStat from '@api/store/models/model-call-stat';
 import { isValid as isValidDid } from '@arcblock/did';
@@ -29,6 +23,7 @@ import { fromUnitToToken } from '@ocap/util';
 import { Router } from 'express';
 import Joi from 'joi';
 import { pick } from 'lodash';
+import pAll from 'p-all';
 import { Op } from 'sequelize';
 import { joinURL, withQuery } from 'ufo';
 
@@ -75,12 +70,15 @@ export interface ModelCallsQuery {
   startTime?: string;
   endTime?: string;
   search?: string;
+  searchFields?: string;
   status?: 'success' | 'failed' | 'all';
   model?: string;
+  type?: string;
   providerId?: string;
   appDid?: string;
   allUsers?: boolean;
   locale?: string;
+  minDurationSeconds?: number;
 }
 
 const modelCallsSchema = Joi.object<ModelCallsQuery>({
@@ -89,12 +87,15 @@ const modelCallsSchema = Joi.object<ModelCallsQuery>({
   startTime: Joi.string().pattern(/^\d+$/).empty([null, '']),
   endTime: Joi.string().pattern(/^\d+$/).empty([null, '']),
   search: Joi.string().max(100).empty([null, '']),
+  searchFields: Joi.string().max(200).empty([null, '']),
   status: Joi.string().valid('success', 'failed', 'all').empty([null, '']),
   model: Joi.string().max(100).empty([null, '']),
+  type: Joi.string().max(100).empty([null, '']),
   providerId: Joi.string().max(100).empty([null, '']),
   appDid: Joi.string().optional().empty([null, '']),
   allUsers: Joi.boolean().optional().empty([null, '']),
   locale: Joi.string().optional().empty([null, '']),
+  minDurationSeconds: Joi.number().min(0).empty([null, '']),
 });
 
 const headerMap: Record<string, { en: string; zh: string }> = {
@@ -130,6 +131,14 @@ const usageStatsSchema = Joi.object<UsageStatsQuery>({
     .pattern(/^-?\d+$/)
     .optional()
     .empty([null, '']),
+});
+
+interface BatchUserInfoBody {
+  userDids: string[];
+}
+
+const batchUserInfoSchema = Joi.object<BatchUserInfoBody>({
+  userDids: Joi.array().items(Joi.string().max(200)).min(1).max(200).required(),
 });
 
 router.get('/credit/grants', user, async (req, res) => {
@@ -275,6 +284,7 @@ router.get('/info', user, async (req, res) => {
       currency: meter.paymentCurrency,
       enableCredit: true,
       profileLink: shortProfileLink,
+      creditPrefix: config.env.preferences?.creditPrefix || '',
     });
   }
 
@@ -287,7 +297,34 @@ router.get('/info', user, async (req, res) => {
     paymentLink: null,
     enableCredit: false,
     profileLink: shortProfileLink,
+    creditPrefix: config.env.preferences?.creditPrefix || '',
   });
+});
+
+router.post('/admin/user-info', user, ensureAdmin, async (req, res) => {
+  try {
+    const { userDids } = await batchUserInfoSchema.validateAsync(req.body, { stripUnknown: true });
+    const uniqueUserDids = [...new Set(userDids.filter(Boolean))];
+    const users = await pAll(
+      uniqueUserDids.map((userDid) => async () => {
+        try {
+          const { user } = await blocklet.getUser(userDid);
+          if (user) {
+            user.avatar = user.avatar?.startsWith('/') ? joinURL(config.env.appUrl, user.avatar) : user.avatar;
+            return pick(user, ['did', 'fullName', 'email', 'avatar']);
+          }
+          return { did: userDid, fullName: 'Unknown User', email: '' };
+        } catch (error) {
+          return { did: userDid, fullName: 'Unknown User', email: '' };
+        }
+      }),
+      { concurrency: 5, stopOnError: false }
+    );
+
+    return res.json({ users });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
 });
 
 router.get(
@@ -313,11 +350,14 @@ router.get(
         startTime,
         endTime,
         search,
+        searchFields,
         status,
         model,
+        type,
         providerId,
         appDid,
         allUsers,
+        minDurationSeconds,
       } = await modelCallsSchema.validateAsync(req.query, { stripUnknown: true });
 
       const userDid = req.user?.did;
@@ -334,10 +374,13 @@ router.get(
         limit: pageSize,
         offset,
         search,
+        searchFields,
         status,
         model,
+        type,
         providerId,
         appDid,
+        minDurationSeconds,
       });
 
       const uniqueAppDids = [
@@ -350,8 +393,13 @@ router.get(
 
       await Promise.all([
         ...uniqueAppDids.map(async (appDid) => {
-          const data = await getAppName(appDid);
-          appNameMap.set(appDid, data);
+          try {
+            const data = await getAppName(appDid);
+            appNameMap.set(appDid, data);
+          } catch (error) {
+            // Fallback to appDid if getAppName fails
+            appNameMap.set(appDid, { appDid, appName: appDid, appLogo: '', appUrl: '' });
+          }
         }),
         ...uniqueUserDids.map(async (userDid) => {
           try {
@@ -368,6 +416,12 @@ router.get(
 
       const list = calls.list.map((call) => {
         const result: any = { ...call.dataValues };
+        if (result.duration !== undefined && result.duration !== null) {
+          result.duration = Number(result.duration);
+        }
+        if (result.ttfb !== undefined && result.ttfb !== null) {
+          result.ttfb = Number(result.ttfb);
+        }
 
         if (call.appDid && isValidDid(call.appDid)) {
           result.appInfo = appNameMap.get(call.appDid);
@@ -406,8 +460,20 @@ router.get(
   },
   async (req, res) => {
     try {
-      const { startTime, endTime, search, status, model, providerId, appDid, allUsers, locale } =
-        await modelCallsSchema.validateAsync(req.query, { stripUnknown: true });
+      const {
+        startTime,
+        endTime,
+        search,
+        searchFields,
+        status,
+        model,
+        type,
+        providerId,
+        appDid,
+        allUsers,
+        locale,
+        minDurationSeconds,
+      } = await modelCallsSchema.validateAsync(req.query, { stripUnknown: true });
 
       const userDid = req.user?.did;
       if (!userDid) {
@@ -421,10 +487,13 @@ router.get(
         limit: 10000,
         offset: 0,
         search,
+        searchFields,
         status,
         model,
+        type,
         providerId,
         appDid,
+        minDurationSeconds,
       });
 
       const uniqueUserDids = [...new Set(calls.map((call) => call.userDid))];
@@ -504,7 +573,7 @@ router.get(
 
 router.get('/usage-stats', user, async (req, res) => {
   try {
-    const { startTime, endTime, timezoneOffset } = await usageStatsSchema.validateAsync(req.query, {
+    const { startTime, endTime } = await usageStatsSchema.validateAsync(req.query, {
       stripUnknown: true,
     });
     const userDid = req.user?.did;
@@ -515,18 +584,10 @@ router.get('/usage-stats', user, async (req, res) => {
 
     const startTimeNum = startTime ? Number(startTime) : undefined;
     const endTimeNum = endTime ? Number(endTime) : undefined;
-    const timezoneOffsetNum = timezoneOffset ? Number(timezoneOffset) : undefined;
 
     if (!startTimeNum || !endTimeNum) {
       return res.status(400).json({ error: 'startTime and endTime are required' });
     }
-
-    const { usageStats, totalCredits, dailyStats, totalUsage } = await getUsageStatsHourlyOptimized(
-      userDid,
-      startTimeNum,
-      endTimeNum,
-      timezoneOffsetNum
-    );
 
     // Get model stats (optimized query without JOIN)
     const modelStatsResult = await ModelCall.getModelUsageStats({
@@ -536,23 +597,8 @@ router.get('/usage-stats', user, async (req, res) => {
       limit: 5,
     });
 
-    const trendComparison = await getTrendComparisonOptimized({
-      userDid,
-      startTime: startTimeNum,
-      endTime: endTimeNum,
-    });
-
     return res.json({
-      summary: {
-        byType: usageStats.byType,
-        totalCalls: usageStats.totalCalls,
-        totalCredits,
-        modelCount: modelStatsResult.totalModelCount,
-        totalUsage,
-      },
-      dailyStats,
-      modelStats: modelStatsResult.list,
-      trendComparison,
+      modelStats: modelStatsResult,
     });
   } catch (error) {
     return res.status(500).json({ message: error.message });
@@ -561,7 +607,7 @@ router.get('/usage-stats', user, async (req, res) => {
 
 router.get('/admin/user-stats', user, ensureAdmin, async (req, res) => {
   try {
-    const { startTime, endTime, timezoneOffset } = await usageStatsSchema.validateAsync(req.query, {
+    const { startTime, endTime } = await usageStatsSchema.validateAsync(req.query, {
       stripUnknown: true,
     });
     const userDid = req.user?.did;
@@ -572,17 +618,10 @@ router.get('/admin/user-stats', user, ensureAdmin, async (req, res) => {
 
     const startTimeNum = startTime ? Number(startTime) : undefined;
     const endTimeNum = endTime ? Number(endTime) : undefined;
-    const timezoneOffsetNum = timezoneOffset ? Number(timezoneOffset) : undefined;
 
     if (!startTimeNum || !endTimeNum) {
       return res.status(400).json({ error: 'startTime and endTime are required' });
     }
-
-    const { usageStats, totalCredits, dailyStats, totalUsage } = await getUsageStatsHourlyOptimizedAdmin(
-      startTimeNum,
-      endTimeNum,
-      timezoneOffsetNum
-    );
 
     const modelStatsResult = await ModelCall.getModelUsageStats({
       startTime: startTimeNum,
@@ -590,126 +629,10 @@ router.get('/admin/user-stats', user, ensureAdmin, async (req, res) => {
       limit: 5,
     });
 
-    const trendComparison = await getTrendComparisonOptimized({ startTime: startTimeNum, endTime: endTimeNum });
-
     return res.json({
-      summary: {
-        byType: usageStats.byType,
-        totalCalls: usageStats.totalCalls,
-        totalCredits,
-        modelCount: modelStatsResult.totalModelCount,
-        totalUsage,
-      },
-      dailyStats,
-      modelStats: modelStatsResult.list,
-      trendComparison,
+      modelStats: modelStatsResult,
     });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
-  }
-});
-
-router.get('/weekly-comparison', user, async (req, res) => {
-  try {
-    const userDid = req.user?.did;
-
-    if (!userDid) {
-      return res.status(401).json({ error: 'User not authenticated' });
-    }
-
-    const comparison = await ModelCall.getWeeklyComparison(userDid);
-    return res.json(comparison);
-  } catch (error) {
-    return res.status(500).json({ message: error.message });
-  }
-});
-
-router.get('/monthly-comparison', user, async (req, res) => {
-  try {
-    const userDid = req.user?.did;
-
-    if (!userDid) {
-      return res.status(401).json({ error: 'User not authenticated' });
-    }
-
-    const comparison = await ModelCall.getMonthlyComparison(userDid);
-    return res.json(comparison);
-  } catch (error) {
-    return res.status(500).json({ message: error.message });
-  }
-});
-
-// Admin interface: Recalculate user statistics (general rebuild interface)
-router.post('/recalculate-stats', ensureAdmin, async (req, res) => {
-  try {
-    const { userDid, startTime, endTime, dryRun = false } = req.body;
-
-    if (!userDid || !startTime || !endTime) {
-      return res.status(400).json({
-        error: 'userDid, startTime, endTime are required',
-      });
-    }
-
-    const startTimeNum = Number(startTime);
-    const endTimeNum = Number(endTime);
-
-    if (Number.isNaN(startTimeNum) || Number.isNaN(endTimeNum)) {
-      return res.status(400).json({
-        error: 'startTime and endTime must be valid timestamps',
-      });
-    }
-
-    // Generate hour list for recalculation
-    const hours = generateHourRangeFromTimestamps(startTimeNum, endTimeNum);
-
-    // Delete all stat cache in the specified time range (including day and hour types)
-    const deleteConditions = {
-      userDid,
-      timestamp: {
-        [Op.gte]: startTimeNum,
-        [Op.lte]: endTimeNum,
-      },
-    };
-
-    const existingStats = await ModelCallStat.findAll({
-      where: deleteConditions,
-      raw: true,
-    });
-
-    // Preview mode
-    if (dryRun) {
-      return res.json({
-        message: 'Preview mode - will rebuild hourly data',
-        userDid,
-        willDeleteStats: existingStats.length,
-        willRecalculateHours: hours.length,
-      });
-    }
-
-    // Delete old cache and rebuild
-    const deletedCount = await ModelCallStat.destroy({ where: deleteConditions });
-
-    const results = await Promise.all(
-      hours.map(async (hour) => {
-        try {
-          await ModelCallStat.getHourlyStats(userDid, hour);
-          return true;
-        } catch (error) {
-          return false;
-        }
-      })
-    );
-
-    const successCount = results.filter(Boolean).length;
-    const failedCount = results.length - successCount;
-
-    return res.json({
-      message: 'Rebuild completed',
-      deleted: deletedCount,
-      success: successCount,
-      failed: failedCount,
-    });
-  } catch (error: any) {
     return res.status(500).json({ message: error.message });
   }
 });

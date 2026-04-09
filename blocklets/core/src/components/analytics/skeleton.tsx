@@ -69,6 +69,28 @@ export function UsageChartsSkeleton() {
   );
 }
 
+export function UsageOverviewSkeleton() {
+  return (
+    <Card sx={{ p: 3 }}>
+      <Stack spacing={2.5}>
+        <Skeleton variant="text" width="30%" height={24} />
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+          {[1, 2, 3].map((i) => (
+            <Card key={i} sx={{ flex: 1, p: 2 }}>
+              <Stack spacing={1.25}>
+                <Skeleton variant="text" width="45%" height={18} />
+                <Skeleton variant="text" width="60%" height={32} />
+                <Skeleton variant="text" width="55%" height={16} />
+              </Stack>
+            </Card>
+          ))}
+        </Stack>
+        <Skeleton variant="rectangular" height={220} sx={{ borderRadius: 2 }} />
+      </Stack>
+    </Card>
+  );
+}
+
 export function ModelUsageStatsSkeleton() {
   return (
     <Card sx={{ p: 2, height: '100%' }}>
