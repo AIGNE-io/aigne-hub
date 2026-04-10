@@ -177,6 +177,24 @@ Hub 延迟 = 直连延迟
 | 100-200 | ✅ 稳定 | ✅ 稳定 | ⚠️ 噪声明显 |
 | 400+ | ✅✅ | ✅✅ | ✅ 稳定 |
 
+### 1.5 术语速查
+
+| 术语 | 含义 |
+|------|------|
+| **`c=N`** | **concurrency（并发数）**—— benchmark 客户端同时开 N 个 worker 并行发请求。`c=5` 比 `c=3` 压力更大。这是 benchmark 工具的通用写法（源自 wrk / ab / hey 等） |
+| **`c=1 sequential`** | 单线程顺序发请求（外加 delay），最保守的测试方式，用于规避严格 rate limit |
+| **TTFB** | **Time To First Byte**—— 从客户端发出请求到收到第一个字节的时间。对 streaming 响应特别重要（"多久看到第一个字"） |
+| **Total time** | 从发出请求到完整收完响应的时间（包含 streaming 全部字节）。对短 payload 约等于 TTFB，对长 payload 明显大于 TTFB |
+| **p50 / p90 / p99** | 第 50 / 90 / 99 百分位数 —— p99 = "99% 的请求都比这个数字快"。比平均值更能反映真实体验，特别是长尾 |
+| **cv** | 变异系数 = 标准差 / 平均值。**cv < 0.3 稳定；cv > 0.5 分布抖动明显**。用来判断数据是否集中 |
+| **min / max** | 样本中的最小 / 最大值。max 异常大通常暴露 cold start 或偶发问题 |
+| **Short payload** | 短 prompt + 30 max_tokens。专测"连接开销"，避免 provider 生成时间污染数据 |
+| **Realistic payload** | 1K system prompt + 800 max_tokens，模拟真实 chat 场景（长生成）|
+| **Hub / Direct / OpenRouter** | 三条路径：Hub 代理 / 客户端直连 Provider / OpenRouter 第三方代理 |
+| **Server-Timing** | HTTP 规范的服务端计时 response header。Hub 用它暴露内部各 phase 耗时（session, resolveProvider, preChecks 等），这是 Hub 独有的可观测优势 —— Direct 和 OpenRouter 都不发这个 header |
+| **providerTtfb** | Server-Timing 里的一个 phase —— 从 Hub Worker 发出请求到收到 Provider 首字节的时间。代表 CF edge → Provider 的网络 + Provider 自身生成时间 |
+| **cold start** | Worker isolate 首次启动后的初始化开销。CF Workers 对空闲 isolate 会回收，再次请求时需要重新初始化，导致 p99 抖动 |
+
 ---
 
 ## 二、Hub 延迟剖析

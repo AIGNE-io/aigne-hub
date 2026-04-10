@@ -35,6 +35,21 @@
 
 每个表下方会标注具体 n，读者看到数字时可以直接判断可信度（p50 稳需 ~100 样本，p99 稳需 ~500+ 样本）。
 
+### 术语速查
+
+| 术语 | 含义 |
+|------|------|
+| **`c=N`** | **concurrency（并发数）**—— benchmark 客户端同时开 N 个 worker 并行发请求。`c=5` 比 `c=3` 压力更大 |
+| `c=1 sequential` | 单线程顺序发请求（外加延时），最保守的测试方式 |
+| **TTFB** | **Time To First Byte**—— 从发出请求到收到第一个字节的时间 |
+| **Total** | 从发出请求到完整收完响应的时间（包括 streaming）|
+| **p50/p90/p99** | 第 50/90/99 百分位 —— 比如 p99 = "99% 请求比这个数字快" |
+| **cv** | 变异系数 = stddev/avg。**cv < 0.3 稳定，cv > 0.5 抖动大** |
+| **short payload** | 短 prompt + 30 max_tokens，专测连接延迟 |
+| **realistic payload** | 1K 系统提示 + 800 max_tokens，模拟真实 chat 场景 |
+| **Hub / Direct / OpenRouter** | 三条路径：Hub 代理 / 客户端直连 Provider / OpenRouter 第三方代理 |
+| **Server-Timing** | HTTP 规范的服务端计时 header，Hub 用它暴露内部各 phase 耗时 |
+
 ---
 
 ## 🎯 核心对比：9 格完整矩阵（3 Provider × 3 Path）
