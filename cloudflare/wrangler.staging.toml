@@ -1,0 +1,78 @@
+# ================================================================
+# AIGNE Hub — Staging wrangler config TEMPLATE
+# ================================================================
+#
+# This file IS tracked by git (unlike wrangler.local.toml which is
+# gitignored). It is a template for staging/new-environment deploys.
+#
+# Before first deploy:
+#   1. Copy this file to wrangler.staging.toml (already done if you see this)
+#   2. Replace every REPLACE_WITH_* placeholder with the target environment's
+#      real value. The migration playbook can do this for you automatically if
+#      approvals.allow_ai_to_modify_wrangler_configs = true in your input yaml.
+#   3. Do NOT commit the replaced values — this template must remain with
+#      placeholders in version control. If you need a committed staging
+#      config, use a separate branch or the env.production block below.
+#
+# Placeholder legend:
+#   REPLACE_WITH_D1_DATABASE_ID   — output of `wrangler d1 create <name>`
+#   REPLACE_WITH_KV_NAMESPACE_ID  — output of `wrangler kv namespace create <name>`
+#   REPLACE_WITH_BASE_URL         — public URL of the deployed worker
+#   REPLACE_WITH_BLOCKLET_SERVICE — service binding target for blocklet-service
+#   REPLACE_WITH_PAYMENT_KIT      — service binding target for payment-kit
+
+name = "REPLACE_WITH_WORKER_NAME"   # e.g. "aigne-hub-staging"
+main = "src/worker.ts"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "REPLACE_WITH_D1_DATABASE_NAME"   # e.g. "aigne-hub-staging"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+
+[[kv_namespaces]]
+binding = "AUTH_KV"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+# Service Binding to the shared blocklet-service worker.
+# blocklet-service must already exist in the target account — the migration
+# playbook NEVER deploys it, only verifies its existence.
+[[services]]
+binding = "BLOCKLET_SERVICE"
+service = "REPLACE_WITH_BLOCKLET_SERVICE"   # e.g. "blocklet-service-staging"
+entrypoint = "BlockletServiceRPC"
+
+# Service Binding to payment-kit. Must match the name the payment-kit worker
+# was deployed under in Phase 1 of the migration.
+[[services]]
+binding = "PAYMENT_KIT"
+service = "REPLACE_WITH_PAYMENT_KIT"        # e.g. "payment-kit-staging"
+
+[assets]
+directory = "frontend/dist"
+binding = "ASSETS"
+not_found_handling = "none"
+run_worker_first = true
+
+[vars]
+ENVIRONMENT = "staging"
+BASE_URL = "REPLACE_WITH_BASE_URL"           # e.g. "https://aigne-hub-staging.<subdomain>.workers.dev"
+INSTANCE_NAME = "AIGNE Hub"
+PAYMENT_LIVEMODE = "false"                   # "true" for mainnet/production
+
+# Secrets that must be set separately via `wrangler secret put <NAME>`
+# (not declared here — see docs/migration/MIGRATION_RUNBOOK.md Section 4.4):
+#   - APP_SK                       (DID signing private key, generate via scripts/generate-credentials.mjs)
+#   - AUTH_SECRET                  (JWT signing secret, any high-entropy string)
+#   - CREDENTIAL_ENCRYPTION_KEY    (encrypts AiCredentials at rest)
+#   - GOOGLE_CLIENT_ID / _SECRET   (optional OAuth)
+#   - GITHUB_CLIENT_ID / _SECRET   (optional OAuth)
+#   - ADMIN_EMAILS                 (optional comma-separated list)
+
+[triggers]
+crons = [
+  "* * * * *",    # every minute: flush meter events to Payment Kit
+  "0 * * * *",    # hourly: stats aggregation + retry queue
+  "0 2 * * *",    # daily: archive + reconcile + health check
+]

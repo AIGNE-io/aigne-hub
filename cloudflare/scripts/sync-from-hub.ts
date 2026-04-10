@@ -47,19 +47,29 @@ function escapeSQL(value: unknown): string {
   return `'${String(value).replace(/'/g, "''")}'`;
 }
 
-let syncTarget = 'local'; // 'local' | 'staging' | 'production'
+let syncTarget = 'local'; // 'local' | 'staging' | 'production' | any custom env name
+let syncConfig: string | undefined; // explicit wrangler config path (e.g. wrangler.test.toml)
+let syncDbName: string | undefined; // explicit D1 database name override
 
 function d1ExecuteForTarget(sql: string) {
   const remoteFlag = syncTarget === 'local' ? '--local' : '--remote';
-  const envFlag = syncTarget !== 'local' ? `--env ${syncTarget}` : '';
-  const dbName = syncTarget === 'local' ? 'aigne-hub-dev' : `aigne-hub-${syncTarget}`;
+  // When --config is passed, wrangler reads bindings from that file directly
+  // and we do NOT need an --env flag.
+  const configFlag = syncConfig ? `--config=${syncConfig}` : '';
+  const envFlag = !syncConfig && syncTarget !== 'local' ? `--env ${syncTarget}` : '';
+  const dbName = syncDbName || (syncTarget === 'local' ? 'aigne-hub-dev' : `aigne-hub-${syncTarget}`);
+  // NOTE: pin wrangler@4.81.1+ explicitly — wrangler 4.75.0 has a
+  // d1-execute-remote timeout regression on fresh D1 databases.
   try {
-    execSync(`npx wrangler d1 execute ${dbName} ${remoteFlag} ${envFlag} --command="${sql.replace(/"/g, '\\"')}"`, {
-      encoding: 'utf-8',
-      stdio: 'pipe',
-    });
+    execSync(
+      `npx --yes wrangler@4.81.1 d1 execute ${dbName} ${remoteFlag} ${envFlag} ${configFlag} --command="${sql.replace(/"/g, '\\"')}"`,
+      {
+        encoding: 'utf-8',
+        stdio: 'pipe',
+      }
+    );
   } catch (err) {
-    console.error('D1 execute failed:', (err as Error).message?.substring(0, 200));
+    console.error('D1 execute failed:', (err as Error).message?.substring(0, 300));
   }
 }
 
@@ -74,11 +84,21 @@ async function main() {
     if (arg.startsWith('--target=')) syncTarget = arg.split('=')[1];
     if (arg.startsWith('--admin-did=')) adminDid = arg.split('=')[1];
     if (arg.startsWith('--admin-role=')) adminRole = arg.split('=')[1];
+    if (arg.startsWith('--config=')) syncConfig = arg.split('=')[1];
+    if (arg.startsWith('--db-name=')) syncDbName = arg.split('=')[1];
   }
 
   if (!hubUrl) {
     console.error(
-      'Usage: npx tsx scripts/sync-from-hub.ts --hub=https://your-hub-url [--target=local|staging|production]'
+      'Usage: npx tsx scripts/sync-from-hub.ts --hub=https://your-hub-url\n' +
+        '         [--target=local|staging|production|<custom-env>]\n' +
+        '         [--config=<path-to-wrangler.toml>]\n' +
+        '         [--db-name=<explicit-d1-db-name>]\n' +
+        '         [--admin-did=<did>] [--admin-role=admin]\n' +
+        '\n' +
+        'For custom environments (e.g. aigne-hub-test), pass --config + --db-name\n' +
+        'instead of --target, so wrangler reads bindings from the given config file\n' +
+        'directly and does not try to resolve an [env.<target>] section in wrangler.toml.'
     );
     process.exit(1);
   }

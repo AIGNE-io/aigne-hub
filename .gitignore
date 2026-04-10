@@ -19,6 +19,9 @@ dist-ssr
 # local env files
 *.local
 wrangler.local.toml
+cloudflare/wrangler.test.toml
+docs/migration/.input.*.yaml
+migration-backups/
 
 # Log files
 logs

@@ -12,7 +12,9 @@
  */
 
 import { execSync } from 'child_process';
-import { existsSync } from 'fs';
+import { existsSync, mkdirSync, unlinkSync, writeFileSync } from 'fs';
+import { tmpdir } from 'os';
+import { join } from 'path';
 
 const TABLES = [
   'Apps',
@@ -32,9 +34,11 @@ const BATCH_SIZE = 100;
 
 interface MigrationOptions {
   source: string;
-  target: string; // 'local' | 'staging' | 'production'
+  target: string; // 'local' | 'staging' | 'production' | any custom env name
   dryRun: boolean;
   tables: string[];
+  config?: string; // explicit wrangler config path (e.g. wrangler.test.toml)
+  dbName?: string; // explicit D1 database name (overrides the target-derived default)
 }
 
 function parseArgs(): MigrationOptions {
@@ -51,6 +55,8 @@ function parseArgs(): MigrationOptions {
     else if (arg.startsWith('--target=')) options.target = arg.split('=')[1];
     else if (arg === '--dry-run') options.dryRun = true;
     else if (arg.startsWith('--tables=')) options.tables = arg.split('=')[1].split(',');
+    else if (arg.startsWith('--config=')) options.config = arg.split('=')[1];
+    else if (arg.startsWith('--db-name=')) options.dbName = arg.split('=')[1];
   }
 
   return options;
@@ -136,25 +142,41 @@ async function main() {
       continue;
     }
 
-    // Execute via wrangler
+    // Execute via wrangler — write each batch to a temp SQL file and use --file=
+    // instead of --command="...", because multi-line SQL blows up the shell parser
+    // (newlines inside --command= are treated as command separators by /bin/sh).
     let totalInserted = 0;
+    const tmpBatchDir = join(tmpdir(), 'aigne-hub-migration', String(Date.now()));
+    if (!existsSync(tmpBatchDir)) mkdirSync(tmpBatchDir, { recursive: true });
+
     for (let i = 0; i < statements.length; i++) {
       const remoteFlag = options.target === 'local' ? '--local' : '--remote';
-      const envFlag = options.target !== 'local' ? `--env ${options.target}` : '';
-      const dbName = options.target === 'local' ? 'aigne-hub-dev' : `aigne-hub-${options.target}`;
+      // When --config is passed, wrangler reads bindings from that file directly
+      // and we do NOT need an --env flag (env flag composes with default wrangler.toml).
+      const configFlag = options.config ? `--config=${options.config}` : '';
+      const envFlag = !options.config && options.target !== 'local' ? `--env ${options.target}` : '';
+      const dbName =
+        options.dbName || (options.target === 'local' ? 'aigne-hub-dev' : `aigne-hub-${options.target}`);
+
+      const tmpFile = join(tmpBatchDir, `${tableName}-batch-${i}.sql`);
+      writeFileSync(tmpFile, statements[i]);
 
       try {
+        // NOTE: wrangler 4.75.0 has a d1-execute-remote timeout regression.
+        // Pin to 4.81.1+ explicitly via npx until cloudflare/package.json bumps.
         execSync(
-          `npx wrangler d1 execute ${dbName} ${remoteFlag} ${envFlag} --command="${statements[i].replace(/"/g, '\\"')}"`,
+          `npx --yes wrangler@4.81.1 d1 execute ${dbName} ${remoteFlag} ${envFlag} ${configFlag} --file=${tmpFile}`,
           { encoding: 'utf-8', stdio: 'pipe' }
         );
         const batchSize = Math.min(BATCH_SIZE, rows.length - i * BATCH_SIZE);
         totalInserted += batchSize;
         process.stdout.write(`\r[${tableName}] Inserted ${totalInserted}/${rows.length} rows`);
       } catch (err) {
-        console.error(`\n[${tableName}] Error in batch ${i + 1}:`, (err as Error).message);
+        console.error(`\n[${tableName}] Error in batch ${i + 1}:`, (err as Error).message?.substring(0, 300));
         summary.push({ table: tableName, rows: totalInserted, status: `partial (${totalInserted}/${rows.length})` });
         break;
+      } finally {
+        if (existsSync(tmpFile)) unlinkSync(tmpFile);
       }
     }
 

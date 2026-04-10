@@ -1,3 +1,13 @@
-ALTER TABLE Apps ADD COLUMN userDid TEXT;
-ALTER TABLE Apps ADD COLUMN name TEXT;
-CREATE INDEX idx_apps_user_did ON Apps(userDid);
+-- Add index for Apps.userDid lookups.
+--
+-- HISTORY: this file previously contained duplicate ALTER TABLE statements
+-- for Apps.userDid and Apps.name, which were also added by
+-- 0006_apps_user_fields.sql. SQLite applies files in filename order and does
+-- not support `ALTER TABLE ADD COLUMN IF NOT EXISTS`, so the second execution
+-- always failed with "duplicate column name" on any fresh D1 environment.
+-- The ALTER statements have been removed; only the index remains.
+--
+-- TODO: rename this file to 0006b_user_api_keys_index.sql (or merge into
+-- 0006_apps_user_fields.sql) — two migrations sharing the same numeric prefix
+-- is a foot-gun that SQLite cannot detect.
+CREATE INDEX IF NOT EXISTS idx_apps_user_did ON Apps(userDid);
