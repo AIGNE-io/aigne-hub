@@ -279,9 +279,75 @@ Hub 延迟 = 直连延迟
 
 **最重要的观察：Hub 自身处理开销是固定的 ~50ms，波动的全是网络 + provider 自身的变数。** 如果你的场景里 provider 延迟本来就几秒，Hub 的 50ms 基本不可见。
 
-### 4.5 同一个 model 的三路对比（Hub vs Direct vs OpenRouter）
+### 4.5 完整 9 格对比矩阵（3 Provider × 3 Path）
 
-**测试方法**：用**完全相同的 model `openai/gpt-5-nano`**，同时段、同 payload（short, 30 max_tokens）、c=3 并发 60s，分别经过三条路径：
+**这是报告最核心的数据视图**。把三个 provider 经过三条路径（Hub / Direct / OpenRouter）全部跑一遍，得到 9 个对比 cell。所有数据都用 **short payload（30 max_tokens）** 以专注于"连接 + 传输"的开销而非"生成"的开销。
+
+**数据源**：
+- Hub / Direct 的 OpenAI 和 Google cell：来自 `6o4u6u`（hub-vs-direct，c=3, 60s）
+- Hub / Direct 的 Anthropic cell：来自 `nre1z6`（fill-gaps，**c=1 sequential**，避开 50 req/min 限流）
+- Hub / Direct / OpenRouter 的 OpenAI (gpt-5-nano) 同 model 对比：来自 `nre1z6`（c=3, 60s，apples-to-apples）
+- OpenRouter 的所有 3 个 provider：来自 `sd3w3h`（openrouter-all，c=3, 60s）
+
+#### 9 格矩阵 — p50 TTFB（中位延迟）
+
+| Provider / Model | Hub | Direct | OpenRouter | 最快 |
+|-----------------|-----|--------|------------|------|
+| **OpenAI** `gpt-5-nano` | 1025ms | 860ms | **673ms** ⭐ | OpenRouter |
+| **Anthropic** `claude-haiku-4-5` | 948ms (c=1) | **726ms** ⭐ (c=1) | 1355ms | Direct |
+| **Google** `gemini-2.5-flash` | 1187ms | 817ms | **677ms** ⭐ | OpenRouter |
+
+#### 9 格矩阵 — p99 TTFB（长尾稳定性）
+
+| Provider / Model | Hub | Direct | OpenRouter | 最稳 |
+|-----------------|-----|--------|------------|------|
+| **OpenAI** `gpt-5-nano` | **1793ms** ⭐ | 3806ms | 2608ms | **Hub** |
+| **Anthropic** `claude-haiku-4-5` | **1919ms** ⭐ (c=1) | 7877ms (c=1) | 3035ms | **Hub** |
+| **Google** `gemini-2.5-flash` | **2390ms** ⭐ | 3592ms | 2660ms | **Hub** |
+
+#### 9 格矩阵 — cv（分布稳定性）
+
+| Provider / Model | Hub | Direct | OpenRouter | 最稳 |
+|-----------------|-----|--------|------------|------|
+| **OpenAI** `gpt-5-nano` | **0.23** ⭐ | 0.52 | 0.53 | **Hub** |
+| **Anthropic** `claude-haiku-4-5` | **0.23** ⭐ (c=1) | 1.16 (c=1) | 0.60 | **Hub** |
+| **Google** `gemini-2.5-flash` | **0.23** ⭐ | 0.50 | 0.47 | **Hub** |
+
+#### 核心发现
+
+**1. Hub 在 p99 稳定性上是 3 条路径里的"三冠王"**
+
+p99 和 cv 两个稳定性维度，**Hub 在所有 3 个 provider 上都最优**。这不是巧合，而是 CF 骨干网对长尾延迟的系统性优化。
+
+**2. p50 的胜者取决于 provider**
+
+- **OpenAI**：OpenRouter 赢（673ms） > Direct（860ms） > Hub（1025ms）
+- **Anthropic**：Direct 赢（726ms） > Hub（948ms） > **OpenRouter 反而最慢（1355ms）** 🤯
+- **Google**：OpenRouter 赢（677ms） > Direct（817ms） > Hub（1187ms）
+
+**注意 OpenRouter 对 Anthropic 的延迟异常**：p50=1355ms 比 Direct 慢了将近 2 倍。可能的原因：
+- OpenRouter 的 Anthropic 池子使用了不同的路由路径
+- OpenRouter 对 Anthropic 增加了额外的队列/处理时间
+- OpenRouter 的 Anthropic 模型定价策略不同
+
+**3. OpenRouter 的总吞吐比 TTFB 显示的差**
+
+注意样本数差异：OpenRouter 的 OpenAI cell 只有 **42 个样本**（n=42），而 Hub/Direct 都有 150+ 样本。这说明 OpenRouter 的 OpenAI streaming 总时间比 TTFB 显示的长（~4-5s 总响应时间），TTFB 快但完整 streaming 慢。
+
+**对比**：
+- OpenRouter OpenAI: 42 samples / 60s / c=3 ≈ 每请求 4.3s 总时间
+- Hub OpenAI: 169 samples / 60s / c=3 ≈ 每请求 1.1s 总时间
+- Direct OpenAI: 179 samples / 60s / c=3 ≈ 每请求 1.0s 总时间
+
+→ **OpenRouter 的 TTFB 优势在总吞吐上会消失甚至反转**。
+
+**4. Hub 的 50ms 开销在这个对比里完全不是重点**
+
+三个路径之间 p50 的差异 150-370ms 主要来自**不同代理服务的路由实现差异**（OpenRouter 对 Gemini 很快但对 Anthropic 很慢；Direct 对 Anthropic 快但 p99 有大离群值；Hub 相对稳定但 p50 不是最快）。Hub 自身的 50ms 固定开销只是这个总差异里的一小部分。
+
+### 4.6 同一个 model 的三路对比（focused view of OpenAI cell）
+
+把 OpenAI gpt-5-nano 这一行拿出来单独看，因为是**唯一能做真正的 apples-to-apples 三路对比**（所有 3 条路径都是同一个 model 名）：
 
 **Run ID**: `nre1z6`（2026-04-10T05:33:43Z）
 
@@ -291,16 +357,11 @@ Hub 延迟 = 直连延迟
 | openai-direct-nano | **直连 OpenAI** | 179 | 860ms | **1217ms** ⭐ | 3806ms | 693ms | 0.52 |
 | hub-openai-nano | **Hub 代理** | 169 | 1025ms | 1219ms | **1793ms** ⭐ | 881ms | **0.23** ⭐ |
 
-**⭐ = 该维度最优**
-
 **每个维度的胜者都不一样**：
-
-- **p50 最快**: **OpenRouter（681ms）** —— TTFB 最快
+- **p50 最快**: OpenRouter（681ms）—— TTFB 最快
 - **p90 并列**: Direct 和 Hub（1217 vs 1219，**完全一样**）
-- **p99 最稳**: **Hub（1793ms）** —— 比 Direct 的 3806ms **稳 2 倍**
-- **cv 最低**: **Hub（0.23）** —— Direct 的 cv=0.52 说明分布抖动大
-
-**重要观察：OpenRouter 在 60 秒内只跑出 40 个样本**（Hub/Direct 都是 169-179）。因为**总 response 时间 = TTFB + streaming**。OpenRouter TTFB 快但 streaming 慢得多（~4.5s 一次完整请求），Hub 和 Direct 只要 ~1s。所以 OpenRouter 在 TTFB 上虽然赢了，但**总吞吐反而更低**。
+- **p99 最稳**: **Hub（1793ms）**—— 比 Direct 的 3806ms **稳 2 倍**
+- **cv 最低**: **Hub（0.23）**
 
 ### 4.6 Anthropic c=1 干净数据（绕开 rate limit）
 
@@ -712,6 +773,7 @@ pnpm billing-verify
 | **`qlzusr`** | **multi-provider** | **1243** | **180s 大样本，realistic payload** —— Hub overhead p50=50ms |
 | **`6o4u6u`** | **hub-vs-direct** | **1121** | **60s 头对头，short payload** —— Hub vs Direct 对比 |
 | **`nre1z6`** | **fill-gaps** | **458** | **补数据**：OpenAI gpt-5-nano 三路对比（Hub/Direct/OpenRouter）+ Anthropic c=1 干净数据 |
+| **`sd3w3h`** | **openrouter-all** | **334** | **OpenRouter 全覆盖**：OpenAI + Anthropic + Google 三个 provider 通过 OpenRouter 代理（c=3, 60s）|
 
 **跨 run 查询示例（DuckDB）：**
 

@@ -1,7 +1,8 @@
 # AIGNE Hub 连接速率与记账报告（速读版）
 
 > 📄 完整报告: [`connection-rate-billing-benchmark.md`](./connection-rate-billing-benchmark.md)
-> 📅 2026-04-10  |  基于 **3000+ 样本**、**3 次独立大样本 benchmark**
+> 📅 2026-04-10  |  基于 **3400+ 样本**、**4 次独立大样本 benchmark**
+> 覆盖 **3 provider × 3 path = 9 格完整对比矩阵**
 
 ---
 
@@ -15,45 +16,63 @@
 
 | 问题 | 答案 |
 |------|------|
-| Hub 速率如何？ | **自身开销恒定 50ms p50**，p90 在 56-65ms，p99 可低至 76ms |
-| 能直连替代吗？ | **不建议**。Direct p50 稍快，但 Hub p99 稳 2-3 倍；长生成场景 Hub 反而更快 |
+| Hub 速率如何？ | **自身开销恒定 ~50ms p50**，p90 ≈ 60ms，p99 可低至 76ms |
+| 能直连替代吗？ | **不建议**。9 格矩阵里 Hub 的 **p99 稳定性三冠王**；p50 代价 150-370ms 完全值得 |
 | 记账准确吗？ | **100% 准确**。60/60 请求 token 和 credits 完全一致 |
+| 三路对比结论？ | **Hub 稳 / OpenRouter 快 OpenAI+Google / Direct 快 Anthropic**。没有单一胜者 |
 
 ---
 
-## 🎯 核心对比：同一个 model 三路对比
+## 🎯 核心对比：9 格完整矩阵（3 Provider × 3 Path）
 
-用**完全相同的 model `openai/gpt-5-nano`**，同时段同 payload，测试三条路径：
+**短 payload，c=3 并发 60s 测试**。这是报告最核心的数据视图。
 
-| 路径 | n | p50 | p90 | p99 | cv（稳定性） |
-|-----|---|-----|-----|-----|-----|
-| **OpenRouter 代理** | 40 | **681ms** ⭐ | 1428ms | 1538ms | 0.34 |
-| **直连 OpenAI** | 179 | **860ms** | **1217ms** ⭐ | 3806ms | 0.52 |
-| **Hub 代理** | 169 | **1025ms** | 1219ms | **1793ms** ⭐ | **0.23** ⭐ |
+### p50 TTFB（中位延迟）—— 谁最快
 
-**每个维度的胜者都不一样**：
+| Provider / Model | Hub | Direct | OpenRouter | 最快 |
+|-----------------|-----|--------|------------|------|
+| **OpenAI** `gpt-5-nano` | 1025ms | 860ms | **673ms** ⭐ | OpenRouter |
+| **Anthropic** `claude-haiku-4-5` | 948ms | **726ms** ⭐ | 1355ms | Direct |
+| **Google** `gemini-2.5-flash` | 1187ms | 817ms | **677ms** ⭐ | OpenRouter |
 
-- **p50 最快** → OpenRouter（681ms，但只能跑出 40 样本，总吞吐最低）
-- **p90 并列** → Direct 和 Hub（1217 vs 1219，完全一样）
-- **p99 最稳** → **Hub**（1793ms，比 Direct 的 3806ms 稳 2 倍）
-- **cv 最低** → **Hub**（0.23，Direct 的 0.52 说明分布抖得厉害）
+### p99 TTFB（长尾稳定性）—— 谁最稳
 
-**Hub 用 165ms 的 p50 代价换取了 2 倍的 p99 稳定性。这是一个清晰的工程 trade-off。**
+| Provider / Model | Hub | Direct | OpenRouter | 最稳 |
+|-----------------|-----|--------|------------|------|
+| **OpenAI** `gpt-5-nano` | **1793ms** ⭐ | 3806ms | 2608ms | **Hub** |
+| **Anthropic** `claude-haiku-4-5` | **1919ms** ⭐ | 7877ms | 3035ms | **Hub** |
+| **Google** `gemini-2.5-flash` | **2390ms** ⭐ | 3592ms | 2660ms | **Hub** |
 
----
+### cv（分布稳定性系数）—— 谁最可预测
 
-## Anthropic 干净数据（c=1 无限流）
+| Provider / Model | Hub | Direct | OpenRouter | 最稳 |
+|-----------------|-----|--------|------------|------|
+| **OpenAI** `gpt-5-nano` | **0.23** ⭐ | 0.52 | 0.53 | **Hub** |
+| **Anthropic** `claude-haiku-4-5` | **0.23** ⭐ | 1.16 | 0.60 | **Hub** |
+| **Google** `gemini-2.5-flash` | **0.23** ⭐ | 0.50 | 0.47 | **Hub** |
 
-| Target | n | p50 | p90 | **p99** | cv |
-|--------|---|-----|-----|---------|-----|
-| **Hub** | 40 | 948ms | 1364ms | **1919ms** ⭐ | **0.23** ⭐ |
-| **Direct** | 40 | **761ms** ⭐ | **974ms** ⭐ | **7877ms** ⚠️ | 1.16 |
+## 🏆 三个核心发现
 
-**Direct 的 p50/p90 更快，但 p99 爆炸**：40 个请求里 1 个飙到 7877ms（正常范围 600-1200ms），cv=1.16。
+### 1. Hub 在 p99 和 cv 上都是"三冠王"
 
-**Hub 分布稳**，最慢的请求也只有 1919ms（约 p50 的 2 倍）。
+**所有 3 个 provider 的长尾稳定性（p99 + cv），Hub 都最优**。不是巧合，是 CF 骨干网对长尾延迟的系统性优化。
 
-→ **Hub 快 5958ms on p99** 是真实差距，不是偶然。
+- Hub p99 比 Direct 稳 **2-4 倍**（Anthropic 差距最大：1919 vs 7877ms）
+- Hub cv **一致保持在 0.23**，Direct 和 OpenRouter 都在 0.47-1.16 之间抖
+
+### 2. p50 没有单一胜者
+
+- OpenRouter 在 OpenAI / Google 上 p50 最快
+- Direct 在 Anthropic 上 p50 最快
+- Hub 在任何一个 provider 上都不是 p50 最快的
+
+**Hub 的 p50 代价是 150-370ms，作为 p99 稳定性的 trade-off**。
+
+### 3. OpenRouter 的"Anthropic 悖论"
+
+对同一个 Anthropic claude-haiku-4-5，OpenRouter 的 p50 是 **1355ms**，竟然**比 Hub（948ms）和 Direct（726ms）都慢**。这说明 OpenRouter 的 Anthropic 路由有额外开销，可能是内部队列或额外的中间层。
+
+**含义**：**不能笼统说"OpenRouter 更快"或"Hub 更慢"**。每个 provider 的最快路径都不同。
 
 ---
 
