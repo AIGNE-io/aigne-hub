@@ -19,11 +19,11 @@
 
 ### 核心数据
 
-基于 **3 次独立大样本 benchmark**、**3000+ 个样本** 的测试：
+基于 **10 次独立 benchmark**、**3527 个样本** 的测试（详见 §1.4 数据基础）：
 
 | 指标 | 值 | 说明 |
 |------|-----|------|
-| Hub 处理开销 p50 | **50ms** | 两次 benchmark、3 个 provider 高度一致 |
+| Hub 处理开销 p50 | **50ms** | 3 次 benchmark、3 个 provider 高度一致（n=427 Hub 样本）|
 | Hub 处理开销 p90 | **56-65ms** | 90% 请求在此以内 |
 | Hub 处理开销 p99（最优） | **76-78ms** | warm isolate、短 payload 高频场景 |
 | Hub 处理开销 p99（最差） | **1012ms** | realistic payload、cold start 多 |
@@ -46,6 +46,14 @@
 每个维度的胜者都不一样：**p50** OpenRouter 最快；**p90** Hub 和 Direct 并列；**p99** Hub 最稳（比 Direct 稳 2 倍）；**cv** Hub 最小。
 
 **视角 2：短 payload 下 Hub 比 Direct 的代价（3 providers × 3 paths）**
+
+**样本数（3 个子表共用）**：
+
+| Provider | Hub n | Direct n | OpenRouter n |
+|----------|-------|----------|--------------|
+| OpenAI | 169 | 179 | 40 |
+| Anthropic | 40 (c=1) | 40 (c=1) | 103 |
+| Google | 143 | 176 | 189 |
 
 _p50 TTFB：_
 
@@ -150,6 +158,47 @@ Hub 延迟 = 直连延迟
 | hub-openai (stream) | 1335ms | 896ms | ~439ms |
 
 **客户端 ↔ CF edge 往返约 400ms**（本次测试位置）。这部分跟 Hub 无关。
+
+### 1.4 📊 本报告数据基础
+
+**总样本数**：**3527 条** 跨 **10 次独立 benchmark**，纯运行时间约 **40 分钟**，持久化在 `benchmarks/data/samples.jsonl`（1.9 MB）。
+
+| Run ID | 类型 | 样本数 | 主要用途 |
+|--------|------|-------|---------|
+| sge21z | smoke | 24 | 初次 smoke（部分失败，发现 3 个客户端 bug） |
+| 79nxzv | smoke | 24 | 修 bug 后优化前基线（p50 Hub overhead = 154ms） |
+| y3sez9 | smoke | 24 | 优化后验证（p50 Hub overhead = 56ms） |
+| 16u4d2 | billing-verify | 60 | **100% 记账匹配**（60/60）|
+| tby4cz | multi-provider 30s | 131 | 30s 短版本，方向性数据 |
+| **`qlzusr`** | **multi-provider 180s** | **1243** | **主力 benchmark**（5 targets, realistic payload），Hub Server-Timing phase 数据的主要来源 |
+| **`6o4u6u`** | **hub-vs-direct** | **1121** | **头对头 short payload**（3 providers × 2 paths + OpenRouter）|
+| nre1z6 | fill-gaps | 458 | OpenAI gpt-5-nano 三路对比 + Anthropic c=1 干净数据 |
+| sd3w3h | openrouter-all | 334 | OpenRouter 3 provider 全覆盖（补齐 9 格矩阵） |
+| **`6f3exy`** | **long-payload-3way** | **108** | **长 payload 3 路对比**（OpenRouter Total Time 陷阱）|
+
+**各核心数据表使用的样本数**：
+
+| 报告章节 | 表格 | 样本来源 | Hub n | Direct n | OpenRouter n |
+|---------|------|---------|-------|---------|-------------|
+| §2.2 | Server-Timing phase breakdown | qlzusr | 427（全部 Hub 样本） | - | - |
+| §2.1 | Hub 处理开销 p50/p90/p99 | qlzusr | 427 | - | - |
+| §3.1 | Provider latency (providerTtfb) | qlzusr | 427 | - | - |
+| §4.1 | Short payload 对比 | 6o4u6u | 129-169 / provider | 155-176 / provider | - |
+| §4.2.1 | Realistic payload 对比 (qlzusr) | qlzusr | 126 (OpenAI) | 106 (OpenAI) | - (不同 model) |
+| §4.2.2 | Long-payload 3-way (同 model) | 6f3exy | 50 | 45 | **13** ⚠️ |
+| §4.5 | 9 格矩阵 | 合并多 run | 40-169 | 40-179 | 40-189 |
+| §4.6 | Same-model 3-way (OpenAI) | nre1z6 | 169 | 179 | 40 |
+| §4.6 | Anthropic c=1 干净数据 | nre1z6 | 40 | 40 | - |
+| §5 | 记账验证 | 16u4d2 | 60 | - | - |
+
+**样本量的可靠性分级**（见 §7.2）：
+
+| 样本数范围 | p50 可信 | p90 可信 | p99 可信 | 代表章节 |
+|----------|---------|---------|---------|---------|
+| 40-60 | ✅ 粗略 | ⚠️ 不稳定 | ❌ 只供参考 | Anthropic c=1, OpenRouter OpenAI 部分 |
+| 100-200 | ✅ 稳定 | ✅ 稳定 | ⚠️ 噪声明显 | 大部分 §4 对比表 |
+| 200-500 | ✅✅ 非常稳 | ✅ 稳定 | ⚠️ 粗略 | 9 格矩阵部分 cell |
+| 400+ | ✅✅ | ✅✅ | ✅ 稳定 | §2.2 Server-Timing（n=427） |
 
 ---
 
@@ -443,8 +492,21 @@ Hub 延迟 = 直连延迟
 **数据源**：
 - Hub / Direct 的 OpenAI 和 Google cell：来自 `6o4u6u`（hub-vs-direct，c=3, 60s）
 - Hub / Direct 的 Anthropic cell：来自 `nre1z6`（fill-gaps，**c=1 sequential**，避开 50 req/min 限流）
-- Hub / Direct / OpenRouter 的 OpenAI (gpt-5-nano) 同 model 对比：来自 `nre1z6`（c=3, 60s，apples-to-apples）
-- OpenRouter 的所有 3 个 provider：来自 `sd3w3h`（openrouter-all，c=3, 60s）
+- OpenRouter 的 OpenAI cell：来自 `nre1z6`（fill-gaps，c=3, 60s）
+- OpenRouter 的 Anthropic / Google cell：来自 `sd3w3h`（openrouter-all，c=3, 60s）
+
+#### 📊 9 格矩阵的样本数（以下 3 个子表共用这个 n 表）
+
+| Provider | Hub | Direct | OpenRouter |
+|----------|-----|--------|------------|
+| **OpenAI** `gpt-5-nano` | 169 | 179 | 40 |
+| **Anthropic** `claude-haiku-4-5` | **40 (c=1)** | **40 (c=1)** | 103 |
+| **Google** `gemini-2.5-flash` | 143 | 176 | 189 |
+
+**注意**：
+- Anthropic Hub / Direct 是 c=1 sequential（40 samples）—— 为避开 Anthropic 50 req/min 限流
+- 其他所有 cell 都是 c=3 × 60s
+- OpenRouter 的样本数普遍较少（尤其 OpenAI = 40）—— 这本身是个信号，详见 §4.5.3
 
 #### 9 格矩阵 — p50 TTFB（中位延迟）
 

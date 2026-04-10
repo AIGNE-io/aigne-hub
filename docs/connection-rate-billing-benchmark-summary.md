@@ -1,7 +1,7 @@
 # AIGNE Hub 连接速率与记账报告（速读版）
 
 > 📄 完整报告: [`connection-rate-billing-benchmark.md`](./connection-rate-billing-benchmark.md)
-> 📅 2026-04-10  |  基于 **3400+ 样本**、**4 次独立大样本 benchmark**
+> 📅 2026-04-10  |  基于 **3527 样本**、**10 次独立 benchmark**
 > 覆盖 **3 provider × 3 path = 9 格完整对比矩阵**
 
 ---
@@ -23,9 +23,48 @@
 
 ---
 
+## 📊 本报告数据基础
+
+**3527 个样本**跨 **10 次独立 benchmark**，完整的 git commit 和时间戳都记录在 `benchmarks/data/samples.jsonl`：
+
+| Run ID | 类型 | 样本数 | 说明 |
+|--------|------|-------|------|
+| sge21z | smoke | 24 | 初次验证（部分失败） |
+| 79nxzv | smoke | 24 | 优化前基线 |
+| y3sez9 | smoke | 24 | 优化后验证 |
+| 16u4d2 | billing-verify | 60 | **100% 记账匹配**（60/60） |
+| tby4cz | multi-provider 30s | 131 | 方向性数据 |
+| **qlzusr** | **multi-provider 180s** | **1243** | **主力 benchmark**（realistic payload，6 targets）|
+| **6o4u6u** | **hub-vs-direct** | **1121** | **头对头 short payload**（3 providers × 2 paths）|
+| nre1z6 | fill-gaps | 458 | 同 model 3 路 + Anthropic c=1 干净数据 |
+| sd3w3h | openrouter-all | 334 | OpenRouter 3 provider 全覆盖 |
+| **6f3exy** | **long-payload-3way** | **108** | **长 payload 3 路同 model 对比**（揭示 OpenRouter Total Time 陷阱） |
+
+**核心数据表格用的样本量**：
+
+| 对比表 | 用的数据源 | 每 cell n |
+|--------|-----------|----------|
+| 9 格矩阵 (short payload) | qlzusr + 6o4u6u + nre1z6 + sd3w3h | Hub/Direct: 40-179, OpenRouter: 40-189 |
+| 长 payload 3 路 | 6f3exy | Hub: 50, Direct: 45, **OpenRouter: 13** |
+| Anthropic c=1 干净数据 | nre1z6 | Hub: 40, Direct: 40 |
+| Server-Timing phase breakdown | qlzusr Hub-only | 427（126+132+169）|
+| 记账验证 | 16u4d2 | 60（100% 匹配） |
+
+---
+
 ## 🎯 核心对比：9 格完整矩阵（3 Provider × 3 Path）
 
 **短 payload，c=3 并发 60s 测试**。这是报告最核心的数据视图。
+
+**9 格矩阵的样本数（p50/p99/cv 三个子表共用）**：
+
+| Provider | Hub | Direct | OpenRouter |
+|----------|-----|--------|------------|
+| OpenAI `gpt-5-nano` | 169 | 179 | 40 |
+| Anthropic `claude-haiku-4-5` | **40 (c=1)** | **40 (c=1)** | 103 |
+| Google `gemini-2.5-flash` | 143 | 176 | 189 |
+
+> Anthropic Hub/Direct 用 c=1 sequential 是为了避开 Anthropic 50 req/min 限流。其他 cell 都是 c=3 × 60s。
 
 ### p50 TTFB（中位延迟）—— 谁最快
 
