@@ -25,30 +25,15 @@
 
 ## 📊 本报告数据基础
 
-**3527 个样本**跨 **10 次独立 benchmark**，完整的 git commit 和时间戳都记录在 `benchmarks/data/samples.jsonl`：
+- **总样本**：**3527 条**，约 **40 分钟纯 benchmark 运行时间**
+- **覆盖面**：3 provider × 3 path × 2 种 payload（short + realistic）
+- **数据分布**：
+  - 延迟性能测试：~3100 样本
+  - 记账准确性验证：60 样本（**100% 匹配**）
+  - 优化前后对比：~48 样本
+- **持久化**：每条样本都带 Server-Timing phase 数据 + git commit 信息，保存在 `benchmarks/data/samples.jsonl`，可复现
 
-| Run ID | 类型 | 样本数 | 说明 |
-|--------|------|-------|------|
-| sge21z | smoke | 24 | 初次验证（部分失败） |
-| 79nxzv | smoke | 24 | 优化前基线 |
-| y3sez9 | smoke | 24 | 优化后验证 |
-| 16u4d2 | billing-verify | 60 | **100% 记账匹配**（60/60） |
-| tby4cz | multi-provider 30s | 131 | 方向性数据 |
-| **qlzusr** | **multi-provider 180s** | **1243** | **主力 benchmark**（realistic payload，6 targets）|
-| **6o4u6u** | **hub-vs-direct** | **1121** | **头对头 short payload**（3 providers × 2 paths）|
-| nre1z6 | fill-gaps | 458 | 同 model 3 路 + Anthropic c=1 干净数据 |
-| sd3w3h | openrouter-all | 334 | OpenRouter 3 provider 全覆盖 |
-| **6f3exy** | **long-payload-3way** | **108** | **长 payload 3 路同 model 对比**（揭示 OpenRouter Total Time 陷阱） |
-
-**核心数据表格用的样本量**：
-
-| 对比表 | 用的数据源 | 每 cell n |
-|--------|-----------|----------|
-| 9 格矩阵 (short payload) | qlzusr + 6o4u6u + nre1z6 + sd3w3h | Hub/Direct: 40-179, OpenRouter: 40-189 |
-| 长 payload 3 路 | 6f3exy | Hub: 50, Direct: 45, **OpenRouter: 13** |
-| Anthropic c=1 干净数据 | nre1z6 | Hub: 40, Direct: 40 |
-| Server-Timing phase breakdown | qlzusr Hub-only | 427（126+132+169）|
-| 记账验证 | 16u4d2 | 60（100% 匹配） |
+每个表下方会标注具体 n，读者看到数字时可以直接判断可信度（p50 稳需 ~100 样本，p99 稳需 ~500+ 样本）。
 
 ---
 
@@ -119,7 +104,7 @@
 
 **用同一个 model `openai/gpt-5-nano` + realistic payload (800 max_tokens) 跑完整的三路对比**，发现一个震惊的现象：
 
-**测试条件：c=3 并发, 120s per target, Run ID `6f3exy`**
+**测试条件：c=3 并发, 120s per target**
 
 | 指标 | Hub | Direct | OpenRouter |
 |------|-----|--------|------------|
@@ -146,8 +131,8 @@
 
 | 测试 | 配置 | Hub TTFB p50 | Direct TTFB p50 | Hub 比 Direct 快 |
 |------|------|-------------|-----------------|-----------------|
-| qlzusr run | c=5, 180s | 7130ms | 8358ms | **-1228ms** |
-| 6f3exy run | c=3, 120s | 7091ms | 8267ms | **-1176ms** |
+| 第一次 | c=5, 180s | 7130ms | 8358ms | **-1228ms** |
+| 第二次 | c=3, 120s | 7091ms | 8267ms | **-1176ms** |
 | 偏差 | - | -0.5% | -1.1% | 差 ~4% |
 
 **"Hub 在 realistic payload 下比 Direct 快 ~1200ms" 是跨时段可复现的稳定现象**，不是偶然。

@@ -161,44 +161,21 @@ Hub 延迟 = 直连延迟
 
 ### 1.4 📊 本报告数据基础
 
-**总样本数**：**3527 条** 跨 **10 次独立 benchmark**，纯运行时间约 **40 分钟**，持久化在 `benchmarks/data/samples.jsonl`（1.9 MB）。
+- **总样本**：**3527 条**，约 **40 分钟纯 benchmark 运行时间**
+- **覆盖面**：3 provider × 3 path × 2 种 payload（short + realistic）
+- **数据分布**：
+  - 延迟性能 benchmark：约 3100 样本
+  - 记账准确性验证：60 样本（**100% 匹配**）
+  - 优化前后对比：约 48 样本
+- **持久化**：每条样本都带 Server-Timing phase 数据、客户端 TTFB、git commit，保存在 `benchmarks/data/samples.jsonl`（1.9 MB），可复现。详细 run ID 列表见附录 C
 
-| Run ID | 类型 | 样本数 | 主要用途 |
-|--------|------|-------|---------|
-| sge21z | smoke | 24 | 初次 smoke（部分失败，发现 3 个客户端 bug） |
-| 79nxzv | smoke | 24 | 修 bug 后优化前基线（p50 Hub overhead = 154ms） |
-| y3sez9 | smoke | 24 | 优化后验证（p50 Hub overhead = 56ms） |
-| 16u4d2 | billing-verify | 60 | **100% 记账匹配**（60/60）|
-| tby4cz | multi-provider 30s | 131 | 30s 短版本，方向性数据 |
-| **`qlzusr`** | **multi-provider 180s** | **1243** | **主力 benchmark**（5 targets, realistic payload），Hub Server-Timing phase 数据的主要来源 |
-| **`6o4u6u`** | **hub-vs-direct** | **1121** | **头对头 short payload**（3 providers × 2 paths + OpenRouter）|
-| nre1z6 | fill-gaps | 458 | OpenAI gpt-5-nano 三路对比 + Anthropic c=1 干净数据 |
-| sd3w3h | openrouter-all | 334 | OpenRouter 3 provider 全覆盖（补齐 9 格矩阵） |
-| **`6f3exy`** | **long-payload-3way** | **108** | **长 payload 3 路对比**（OpenRouter Total Time 陷阱）|
+**每个具体数据表下方都会标注 n**（样本数）。读者看到具体数字时可以直接判断可信度：
 
-**各核心数据表使用的样本数**：
-
-| 报告章节 | 表格 | 样本来源 | Hub n | Direct n | OpenRouter n |
-|---------|------|---------|-------|---------|-------------|
-| §2.2 | Server-Timing phase breakdown | qlzusr | 427（全部 Hub 样本） | - | - |
-| §2.1 | Hub 处理开销 p50/p90/p99 | qlzusr | 427 | - | - |
-| §3.1 | Provider latency (providerTtfb) | qlzusr | 427 | - | - |
-| §4.1 | Short payload 对比 | 6o4u6u | 129-169 / provider | 155-176 / provider | - |
-| §4.2.1 | Realistic payload 对比 (qlzusr) | qlzusr | 126 (OpenAI) | 106 (OpenAI) | - (不同 model) |
-| §4.2.2 | Long-payload 3-way (同 model) | 6f3exy | 50 | 45 | **13** ⚠️ |
-| §4.5 | 9 格矩阵 | 合并多 run | 40-169 | 40-179 | 40-189 |
-| §4.6 | Same-model 3-way (OpenAI) | nre1z6 | 169 | 179 | 40 |
-| §4.6 | Anthropic c=1 干净数据 | nre1z6 | 40 | 40 | - |
-| §5 | 记账验证 | 16u4d2 | 60 | - | - |
-
-**样本量的可靠性分级**（见 §7.2）：
-
-| 样本数范围 | p50 可信 | p90 可信 | p99 可信 | 代表章节 |
-|----------|---------|---------|---------|---------|
-| 40-60 | ✅ 粗略 | ⚠️ 不稳定 | ❌ 只供参考 | Anthropic c=1, OpenRouter OpenAI 部分 |
-| 100-200 | ✅ 稳定 | ✅ 稳定 | ⚠️ 噪声明显 | 大部分 §4 对比表 |
-| 200-500 | ✅✅ 非常稳 | ✅ 稳定 | ⚠️ 粗略 | 9 格矩阵部分 cell |
-| 400+ | ✅✅ | ✅✅ | ✅ 稳定 | §2.2 Server-Timing（n=427） |
+| 样本数 | p50 可信 | p90 可信 | p99 可信 |
+|-------|---------|---------|---------|
+| 40-60 | ✅ 粗略 | ⚠️ 不稳定 | ❌ 仅参考 |
+| 100-200 | ✅ 稳定 | ✅ 稳定 | ⚠️ 噪声明显 |
+| 400+ | ✅✅ | ✅✅ | ✅ 稳定 |
 
 ---
 
@@ -223,7 +200,7 @@ Hub 延迟 = 直连延迟
 
 ### 2.2 Server-Timing 各 Phase 分解（完整 p50/p90/p99/max）
 
-**数据源**：qlzusr run（multi-provider 180s, realistic payload），427 个 Hub 成功样本。
+**数据源**：multi-provider 180s benchmark，realistic payload，**427 个 Hub 成功样本**（hub-openai n=126 + hub-anthropic n=132 + hub-google n=169）。
 
 **hub-openai（n=126）**
 
@@ -344,7 +321,7 @@ Hub 延迟 = 直连延迟
 
 **目的**：测量 Hub 的"纯连接开销"。用最小 payload 把 provider 生成时间降到最低，让网络 + Hub 处理开销成为主导。
 
-**Run ID**: `6o4u6u`（2026-04-10T05:06:01Z）
+**测试条件**：c=3 并发, 60s per target, short payload (30 max_tokens)
 
 | Provider | Model | Hub p50/p90 | Direct p50/p90 | Diff p50 | Diff p90 | 样本 (h/d) |
 |----------|-------|------------|----------------|---------|---------|-----------|
@@ -367,7 +344,7 @@ Hub 延迟 = 直连延迟
 
 #### 4.2.1 首次 realistic payload benchmark（Hub vs Direct only）
 
-**Run ID**: `qlzusr`（2026-04-10T04:47:15Z，c=5, 180s per target）
+**测试条件**：c=5 并发, 180s per target, realistic payload (800 max_tokens)
 
 当时 OpenRouter 跑的是 `openai/gpt-oss-20b` 不同 model，不是 apples-to-apples 对比。只有 OpenAI Hub vs Direct 可以比：
 
@@ -382,7 +359,7 @@ Hub 延迟 = 直连延迟
 
 #### 4.2.2 Long-payload 3-way 补充测试（同 model，apples-to-apples）
 
-**Run ID**: `6f3exy`（2026-04-10T06:10:05Z，c=3, 120s per target）
+**测试条件**：c=3 并发, 120s per target, realistic payload (800 max_tokens)
 
 **目的**：第一次 benchmark 没包含 OpenRouter 用同 model 跑 realistic payload。这次补齐，用 **`openai/gpt-5-nano`** 跑完整 3 路对比。
 
@@ -430,8 +407,8 @@ Hub 延迟 = 直连延迟
 
 两次 benchmark 间隔 83 分钟，结果高度一致：
 
-| 指标 | qlzusr (c=5) | 6f3exy (c=3) | 偏差 |
-|------|-------------|-------------|------|
+| 指标 | 第一次（c=5, 180s） | 第二次（c=3, 120s） | 偏差 |
+|------|-------------------|-------------------|------|
 | Hub TTFB p50 | 7130ms | 7091ms | -0.5% |
 | Direct TTFB p50 | 8358ms | 8267ms | -1.1% |
 | Hub 比 Direct 快 | -1228ms | -1176ms | 一致 |
@@ -489,11 +466,10 @@ Hub 延迟 = 直连延迟
 
 **这是报告最核心的数据视图**。把三个 provider 经过三条路径（Hub / Direct / OpenRouter）全部跑一遍，得到 9 个对比 cell。所有数据都用 **short payload（30 max_tokens）** 以专注于"连接 + 传输"的开销而非"生成"的开销。
 
-**数据源**：
-- Hub / Direct 的 OpenAI 和 Google cell：来自 `6o4u6u`（hub-vs-direct，c=3, 60s）
-- Hub / Direct 的 Anthropic cell：来自 `nre1z6`（fill-gaps，**c=1 sequential**，避开 50 req/min 限流）
-- OpenRouter 的 OpenAI cell：来自 `nre1z6`（fill-gaps，c=3, 60s）
-- OpenRouter 的 Anthropic / Google cell：来自 `sd3w3h`（openrouter-all，c=3, 60s）
+**测试条件**：
+- Hub / Direct 的 OpenAI 和 Google cell：c=3, 60s, short payload
+- Hub / Direct 的 Anthropic cell：**c=1 sequential**, 40 samples（避开 Anthropic 50 req/min 限流）
+- OpenRouter 的所有 cell：c=3, 60s, short payload
 
 #### 📊 9 格矩阵的样本数（以下 3 个子表共用这个 n 表）
 
@@ -568,7 +544,7 @@ p99 和 cv 两个稳定性维度，**Hub 在所有 3 个 provider 上都最优**
 
 把 OpenAI gpt-5-nano 这一行拿出来单独看，因为是**唯一能做真正的 apples-to-apples 三路对比**（所有 3 条路径都是同一个 model 名）：
 
-**Run ID**: `nre1z6`（2026-04-10T05:33:43Z）
+**测试条件**：c=3 并发, 60s per target, short payload (30 max_tokens)
 
 | 指标 | Hub | Direct | OpenRouter |
 |------|-----|--------|------------|
@@ -589,7 +565,7 @@ p99 和 cv 两个稳定性维度，**Hub 在所有 3 个 provider 上都最优**
 
 **测试方法**：c=1 sequential + 800ms delay → ~45 req/min，稳稳在 Anthropic 50 req/min 限流之下。每 target 40 个请求。
 
-**Run ID**: `nre1z6`（同上）
+**测试条件**：c=1 sequential + 800ms delay（规避限流）, 40 samples per target
 
 | 指标 | Hub | Direct |
 |------|-----|--------|
