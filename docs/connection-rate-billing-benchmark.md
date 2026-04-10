@@ -1,7 +1,7 @@
 # AIGNE Hub: 连接速率与记账验证报告
 
-> ⚡ **先看速读版？** → [`connection-rate-billing-benchmark-summary.md`](./connection-rate-billing-benchmark-summary.md)（~3 分钟读完）
-> 这是完整技术报告，适合要深入了解每个数据点的读者。
+> 速读版：[`connection-rate-billing-benchmark-summary.md`](./connection-rate-billing-benchmark-summary.md)
+> 这是完整技术报告，包含所有数据点和分析细节。
 >
 > 测试日期: 2026-04-10
 > Hub 版本: `43cfa4b` (commit), `c27b75ee` (deployed)
@@ -13,110 +13,132 @@
 
 ## 执行摘要
 
-### 一句话结论
+### 数据规模
 
-**Hub 用 p50 的 ~150-200ms 代价，换来 p99 的 2 倍稳定性。记账 100% 准确。继续用 Hub。**
+本报告一共发出 5844 次 API 请求（含 923 条 Anthropic 429 限流错误），有效延迟样本 4911 条。详见 §1.4。
 
-### 核心数据
+### 核心指标
 
-基于 **10 次独立 benchmark**、**3527 个样本** 的测试（详见 §1.4 数据基础）：
+| 指标 | 值 | 数据基础 | 稳健性 |
+|------|-----|----------|--------|
+| Hub 自身处理开销 p50 | 42-52ms | 跨 12 个 target、n=2000+ Server-Timing 计时 | 跨时段稳健 |
+| Hub 自身处理开销 p90 | 50-72ms | 同上 | 跨时段稳健 |
+| Hub 自身处理开销 p99（典型） | 177-494ms | short payload 场景 | 跨时段有漂移 |
+| Hub 自身处理开销 p99（最差） | 1088ms | realistic payload + cold start | 来自 hub-openai 303 样本合并数据中的 cold start outlier |
+| 记账准确性 | 60/60 (100%) | x-request-id tracked，D1 查询验证 | 本次验证一致 |
 
-| 指标 | 值 | 说明 |
-|------|-----|------|
-| Hub 处理开销 p50 | **50ms** | 3 次 benchmark、3 个 provider 高度一致（n=427 Hub 样本）|
-| Hub 处理开销 p90 | **56-65ms** | 90% 请求在此以内 |
-| Hub 处理开销 p99（最优） | **76-78ms** | warm isolate、短 payload 高频场景 |
-| Hub 处理开销 p99（最差） | **1012ms** | realistic payload、cold start 多 |
-| 记账准确性 | **100%** | 60/60 请求，token + credits 完全一致 |
+### Hub vs Direct 的三个观察
 
-### Hub vs 直连 —— 三种对比视角
+> 表格布局：行 = 指标或 provider，列 = 路径（Hub / Direct / OpenRouter）。
 
-> **表格布局统一约定**：所有对比表都是 **行 = 指标（metric）或 provider，列 = 路径（Hub / Direct / OpenRouter）**。扫表时可以水平比较三条路径，垂直比较不同指标或 provider。
+**观察 1：p50 关系跨时段稳健**
 
-**视角 1：同一个 model 的三路对比（`openai/gpt-5-nano`, short payload, c=3, 60s）**
+在不同时段采集的数据中，Hub 的 p50 一致高于 Direct：
 
-| 指标 | Hub | Direct | OpenRouter |
-|-----|-----|--------|------------|
-| p50 | 1025ms | 860ms | **673ms** ⭐ |
-| p90 | 1219ms | **1217ms** ⭐ | 1428ms |
-| p99 | **1793ms** ⭐ | 3806ms | 2608ms |
-| cv | **0.23** ⭐ | 0.52 | 0.53 |
-| 样本数 | 169 | 179 | 40 |
+| Provider | Δp50 (Hub - Direct) 范围 | 样本 |
+|----------|-----|-----|
+| OpenAI `gpt-5-nano` | +115 ~ +204ms | n=758/835 合并 |
+| Google `gemini-2.5-flash` | +258 ~ +367ms | n=568/691 合并 |
+| Anthropic `claude-haiku-4-5` (c=1) | +92 ~ +220ms | n=160/160 合并 |
 
-每个维度的胜者都不一样：**p50** OpenRouter 最快；**p90** Hub 和 Direct 并列；**p99** Hub 最稳（比 Direct 稳 2 倍）；**cv** Hub 最小。
+**客观评价**：在本次测试条件下，short payload 场景下 Direct 的 p50 比 Hub 低 92-367ms，不同时段采集时方向一致。这是可以作为容量规划和 SLO 基线的稳健结论。
 
-**视角 2：短 payload 下 Hub 比 Direct 的代价（3 providers × 3 paths）**
+**观察 2：p99 关系跨时段不稳定**
 
-**样本数（3 个子表共用）**：
+在不同时段采集的数据中，Δp99 的符号和数值变化：
 
-| Provider | Hub n | Direct n | OpenRouter n |
-|----------|-------|----------|--------------|
-| OpenAI | 169 | 179 | 40 |
-| Anthropic | 40 (c=1) | 40 (c=1) | 103 |
-| Google | 143 | 176 | 189 |
+| Provider | Δp99 (Hub - Direct) 不同时段采集值 |
+|----------|-----------------------------|
+| OpenAI | +2065, -2013, +609, -1103, +147 |
+| Google | -1202, +256, +272, +123 |
+| Anthropic (c=1) | -5958, -1235, +358, +627 |
 
-_p50 TTFB：_
+**客观评价**：OpenAI 和 Anthropic 的 Hub vs Direct p99 胜负关系跨时段反转。单个时段窗口的 p99 不能作为"哪一路更稳"的跨时段结论。这项指标需要更多时段覆盖的数据才能定量化。详见 §4.9 时段漂移分析。
+
+**观察 3：realistic payload 场景 Hub 比 Direct 低约 1200ms**
+
+| 采集窗口 | 配置 | Hub TTFB p50 | Direct TTFB p50 | Δp50 |
+|---------|------|-------------|-----------------|------|
+| 窗口 1 | c=5, 180s, n=126/106 | 🌟 7130ms | 8358ms | -1228ms |
+| 窗口 2 | c=3, 120s, n=50/45 | 🌟 7091ms | 8267ms | -1176ms |
+
+> 🌟 表示该行更低的 p50。两个窗口中 Hub 的 p50 都比 Direct 低约 1200ms。
+
+**客观评价**：两个独立时段窗口偏差在 4% 以内，方向一致。在本次测试条件下 realistic payload 场景下 Hub 比 Direct 更快。可能原因：`gpt-5-nano` 的长生成响应在跨太平洋直连路径上比经 CF 骨干网路径慢。两个独立数据点方向一致，但时段覆盖相对 short payload 测试较少，建议再补采集 1-2 个时段窗口进一步验证。
+
+### 9-cell 矩阵（short payload, c=3）
+
+样本数（基于多时段合并数据）：
 
 | Provider | Hub | Direct | OpenRouter |
 |----------|-----|--------|------------|
-| OpenAI `gpt-5-nano` | 1025ms | 860ms | **673ms** ⭐ |
-| Anthropic `claude-haiku-4-5` | 948ms | **726ms** ⭐ | 1355ms |
-| Google `gemini-2.5-flash` | 1187ms | 817ms | **677ms** ⭐ |
+| OpenAI `gpt-5-nano` | 758 | 835 | 225 |
+| Anthropic `claude-haiku-4-5` (c=1) | 160 | 160 | 103 |
+| Google `gemini-2.5-flash` | 568 | 691 | 189 |
 
-_p99 TTFB：_
+p50 TTFB：
+
+| Provider | Hub | Direct | OpenRouter | 最快 |
+|----------|-----|--------|------------|------|
+| OpenAI `gpt-5-nano` | 1108ms | 971ms | 🌟 675ms | OpenRouter（多时段一致）|
+| Anthropic `claude-haiku-4-5` (c=1) | 985ms | 🌟 807ms | 1354ms | Direct（多时段一致）|
+| Google `gemini-2.5-flash` | 1196ms | 901ms | 🌟 677ms | OpenRouter（单时段）|
+
+表格中 🌟 标注每行的最低 p50。附加说明：
+- OpenAI OpenRouter 675ms：在多个时段采集的样本中 p50 都在 674-685ms
+- Anthropic Direct 807ms：在不同时段采集时 Direct 一致低于 Hub（Δp50 92-220ms）
+- Google OpenRouter 677ms 在单个时段窗口中最快，没有跨时段验证数据
+- Google 的 Hub/Direct 对比在不同时段采集时 Direct 一致低于 Hub（Δp50 258-367ms）
+
+p99 TTFB（注意 p99 跨时段漂移见 §4.9）：
 
 | Provider | Hub | Direct | OpenRouter |
 |----------|-----|--------|------------|
-| OpenAI `gpt-5-nano` | **1793ms** ⭐ | 3806ms | 2608ms |
-| Anthropic `claude-haiku-4-5` | **1919ms** ⭐ | 7877ms | 3035ms |
-| Google `gemini-2.5-flash` | **2390ms** ⭐ | 3592ms | 2660ms |
+| OpenAI `gpt-5-nano` | 3251ms | 3059ms | 🌟 2608ms |
+| Anthropic `claude-haiku-4-5` (c=1) | 🌟 2217ms | 3271ms | 3035ms |
+| Google `gemini-2.5-flash` | 2755ms | 2670ms | 🌟 2660ms |
 
-**p99 维度 Hub 是三冠王**（所有 3 个 provider 都最优）。
+> 🌟 仅表示该表合并数据下的最低 p99，不代表跨时段最优。p99 对时段敏感：在不同时段采集的数据中，Hub vs Direct 的 p99 胜负关系会反转（详见 §4.9）。
 
-**视角 3：长 payload 下 3 路对比（OpenAI `gpt-5-nano`, realistic 800 max_tokens, c=3, 120s）**
+cv：
+
+| Provider | Hub | Direct | OpenRouter |
+|----------|-----|--------|------------|
+| OpenAI `gpt-5-nano` | 🌟 0.37 | 0.45 | 0.51 |
+| Anthropic `claude-haiku-4-5` (c=1) | 🌟 0.27 | 0.67 | 0.60 |
+| Google `gemini-2.5-flash` | 🌟 0.26 | 0.38 | 0.47 |
+
+> 🌟 表示该表合并数据下的最低 cv。注意 Hub OpenAI cv 在不同时段采集时在 0.14-0.53 波动，cv 对时段敏感。
+
+### 长 payload 3 路对比（`gpt-5-nano`, realistic 800 max_tokens, c=3）
 
 | 指标 | Hub | Direct | OpenRouter |
 |------|-----|--------|------------|
-| TTFB p50 | 7091ms | 8267ms | **1385ms** ⭐ |
-| TTFB p99 | **9959ms** ⭐ | 10860ms | 1526ms |
-| **Total p50** | **7091ms** ⭐ | 8267ms | **29466ms** ⚠️⚠️ |
-| cv | **0.11** ⭐ | 0.15 | 0.15 |
-| 吞吐量（req/s）| **0.42** ⭐ | 0.38 | **0.11** ⚠️ |
-| 样本数 | 50 | 45 | **13** ⚠️ |
+| TTFB p50 | 7091ms | 8267ms | 🌟 1385ms |
+| TTFB p99 | 9959ms | 10860ms | 🌟 3628ms |
+| Total p50 | 🌟 7091ms | 8267ms | 29466ms |
+| Total p99 | 🌟 9959ms | 10860ms | 46528ms |
+| cv（TTFB）| 🌟 0.11 | 0.15 | 0.36 |
+| 吞吐量（req/s）| 🌟 0.42 | 0.38 | 0.10 |
+| 样本数 | 50 | 45 | 37 |
 
-**⚠️ OpenRouter 的 TTFB vs Total Time 陷阱**：TTFB 最快（1385ms）但完成 800 token 要 **29466ms**（4.2x 比 Hub 慢）。OpenRouter 每个 streaming chunk 都有额外延迟，导致它在长生成场景下吞吐量只有 Hub 的 ~1/4。**长生成场景 OpenRouter 不可用。**
+> 🌟 在延迟/cv 上标的是最低值，在吞吐量上标的是最高值。OpenRouter 在 TTFB 维度最低但 Total 维度最高，详见 §4.2.3 的分析。
 
-**三个视角的统一解释**：
+注：`gpt-5-nano` 在 stream 模式下实际是内部完整生成后一次返回（见 §1.6 streaming 行为分析），所以 Hub/Direct 的 TTFB ≈ Total。OpenRouter 的 TTFB=1385ms 是其边缘节点的快速 ack，但 Total=29466ms 反映完整 800 token 响应的实际完成时间。详见 §4.2.3。
 
-```
-Hub 延迟 = 直连延迟
-         + 固定 ~50ms Hub 开销（Server-Timing 证实）
-         + 固定 ~100-150ms 网络多一跳代价（CF edge）
-         − CF 骨干网的长尾稳定性收益（对跨太平洋路径特别有效）
-```
+### 决策参考
 
-- **p50 场景**：固定开销清晰可见，Hub 慢 150-200ms
-- **p99 场景**：CF 骨干网屏蔽偶发抖动的收益成为主导，Hub 反而快 2-3 倍
-- **长生成场景**：长时间的生成放大了 Direct 路径的不稳定性，Hub 的稳定性优势盖过固定开销
+| 维度 | 数据 |
+|------|------|
+| short payload p50 | Hub 比 Direct 高 92-367ms（跨时段稳健）|
+| short payload p99 | 跨时段胜负反转，无稳定结论 |
+| realistic payload p50 | Hub 比 Direct 低约 1200ms（两个独立时段窗口一致）|
+| Hub 自身处理开销 | 42-52ms p50（跨 2000+ 样本）|
+| 记账准确性 | 60/60 |
+| OpenRouter 长生成 | Total p50=29.5s, p99=46.5s，不适合 >500 tokens 输出场景 |
+| 统一接入 | 一套 key / catalog / auth |
 
-### 决策建议
-
-✅ **继续用 Hub，无需直连。** 核心 trade-off 明确：
-
-| 维度 | Hub | Direct |
-|------|-----|--------|
-| p50 中位延迟 | 稍慢 150-200ms | 稍快 |
-| p99 长尾延迟 | **显著更稳**（2-3 倍） | 偶发极端长尾 |
-| cv 分布稳定性 | **~0.2（极稳）** | 0.5-1.2（不稳定） |
-| 记账准确性 | **100%** | 需要自己实现 |
-| 统一接入 | ✅ 一套 key / catalog / auth | ❌ 多套 |
-| 长生成场景 | **反而更快**（CF 骨干网优势） | 跨太平洋路径不稳定 |
-
-**核心哲学问题**：你的用户更在乎"**99% 请求体验可预测**"，还是"**中位数再快 200ms**"？
-
-对 **AI Agent / Chat 场景**，答案几乎永远是前者。**Hub 是正确的选择**。
-
-**真正该优化的是模型选择**：Anthropic claude-haiku-4-5 比 OpenAI gpt-5-nano **快 14 倍**（486ms vs 6640ms providerTtfb），Hub 的 150-200ms p50 差距在这个数量级面前完全不是重点。
+模型选择是延迟优化的最大杠杆：Anthropic `claude-haiku-4-5` 的 providerTtfb p50 = 486ms，OpenAI `gpt-5-nano` = 6640ms，相差 13.7 倍。Hub 与 Direct 之间约 200ms 的 p50 差异在这个量级面前影响有限。
 
 ---
 
@@ -159,41 +181,60 @@ Hub 延迟 = 直连延迟
 
 **客户端 ↔ CF edge 往返约 400ms**（本次测试位置）。这部分跟 Hub 无关。
 
-### 1.4 📊 本报告数据基础
+### 1.4 本报告数据基础
 
-- **总样本**：**3527 条**，约 **40 分钟纯 benchmark 运行时间**
+- **总样本**：5844 次 API 请求（含 933 个错误样本，其中 923 个为 Anthropic 429 限流），**有效延迟样本 4911 条**
 - **覆盖面**：3 provider × 3 path × 2 种 payload（short + realistic）
-- **数据分布**：
-  - 延迟性能 benchmark：约 3100 样本
-  - 记账准确性验证：60 样本（**100% 匹配**）
-  - 优化前后对比：约 48 样本
-- **持久化**：每条样本都带 Server-Timing phase 数据、客户端 TTFB、git commit，保存在 `benchmarks/data/samples.jsonl`（1.9 MB），可复现。详细 run ID 列表见附录 C
+- **采集时段**：2026-04-10 的多个时段窗口（04:02-08:49 UTC，跨约 5 小时）
+- **有效样本的分类（互不重叠）**：
+  - 记账准确性验证：60 样本（60/60 匹配）
+  - 优化前后 smoke test：48 样本
+  - 延迟性能测试（含 OpenRouter 深度补采、Hub vs Direct 稳定性复核等多个子批次）：4803 样本
+- **错误样本说明**：
+  - `hub-anthropic` (950 样本，651 个 429)、`anthropic-direct` (332 样本，272 个 429) 主要来自早期 c=5 realistic 采集，踩到了 Anthropic 50 req/min + 10K output tokens/min 的限流
+  - 这些 target 的干净替代是 `hub-anthropic-c1` / `anthropic-direct-c1`（c=1 sequential + 800ms delay，合计 n=160 样本/path，0 错误）
+  - 报告里 Anthropic Hub/Direct 的所有统计都使用 c=1 版本的干净数据，429 样本不进入 p50/p99/cv 计算
+  - 其他错误（10 个）：早期的 `maxTokens` 参数 bug 导致的 HTTP 400，以及 1 个 long payload 的 fetch failed
+- **持久化**：每条样本都带 Server-Timing phase 数据、客户端 TTFB、git commit，保存在 `benchmarks/data/samples.jsonl`，可复现。详细的采集窗口 ID 列表见附录 C
 
-**每个具体数据表下方都会标注 n**（样本数）。读者看到具体数字时可以直接判断可信度：
+每个具体数据表下方都会标注 n（样本数）。读者可以直接判断可信度的经验值：
 
-| 样本数 | p50 可信 | p90 可信 | p99 可信 |
+| 样本数 | p50 可信度 | p90 可信度 | p99 可信度 |
 |-------|---------|---------|---------|
-| 40-60 | ✅ 粗略 | ⚠️ 不稳定 | ❌ 仅参考 |
-| 100-200 | ✅ 稳定 | ✅ 稳定 | ⚠️ 噪声明显 |
-| 400+ | ✅✅ | ✅✅ | ✅ 稳定 |
+| 40-60 | 粗略 | 不稳定 | 仅供参考 |
+| 100-200 | 稳定 | 稳定 | 噪声明显 |
+| 400+ | 高 | 高 | 相对稳定 |
+
+注：即使 n ≥ 400，p99 仍可能对测试时段敏感，时段漂移见 §4.9。
 
 ### 1.5 术语速查
 
 | 术语 | 含义 |
 |------|------|
-| **`c=N`** | **concurrency（并发数）**—— benchmark 客户端同时开 N 个 worker 并行发请求。`c=5` 比 `c=3` 压力更大。这是 benchmark 工具的通用写法（源自 wrk / ab / hey 等） |
-| **`c=1 sequential`** | 单线程顺序发请求（外加 delay），最保守的测试方式，用于规避严格 rate limit |
-| **TTFB** | **Time To First Byte**—— 从客户端发出请求到收到第一个字节的时间。对 streaming 响应特别重要（"多久看到第一个字"） |
-| **Total time** | 从发出请求到完整收完响应的时间（包含 streaming 全部字节）。对短 payload 约等于 TTFB，对长 payload 明显大于 TTFB |
-| **p50 / p90 / p99** | 第 50 / 90 / 99 百分位数 —— p99 = "99% 的请求都比这个数字快"。比平均值更能反映真实体验，特别是长尾 |
-| **cv** | 变异系数 = 标准差 / 平均值。**cv < 0.3 稳定；cv > 0.5 分布抖动明显**。用来判断数据是否集中 |
-| **min / max** | 样本中的最小 / 最大值。max 异常大通常暴露 cold start 或偶发问题 |
-| **Short payload** | 短 prompt + 30 max_tokens。专测"连接开销"，避免 provider 生成时间污染数据 |
-| **Realistic payload** | 1K system prompt + 800 max_tokens，模拟真实 chat 场景（长生成）|
-| **Hub / Direct / OpenRouter** | 三条路径：Hub 代理 / 客户端直连 Provider / OpenRouter 第三方代理 |
-| **Server-Timing** | HTTP 规范的服务端计时 response header。Hub 用它暴露内部各 phase 耗时（session, resolveProvider, preChecks 等），这是 Hub 独有的可观测优势 —— Direct 和 OpenRouter 都不发这个 header |
-| **providerTtfb** | Server-Timing 里的一个 phase —— 从 Hub Worker 发出请求到收到 Provider 首字节的时间。代表 CF edge → Provider 的网络 + Provider 自身生成时间 |
-| **cold start** | Worker isolate 首次启动后的初始化开销。CF Workers 对空闲 isolate 会回收，再次请求时需要重新初始化，导致 p99 抖动 |
+| `c=N` | concurrency（并发数），benchmark 客户端同时开 N 个 worker 并行发请求。源自 wrk / ab / hey 等常见 benchmark 工具 |
+| `c=1 sequential` | 单线程顺序发请求（附带 delay），用于规避严格 rate limit |
+| TTFB | Time To First Byte，从客户端发出请求到收到第一个字节的时间 |
+| Total time | 从发出请求到完整收完响应的时间（包含 streaming 全部字节）。对短 payload 约等于 TTFB，对长 payload 明显大于 TTFB |
+| p50 / p90 / p99 | 第 50 / 90 / 99 百分位数。p99 = "99% 的请求都比这个数字快" |
+| cv | 变异系数 = 标准差 / 平均值。数值越大分布越分散 |
+| min / max | 样本中的最小 / 最大值 |
+| 样本数 (n) | 该 cell 一共发出多少次 API 请求。样本数越多，p50/p90/p99 的统计噪声越小。是本报告衡量数据可靠性的主要指标 |
+| 时段窗口 | 在某一时段内连续采集的一批样本。本报告在 2026-04-10 的多个时段窗口采集数据（窗口之间间隔 5-60 分钟），用于检测时段漂移 |
+| short payload | 短 prompt + 30 max_tokens，用于测"连接开销"，避免 provider 生成时间干扰 |
+| realistic payload | 1K system prompt + 800 max_tokens，模拟长生成 chat 场景 |
+| Hub / Direct / OpenRouter | 三条路径：Hub 代理 / 客户端直连 Provider / OpenRouter 第三方代理 |
+| Server-Timing | HTTP 规范的服务端计时 response header。Hub 用它暴露内部各 phase 耗时 |
+| providerTtfb | Server-Timing 的一个 phase，从 Hub Worker 发出请求到收到 Provider 首字节的时间。代表 CF edge → Provider 的网络 + Provider 自身生成时间 |
+| cold start | Worker isolate 首次启动的初始化开销。CF Workers 对空闲 isolate 会回收 |
+| 🌟 | 在数据对比表中标注每行的优势单元格（最低延迟、最低 cv、最高吞吐等）。仅反映该表呈现的数字，对 p99/cv 等跨时段不稳定的指标，不代表跨时段稳健结论——需要结合表下的说明判断 |
+
+**关于样本量和时段覆盖的权衡**：
+
+考虑两个场景：
+- 场景 A：单个时段窗口内采集 5000 样本 → 样本很多，但只覆盖了那个时段
+- 场景 B：5 个时段窗口内各采集 100 样本 = 500 样本 → 样本少，但覆盖 5 个时段
+
+本次稳定性复核采用场景 B 的策略，因为前期测试发现"单次大样本采集的 p99 会被当下时段的网络状态绑架"。多个时段合并的统计更能反映真实的分布。例如 Hub OpenAI short/c3 的 p50 在不同时段窗口分别采集到 1025-1259ms 范围（range 234ms），p99 在 1718-4344ms 范围（range 2626ms）—— p99 的"不稳定"只有覆盖多个时段才能看到。
 
 ### 1.6 Streaming vs Non-Streaming 与 TTFB / Total 的关系
 
@@ -209,29 +250,28 @@ Hub 延迟 = 直连延迟
   - **TTFB ≈ Total**（因为客户端只能在整个 response body 读完后才知道时间）
   - benchmark 客户端里把 ttfb 直接设成 totalTime（见 `index.ts:164-167`）
 
-#### 🤯 发现：OpenAI gpt-5-nano 在"流式模式"下其实并不是真正的逐字流式
+#### gpt-5-nano 的实际流式行为
 
-看 Server-Timing 的 `streaming` phase（从收到 provider 第一个字节到最后一个字节的时间）：
+Server-Timing 的 `streaming` phase（从收到 provider 第一个字节到最后一个字节的时间）数据：
 
-| Provider | providerTtfb p50 | **streaming p50** | 结论 |
-|----------|-----------------|------------------|------|
-| **OpenAI** `gpt-5-nano` | 6640ms | **⚠️ 30ms** | 等 6.6 秒后一次性吐完 —— **不是真正的流式** |
-| Anthropic `claude-haiku-4-5` | 486ms | 3202ms | 首字节快，后面 3.2 秒持续 stream token |
-| Google `gemini-2.5-flash` | 3942ms | 1046ms | 中间路径 |
+| Provider | providerTtfb p50 | streaming p50 | 行为 |
+|----------|-----------------|---------------|------|
+| OpenAI `gpt-5-nano` | 6640ms | 30ms | 内部完整生成后一次返回，非渐进流式 |
+| Anthropic `claude-haiku-4-5` | 486ms | 3202ms | 首字节快（0.5s），后续持续 stream 3.2 秒 |
+| Google `gemini-2.5-flash` | 3942ms | 1046ms | 首字节 4 秒，streaming 1 秒完成 |
 
-**含义**：**OpenAI gpt-5-nano 在 `stream: true` 请求下内部先完整生成再一次性发出**。它不像 Anthropic / Google 那样逐字 stream。这解释了为什么 §4.2.2 里 hub-openai 的 TTFB = Total = 7091ms（两个数字几乎完全相同）—— 因为 gpt-5-nano 根本没有中间的 "streaming 过程"。
+OpenAI `gpt-5-nano` 在 `stream: true` 模式下内部先完整生成再一次性返回。它的 streaming phase 只有 30ms，说明这不是逐字 stream 的行为。这解释了为什么 §4.2.2 里 hub-openai realistic payload 的 TTFB 和 Total 都是 7091ms（两者几乎相同）。
 
-**对比** hub-anthropic：客户端 TTFB p50 = 964ms（首字节快），Total 包含 3.2 秒的 streaming，两个数字明显不同。
+hub-anthropic 的客户端 TTFB p50 = 964ms，Total 包含 3.2 秒的 streaming 过程，TTFB 和 Total 明显不同。这是渐进流式的典型行为。
 
-**这也解释了 OpenRouter 的"TTFB 陷阱"**：
-- Hub 对 gpt-5-nano：OpenAI 本身就是一次性返回，TTFB = Total = 7091ms
-- OpenRouter 对 gpt-5-nano：OpenRouter 在中间加了一层 proxy，它**把 OpenAI 一次性返回的响应拆成多个小 chunk，TTFB 变快了 1385ms**，但每个 chunk 之间有延迟，Total 变成 29466ms
-- OpenRouter 的 TTFB 优势是**人为制造的**（通过 chunking），代价是整体 Total 时间暴涨
+OpenRouter 的 TTFB 与 Total 差异的解释：
+- 对 gpt-5-nano，OpenAI 本身就是一次返回，Hub/Direct 的 TTFB = Total ≈ 7091ms
+- OpenRouter 在中间加了一层 proxy，把 OpenAI 一次返回的响应拆成多个 chunk。TTFB 降到 1385ms（快速边缘 ack），但 chunk 之间有额外延迟，Total 升到 29466ms
 
-**对产品决策的启示**：
-1. **gpt-5-nano 不适合需要"首字节反馈"的场景**（UI 提示"正在回答"）—— 因为它 7 秒才返回第一个字节
-2. **Anthropic claude-haiku-4-5 是真正的流式模型**，TTFB ~1 秒 + streaming 3 秒，适合需要实时反馈的 chat UI
-3. **OpenRouter 对 gpt-5-nano 的"fast TTFB"是个假象**，总体更慢
+产品设计的含义：
+1. gpt-5-nano 不适合需要"首字节反馈"的 UI 场景（7 秒才返回第一个字节）
+2. Anthropic claude-haiku-4-5 是渐进流式，TTFB 约 0.5-1 秒 + streaming 3 秒，适合实时反馈 UI
+3. OpenRouter 对 gpt-5-nano 的"低 TTFB"来自 chunk 拆分机制，不代表整体响应更快
 
 ---
 
@@ -239,99 +279,101 @@ Hub 延迟 = 直连延迟
 
 ### 2.1 Hub Processing Overhead（去掉 provider 和 streaming）
 
-**定义**：`total - providerTtfb - streaming`，代表 Hub 自身代码花的时间。
+定义：`total - providerTtfb - streaming`，代表 Hub 自身代码花的时间。
 
-| Target | n | **p50** | p90 | p99 | min | max | cv |
-|--------|---|---------|-----|-----|-----|-----|-----|
-| hub-openai | 126 | **50ms** | 61ms | 1012ms | 41ms | 1088ms | 1.84 |
-| hub-anthropic | 132 | **53ms** | 65ms | 141ms | 41ms | 904ms | 1.22 |
-| hub-google | 169 | **50ms** | 59ms | 409ms | 36ms | 600ms | 0.91 |
+| Target | n | p50 | p90 | p99 | min | max | cv |
+|--------|---|-----|-----|-----|-----|-----|-----|
+| hub-openai | 126 | 50ms | 61ms | 1012ms | 41ms | 1088ms | 1.84 |
+| hub-anthropic | 132 | 53ms | 65ms | 141ms | 41ms | 904ms | 1.22 |
+| hub-google | 169 | 50ms | 59ms | 409ms | 36ms | 600ms | 0.91 |
 
-**核心发现：**
+观察：
 
-1. **p50 在所有 3 个 provider 下高度一致（50-53ms）**—— 说明 Hub 的处理开销独立于 provider，是一个固定成本
-2. **p90 同样稳定（59-65ms）**—— 说明大多数请求（90%）都在 ~60ms 以内
-3. **p99 差异较大（141-1012ms）**—— 主要来自 cold start outlier。hub-anthropic 的 p99=141ms 明显低于其他两个，因为它样本多+请求快，cold start 占比低
-4. **cv > 1** 都来自 cold start 拉长的尾部；去掉 outlier 后 cv < 0.2
+1. p50 在 3 个 provider 下相对一致（50-53ms），说明 Hub 处理开销主要独立于 provider
+2. p90 稳定在 59-65ms
+3. p99 差异较大（141-1012ms），主要来自 cold start outlier。hub-anthropic 的 p99 较低，因其样本密度高、cold start 占比低
+4. cv > 1 是被 cold start 尾部拉高的结果；去掉 outlier 后 cv 降到 0.2 以下
 
-### 2.2 Server-Timing 各 Phase 分解（完整 p50/p90/p99/max）
+跨时段稳健性：本节数据来自 qlzusr 这个时段窗口（realistic payload, c=5）。新采集的稳定性复核（stab-hub-*）也得到 42-45ms 的 p50 overhead，与此一致。详见 §4.8。
 
-**数据源**：multi-provider 180s benchmark，realistic payload，**427 个 Hub 成功样本**（hub-openai n=126 + hub-anthropic n=132 + hub-google n=169）。
+### 2.2 Server-Timing 各 Phase 分解
 
-**hub-openai（n=126）**
+数据源：multi-provider 180s benchmark（时段窗口 qlzusr），realistic payload，c=5。427 个 Hub 成功样本（hub-openai n=126 + hub-anthropic n=132 + hub-google n=169）。
+
+hub-openai (n=126)：
 
 | Phase | p50 | p90 | p99 | max |
 |-------|-----|-----|-----|-----|
 | session | 0ms | 0ms | 0ms | 0ms |
-| resolveProvider | **0ms** ⭐ | 0ms | 37ms | 65ms |
-| preChecks | **45ms** | 53ms | **1004ms** ⚠️ | **1084ms** ⚠️ |
+| resolveProvider | 0ms | 0ms | 37ms | 65ms |
+| preChecks | 45ms | 53ms | 1004ms | 1084ms |
 | modelSetup | 5ms | 8ms | 13ms | 16ms |
 | providerTtfb | 6640ms | 7812ms | 9622ms | 11378ms |
 | streaming | 30ms | 52ms | 408ms | 937ms |
-| usage | **0ms** ⭐ | 0ms | 0ms | 0ms |
-| **total** | **6757ms** | 7910ms | 9729ms | 11443ms |
+| usage | 0ms | 0ms | 0ms | 0ms |
+| total | 6757ms | 7910ms | 9729ms | 11443ms |
 
-**hub-anthropic（n=132）**
+hub-anthropic (n=132)：
 
 | Phase | p50 | p90 | p99 | max |
 |-------|-----|-----|-----|-----|
 | session | 0ms | 0ms | 0ms | 0ms |
-| resolveProvider | **0ms** ⭐ | 0ms | 46ms | 54ms |
-| preChecks | **47ms** | 57ms | 89ms | **899ms** ⚠️ |
+| resolveProvider | 0ms | 0ms | 46ms | 54ms |
+| preChecks | 47ms | 57ms | 89ms | 899ms |
 | modelSetup | 5ms | 9ms | 16ms | 97ms |
 | providerTtfb | 486ms | 844ms | 1157ms | 1585ms |
 | streaming | 3202ms | 3661ms | 4159ms | 5001ms |
-| usage | **0ms** ⭐ | 0ms | 0ms | 0ms |
-| **total** | **3740ms** | 4319ms | 5107ms | 5555ms |
+| usage | 0ms | 0ms | 0ms | 0ms |
+| total | 3740ms | 4319ms | 5107ms | 5555ms |
 
-**hub-google（n=169）**
+hub-google (n=169)：
 
 | Phase | p50 | p90 | p99 | max |
 |-------|-----|-----|-----|-----|
 | session | 0ms | 0ms | 0ms | 0ms |
-| resolveProvider | **0ms** ⭐ | 0ms | 50ms | 51ms |
-| preChecks | **44ms** | 50ms | 68ms | 74ms |
-| modelSetup | 5ms | 8ms | **365ms** ⚠️ | **557ms** ⚠️ |
+| resolveProvider | 0ms | 0ms | 50ms | 51ms |
+| preChecks | 44ms | 50ms | 68ms | 74ms |
+| modelSetup | 5ms | 8ms | 365ms | 557ms |
 | providerTtfb | 3942ms | 5089ms | 6509ms | 6599ms |
 | streaming | 1046ms | 2266ms | 3113ms | 3160ms |
-| usage | **0ms** ⭐ | 0ms | 0ms | 0ms |
-| **total** | **5040ms** | 5568ms | 6559ms | 6647ms |
+| usage | 0ms | 0ms | 0ms | 0ms |
+| total | 5040ms | 5568ms | 6559ms | 6647ms |
 
-### 2.3 关键发现
+### 2.3 观察
 
-**1. ⭐ 三个 phase 几乎恒定为 0ms（Hub 架构设计亮点）**
+**1. 三个 phase 的 p50 为 0ms**
 
-| Phase | 为什么是 0 | 意义 |
-|-------|-----------|------|
-| `session` | 认证在 middleware 做完，handler 只读 Hono context | 零延迟 |
-| `resolveProvider` | Worker isolate 内存缓存命中率 ~99% | D1 查询几乎不发生 |
-| `usage` | `recordModelCall` + meter buffer 全部 `waitUntil` 异步 | **记账完全不阻塞用户响应** |
+| Phase | p50 为 0 的原因 |
+|-------|---------------|
+| `session` | DID 认证在 middleware 完成（Service Binding RPC），handler 只读 Hono context |
+| `resolveProvider` | Worker isolate 60s TTL 内存缓存，命中率约 99% |
+| `usage` | `recordModelCall` + meter buffer 全部走 `waitUntil` 异步化 |
 
-**这三个是 Hub 能做到 ~50ms 固定开销的关键**。如果任何一个做错（每次查 D1 / 同步 recordModelCall），Hub overhead 会飙到 200-300ms。
+这三项设计避免了同步 D1 查询或同步 Payment Kit 调用进入请求关键路径。如果改成同步，Hub overhead 估计会升到 200-300ms。
 
-**2. ⚠️ `preChecks` 是主要瓶颈**
+**2. `preChecks` phase 占 Hub p50 的 90%**
 
-- **p50 = 44-47ms**（所有 provider 高度一致）
-- **占 Hub p50 开销的 90%**（Hub 总 50ms，preChecks 45ms）
-- p50 的 44-47ms 是 Payment Kit Service Binding RPC 的固定成本
-- **hub-openai 的 p99 = 1004ms** 是极端 cold start（isolate 首次调用 Payment Kit）
-- **下一步优化的明确目标：KV 缓存 "has credits" 快路径**
+- p50 = 44-47ms，跨 3 个 provider 一致
+- 这是 Payment Kit Service Binding RPC 的固定成本
+- hub-openai 的 p99 = 1004ms 来自 isolate 首次调用 Payment Kit 的 cold start
+- 对应的优化方向：加一层 KV "has credits" 快路径跳过大部分 credit 检查 RPC
 
-**3. ⚠️ `modelSetup` 有罕见的 KV cold read**
+**3. `modelSetup` 的偶发 KV cold read**
 
 - 正常 p50 = 5ms
-- hub-google **p99 = 365ms, max = 557ms** —— 这是 `resolveGatewayConfig` 读 KV `gateway-settings` 的冷读
-- hub-openai 的 modelSetup 却很稳定（p99=13ms）
-- 两者差异可能因为 hub-google 样本更多（169 vs 126），更容易跨到新 isolate 触发 KV 冷读
+- hub-google p99 = 365ms, max = 557ms，是 `resolveGatewayConfig` 读 KV `gateway-settings` 的 cold read
+- hub-openai 的 modelSetup p99 = 13ms，相对稳定
 
-**4. Hub 自身只占端到端总时间的 1%**
+两者差异可能因为 hub-google 样本更多（169 vs 126），更容易跨到新 isolate。
 
-以 hub-anthropic 为例：total=3740ms，Hub 处理 ~50ms = **1.3%**。其他 98.7% 是：
-- CF→Anthropic 网络 + Anthropic 生成首 token: 486ms (13%)
+**4. Hub 自身在端到端时间中的占比**
+
+以 hub-anthropic realistic payload 为例：total=3740ms，Hub 处理 ~50ms，占比 1.3%。分布：
+- CF→Anthropic 网络 + Anthropic 首 token: 486ms (13%)
 - Streaming 800 tokens: 3202ms (86%)
-- 客户端到 CF edge 网络：~200ms（未计入 total，是客户端测量才能看到）
+- 客户端到 CF edge 网络：约 200ms（未计入 total，只在客户端测量时可见）
 
-**→ 即使 Hub 处理开销降到 0ms，端到端用户体验也只快 1-2%。** 真正的性能瓶颈在 provider 侧和 streaming，不在 Hub。
+即便 Hub 处理开销降到 0ms，端到端用户可见时间只会变快约 1-2%。延迟优化的主要空间在 provider 响应时间和 streaming 时间，不在 Hub 处理。
 
 ---
 
@@ -343,17 +385,19 @@ Hub 延迟 = 直连延迟
 
 | Provider | Model | n | p50 | p90 | p99 | 相对最快 |
 |----------|-------|---|-----|-----|-----|---------|
-| **Anthropic** | claude-haiku-4-5 | 132 | **486ms** | 844ms | 1157ms | **1x** |
-| **Google** | gemini-2.5-flash | 169 | **3942ms** | 5089ms | 6509ms | 8.1x |
-| **OpenAI** | gpt-5-nano | 126 | **6640ms** | 7812ms | 9622ms | **13.7x** |
+| Anthropic | claude-haiku-4-5 | 132 | 🌟 486ms | 🌟 844ms | 🌟 1157ms | 1x |
+| Google | gemini-2.5-flash | 169 | 3942ms | 5089ms | 6509ms | 8.1x |
+| OpenAI | gpt-5-nano | 126 | 6640ms | 7812ms | 9622ms | 13.7x |
+
+> 🌟 表示每列最低的 providerTtfb。Anthropic 在 p50/p90/p99 三个维度都是最快的 provider。
 
 **含义**：
 
-- **OpenAI gpt-5-nano 是 Anthropic claude-haiku-4-5 的 14 倍慢**
-- 这跟 Hub 毫无关系，纯粹是 provider 自身的差异
+- OpenAI gpt-5-nano 的 providerTtfb 是 Anthropic claude-haiku-4-5 的 14 倍
+- 这跟 Hub 无关，来自 provider 自身的差异
 - **对产品的启示**：
-  - **latency 敏感场景应该默认用 Anthropic claude-haiku-4-5**
-  - Google gemini-2.5-flash 中等
+  - 延迟敏感场景应该优先使用 Anthropic claude-haiku-4-5
+  - Google gemini-2.5-flash 延迟中等
   - OpenAI gpt-5-nano 不适合实时场景
 
 ### 3.2 为什么 OpenAI gpt-5-nano 这么慢
@@ -371,7 +415,7 @@ Hub 延迟 = 直连延迟
 
 ## 四、Hub vs Direct 头对头对比
 
-这是报告的核心部分。我们跑了**两组对比 benchmark**，用两种不同的 payload，因为发现了一个非常有意思的现象。
+本节用两组对比 benchmark 覆盖 short 和 realistic 两种 payload。两种 payload 下观察到的 Hub vs Direct 关系不一致：short payload 下 Hub 的 p50 高于 Direct，realistic payload 下 Hub 的 p50 反而低于 Direct。详见 §4.3 的分析。
 
 ### 4.1 Short payload 对比（c=3, 30 max_tokens, 短 prompt）
 
@@ -381,9 +425,11 @@ Hub 延迟 = 直连延迟
 
 | Provider | Model | Hub p50/p90 | Direct p50/p90 | Diff p50 | Diff p90 | 样本 (h/d) |
 |----------|-------|------------|----------------|---------|---------|-----------|
-| **OpenAI** | gpt-5-nano | 1259 / 1551ms | 1055 / 1441ms | **+204ms (+19.3%)** | +110ms (+7.7%) | 131 / 155 |
-| **Anthropic** | claude-haiku-4-5 | 965 / 1407ms | 726 / 1177ms | **+239ms (+32.9%)** | +229ms (+19.5%) | 99 / 60* |
-| **Google** | gemini-2.5-flash | 1187 / 1600ms | 817 / 1321ms | **+370ms (+45.3%)** | +279ms (+21.1%) | 143 / 176 |
+| OpenAI | gpt-5-nano | 1258 / 1551ms | 🌟 1055 / 1440ms | +203ms (+19.2%) | +111ms (+7.7%) | 131 / 155 |
+| Anthropic | claude-haiku-4-5 | 965 / 1406ms | 🌟 742 / 1196ms | +223ms (+30.1%) | +210ms (+17.6%) | 99 / 60* |
+| Google | gemini-2.5-flash | 1187 / 1599ms | 🌟 819 / 1320ms | +368ms (+44.9%) | +279ms (+21.1%) | 143 / 176 |
+
+> 🌟 表示该行 p50/p90 更低的路径。本次短 payload 测试中 Direct 在所有 provider 上 p50 都低于 Hub。
 
 *Anthropic 两边都触发了 50 req/min 限流，成功样本数受影响但 p50/p90 仍然可靠
 
@@ -406,86 +452,95 @@ Hub 延迟 = 直连延迟
 
 | 指标 | hub-openai (n=126) | openai-direct (n=106) | 差异 |
 |------|-------------------|----------------------|------|
-| **p50 TTFB** | **7130ms** | **8358ms** | **Hub 快 -1228ms (-14.7%)** 🤯 |
-| p90 TTFB | 8330ms | 9695ms | Hub 快 -1365ms (-14.1%) |
-| **p99 TTFB** | **10104ms** | **15664ms** | **Hub 快 -5560ms (-35.5%)** |
-| min | 5895ms | 5679ms | +216ms（几乎一致）|
-| max | 11797ms | 21502ms | Hub 快 -9705ms |
-| cv | **0.12** | 0.22 | Hub **分布更稳定** |
+| p50 TTFB | 🌟 7130ms | 8358ms | Hub 低 1228ms (-14.7%) |
+| p90 TTFB | 🌟 8330ms | 9695ms | Hub 低 1365ms (-14.1%) |
+| p99 TTFB | 🌟 10104ms | 15664ms | Hub 低 5560ms (-35.5%) |
+| min | 5895ms | 🌟 5679ms | +216ms |
+| max | 🌟 11797ms | 21502ms | Hub 低 9705ms |
+| cv | 🌟 0.12 | 0.22 | Hub 分布相对集中 |
 
 #### 4.2.2 Long-payload 3-way 补充测试（同 model，apples-to-apples）
 
-**测试条件**：c=3 并发, 120s per target, realistic payload (800 max_tokens)
+**测试条件**：c=3 并发，realistic payload (800 max_tokens)。Hub/Direct 来自单个 120s 时段窗口采集；OpenRouter 来自 120s + 240s 两个时段窗口合并，因为前期 13 样本 cv=0.15 低估了波动（详见下文 §4.2.3）。
 
-**目的**：第一次 benchmark 没包含 OpenRouter 用同 model 跑 realistic payload。这次补齐，用 **`openai/gpt-5-nano`** 跑完整 3 路对比。
+**目的**：早期的第一批 realistic payload 采集没包含 OpenRouter 用同 model 的数据。这一批补齐，用 `openai/gpt-5-nano` 完成完整 3 路对比。
 
 **结果（保持 Path 在列的统一布局）**：
 
 | 指标 | Hub | Direct | OpenRouter |
 |------|-----|--------|------------|
-| TTFB p50 | **7091ms** | 8267ms | **1385ms** ⭐ |
-| TTFB p90 | 8325ms | 10414ms | 1469ms |
-| TTFB p99 | **9959ms** ⭐ | 10860ms | 1526ms |
-| cv | **0.11** ⭐ | 0.15 | 0.15 |
-| **Total p50** | **7091ms** ⭐ | 8267ms | **29466ms** ⚠️⚠️⚠️ |
-| 吞吐量 (req/s) | **0.42** ⭐ | 0.38 | **0.11** ⚠️ |
-| 样本数 | 50 | 45 | **13** ⚠️ |
+| TTFB p50 | 7091ms | 8267ms | 🌟 1385ms |
+| TTFB p90 | 8325ms | 10414ms | 🌟 1542ms |
+| TTFB p99 | 9959ms | 10860ms | 🌟 3628ms |
+| TTFB cv | 🌟 0.11 | 0.15 | 0.36 |
+| Total p50 | 🌟 7091ms | 8267ms | 29466ms |
+| Total p99 | 🌟 9959ms | 10860ms | 46528ms |
+| 吞吐量 (req/s) | 🌟 0.42 | 0.38 | 0.10 |
+| 样本数 | 50 | 45 | 37（补数据后）|
 
-#### 4.2.3 🚨 OpenRouter 的 TTFB vs Total Time 陷阱
+> 🌟 在延迟/cv 上标最低，在吞吐量上标最高。OpenRouter 的 TTFB 三项都最低，但 Total 时间反而最高——这是 §4.2.3 要分析的核心现象。
 
-**这是整份报告里最重要的操作性发现之一。**
+#### 4.2.3 OpenRouter 的 TTFB 与 Total 差异
 
-看 OpenRouter 的两列：
-- **TTFB p50 = 1385ms** —— 三路中最快，看起来是大赢家
-- **Total p50 = 29466ms** —— 完成整个 800 token 响应需要 **近 30 秒**，是 Hub 的 **4.2 倍**
+OpenRouter 对 `gpt-5-nano` 的 TTFB 和 Total 之间差距很大：
+- TTFB p50 = 1385ms（三路中最低）
+- TTFB p99 = 3628ms（p99 约为 p50 的 2.6 倍）
+- Total p50 = 29466ms（约为 Hub 的 4.2 倍）
+- Total p99 = 46528ms（约为 Hub p99 的 4.7 倍）
 
-**什么意思**：OpenRouter 的 streaming **每个 chunk 之间有额外延迟**。快速返回第一个字节（快速 "ack"），然后每个后续 chunk 都很慢。结果是"看起来很快开始"但"完整回复要等很久"。
+前期 13 样本的 OpenRouter TTFB p99 = 1526ms / cv = 0.15，低估了真实波动。补到 37 样本后 p99 升到 3628ms，cv 升到 0.36，反映了尾部事件。
 
-**吞吐量证据**：
+可能的解释：OpenRouter 把 OpenAI `gpt-5-nano` 的一次性响应在边缘节点拆成多个 chunk。TTFB 时间反映的是边缘 ack 的快速返回，后续 chunk 之间有额外延迟，因此 Total 时间远大于 Hub/Direct 的直接响应时间。
+
+吞吐量对比：
 
 | Path | 窗口 | 样本数 | 平均每请求总时间 | 吞吐（req/sec） |
-|------|------|-------|----------------|-------|
-| Hub | 120s × c=3 = 360s worker-sec | 50 | **7.2s** | 0.42 |
-| Direct | 120s × c=3 = 360s worker-sec | 45 | **8.0s** | 0.38 |
-| **OpenRouter** | 120s × c=3 = 360s worker-sec | **13** | **27.7s** ⚠️ | **0.11** |
+|------|------|-------|----------------|-----------------|
+| Hub | 120s × c=3 = 360s worker-sec | 50 | 🌟 7.2s | 🌟 0.42 |
+| Direct | 120s × c=3 = 360s worker-sec | 45 | 8.0s | 0.38 |
+| OpenRouter | 360s + 720s ≈ 1080s worker-sec | 37 | 29.2s | 0.10 |
 
-**OpenRouter 的实际吞吐只有 Hub / Direct 的 ~1/4**。
+OpenRouter 在相同 worker-sec 条件下的吞吐量是 Hub / Direct 的约 1/4。
 
-**可能原因**：
-1. OpenRouter 的内部队列：在 TTFB 之后，每个 chunk 都要等 OpenRouter 的调度器处理
-2. OpenRouter 对 OpenAI 的 streaming 有 proxy 层额外延迟
-3. OpenRouter 对 streaming 吞吐做了某种限流（每秒 token 数）
-4. OpenRouter 可能把多个用户的 streaming 复用一条上游连接
+可能原因（未经过证实，仅列出假设）：
+1. OpenRouter 的内部队列在 TTFB 之后对每个 chunk 有调度延迟
+2. OpenRouter 对 OpenAI 的 streaming 有 proxy 层处理开销
+3. OpenRouter 对 streaming 的单请求吞吐做了某种速率控制
+4. OpenRouter 可能复用上游连接，引入多路复用开销
 
-**无论哪个原因，操作性结论都一样**：**OpenRouter 不适合长生成场景**。短 payload 的 TTFB 优势在长 payload 下完全变成 total time 灾难。
+对长生成场景（输出 > 500 tokens），OpenRouter 的吞吐量不足以支持 Hub/Direct 相同的请求密度。
 
 #### 4.2.4 Hub vs Direct 的独立验证
 
-两次 benchmark 间隔 83 分钟，结果高度一致：
+两个时段窗口间隔 83 分钟，数据方向一致：
 
-| 指标 | 第一次（c=5, 180s） | 第二次（c=3, 120s） | 偏差 |
+| 指标 | 窗口 1（c=5, 180s） | 窗口 2（c=3, 120s） | 偏差 |
 |------|-------------------|-------------------|------|
-| Hub TTFB p50 | 7130ms | 7091ms | -0.5% |
-| Direct TTFB p50 | 8358ms | 8267ms | -1.1% |
-| Hub 比 Direct 快 | -1228ms | -1176ms | 一致 |
+| Hub TTFB p50 | 7130ms | 🌟 7091ms | -0.5% |
+| Direct TTFB p50 | 8358ms | 🌟 8267ms | -1.1% |
+| Hub - Direct | -1228ms | -1176ms | 差 52ms |
 
-**"Realistic payload 下 Hub 比 Direct 快 ~1200ms" 是跨时段可复现的稳定现象**，不是偶然。
+> 🌟 表示两个窗口中较低的数字。两个窗口偏差都在 1% 左右，说明跨时段稳定。
 
-#### 4.2.5 长生成场景的三路结论
+在这两个独立时段窗口中，realistic payload 场景下 Hub 比 Direct 低约 1200ms，偏差在 5% 以内。两个时段数据一致，方向稳健。这是 §4.9 中 Hub vs Direct 关系里为数不多的跨时段稳定结论之一。
+
+#### 4.2.5 长生成场景的三路汇总
 
 | 维度 | Hub | Direct | OpenRouter |
 |------|-----|--------|------------|
-| TTFB p50 | 7091ms | 8267ms | **1385ms** ⭐ (陷阱) |
-| Total p50 | **7091ms** ⭐ | 8267ms | 29466ms ⚠️ |
-| p99 稳定性 | **9959ms** ⭐ | 10860ms | 1526ms |
-| cv（分布） | **0.11** ⭐ | 0.15 | 0.15 |
-| 吞吐量 | **0.42 req/s** ⭐ | 0.38 req/s | 0.11 req/s |
-| **综合评价** | **最优** | 可用 | **长生成场景不可用** |
+| TTFB p50 | 7091ms | 8267ms | 🌟 1385ms |
+| Total p50 | 🌟 7091ms | 8267ms | 29466ms |
+| TTFB p99 | 9959ms | 10860ms | 🌟 3628ms |
+| Total p99 | 🌟 9959ms | 10860ms | 46528ms |
+| cv（TTFB）| 🌟 0.11 | 0.15 | 0.36 |
+| 吞吐量（req/s）| 🌟 0.42 | 0.38 | 0.10 |
+| 样本数 | 50 | 45 | 37 |
 
-**关键结论**：
-1. **Hub 在长生成场景下是明确的最优选择** —— Total / p99 / cv / 吞吐量四个维度全赢
-2. **Direct 是合格的备选** —— 略慢但稳定
-3. **OpenRouter 只适合短回复**（< 100 tokens）—— 长生成场景要等 30 秒，完全不可接受
+观察：
+1. Hub 的 Total p50 在本次数据中低于 Direct 1176ms，跨两个独立时段窗口方向一致
+2. OpenRouter 的 TTFB p50 最低，但 Total 时间远大于 Hub/Direct（见 §4.2.3）
+3. OpenRouter 的吞吐量约为 Hub/Direct 的 1/4，在 240s 窗口内只能跑完 24 个请求
+4. 对输出 >500 tokens 的场景，OpenRouter 的单请求完成时间（Total p50=29.5s）不适用于实时交互场景
 
 ### 4.3 为什么结果相反？——深度分析
 
@@ -496,181 +551,314 @@ Hub 延迟 = 直连延迟
 | 主导因素 | 网络 RTT | Provider 自身延迟 + 网络路径质量 |
 | 测试时段 | 05:06 UTC | 04:47 UTC（早 ~20 分钟）|
 
-**核心假设**：OpenAI API 从"中国客户端直连"这条路径在 04:47 UTC 时段有网络/队列问题，导致 direct 特别慢（max 21.5 秒！）。而 Hub 走 CF 的骨干网到 OpenAI，绕开了这个问题。
+一个可能的解释：在 realistic payload 测试的 04:47 UTC 时段，OpenAI API 从客户端直连的路径存在网络或队列问题，导致 direct 延迟明显偏高（max 21.5s）。Hub 走 CF 骨干网到 OpenAI，可能规避了这个问题。这只是观察到的现象的一种推测，需要更多时段的数据验证。
 
-**这不是 Hub 代码的功劳，而是 Cloudflare 网络的功劳。** Hub 自身的 ~50ms 开销在两次测试中都是稳定的：
+Hub 自身的处理开销在两次测试中稳定：
 
 | Target | Realistic p50 overhead | Short p50 overhead |
-|--------|----------------------|-------------------|
+|--------|----------------------|--------------------|
 | hub-openai | 50ms | 50ms |
 | hub-anthropic | 53ms | 49ms |
 | hub-google | 50ms | 49ms |
 
-**Hub 处理开销是一个固定的 ~50ms**，这个数字在不同测试条件下都一致。真正变化的是 "CF→Provider 网络"和"Client→Provider 网络"之间的相对速度 —— 这取决于时间、provider 负载和地理位置。
+Hub 处理开销在跨测试条件下基本不变。外部延迟差异来自 CF→Provider 和 Client→Provider 两条网络路径的相对质量，这个相对质量会随时段、provider 负载、地理位置变化。
 
 ### 4.4 综合结论
 
-**Hub 的延迟代价 = 固定 Hub 处理（~50ms）+ 网络路径差异（随时段、provider、地理位置变化）**
+Hub 的延迟可以近似分解为：
 
-- **短请求场景**（agent 快速 tool-call、quick Q&A）：Hub 加成 **200-370ms**（约 +20% ~ +45%）
-- **典型 chat 场景**（几轮对话，几百 tokens 响应）：Hub 加成 **约 50-200ms**（约 +2% ~ +10%）
-- **长生成场景**（大文档生成、长回复）：Hub **可能更快**，因为 CF 骨干网优于部分本地直连路径
+```
+Hub TTFB ≈ 固定 Hub 处理开销 (~50ms) + 网络/provider 部分
+```
 
-**最重要的观察：Hub 自身处理开销是固定的 ~50ms，波动的全是网络 + provider 自身的变数。** 如果你的场景里 provider 延迟本来就几秒，Hub 的 50ms 基本不可见。
+Hub 处理开销稳定在 42-52ms 范围（跨多次测试验证）。网络/provider 部分会随时段、payload 大小、provider 负载变化：
+
+- 短请求场景（agent tool-call、quick Q&A）：Hub 的 TTFB 比 Direct 高 92-367ms（在多个时段采集中观察，见 §4.9）
+- 典型 chat 场景（几百 tokens 响应）：Hub 处理开销占总时间约 2-10%
+- 长生成场景（realistic payload, 800 tokens）：两个独立时段窗口中 Hub 比 Direct 低约 1200ms
+
+需要注意：在 provider 响应时间本身就是数秒的场景下，Hub 的 50ms 处理开销占比较低（约 1-2%）。
 
 ### 4.5 完整 9 格对比矩阵（3 Provider × 3 Path）
 
-**这是报告最核心的数据视图**。把三个 provider 经过三条路径（Hub / Direct / OpenRouter）全部跑一遍，得到 9 个对比 cell。所有数据都用 **short payload（30 max_tokens）** 以专注于"连接 + 传输"的开销而非"生成"的开销。
+本节给出多个时段窗口合并后的 9-cell 统计。所有 Hub/Direct 数据都来自多个时段窗口的合并，OpenRouter 数据也是多个时段窗口合并。样本量足以压制单时段窗口内的采样噪声，但 p99 仍对时段敏感（见 §4.9）。
 
 **测试条件**：
-- Hub / Direct 的 OpenAI 和 Google cell：c=3, 60s, short payload
-- Hub / Direct 的 Anthropic cell：**c=1 sequential**, 40 samples（避开 Anthropic 50 req/min 限流）
-- OpenRouter 的所有 cell：c=3, 60s, short payload
+- Hub / Direct 的 OpenAI 和 Google cell：c=3, 每个时段窗口 60s，在不同时段窗口采集后合并
+- Hub / Direct 的 Anthropic cell：c=1 sequential + 800ms delay，合并多个时段窗口共 160 样本/path（避开 Anthropic 50 req/min 限流）
+- OpenRouter 的 OpenAI cell：c=3 合并多个时段窗口（n=40+42+143=225）
+- OpenRouter 的 Anthropic / Google cell：c=3 × 60s × 单时段窗口
 
-#### 📊 9 格矩阵的样本数（以下 3 个子表共用这个 n 表）
+#### 9 格矩阵的样本数（3 个子表共用）
 
 | Provider | Hub | Direct | OpenRouter |
 |----------|-----|--------|------------|
-| **OpenAI** `gpt-5-nano` | 169 | 179 | 40 |
-| **Anthropic** `claude-haiku-4-5` | **40 (c=1)** | **40 (c=1)** | 103 |
-| **Google** `gemini-2.5-flash` | 143 | 176 | 189 |
+| OpenAI `gpt-5-nano` | 758 | 835 | 225 |
+| Anthropic `claude-haiku-4-5` (c=1) | 160 | 160 | 103 |
+| Google `gemini-2.5-flash` | 568 | 691 | 189 |
 
-**注意**：
-- Anthropic Hub / Direct 是 c=1 sequential（40 samples）—— 为避开 Anthropic 50 req/min 限流
-- 其他所有 cell 都是 c=3 × 60s
-- OpenRouter 的样本数普遍较少（尤其 OpenAI = 40）—— 这本身是个信号，详见 §4.5.3
-
-#### 9 格矩阵 — p50 TTFB（中位延迟）
+#### p50 TTFB（中位延迟）
 
 | Provider / Model | Hub | Direct | OpenRouter | 最快 |
 |-----------------|-----|--------|------------|------|
-| **OpenAI** `gpt-5-nano` | 1025ms | 860ms | **673ms** ⭐ | OpenRouter |
-| **Anthropic** `claude-haiku-4-5` | 948ms (c=1) | **726ms** ⭐ (c=1) | 1355ms | Direct |
-| **Google** `gemini-2.5-flash` | 1187ms | 817ms | **677ms** ⭐ | OpenRouter |
+| OpenAI `gpt-5-nano` | 1108ms | 971ms | 🌟 675ms | OpenRouter |
+| Anthropic `claude-haiku-4-5` (c=1) | 985ms | 🌟 807ms | 1354ms | Direct |
+| Google `gemini-2.5-flash` | 1196ms | 901ms | 🌟 677ms | OpenRouter（单时段）|
 
-#### 9 格矩阵 — p99 TTFB（长尾稳定性）
+**客观评价**（基于跨时段稳健程度）：
 
-| Provider / Model | Hub | Direct | OpenRouter | 最稳 |
-|-----------------|-----|--------|------------|------|
-| **OpenAI** `gpt-5-nano` | **1793ms** ⭐ | 3806ms | 2608ms | **Hub** |
-| **Anthropic** `claude-haiku-4-5` | **1919ms** ⭐ (c=1) | 7877ms (c=1) | 3035ms | **Hub** |
-| **Google** `gemini-2.5-flash` | **2390ms** ⭐ | 3592ms | 2660ms | **Hub** |
+- OpenAI p50 推荐 OpenRouter：在不同时段采集的数据中 p50 都在 674-685ms，跨时段稳定。比 Direct 快约 300ms，比 Hub 快约 430ms
+- Anthropic p50 推荐 Direct：在不同时段采集中 Direct 一致低于 Hub 92-220ms。OpenRouter 反而比 Direct 慢约 550ms，可能是 OpenRouter 对 Anthropic 的路由层有额外开销
+- Google p50 OpenRouter 在单个时段窗口中最快 677ms，但没有多时段验证数据，不能声称跨时段稳定；Google 的 Hub/Direct 对比在不同时段中 Direct 一致低于 Hub
 
-#### 9 格矩阵 — cv（分布稳定性）
+没有任何一条路径在 3 个 provider 上都是 p50 最快。路径选择需要按 provider 拆分判断。
 
-| Provider / Model | Hub | Direct | OpenRouter | 最稳 |
-|-----------------|-----|--------|------------|------|
-| **OpenAI** `gpt-5-nano` | **0.23** ⭐ | 0.52 | 0.53 | **Hub** |
-| **Anthropic** `claude-haiku-4-5` | **0.23** ⭐ (c=1) | 1.16 (c=1) | 0.60 | **Hub** |
-| **Google** `gemini-2.5-flash` | **0.23** ⭐ | 0.50 | 0.47 | **Hub** |
+#### p99 TTFB
 
-#### 核心发现
+| Provider / Model | Hub | Direct | OpenRouter |
+|-----------------|-----|--------|------------|
+| OpenAI `gpt-5-nano` | 3251ms | 3059ms | 🌟 2608ms |
+| Anthropic `claude-haiku-4-5` (c=1) | 🌟 2217ms | 3271ms | 3035ms |
+| Google `gemini-2.5-flash` | 2755ms | 2670ms | 🌟 2660ms |
 
-**1. Hub 在 p99 稳定性上是 3 条路径里的"三冠王"**
+> 🌟 仅表示该表合并数据下的最低 p99，**不代表跨时段最优**。p99 对测试时段敏感。稳定性复核显示 Hub vs Direct 的 p99 胜负关系会在不同时段之间反转（详见 §4.9）。上表的数值可以作为"整体分布的长尾位置"，但不代表任一时段窗口内的典型值。
 
-p99 和 cv 两个稳定性维度，**Hub 在所有 3 个 provider 上都最优**。这不是巧合，而是 CF 骨干网对长尾延迟的系统性优化。
+Anthropic Direct 的 p99=3271ms 主要受早期时段窗口 (nre1z6) 的一个 7877ms 离群点影响，该离群点在后续 3 个时段窗口中未复现。Hub Anthropic c=1 的 p99 在 4 个时段窗口中相对集中（2036/2598/2217ms）。这说明 Anthropic 直连路径可能存在偶发长尾，但样本量（n=160）不足以定量化。
 
-**2. p50 的胜者取决于 provider**
+#### cv
 
-- **OpenAI**：OpenRouter 赢（673ms） > Direct（860ms） > Hub（1025ms）
-- **Anthropic**：Direct 赢（726ms） > Hub（948ms） > **OpenRouter 反而最慢（1355ms）** 🤯
-- **Google**：OpenRouter 赢（677ms） > Direct（817ms） > Hub（1187ms）
+| Provider / Model | Hub | Direct | OpenRouter |
+|-----------------|-----|--------|------------|
+| OpenAI `gpt-5-nano` | 🌟 0.37 | 0.45 | 0.51 |
+| Anthropic `claude-haiku-4-5` (c=1) | 🌟 0.27 | 0.67 | 0.60 |
+| Google `gemini-2.5-flash` | 🌟 0.26 | 0.38 | 0.47 |
 
-**注意 OpenRouter 对 Anthropic 的延迟异常**：p50=1355ms 比 Direct 慢了将近 2 倍。可能的原因：
-- OpenRouter 的 Anthropic 池子使用了不同的路由路径
-- OpenRouter 对 Anthropic 增加了额外的队列/处理时间
-- OpenRouter 的 Anthropic 模型定价策略不同
+> 🌟 表示该表合并数据下的最低 cv。cv 也对时段敏感：Hub OpenAI cv 在不同时段采集时可在 0.14-0.53 之间波动。
 
-**3. OpenRouter 的总吞吐比 TTFB 显示的差**
+#### 观察到的模式
 
-注意样本数差异：OpenRouter 的 OpenAI cell 只有 **42 个样本**（n=42），而 Hub/Direct 都有 150+ 样本。这说明 OpenRouter 的 OpenAI streaming 总时间比 TTFB 显示的长（~4-5s 总响应时间），TTFB 快但完整 streaming 慢。
+**1. Hub vs Direct 的 p50 差值跨时段稳健**
 
-**对比**：
-- OpenRouter OpenAI: 42 samples / 60s / c=3 ≈ 每请求 4.3s 总时间
-- Hub OpenAI: 169 samples / 60s / c=3 ≈ 每请求 1.1s 总时间
-- Direct OpenAI: 179 samples / 60s / c=3 ≈ 每请求 1.0s 总时间
+在不同时段采集的 Δp50 (Hub - Direct)：
 
-→ **OpenRouter 的 TTFB 优势在总吞吐上会消失甚至反转**。
+| Provider | 不同时段采集值 | 范围 |
+|----------|---------------|------|
+| OpenAI | +204, +165, +153, +168, +115 | 115-204ms |
+| Google | +367, +288, +258, +289 | 258-367ms |
+| Anthropic (c=1) | +180, +220, +143, +92 | 92-220ms |
 
-**4. Hub 的 50ms 开销在这个对比里完全不是重点**
+所有时段采集中 Hub 一致高于 Direct。差值约 120-370ms，取决于 provider 和时段。
 
-三个路径之间 p50 的差异 150-370ms 主要来自**不同代理服务的路由实现差异**（OpenRouter 对 Gemini 很快但对 Anthropic 很慢；Direct 对 Anthropic 快但 p99 有大离群值；Hub 相对稳定但 p50 不是最快）。Hub 自身的 50ms 固定开销只是这个总差异里的一小部分。
+**2. Hub vs Direct 的 p99 关系跨时段不稳定**
+
+| Provider | Δp99 不同时段采集值 | 符号反转？ |
+|----------|--------------------|------------|
+| OpenAI | +2065, -2013, +609, -1103, +147 | 是（4 次反转）|
+| Google | -1202, +256, +272, +123 | 是（1 次反转）|
+| Anthropic (c=1) | -5958, -1235, +358, +627 | 是（1 次反转）|
+
+单个时段窗口的 p99 数据不能支撑"Hub p99 更稳"或"Direct p99 更稳"的跨时段结论。详见 §4.9。
+
+**3. OpenRouter 的 TTFB 与 Total 时间差距**
+
+OpenRouter 的短 payload TTFB p50 = 675ms（三路最快），但 Total p50 = 5044ms，Total p99 = 8842ms。Hub/Direct 的 short payload Total p50 约 1.0-1.1s。OpenRouter 的 TTFB 优势反映的是快速边缘 ack，而不是完整响应时间上的优势。
+
+**4. OpenRouter `gpt-5-nano` 的双峰分布 —— 补数据后才看清**
+
+前期 40-42 样本时，OpenRouter × gpt-5-nano 的 cv 在两个独立时段窗口中表现为 0.34 和 0.53，看起来像采样噪声。补数据到 n=225 后确认这是双峰分布：
+
+| TTFB 区间 | 占比 | 累计 |
+|----------|------|------|
+| **500-1000ms（快速峰）** | **81.8%** | 81.8% |
+| 1000-1500ms | 11.9% | 93.7% |
+| 1500-2000ms | 0.7% | 94.4% |
+| 2000-3000ms | 4.2% | 98.6% |
+| >3000ms | 1.4% | 100% |
+
+**关键观察**：
+- p50 跨时段稳定：不同时段采集的 p50 都在 674-685ms
+- cv 稳定在 0.51-0.54：不是噪声，是结构性特征
+- **~18% 的请求会慢到 1000ms+，~6% 慢到 2000ms+，~1.4% 慢到 3000ms+**
+- 最可能的原因：OpenRouter 后端的冷/热连接池（热连接 ~680ms、冷连接 ~1500ms、偶发长尾 >3s）
+
+**产品含义**：
+- OpenRouter 的 p50=675ms 代表的是"约 82% 请求的快速峰"，不代表所有请求都在该水平
+- 约 18% 的请求偏离快速峰进入 1000ms+ 区间，约 6% 进入 2000ms+ 区间
+- 产品决策时需要区分"看 p50"和"看 p90/p99 边界"两种场景
 
 ### 4.6 同一个 model 的三路对比（focused view of OpenAI cell）
 
-把 OpenAI gpt-5-nano 这一行拿出来单独看，因为是**唯一能做真正的 apples-to-apples 三路对比**（所有 3 条路径都是同一个 model 名）：
+OpenAI `gpt-5-nano` 是三路都使用同一个 model 名的 cell，可以做 apples-to-apples 对比。
 
-**测试条件**：c=3 并发, 60s per target, short payload (30 max_tokens)
+**测试条件**：c=3 并发，short payload (30 max_tokens)。Hub/Direct 合并多个时段窗口（窗口 6o4u6u + nre1z6 + 3 个新稳定性复核窗口），OpenRouter 合并多个时段窗口（窗口 nre1z6 + sd3w3h + su608w）。
 
-| 指标 | Hub | Direct | OpenRouter |
-|------|-----|--------|------------|
-| p50 | 1025ms | 860ms | **681ms** ⭐ |
-| p90 | 1219ms | **1217ms** ⭐ | 1428ms |
-| p99 | **1793ms** ⭐ | 3806ms | 1538ms |
-| min | 881ms | 693ms | 649ms |
-| cv | **0.23** ⭐ | 0.52 | 0.34 |
-| 样本数 | 169 | 179 | 40 |
+| 指标 | Hub (n=758) | Direct (n=835) | OpenRouter (n=225) |
+|------|-------------|----------------|---------------------|
+| p50 | 1108ms | 971ms | 🌟 675ms |
+| p90 | 1411ms | 🌟 1304ms | 1447ms |
+| p99 | 3251ms | 3059ms | 🌟 2608ms |
+| cv | 🌟 0.37 | 0.45 | 0.51 |
 
-**每个维度的胜者都不一样**：
-- **p50 最快**: OpenRouter（681ms）—— TTFB 最快
-- **p90 并列**: Direct 和 Hub（1217 vs 1219，**完全一样**）
-- **p99 最稳**: **Hub（1793ms）**—— 比 Direct 的 3806ms **稳 2 倍**
-- **cv 最低**: **Hub（0.23）**
+> 🌟 表示该表合并数据下每行最低值。注意 p99/cv 跨时段不稳定，见 §4.9。
 
-### 4.6 Anthropic c=1 干净数据（绕开 rate limit）
+p50 的路径排序：OpenRouter (675ms) < Direct (971ms) < Hub (1108ms)。
 
-**测试方法**：c=1 sequential + 800ms delay → ~45 req/min，稳稳在 Anthropic 50 req/min 限流之下。每 target 40 个请求。
+p99 的合并数据上 OpenRouter 最低，但这部分原因是 OpenRouter 数据时段覆盖较集中，而 Hub/Direct 的时段覆盖更广。p99 的跨时段稳定性见 §4.9。
 
-**测试条件**：c=1 sequential + 800ms delay（规避限流）, 40 samples per target
+#### 4.6.1 OpenRouter 跨时段漂移（短 payload）
 
-| 指标 | Hub | Direct |
-|------|-----|--------|
-| p50 | 948ms | **761ms** ⭐ |
-| p90 | 1364ms | **974ms** ⭐ |
-| p99 | **1919ms** ⭐ | **7877ms** ⚠️ |
-| cv | **0.23** ⭐ | 1.16 |
-| 样本数 | 40 | 40 |
+| 指标 | 窗口 nre1z6 (n=40) | 窗口 sd3w3h (n=42) | 窗口 su608w (n=143) | 合并 (n=225) |
+|------|-----|-----|-----|-----|
+| p50 | 685ms | 🌟 674ms | 675ms | 675ms |
+| p99 | 🌟 1538ms | 2608ms | 3134ms | 2608ms |
+| cv | 🌟 0.34 | 0.53 | 0.54 | 0.51 |
 
-**关键发现**: Direct p50/p90 都更快（快 187ms/390ms），**但有一个 7877ms 的离群值**（40 个请求里的 1 个），把 p99 和 cv 拉得很差。
+> 🌟 表示每行在各时段窗口中的最低值。注意该表展示的是"跨时段漂移现象"——p50 基本不变，但 p99/cv 在不同时段窗口差异较大。
 
-从原始日志看，anthropic-direct 第 24 次请求耗时 **7877ms**，前后 23 个和 16 个请求都在 600-1200ms 正常范围。这是 **Anthropic API 偶发的长尾抖动**，跨太平洋的直连链路更容易受此影响。
+p50 在不同时段窗口采集的值都在 674-685ms 范围内，变化小。p99 在小样本时变化较大（1538 → 2608 → 3134ms），随样本量增加逐渐暴露分布的长尾。p99 稳定的经验法则是样本量 ≥500，本报告的 n=225 对 p99 仍有一定不确定性，但足够锁定在 2500-3200ms 区间。
 
-**Hub 分布极稳**：cv=0.23，最慢的请求也只有 1919ms（约为 p50 的 2 倍）。
+#### 4.6.2 Anthropic c=1 数据
 
-### 4.7 核心洞察：Hub 用 p50 换 p99 稳定性
+避开 Anthropic 50 req/min 限流的测试方法：c=1 sequential + 800ms delay → 约 45 req/min，每个时段窗口采 40 样本。多个时段窗口合并后共 160 样本/path。
 
-把前面所有对比数据抽象出来，一条主线清晰浮现：
+| 指标 | Hub (n=160) | Direct (n=160) |
+|------|-------------|----------------|
+| p50 | 985ms | 🌟 807ms |
+| p90 | 1364ms | 🌟 1113ms |
+| p99 | 🌟 2217ms | 3271ms |
+| cv | 🌟 0.27 | 0.67 |
 
-**Hub 的延迟 = 直连延迟 + 固定 ~50ms Hub 开销 + 固定 ~100-150ms 网络多一跳代价 − CF 骨干网的长尾稳定性收益**
+> 🌟 表示该表每行的更优值。p50/p90 Direct 更低，p99/cv Hub 更低——但 Direct p99 高主要是单点离群值造成的（见下文分析）。
 
-这个公式能同时解释所有看似矛盾的现象：
+Direct 的 p50/p90 比 Hub 低 178/251ms。Direct 的 p99 高于 Hub 主要来自时段窗口 nre1z6 中的一个 7877ms 单点离群值（该窗口中的第 24 个请求，前后的请求都在 600-1200ms 范围）。该离群值在后续 3 个时段窗口中未复现。样本量（n=160）不足以判断这是 Anthropic 直连的结构性特征还是单次偶发。
 
-| 场景 | Hub 的净效果 | 原因 |
-|------|-------------|------|
-| Short payload, p50 | **Hub 慢 ~150-370ms** | 网络多一跳代价清晰可见 |
-| Short payload, p99 | **Hub 显著更稳** | CF 骨干网屏蔽偶发长尾 |
-| Realistic payload, p50 | **Hub 快 1228ms**（OpenAI）| 长生成时间放大了 Direct 的网络不稳定性 |
-| Realistic payload, p99 | **Hub 快 5560ms**（OpenAI）| 同上，更显著 |
-| 同 model 三路对比 p50 | OpenRouter > Direct > Hub | Hub 开销最高 |
-| 同 model 三路对比 p99 | Hub > OpenRouter > Direct | Hub 最稳 |
-| Anthropic c=1 p50 | Direct 快 187ms | 网络多一跳代价 |
-| Anthropic c=1 p99 | Hub 快 5958ms | 稳定性压倒性优势 |
+不同时段窗口的数据：
 
-**结论一句话**：**Hub 以 p50 的 150-200ms 代价，换来 p99 的显著稳定性（2 倍以上）。这是产品级的 trade-off：你的用户更在乎"99% 请求体验可预测"还是"中位数再快 200ms"。对 AI Agent 场景，答案几乎永远是前者。**
+| 时段窗口 | Hub p50 | Direct p50 | Hub p99 | Direct p99 |
+|---------|---------|-----------|---------|-----------|
+| nre1z6 | 949ms | 🌟 769ms | 🌟 1919ms | 7877ms |
+| ctv7n6 | 1023ms | 🌟 803ms | 🌟 2036ms | 3271ms |
+| ykpy1f | 1009ms | 🌟 866ms | 2598ms | 🌟 2240ms |
+| xsxzwz | 958ms | 🌟 866ms | 2217ms | 🌟 1590ms |
 
-### 4.8 Hub 处理开销（两次独立 benchmark 一致）
+> 🌟 表示每行每个指标组（p50 / p99）的较低值。4 个时段窗口中 Direct p50 始终低于 Hub，但 p99 胜负关系跨时段反转 1 次（窗口 2 → 窗口 3）。
 
-用 Server-Timing 测得的 Hub 内部处理时间（去掉网络和 provider 部分）：
+Direct 的 p99 在 4 个时段窗口中从 1590ms 到 7877ms 变化（range 6287ms），不稳定。Hub 的 p99 在 1919-2598ms（range 679ms），相对集中。
 
-| Target | Realistic (n=126-169) | Short (n=99-143) |
-|--------|---------------------|------------------|
-| hub-openai | p50=50 p90=61 p99=1012ms | p50=50 p90=56 p99=**78**ms |
-| hub-anthropic | p50=53 p90=65 p99=141ms | p50=49 p90=56 p99=1052ms |
-| hub-google | p50=50 p90=59 p99=409ms | p50=49 p90=58 p99=**76**ms |
+### 4.7 核心观察（基于多时段数据）
 
-**Short payload 场景下 hub-openai 和 hub-google 的 p99 分别只有 78ms 和 76ms。** 这说明在请求率足够高（短请求快速循环）让 isolate 持续热的情况下，Hub 的 99% 处理开销可以控制在 80ms 以内。**这是 Hub 性能的"真实天花板"。**
+稳定性复核得到以下观察：
 
-Realistic payload 场景下 p99 飙到 1012ms，是因为长生成时间让 isolate 之间的间隔变大，更容易触发 cold start。
+| 维度 | 观察 | 数据支撑 | 稳健性 |
+|------|------|---------|-------|
+| Short payload p50 | Hub 一致高于 Direct 92-367ms | 多个时段采集符号一致 | 稳健 |
+| Short payload p99 | Hub vs Direct 胜负关系跨时段反转 | OpenAI: +2065/-2013/+609/-1103/+147 | 不稳定 |
+| Realistic payload p50 | Hub 低于 Direct 约 1200ms | 两个独立时段窗口，偏差 <5% | 中等偏稳健 |
+| Hub 自身处理开销 | p50 在 42-52ms | 12 个 target，n=2000+ | 稳健 |
+| 记账准确性 | 60/60 匹配 | 单次 60 请求验证 | 样本小但无误差 |
+
+**客观评价**：
+- Hub 在 short payload 场景下 p50 的延迟成本是稳健可预期的（多时段一致）
+- 在 realistic payload 场景下 Hub 的 p50 反而低于 Direct（两个独立时段窗口一致）
+- p99 上 Hub 和 Direct 的关系对时段敏感，单次测量不能作为跨时段结论
+
+一个可能的延迟分解框架（观察到的模式，不是经过验证的因果模型）：
+
+```
+Hub TTFB ≈ 直连延迟 + Hub 处理开销 (~50ms) + CF edge 多一跳 − 时段相关的网络因素
+```
+
+其中 Hub 处理开销是稳健的（跨多时段、多 target 验证），其他项会随网络时段变化。
+
+### 4.8 Hub 处理开销（跨时段稳定性验证）
+
+Server-Timing 测得的 Hub 自身处理时间（total - providerTtfb - streaming，去除 provider 延迟和 streaming 时间）：
+
+| Target | n | p50 | p90 | p99 |
+|--------|---|-----|-----|-----|
+| hub-openai（旧数据合并） | 303 | 50ms | 72ms | 1088ms |
+| hub-openai-nano（nre1z6） | 169 | 49ms | 59ms | 177ms |
+| hub-openai-long（6f3exy） | 50 | 47ms | 53ms | 58ms |
+| stab-hub-openai（新采集） | 458 | 42ms | 50ms | 249ms |
+| hub-anthropic（旧数据合并） | 299 | 52ms | 71ms | 931ms |
+| hub-anthropic-c1（nre1z6） | 40 | 51ms | 56ms | 265ms |
+| stab-hub-anthropic-c1（新采集） | 120 | 44ms | 50ms | 427ms |
+| hub-google（旧数据合并） | 370 | 50ms | 67ms | 494ms |
+| stab-hub-google（新采集） | 425 | 45ms | 51ms | 403ms |
+
+**客观评价**：跨 9 个 target、n=2234 样本（在不同时段采集），Hub 自身处理开销 p50 稳定在 42-52ms 范围。这是本报告中最可靠的跨时段不变指标。新采集的样本（42-45ms）比早期采集的样本（47-52ms）略低，但都在同一范围内。
+
+开销构成：preChecks phase（Payment Kit credit 检查 RPC）占 p50 的约 90%（~45ms），其他 phase 合计约 5ms。
+
+p99 行为：short payload 场景下 p99 通常在 177-494ms，主要来自 preChecks 的偶发冷启动。Realistic payload 场景下 p99 可达 1012ms，因为长生成让 isolate 之间间隔变大，容易触发 cold start。cold start 占整体请求的约 1-2%。
+
+### 4.9 时段漂移分析（稳定性复核结果）
+
+为了验证报告中 Hub vs Direct 的对比结论是否对时段稳健，在不同时段采集了多批新数据（时段间隔 5 分钟），覆盖 OpenAI / Google / Anthropic 三个 provider 的 Hub 和 Direct 路径。合并前期两个时段窗口（6o4u6u 和 nre1z6），共 5 个时段窗口的数据。
+
+#### 不同时段窗口的 Hub vs Direct Δ 值
+
+OpenAI `gpt-5-nano` (short, c=3)：
+
+| 时段窗口 | Hub p50 | Direct p50 | Δp50 | Hub p99 | Direct p99 | Δp99 |
+|---------|---------|-----------|------|---------|-----------|------|
+| 窗口 1 | 1259 | 🌟 1055 | +204 | 4344 | 🌟 2279 | +2065 |
+| 窗口 2 | 1025 | 🌟 860 | +165 | 🌟 1793 | 3806 | -2013 |
+| 窗口 3 | 1196 | 🌟 1043 | +153 | 3668 | 🌟 3059 | +609 |
+| 窗口 4 | 1062 | 🌟 894 | +168 | 🌟 1718 | 2821 | -1103 |
+| 窗口 5 | 1049 | 🌟 934 | +115 | 3341 | 🌟 3194 | +147 |
+
+- Δp50 范围：+115 ~ +204ms，所有时段窗口 Direct 一致低于 Hub（🌟 都在 Direct 列）
+- Δp99 范围：-2013 ~ +2065ms，🌟 在 Hub 和 Direct 之间跳动（符号反转 4 次）
+
+Google `gemini-2.5-flash` (short, c=3)：
+
+| 时段窗口 | Hub p50 | Direct p50 | Δp50 | Hub p99 | Direct p99 | Δp99 |
+|---------|---------|-----------|------|---------|-----------|------|
+| 窗口 1 | 1187 | 🌟 820 | +367 | 🌟 2390 | 3592 | -1202 |
+| 窗口 2 | 1187 | 🌟 899 | +288 | 2677 | 🌟 2421 | +256 |
+| 窗口 3 | 1183 | 🌟 925 | +258 | 2964 | 🌟 2692 | +272 |
+| 窗口 4 | 1219 | 🌟 930 | +289 | 2793 | 🌟 2670 | +123 |
+
+- Δp50 范围：+258 ~ +367ms，4 个时段窗口 Direct 一致低于 Hub
+- Δp99 范围：-1202 ~ +272ms，🌟 大部分在 Direct 列，只有窗口 1 反转
+
+Anthropic `claude-haiku-4-5` (short, c=1)：
+
+| 时段窗口 | Hub p50 | Direct p50 | Δp50 | Hub p99 | Direct p99 | Δp99 |
+|---------|---------|-----------|------|---------|-----------|------|
+| 窗口 1 | 949 | 🌟 769 | +180 | 🌟 1919 | 7877 | -5958 |
+| 窗口 2 | 1023 | 🌟 803 | +220 | 🌟 2036 | 3271 | -1235 |
+| 窗口 3 | 1009 | 🌟 866 | +143 | 2598 | 🌟 2240 | +358 |
+| 窗口 4 | 958 | 🌟 866 | +92 | 2217 | 🌟 1590 | +627 |
+
+- Δp50 范围：+92 ~ +220ms，4 个时段窗口符号一致
+- Δp99 范围：-5958 ~ +627ms，符号反转 1 次
+
+#### Hub OpenAI 的 p50 / p99 跨时段分布
+
+| 时段窗口 | n | p50 | p99 | cv |
+|---------|---|-----|-----|-----|
+| 窗口 1 | 131 | 1259 | 4344 | 0.53 |
+| 窗口 2 | 169 | 1025 | 1793 | 0.22 |
+| 窗口 3 | 139 | 1196 | 3668 | 0.31 |
+| 窗口 4 | 165 | 1062 | 1718 | 0.14 |
+| 窗口 5 | 154 | 1049 | 3341 | 0.36 |
+| 合并 | 758 | 1108 | 3251 | 0.37 |
+
+- p50 跨时段：1025-1259ms，range 234ms
+- p99 跨时段：1718-4344ms，range 2626ms
+- cv 跨时段：0.14-0.53
+
+p50 的跨时段变化约 ±12%（相对合并均值）。p99 的跨时段变化约 ±50%，不能作为稳健指标。
+
+#### 结论
+
+- **p50 跨时段稳定**：Hub vs Direct 的 p50 差值在所有时段窗口中符号一致，Hub 比 Direct 高 92-367ms（取决于 provider）。这是可作为容量规划和 SLO 基线的稳健指标
+- **p99 跨时段不稳定**：OpenAI 和 Anthropic 的 Hub vs Direct p99 胜负关系跨时段反转，Google 出现 1 次反转。不能作为跨时段结论
+- **报告早期版本引用的"Hub p99 更稳"结论不成立**：那是基于单个时段窗口的选择性观察，后续时段窗口的数据不一致
+
+**客观评价**：本节稳定性复核的样本数（Hub/Direct OpenAI 758/835、Google 568/691、Anthropic 160/160）是报告中对 p50 最稳健的统计，可以作为本次测试时段内 Hub vs Direct 延迟关系的可信基线。p99 和 cv 的跨时段定量结论需要更多时段覆盖的数据。
 
 ---
 
@@ -682,7 +870,7 @@ Realistic payload 场景下 p99 飙到 1012ms，是因为长生成时间让 isol
 
 ### 5.2 结果
 
-**100% 完美匹配：**
+匹配结果：
 
 | 指标 | 客户端观察 | D1 记录 | 差异 |
 |------|----------|---------|------|
@@ -690,15 +878,15 @@ Realistic payload 场景下 p99 飙到 1012ms，是因为长生成时间让 isol
 | 成功数 | 60 | 60 | 0 |
 | 总 tokens | 1268 | 1268 | 0 |
 | 总 credits | $0.0009928 | $0.0009928 | 0 |
-| 匹配率 | - | - | **60/60 = 100%** |
+| 匹配率 | - | - | 60/60 (100%) |
 
-**验证了：**
-- ✅ 每个请求都有对应的 `ModelCalls` D1 记录（零丢失）
-- ✅ token 计数从 provider response 到 D1 完全一致
-- ✅ credits 按 rate 正确计算并存储
-- ✅ `userDid` 和 `requestId` 关联正确
-- ✅ `waitUntil` 可靠 —— 60 个异步写入全部在 10s 内完成
-- ✅ meter buffer → Payment Kit 上报链路工作正常
+验证内容：
+- 每个请求都有对应的 `ModelCalls` D1 记录（零丢失）
+- token 计数从 provider response 到 D1 完全一致
+- credits 按 rate 正确计算并存储
+- `userDid` 和 `requestId` 关联正确
+- 60 个 `waitUntil` 异步写入在 10s 内全部完成
+- meter buffer → Payment Kit 上报链路正常
 
 **单条示例（openai/gpt-5-nano）：**
 ```json
@@ -717,51 +905,49 @@ Realistic payload 场景下 p99 飙到 1012ms，是因为长生成时间让 isol
 }
 ```
 
-**结论**：Hub 的记账系统工作准确无误，完全可以作为生产计费依据。
+结论：本次 60 次请求的记账验证中，token 计数和 credits 计算与 D1 记录 100% 一致，`waitUntil` 异步写入未出现丢失。
 
 ---
 
 ## 六、本次优化效果（Before / After）
 
-在测试过程中发现 Hub 存在两个明显的优化点，顺手优化了：
+测试过程中对 Hub 实施了两项优化：
 
 ### 6.1 优化 1：`resolveProvider` in-isolate 缓存
 
-**问题**：每次请求都查 2-3 次 D1（provider/credential/rate），但这些数据几乎静态不变。
+问题：每次请求都查 2-3 次 D1（provider / credential / rate），但这些数据变化频率很低。
 
-**优化**：在 Worker isolate 内存里缓存 provider 信息和 credentials 列表（60s TTL），weighted credential selection 仍每次请求跑一遍，保证负载均衡不被破坏。
+优化：在 Worker isolate 内存里缓存 provider 信息和 credentials 列表（60s TTL）。weighted credential selection 仍每次请求运行，保证负载均衡不被破坏。
 
-**效果**：`resolveProvider` phase 从 ~50ms → ~0ms（缓存命中时）
+效果：`resolveProvider` phase 从 ~50ms 降到 ~0ms（缓存命中时）。
 
 ### 6.2 优化 2：`resolveProvider` 和 `checkCredits` 并行化
 
-**问题**：这两个操作彼此独立，但原代码是串行 await。
+问题：这两个操作彼此独立，但原代码是串行 await。
 
-**优化**：改用 `Promise.all` 并发执行，通过 `.finally` 保证 Server-Timing 个别 phase 仍然独立记录。
+优化：改用 `Promise.all` 并发执行，用 `.finally` 保持 Server-Timing 每个 phase 独立记录。
 
-**效果**：串行 `50 + 60 = 110ms` → 并行 `max(50, 60) = 60ms`
+效果：串行 50 + 60 = 110ms → 并行 max(50, 60) = 60ms。
 
 ### 6.3 合并效果
 
-**Smoke test 基线（n=18，优化前后对比）：**
+Smoke test 基线（n=18，优化前后对比）：
 
-| | 优化前 | 优化后 | 改善 |
+| | 优化前 | 优化后 | 差值 |
 |-|-------|-------|-----|
-| Hub warm overhead p50 | **154ms** | **56ms** | **-98ms (-64%)** |
+| Hub warm overhead p50 | 154ms | 56ms | -98ms (-64%) |
 | p50 `resolveProvider` | 50ms | 0ms | -50ms（缓存命中） |
-| p50 `preChecks` | 60ms | 45ms | -15ms（并行化后 overlap） |
+| p50 `preChecks` | 60ms | 45ms | -15ms（并行化 overlap） |
 
-**大样本 benchmark 验证（n=126-169，优化后数据，独立于 smoke test）：**
+大样本 benchmark 验证（n=126-169，优化后数据）：
 
 | Target | n | p50 overhead | p90 | p99 |
 |--------|---|-------------|-----|-----|
-| hub-openai | 126 | **50ms** | 61ms | 1012ms |
-| hub-anthropic | 132 | **53ms** | 65ms | 141ms |
-| hub-google | 169 | **50ms** | 59ms | 409ms |
+| hub-openai | 126 | 50ms | 61ms | 1012ms |
+| hub-anthropic | 132 | 53ms | 65ms | 141ms |
+| hub-google | 169 | 50ms | 59ms | 409ms |
 
-**两个结果高度一致（p50 50-56ms），证明优化效果稳定可复现**，不是小样本幸运。
-
-**两个优化合计省了 ~100ms**，Hub 处理时间从约 ~155ms 降到 **稳定的 50-53ms**。这部分代码在 commit `28833d8` 中。
+两次独立测量的 p50 结果一致（50-56ms）。两个优化合计约减少 100ms，Hub 处理时间从约 155ms 降到 50-53ms。代码见 commit `28833d8`。
 
 ---
 
@@ -807,16 +993,25 @@ Realistic payload 场景下 p99 飙到 1012ms，是因为长生成时间让 isol
 
 ### 7.2 样本量的局限
 
-本次测试每 target 样本量为 106-169（大样本 benchmark），足以支撑 **p50 和 p90 结论稳定可信**，但 **p99 仍有一定噪声**（尤其在 cv > 1 的 target 上）。若要做严格 SLO 级别的 p99 定量分析，建议跑 > 1000 样本的 benchmark。
+**Hub 自身处理开销**（Server-Timing 内部测量）：经过 §4.8 的多时段合并（n=2000+），p50 稳定在 42-52ms，p90 在 50-72ms，这个范围跨时段可靠。p99 (overhead) 在单个时段窗口内可在 58-1088ms 大幅波动，主要来自 cold start，量级判断可靠但精确值不稳定。
 
-**本次数据的结论覆盖面：**
-- ✅ **p50/p90 决策可信**：Hub 处理开销稳定在 50-65ms
-- ⚠️ **p99 方向性可信，精度 ±30%**：cold start 存在，量级在 100ms-1s
-- ❌ **p99.9 / 极端长尾不可靠**：样本不够
+**Hub vs Direct 外部对比**：经过 §4.9 的多时段稳定性复核，p50 差值 92-367ms 稳健。p99 差值跨时段符号反转，单时段结论不可靠。
+
+本次数据支持的结论类型：
+
+| 结论类型 | 可靠度 | 依据 |
+|---------|-------|------|
+| Hub 处理开销 p50 量级 | 高 | n=2000+ 跨多时段稳定在 42-52ms |
+| Hub 处理开销 p99 量级 | 中 | 单时段窗口内可到 1000ms，跨时段不稳定 |
+| Hub vs Direct p50 差值 | 高 | 多时段采集符号一致，范围集中 |
+| Hub vs Direct p99 差值 | 低 | 多时段采集符号反转 |
+| p99.9 / 极端长尾 | 不可靠 | 单 target 样本不足 |
+
+若要做 SLO 级的 p99 定量分析（比如要求 99% 请求 < X ms），建议将样本量扩大到 n>1000 且覆盖 10 个以上的时段窗口。
 
 ### 7.3 Anthropic rate limit
 
-**现象**：本次 benchmark 运行 hub-anthropic 时，c=5 + realistic payload（800 max_tokens）触发 Anthropic 组织级 rate limit（10K output tokens/minute），566/698 请求返回 429。
+**现象**：早期采集 hub-anthropic 时，c=5 + realistic payload（800 max_tokens）触发 Anthropic 组织级 rate limit（10K output tokens/minute），566/698 请求返回 429。
 
 **说明**：
 - 这是 **Anthropic 对整个 API key 的限流**，和 Hub 无关
@@ -893,7 +1088,7 @@ data: session;dur=0.3,resolveProvider;dur=0.1,...
 **可以用 DuckDB 直接查询做历史对比：**
 
 ```sql
--- p50/p90 TTFB by target across all runs
+-- p50/p90 TTFB by target across all time windows
 SELECT target,
        quantile_cont(ttfb, 0.5) AS p50,
        quantile_cont(ttfb, 0.9) AS p90,
@@ -908,71 +1103,84 @@ ORDER BY p50;
 
 ## 十、结论与建议
 
-### 10.1 对原始问题的精确回答
+### 10.1 对原始问题的回答
 
-1. **Hub 连接速率是否快？**
-   - ✅ **Hub 自身处理开销恒定 ~50ms p50**（两次独立 benchmark 一致）
-   - ✅ **Warm 状态下 p90 在 56-65ms，p99 可低至 76-78ms**
-   - ⚠️ **Cold start 可把 p99 拉到 1 秒**（影响 1-2% 请求）
+1. **Hub 连接速率如何？**
+   - Hub 自身处理开销 p50 在 42-52ms 之间，跨 12 个 target、n=2000+ 样本稳定
+   - Warm 状态下 p90 在 50-72ms
+   - Cold start 会将 p99 overhead 拉高到 177-1088ms（取决于 provider 和 payload），影响约 1-2% 请求
 
 2. **是否应该直连 API 替代 Hub？**
-   - ❌ **不建议**
-   - **短请求场景**：直连快 200-370ms，但这个差距不够覆盖失去统一计费/认证/目录的成本
-   - **长请求场景**：Hub **反而比直连更快更稳**（CF 骨干网优势 > Hub 处理开销）
-   - **典型 chat 场景**（几秒生成时间）：Hub 加成只有 1-5%，用户感知不到
+   - Short payload 场景：Direct 的 TTFB p50 比 Hub 低 92-367ms（跨时段稳健）
+   - Realistic payload 场景：在两个独立时段窗口中 Hub 的 TTFB p50 比 Direct 低约 1200ms
+   - p99 胜负关系跨时段反转，不能作为决策依据
+   - 决策需要权衡：p50 延迟差距 vs 统一计费（60/60 匹配）、统一 auth、统一 catalog
+   - 对典型 chat 场景（响应时间数秒），Hub 处理开销占比 1-5%
 
 3. **记账是否准确？**
-   - ✅ **100% 准确**（60/60 匹配，token + credits 完全一致），可作为生产计费依据
+   - 本次 60 次请求的验证中 token 和 credits 100% 匹配，`waitUntil` 异步写入未出现丢失
+   - 样本量较小，生产前建议再跑一次更大规模的验证（比如 1000+ 请求）
 
-### 10.2 Hub 的真实定位
+### 10.2 Hub 定位（基于数据）
 
-基于数据重新定义 Hub 的价值：
+| 维度 | 数据 | 稳健性 |
+|------|------|-------|
+| 统一计费 | 60/60 验证匹配 | 本次验证无误差 |
+| 统一认证 | 一个 access key 支持 4 个 provider | 功能性事实 |
+| 统一 catalog | Hub 内置 model catalog | 功能性事实 |
+| Short payload p50 延迟成本 | Hub 比 Direct 高 92-367ms | 跨时段稳健 |
+| Realistic payload p50 | Hub 比 Direct 低约 1200ms | 两个独立时段窗口一致 |
+| Short payload p99 稳定性 | 跨时段胜负反转 | 不可作为跨时段结论 |
+| Hub 自身处理开销 | 42-52ms p50 | n=2000+ 跨时段稳健 |
+| 长生成场景与直连比较 | 在本次数据中 Hub 更快 | 两个时段窗口一致，可再验证 |
 
-| 价值维度 | 重要性 | 数据支撑 |
-|---------|--------|---------|
-| **统一计费** | 🟢 核心 | 100% 匹配率 |
-| **统一认证** | 🟢 核心 | 一个 access key 支持 4 个 provider |
-| **统一目录** | 🟢 核心 | Hub 内置 model catalog |
-| **长尾性能优化** | 🟡 意外之喜 | realistic payload 下 p99 显著优于直连 |
-| **短请求延迟** | 🟡 小幅代价 | 比直连慢 200-370ms |
-| **固定处理开销** | 🟢 可忽略 | 50ms / 典型 1-8s 请求 = 1-5% |
+**客观评价**：Hub 的核心定位有两层：
 
-**Hub 不是"延迟优化层"，也不是"延迟代价层"。它是一个稳定的 ~50ms 固定成本，换取统一的计费/认证/目录和 CF 网络的稳定性优势。**
+1. **统一接入层**：统一的计费、认证、catalog。这是功能性价值，不受延迟比较影响
+2. **延迟层面**：
+   - Short payload 下 Hub 的 p50 比 Direct 高 92-367ms（跨时段稳健成本）
+   - Realistic payload 下 Hub 的 p50 比 Direct 低约 1200ms（两个独立时段窗口一致）
+   - p99 稳定性跨时段没有稳定胜负关系，单个时段窗口的 p99 数字不能作为决策依据
 
-### 10.3 优化建议（按优先级）
+对真实 chat 场景（response 几百 tokens，总时间数秒），Hub 的 50ms 处理开销占比 1-5%，对整体用户体验影响有限。
+
+### 10.3 优化建议
 
 #### 已完成
-- ✅ `resolveProvider` isolate 缓存（省 ~50ms per request）
-- ✅ `resolveProvider` + `checkCredits` 并行化（省 ~50ms per request）
+- `resolveProvider` isolate 缓存（省 ~50ms per request）
+- `resolveProvider` + `checkCredits` 并行化（省 ~50ms per request）
 
-#### 高价值、低成本（建议下一步做）
-- **📌 Payment Kit "has credits" KV 快路径**：高余额用户 credit 检查结果缓存 30s，95%+ 请求跳过 Service Binding RPC
-  - 预期：Hub warm overhead 从 50ms → **~5-10ms**
-  - 预期：cold start p99 从 1012ms → **~200ms**
-  - 实现：新增一个 KV 缓存层，30s TTL，fail-open
-- **📌 Cold start 诊断**：在 Server-Timing 里拆分 `ensureMeter` / `ensureCustomer` / `verifyAvailability`，精确定位 cold start 瓶颈
+#### 推荐下一步
+
+**Payment Kit "has credits" KV 快路径**：高余额用户 credit 检查结果缓存 30s，大部分请求跳过 Service Binding RPC。
+- 预期：Hub warm overhead 从 ~50ms 降到 5-10ms
+- 预期：cold start p99 overhead 从 ~1088ms 降到 ~200ms
+- 实现：新增 KV 缓存层，30s TTL，fail-open
+
+**Cold start 细分诊断**：在 Server-Timing 里拆分 `ensureMeter` / `ensureCustomer` / `verifyAvailability`，精确定位 cold start 的耗时分布。
 
 #### 中等价值
-- **Streaming `calculateCredits` 传入 `provider.resolvedRate`**：非 streaming 已经这么做，streaming 漏了（额外一次 D1 query）
-- **合并 `resolveProvider` 的两个 SQL 查询**（provider JOIN + credentials 合并为一个 query）
+
+- Streaming 路径 `calculateCredits` 传入 `provider.resolvedRate`（非 streaming 已经这么做，streaming 漏了，省 ~15ms）
+- 合并 `resolveProvider` 的 provider JOIN 和 credentials 查询为单个 SQL
 
 #### 不建议
-- ❌ **进一步减少 Hub 自身处理到个位数 ms**：边际收益极低，50ms 已经是 typical request 的 1-5%
-- ❌ **改成直连 API**：失去统一计费、认证、目录、长尾优势；维护成本增加
 
-### 10.4 对产品决策的启示
+- 进一步将 Hub 自身处理压到个位数 ms：边际收益低于 KV 快路径
+- 改成直连 API：会失去统一计费、认证、catalog，realistic payload 场景的 1200ms 优势也会消失
 
-1. **Provider 选择比 Hub 优化重要 14 倍**
-   - `gpt-5-nano` 6640ms vs `claude-haiku-4-5` 486ms providerTtfb
-   - 需要 latency 的场景**默认应该用 Anthropic**
-   - 产品侧应该暴露"延迟敏感"选项，自动路由到快的 provider
+### 10.4 对产品决策的参考
 
-2. **Hub 的卖点应该是"稳定"而不是"快"**
-   - 典型场景下 Hub 只加 50ms，但换来：
-     - 100% 准确的计费
-     - 长尾体验更稳（跨区域优势）
-     - 统一的 access key 和 catalog
-   - 单纯的"快"在短请求下 Hub 甚至慢一点 —— 这不是 Hub 的强项
+1. **Provider 选择的影响远大于 Hub 与 Direct 的差异**
+   - `gpt-5-nano` providerTtfb p50 = 6640ms
+   - `claude-haiku-4-5` providerTtfb p50 = 486ms
+   - 两者相差 13.7 倍（数千 ms），Hub vs Direct 的 ~200ms 差异在此量级面前占比有限
+   - 延迟敏感场景应该优先考虑切换到更快的 model
+
+2. **Hub 在 short payload 下有 p50 延迟成本**
+   - 92-367ms，取决于 provider 和时段
+   - 需要对这个代价有明确预期
+   - 换来的是统一记账、认证、catalog 以及 realistic payload 场景的 p50 优势
 
 3. **AI Gateway 的下一轮测试**
    - 当前数据是 Gateway 关闭的基线
@@ -1016,27 +1224,33 @@ HVD_CONCURRENCY=3 HVD_DURATION=60000 pnpm tsx src/hub-vs-direct.ts
 pnpm billing-verify
 ```
 
-所有数据自动保存到 `benchmarks/data/samples.jsonl`。可用 DuckDB 或 jq 查询做跨 run 趋势分析。
+所有数据自动保存到 `benchmarks/data/samples.jsonl`。可用 DuckDB 或 jq 查询做跨时段趋势分析。
 
-### C. 测试数据 Run ID
+### C. 数据采集窗口清单
 
-| Run ID | 类型 | 样本数 | 关键结果 |
-|--------|------|-------|---------|
+报告中所有样本都可以通过窗口 ID（`runId` 字段）追溯到具体的采集窗口。以下是所有采集窗口的清单：
+
+| 窗口 ID | 类型 | 样本数 | 说明 |
+|--------|------|-------|------|
 | `sge21z` | smoke | 24 | 首次 smoke test（9 个 bug 失败） |
 | `79nxzv` | smoke | 24 | 修 bug 后优化前基线，p50 overhead = 154ms |
 | `y3sez9` | smoke | 24 | 优化后 smoke test，p50 overhead = 56ms |
-| `16u4d2` | billing-verify | 60 | **100% billing 匹配**（60/60）|
+| `16u4d2` | billing-verify | 60 | 记账验证：60/60 匹配 |
 | `tby4cz` | multi-provider | 131 | 30s 版，方向性数据 |
-| **`qlzusr`** | **multi-provider** | **1243** | **180s 大样本，realistic payload** —— Hub overhead p50=50ms |
-| **`6o4u6u`** | **hub-vs-direct** | **1121** | **60s 头对头，short payload** —— Hub vs Direct 对比 |
-| **`nre1z6`** | **fill-gaps** | **458** | **补数据**：OpenAI gpt-5-nano 三路对比（Hub/Direct/OpenRouter）+ Anthropic c=1 干净数据 |
-| **`sd3w3h`** | **openrouter-all** | **334** | **OpenRouter 全覆盖**：OpenAI + Anthropic + Google 三个 provider 通过 OpenRouter 代理（c=3, 60s）|
-| **`6f3exy`** | **long-payload-3way** | **108** | **长 payload 三路对比**：openai/gpt-5-nano 同 model 通过 Hub/Direct/OpenRouter（c=3, 120s, realistic 800 max_tokens）—— 发现 OpenRouter Total time 陷阱 |
+| `qlzusr` | multi-provider | 1243 | 180s 大样本，realistic payload；Hub overhead p50=50ms |
+| `6o4u6u` | hub-vs-direct | 1121 | 60s 头对头，short payload；Hub vs Direct 对比 |
+| `nre1z6` | fill-gaps | 458 | OpenAI gpt-5-nano 三路对比（Hub/Direct/OpenRouter）+ Anthropic c=1 干净数据 |
+| `sd3w3h` | openrouter-all | 334 | OpenRouter 全覆盖：OpenAI + Anthropic + Google 三个 provider 通过 OpenRouter 代理（c=3, 60s）|
+| `6f3exy` | long-payload-3way | 108 | 长 payload 三路对比：openai/gpt-5-nano 同 model 通过 Hub/Direct/OpenRouter（c=3, 120s, realistic 800 max_tokens）|
+| `su608w` | openrouter-nano-deep | 167 | OpenRouter gpt-5-nano 深度补采：short (143) + long (24)，c=3 × 240s。用于验证双峰分布 |
+| `ctv7n6` | stability-check | 552 | 稳定性复核批次 1：OpenAI/Google Hub+Direct c=3 × 60s + Anthropic c=1 × 40 |
+| `ykpy1f` | stability-check | 697 | 稳定性复核批次 2：同上配置，与批次 1 间隔 5 分钟 |
+| `xsxzwz` | stability-check | 675 | 稳定性复核批次 3：同上配置，与批次 2 间隔 5 分钟。稳定性复核合计约 1924 样本 |
 
-**跨 run 查询示例（DuckDB）：**
+**跨时段查询示例（DuckDB）：**
 
 ```sql
--- 对比两次 benchmark 的 Hub 处理开销
+-- 对比两个时段窗口的 Hub 处理开销
 SELECT runId, target,
        quantile_cont(
          GREATEST(0, CAST(serverTiming->>'$.total' AS DOUBLE)
