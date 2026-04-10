@@ -9,9 +9,7 @@ import type { HonoEnv } from '../worker';
 const routes = new Hono<HonoEnv>();
 
 function isAdminUser(c: Context<HonoEnv>): boolean {
-  if (c.env.ENVIRONMENT !== 'production') return true;
-  const user = c.get('user') as { role?: string } | undefined;
-  const role = user?.role || c.req.header('x-user-role');
+  const role = (c.get('user') as { role?: string } | undefined)?.role;
   return role === 'admin' || role === 'owner';
 }
 

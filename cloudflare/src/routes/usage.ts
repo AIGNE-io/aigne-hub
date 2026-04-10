@@ -20,12 +20,11 @@ function directAppDidCondition() {
 }
 
 function getUserDid(c: Context<HonoEnv>): string {
-  return (c.get('user') as { id?: string } | undefined)?.id || c.req.header('x-user-did') || '';
+  return (c.get('user') as { id?: string } | undefined)?.id || '';
 }
 
 function isAdminUser(c: Context<HonoEnv>): boolean {
-  const user = c.get('user') as { role?: string } | undefined;
-  const role = user?.role || c.req.header('x-user-role');
+  const role = (c.get('user') as { role?: string } | undefined)?.role;
   return role === 'admin' || role === 'owner';
 }
 
@@ -309,7 +308,7 @@ routes.get('/projects/trends', async (c) => {
 
 // GET /api/usage/trends - Platform-wide trends (admin only)
 routes.get('/trends', async (c) => {
-  if (!isAdminUser(c) && c.env.ENVIRONMENT === 'production') {
+  if (!isAdminUser(c)) {
     return c.json({ error: 'Admin access required' }, 403);
   }
 

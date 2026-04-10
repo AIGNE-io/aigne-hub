@@ -21,7 +21,7 @@ import * as schema from './db/schema';
 // Auth middleware
 import { PaymentClient, createPaymentClient, createInternalPaymentClient } from './libs/payment';
 import { getPreferences, setPreferences } from './libs/preferences';
-import { buildAuthConfig, loadUser } from './middleware/auth';
+import { buildAuthConfig, loadUser, requireAuth } from './middleware/auth';
 // API routes
 import aiProviderRoutes from './routes/ai-providers';
 import apiKeyRoutes from './routes/api-keys';
@@ -391,14 +391,27 @@ app.get('/api/health', async (c) => {
 });
 
 // --- Public routes (no auth required) ---
-app.route('/api/ai-providers', aiProviderRoutes); // models/model-rates are public, admin routes check internally
-app.route('/api', eventsRoutes); // /api/events
-app.route('/api', userRoutes); // /api/app/status (public)
+// /api/app/status — app-level liveness/config probe, safe to expose
+app.get('/api/app/status', (c) => c.json({ status: 'running', creditBasedBilling: true, version: '0.1.0' }));
+// /api/events — SSE stream of model availability for the Playground UI
+app.route('/api', eventsRoutes);
+// /api/ai-providers — mixed public (models, model-rates, health) and admin;
+// admin endpoints check internally via isAdmin() (now without ENVIRONMENT bypass)
+app.route('/api/ai-providers', aiProviderRoutes);
 
-// --- API Key management ---
+// --- Authenticated routes — requireAuth() gates every handler below ---
+// Payment webhook is HMAC-signed and must stay public; everything else under /api/payment needs auth.
+app.use('/api/payment/*', async (c, next) => {
+  if (c.req.path === '/api/payment/webhook') return next();
+  return requireAuth()(c, next);
+});
+app.use('/api/v1/*', requireAuth());
+app.use('/api/v2/*', requireAuth());
+app.use('/api/usage/*', requireAuth());
+app.use('/api/user/*', requireAuth());
+app.use('/api/api-keys/*', requireAuth());
+
 app.route('/api/api-keys', apiKeyRoutes);
-
-// --- Authenticated routes ---
 app.route('/api/v1', v1Routes);
 app.route('/api/v2', v2Routes);
 app.route('/api/usage', usageRoutes);

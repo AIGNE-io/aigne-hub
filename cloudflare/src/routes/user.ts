@@ -14,19 +14,18 @@ import type { HonoEnv } from '../worker';
 const routes = new Hono<HonoEnv>();
 
 function getUserDid(c: Context<HonoEnv>): string {
-  return (c.get('user') as { id?: string } | undefined)?.id || c.req.header('x-user-did') || '';
+  return (c.get('user') as { id?: string } | undefined)?.id || '';
 }
 
 function isAdminUser(c: Context<HonoEnv>): boolean {
-  const user = c.get('user') as { role?: string } | undefined;
-  const role = user?.role || c.req.header('x-user-role');
+  const role = (c.get('user') as { role?: string } | undefined)?.role;
   return role === 'admin' || role === 'owner';
 }
 
 // GET /api/user/info - User info + credit balance
 routes.get('/info', async (c) => {
   const user = c.get('user') as AppUser | undefined;
-  const did = user?.id || c.req.header('x-user-did');
+  const did = user?.id;
 
   if (!did) {
     return c.json({ error: 'Authentication required' }, 401);
@@ -102,14 +101,9 @@ routes.get('/info', async (c) => {
 // GET /api/user/profile
 routes.get('/profile', async (c) => {
   const user = c.get('user') as { id?: string; email?: string; name?: string; role?: string } | undefined;
-  const did = user?.id || c.req.header('x-user-did');
+  const did = user?.id;
   if (!did) return c.json({ error: 'Authentication required' }, 401);
   return c.json({ did, email: user?.email || '', name: user?.name || '', role: user?.role || 'member' });
-});
-
-// GET /api/app/status
-routes.get('/app/status', async (c) => {
-  return c.json({ status: 'running', creditBasedBilling: true, version: '0.1.0' });
 });
 
 // GET /api/user/usage-stats - Model usage stats (current user)
@@ -167,7 +161,7 @@ routes.get('/usage-stats', async (c) => {
 
 // GET /api/user/admin/user-stats - Model usage stats (all users, admin only)
 routes.get('/admin/user-stats', async (c) => {
-  if (!isAdminUser(c) && c.env.ENVIRONMENT === 'production') {
+  if (!isAdminUser(c)) {
     return c.json({ error: 'Admin access required' }, 403);
   }
 
@@ -423,6 +417,8 @@ routes.put('/admin/preferences', async (c) => {
 
 // POST /api/user/admin/user-info - Batch fetch user info
 routes.post('/admin/user-info', async (c) => {
+  if (!isAdminUser(c)) return c.json({ error: 'Admin access required' }, 403);
+
   const body = await c.req
     .json<{ userDids?: string[]; userDid?: string; email?: string }>()
     .catch(() => ({} as { userDids?: string[]; userDid?: string; email?: string }));

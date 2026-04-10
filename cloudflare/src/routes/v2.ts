@@ -82,7 +82,7 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
   const db = c.get('db');
   const waitUntil = getWaitUntil(c);
   const startTime = Date.now();
-  const userDid = (c.get('user') as { id?: string } | undefined)?.id || c.req.header('x-user-did') || '';
+  const userDid = (c.get('user') as { id?: string } | undefined)?.id || '';
   const rawAppDid = (c as any).get('apiKeyAppDid') || c.req.header('x-aigne-hub-client-did') || '';
   const appDid = rawAppDid && rawAppDid !== 'undefined' ? rawAppDid : '';
   const requestId = c.req.header('x-request-id') || crypto.randomUUID();
@@ -545,7 +545,7 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
 routes.post('/embeddings', async (c) => {
   const db = c.get('db');
   const startTime = Date.now();
-  const userDid = (c.get('user') as { id?: string } | undefined)?.id || c.req.header('x-user-did') || '';
+  const userDid = (c.get('user') as { id?: string } | undefined)?.id || '';
 
   const body = await c.req.json<{ model: string; input: string | string[] }>();
   if (!body.model || !body.input) {
@@ -621,7 +621,7 @@ routes.post('/image', async (c) => {
   const db = c.get('db');
   const waitUntil = getWaitUntil(c);
   const startTime = Date.now();
-  const userDid = (c.get('user') as { id?: string } | undefined)?.id || c.req.header('x-user-did') || '';
+  const userDid = (c.get('user') as { id?: string } | undefined)?.id || '';
   const appDid = (c as any).get('apiKeyAppDid') || c.req.header('x-aigne-hub-client-did') || '';
   const requestId = c.req.header('x-request-id') || crypto.randomUUID();
 
@@ -723,7 +723,7 @@ routes.post('/image', async (c) => {
 const handleImageGenerations = async (c: Context<HonoEnv>) => {
   const db = c.get('db');
   const startTime = Date.now();
-  const userDid = (c.get('user') as { id?: string } | undefined)?.id || c.req.header('x-user-did') || '';
+  const userDid = (c.get('user') as { id?: string } | undefined)?.id || '';
 
   const body = await c.req.json<{ model: string; prompt: string; n?: number; size?: string }>();
   if (!body.model || !body.prompt) {
@@ -798,7 +798,7 @@ routes.post('/images/generations', handleImageGenerations);
 routes.post('/video/generations', async (c) => {
   const db = c.get('db');
   const startTime = Date.now();
-  const userDid = (c.get('user') as { id?: string } | undefined)?.id || c.req.header('x-user-did') || '';
+  const userDid = (c.get('user') as { id?: string } | undefined)?.id || '';
 
   const body = await c.req.json<{ model: string; prompt: string; [key: string]: unknown }>();
   if (!body.model || !body.prompt) {
@@ -847,7 +847,7 @@ routes.post('/video/generations', async (c) => {
 routes.post('/audio/transcriptions', async (c) => {
   const db = c.get('db');
   const startTime = Date.now();
-  const userDid = (c.get('user') as { id?: string } | undefined)?.id || c.req.header('x-user-did') || '';
+  const userDid = (c.get('user') as { id?: string } | undefined)?.id || '';
   const requestId = c.req.header('x-request-id') || crypto.randomUUID();
 
   // Parse multipart form — contains audio file + model field
@@ -912,7 +912,7 @@ routes.post('/audio/transcriptions', async (c) => {
 routes.post('/audio/speech', async (c) => {
   const db = c.get('db');
   const startTime = Date.now();
-  const userDid = (c.get('user') as { id?: string } | undefined)?.id || c.req.header('x-user-did') || '';
+  const userDid = (c.get('user') as { id?: string } | undefined)?.id || '';
   const requestId = c.req.header('x-request-id') || crypto.randomUUID();
 
   const body = await c.req.json<{ model: string; input: string; voice?: string; [key: string]: unknown }>();

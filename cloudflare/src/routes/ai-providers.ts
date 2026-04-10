@@ -20,12 +20,10 @@ const VALID_TYPES: ModelRateType[] = ['chatCompletion', 'embedding', 'imageGener
 
 const routes = new Hono<HonoEnv>();
 
-// Helper: check if user is admin
+// Helper: check if user is admin. Only trusts c.get('user') — header injection
+// is gated by loadUser middleware (which already restricts headers to non-prod).
 function isAdmin(c: Context<HonoEnv>): boolean {
-  // Dev fallback: skip admin check in non-production
-  if (c.env.ENVIRONMENT !== 'production') return true;
-  const user = c.get('user') as { role?: string } | undefined;
-  const role = user?.role || c.req.header('x-user-role');
+  const role = (c.get('user') as { role?: string } | undefined)?.role;
   return role === 'admin' || role === 'owner';
 }
 
