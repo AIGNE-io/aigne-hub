@@ -150,23 +150,84 @@ Hub 延迟 = 直连延迟
 3. **p99 差异较大（141-1012ms）**—— 主要来自 cold start outlier。hub-anthropic 的 p99=141ms 明显低于其他两个，因为它样本多+请求快，cold start 占比低
 4. **cv > 1** 都来自 cold start 拉长的尾部；去掉 outlier 后 cv < 0.2
 
-### 2.2 Server-Timing 各 Phase 分解（p50）
+### 2.2 Server-Timing 各 Phase 分解（完整 p50/p90/p99/max）
 
-| Target | n | session | resolveProv | preChecks | modelSetup | providerTtfb | streaming | usage | total |
-|--------|---|---------|-------------|-----------|------------|--------------|-----------|-------|-------|
-| hub-openai | 126 | 0ms | **0ms** | 45ms | 5ms | 6640ms | 30ms | 0ms | 6757ms |
-| hub-anthropic | 132 | 0ms | **0ms** | 47ms | 5ms | 486ms | 3202ms | 0ms | 3740ms |
-| hub-google | 169 | 0ms | **0ms** | 44ms | 5ms | 3942ms | 1046ms | 0ms | 5040ms |
+**数据源**：qlzusr run（multi-provider 180s, realistic payload），427 个 Hub 成功样本。
 
-**关键发现：**
+**hub-openai（n=126）**
 
-1. **`resolveProvider` p50 = 0ms** —— in-isolate 缓存命中率接近 100%（60s TTL）
-2. **`preChecks` p50 ≈ 44-47ms** —— 所有 provider 统一，是 Payment Kit credit 检查的 Service Binding RPC 固定开销
-3. **`session` p50 = 0ms** —— 用户上下文提取几乎免费
-4. **`modelSetup` p50 ≈ 5ms** —— body 转换和 URL 构建很快
-5. **`usage` p50 = 0ms** —— calculateCredits + recordModelCall 全部走 waitUntil 异步，不占用同步时间
+| Phase | p50 | p90 | p99 | max |
+|-------|-----|-----|-----|-----|
+| session | 0ms | 0ms | 0ms | 0ms |
+| resolveProvider | **0ms** ⭐ | 0ms | 37ms | 65ms |
+| preChecks | **45ms** | 53ms | **1004ms** ⚠️ | **1084ms** ⚠️ |
+| modelSetup | 5ms | 8ms | 13ms | 16ms |
+| providerTtfb | 6640ms | 7812ms | 9622ms | 11378ms |
+| streaming | 30ms | 52ms | 408ms | 937ms |
+| usage | **0ms** ⭐ | 0ms | 0ms | 0ms |
+| **total** | **6757ms** | 7910ms | 9729ms | 11443ms |
 
-**Hub 自身的 50ms p50 中，95% 是 `preChecks`（Payment Kit RPC）。** 这是下一步优化的明确目标。
+**hub-anthropic（n=132）**
+
+| Phase | p50 | p90 | p99 | max |
+|-------|-----|-----|-----|-----|
+| session | 0ms | 0ms | 0ms | 0ms |
+| resolveProvider | **0ms** ⭐ | 0ms | 46ms | 54ms |
+| preChecks | **47ms** | 57ms | 89ms | **899ms** ⚠️ |
+| modelSetup | 5ms | 9ms | 16ms | 97ms |
+| providerTtfb | 486ms | 844ms | 1157ms | 1585ms |
+| streaming | 3202ms | 3661ms | 4159ms | 5001ms |
+| usage | **0ms** ⭐ | 0ms | 0ms | 0ms |
+| **total** | **3740ms** | 4319ms | 5107ms | 5555ms |
+
+**hub-google（n=169）**
+
+| Phase | p50 | p90 | p99 | max |
+|-------|-----|-----|-----|-----|
+| session | 0ms | 0ms | 0ms | 0ms |
+| resolveProvider | **0ms** ⭐ | 0ms | 50ms | 51ms |
+| preChecks | **44ms** | 50ms | 68ms | 74ms |
+| modelSetup | 5ms | 8ms | **365ms** ⚠️ | **557ms** ⚠️ |
+| providerTtfb | 3942ms | 5089ms | 6509ms | 6599ms |
+| streaming | 1046ms | 2266ms | 3113ms | 3160ms |
+| usage | **0ms** ⭐ | 0ms | 0ms | 0ms |
+| **total** | **5040ms** | 5568ms | 6559ms | 6647ms |
+
+### 2.3 关键发现
+
+**1. ⭐ 三个 phase 几乎恒定为 0ms（Hub 架构设计亮点）**
+
+| Phase | 为什么是 0 | 意义 |
+|-------|-----------|------|
+| `session` | 认证在 middleware 做完，handler 只读 Hono context | 零延迟 |
+| `resolveProvider` | Worker isolate 内存缓存命中率 ~99% | D1 查询几乎不发生 |
+| `usage` | `recordModelCall` + meter buffer 全部 `waitUntil` 异步 | **记账完全不阻塞用户响应** |
+
+**这三个是 Hub 能做到 ~50ms 固定开销的关键**。如果任何一个做错（每次查 D1 / 同步 recordModelCall），Hub overhead 会飙到 200-300ms。
+
+**2. ⚠️ `preChecks` 是主要瓶颈**
+
+- **p50 = 44-47ms**（所有 provider 高度一致）
+- **占 Hub p50 开销的 90%**（Hub 总 50ms，preChecks 45ms）
+- p50 的 44-47ms 是 Payment Kit Service Binding RPC 的固定成本
+- **hub-openai 的 p99 = 1004ms** 是极端 cold start（isolate 首次调用 Payment Kit）
+- **下一步优化的明确目标：KV 缓存 "has credits" 快路径**
+
+**3. ⚠️ `modelSetup` 有罕见的 KV cold read**
+
+- 正常 p50 = 5ms
+- hub-google **p99 = 365ms, max = 557ms** —— 这是 `resolveGatewayConfig` 读 KV `gateway-settings` 的冷读
+- hub-openai 的 modelSetup 却很稳定（p99=13ms）
+- 两者差异可能因为 hub-google 样本更多（169 vs 126），更容易跨到新 isolate 触发 KV 冷读
+
+**4. Hub 自身只占端到端总时间的 1%**
+
+以 hub-anthropic 为例：total=3740ms，Hub 处理 ~50ms = **1.3%**。其他 98.7% 是：
+- CF→Anthropic 网络 + Anthropic 生成首 token: 486ms (13%)
+- Streaming 800 tokens: 3202ms (86%)
+- 客户端到 CF edge 网络：~200ms（未计入 total，是客户端测量才能看到）
+
+**→ 即使 Hub 处理开销降到 0ms，端到端用户体验也只快 1-2%。** 真正的性能瓶颈在 provider 侧和 streaming，不在 Hub。
 
 ---
 

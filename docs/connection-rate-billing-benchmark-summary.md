@@ -107,17 +107,73 @@ Hub 延迟 = 直连延迟
 
 ---
 
-## Hub 处理开销（三次 benchmark 高度一致）
+## 🔍 Hub 时间都花在哪了 —— Server-Timing 拆解
 
-| Phase | p50 | p90 | 说明 |
-|-------|-----|-----|------|
-| session | 0ms | 0ms | 用户上下文提取 |
-| resolveProvider | **0ms** | 0ms | isolate 缓存命中（优化效果） |
-| preChecks | 45ms | 50ms | Payment Kit credit 检查（**主要瓶颈**） |
-| modelSetup | 5ms | 6ms | body 转换 + URL 构建 |
-| **合计** | **~50ms** | **~60ms** | Hub 全部代码花的时间 |
+通过 Hub Worker 在每个请求发出的 `Server-Timing` header（带 7 个 phase 的精确计时），可以**从服务端视角精确看到 Hub 每一步花了多少时间**。这是 Hub 有而 Direct/OpenRouter 没有的数据优势。
 
-**Hub 处理开销的 90% 花在 Payment Kit credit 检查这一个 Service Binding RPC 上**。下一步优化目标明确。
+### Hub 处理开销的完整 phase 分布（基于 427 个 Hub 成功样本）
+
+| Phase | p50 | p90 | **p99** | max | 占 p50 比例 | 说明 |
+|-------|-----|-----|---------|-----|------------|------|
+| session | 0ms | 0ms | 0ms | 0ms | 0% | 用户上下文提取（auth 中间件已做） |
+| resolveProvider | **0ms** | 0ms | 54ms | 65ms | 0% | **isolate 内存缓存命中（优化生效）** |
+| modelSetup | 5ms | 8ms | 16ms | 557ms | 10% | body 转换 + URL 构建 + KV gateway 配置 |
+| usage | **0ms** | 0ms | 0ms | 0ms | 0% | **calculateCredits + D1 写入走 waitUntil 不阻塞** |
+| **preChecks** | **45ms** | **54ms** | **140ms** | **1084ms** | **90%** ⚠️ | **Payment Kit credit 检查 RPC** |
+| **Hub 合计** | **~50ms** | **~62ms** | **~210ms** | - | **100%** | Hub 代码总耗时 |
+
+### 视觉化：50ms 里发生了什么
+
+```
+Hub 总 p50 开销: 50ms
+│
+├─ session         ╵  0ms  (0%)
+├─ resolveProvider ╵  0ms  (0%)  ← isolate 缓存秒返回
+├─ usage           ╵  0ms  (0%)  ← waitUntil 异步化
+├─ modelSetup      ┤  5ms  (10%)
+└─ preChecks       ████████████████████████████████████████████  45ms  (90%)
+                                                    ↑
+                                          Payment Kit Service Binding RPC
+```
+
+**💡 核心发现：Hub 90% 的时间花在一个 Service Binding RPC 上（Payment Kit credit 检查）**。其他所有 phase 加起来只有 5ms。这个数据直接指向下一步优化的明确目标 —— **加一个 30s TTL 的 KV 快路径，跳过 95% 的 credit 检查 RPC**。
+
+### p99 暴露的问题：cold start 主要来自 preChecks
+
+| Target | Hub p50 overhead | Hub p99 overhead | 差距 | 原因 |
+|--------|------------------|------------------|------|------|
+| hub-openai | 50ms | **1012ms** | +962ms | preChecks 冷启动 1004ms |
+| hub-anthropic | 53ms | 141ms | +88ms | preChecks 冷启动 89ms |
+| hub-google | 50ms | 409ms | +359ms | modelSetup 365ms（KV 冷读）|
+
+**hub-openai 的 p99 长尾几乎 100% 来自 `preChecks` 的 Payment Kit 冷启动 RPC**（从 45ms 飙到 1004ms，占 p99 overhead 的 99%）。
+
+**hub-google 则暴露了另一个问题**：`modelSetup` 的 KV cold read 偶发 365-557ms。这是 `resolveGatewayConfig` 读 KV `gateway-settings` 的开销，cold read 时很贵。
+
+### 为什么 Hub 的 50ms 可以忽略：占总时间的比例
+
+以 hub-anthropic 为例，典型的完整请求时间分布：
+
+```
+hub-anthropic 完整请求 p50 = 3740ms
+│
+├─ 客户端 ↔ CF edge 网络   ~200ms  (5%)  ██▌
+├─ Hub 处理（包含所有 phase） 50ms  (1%)  ▏         ← 只占 1%
+├─ CF → Anthropic + 首 token  486ms  (13%) ████▌
+└─ Streaming 800 tokens     3202ms (86%) ████████████████████████████████████████████
+
+→ Hub 对总时间贡献仅 ~1%，直连最多只能省这 50ms
+```
+
+### Server-Timing 揭示的 3 个 Hub 架构设计亮点
+
+这些是通过 phase 数据**才能看到**的设计优点：
+
+1. **`session` phase = 0ms** → 认证（DID auth via Service Binding）在 middleware 完成，handler 里只是读 Hono context，**零延迟**。
+2. **`resolveProvider` phase p50 = 0ms** → isolate 内存缓存命中率 ~99%，**D1 查询几乎不发生**（只有 cache miss 或新 isolate 时才走 D1）。
+3. **`usage` phase = 0ms** → `recordModelCall` 和 meter buffer 全部走 `waitUntil` 异步化，**D1 写入完全不阻塞用户响应**。记账是"免费"的。
+
+**这 3 个优点是 Hub 能做到 50ms 固定开销的关键**。如果任何一个做错（比如每次查 D1 / 每次同步 recordModelCall），Hub overhead 就会飙到 200-300ms 以上。
 
 ---
 
