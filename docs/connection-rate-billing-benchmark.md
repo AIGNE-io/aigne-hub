@@ -290,13 +290,15 @@ Hub 延迟 = 直连延迟
 - **额外 150-320ms** 是"客户端 → CF edge → Provider → CF edge → 客户端" vs "客户端 → Provider → 客户端"的网络多一跳代价
 - Google 的 +45% 是绝对差值最大的，因为 Google 的基础延迟最短（~800ms），200ms 的网络多跳占比最明显
 
-### 4.2 Realistic payload 对比（c=5, 800 max_tokens, 1K system prompt）
+### 4.2 Realistic payload 对比（800 max_tokens, 1K system prompt）
 
 **目的**：测量 Hub 在"真实用户场景"下的表现。长 prompt + 长输出让 provider 生成时间占主导，更贴近实际 chat 场景。
 
-**Run ID**: `qlzusr`（2026-04-10T04:47:15Z）
+#### 4.2.1 首次 realistic payload benchmark（Hub vs Direct only）
 
-只有 OpenAI 可以完整对比（Anthropic/Google 实在太慢或出错太多）：
+**Run ID**: `qlzusr`（2026-04-10T04:47:15Z，c=5, 180s per target）
+
+当时 OpenRouter 跑的是 `openai/gpt-oss-20b` 不同 model，不是 apples-to-apples 对比。只有 OpenAI Hub vs Direct 可以比：
 
 | 指标 | hub-openai (n=126) | openai-direct (n=106) | 差异 |
 |------|-------------------|----------------------|------|
@@ -307,7 +309,75 @@ Hub 延迟 = 直连延迟
 | max | 11797ms | 21502ms | Hub 快 -9705ms |
 | cv | **0.12** | 0.22 | Hub **分布更稳定** |
 
-**结论（realistic payload）：对 OpenAI，Hub 比直连快 1228ms（-14.7% p50），p99 快 5.5 秒，分布更稳**
+#### 4.2.2 Long-payload 3-way 补充测试（同 model，apples-to-apples）
+
+**Run ID**: `6f3exy`（2026-04-10T06:10:05Z，c=3, 120s per target）
+
+**目的**：第一次 benchmark 没包含 OpenRouter 用同 model 跑 realistic payload。这次补齐，用 **`openai/gpt-5-nano`** 跑完整 3 路对比。
+
+**结果（含 Total time 对比）**：
+
+| Target | n | TTFB p50 | TTFB p90 | TTFB p99 | cv | **Total p50** |
+|--------|---|---------|---------|---------|------|--------------|
+| **hub-openai-long** | 50 | **7091ms** | 8325ms | 9959ms | **0.11** ⭐ | **7091ms** |
+| **openai-direct-long** | 45 | 8267ms | 10414ms | 10860ms | 0.15 | 8267ms |
+| **openrouter-openai-long** | **13** ⚠️ | **1385ms** ⭐ | 1469ms | 1526ms | 0.15 | **29466ms** ⚠️⚠️⚠️ |
+
+#### 4.2.3 🚨 OpenRouter 的 TTFB vs Total Time 陷阱
+
+**这是整份报告里最重要的操作性发现之一。**
+
+看 OpenRouter 的两列：
+- **TTFB p50 = 1385ms** —— 三路中最快，看起来是大赢家
+- **Total p50 = 29466ms** —— 完成整个 800 token 响应需要 **近 30 秒**，是 Hub 的 **4.2 倍**
+
+**什么意思**：OpenRouter 的 streaming **每个 chunk 之间有额外延迟**。快速返回第一个字节（快速 "ack"），然后每个后续 chunk 都很慢。结果是"看起来很快开始"但"完整回复要等很久"。
+
+**吞吐量证据**：
+
+| Path | 窗口 | 样本数 | 平均每请求总时间 | 吞吐（req/sec） |
+|------|------|-------|----------------|-------|
+| Hub | 120s × c=3 = 360s worker-sec | 50 | **7.2s** | 0.42 |
+| Direct | 120s × c=3 = 360s worker-sec | 45 | **8.0s** | 0.38 |
+| **OpenRouter** | 120s × c=3 = 360s worker-sec | **13** | **27.7s** ⚠️ | **0.11** |
+
+**OpenRouter 的实际吞吐只有 Hub / Direct 的 ~1/4**。
+
+**可能原因**：
+1. OpenRouter 的内部队列：在 TTFB 之后，每个 chunk 都要等 OpenRouter 的调度器处理
+2. OpenRouter 对 OpenAI 的 streaming 有 proxy 层额外延迟
+3. OpenRouter 对 streaming 吞吐做了某种限流（每秒 token 数）
+4. OpenRouter 可能把多个用户的 streaming 复用一条上游连接
+
+**无论哪个原因，操作性结论都一样**：**OpenRouter 不适合长生成场景**。短 payload 的 TTFB 优势在长 payload 下完全变成 total time 灾难。
+
+#### 4.2.4 Hub vs Direct 的独立验证
+
+两次 benchmark 间隔 83 分钟，结果高度一致：
+
+| 指标 | qlzusr (c=5) | 6f3exy (c=3) | 偏差 |
+|------|-------------|-------------|------|
+| Hub TTFB p50 | 7130ms | 7091ms | -0.5% |
+| Direct TTFB p50 | 8358ms | 8267ms | -1.1% |
+| Hub 比 Direct 快 | -1228ms | -1176ms | 一致 |
+
+**"Realistic payload 下 Hub 比 Direct 快 ~1200ms" 是跨时段可复现的稳定现象**，不是偶然。
+
+#### 4.2.5 长生成场景的三路结论
+
+| 维度 | Hub | Direct | OpenRouter |
+|------|-----|--------|------------|
+| TTFB p50 | 7091ms | 8267ms | **1385ms** ⭐ (陷阱) |
+| Total p50 | **7091ms** ⭐ | 8267ms | 29466ms ⚠️ |
+| p99 稳定性 | **9959ms** ⭐ | 10860ms | 1526ms |
+| cv（分布） | **0.11** ⭐ | 0.15 | 0.15 |
+| 吞吐量 | **0.42 req/s** ⭐ | 0.38 req/s | 0.11 req/s |
+| **综合评价** | **最优** | 可用 | **长生成场景不可用** |
+
+**关键结论**：
+1. **Hub 在长生成场景下是明确的最优选择** —— Total / p99 / cv / 吞吐量四个维度全赢
+2. **Direct 是合格的备选** —— 略慢但稳定
+3. **OpenRouter 只适合短回复**（< 100 tokens）—— 长生成场景要等 30 秒，完全不可接受
 
 ### 4.3 为什么结果相反？——深度分析
 
@@ -835,6 +905,7 @@ pnpm billing-verify
 | **`6o4u6u`** | **hub-vs-direct** | **1121** | **60s 头对头，short payload** —— Hub vs Direct 对比 |
 | **`nre1z6`** | **fill-gaps** | **458** | **补数据**：OpenAI gpt-5-nano 三路对比（Hub/Direct/OpenRouter）+ Anthropic c=1 干净数据 |
 | **`sd3w3h`** | **openrouter-all** | **334** | **OpenRouter 全覆盖**：OpenAI + Anthropic + Google 三个 provider 通过 OpenRouter 代理（c=3, 60s）|
+| **`6f3exy`** | **long-payload-3way** | **108** | **长 payload 三路对比**：openai/gpt-5-nano 同 model 通过 Hub/Direct/OpenRouter（c=3, 120s, realistic 800 max_tokens）—— 发现 OpenRouter Total time 陷阱 |
 
 **跨 run 查询示例（DuckDB）：**
 

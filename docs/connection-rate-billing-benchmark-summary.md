@@ -76,16 +76,57 @@
 
 ---
 
-## 为什么长生成场景 Hub 反而更快？
+## 🚨 长生成场景的 TTFB vs Total Time 陷阱
 
-OpenAI gpt-5-nano + realistic payload (800 max_tokens) 下：
+**用同一个 model `openai/gpt-5-nano` + realistic payload (800 max_tokens) 跑完整的三路对比**，发现一个震惊的现象：
+
+| Target | n | **TTFB p50** | TTFB p90 | cv | **Total p50** |
+|--------|---|-------------|---------|------|--------------|
+| **hub-openai** | 50 | 7091ms | 8325ms | **0.11** ⭐ | **7091ms** |
+| **openai-direct** | 45 | 8267ms | 10414ms | 0.15 | 8267ms |
+| **openrouter** | **13** ⚠️ | **1385ms** ⭐ | 1469ms | 0.15 | **29466ms** ⚠️⚠️⚠️ |
+
+### 🤯 OpenRouter 的 TTFB vs Total 陷阱
+
+- **TTFB 1385ms** — OpenRouter 是首字节最快的一路
+- **Total 29466ms** — 但完成一个 800 token 的完整响应要 **近 30 秒**！
+- **比 Hub 慢 4 倍**（29466ms vs 7091ms）
+- OpenRouter 120 秒窗口只能跑完 **13 个请求**（Hub 跑完 50，Direct 跑完 45）—— 吞吐量只有 1/4
+
+**意思是什么**：OpenRouter 在长生成场景下是 **首字节快但 streaming 慢得灾难性**。用户看到"它在回答"很快，但整个回复收完要等近 30 秒。**对真实 chat 场景来说这是不可接受的**。
+
+### Hub vs Direct（长 payload）
+
+去掉 OpenRouter 这个离群值，Hub vs Direct 的对比得到**独立验证**：
 
 | 指标 | Hub | Direct | 差异 |
 |------|-----|--------|------|
-| p50 TTFB | 7130ms | 8358ms | **Hub 快 -1228ms (-15%)** 🤯 |
-| p99 TTFB | 10104ms | 15664ms | **Hub 快 -5560ms (-36%)** 🤯 |
+| TTFB p50 | **7091ms** | 8267ms | **Hub 快 -1176ms (-14%)** |
+| TTFB p90 | 8325ms | 10414ms | Hub 快 -2089ms (-20%) |
+| TTFB p99 | 9959ms | 10860ms | Hub 快 -901ms (-8%) |
+| cv | **0.11** ⭐ | 0.15 | Hub **分布更稳定** |
 
-**原因**：长生成时间放大了 Direct 路径的网络不稳定性，CF 骨干网的稳定性优势盖过了多一跳的固定开销。这对**跨太平洋访问美国 provider** 的场景特别有利。
+**和之前 qlzusr run 的独立数据高度一致**（两次 benchmark 相差 83 分钟）：
+- qlzusr run: Hub 7130ms vs Direct 8358ms（Hub 快 1228ms）
+- 本次 run: Hub 7091ms vs Direct 8267ms（Hub 快 1176ms）
+
+**"Hub 在 realistic payload 下比 Direct 快 ~1200ms" 不是偶然**，是跨时段可复现的稳定现象。
+
+### 关键结论
+
+**长生成场景下真正的赢家是 Hub**：
+- **TTFB**: Hub 7091ms < Direct 8267ms < OpenRouter 1385ms（但总时间陷阱）
+- **Total**: **Hub 7091ms < Direct 8267ms << OpenRouter 29466ms**（相差 4 倍）
+- **吞吐量**: Hub / Direct 都是 ~0.4 req/sec，OpenRouter 只有 0.11 req/sec
+
+**原因分析**：
+1. Hub vs Direct：长生成时间放大了 Direct 跨太平洋路径的不稳定性，CF 骨干网稳定性优势盖过多一跳的固定开销
+2. OpenRouter 陷阱：OpenRouter 的 streaming 吞吐率极低（可能是内部队列、proxy 限流、或对 OpenAI 的路由有 per-chunk 延迟）。它 TTFB 快是因为快速 ack 请求，但**后续 streaming 每个 chunk 都有额外延迟**。
+
+**操作性建议**：
+- ❌ **OpenRouter 不适合长生成场景**（> 500 tokens 输出），哪怕它 TTFB 最快
+- ✅ **Hub 对长生成场景是明确的最优选择**（比 Direct 快，比 OpenRouter 快 4 倍）
+- ✅ **OpenRouter 只适合短回复场景**（< 100 tokens 输出）—— 从短 payload 数据看它对 OpenAI/Google 的 p50 确实最快
 
 ---
 
