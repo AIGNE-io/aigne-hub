@@ -6,8 +6,9 @@
 
 Primary references:
 
-- `docs/migration/MIGRATION_RUNBOOK.md`
-- `docs/migration/deployment-input.example.yaml`
+- `docs/migration/MIGRATION_RUNBOOK.md` — human-oriented rationale and stop conditions
+- `docs/migration/EXECUTION_PLAYBOOK.md` — concrete shell command sequence per phase
+- `docs/migration/deployment-input.example.yaml` — input schema template
 
 ---
 
@@ -97,43 +98,70 @@ The AI must read:
 
 1. this file
 2. the execution input file
-3. the human runbook
-4. repository-local deployment configuration relevant to the current target
+3. the human runbook (`docs/migration/MIGRATION_RUNBOOK.md`)
+4. the execution playbook (`docs/migration/EXECUTION_PLAYBOOK.md`)
+5. repository-local deployment configuration relevant to the current target
 
-At minimum that includes:
+At minimum that includes, in the **aigne-hub** repository:
 
 - `cloudflare/wrangler.toml`
 - `cloudflare/wrangler.local.toml`
 - `cloudflare/docs/DEPLOYMENT.md`
+- `cloudflare/migrations/` (all files — there are multiple incremental schemas, not just `0001_initial.sql`)
+- `cloudflare/scripts/migrate-data.ts`
+- `cloudflare/scripts/sync-from-hub.ts`
+- `cloudflare/scripts/verify-migration.ts`
 - `docs/cloudflare-payment-kit-integration-guide.md`
+- `docs/cloudflare-feature-parity-todo.md`
 
-If the `payment-kit` repository is available, the AI must inspect its deployment configuration before executing.
+And in the **payment-kit** repository (must be read before Phase 1 executes):
+
+- `blocklets/core/cloudflare/wrangler.toml`
+- `blocklets/core/cloudflare/wrangler.staging.toml` (or the env-specific variant)
+- `blocklets/core/cloudflare/run-build.js`
+- `blocklets/core/cloudflare/migrate-to-d1.js`
+- `blocklets/core/cloudflare/migrations/` (all files)
+- `blocklets/core/cloudflare/MIGRATION-CHALLENGES.md`
+- `docs/cf-migration/MIGRATION-PROPOSAL-v2.md` — architectural background on the payment-kit CF port (sequelize-d1 shim, Express→Hono adapter, D1 CAS concurrency). Read for context; this document is not a deployment guide.
+
+If the `payment-kit` repository is not accessible, Phase 1 is a blocking input
+failure — the AI must not attempt to improvise a payment-kit deployment from
+memory or from other documentation.
 
 ### 4.2 Preflight Readiness Report
 
 Before any deploy or migration command, the AI must produce a structured readiness report with these sections:
 
-- `discovered_inputs`
-- `provided_inputs`
-- `missing_blockers`
-- `non_blocking_unknowns`
-- `planned_execution_order`
-- `risk_warnings`
+- `discovered_inputs` — values resolved from the input file or from repo config
+- `provided_inputs` — values the operator supplied directly
+- `missing_blockers` — anything required that is absent or unresolved
+- `non_blocking_unknowns` — values that can be resolved later without halting
+- `preflight_probe_results` — results of the Phase 0 probes (see 4.5)
+- `conflict_findings` — list of conflicts detected per phase (see Section 10)
+- `planned_execution_order` — explicit phase list with expected command summaries
+- `risk_warnings` — anything the operator should know about before approving
 
-The AI must not proceed if `missing_blockers` is non-empty.
+The AI must not proceed if `missing_blockers` is non-empty, if any
+`preflight_probe_results` entry failed, or if `conflict_findings` contains an
+entry whose `conflict_policy` setting is `abort` and no override was given.
 
 ### 4.3 Stop Rule
 
-The AI must stop before execution if any of the following are missing:
+The AI must stop before execution if any of the following are missing or failing:
 
 - Payment Kit repository or deployable source
 - target service names
 - target base URLs
+- `blocklet-service` worker does not exist in the target Cloudflare account
+- `blocklet-service` base URL configured but unreachable
 - required D1/KV identifiers or permission to create them
-- required secrets
+- required secrets (including `CREDENTIAL_ENCRYPTION_KEY` for the Hub)
 - source database files or explicit instruction to skip migration
 - migration policy
 - membership policy
+- any `<required>` placeholder left unresolved in the input file
+- `wrangler deploy --dry-run` fails for either payment-kit or aigne-hub wrangler config
+- either repository has uncommitted changes and `repos.allow_dirty = false`
 
 ### 4.4 No Guessing Rule
 
@@ -254,27 +282,55 @@ Each phase has:
 
 The AI must not proceed to the next phase without passing the current validation gate.
 
+**Universal pre-action requirement.** For every mutating phase (1, 2, 3, 4,
+5, 6, 7), the AI must, before executing the listed actions:
+
+1. run the conflict probes for that phase (Section 10)
+2. react per `conflict_policy.*` from the input file; never silently overwrite
+3. write a snapshot of every piece of state the phase will touch to
+   `./migration-backups/<timestamp>-<env>/`
+4. check whether each intended command matches one of the guarded operations
+   in Section 9.2 — if yes, require the corresponding `safety.*` flag to be true
+
+These four steps are prerequisites of every phase's first Action. They are
+not re-listed below; their absence from a phase does not mean they are
+optional.
+
 ### Phase 0: Preflight
 
 Prerequisites:
 
-- repository access
-- execution input file
+- both repositories accessible
+- populated execution input file
+- `wrangler` authenticated to the target Cloudflare account
+- local `sqlite3` available if any migration layer is enabled
 
 Actions:
 
-- read required documents
+- read all documents listed in 4.1
 - resolve provided and discoverable inputs
-- identify missing blockers
-- emit readiness report
+- verify no `<required>` placeholders remain in the input file
+- verify `wrangler whoami` returns the expected `deployment.cloudflare_account`
+- verify `blocklet-service` worker exists in the target account (read-only, never mutated)
+- if `services.blocklet_service_base_url` is set, curl `/__blocklet__.js?type=json` and assert 200
+- run `wrangler deploy --dry-run` against the payment-kit and aigne-hub wrangler configs; assert both resolve their service bindings
+- probe every destination resource for conflicts (see Section 10) and record findings
+- create `./migration-backups/<timestamp>-<env>/` and write a preflight snapshot into it
+- emit the readiness report specified in 4.2
 
 Validation gate:
 
 - `missing_blockers = []`
+- `preflight_probe_results` contains zero failures
+- all `conflict_findings` entries are either resolved by `conflict_policy` or explicitly overridden by the operator
 
 Stop conditions:
 
 - any blocking input unresolved
+- `blocklet-service` not found in the target account
+- `wrangler deploy --dry-run` fails for either repository
+- repo is dirty and `repos.allow_dirty = false`
+- unresolved conflict whose policy is `abort`
 
 ### Phase 1: Deploy Payment Kit
 
@@ -523,7 +579,124 @@ If membership changes were made during execution, the AI must report that affect
 
 ---
 
-## 9. Missing Input Reporting Contract
+## 9. Safety Contract
+
+### 9.1 Absolute prohibitions
+
+The AI must never, regardless of any flag:
+
+- run `wrangler delete` on an unqualified worker name
+- issue `DROP TABLE` or `TRUNCATE` against a D1 database
+- run `DELETE FROM <table>` without a WHERE clause
+- delete a KV namespace that contains keys
+- force-push any branch in either source repository
+- mutate `blocklet-service` state (database, KV, deployment, or membership table); `blocklet-service` is read-only for this AI
+- overwrite a production wrangler config (`env.production.*` blocks) without `safety.allow_overwrite_production_vars = true`
+
+### 9.2 Guarded operations
+
+The following actions are blocked by default. The AI may perform them only
+when the corresponding flag in `safety.*` is true AND (if
+`approvals.interactive_confirmation` is true) the operator has confirmed:
+
+| Operation                                       | Required flag                               |
+|--------------------------------------------------|---------------------------------------------|
+| Any D1 SQL containing `DROP` / `DELETE` / `TRUNCATE` | `safety.allow_destructive_d1_sql`       |
+| `wrangler d1 delete`                             | `safety.allow_wrangler_d1_delete`           |
+| `wrangler kv namespace delete`                   | `safety.allow_wrangler_kv_namespace_delete` |
+| `wrangler secret delete`                         | `safety.allow_wrangler_secret_delete`       |
+| `wrangler delete` on a worker                    | `safety.allow_worker_delete`                |
+| Overwriting a production `[vars]` block          | `safety.allow_overwrite_production_vars`    |
+
+When a guarded operation runs, the AI must first write a snapshot of the
+affected resource into `./migration-backups/<timestamp>-<env>/` and cite the
+snapshot path in the execution summary.
+
+### 9.3 Skip-if-present defaults
+
+In the absence of explicit policy overrides, the AI must prefer existing
+state over newly written state:
+
+- existing `wrangler secret`: skip, never overwrite or delete
+- existing D1 rows on a destination table: abort the phase
+- existing KV key with a different value than the proposed one: enter the
+  `diff_then_ask` flow and stop for operator decision
+- existing payment meter / product / price / link with the configured name:
+  reuse, never recreate
+
+### 9.4 Snapshot contract
+
+Before any mutating phase runs, the AI must produce a snapshot directory at
+`./migration-backups/<ISO-timestamp>-<env>/` containing:
+
+- row exports (`wrangler d1 execute --json`) of every table the phase will touch
+- current values of every KV key the phase will write
+- list of secret names (never values) for both workers
+- backup copy of every wrangler config the phase may rewrite, suffixed `-before`
+
+Snapshots are append-only. The AI must not delete or modify files inside a
+prior snapshot directory.
+
+---
+
+## 10. Conflict Detection Contract
+
+Before any phase mutates state, the AI must run that phase's conflict probes
+and record findings in the readiness report under `conflict_findings`.
+
+### 10.1 Probes per phase
+
+| Phase | Probe                                                                                        |
+|-------|----------------------------------------------------------------------------------------------|
+| 0     | `wrangler whoami`; `wrangler deployments list --name <blocklet-service>`; `wrangler deploy --dry-run` for both repos; grep input file for unresolved `<required>` placeholders |
+| 1     | `wrangler deployments list --name <payment-kit>` (check recency); `wrangler secret list` on payment-kit; existence of target D1 + KV |
+| 2     | For every table in `payment-kit/blocklets/core/cloudflare/migrate-to-d1.js`'s output, `SELECT COUNT(*)` on the destination |
+| 3     | `GET /api/meters`, `/api/products`, `/api/prices`, `/api/payment-links` on payment-kit (reused, not recreated if present) |
+| 4     | read membership rows for the configured admins before inserting                              |
+| 5     | same as Phase 1 but for aigne-hub                                                            |
+| 6     | row count on `AiProviders`, `AiModelRates`, `AiModelStatuses` (L1), `Apps`, `AiCredentials`, `Projects` (L2), `ModelCalls`, `Usages` (L3) |
+| 7     | `wrangler kv key get "app:preferences" --namespace-id <hub-kv-id>`                            |
+| 8     | none — Phase 8 is read-only validation                                                        |
+
+### 10.2 Finding schema
+
+Each finding is a structured record with:
+
+- `phase` — phase number
+- `class` — one of `DUPLICATE_DEPLOY`, `OCCUPIED_D1`, `OCCUPIED_KV`, `EXISTING_SECRET`, `EXISTING_PAYMENT_OBJECT`, `RESOURCE_DRIFT`, `PLACEHOLDER_UNRESOLVED`
+- `target` — the resource being probed (e.g. table name, KV key, service name)
+- `current` — a summary of the current state (e.g. row count, value digest)
+- `proposed` — a summary of the value the AI wants to write, if any
+- `policy_key` — the `conflict_policy.*` key that governs this class
+- `policy_value` — the effective setting from the input file
+- `resolution` — one of `proceed`, `skip`, `abort`, `ask_operator`
+
+### 10.3 Reporting format
+
+Findings must be emitted both as part of the JSON readiness report AND in a
+human-readable block in the AI's response, grouped by phase. Example:
+
+```text
+Phase 2 — Import Payment Data
+  [OCCUPIED_D1]      table=payment_customers rows=47 policy=on_existing_d1_rows(abort)     -> abort
+  [OCCUPIED_D1]      table=payment_prices    rows=3  policy=on_existing_d1_rows(abort)     -> abort
+Phase 7 — Wire Hub To Payment Kit
+  [OCCUPIED_KV]      key=app:preferences                  policy=on_existing_kv_key(diff_then_ask) -> ask_operator
+    diff:
+      - creditPaymentLink: /payment/checkout/pay/plink_OLD
+      + creditPaymentLink: /payment/checkout/pay/plink_NEW
+```
+
+### 10.4 Abort semantics
+
+If any finding has `resolution = abort` and the input file has
+`deployment.abort_on_conflict = true` (the default), the AI must stop before
+executing the affected phase and report the findings to the operator. The AI
+must not carry partially-conflicted state into later phases.
+
+---
+
+## 11. Missing Input Reporting Contract
 
 If the AI cannot continue, it must return missing items as a flat checklist.
 
@@ -542,7 +715,7 @@ The AI must not bury blockers inside narrative prose.
 
 ---
 
-## 10. Execution Summary Contract
+## 12. Execution Summary Contract
 
 At the end of execution, the AI must output:
 

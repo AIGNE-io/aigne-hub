@@ -1,77 +1,256 @@
-deployment:
-  env: "<required>"
-  cloudflare_account: "<required>"
-  mode: "full"
+# ================================================================
+# Deployment Input — Payment Kit + AIGNE Hub (Cloudflare Workers)
+# ================================================================
+#
+# Copy this file to a working location (e.g. docs/migration/.input.<env>.yaml),
+# fill every "<required>" value, then pass the populated file to the
+# execution playbook:
+#
+#   bash docs/migration/EXECUTION_PLAYBOOK.sh ./docs/migration/.input.<env>.yaml
+#
+# Do NOT commit populated copies — they contain secrets and env-specific IDs.
+# This example file is environment-agnostic: every placeholder MUST be
+# replaced with a real value for the target environment.
+#
+# Field grouping rules (read before editing):
+#   - *_secrets          -> stored via `wrangler secret put` (never plain vars)
+#   - *_vars             -> stored in wrangler.toml [vars] or via --var
+#   - migration.*        -> policy switches for the migration script
+#   - conflict_policy.*  -> how the playbook reacts when something already exists
+#   - safety.*           -> destructive-operation allowlist (default = deny)
+#   - approvals.*        -> which tools the executor is allowed to run
+#
+# Philosophy:
+#   - Nothing in production gets touched unless the operator (or AI agent)
+#     has an explicit approval flag for that class of action.
+#   - The playbook assumes blocklet-service ALREADY EXISTS in the target
+#     environment. It only verifies existence, never deploys or mutates it.
 
+# ---------- 1. Deployment meta ----------
+deployment:
+  env: "<required>"                     # staging | production | <custom>
+  cloudflare_account: "<required>"      # e.g. "zhuzhuyule-779"
+  # mode controls which phases run:
+  #   full          -> Phase 0 + Phase 1-8 (deploy both payment-kit and hub)
+  #   payment_only  -> Phase 0 + Phase 1-4   (skip hub deploy/migration)
+  #   hub_only      -> Phase 0 + Phase 5-8   (payment-kit already exists and
+  #                    is reused; Phase 1-4 run the "use-existing" branch with
+  #                    read-only health checks instead of mutating deploys)
+  #   validate_only -> Phase 0 + Phase 8 only (no mutations, only probes)
+  mode: "full"
+  abort_on_conflict: true               # stop immediately on any unresolved conflict
+  dry_run: false                        # true = print commands only, no mutation
+
+# ---------- 2. Repository inputs ----------
 repos:
   aigne_hub_path: "/absolute/path/to/aigne-hub"
   payment_kit_path: "/absolute/path/to/payment-kit"
-  aigne_hub_branch: "main"
-  payment_kit_branch: "main"
+  aigne_hub_branch: "feat/cloudflare-migration"
+  payment_kit_branch: "feat/cf-workers-migration"
+  # The playbook must `git status --porcelain` these repos before touching them
+  # and abort if either repo has uncommitted changes, unless allow_dirty=true.
+  allow_dirty: false
 
+# ---------- 3. Target service identity ----------
 services:
-  blocklet_service_name: "<required>"
-  payment_kit_service_name: "<required>"
-  hub_service_name: "<required>"
-  hub_base_url: "https://<required>"
-  payment_base_url: "https://<required>"
+  # blocklet-service is assumed to already exist — playbook only verifies it.
+  blocklet_service_name: "<required>"            # e.g. "blocklet-service-staging"
+  blocklet_service_base_url: "<required>"        # used for preflight health check
+  payment_kit_service_name: "<required>"         # e.g. "payment-kit-staging"
+  payment_kit_base_url: "<required>"             # e.g. "https://payment-kit-staging.xxx.workers.dev"
+  hub_service_name: "<required>"                 # e.g. "aigne-hub-staging"
+  hub_base_url: "<required>"                     # e.g. "https://aigne-hub-staging.xxx.workers.dev"
 
+# ---------- 4. Cloudflare resources (D1 + KV) ----------
+# For each resource: either give an existing id OR set create_if_missing=true.
+# If a D1 db / KV namespace is created by the playbook, the returned id MUST be
+# written back to the corresponding wrangler.toml file — the playbook does this
+# automatically only if approvals.allow_ai_to_modify_wrangler_configs=true.
 hub_resources:
-  d1_name: "<required>"
-  d1_id: "<required>"
+  d1_name: "<required>"                          # e.g. "aigne-hub-staging"
+  d1_id: "<required_or_create>"                  # UUID or "create"
   kv_name: "AUTH_KV"
-  kv_id: "<required>"
+  kv_id: "<required_or_create>"
   create_if_missing: false
+  wrangler_config_path: "cloudflare/wrangler.toml"
 
 payment_resources:
-  d1_name: "<required>"
-  d1_id: "<required>"
-  kv_name: "<required>"
-  kv_id: "<required>"
+  d1_name: "<required>"                          # e.g. "payment-kit-staging"
+  d1_id: "<required_or_create>"
+  kv_name: "DID_CONNECT_KV"
+  kv_id: "<required_or_create>"
   create_if_missing: false
+  wrangler_config_path: "blocklets/core/cloudflare/wrangler.staging.toml"
 
+# ---------- 5. Hub secrets (wrangler secret put) ----------
+# Every key listed here is set via `wrangler secret put <KEY>`.
+# Empty string means "do not set" — the playbook will NOT delete existing
+# secrets of the same name, it will only skip them.
+#
+# Generating fresh secrets for a new environment:
+#   APP_SK           -> docs/migration/scripts/generate-credentials.mjs
+#                       (use a DIFFERENT wallet for hub and payment-kit)
+#   AUTH_SECRET      -> openssl rand -hex 32
+#   CREDENTIAL_ENCRYPTION_KEY -> openssl rand -hex 32
+#
+# Recovering secrets from an existing deployment:
+#   - Cloudflare secrets are write-only; `wrangler secret list` only shows
+#     the NAMES, not the values. You cannot read them back.
+#   - If the source hub is currently running inside a local Blocklet Server,
+#     its wallet identity and session secret are injected into the PM2 process
+#     environment — see MIGRATION_RUNBOOK.md Section 4.4.1 for the exact
+#     fields (BLOCKLET_APP_ASK, BLOCKLET_SESSION_SECRET, etc.) and the format
+#     conversions each one requires.
+#   - If the source hub is already deployed as a CF Worker but you did not
+#     keep a local copy of the secrets, you cannot continue its identity;
+#     generate fresh secrets and accept that the new deployment is a new
+#     instance DID in blocklet-service.
+#
+# Pipe-setting secrets so the value never lands on stdout:
+#   printf '%s' "$VALUE" | wrangler secret put APP_SK -c wrangler.staging.toml
 hub_secrets:
-  app_sk: "<required>"
-  auth_secret: "<required>"
-  google_client_id: ""
-  google_client_secret: ""
-  github_client_id: ""
-  github_client_secret: ""
-  admin_emails: ""
+  APP_SK: "<required>"                           # see generate-credentials.mjs
+  AUTH_SECRET: "<required>"                      # JWT signing secret, 32+ chars
+  CREDENTIAL_ENCRYPTION_KEY: "<required>"        # encrypts AiCredentials at rest, 32+ chars
+  GOOGLE_CLIENT_ID: ""
+  GOOGLE_CLIENT_SECRET: ""
+  GITHUB_CLIENT_ID: ""
+  GITHUB_CLIENT_SECRET: ""
+  ADMIN_EMAILS: ""                               # comma-separated list
 
+# ---------- 6. Hub non-secret env vars (wrangler.toml [vars]) ----------
+hub_vars:
+  PAYMENT_LIVEMODE: "false"                      # "true" for production mainnet
+  AI_GATEWAY_ACCOUNT_ID: ""                      # optional: route via CF AI Gateway
+  AI_GATEWAY_ID: ""
+  INSTANCE_NAME: "AIGNE Hub"
+
+# ---------- 7. Payment Kit secrets ----------
+# Generate a SEPARATE wallet from the hub — do not reuse hub's APP_SK:
+#   node docs/migration/scripts/generate-credentials.mjs --labels=payment
+#
+# APP_PID is the instance DID registered inside blocklet-service. It is NOT
+# generated by generate-credentials.mjs. To obtain it, ONE of:
+#   (a) log into the blocklet-service admin UI for the target environment
+#       and register a new "payment-kit" instance; copy the instance DID
+#   (b) if payment-kit is already deployed as an instance in that
+#       blocklet-service, `wrangler d1 execute <blocklet-service-d1> --remote
+#       --command "SELECT instance_did FROM instances WHERE component_did='<payment-kit-component-did>'"`
+#       (requires the operator to have direct D1 access — this playbook does
+#       NOT execute the query automatically, see the read-only blocklet-service rule)
+#   (c) reuse the APP_PID from an existing staging environment if redeploying
+#       the same instance with rotated keys
 payment_secrets:
-  app_sk: "<required>"
-  app_pid: "<required_or_resolution_strategy>"
-  payment_livemode: false
+  APP_SK: "<required>"                           # see generate-credentials.mjs
+  APP_PID: "<required>"                          # instance DID, see note above
+
+# ---------- 8. Payment Kit non-secret env vars ----------
+payment_vars:
+  PAYMENT_LIVEMODE: "false"                      # env var, NOT a secret
+  APP_NAME: "Payment Kit"
+
+# ---------- 9. Source data (for SQLite -> D1 migration) ----------
+#
+# Blocklet Server stores instance databases under a DID-based path.
+# Exact layout differs between "production Blocklet Server" and
+# "local developer Blocklet Server":
+#
+#   Production (remote deployment):
+#     <BLOCKLET_DATA_DIR>/.blocklet-server/data/<server-did>/<component-did>/<db>
+#     where BLOCKLET_DATA_DIR is usually ~/blocklet-server-data
+#
+#   Local developer (macOS, installed via `abt install`):
+#     ~/.arcblock/abtnode/... (managed by PM2 — see below)
+#     Alternative custom install root: inspect PM2_HOME=<whatever> pm2 env <id>
+#     and read BLOCKLET_DATA_DIR from the output; this is the most reliable way.
+#
+# For a running local Blocklet Server, the authoritative path is whatever
+# the PM2 process environment says:
+#
+#   PM2_HOME=~/.arcblock/abtnode pm2 list                              # find id
+#   PM2_HOME=~/.arcblock/abtnode pm2 env <id> | grep BLOCKLET_DATA_DIR  # real path
+#
+# Component DIDs (look these up via `pm2 env <id> | grep BLOCKLET_COMPONENT_DID`;
+# they differ per deploy, so don't hardcode them):
+#   - aigne-hub        db name: aikit.db
+#   - payment-kit      db name: payment-kit.db
+#
+# CRITICAL — SQLite WAL mode: if the source SQLite is still being written to
+# by a running Blocklet Server, copying only the .db file will miss all
+# writes still sitting in the .db-wal file. Always take a consistent
+# snapshot via sqlite3's .backup command:
+#
+#   mkdir -p ./migration-backups/source
+#   sqlite3 /path/to/aikit.db ".backup './migration-backups/source/aikit.db'"
+#   sqlite3 /path/to/payment-kit.db ".backup './migration-backups/source/payment-kit.db'"
+#
+# The .backup command produces a single self-contained .db file with no
+# accompanying .db-wal or .db-shm, safe to scp/rsync to another host.
+#
+# Fetching from a remote host:
+#
+#   ssh user@host "find ~/blocklet-server-data -name 'aikit.db'"     # locate
+#   # Best practice — take a consistent snapshot remotely first:
+#   ssh user@host "sqlite3 ~/path/to/aikit.db '.backup /tmp/aikit-snap.db'"
+#   scp user@host:/tmp/aikit-snap.db ./aikit.db
+#   # Or via rsync for large databases (resumable):
+#   rsync -avP user@host:/tmp/aikit-snap.db ./aikit.db
+#
+# Populate source_download_command with the exact command you use; the
+# playbook will replay it from Phase 0 if source_access_method != "local"
+# and the local path does not exist yet.
+#
+# "skip" = fresh deployment without importing historical data.
 
 source_data:
-  hub_sqlite_path: "/absolute/path/to/aikit.db"
-  payment_sqlite_path: "/absolute/path/to/payment-kit.db"
-  source_host: ""
-  source_access_method: "local"
+  hub_sqlite_path: "/absolute/path/to/aikit.db"          # or "skip"
+  payment_sqlite_path: "/absolute/path/to/payment-kit.db" # or "skip"
+  source_host: ""                                         # e.g. "ops@prod-bs-01.internal"
+  source_access_method: "local"                           # local | scp | rsync | manual
+  # Exact command the playbook will run if the local file is missing.
+  # Leave empty to require manual fetch before running the playbook.
   source_download_command: ""
+  # Example:
+  #   source_download_command: "scp ops@prod-bs-01.internal:/home/ops/blocklet-server-data/.blocklet-server/data/<srv-did>/<hub-did>/aikit.db ./aikit.db"
+  # If paths are provided, the playbook will refuse to overwrite destination D1
+  # tables that already contain rows unless conflict_policy allows it.
 
+# ---------- 10. Migration policy ----------
 migration:
-  deploy_payment_first: true
-  hub_l1: true
-  hub_l2: true
-  hub_l3: false
-  hub_history_days: 90
-  migrate_ai_credentials: false
+  deploy_payment_first: true                     # hard requirement — keep true
+  hub_l1: true                                   # providers / rates / statuses
+  hub_l2: false                                  # apps / credentials / projects
+  hub_l3: false                                  # modelCalls / usages / history
+  hub_history_days: 90                           # applies to L3 only
+  migrate_ai_credentials: false                  # L2 subset
   reconfigure_hub_credentials_manually: true
-  migrate_payment_customers: true
-  migrate_payment_currencies: true
-  migrate_payment_methods: true
-  migrate_payment_products_prices: true
-  migrate_payment_credit_grants: true
-  migrate_payment_meter_events: false
-  migrate_payment_subscriptions: false
-  migrate_payment_invoices: false
+  # Payment Kit uses whole-table dump via payment-kit/blocklets/core/cloudflare/migrate-to-d1.js.
+  # These switches only gate whether the playbook calls that script at all.
+  migrate_payment_data: true                     # if false, skip Phase 2 entirely
+  migrate_payment_skip_events: true              # pass --skip-events to migrate-to-d1.js
+  migrate_payment_extra_tables: []               # e.g. ["customers_backup"] — off by default
   enable_credit_conversion_migration: false
-  base_credit_price: "1"
+  base_credit_price: "1"                         # only if enable_credit_conversion_migration
 
+# ---------- 11. Memberships ----------
+#
+# Memberships are stored in blocklet-service's database, which this playbook
+# NEVER mutates (see the "read-only blocklet-service" rule in
+# MIGRATION_RUNBOOK.md Section 1). Membership configuration is therefore a
+# MANUAL prerequisite for every new environment. Phase 4 only verifies that
+# the configured admins can reach the admin-scoped endpoints; if verification
+# fails, it prints the human instructions to fix the membership and stops.
+#
+# How to configure memberships (one-time, per environment):
+#   1. Open blocklet-service admin UI for the target environment.
+#   2. For each user listed below under payment_admins / hub_admins:
+#      - find the instance DID (APP_PID) matching payment-kit / aigne-hub
+#      - grant the specified role to the user on that instance
+#   3. The affected user must sign out and sign in again to pick up the
+#      updated JWT role claim.
+#
+# The playbook never writes memberships — it only reads via public endpoints.
 memberships:
-  allow_ai_to_update_blocklet_memberships: false
   payment_admins:
     - user_did: "<required>"
       role: "owner"
@@ -79,26 +258,65 @@ memberships:
     - user_did: "<required>"
       role: "owner"
 
+# ---------- 12. Payment billing object policy ----------
 payment_config:
   meter_name: "agent-hub-ai-meter-v2"
-  expected_currency_id: "<required_if_known>"
+  expected_currency_id: "<required_if_known>"    # e.g. "pc_IecaG7Ubzlmk"
   expected_currency_decimal: 10
-  expected_payment_link: ""
-  allow_ai_to_create_meter: true
-  allow_ai_to_create_product_price_link: true
+  expected_payment_link: ""                      # e.g. "/payment/checkout/pay/plink_xxx"
+  allow_playbook_to_create_meter: true           # only if missing, never recreate
+  allow_playbook_to_create_product_price_link: true
   write_link_to_hub_preferences: true
 
+# ---------- 13. Validation gates ----------
 validation:
-  verify_payment_health: true
-  verify_hub_health: true
-  verify_checkout_flow: true
-  verify_credit_topup_flow: true
-  verify_ai_usage_deduction: true
-  verify_migration_counts: true
+  verify_blocklet_service_reachable: true        # Phase 0 gate
+  verify_payment_health: true                    # Phase 1 gate
+  verify_hub_health: true                        # Phase 5 gate
+  verify_migration_counts: true                  # Phase 2 + Phase 6 gate
+  verify_checkout_flow: true                     # Phase 8 gate
+  verify_credit_topup_flow: true                 # Phase 8 gate
+  verify_ai_usage_deduction: true                # Phase 8 gate
+  baseline_curl_suite: true                      # run the non-login smoke tests
 
+# ---------- 14. Conflict policy ----------
+# Describes what the playbook should do when a resource already exists.
+# Default behaviour is the safest: detect, report, and abort.
+conflict_policy:
+  on_existing_d1_database: "use"                 # use | abort | recreate (recreate forbidden for prod)
+  on_existing_kv_namespace: "use"                # use | abort | recreate
+  on_existing_secret: "skip"                     # skip | overwrite | abort
+  on_existing_d1_rows: "abort"                   # abort | append | overwrite (overwrite = INSERT OR REPLACE)
+  on_existing_kv_key: "diff_then_ask"            # diff_then_ask | skip | overwrite | abort
+  on_existing_payment_meter: "use"               # use | abort  (never "recreate")
+  on_existing_payment_product: "use"             # use | abort
+  on_existing_payment_price: "use"               # use | abort
+  on_existing_payment_link: "prefer_configured"  # prefer_configured | use_any | abort
+  on_existing_deployment: "abort_if_recent"      # abort_if_recent | overwrite | abort
+  deployment_recency_hours: 24                   # "recent" threshold
+
+# ---------- 15. Safety (destructive operation allowlist) ----------
+# Everything defaults to FALSE. The playbook refuses to run any destructive
+# command unless the corresponding flag here is explicitly set to true, and
+# even then it prompts for confirmation in interactive mode. In non-interactive
+# mode, the presence of the flag is the confirmation.
+safety:
+  allow_destructive_d1_sql: false                # permits DROP / DELETE / TRUNCATE on D1
+  allow_wrangler_d1_delete: false                # permits `wrangler d1 delete`
+  allow_wrangler_kv_namespace_delete: false      # permits `wrangler kv namespace delete`
+  allow_wrangler_secret_delete: false            # permits `wrangler secret delete`
+  allow_worker_delete: false                     # permits `wrangler delete` (removes deployed worker)
+  allow_overwrite_production_vars: false         # only true on explicit rollback
+  # If any of the above is true, the playbook will snapshot current state
+  # to ./migration-backups/<timestamp>/ before executing.
+
+# ---------- 16. Approvals (what the AI/playbook is allowed to DO) ----------
 approvals:
   allow_ai_to_run_wrangler_deploy: true
-  allow_ai_to_run_d1_imports: true
+  allow_ai_to_run_d1_imports: true               # large INSERT OR IGNORE batches
   allow_ai_to_write_kv_preferences: true
-  allow_ai_to_modify_wrangler_configs: true
+  allow_ai_to_modify_wrangler_configs: true      # write D1/KV ids back to wrangler.toml
   allow_ai_to_read_local_databases: true
+  allow_ai_to_set_secrets: true                  # `wrangler secret put`
+  allow_ai_to_call_payment_admin_api: true       # create meter/product/price/link
+  interactive_confirmation: true                 # prompt before each destructive step
