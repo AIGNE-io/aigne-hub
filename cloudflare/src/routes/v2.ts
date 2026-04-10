@@ -16,7 +16,7 @@ import {
 } from '../libs/ai-proxy';
 import { getCreditBalance } from '../libs/credit';
 import { logger } from '../libs/logger';
-import { bufferMeterEvent } from '../libs/meter-buffer';
+import { ServerTiming } from '../libs/server-timing';
 import { CreditError, checkUserCreditBalance, type PaymentClient } from '../libs/payment';
 import { getPreferences } from '../libs/preferences';
 import { buildCompletionResponse } from '../libs/response-adapter';
@@ -75,20 +75,10 @@ async function checkCredits(
   return { ok: true };
 }
 
-/** Buffer usage for batch reporting to Payment Kit via cron. */
-function bufferUsage(
-  waitUntil: ((p: Promise<unknown>) => void) | null | undefined,
-  kv: KVNamespace,
-  userDid: string,
-  credits: number,
-  meta: { model: string; requestId?: string }
-): void {
-  if (!userDid || credits <= 0) return;
-  const p = bufferMeterEvent(kv, userDid, credits, meta);
-  if (waitUntil) waitUntil(p);
-}
-
 async function handleChatCompletion(c: Context<HonoEnv>) {
+  const timing = new ServerTiming();
+
+  timing.start('session');
   const db = c.get('db');
   const waitUntil = getWaitUntil(c);
   const startTime = Date.now();
@@ -96,6 +86,7 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
   const rawAppDid = (c as any).get('apiKeyAppDid') || c.req.header('x-aigne-hub-client-did') || '';
   const appDid = rawAppDid && rawAppDid !== 'undefined' ? rawAppDid : '';
   const requestId = c.req.header('x-request-id') || crypto.randomUUID();
+  timing.end('session');
 
   // Parse request body
   const body = await c.req.json<{
@@ -124,7 +115,9 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
   }
 
   // Resolve provider
+  timing.start('resolveProvider');
   const provider = await resolveProvider(db, body.model, c.env.CREDENTIAL_ENCRYPTION_KEY);
+  timing.end('resolveProvider');
   if (!provider) {
     return c.json({ error: { message: `No available provider for model: ${body.model}` } }, 404);
   }
@@ -135,9 +128,13 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
   }
 
   // Check credits before making the call
+  timing.start('preChecks');
   if (userDid) {
     const creditCheck = await checkCredits(c, userDid);
     if (!creditCheck.ok) {
+      timing.end('preChecks');
+      timing.finalize();
+      c.header('Server-Timing', timing.toHeader());
       return c.json({
         error: {
           message: 'Insufficient credits',
@@ -148,7 +145,9 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
       }, 402);
     }
   }
+  timing.end('preChecks');
 
+  timing.start('modelSetup');
   const isGoogle = provider.apiFormat === 'gemini';
   const isAnthropic = provider.apiFormat === 'anthropic';
   const gateway = await resolveGatewayConfig(c.env.AUTH_KV, c.env, getProviderGatewayConfigId(provider.providerConfig));
@@ -217,7 +216,10 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
     upstreamHeaders = buildProviderHeaders(provider);
   }
 
+  timing.end('modelSetup');
+
   try {
+    timing.start('providerTtfb');
     let upstreamResponse = await fetch(upstreamUrl, {
       method: 'POST',
       headers: upstreamHeaders,
@@ -236,6 +238,8 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
       usedGateway = false;
     }
 
+    timing.end('providerTtfb');
+
     // Capture Gateway metadata from response headers
     const gatewayMeta = usedGateway
       ? {
@@ -247,6 +251,9 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
     if (!upstreamResponse.ok) {
       const errorBody = await upstreamResponse.text();
       const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+
+      timing.finalize();
+      c.header('Server-Timing', timing.toHeader());
 
       // Record failed call via waitUntil
       const failPromise = recordModelCall(db, {
@@ -291,6 +298,7 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
         c.header('Cache-Control', 'no-cache');
         c.header('X-Accel-Buffering', 'no');
 
+        timing.start('streaming');
         const reader = upstreamResponse.body!.getReader();
         const decoder = new TextDecoder();
         let usageData: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } | null = null;
@@ -395,7 +403,10 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
           reader.releaseLock();
         }
 
+        timing.end('streaming');
+
         // Record usage after stream completes
+        timing.start('usage');
         const duration = ((Date.now() - startTime) / 1000).toFixed(1);
         const promptTokens = usageData?.prompt_tokens || 0;
         const completionTokens = usageData?.completion_tokens || 0;
@@ -426,8 +437,11 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
         }, c.env.AUTH_KV);
         if (waitUntil) waitUntil(recordPromise);
 
-        // Buffer usage for batch reporting to Payment Kit
-        bufferUsage(waitUntil, c.env.AUTH_KV, userDid, credits, { model: provider.modelName, requestId });
+        timing.end('usage');
+
+        // Emit server-timing as final SSE event
+        timing.finalize();
+        await writable.write(timing.toSSE());
       });
     }
 
@@ -445,6 +459,7 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
             [key: string]: unknown;
           });
 
+    timing.start('usage');
     const duration = ((Date.now() - startTime) / 1000).toFixed(1);
     const promptTokens = responseData.usage?.prompt_tokens || 0;
     const completionTokens = responseData.usage?.completion_tokens || 0;
@@ -475,8 +490,10 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
     }, c.env.AUTH_KV);
     if (waitUntil) waitUntil(recordPromise);
 
-    // Buffer usage for batch reporting to Payment Kit
-    bufferUsage(waitUntil, c.env.AUTH_KV, userDid, credits, { model: provider.modelName, requestId });
+    timing.end('usage');
+
+    timing.finalize();
+    c.header('Server-Timing', timing.toHeader());
 
     const prefs = await getPreferences(c.env.AUTH_KV);
     return c.json(buildCompletionResponse({
@@ -511,6 +528,8 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
 
     // No refund needed — meter event only created on success
 
+    timing.finalize();
+    c.header('Server-Timing', timing.toHeader());
     return c.json({ error: { message } }, 502);
   }
 }
@@ -586,10 +605,6 @@ routes.post('/embeddings', async (c) => {
     callTime: Math.floor(startTime / 1000),
   }, c.env.AUTH_KV);
   if (ctx) ctx.waitUntil(p);
-
-  // Buffer usage for batch reporting to Payment Kit
-  const wuEmbed = ctx ? (p2: Promise<unknown>) => ctx.waitUntil(p2) : undefined;
-  bufferUsage(wuEmbed, c.env.AUTH_KV, userDid, credits, { model: provider.modelName });
 
   return c.json(data);
 });
@@ -679,7 +694,6 @@ routes.post('/image', async (c) => {
     callTime: Math.floor(startTime / 1000),
   }, c.env.AUTH_KV);
   if (waitUntil) waitUntil(p);
-  bufferUsage(waitUntil, c.env.AUTH_KV, userDid, credits, { model: provider.modelName, requestId });
 
   // Convert OpenAI response to AIGNE native format
   // Frontend processMediaResponse expects {type: 'file', data: '<base64>', mimeType: '...'}
@@ -767,10 +781,6 @@ const handleImageGenerations = async (c: Context<HonoEnv>) => {
     callTime: Math.floor(startTime / 1000),
   }, c.env.AUTH_KV);
   if (ctx) ctx.waitUntil(p);
-
-  // Buffer usage for batch reporting to Payment Kit
-  const wuImg = ctx ? (p2: Promise<unknown>) => ctx.waitUntil(p2) : undefined;
-  bufferUsage(wuImg, c.env.AUTH_KV, userDid, credits, { model: provider.modelName });
 
   return c.json(data);
 };
@@ -887,7 +897,6 @@ routes.post('/audio/transcriptions', async (c) => {
     userDid, requestId, callTime: Math.floor(startTime / 1000),
   }, c.env.AUTH_KV);
   if (waitUntil) waitUntil(p);
-  bufferUsage(waitUntil, c.env.AUTH_KV, userDid, credits, { model: provider.modelName, requestId });
 
   return c.json(data);
 });
@@ -954,7 +963,6 @@ routes.post('/audio/speech', async (c) => {
     credits: credits.toFixed(10), duration, userDid, requestId, callTime: Math.floor(startTime / 1000),
   }, c.env.AUTH_KV);
   if (waitUntil) waitUntil(p);
-  bufferUsage(waitUntil, c.env.AUTH_KV, userDid, credits, { model: provider.modelName, requestId });
 
   // Return binary audio stream with original content-type
   return new Response(response.body, {

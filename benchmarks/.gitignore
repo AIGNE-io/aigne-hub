@@ -3,3 +3,6 @@ dist/
 .env
 results/
 report.html
+
+# Benchmark sample data (may contain request IDs and is typically large)
+data/*.jsonl

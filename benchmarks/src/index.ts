@@ -37,6 +37,16 @@ export interface BenchmarkResult {
   serverTiming?: Record<string, number>;
   error?: string;
   rateLimited: boolean;
+  /** Token usage from response (non-streaming: JSON body; streaming: last SSE chunk) */
+  usage?: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  };
+  /** Credits consumed (from Hub x-credits-used header) */
+  creditsUsed?: number;
+  /** Request ID (from Hub x-request-id header or response body) */
+  requestId?: string;
 }
 
 export interface MetricsResult {
@@ -77,6 +87,15 @@ export const config = {
   requestTimeout: parseInt(process.env.REQUEST_TIMEOUT || '60000', 10),
   /** Cooldown between targets (ms) to avoid provider rate limits */
   targetCooldown: parseInt(process.env.TARGET_COOLDOWN || '30000', 10),
+  // Direct provider API keys (for multi-provider comparison)
+  anthropicApiKey: process.env.ANTHROPIC_API_KEY || '',
+  googleApiKey: process.env.GOOGLE_API_KEY || '',
+  // D1 REST API config (for billing verification)
+  d1AccountId: process.env.D1_ACCOUNT_ID || '',
+  d1DatabaseId: process.env.D1_DATABASE_ID || '',
+  d1ApiToken: process.env.D1_API_TOKEN || '',
+  /** Delay (ms) before querying D1 after benchmark — lets waitUntil writes settle */
+  billingVerifyDelay: parseInt(process.env.BILLING_VERIFY_DELAY || '5000', 10),
 };
 
 // ── Payloads ───────────────────────────────────────────────────────────
@@ -157,9 +176,9 @@ export async function benchmarkRequest(target: Target, options?: RequestOptions)
 
     if (!stream) {
       const serverTiming = parseServerTiming(response.headers.get('Server-Timing'));
-      await response.json();
+      const data = await response.json() as any;
       const totalTime = performance.now() - start;
-      return {
+      const result: BenchmarkResult = {
         status: response.status,
         ttfb: totalTime,
         totalTime,
@@ -167,10 +186,24 @@ export async function benchmarkRequest(target: Target, options?: RequestOptions)
         serverTiming,
         rateLimited: response.status === 429,
       };
+      // Capture usage from response body
+      if (data?.usage) {
+        result.usage = {
+          promptTokens: data.usage.prompt_tokens ?? 0,
+          completionTokens: data.usage.completion_tokens ?? 0,
+          totalTokens: data.usage.total_tokens ?? 0,
+        };
+      }
+      // Capture Hub-specific headers
+      result.requestId = response.headers.get('x-request-id') ?? data?.id ?? undefined;
+      const creditsHeader = response.headers.get('x-credits-used');
+      if (creditsHeader) result.creditsUsed = parseFloat(creditsHeader);
+      return result;
     }
 
     let ttfb: number | undefined;
     let streamServerTiming: string | undefined;
+    let streamUsage: BenchmarkResult['usage'] | undefined;
     const decoder = new TextDecoder();
     const reader = response.body!.getReader();
 
@@ -180,8 +213,23 @@ export async function benchmarkRequest(target: Target, options?: RequestOptions)
       if (!ttfb) ttfb = performance.now() - start;
       // Look for server-timing SSE event in the stream
       const text = decoder.decode(value, { stream: true });
-      const match = text.match(/event: server-timing\ndata: (.+)\n/);
-      if (match) streamServerTiming = match[1];
+      const stMatch = text.match(/event: server-timing\ndata: (.+)\n/);
+      if (stMatch) streamServerTiming = stMatch[1];
+      // Capture usage from last SSE data chunk (before [DONE])
+      for (const line of text.split('\n')) {
+        if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+          try {
+            const data = JSON.parse(line.slice(6));
+            if (data.usage) {
+              streamUsage = {
+                promptTokens: data.usage.prompt_tokens ?? 0,
+                completionTokens: data.usage.completion_tokens ?? 0,
+                totalTokens: data.usage.total_tokens ?? 0,
+              };
+            }
+          } catch { /* ignore parse errors */ }
+        }
+      }
     }
 
     const totalTime = performance.now() - start;
@@ -194,6 +242,8 @@ export async function benchmarkRequest(target: Target, options?: RequestOptions)
       streamingTime: totalTime - (ttfb ?? totalTime),
       serverTiming,
       rateLimited: response.status === 429,
+      usage: streamUsage,
+      requestId: response.headers.get('x-request-id') ?? undefined,
     };
   } catch (err: any) {
     const totalTime = performance.now() - start;
@@ -247,6 +297,37 @@ export async function runConcurrent(
 
   await Promise.all(workers);
   return { results, elapsed: Date.now() - startTime };
+}
+
+// ── Run concurrent + persist samples ───────────────────────────────────
+
+/**
+ * Wraps runConcurrent and automatically persists every request as a sample
+ * to benchmarks/data/samples.jsonl. Use this from benchmark scripts instead
+ * of calling runConcurrent directly when you want persistent history.
+ *
+ * runConcurrent itself remains pure (no side effects) for use by ad-hoc
+ * testing code that doesn't want persistence.
+ */
+export async function runAndStore(
+  target: Target,
+  concurrency: number,
+  duration: number,
+  ctx: import('./sample-store.js').RunContext,
+  targetMeta: { provider: string; stream: boolean; payload: string },
+  options?: RequestOptions
+): Promise<ConcurrentResult> {
+  const { appendSamples, buildSamples } = await import('./sample-store.js');
+  const result = await runConcurrent(target, concurrency, duration, options);
+  const samples = buildSamples(result.results, ctx, {
+    target,
+    provider: targetMeta.provider,
+    concurrency,
+    stream: targetMeta.stream,
+    payload: targetMeta.payload,
+  });
+  appendSamples(samples);
+  return result;
 }
 
 // ── Statistics ─────────────────────────────────────────────────────────
