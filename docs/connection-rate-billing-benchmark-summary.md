@@ -80,37 +80,38 @@
 
 **用同一个 model `openai/gpt-5-nano` + realistic payload (800 max_tokens) 跑完整的三路对比**，发现一个震惊的现象：
 
-| Target | n | **TTFB p50** | TTFB p90 | cv | **Total p50** |
-|--------|---|-------------|---------|------|--------------|
-| **hub-openai** | 50 | 7091ms | 8325ms | **0.11** ⭐ | **7091ms** |
-| **openai-direct** | 45 | 8267ms | 10414ms | 0.15 | 8267ms |
-| **openrouter** | **13** ⚠️ | **1385ms** ⭐ | 1469ms | 0.15 | **29466ms** ⚠️⚠️⚠️ |
+**测试条件：c=3 并发, 120s per target, Run ID `6f3exy`**
+
+| 指标 | Hub | Direct | OpenRouter |
+|------|-----|--------|------------|
+| TTFB p50 | 7091ms | 8267ms | **1385ms** ⭐ |
+| TTFB p90 | 8325ms | 10414ms | 1469ms |
+| TTFB p99 | **9959ms** ⭐ | 10860ms | 1526ms |
+| cv | **0.11** ⭐ | 0.15 | 0.15 |
+| **Total p50** | **7091ms** ⭐ | 8267ms | **29466ms** ⚠️⚠️⚠️ |
+| 吞吐量 (req/s) | **0.42** ⭐ | 0.38 | **0.11** ⚠️ |
+| 样本数 | 50 | 45 | **13** ⚠️ |
 
 ### 🤯 OpenRouter 的 TTFB vs Total 陷阱
 
-- **TTFB 1385ms** — OpenRouter 是首字节最快的一路
-- **Total 29466ms** — 但完成一个 800 token 的完整响应要 **近 30 秒**！
-- **比 Hub 慢 4 倍**（29466ms vs 7091ms）
-- OpenRouter 120 秒窗口只能跑完 **13 个请求**（Hub 跑完 50，Direct 跑完 45）—— 吞吐量只有 1/4
+看 OpenRouter 的两行：
+- **TTFB 1385ms** — 三路中首字节最快，看起来是大赢家
+- **Total 29466ms** — 但完成一个 800 token 的完整响应要 **近 30 秒**，**比 Hub 慢 4.2 倍**
+- 120 秒窗口只能跑完 **13 个请求**（Hub 跑完 50，Direct 跑完 45）—— **吞吐量只有 1/4**
 
 **意思是什么**：OpenRouter 在长生成场景下是 **首字节快但 streaming 慢得灾难性**。用户看到"它在回答"很快，但整个回复收完要等近 30 秒。**对真实 chat 场景来说这是不可接受的**。
 
-### Hub vs Direct（长 payload）
+### Hub vs Direct 独立验证（两次 benchmark 一致）
 
-去掉 OpenRouter 这个离群值，Hub vs Direct 的对比得到**独立验证**：
+两次 benchmark 间隔 83 分钟，在不同配置下都得出一致的 "Hub 比 Direct 快 ~1200ms" 结论：
 
-| 指标 | Hub | Direct | 差异 |
-|------|-----|--------|------|
-| TTFB p50 | **7091ms** | 8267ms | **Hub 快 -1176ms (-14%)** |
-| TTFB p90 | 8325ms | 10414ms | Hub 快 -2089ms (-20%) |
-| TTFB p99 | 9959ms | 10860ms | Hub 快 -901ms (-8%) |
-| cv | **0.11** ⭐ | 0.15 | Hub **分布更稳定** |
+| 测试 | 配置 | Hub TTFB p50 | Direct TTFB p50 | Hub 比 Direct 快 |
+|------|------|-------------|-----------------|-----------------|
+| qlzusr run | c=5, 180s | 7130ms | 8358ms | **-1228ms** |
+| 6f3exy run | c=3, 120s | 7091ms | 8267ms | **-1176ms** |
+| 偏差 | - | -0.5% | -1.1% | 差 ~4% |
 
-**和之前 qlzusr run 的独立数据高度一致**（两次 benchmark 相差 83 分钟）：
-- qlzusr run: Hub 7130ms vs Direct 8358ms（Hub 快 1228ms）
-- 本次 run: Hub 7091ms vs Direct 8267ms（Hub 快 1176ms）
-
-**"Hub 在 realistic payload 下比 Direct 快 ~1200ms" 不是偶然**，是跨时段可复现的稳定现象。
+**"Hub 在 realistic payload 下比 Direct 快 ~1200ms" 是跨时段可复现的稳定现象**，不是偶然。
 
 ### 关键结论
 

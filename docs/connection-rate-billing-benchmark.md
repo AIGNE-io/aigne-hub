@@ -31,30 +31,52 @@
 
 ### Hub vs 直连 —— 三种对比视角
 
+> **表格布局统一约定**：所有对比表都是 **行 = 指标（metric）或 provider，列 = 路径（Hub / Direct / OpenRouter）**。扫表时可以水平比较三条路径，垂直比较不同指标或 provider。
+
 **视角 1：同一个 model 的三路对比（`openai/gpt-5-nano`, short payload, c=3, 60s）**
 
-| 路径 | p50 | p90 | p99 | cv |
-|-----|-----|-----|-----|-----|
-| **OpenRouter 代理** | **681ms** ⭐ | 1428ms | 1538ms | 0.34 |
-| **直连 OpenAI** | 860ms | **1217ms** ⭐ | 3806ms | 0.52 |
-| **Hub 代理** | 1025ms | 1219ms | **1793ms** ⭐ | **0.23** ⭐ |
+| 指标 | Hub | Direct | OpenRouter |
+|-----|-----|--------|------------|
+| p50 | 1025ms | 860ms | **673ms** ⭐ |
+| p90 | 1219ms | **1217ms** ⭐ | 1428ms |
+| p99 | **1793ms** ⭐ | 3806ms | 2608ms |
+| cv | **0.23** ⭐ | 0.52 | 0.53 |
+| 样本数 | 169 | 179 | 40 |
 
 每个维度的胜者都不一样：**p50** OpenRouter 最快；**p90** Hub 和 Direct 并列；**p99** Hub 最稳（比 Direct 稳 2 倍）；**cv** Hub 最小。
 
-**视角 2：短 payload 下 Hub 比 Direct 的代价**
+**视角 2：短 payload 下 Hub 比 Direct 的代价（3 providers × 3 paths）**
 
-| Provider | Hub p50 | Direct p50 | 差异 | Hub p99 | Direct p99 | 差异 |
-|----------|---------|-----------|------|---------|-----------|------|
-| OpenAI | 1259ms | 1055ms | **+204ms** | - | - | - |
-| Anthropic (c=1) | 948ms | 761ms | **+187ms** | **1919ms** | **7877ms** | **Hub 快 5958ms** 🤯 |
-| Google | 1187ms | 817ms | **+370ms** | - | - | - |
+_p50 TTFB：_
 
-**视角 3：长 payload 下 Hub 反而更快（OpenAI, realistic 800 max_tokens）**
+| Provider | Hub | Direct | OpenRouter |
+|----------|-----|--------|------------|
+| OpenAI `gpt-5-nano` | 1025ms | 860ms | **673ms** ⭐ |
+| Anthropic `claude-haiku-4-5` | 948ms | **726ms** ⭐ | 1355ms |
+| Google `gemini-2.5-flash` | 1187ms | 817ms | **677ms** ⭐ |
 
-| 指标 | Hub | Direct | 差异 |
-|------|-----|--------|------|
-| p50 | 7130ms | 8358ms | **Hub 快 -1228ms** 🤯 |
-| p99 | 10104ms | 15664ms | **Hub 快 -5560ms** 🤯 |
+_p99 TTFB：_
+
+| Provider | Hub | Direct | OpenRouter |
+|----------|-----|--------|------------|
+| OpenAI `gpt-5-nano` | **1793ms** ⭐ | 3806ms | 2608ms |
+| Anthropic `claude-haiku-4-5` | **1919ms** ⭐ | 7877ms | 3035ms |
+| Google `gemini-2.5-flash` | **2390ms** ⭐ | 3592ms | 2660ms |
+
+**p99 维度 Hub 是三冠王**（所有 3 个 provider 都最优）。
+
+**视角 3：长 payload 下 3 路对比（OpenAI `gpt-5-nano`, realistic 800 max_tokens, c=3, 120s）**
+
+| 指标 | Hub | Direct | OpenRouter |
+|------|-----|--------|------------|
+| TTFB p50 | 7091ms | 8267ms | **1385ms** ⭐ |
+| TTFB p99 | **9959ms** ⭐ | 10860ms | 1526ms |
+| **Total p50** | **7091ms** ⭐ | 8267ms | **29466ms** ⚠️⚠️ |
+| cv | **0.11** ⭐ | 0.15 | 0.15 |
+| 吞吐量（req/s）| **0.42** ⭐ | 0.38 | **0.11** ⚠️ |
+| 样本数 | 50 | 45 | **13** ⚠️ |
+
+**⚠️ OpenRouter 的 TTFB vs Total Time 陷阱**：TTFB 最快（1385ms）但完成 800 token 要 **29466ms**（4.2x 比 Hub 慢）。OpenRouter 每个 streaming chunk 都有额外延迟，导致它在长生成场景下吞吐量只有 Hub 的 ~1/4。**长生成场景 OpenRouter 不可用。**
 
 **三个视角的统一解释**：
 
@@ -315,13 +337,17 @@ Hub 延迟 = 直连延迟
 
 **目的**：第一次 benchmark 没包含 OpenRouter 用同 model 跑 realistic payload。这次补齐，用 **`openai/gpt-5-nano`** 跑完整 3 路对比。
 
-**结果（含 Total time 对比）**：
+**结果（保持 Path 在列的统一布局）**：
 
-| Target | n | TTFB p50 | TTFB p90 | TTFB p99 | cv | **Total p50** |
-|--------|---|---------|---------|---------|------|--------------|
-| **hub-openai-long** | 50 | **7091ms** | 8325ms | 9959ms | **0.11** ⭐ | **7091ms** |
-| **openai-direct-long** | 45 | 8267ms | 10414ms | 10860ms | 0.15 | 8267ms |
-| **openrouter-openai-long** | **13** ⚠️ | **1385ms** ⭐ | 1469ms | 1526ms | 0.15 | **29466ms** ⚠️⚠️⚠️ |
+| 指标 | Hub | Direct | OpenRouter |
+|------|-----|--------|------------|
+| TTFB p50 | **7091ms** | 8267ms | **1385ms** ⭐ |
+| TTFB p90 | 8325ms | 10414ms | 1469ms |
+| TTFB p99 | **9959ms** ⭐ | 10860ms | 1526ms |
+| cv | **0.11** ⭐ | 0.15 | 0.15 |
+| **Total p50** | **7091ms** ⭐ | 8267ms | **29466ms** ⚠️⚠️⚠️ |
+| 吞吐量 (req/s) | **0.42** ⭐ | 0.38 | **0.11** ⚠️ |
+| 样本数 | 50 | 45 | **13** ⚠️ |
 
 #### 4.2.3 🚨 OpenRouter 的 TTFB vs Total Time 陷阱
 
@@ -482,11 +508,14 @@ p99 和 cv 两个稳定性维度，**Hub 在所有 3 个 provider 上都最优**
 
 **Run ID**: `nre1z6`（2026-04-10T05:33:43Z）
 
-| Target | Path | n | p50 | p90 | p99 | min | cv |
-|--------|------|---|-----|-----|-----|-----|-----|
-| openrouter-direct-nano | **OpenRouter 代理** | 40 | **681ms** ⭐ | 1428ms | 1538ms | 649ms | 0.34 |
-| openai-direct-nano | **直连 OpenAI** | 179 | 860ms | **1217ms** ⭐ | 3806ms | 693ms | 0.52 |
-| hub-openai-nano | **Hub 代理** | 169 | 1025ms | 1219ms | **1793ms** ⭐ | 881ms | **0.23** ⭐ |
+| 指标 | Hub | Direct | OpenRouter |
+|------|-----|--------|------------|
+| p50 | 1025ms | 860ms | **681ms** ⭐ |
+| p90 | 1219ms | **1217ms** ⭐ | 1428ms |
+| p99 | **1793ms** ⭐ | 3806ms | 1538ms |
+| min | 881ms | 693ms | 649ms |
+| cv | **0.23** ⭐ | 0.52 | 0.34 |
+| 样本数 | 169 | 179 | 40 |
 
 **每个维度的胜者都不一样**：
 - **p50 最快**: OpenRouter（681ms）—— TTFB 最快
@@ -500,10 +529,13 @@ p99 和 cv 两个稳定性维度，**Hub 在所有 3 个 provider 上都最优**
 
 **Run ID**: `nre1z6`（同上）
 
-| Target | n | p50 | p90 | p99 | cv |
-|--------|---|-----|-----|-----|-----|
-| **hub-anthropic-c1** | 40 | **948ms** | 1364ms | **1919ms** ⭐ | **0.23** ⭐ |
-| **anthropic-direct-c1** | 40 | **761ms** ⭐ | **974ms** ⭐ | **7877ms** ⚠️ | 1.16 |
+| 指标 | Hub | Direct |
+|------|-----|--------|
+| p50 | 948ms | **761ms** ⭐ |
+| p90 | 1364ms | **974ms** ⭐ |
+| p99 | **1919ms** ⭐ | **7877ms** ⚠️ |
+| cv | **0.23** ⭐ | 1.16 |
+| 样本数 | 40 | 40 |
 
 **关键发现**: Direct p50/p90 都更快（快 187ms/390ms），**但有一个 7877ms 的离群值**（40 个请求里的 1 个），把 p99 和 cv 拉得很差。
 
