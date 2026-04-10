@@ -114,38 +114,45 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
     return c.json({ error: { message: 'messages is required' } }, 400);
   }
 
-  // Resolve provider
+  // Resolve provider + check credits in parallel — they're independent.
+  // Server-Timing phases still record individual durations (each .finally ends its phase).
   timing.start('resolveProvider');
-  const provider = await resolveProvider(db, body.model, c.env.CREDENTIAL_ENCRYPTION_KEY);
-  timing.end('resolveProvider');
+  timing.start('preChecks');
+
+  const [provider, creditCheck] = await Promise.all([
+    resolveProvider(db, body.model, c.env.CREDENTIAL_ENCRYPTION_KEY)
+      .finally(() => { timing.end('resolveProvider'); }),
+    (async () => {
+      if (userDid) return await checkCredits(c, userDid);
+      return { ok: true as const };
+    })().finally(() => { timing.end('preChecks'); }),
+  ]);
+
   if (!provider) {
+    timing.finalize();
+    c.header('Server-Timing', timing.toHeader());
     return c.json({ error: { message: `No available provider for model: ${body.model}` } }, 404);
   }
 
   // Bedrock requires SigV4 signing — not yet implemented
   if (provider.apiFormat === 'bedrock') {
+    timing.finalize();
+    c.header('Server-Timing', timing.toHeader());
     return c.json({ error: { message: 'AWS Bedrock requires SigV4 signing which is not yet implemented. Use an OpenAI-compatible proxy like LiteLLM instead.' } }, 501);
   }
 
-  // Check credits before making the call
-  timing.start('preChecks');
-  if (userDid) {
-    const creditCheck = await checkCredits(c, userDid);
-    if (!creditCheck.ok) {
-      timing.end('preChecks');
-      timing.finalize();
-      c.header('Server-Timing', timing.toHeader());
-      return c.json({
-        error: {
-          message: 'Insufficient credits',
-          type: 'CREDIT_NOT_ENOUGH',
-          balance: creditCheck.balance,
-          paymentLink: creditCheck.paymentLink || null,
-        },
-      }, 402);
-    }
+  if (!creditCheck.ok) {
+    timing.finalize();
+    c.header('Server-Timing', timing.toHeader());
+    return c.json({
+      error: {
+        message: 'Insufficient credits',
+        type: 'CREDIT_NOT_ENOUGH',
+        balance: creditCheck.balance,
+        paymentLink: creditCheck.paymentLink || null,
+      },
+    }, 402);
   }
-  timing.end('preChecks');
 
   timing.start('modelSetup');
   const isGoogle = provider.apiFormat === 'gemini';

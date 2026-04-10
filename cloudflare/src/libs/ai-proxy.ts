@@ -31,11 +31,111 @@ export interface ResolvedProvider {
   } | null;
 }
 
+// ── Provider resolution cache ──────────────────────────────────────────
+//
+// Static-ish data (providers, model rates, credentials) is looked up on
+// every AI request. In practice it changes on the order of hours-to-days.
+// We cache the D1 query results in the Worker isolate's memory and do the
+// weighted credential selection fresh on each request, so load balancing
+// across multiple API keys still works correctly.
+//
+// Cache TTL is intentionally short so credential rotation and provider
+// toggles take effect quickly. Isolate termination (minutes of idle) also
+// clears the cache automatically.
+
+interface CachedResolution {
+  /** Static provider/rate info that won't change per-request */
+  provider: {
+    providerId: string;
+    providerName: string;
+    modelName: string;
+    baseUrl: string;
+    apiFormat: string;
+    providerType: string;
+    gatewaySlug?: string | null;
+    providerConfig?: Record<string, unknown> | string | null;
+    modelMetadata?: Record<string, unknown> | string | null;
+    resolvedRate: { inputRate: string; outputRate: string; caching?: unknown };
+  };
+  /** Credentials to pick from; weighted selection runs fresh per request */
+  credentials: Array<{ id: string; weight: number; decryptedApiKey: string }>;
+  expiresAt: number;
+}
+
+const PROVIDER_CACHE = new Map<string, CachedResolution>();
+const PROVIDER_CACHE_TTL_MS = 60 * 1000; // 60 seconds
+const PROVIDER_CACHE_MAX_SIZE = 500;
+
+function cacheGet(key: string): CachedResolution | null {
+  const entry = PROVIDER_CACHE.get(key);
+  if (!entry) return null;
+  if (entry.expiresAt < Date.now()) {
+    PROVIDER_CACHE.delete(key);
+    return null;
+  }
+  return entry;
+}
+
+function cacheSet(key: string, value: Omit<CachedResolution, 'expiresAt'>): void {
+  if (PROVIDER_CACHE.size >= PROVIDER_CACHE_MAX_SIZE) {
+    // Simple eviction — delete the first (oldest) entry
+    const firstKey = PROVIDER_CACHE.keys().next().value;
+    if (firstKey) PROVIDER_CACHE.delete(firstKey);
+  }
+  PROVIDER_CACHE.set(key, { ...value, expiresAt: Date.now() + PROVIDER_CACHE_TTL_MS });
+}
+
+/** Clear the provider cache — exported for tests and admin operations. */
+export function clearProviderCache(): void {
+  PROVIDER_CACHE.clear();
+}
+
+/** Run weighted random selection against a candidate list. */
+function selectWeighted<T extends { weight: number }>(items: T[]): T {
+  const totalWeight = items.reduce((sum, c) => sum + c.weight, 0);
+  let rand = Math.random() * totalWeight;
+  for (const item of items) {
+    rand -= item.weight;
+    if (rand <= 0) return item;
+  }
+  return items[0];
+}
+
 /**
  * Resolve provider + credential for a given model name.
  * Model format: "provider/model" or just "model" (picks first available provider).
+ *
+ * Uses an in-isolate memory cache (60s TTL) to avoid repeated D1 queries
+ * for the same model. Weighted credential selection still runs fresh so
+ * load balancing across API keys is preserved.
  */
 export async function resolveProvider(db: DB, model: string, encryptionKey?: string): Promise<ResolvedProvider | null> {
+  // Cache key is the raw model string — keeps "provider/model" and bare "model" in separate buckets.
+  const cached = cacheGet(model);
+  if (cached) {
+    // Fast path: run weighted selection on cached credentials
+    if (cached.credentials.length === 0) {
+      return {
+        ...cached.provider,
+        credentialId: '',
+        apiKey: '',
+        resolvedRate: cached.provider.resolvedRate,
+      };
+    }
+    const picked = selectWeighted(cached.credentials);
+    return {
+      ...cached.provider,
+      credentialId: picked.id,
+      apiKey: picked.decryptedApiKey,
+      resolvedRate: cached.provider.resolvedRate,
+    };
+  }
+
+  // Slow path: query D1
+  return resolveProviderFromDb(db, model, encryptionKey);
+}
+
+async function resolveProviderFromDb(db: DB, model: string, encryptionKey?: string): Promise<ResolvedProvider | null> {
   // Try to parse provider/model format
   const parts = model.split('/');
   let providerName: string | undefined;
@@ -85,7 +185,7 @@ export async function resolveProvider(db: DB, model: string, encryptionKey?: str
 
   const selected = sorted[0];
 
-  // Get active credential for this provider (weighted random)
+  // Get active credentials for this provider (weighted random selection happens later)
   const creds = await db
     .select()
     .from(aiCredentials)
@@ -97,65 +197,54 @@ export async function resolveProvider(db: DB, model: string, encryptionKey?: str
     caching: selected.rate.caching,
   };
 
-  // No credentials — still return provider info (Gateway compat mode may not need credentials)
-  if (creds.length === 0) {
-    return {
-      providerId: selected.provider.id,
-      providerName: selected.provider.name,
-      modelName,
-      credentialId: '',
-      apiKey: '',
-      baseUrl: selected.provider.baseUrl || getDefaultBaseUrl(selected.provider.name),
-      apiFormat: selected.provider.apiFormat || getDefaultApiFormat(selected.provider.name),
-      providerType: selected.provider.providerType || 'builtin',
-      gatewaySlug: selected.provider.gatewaySlug,
-      providerConfig: selected.provider.config as Record<string, unknown> | string | null,
-      modelMetadata: selected.rate.modelMetadata as Record<string, unknown> | string | null,
-      resolvedRate,
-    };
-  }
-
-  // Simple weighted selection
-  const totalWeight = creds.reduce((sum, c) => sum + c.weight, 0);
-  let rand = Math.random() * totalWeight;
-  let selectedCred = creds[0];
-  for (const cred of creds) {
-    rand -= cred.weight;
-    if (rand <= 0) {
-      selectedCred = cred;
-      break;
-    }
-  }
-
-  // Decrypt credential
-  let apiKey = '';
-  const credValue = selectedCred.credentialValue as Record<string, string> | string;
-  if (encryptionKey && typeof credValue === 'string' && isEncrypted(credValue)) {
-    // Encrypted credential
-    const decrypted = (await decryptCredential(credValue, encryptionKey)) as Record<string, string> | string;
-    if (typeof decrypted === 'object' && decrypted !== null) {
-      apiKey = decrypted.api_key || '';
-    } else {
-      apiKey = String(decrypted);
-    }
-  } else if (typeof credValue === 'object' && credValue !== null) {
-    apiKey = credValue.api_key || '';
-  } else {
-    apiKey = String(credValue);
-  }
-
-  return {
+  const staticProvider = {
     providerId: selected.provider.id,
     providerName: selected.provider.name,
     modelName,
-    credentialId: selectedCred.id,
-    apiKey,
     baseUrl: selected.provider.baseUrl || getDefaultBaseUrl(selected.provider.name),
     apiFormat: selected.provider.apiFormat || getDefaultApiFormat(selected.provider.name),
     providerType: selected.provider.providerType || 'builtin',
     gatewaySlug: selected.provider.gatewaySlug,
     providerConfig: selected.provider.config as Record<string, unknown> | string | null,
     modelMetadata: selected.rate.modelMetadata as Record<string, unknown> | string | null,
+    resolvedRate,
+  };
+
+  // No credentials — still return provider info (Gateway compat mode may not need credentials)
+  if (creds.length === 0) {
+    cacheSet(model, { provider: staticProvider, credentials: [] });
+    return { ...staticProvider, credentialId: '', apiKey: '', resolvedRate };
+  }
+
+  // Decrypt ALL credentials upfront so we can cache the whole set.
+  // Weighted selection then runs fresh on every request against the cached list.
+  const decryptedCreds: Array<{ id: string; weight: number; decryptedApiKey: string }> = [];
+  for (const cred of creds) {
+    const credValue = cred.credentialValue as Record<string, string> | string;
+    let apiKey = '';
+    if (encryptionKey && typeof credValue === 'string' && isEncrypted(credValue)) {
+      const decrypted = (await decryptCredential(credValue, encryptionKey)) as Record<string, string> | string;
+      if (typeof decrypted === 'object' && decrypted !== null) {
+        apiKey = decrypted.api_key || '';
+      } else {
+        apiKey = String(decrypted);
+      }
+    } else if (typeof credValue === 'object' && credValue !== null) {
+      apiKey = credValue.api_key || '';
+    } else {
+      apiKey = String(credValue);
+    }
+    decryptedCreds.push({ id: cred.id, weight: cred.weight, decryptedApiKey: apiKey });
+  }
+
+  cacheSet(model, { provider: staticProvider, credentials: decryptedCreds });
+
+  // Weighted selection on this request
+  const picked = selectWeighted(decryptedCreds);
+  return {
+    ...staticProvider,
+    credentialId: picked.id,
+    apiKey: picked.decryptedApiKey,
     resolvedRate,
   };
 }

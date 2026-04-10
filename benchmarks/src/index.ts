@@ -143,6 +143,13 @@ export async function benchmarkRequest(target: Target, options?: RequestOptions)
   const start = performance.now();
   const stream = options?.stream ?? true;
 
+  // OpenAI's newer models (gpt-5*, gpt-4o*, o1*, o3*) reject `max_tokens` and
+  // require `max_completion_tokens`. Apply this only for direct OpenAI calls —
+  // Hub handles the conversion internally, OpenRouter still accepts max_tokens.
+  const useCompletionTokens = target.url.includes('api.openai.com');
+  const tokenField = useCompletionTokens ? 'max_completion_tokens' : 'max_tokens';
+  const maxTokensValue = options?.maxTokens ?? 50;
+
   try {
     const response = await fetch(target.url, {
       method: 'POST',
@@ -154,8 +161,7 @@ export async function benchmarkRequest(target: Target, options?: RequestOptions)
         messages: options?.messages ?? [{ role: 'user', content: 'Say hello' }],
         model: target.model,
         stream,
-        max_tokens: options?.maxTokens ?? 50,
-        ...(target.name.startsWith('hub-') ? { maxTokens: options?.maxTokens ?? 50 } : {}),
+        [tokenField]: maxTokensValue,
       }),
       signal: AbortSignal.timeout(config.requestTimeout),
       ...(proxyDispatcher ? { dispatcher: proxyDispatcher } : {}),
