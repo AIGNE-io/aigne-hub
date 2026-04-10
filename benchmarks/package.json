@@ -5,6 +5,9 @@
   "scripts": {
     "comparison": "tsx src/comparison.ts",
     "isolation": "tsx src/isolation.ts",
+    "multi-provider": "tsx src/multi-provider.ts",
+    "billing-verify": "tsx src/billing-verify.ts",
+    "smoke": "tsx src/smoke.ts",
     "report": "tsx src/report.ts"
   },
   "dependencies": {
