@@ -13,7 +13,7 @@ import NotFoundView from './components/error/not-found';
 import PageLayout from './components/layout/page-layout';
 import Loading from './components/loading';
 import { TransitionProvider } from './components/loading/progress-bar';
-import { SessionProvider, useIsRole } from './contexts/session';
+import { SessionProvider, useIsRole, useSessionContext } from './contexts/session';
 import { translations } from './locales';
 import { HomeLazy } from './pages/home';
 import { ChatLazy } from './pages/playground';
@@ -39,6 +39,42 @@ function RedirectWithParams({ to }: { to: string }) {
 function ExternalRedirect({ to }: { to: string }) {
   window.location.href = to;
   return null;
+}
+
+/**
+ * Route guard for CF mode. Blocks rendering until the session has loaded, then:
+ * - Not logged in → full-page redirect to blocklet-service login (/.well-known/service/login)
+ * - `role="admin"` required but user is not admin/owner → redirect to `/`
+ * - Otherwise renders children.
+ *
+ * Only used in the CF mode route tree. Blocklet Server mode relies on its own
+ * Dashboard + backend guards and keeps its routing untouched.
+ */
+function RequireSession({ role, children }: { role?: 'admin'; children: JSX.Element }) {
+  const { session } = useSessionContext();
+
+  if (session?.loading) {
+    return (
+      <Center>
+        <CircularProgress />
+      </Center>
+    );
+  }
+
+  if (!session?.user) {
+    const redirect = encodeURIComponent(window.location.pathname + window.location.search);
+    window.location.href = `/.well-known/service/login?redirect=${redirect}`;
+    return null;
+  }
+
+  if (role === 'admin') {
+    const userRole = session.user.role;
+    if (userRole !== 'admin' && userRole !== 'owner') {
+      return <Navigate to="/" replace />;
+    }
+  }
+
+  return children;
 }
 
 export default function App() {
@@ -95,40 +131,49 @@ function AppRoutes({ basename }: { basename: string }) {
   const router = createBrowserRouter(
     createRoutesFromElements(
       isCfMode ? (
-        // CF mode: flat navigation, no Dashboard wrapper
+        // CF mode: flat navigation, no Dashboard wrapper.
+        // Guarded via <RequireSession>: login for user pages, admin role for /config/*.
         <Route>
           <Route index element={<HomeLazy />} />
           <Route
             path="/config"
             element={
-              <PageLayout>
-                <ConfigOverviewPage />
-              </PageLayout>
+              <RequireSession role="admin">
+                <PageLayout>
+                  <ConfigOverviewPage />
+                </PageLayout>
+              </RequireSession>
             }
           />
           <Route
             path="/config/ai-config"
             element={
-              <PageLayout>
-                <ConfigAIConfigPage />
-              </PageLayout>
+              <RequireSession role="admin">
+                <PageLayout>
+                  <ConfigAIConfigPage />
+                </PageLayout>
+              </RequireSession>
             }
           />
           <Route
             path="/config/ai-config/:page"
             element={
-              <PageLayout>
-                <ConfigAIConfigPage />
-              </PageLayout>
+              <RequireSession role="admin">
+                <PageLayout>
+                  <ConfigAIConfigPage />
+                </PageLayout>
+              </RequireSession>
             }
           />
           <Route path="/usage" element={<Navigate to="/credit-usage" replace />} />
           <Route
             path="/usage/projects/:appDid"
             element={
-              <PageLayout>
-                <ProjectPage isAdmin />
-              </PageLayout>
+              <RequireSession>
+                <PageLayout>
+                  <ProjectPage isAdmin />
+                </PageLayout>
+              </RequireSession>
             }
           />
           <Route path="/api-keys" element={<ExternalRedirect to="/.well-known/service/admin#access-keys" />} />
@@ -136,19 +181,23 @@ function AppRoutes({ basename }: { basename: string }) {
           <Route
             path="/playground"
             element={
-              <PageLayout fullHeight showFooter={false}>
-                <Box sx={{ pt: 4, flex: 1, display: 'flex', flexDirection: 'column' }}>
-                  <ChatLazy />
-                </Box>
-              </PageLayout>
+              <RequireSession>
+                <PageLayout fullHeight showFooter={false}>
+                  <Box sx={{ pt: 4, flex: 1, display: 'flex', flexDirection: 'column' }}>
+                    <ChatLazy />
+                  </Box>
+                </PageLayout>
+              </RequireSession>
             }
           />
           <Route
             path="/credit-usage"
             element={
-              <PageLayout>
-                <CreditBoardPage />
-              </PageLayout>
+              <RequireSession>
+                <PageLayout>
+                  <CreditBoardPage />
+                </PageLayout>
+              </RequireSession>
             }
           />
           <Route path="/config/usage" element={<Navigate to="/credit-usage" replace />} />
