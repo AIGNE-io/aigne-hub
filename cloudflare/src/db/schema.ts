@@ -202,6 +202,7 @@ export const modelCalls = sqliteTable(
     traceId: text('traceId'),
     ttfb: text('ttfb'), // ms, text for DECIMAL
     providerTtfb: text('providerTtfb'), // ms
+    meterReported: integer('meterReported', { mode: 'boolean' }).notNull().default(false),
     createdAt: text('createdAt')
       .notNull()
       .default(sql`(datetime('now'))`),

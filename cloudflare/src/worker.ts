@@ -15,7 +15,7 @@ import { aggregateModelCallStats } from './crons/model-call-stats';
 import { checkModelRates } from './crons/model-rate-check';
 import { reconcileCredits } from './crons/reconcile';
 import { logger } from './libs/logger';
-import { flushMeterEvents } from './libs/meter-buffer';
+import { countPendingMeters, flushMeterEvents } from './libs/meter-buffer';
 import { processRetryQueue } from './libs/retry-queue';
 import * as schema from './db/schema';
 // Auth middleware
@@ -410,20 +410,17 @@ app.post('/api/__debug/flush-meters', async (c) => {
   if (c.env.ENVIRONMENT === 'production') return c.json({ error: 'not available' }, 404);
   if (!c.env.PAYMENT_KIT || !cachedInstanceDid) return c.json({ error: 'PAYMENT_KIT or instanceDid not configured' }, 503);
   const payment = createInternalPaymentClient(c.env.PAYMENT_KIT, cachedInstanceDid, c.env);
-  const stats = await flushMeterEvents(c.env.AUTH_KV, payment);
+  const db = c.get('db');
+  const stats = await flushMeterEvents(db, payment);
   return c.json(stats);
 });
 
-// --- Debug: list pending meter events (staging only) ---
+// --- Debug: count pending meter rows (staging only) ---
 app.get('/api/__debug/pending-meters', async (c) => {
   if (c.env.ENVIRONMENT === 'production') return c.json({ error: 'not available' }, 404);
-  const list = await c.env.AUTH_KV.list({ prefix: 'meter-pending:', limit: 100 });
-  const entries = [];
-  for (const { name } of list.keys) {
-    const raw = await c.env.AUTH_KV.get(name);
-    entries.push({ key: name, value: raw ? JSON.parse(raw) : null });
-  }
-  return c.json({ count: entries.length, entries });
+  const db = c.get('db');
+  const count = await countPendingMeters(db);
+  return c.json({ count });
 });
 
 // Bridge /auth/session to blocklet-service DID session (backward compat for frontend)
@@ -525,7 +522,7 @@ async function scheduled(event: ScheduledEvent, env: Env, _ctx: ExecutionContext
   if (env.PAYMENT_KIT && cachedInstanceDid) {
     try {
       const payment = createInternalPaymentClient(env.PAYMENT_KIT, cachedInstanceDid, env);
-      await flushMeterEvents(env.AUTH_KV, payment);
+      await flushMeterEvents(db, payment);
     } catch (err) {
       logger.error('Meter flush failed', { error: err instanceof Error ? err.message : String(err) });
     }
