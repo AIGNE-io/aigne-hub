@@ -50,6 +50,26 @@
 | **Hub / Direct / OpenRouter** | 三条路径：Hub 代理 / 客户端直连 Provider / OpenRouter 第三方代理 |
 | **Server-Timing** | HTTP 规范的服务端计时 header，Hub 用它暴露内部各 phase 耗时 |
 
+### 🤯 Streaming 模式的一个惊人发现
+
+**本报告所有延迟 benchmark 都用 streaming 模式**（`stream: true`）。但不同 provider 的实际流式行为**完全不同**：
+
+| Provider | providerTtfb p50 | **streaming p50** | 行为 |
+|----------|-----------------|------------------|------|
+| **OpenAI** `gpt-5-nano` | 6640ms | **⚠️ 仅 30ms** | 等 6.6 秒后一次性吐完 —— **并非真正流式** |
+| Anthropic `claude-haiku-4-5` | 486ms | 3202ms | 首字节 0.5 秒 + 3.2 秒持续 stream token |
+| Google `gemini-2.5-flash` | 3942ms | 1046ms | 等 4 秒后 1 秒内完成 |
+
+**关键含义**：
+- **OpenAI gpt-5-nano 不是真正的逐字流式**——在 `stream: true` 下内部先完整生成再一次性发出。所以它的 TTFB ≈ Total（§4.2.2 里 Hub 7091 / 7091，Direct 8267 / 8267）
+- **Anthropic claude-haiku-4-5 是真正的流式**——首字节快，后面持续 stream。适合需要"正在回答"反馈的实时 UI
+- **OpenRouter 对 gpt-5-nano 的"快 TTFB"是假象**——OpenRouter 把 OpenAI 一次性返回的响应人为拆成多个小 chunk，TTFB 变快但每 chunk 间有延迟，Total 暴涨到 29.5 秒
+
+**对产品决策的启示**：
+- 想要真正的 streaming UX（"打字机"效果）？→ **用 Anthropic claude-haiku-4-5**
+- gpt-5-nano 哪怕用 stream: true 也是 7 秒后一次性返回，UI 看不到渐进效果
+- **不要被 OpenRouter 的 TTFB 数字骗了**，看 Total
+
 ---
 
 ## 🎯 核心对比：9 格完整矩阵（3 Provider × 3 Path）

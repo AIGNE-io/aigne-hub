@@ -195,6 +195,44 @@ Hub 延迟 = 直连延迟
 | **providerTtfb** | Server-Timing 里的一个 phase —— 从 Hub Worker 发出请求到收到 Provider 首字节的时间。代表 CF edge → Provider 的网络 + Provider 自身生成时间 |
 | **cold start** | Worker isolate 首次启动后的初始化开销。CF Workers 对空闲 isolate 会回收，再次请求时需要重新初始化，导致 p99 抖动 |
 
+### 1.6 Streaming vs Non-Streaming 与 TTFB / Total 的关系
+
+**本报告所有延迟 benchmark 都用 streaming 模式**（`stream: true`），只有记账验证用 non-streaming。
+
+- **Streaming 模式下**：
+  - TTFB = 从发出请求到收到**第一个字节**的时间
+  - Total = 从发出请求到收到**最后一个字节**的时间（包含全部 streaming 时间）
+  - **TTFB 通常 << Total**，差值就是 streaming 的持续时间
+
+- **Non-streaming 模式下**：
+  - Provider 生成完整响应后一次性返回
+  - **TTFB ≈ Total**（因为客户端只能在整个 response body 读完后才知道时间）
+  - benchmark 客户端里把 ttfb 直接设成 totalTime（见 `index.ts:164-167`）
+
+#### 🤯 发现：OpenAI gpt-5-nano 在"流式模式"下其实并不是真正的逐字流式
+
+看 Server-Timing 的 `streaming` phase（从收到 provider 第一个字节到最后一个字节的时间）：
+
+| Provider | providerTtfb p50 | **streaming p50** | 结论 |
+|----------|-----------------|------------------|------|
+| **OpenAI** `gpt-5-nano` | 6640ms | **⚠️ 30ms** | 等 6.6 秒后一次性吐完 —— **不是真正的流式** |
+| Anthropic `claude-haiku-4-5` | 486ms | 3202ms | 首字节快，后面 3.2 秒持续 stream token |
+| Google `gemini-2.5-flash` | 3942ms | 1046ms | 中间路径 |
+
+**含义**：**OpenAI gpt-5-nano 在 `stream: true` 请求下内部先完整生成再一次性发出**。它不像 Anthropic / Google 那样逐字 stream。这解释了为什么 §4.2.2 里 hub-openai 的 TTFB = Total = 7091ms（两个数字几乎完全相同）—— 因为 gpt-5-nano 根本没有中间的 "streaming 过程"。
+
+**对比** hub-anthropic：客户端 TTFB p50 = 964ms（首字节快），Total 包含 3.2 秒的 streaming，两个数字明显不同。
+
+**这也解释了 OpenRouter 的"TTFB 陷阱"**：
+- Hub 对 gpt-5-nano：OpenAI 本身就是一次性返回，TTFB = Total = 7091ms
+- OpenRouter 对 gpt-5-nano：OpenRouter 在中间加了一层 proxy，它**把 OpenAI 一次性返回的响应拆成多个小 chunk，TTFB 变快了 1385ms**，但每个 chunk 之间有延迟，Total 变成 29466ms
+- OpenRouter 的 TTFB 优势是**人为制造的**（通过 chunking），代价是整体 Total 时间暴涨
+
+**对产品决策的启示**：
+1. **gpt-5-nano 不适合需要"首字节反馈"的场景**（UI 提示"正在回答"）—— 因为它 7 秒才返回第一个字节
+2. **Anthropic claude-haiku-4-5 是真正的流式模型**，TTFB ~1 秒 + streaming 3 秒，适合需要实时反馈的 chat UI
+3. **OpenRouter 对 gpt-5-nano 的"fast TTFB"是个假象**，总体更慢
+
 ---
 
 ## 二、Hub 延迟剖析
