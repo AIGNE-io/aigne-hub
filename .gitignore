@@ -20,6 +20,7 @@ dist-ssr
 *.local
 wrangler.local.toml
 cloudflare/wrangler.test.toml
+.wrangler/
 docs/migration/.input.*.yaml
 migration-backups/
 
