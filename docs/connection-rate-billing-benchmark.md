@@ -1,5 +1,8 @@
 # AIGNE Hub: 连接速率与记账验证报告
 
+> ⚡ **先看速读版？** → [`connection-rate-billing-benchmark-summary.md`](./connection-rate-billing-benchmark-summary.md)（130 行，2 分钟读完）
+> 这是完整技术报告，适合要深入了解每个数据点的读者。
+>
 > 测试日期: 2026-04-10
 > Hub 版本: `43cfa4b` (commit), `c27b75ee` (deployed)
 > 测试环境: `aigne-hub-staging.zhuzhuyule-779.workers.dev`
