@@ -37,6 +37,23 @@ export type Env = {
   AUTH_KV: KVNamespace;
   BLOCKLET_SERVICE: Service & BlockletServiceRPCInterface;
   APP_SK: string;
+  /**
+   * Optional explicit instance DID to register as. When set, this is passed
+   * to BLOCKLET_SERVICE.registerApp() instead of "auto", which would otherwise
+   * derive a fresh DID from APP_SK and trigger a destructive migrateInstanceDid
+   * if a different instance was already registered with the same APP_SK.
+   *
+   * Set to the permanent DID derived from APP_PSK (the Blocklet Server identity)
+   * when this hub is part of a logical multi-component deployment that shares
+   * one signer key across hub / payment-kit / media-kit CF workers.
+   */
+  APP_PID?: string;
+  /**
+   * Optional permanent signer key. When set, registerApp stores it under app:psk
+   * so blocklet-service's buildIdentity() can return the correct delegated
+   * (appDid, appPid) pair. Without it, appPid falls back to the SK-derived DID.
+   */
+  APP_PSK?: string;
   INSTANCE_NAME?: string;
   ENVIRONMENT: string;
   AUTH_SECRET: string;
@@ -71,8 +88,12 @@ async function ensureRegistered(env: Env): Promise<string> {
   if (!env.APP_SK || !env.BLOCKLET_SERVICE) return '';
 
   const result = await env.BLOCKLET_SERVICE.registerApp({
-    instanceDid: 'auto',
+    // Explicit APP_PID prevents the 'auto' branch from deriving a fresh DID
+    // from APP_SK and triggering migrateInstanceDid against any sibling
+    // component that already registered under our intended permanent DID.
+    instanceDid: env.APP_PID || 'auto',
     appSk: env.APP_SK,
+    appPsk: env.APP_PSK,
     appName: env.INSTANCE_NAME || 'AIGNE Hub',
     appDescription: 'AIGNE Hub — AI Agent marketplace',
   });
@@ -210,11 +231,17 @@ app.get('/__blocklet__.js', async (c) => {
   if (c.env.PAYMENT_KIT) {
     const mounts = Array.isArray(baseConfig.componentMountPoints) ? baseConfig.componentMountPoints as any[] : [];
     if (!mounts.some((m: any) => m.did === 'z2qaCNvKMv5GjouKdcDWexv6WqtHbpNPQDnAk')) {
+      // NOTE: `status: 'running'` is required. Multiple consumers filter
+      // componentMountPoints by `point.status === 'running'`, including
+      // getPaymentBlocklet()/getObservabilityBlocklet() in blocklets/core/src/libs/env.ts
+      // and the <blocklet-header> Web Component loaded from /.well-known/service/components/header.js.
+      // Without it, the Payment Kit entry is silently skipped and payment URLs resolve to ''.
       mounts.push({
         did: 'z2qaCNvKMv5GjouKdcDWexv6WqtHbpNPQDnAk',
         title: 'Payment Kit',
         name: 'payment-kit',
         mountPoint: '/payment',
+        status: 'running',
       });
     }
     baseConfig.componentMountPoints = mounts;
