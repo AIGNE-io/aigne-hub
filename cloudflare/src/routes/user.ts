@@ -83,6 +83,7 @@ routes.get('/info', async (c) => {
       fullName: user?.name || did,
       email: user?.email || '',
       avatar: user?.avatar || '',
+      role: user?.role || 'member',
     },
     creditBalance: {
       balance: creditBalance.balance,
