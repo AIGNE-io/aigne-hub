@@ -45,31 +45,19 @@ export async function getOrCreateAccount(db: DB, userDid: string) {
 
 /**
  * Get credit balance for a user.
- * If KV is provided, includes pending hold amounts in the response.
+ * pendingCredit is always 0 in the D1-fallback path — real pending amounts
+ * come from Payment Kit (payment.getPendingAmount) in routes/user.ts; the
+ * pre-deduct/settle hold flow backed by KV is not wired into request paths,
+ * so this helper intentionally avoids KV reads.
  */
-export async function getCreditBalance(db: DB, userDid: string, kv?: KVNamespace) {
+export async function getCreditBalance(db: DB, userDid: string) {
   const account = await getOrCreateAccount(db, userDid);
-  let pendingHolds = 0;
-
-  if (kv) {
-    try {
-      const raw = await kv.get(`${KV_HOLD_PREFIX}${userDid}`);
-      if (raw) {
-        const holds = JSON.parse(raw) as Array<{ amount: number; ts: number }>;
-        const now = Date.now();
-        pendingHolds = holds
-          .filter((h) => now - h.ts < HOLD_TTL * 1000)
-          .reduce((sum, h) => sum + h.amount, 0);
-      }
-    } catch { /* ignore KV errors */ }
-  }
-
   return {
     balance: parseFloat(account.balance),
     total: parseFloat(account.totalGranted),
     used: parseFloat(account.totalUsed),
     grantCount: 0,
-    pendingCredit: pendingHolds,
+    pendingCredit: 0,
   };
 }
 

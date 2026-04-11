@@ -44,6 +44,9 @@ export function getSupportedGatewaySlugs(): Record<string, string> {
 /**
  * Resolve gateway config from KV (admin-configured) or env vars (fallback).
  * Supports multi-gateway: if gatewayConfigId is provided, looks up from gateway-configs array.
+ *
+ * Reads go through the cached getGatewaySettings/getGatewayConfigs helpers, so
+ * each isolate hits KV at most once per CACHE_TTL_MS regardless of request volume.
  */
 export async function resolveGatewayConfig(
   kv: KVNamespace,
@@ -62,9 +65,8 @@ export async function resolveGatewayConfig(
     }
 
     // Default: single gateway from legacy KV key
-    const raw = await kv.get(KV_KEY);
-    if (raw) {
-      const settings = JSON.parse(raw) as GatewaySettings;
+    const settings = await getGatewaySettings(kv);
+    if (settings) {
       if (settings.enabled && settings.accountId && settings.gatewayId) {
         return { accountId: settings.accountId, gatewayId: settings.gatewayId, authToken: settings.authToken };
       }
@@ -105,10 +107,24 @@ export function shouldUseGateway(
 
 // --- KV read/write ---
 
+// Isolate-level memory cache — gateway config is read on every AI request but
+// only mutated by admin APIs. A short TTL keeps KV reads down without blocking
+// config updates from propagating (save* helpers clear the local cache, and
+// other isolates pick up changes within CACHE_TTL_MS via natural expiry).
+const CACHE_TTL_MS = 60 * 1000;
+let settingsCache: { value: GatewaySettings | null; expiresAt: number } | null = null;
+let configsCache: { value: GatewaySettings[]; expiresAt: number } | null = null;
+
 export async function getGatewaySettings(kv: KVNamespace): Promise<GatewaySettings | null> {
+  const now = Date.now();
+  if (settingsCache && settingsCache.expiresAt > now) {
+    return settingsCache.value ? { ...settingsCache.value } : null;
+  }
   try {
     const raw = await kv.get(KV_KEY);
-    return raw ? (JSON.parse(raw) as GatewaySettings) : null;
+    const value = raw ? (JSON.parse(raw) as GatewaySettings) : null;
+    settingsCache = { value, expiresAt: now + CACHE_TTL_MS };
+    return value ? { ...value } : null;
   } catch {
     return null;
   }
@@ -116,14 +132,23 @@ export async function getGatewaySettings(kv: KVNamespace): Promise<GatewaySettin
 
 export async function saveGatewaySettings(kv: KVNamespace, settings: GatewaySettings): Promise<void> {
   await kv.put(KV_KEY, JSON.stringify(settings));
+  settingsCache = null;
 }
 
 // --- Multi-gateway configs ---
 
 export async function getGatewayConfigs(kv: KVNamespace): Promise<GatewaySettings[]> {
+  const now = Date.now();
+  if (configsCache && configsCache.expiresAt > now) {
+    // Return a shallow copy so callers can mutate (push/splice) without
+    // corrupting the cached array.
+    return configsCache.value.map((c) => ({ ...c }));
+  }
   try {
     const raw = await kv.get(KV_CONFIGS_KEY);
-    return raw ? (JSON.parse(raw) as GatewaySettings[]) : [];
+    const value = raw ? (JSON.parse(raw) as GatewaySettings[]) : [];
+    configsCache = { value, expiresAt: now + CACHE_TTL_MS };
+    return value.map((c) => ({ ...c }));
   } catch {
     return [];
   }
@@ -131,6 +156,13 @@ export async function getGatewayConfigs(kv: KVNamespace): Promise<GatewaySetting
 
 export async function saveGatewayConfigs(kv: KVNamespace, configs: GatewaySettings[]): Promise<void> {
   await kv.put(KV_CONFIGS_KEY, JSON.stringify(configs));
+  configsCache = null;
+}
+
+/** Clear gateway caches — exported for tests and admin operations. */
+export function clearGatewayCache(): void {
+  settingsCache = null;
+  configsCache = null;
 }
 
 // --- URL builders ---
