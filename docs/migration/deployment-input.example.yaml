@@ -83,33 +83,68 @@ payment_resources:
   wrangler_config_path: "blocklets/core/cloudflare/wrangler.staging.toml"
 
 # ---------- 5. Hub secrets (wrangler secret put) ----------
-# Every key listed here is set via `wrangler secret put <KEY>`.
-# Empty string means "do not set" — the playbook will NOT delete existing
-# secrets of the same name, it will only skip them.
+# SECURITY MODEL
+#
+# Every key listed here is persisted via `wrangler secret put <KEY>`.
+# Once set, the value lives only inside Cloudflare's secret store and is
+# injected into the Worker's `env` object at runtime. It is NOT readable
+# back out — `wrangler secret list` only shows NAMES.
+#
+# NEVER commit populated values in this file or any other file in the
+# repo. NEVER store them in `.input.<env>.yaml`, `.input.<env>.env`,
+# `wrangler.*.toml`, or any other tracked config. The fields below are
+# placeholders for the operator to fill transiently during a deploy run;
+# the populated copy is immediately gitignored and should be deleted (or
+# stored in a password manager) once `wrangler secret put` has succeeded.
+#
+# The preferred flow is to set secrets directly from a shell env var or
+# a secret manager, without ever writing them to disk:
+#
+#   # Option A — interactive prompt (never touches disk at all):
+#   wrangler secret put APP_SK -c cloudflare/wrangler.staging.toml
+#
+#   # Option B — pipe from env var (value stays in process memory):
+#   printf '%s' "$APP_SK" | wrangler secret put APP_SK -c cloudflare/wrangler.staging.toml
+#
+#   # Option C — pipe from a password manager (1Password, vault, etc):
+#   op read "op://Prod/AIGNE-Hub/APP_SK" | wrangler secret put APP_SK -c cloudflare/wrangler.staging.toml
 #
 # Generating fresh secrets for a new environment:
 #   APP_SK           -> docs/migration/scripts/generate-credentials.mjs
-#                       (use a DIFFERENT wallet for hub and payment-kit)
+#                       (use a DIFFERENT wallet for hub and payment-kit
+#                       UNLESS you are running shared-identity mode, in
+#                       which case hub/payment-kit/media-kit share ONE
+#                       APP_SK + APP_PSK and all pass the same APP_PID)
+#   APP_PSK          -> docs/migration/scripts/generate-credentials.mjs
+#                       (only required in shared-identity mode; see below)
 #   AUTH_SECRET      -> openssl rand -hex 32
 #   CREDENTIAL_ENCRYPTION_KEY -> openssl rand -hex 32
+#                       (pure random value; does NOT need to match any
+#                       source Blocklet Server's BLOCKLET_APP_EK)
 #
 # Recovering secrets from an existing deployment:
 #   - Cloudflare secrets are write-only; `wrangler secret list` only shows
 #     the NAMES, not the values. You cannot read them back.
-#   - If the source hub is currently running inside a local Blocklet Server,
-#     its wallet identity and session secret are injected into the PM2 process
-#     environment — see MIGRATION_RUNBOOK.md Section 4.4.1 for the exact
-#     fields (BLOCKLET_APP_ASK, BLOCKLET_SESSION_SECRET, etc.) and the format
-#     conversions each one requires.
+#   - If the source hub is currently running inside a local Blocklet Server
+#     managed by `abtnode` (not PM2), its env vars live in
+#     `/data/.blocklet-server/tmp/docker/<APP_PID>/ai-kit/docker-env-blocklet-*-ai-kit`.
+#     That file contains BLOCKLET_DID, BLOCKLET_APP_PID, BLOCKLET_APP_EK —
+#     but NOT the wallet private key (APP_SK).
 #   - If the source hub is already deployed as a CF Worker but you did not
 #     keep a local copy of the secrets, you cannot continue its identity;
 #     generate fresh secrets and accept that the new deployment is a new
 #     instance DID in blocklet-service.
 #
-# Pipe-setting secrets so the value never lands on stdout:
-#   printf '%s' "$VALUE" | wrangler secret put APP_SK -c wrangler.staging.toml
+# NOTE on BLOCKLET_APP_EK: the CF worker does NOT use this variable at
+# runtime — the branch uses `CREDENTIAL_ENCRYPTION_KEY` with a completely
+# different crypto scheme (see cloudflare/src/libs/crypto.ts). The
+# historical EK is ONLY needed as a transient input to the L2 credential
+# re-encryption script (section `l2_credential_migration` below) and
+# must NOT be written to any Worker Secret.
 hub_secrets:
-  APP_SK: "<required>"                           # see generate-credentials.mjs
+  APP_SK: "<required>"                           # signing key, see generate-credentials.mjs
+  APP_PSK: ""                                    # shared-identity mode only (hub + payment-kit + media-kit)
+  APP_PID: ""                                    # shared-identity mode only — permanent instance DID
   AUTH_SECRET: "<required>"                      # JWT signing secret, 32+ chars
   CREDENTIAL_ENCRYPTION_KEY: "<required>"        # encrypts AiCredentials at rest, 32+ chars
   GOOGLE_CLIENT_ID: ""
@@ -117,6 +152,27 @@ hub_secrets:
   GITHUB_CLIENT_ID: ""
   GITHUB_CLIENT_SECRET: ""
   ADMIN_EMAILS: ""                               # comma-separated list
+
+# ---------- 5b. L2 credential migration (one-shot transient input) ----------
+# If you are importing AiCredentials from a source Blocklet Server (Phase 6
+# L2), you need the HISTORICAL encryption key that was used to encrypt those
+# rows — NOT a fresh one. This value is only used by
+# `docs/migration/scripts/reencrypt-credentials.mjs`, runs on the operator's
+# workstation, and is then discarded. It is NEVER written to a Worker
+# Secret, NEVER read by the running CF worker, and should be wiped from
+# shell history after use.
+#
+# Retrieval:
+#   sudo cat /data/.blocklet-server/tmp/docker/<APP_PID>/ai-kit/docker-env-blocklet-*-ai-kit
+#   # look for lines:
+#   #   BLOCKLET_DID=<APP_PID>             <-- historical salt (app DID, NOT component DID)
+#   #   BLOCKLET_APP_EK=0x<128 hex>        <-- historical encryption key
+#
+# If you do not need to import historical credentials (admins will re-enter
+# provider keys manually), leave both fields empty and skip L2.
+l2_credential_migration:
+  historical_ek: ""                              # transient — do NOT commit, do NOT put as Worker Secret
+  historical_did: ""                             # == source BLOCKLET_APP_PID
 
 # ---------- 6. Hub non-secret env vars (wrangler.toml [vars]) ----------
 hub_vars:

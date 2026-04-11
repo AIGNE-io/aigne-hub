@@ -62,13 +62,27 @@ INSTANCE_NAME = "AIGNE Hub"
 PAYMENT_LIVEMODE = "false"                   # "true" for mainnet/production
 
 # Secrets that must be set separately via `wrangler secret put <NAME>`
-# (not declared here — see docs/migration/MIGRATION_RUNBOOK.md Section 4.4):
-#   - APP_SK                       (DID signing private key, generate via scripts/generate-credentials.mjs)
+# (NEVER declared in this file, NEVER committed anywhere in the repo —
+# see docs/migration/MIGRATION_RUNBOOK.md Section 4.4 and
+# docs/migration/deployment-input.example.yaml section 5):
+#   - APP_SK                       (wallet signing private key; generate via scripts/generate-credentials.mjs)
+#   - APP_PSK                      (ONLY in shared-identity mode — hub/payment-kit/media-kit share one DID)
+#   - APP_PID                      (ONLY in shared-identity mode — persistent instance DID)
+#                                  Note: APP_PID is technically public (it is the appDid) and could live
+#                                  in [vars], but we put it alongside APP_PSK so the shared-identity
+#                                  trio stays together. Either placement works.
 #   - AUTH_SECRET                  (JWT signing secret, any high-entropy string)
-#   - CREDENTIAL_ENCRYPTION_KEY    (encrypts AiCredentials at rest)
+#   - CREDENTIAL_ENCRYPTION_KEY    (encrypts AiCredentials at rest; independent random value —
+#                                  does NOT need to match any Blocklet Server BLOCKLET_APP_EK,
+#                                  the CF worker does not read BLOCKLET_APP_EK at all)
 #   - GOOGLE_CLIENT_ID / _SECRET   (optional OAuth)
 #   - GITHUB_CLIENT_ID / _SECRET   (optional OAuth)
 #   - ADMIN_EMAILS                 (optional comma-separated list)
+#
+# Preferred setup path (value never touches disk):
+#   printf '%s' "$APP_SK" | wrangler secret put APP_SK -c cloudflare/wrangler.staging.toml
+# or interactively:
+#   wrangler secret put APP_SK -c cloudflare/wrangler.staging.toml
 
 [triggers]
 crons = [
