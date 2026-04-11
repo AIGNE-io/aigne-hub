@@ -443,6 +443,36 @@ Recommended default:
 - import only if policy allows it
 - otherwise reconfigure credentials manually
 
+**Credential re-encryption is mandatory if you import, not optional.**
+The Blocklet Server scheme (`PBKDF2-SHA512/256 iter` → `crypto-js AES-256-CBC`)
+and the Cloudflare scheme (`PBKDF2-SHA256/100k iter` → `Web Crypto AES-256-GCM`
+with salt `aigne-hub-credentials`) are wire-incompatible. A raw copy of the
+`credentialValue` column will deploy cleanly but fail on every provider call
+with `decrypt failed` / `密钥不对`.
+
+To import credentials you need BOTH:
+
+1. The **historical** `BLOCKLET_APP_EK` from the source BS instance. A freshly
+   generated EK on the new CF instance will not work — the EK is a random
+   per-instance value, not something derived from the SK or DID. Recover the
+   historical EK via SSH:
+
+   ```
+   sudo cat /data/.blocklet-server/tmp/docker/<APP_PID>/ai-kit/docker-env-blocklet-*-ai-kit
+   ```
+
+2. The historical `BLOCKLET_DID` — which in this context is the **app
+   instance DID** (same as `BLOCKLET_APP_PID`), NOT the ai-kit component
+   DID. The PBKDF2 salt at encrypt time was the app DID. Do not confuse it
+   with the component DID (e.g. `z8ia3xzq2tMq8...`).
+
+Once both are in hand, run
+`docs/migration/scripts/reencrypt-credentials.mjs` to decrypt with the
+historical EK/DID and re-encrypt with the target `CREDENTIAL_ENCRYPTION_KEY`.
+The script emits `UPDATE` statements; apply them via the CF D1 query API
+(batch `wrangler d1 execute` has been unreliable on large writes — see
+Section 9.13). Round-trip one row locally before applying.
+
 #### L3: Historical Data
 
 Includes:
@@ -745,6 +775,191 @@ Rule:
   config file will be used, and whether it is safe to edit in place
 - if in doubt, open an issue in the payment-kit repo to request a
   proper template file (mirroring the aigne-hub structure)
+
+### 9.12 Wrong Credential Encryption Key
+
+The `BLOCKLET_APP_EK` that a CF Worker sees after `registerApp()` is the
+EK that was minted **for that CF instance**. It is a fresh random value,
+not something reconstructable from `APP_SK` or `APP_PID`. It will never
+match the EK that a different Blocklet Server instance used to encrypt
+historical AiCredentials.
+
+Consequences of missing this:
+
+- Every provider call returns "decrypt failed" after migration.
+- Brute-forcing KDF parameters and DID variants is a dead end — the EK
+  itself is wrong.
+- Re-running the migration with the wrong EK simply re-stores
+  un-decryptable rows.
+
+Rule:
+
+- treat the historical `BLOCKLET_APP_EK` as a mandatory input for L2
+  credential migration — add it to your environment input file alongside
+  `APP_SK` / `APP_PSK`
+- retrieve it from the source host's docker-env file (see Section 6,
+  Phase 6 L2), NOT from the new CF environment
+- if the source host is no longer reachable and the historical EK cannot
+  be recovered, the only remaining option is to drop the credentials and
+  have admins re-enter provider keys — document this decision in the
+  migration input file under `l2.credentials.policy = reconfigure`
+- also validate that the salt you use (`HISTORICAL_DID`) is the app
+  instance DID / `BLOCKLET_APP_PID`, not the ai-kit component DID. Both
+  appear on the same docker-env file; picking the wrong one produces the
+  same "decrypt failed" symptom as a wrong EK
+
+### 9.13 Large Batch D1 Writes Via Wrangler
+
+Pitfall #3 in the README captured a shell-quoting bug in
+`migrate-data.ts` that caused zero rows to actually land. After that fix,
+a second class of silent failure appeared for large tables (>10k rows):
+`wrangler d1 execute --remote --file=` reports success but only a
+fraction of the statements apply. This is not a quoting issue — it looks
+like a batching or rate-limit interaction inside wrangler itself.
+
+Rule:
+
+- for any table above ~1k rows, bypass wrangler and POST statements
+  directly to the CF API:
+  `POST https://api.cloudflare.com/client/v4/accounts/<acc>/d1/database/<id>/query`
+- batch 50-100 statements per request
+- use `INSERT OR REPLACE` so reruns are idempotent
+- verify row counts after every batch (`SELECT COUNT(*) FROM <table>`)
+  and log a per-batch summary
+- reserve `wrangler d1 execute` for schema migrations and small KV-like
+  writes
+
+### 9.14 Streaming Chat Must Not Carry SSE In A text/plain Stream
+
+The CF `/v2/chat/completions` handler was writing a final
+`event: server-timing\ndata: ...\n\n` frame into the response body so a
+benchmark consumer could parse timings. The response itself is served
+as `text/plain`, so the Playground frontend — which has no SSE parser
+on text streams — rendered the trailer verbatim at the end of every
+assistant message.
+
+Rule:
+
+- the streaming chat response protocol must match the legacy Blocklet
+  Server hub: pure token text, no framing, no trailer, `text/plain` only
+- if benchmarks need timing data, use a response header (set before the
+  stream opens) or a dedicated read-after endpoint keyed by request id
+- do not mix two protocols on one body. "It's just one extra event at
+  the end" is how this bug was introduced
+
+### 9.15 /api/user/info Must Include Role
+
+The hub frontend's admin gate reads `user.role` directly from the
+`/api/user/info` response. The server-side `resolveIdentity()` call
+classifies the caller correctly (`owner` / `admin` / `member`), but an
+earlier version of the `/api/user/info` serializer dropped the `role`
+field. Every logged-in user, including confirmed admins, saw the
+member-only UI — but the D1 and blocklet-service state were correct all
+along.
+
+Rule:
+
+- Phase 8 end-to-end validation must log in as a known-admin account and
+  assert that the `/api/user/info` response contains `user.role === 'admin'`
+- do not rely on UI probes alone; the UI reflects whatever the endpoint
+  returned, and a missing field looks identical to "not an admin"
+
+### 9.16 Shared Instance Identity Oscillation
+
+When hub, payment-kit, and media-kit CF workers intentionally share one
+`BLOCKLET_APP_SK` (logical multi-component deployment against one
+blocklet-service instance), they must ALL pass an explicit `APP_PID`
+and `APP_PSK` to `registerApp()`. If any worker falls back to
+`instanceDid: 'auto'`:
+
+1. That worker derives a new DID from the shared `APP_SK`
+2. `registerApp()` sees a mismatch against whatever DID the siblings
+   already registered under
+3. `migrateInstanceDid` moves the blocklet-service `settings` row from
+   the sibling's DID to this worker's derived DID
+4. The next cron tick on the sibling flips it back
+5. The `settings` row oscillates on every scheduled run until something
+   notices
+
+Rule:
+
+- in a shared-identity deployment, set `APP_PID` (the permanent BS-style
+  instance DID) and `APP_PSK` (the matching Provable Secret Key) as env
+  vars on every worker sharing the identity — hub, payment-kit, media-kit
+- verify by reading the blocklet-service D1 `settings` table twice with
+  a 2-minute gap; the `appDid` value must not change
+- if the siblings were already running under mismatched DIDs when you
+  deploy the fix, the first cron tick under the new config will still
+  migrate data — run a one-shot consistency check on that tick
+
+### 9.17 componentMountPoints Require `status: 'running'`
+
+Multiple consumers of `componentMountPoints` filter by
+`point.status === 'running'`:
+
+- `blocklets/core/src/libs/env.ts` — `getPaymentBlocklet()` and
+  `getObservabilityBlocklet()`
+- the `<blocklet-header>` Web Component shipped at
+  `/.well-known/service/components/header.js`
+
+Mount points missing the `status` field are silently dropped. A hub that
+injects a synthetic Payment Kit mount into `/__blocklet__.js` without
+`status: 'running'` will render a header with no Payment link and
+resolve internal payment URLs to an empty string.
+
+Rule:
+
+- any mount point synthesized by a CF worker (Payment Kit, Media Kit,
+  Observability, or any future sibling) must include
+  `status: 'running'`
+- Phase 5 validation should inspect `/__blocklet__.js?type=json` and
+  assert that every entry in `componentMountPoints` has a `status` field
+
+### 9.18 Payment Link Lives In KV Preferences, Not env
+
+Unlike most CF configuration (which sits in `wrangler.*.toml` or as
+Worker Secrets), the credit-pack payment link is stored in the hub's
+`AUTH_KV` namespace under key `app:preferences`, field
+`creditPaymentLink`. The default preferences object returned by
+`getPreferences()` does not include this field at all, so a new
+environment has no payment link until an operator writes one.
+
+Rule:
+
+- Phase 7 (Wire Hub To Payment Kit) must explicitly write
+  `creditPaymentLink` into `app:preferences`, not into env vars or a
+  wrangler config
+- the value must be the path form `/payment/checkout/pay/<plinkId>` —
+  NOT a full URL, NOT the plink id on its own
+- the referenced `plinkId` must exist as an active row in the payment
+  kit D1 `payment_links` table and must use the same `livemode` as the
+  hub (see Section 9.3)
+- write via CF API `PUT /storage/kv/namespaces/<id>/values/app:preferences`
+  with a merged preferences object — a naive PUT with only
+  `creditPaymentLink` will clobber every other preference
+
+### 9.19 Cron Triggers Are Account-Wide Capped
+
+Cloudflare enforces a 5-cron-trigger cap **per account**, not per
+worker. Hub, payment-kit, media-kit, and any other CF workers you run
+on the same account all draw from the same pool. The default aigne-hub
+wrangler config ships with 3 crons (every-minute meter flush + hourly
+cleanup + daily reconciliation), and the first `wrangler deploy` to a
+fresh account will succeed before the other workers register theirs —
+but the next full redeploy can hit the cap and fail midway.
+
+Rule:
+
+- before the first deploy of any worker, count existing cron triggers
+  on the account: `curl -s -H "Authorization: Bearer $TOKEN"
+  https://api.cloudflare.com/client/v4/accounts/$ACC/workers/services`
+  and sum `schedules` across `result[]`
+- if the total would exceed 5 after the pending deploy, consolidate
+  crons first: collapse hub's hourly + daily into branches of the
+  every-minute handler, or push non-critical jobs onto an external
+  scheduler
+- record the chosen cron layout in the migration input file so a later
+  environment can reproduce it without rediscovering the constraint
 
 ---
 
