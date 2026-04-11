@@ -445,10 +445,7 @@ async function handleChatCompletion(c: Context<HonoEnv>) {
         if (waitUntil) waitUntil(recordPromise);
 
         timing.end('usage');
-
-        // Emit server-timing as final SSE event
         timing.finalize();
-        await writable.write(timing.toSSE());
       });
     }
 
