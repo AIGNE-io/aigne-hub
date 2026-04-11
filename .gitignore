@@ -20,8 +20,10 @@ dist-ssr
 *.local
 wrangler.local.toml
 cloudflare/wrangler.test.toml
+cloudflare/wrangler.staging.local.toml
 .wrangler/
 docs/migration/.input.*.yaml
+docs/migration/.input.*.env
 migration-backups/
 
 # Log files
