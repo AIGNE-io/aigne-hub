@@ -14,12 +14,7 @@ import { Migration, createIndexIfNotExists } from '../migrate';
  * these indexes already exist, the migration is a no-op.
  */
 export const up: Migration = async ({ context: queryInterface }) => {
-  await createIndexIfNotExists(
-    queryInterface,
-    'ModelCalls',
-    ['callTime', 'model'],
-    'idx_model_calls_time_model'
-  );
+  await createIndexIfNotExists(queryInterface, 'ModelCalls', ['callTime', 'model'], 'idx_model_calls_time_model');
 
   await createIndexIfNotExists(
     queryInterface,
