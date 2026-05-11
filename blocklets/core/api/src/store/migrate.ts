@@ -92,7 +92,11 @@ const REQUIRED_INDEXES: RequiredIndex[] = [
   { table: 'ModelCalls', name: 'idx_model_calls_user_app_time', columns: ['userDid', 'appDid', 'callTime'] },
   { table: 'ModelCalls', name: 'idx_model_calls_time_model', columns: ['callTime', 'model'] },
   // ModelCallStats
-  { table: 'ModelCallStats', name: 'idx_model_call_stats_user_type_time', columns: ['userDid', 'timeType', 'timestamp'] },
+  {
+    table: 'ModelCallStats',
+    name: 'idx_model_call_stats_user_type_time',
+    columns: ['userDid', 'timeType', 'timestamp'],
+  },
   { table: 'ModelCallStats', name: 'idx_model_call_stats_type_time', columns: ['timeType', 'timestamp'] },
   { table: 'ModelCallStats', name: 'idx_model_call_stats_type_time_app', columns: ['timeType', 'timestamp', 'appDid'] },
   // Projects
