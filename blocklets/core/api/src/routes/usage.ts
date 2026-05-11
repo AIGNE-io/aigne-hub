@@ -6,6 +6,7 @@ import { createHourlyModelCallStats } from '../crons/model-call-stats';
 import { normalizeProjectAppDid } from '../libs/env';
 import logger from '../libs/logger';
 import { getUserCredits } from '../libs/payment';
+import { createTimer } from '../libs/timing';
 import { pushProjectFetchJob } from '../queue/projects';
 import ModelCall from '../store/models/model-call';
 import ModelCallStat from '../store/models/model-call-stat';
@@ -135,6 +136,7 @@ router.get('/quota', user, async (req, res) => {
  * Get list of user's projects with statistics
  */
 router.get('/projects', user, async (req, res) => {
+  const timer = createTimer('/api/usage/projects');
   try {
     const userDid = req.user?.did;
     if (!userDid) {
@@ -155,6 +157,7 @@ router.get('/projects', user, async (req, res) => {
     const sortBy = rawSortBy === 'totalCredits' ? 'totalCredits' : 'totalCalls';
     const rawSortOrder = String(req.query.sortOrder || '').toLowerCase();
     const sortOrder = rawSortOrder === 'asc' ? 'asc' : 'desc';
+    timer.mark('prepare');
 
     const result = await ModelCallStat.getProjects(allUsers ? null : userDid, startTime, endTime, {
       page,
@@ -164,8 +167,9 @@ router.get('/projects', user, async (req, res) => {
       rangeDays,
       timezoneOffset,
     });
+    timer.mark('aggregate');
 
-    return res.json({
+    const body = {
       projects: result.projects.map((p) => ({
         appDid: p.appDid,
         appName: p.appName,
@@ -180,8 +184,17 @@ router.get('/projects', user, async (req, res) => {
       total: result.total,
       page: result.page,
       pageSize: result.pageSize,
+    };
+    timer.mark('format');
+    timer.finalize(res, {
+      allUsers,
+      rangeDays,
+      pageSize,
+      projectCount: result.projects.length,
     });
+    return res.json(body);
   } catch (error: any) {
+    timer.finalize(res, { error: true });
     logger.error('Failed to get projects', { error, userDid: req.user?.did });
     return res.status(500).json({ message: error.message });
   }
@@ -228,6 +241,7 @@ router.get('/projects/group-trends', user, async (req, res) => {
  * Get platform usage trends over time (admin only)
  */
 router.get('/trends', user, async (req, res) => {
+  const timer = createTimer('/api/usage/trends');
   try {
     const userDid = req.user?.did;
     if (!userDid) {
@@ -241,12 +255,14 @@ router.get('/trends', user, async (req, res) => {
     const rangeDays = timeRange;
     const granularity = rangeDays <= 1 ? 'hour' : 'day';
     const timezoneOffset = parseTimezoneOffset(req.query);
+    timer.mark('prepare');
 
     // Query directly from pre-aggregated ModelCallStat table instead of scanning ModelCalls
     // This is much faster as we aggregate from already-aggregated data
     const trends = await ModelCallStat.getGlobalTrends(startTime, endTime, granularity, timezoneOffset);
+    timer.mark('aggregate');
 
-    return res.json({
+    const body = {
       trends: trends.map((t) => ({
         timestamp: t.timestamp,
         calls: t.stats.totalCalls,
@@ -257,8 +273,16 @@ router.get('/trends', user, async (req, res) => {
         totalCredits: t.stats.totalCredits,
         totalUsage: t.stats.totalUsage,
       })),
+    };
+    timer.mark('format');
+    timer.finalize(res, {
+      rangeDays,
+      granularity,
+      bucketCount: trends.length,
     });
+    return res.json(body);
   } catch (error: any) {
+    timer.finalize(res, { error: true });
     logger.error('Failed to get trends', { error, userDid: req.user?.did });
     return res.status(500).json({ message: error.message });
   }

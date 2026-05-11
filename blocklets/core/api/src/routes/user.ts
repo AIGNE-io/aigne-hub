@@ -10,6 +10,7 @@ import {
   isPaymentRunning,
 } from '@api/libs/payment';
 import { ensureAdmin } from '@api/libs/security';
+import { createTimer } from '@api/libs/timing';
 import { formatToShortUrl } from '@api/libs/url';
 import { getAppName } from '@api/libs/user';
 import ModelCall from '@api/store/models/model-call';
@@ -606,6 +607,7 @@ router.get('/usage-stats', user, async (req, res) => {
 });
 
 router.get('/admin/user-stats', user, ensureAdmin, async (req, res) => {
+  const timer = createTimer('/api/user/admin/user-stats');
   try {
     const { startTime, endTime } = await usageStatsSchema.validateAsync(req.query, {
       stripUnknown: true,
@@ -622,17 +624,28 @@ router.get('/admin/user-stats', user, ensureAdmin, async (req, res) => {
     if (!startTimeNum || !endTimeNum) {
       return res.status(400).json({ error: 'startTime and endTime are required' });
     }
+    timer.mark('prepare');
 
     const modelStatsResult = await ModelCall.getModelUsageStats({
       startTime: startTimeNum,
       endTime: endTimeNum,
       limit: 5,
     });
+    timer.mark('aggregate');
 
+    const rangeDays =
+      Number.isFinite(startTimeNum) && Number.isFinite(endTimeNum)
+        ? Math.max(1, Math.ceil(((endTimeNum as number) - (startTimeNum as number)) / 86400))
+        : undefined;
+    timer.finalize(res, {
+      rangeDays,
+      modelCount: modelStatsResult?.list?.length ?? 0,
+    });
     return res.json({
       modelStats: modelStatsResult,
     });
   } catch (error) {
+    timer.finalize(res, { error: true });
     return res.status(500).json({ message: error.message });
   }
 });
