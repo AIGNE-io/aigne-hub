@@ -1,3 +1,7 @@
+## 0.9.14 (2026-5-11)
+
+- perf(analytics): restore missing indexes and add slow-query observability
+
 ## 0.9.13 (2026-3-19)
 
 - fix: copy pricing-core.mjs to dist during api build
