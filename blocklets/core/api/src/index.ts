@@ -12,6 +12,7 @@ import express, { ErrorRequestHandler } from 'express';
 
 import crons from './crons/index';
 import { Config, isDevelopment } from './libs/env';
+import { startEventLoopMonitor } from './libs/event-loop-monitor';
 import logger, { accessLogMiddleware } from './libs/logger';
 import { autoUpdateSubscriptionMeta, ensureMeter, paymentClient } from './libs/payment';
 import { flushPendingUsageReports } from './libs/usage';
@@ -111,6 +112,7 @@ const server = app.listen(port, async (err?: any) => {
   if (err) throw err;
   logger.info(`> ${name} v${version} ready on ${port}`);
 
+  startEventLoopMonitor();
   autoUpdateSubscriptionMeta();
   await subscribeEvents();
   crons.init();
