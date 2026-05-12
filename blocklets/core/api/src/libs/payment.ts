@@ -6,6 +6,7 @@ import payment, { SourceData, Subscription, TMeterEventExpanded } from '@blockle
 import { getComponentMountPoint, getUrl } from '@blocklet/sdk';
 import config from '@blocklet/sdk/lib/config';
 import { toBN } from '@ocap/util';
+import BigNumber from 'bignumber.js';
 import difference from 'lodash/difference';
 import { LRUCache } from 'lru-cache';
 import { joinURL, parseURL, withQuery } from 'ufo';
@@ -269,12 +270,16 @@ export async function createMeterEvent({
   if (Number(amount) === 0) {
     return undefined;
   }
+  // Use BigNumber.toFixed() to avoid JS scientific notation on very small values.
+  // `String(0.0000006)` produces `'6e-7'`, which Payment Kit's value validator
+  // (regex `(^-?[0-9.]+)`) rejects with HTTP 400, causing the report to be retried
+  // forever and never reaching the chain.
   const meterEvent = await payment.meterEvents.create({
     event_name: meter.event_name,
     timestamp: Math.floor(now / 1000),
     payload: {
       customer_id: userDid,
-      value: String(amount),
+      value: new BigNumber(amount).toFixed(),
     },
     identifier: `${userDid}-${meter.event_name}-${now}`,
     metadata,

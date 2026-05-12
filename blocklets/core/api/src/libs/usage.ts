@@ -443,7 +443,9 @@ async function executeOriginalReportLogicWithProtection({ appId, userDid }: { ap
           {
             key: 'total_credits',
             label: { en: 'Total Credits', zh: 'Credits 用量' },
-            value: `${reportQuantity}`,
+            // Same scientific-notation guard as createMeterEvent payload.value:
+            // template literal on a tiny number would emit '6e-7' and be rejected.
+            value: new BigNumber(reportQuantity).toFixed(),
           },
         ],
       });
