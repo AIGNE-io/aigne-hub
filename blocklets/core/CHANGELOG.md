@@ -1,3 +1,7 @@
+## 0.9.15 (2026-5-12)
+
+- fix(usage): stringify meter event values via BigNumber.toFixed to avoid scientific notation
+
 ## 0.9.14 (2026-5-11)
 
 - perf(analytics): restore missing indexes and add slow-query observability
