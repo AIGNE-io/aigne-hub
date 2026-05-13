@@ -1,14 +1,19 @@
-import { AgentResponseStream, ChatModelOutput, Message, isAgentResponseDelta } from '@aigne/core';
-import { getModelNameWithProvider } from '@api/libs/ai-provider';
-import AiProvider from '@api/store/models/ai-provider';
+import type {
+  ChatModelInputMessage,
+  ChatModelOutput,
+  ChatModelOutputToolCall,
+  Message,
+  ModelResponseStream,
+} from '@aigne/model-base';
+import { isModelResponseDelta } from '@aigne/model-base';
 import { ChatCompletionChunk, ChatCompletionInput, ChatCompletionResponse } from '@blocklet/aigne-hub/api/types';
 import { CustomError } from '@blocklet/error';
 
 export async function convertToFrameworkMessages(
   messages: ChatCompletionInput['messages']
-): Promise<import('@aigne/core').ChatModelInputMessage[]> {
+): Promise<ChatModelInputMessage[]> {
   return Promise.all(
-    messages.map(async (message): Promise<import('@aigne/core').ChatModelInputMessage> => {
+    messages.map(async (message): Promise<ChatModelInputMessage> => {
       switch (message.role) {
         case 'system':
           return {
@@ -52,13 +57,13 @@ export async function convertToFrameworkMessages(
 }
 
 export async function* adaptStreamToOldFormat(
-  stream: AgentResponseStream<ChatModelOutput>
+  stream: ModelResponseStream<ChatModelOutput>
 ): AsyncGenerator<ChatCompletionResponse> {
-  const toolCalls: ChatCompletionChunk['delta']['toolCalls'] = [];
+  const toolCalls: ChatModelOutputToolCall[] = [];
   const role: ChatCompletionChunk['delta']['role'] = 'assistant';
 
   for await (const chunk of stream) {
-    if (isAgentResponseDelta(chunk)) {
+    if (isModelResponseDelta(chunk)) {
       const { delta } = chunk;
 
       if (delta.json?.toolCalls && Array.isArray(delta.json.toolCalls)) {
@@ -90,7 +95,7 @@ export async function* adaptStreamToOldFormat(
                       arguments:
                         call.function?.arguments && typeof call.function.arguments === 'object'
                           ? JSON.stringify(call.function.arguments)
-                          : call.function?.arguments,
+                          : (call.function?.arguments as unknown as string | undefined),
                     },
                   }))
                 : [],
@@ -112,32 +117,4 @@ export async function* adaptStreamToOldFormat(
       }
     }
   }
-}
-
-export async function getModelAndProviderId(model: string) {
-  let { providerName, modelName } = getModelNameWithProvider(model);
-
-  const getDefaultProvider = () => {
-    if (model.toLowerCase().startsWith('gemini')) return 'google';
-    if (model.toLowerCase().startsWith('gpt')) return 'openai';
-    if (model.toLowerCase().startsWith('openrouter')) return 'openrouter';
-    if (model.toLowerCase().startsWith('dall-e')) return 'openai';
-
-    if (!providerName || !modelName) {
-      throw new CustomError(
-        400,
-        'The model format is incorrect. Please use {provider}/{model}, for example: openai/gpt-4o or anthropic/claude-3-5-sonnet'
-      );
-    }
-
-    return '';
-  };
-
-  if (!providerName) {
-    providerName = getDefaultProvider();
-    modelName = model;
-  }
-
-  const provider = await AiProvider.findOne({ where: { name: providerName } });
-  return { providerId: provider?.id || '', modelName, providerName };
 }

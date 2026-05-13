@@ -30,7 +30,6 @@ export function formatNumber(
     result = num.format({
       thousandSeparated,
       mantissa: p,
-      roundingFunction: (n) => (n < 0 ? Math.ceil(n) : Math.floor(n)),
     });
     if (!isZeroString(result)) break;
   }

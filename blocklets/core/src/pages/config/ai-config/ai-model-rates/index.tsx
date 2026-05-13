@@ -606,7 +606,7 @@ export default function AIModelRates() {
     return str.split('.')[1]?.length || 0;
   };
 
-  const needFormatCreditBase = baseCreditPrice && getDecimalPlaces(baseCreditPrice) > 4;
+  const needFormatCreditBase = baseCreditPrice && getDecimalPlaces(+baseCreditPrice) > 4;
 
   return (
     <Box>

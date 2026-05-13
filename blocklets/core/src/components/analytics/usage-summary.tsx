@@ -9,39 +9,11 @@ export interface TrendComparison {
     totalUsage: number;
     totalCredits: number;
     totalCalls: number;
-    byType: {
-      chatCompletion?: {
-        totalUsage: number;
-        totalCalls: number;
-      };
-      imageGeneration?: {
-        totalUsage: number;
-        totalCalls: number;
-      };
-      embedding?: {
-        totalUsage: number;
-        totalCalls: number;
-      };
-    };
   };
   previous: {
     totalUsage: number;
     totalCredits: number;
     totalCalls: number;
-    byType: {
-      chatCompletion?: {
-        totalUsage: number;
-        totalCalls: number;
-      };
-      imageGeneration?: {
-        totalUsage: number;
-        totalCalls: number;
-      };
-      embedding?: {
-        totalUsage: number;
-        totalCalls: number;
-      };
-    };
   };
   growth: { usageGrowth: number; creditsGrowth: number; callsGrowth: number };
 }
@@ -205,102 +177,6 @@ export function UsageSummary({
     return t('analytics.fromPreviousPeriod');
   };
 
-  // Function to get usage unit based on service type
-  const getUsageUnit = (type: string) => {
-    const normalizedType = type.toLowerCase();
-    switch (normalizedType) {
-      case 'chatcompletion':
-      case 'completion':
-      case 'embedding':
-      case 'transcription':
-      case 'speech':
-      case 'audiogeneration':
-        return t('modelUnits.tokens');
-      case 'imagegeneration':
-        return t('modelUnits.images');
-      case 'video':
-        return t('modelUnits.seconds');
-      default:
-        return t('modelUnits.tokens');
-    }
-  };
-
-  // Function to get display name for service type
-  const getServiceTypeDisplayName = (type: string) => {
-    const typeKey = `modelTypes.${type}`;
-    try {
-      return t(typeKey);
-    } catch {
-      return type;
-    }
-  };
-
-  const createUsageTooltip = () => {
-    const byType = trendComparison?.current?.byType;
-
-    if (!byType || Object.keys(byType).length === 0) {
-      return null;
-    }
-
-    return (
-      <Box sx={{ minWidth: 200 }}>
-        <Box
-          sx={{
-            p: '12px 16px 8px 16px',
-
-            borderColor: 'divider',
-            backgroundColor: 'grey.50',
-          }}>
-          <Typography
-            variant="body2"
-            sx={{
-              fontSize: '13px',
-              fontWeight: 600,
-              color: 'text.primary',
-            }}>
-            {t('analytics.modelUsageStats')}
-          </Typography>
-        </Box>
-
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-          {Object.entries(byType).map(([type, stats]) => {
-            const unit = getUsageUnit(type);
-            const displayName = getServiceTypeDisplayName(type);
-            return (
-              <Box
-                key={type}
-                sx={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  p: '6px 12px',
-                }}>
-                <Typography
-                  variant="body2"
-                  sx={{
-                    fontSize: '12px',
-                    color: 'text.secondary',
-                    fontWeight: 500,
-                  }}>
-                  {displayName}
-                </Typography>
-                <Typography
-                  variant="body2"
-                  sx={{
-                    fontSize: '12px',
-                    color: 'text.primary',
-                    fontWeight: 600,
-                  }}>
-                  {formatNumber(stats?.totalUsage || 0, 0, true)} {unit}
-                </Typography>
-              </Box>
-            );
-          })}
-        </Box>
-      </Box>
-    );
-  };
-
   const metrics = customMetrics || [
     {
       title: t('analytics.totalCreditsUsed'),
@@ -320,9 +196,9 @@ export function UsageSummary({
       trendDescription: trendComparison ? getTrendDescription(periodDays) : undefined,
       icon: <TrendingUp color="success" />,
       color: 'success' as const,
-      tooltip: createUsageTooltip(),
-      showInfoIcon: true,
-      infoTooltip: t('analytics.modelUsageSummaryDescription'),
+      tooltip: null,
+      showInfoIcon: false,
+      infoTooltip: undefined,
     },
     {
       title: t('analytics.totalRequests'),

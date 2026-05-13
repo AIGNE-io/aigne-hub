@@ -52,7 +52,7 @@ jobs:
           deps-server-version: beta
           skip-deps: false
           skip-upload: false
-          skip-deploy: false
+          skip-deploy: true
           skip-release: true
           working-directory: blocklets/core
           bundle-command: pnpm bundle
@@ -60,8 +60,5 @@ jobs:
           store-access-token: ${{ secrets.STORE_ACCESS_TOKEN_TEST }}
           slack-webhook: ${{ secrets.SLACK_WEBHOOK }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          abtnode-endpoint: ${{ secrets.STAGING_NODE_ENDPOINT }}
-          access-key: ${{ secrets.STAGING_NODE_ACCESS_KEY }}
-          access-secret: ${{ secrets.STAGING_NODE_ACCESS_SECRET }}
           deploy-app-did: zNKti3S7gEFuvJVbxjtQTQAzUm1fNKPfNzTq
           deploy-mount-point: /

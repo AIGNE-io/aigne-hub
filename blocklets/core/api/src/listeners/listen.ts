@@ -3,7 +3,7 @@ import { Config } from '@api/libs/env';
 import { getLock } from '@api/libs/lock';
 import logger from '@api/libs/logger';
 import { handleCreditGranted } from '@api/libs/notifications';
-import { ensureCustomer, ensureMeter, getUserCredits, paymentClient } from '@api/libs/payment';
+import { ensureCustomer, ensureMeter, getUserCredits, invalidateCreditCache, paymentClient } from '@api/libs/payment';
 import { subscribe } from '@blocklet/sdk/lib/service/eventbus';
 import merge from 'lodash/merge';
 
@@ -195,6 +195,17 @@ export async function subscribeEvents() {
     if (event.type === 'customer.credit_grant.granted') {
       logger.info('customer.credit_grant.granted', event.id);
       const creditGrant = event.data.object;
+      // Invalidate credit cache so the user's new balance takes effect immediately
+      ensureCustomer(creditGrant.customer_id)
+        .then((customer) => {
+          if (customer?.did) {
+            invalidateCreditCache(customer.did);
+            logger.info('Credit cache invalidated after credit grant', { userDid: customer.did });
+          }
+        })
+        .catch((err) => {
+          logger.error('Failed to invalidate credit cache after credit grant', { error: err });
+        });
       handleCreditGranted(creditGrant, event.data.object.extraParams);
     }
   });

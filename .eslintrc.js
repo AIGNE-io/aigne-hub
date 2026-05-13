@@ -19,7 +19,6 @@ module.exports = {
     '@typescript-eslint/indent': 'off',
     'no-return-assign': 'off',
     'no-nested-ternary': 'off',
-    'no-await-in-loop': 'warn',
     'react-hooks/exhaustive-deps': 'warn',
     'react/no-array-index-key': 'warn',
     'jsx-a11y/no-noninteractive-element-interactions': 'off',
@@ -29,11 +28,10 @@ module.exports = {
     'import/prefer-default-export': 'off',
     '@typescript-eslint/comma-dangle': 'off',
     'require-await': 'off',
-    'react/require-default-props': [
-      'error',
-      {
-        functions: 'defaultArguments',
-      },
-    ],
+    'react/require-default-props': 'off',
+    'no-continue': 'off',
+    'no-await-in-loop': 'warn',
+    'consistent-return': 'off',
+    'react/no-unstable-nested-components': 'off',
   },
 };

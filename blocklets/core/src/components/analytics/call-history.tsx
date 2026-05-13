@@ -44,6 +44,7 @@ export interface ModelCall {
   totalUsage: number;
   credits: number;
   duration?: number;
+  ttfb?: number;
   errorReason?: string;
   appDid?: string;
   userDid?: string;
@@ -76,7 +77,7 @@ interface CallHistoryProps {
 
 function formatDuration(duration?: number) {
   if (!duration) return '-';
-  return `${duration.toFixed(1)}s`;
+  return `${Number(duration).toFixed(1)}s`;
 }
 
 function AppInfo({ appInfo }: { appInfo: { appName: string; appUrl: string; appLogo: string; appDid: string } }) {
@@ -349,10 +350,22 @@ export function CallHistory({
             return '-';
           }
 
+          const formatted = formatNumber(call.totalUsage, 0, true);
           return (
-            <Typography variant="body2">
-              {formatNumber(call.totalUsage, 0, true)} {unit}
-            </Typography>
+            <Box
+              sx={{
+                display: 'inline-flex',
+                alignItems: 'baseline',
+                gap: 0.5,
+                whiteSpace: 'nowrap',
+              }}>
+              <Typography variant="body2" sx={{ fontVariantNumeric: 'tabular-nums' }}>
+                {formatted}
+              </Typography>
+              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                {unit}
+              </Typography>
+            </Box>
           );
         },
       },
@@ -411,6 +424,21 @@ export function CallHistory({
           return (
             <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
               {formatDuration(call.duration)}
+            </Typography>
+          );
+        },
+      },
+    },
+    {
+      name: 'ttfb',
+      label: 'TTFB',
+      options: {
+        customBodyRender: (_value: any, tableMeta: any) => {
+          const call = modelCalls[tableMeta.rowIndex];
+          if (!call) return null;
+          return (
+            <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
+              {formatDuration(call.ttfb != null ? call.ttfb / 1000 : undefined)}
             </Typography>
           );
         },

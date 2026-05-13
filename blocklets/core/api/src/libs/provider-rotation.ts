@@ -4,6 +4,7 @@ import {
   inferVendorFromModel,
   resolveProviderModelId,
 } from '@aigne/aigne-hub';
+import { getProviderWithCache } from '@api/providers/models';
 import AiCredential from '@api/store/models/ai-credential';
 import AiModelRate from '@api/store/models/ai-model-rate';
 import AiProvider from '@api/store/models/ai-provider';
@@ -425,22 +426,18 @@ function updateRequestModel(
 }
 
 async function hasActiveCredentials(providerName: string): Promise<boolean> {
-  const provider = await AiProvider.findOne({
-    where: { name: providerName, enabled: true },
-    include: [
-      {
-        model: AiCredential,
-        as: 'credentials',
-        where: { active: true },
-        required: true,
-      },
-    ],
+  const cachedProvider = await getProviderWithCache(providerName);
+  if (!cachedProvider) return false;
+
+  const activeCredentials = await AiCredential.findAll({
+    where: { providerId: cachedProvider.id, active: true },
+    limit: 1,
   });
 
-  return !!(provider && (provider as any).credentials?.length);
+  return activeCredentials.length > 0;
 }
 
-function getReqModel(req: {
+function getBodyModel(req: {
   body: { model?: string; input?: { model?: string; modelOptions?: { model?: string } } };
 }): string {
   return req.body?.model || req.body?.input?.model || req.body?.input?.modelOptions?.model || '';
@@ -456,7 +453,7 @@ export async function ensureModelWithProvider(
     body: { model?: string; input?: { model?: string; modelOptions?: { model?: string } } };
   } & { provider?: string; model?: string }
 ): Promise<void> {
-  const model = getReqModel(req);
+  const model = getBodyModel(req);
 
   if (!model) {
     return;

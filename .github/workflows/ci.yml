@@ -37,6 +37,9 @@ jobs:
       - name: Test
         run: pnpm test:coverage
 
+      - name: Integration tests
+        run: pnpm --filter ai-kit test:integration
+
       - name: Report coverage
         uses: ArcBlock/code-coverage-assistant@v1.2.1
         with:

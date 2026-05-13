@@ -64,6 +64,19 @@ export async function getBedrockConfig() {
   return { accessKeyId, secretAccessKey, region };
 }
 
+/**
+ * Check whether env-based credentials exist for a provider (no side effects).
+ * Used by resolveProviderMiddleware to allow env-only providers through
+ * when no DB record exists.
+ */
+export function hasEnvCredentials(provider: string): boolean {
+  if (provider === 'bedrock') {
+    return !!(Config.awsAccessKeyId?.length && Config.awsSecretAccessKey?.length && Config.awsRegion?.length);
+  }
+  const keys = apiKeys[provider as AIProvider]?.();
+  return !!keys?.length;
+}
+
 export const BASE_URL_CONFIG_MAP = {
   openai: () => Config.openaiBaseURL,
   anthropic: () => Config.anthropicBaseURL,
