@@ -1,4 +1,5 @@
 import BigNumber from 'bignumber.js';
+import pAll from 'p-all';
 import {
   CreationOptional,
   DataTypes,
@@ -902,23 +903,27 @@ export default class ModelCallStat extends Model<
     // The top-1 form, in contrast, lands directly on the last row of the
     // composite index idx_model_calls_app_time(appDid, callTime) per appDid:
     // O(N_apps × log N_rows), independent of how many historical calls each
-    // app has accumulated. With page size <= 100, that's at most 100 tiny
-    // index lookups — single-digit milliseconds in practice.
+    // app has accumulated.
+    //
+    // Concurrency is capped so that unpaginated callers (e.g. getProjectStats,
+    // which can pass hundreds of appDids) cannot overwhelm the sequelize pool
+    // or the underlying SQLite single-writer lock. SQLite serializes reads
+    // against any concurrent writer anyway, so going wider than ~10 yields no
+    // wall-clock speedup but does flood the pool.
     const userDidClause: Record<string, any> =
       userDid !== undefined ? { userDid: userDid === null ? { [Op.not]: null } : userDid } : {};
 
-    const results = await Promise.all(
-      appDids.map(async (appDid) => {
-        const row = (await ModelCall.findOne({
-          attributes: ['callTime'],
-          where: { appDid, ...userDidClause },
-          order: [['callTime', 'DESC']],
-          raw: true,
-        })) as { callTime: number | string | null } | null;
-        const lastCallTime = Number(row?.callTime ?? 0);
-        return [appDid, Number.isFinite(lastCallTime) && lastCallTime > 0 ? lastCallTime : 0] as const;
-      })
-    );
+    const tasks = appDids.map((appDid) => async () => {
+      const row = (await ModelCall.findOne({
+        attributes: ['callTime'],
+        where: { appDid, ...userDidClause },
+        order: [['callTime', 'DESC']],
+        raw: true,
+      })) as { callTime: number | string | null } | null;
+      const lastCallTime = Number(row?.callTime ?? 0);
+      return [appDid, Number.isFinite(lastCallTime) && lastCallTime > 0 ? lastCallTime : 0] as const;
+    });
+    const results = await pAll(tasks, { concurrency: 10, stopOnError: false });
 
     const overallMap = new Map<string, number>();
     results.forEach(([appDid, lastCallTime]) => {
