@@ -893,25 +893,36 @@ export default class ModelCallStat extends Model<
 
   static async fetchOverallLastCall(appDids: string[], userDid: string | null | undefined) {
     if (!appDids.length) return new Map<string, number>();
-    const whereClause: any = { appDid: { [Op.in]: appDids } };
-    if (userDid !== undefined) {
-      whereClause.userDid = userDid === null ? { [Op.not]: null } : userDid;
-    }
 
-    const overallRows = (await ModelCall.findAll({
-      attributes: ['appDid', [fn('MAX', col('callTime')), 'lastCallTime']],
-      where: whereClause,
-      group: ['appDid'],
-      raw: true,
-    })) as unknown as Array<{ appDid: string | null; lastCallTime: number | string | null }>;
+    // Per-appDid ORDER BY callTime DESC LIMIT 1 instead of a single
+    // `GROUP BY appDid MAX(callTime)`. The latter has no upper bound on
+    // callTime and forces SQLite to walk every historical row for each appDid
+    // — production logs showed >12s tail latency from this one query.
+    //
+    // The top-1 form, in contrast, lands directly on the last row of the
+    // composite index idx_model_calls_app_time(appDid, callTime) per appDid:
+    // O(N_apps × log N_rows), independent of how many historical calls each
+    // app has accumulated. With page size <= 100, that's at most 100 tiny
+    // index lookups — single-digit milliseconds in practice.
+    const userDidClause: Record<string, any> =
+      userDid !== undefined ? { userDid: userDid === null ? { [Op.not]: null } : userDid } : {};
+
+    const results = await Promise.all(
+      appDids.map(async (appDid) => {
+        const row = (await ModelCall.findOne({
+          attributes: ['callTime'],
+          where: { appDid, ...userDidClause },
+          order: [['callTime', 'DESC']],
+          raw: true,
+        })) as { callTime: number | string | null } | null;
+        const lastCallTime = Number(row?.callTime ?? 0);
+        return [appDid, Number.isFinite(lastCallTime) && lastCallTime > 0 ? lastCallTime : 0] as const;
+      })
+    );
 
     const overallMap = new Map<string, number>();
-    overallRows.forEach((row) => {
-      if (!row.appDid) return;
-      const lastCallTime = Number(row.lastCallTime || 0);
-      if (Number.isFinite(lastCallTime) && lastCallTime > 0) {
-        overallMap.set(row.appDid, lastCallTime);
-      }
+    results.forEach(([appDid, lastCallTime]) => {
+      if (lastCallTime > 0) overallMap.set(appDid, lastCallTime);
     });
 
     return overallMap;
